@@ -9,6 +9,7 @@
 *.mov
 *.avi
 *.mkv
+!kai-website/src/public/*.mp4
 
 # macOS
 .DS_Store
