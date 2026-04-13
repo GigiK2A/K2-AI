@@ -1,4 +1,5 @@
 from agents.base import BoardAgent, get_search_tool
+from core.notion_tools import add_lead_to_pipeline, create_board_task, list_pipeline_status, update_pipeline_lead
 from db.models import AgentName, LLMProvider
 
 
@@ -21,5 +22,11 @@ class LeadGenerationAgent(BoardAgent):
     ]
 
     def __init__(self):
-        self.tools = [get_search_tool()]
+        self.tools = [
+            get_search_tool(),
+            add_lead_to_pipeline,
+            update_pipeline_lead,
+            list_pipeline_status,
+            create_board_task,
+        ]
         super().__init__()

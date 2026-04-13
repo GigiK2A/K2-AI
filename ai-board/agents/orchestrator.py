@@ -1,4 +1,13 @@
 from agents.base import BoardAgent
+from core.notion_tools import (
+    add_lead_to_pipeline,
+    create_board_task,
+    list_open_tasks,
+    list_pipeline_status,
+    save_to_memory,
+    update_board_task,
+    update_pipeline_lead,
+)
 from db.models import AgentName, LLMProvider
 
 
@@ -55,4 +64,14 @@ class OrchestratorAgent(BoardAgent):
         '{"plan_title": "...", "objective": "...", "tasks": [{"agent": "...", '
         '"title": "...", "description": "...", "priority": 1, "inputs": {...}}]}',
     ]
-    tools = []
+    def __init__(self):
+        self.tools = [
+            add_lead_to_pipeline,
+            update_pipeline_lead,
+            list_pipeline_status,
+            create_board_task,
+            update_board_task,
+            list_open_tasks,
+            save_to_memory,
+        ]
+        super().__init__()

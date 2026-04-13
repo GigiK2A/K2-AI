@@ -18,6 +18,13 @@ Supporta provider Anthropic (primario) e OpenAI (fallback) tramite la classe bas
 """
 
 from agents.base import BoardAgent
+from core.notion_tools import (
+    add_lead_to_pipeline,
+    create_board_task,
+    list_pipeline_status,
+    save_to_memory,
+    update_pipeline_lead,
+)
 from db.models import AgentName, LLMProvider
 
 
@@ -145,4 +152,15 @@ class SalesEnablementAgent(BoardAgent):
         "Tono: diretto e concreto, mai vendita aggressiva o superlativo non supportato da evidenza",
         "Non inventare lead, statistiche o case study — usa placeholder [DA VERIFICARE] se mancano dati reali",
         "Tutti gli output sono DRAFT — richiedono approvazione del fondatore prima di qualsiasi invio esterno",
+        "Usa i tool Notion disponibili: aggiungi lead alla pipeline, aggiorna lo stato dei prospect e salva decisioni commerciali direttamente nel board senza aspettare l'approvazione per queste operazioni di registrazione.",
     ]
+
+    def __init__(self):
+        self.tools = [
+            add_lead_to_pipeline,
+            update_pipeline_lead,
+            list_pipeline_status,
+            create_board_task,
+            save_to_memory,
+        ]
+        super().__init__()

@@ -101,7 +101,6 @@ export default defineConfig({
         main: 'src/index.html',
         metodo: 'src/metodo.html',
         'casi-studio': 'src/casi-studio.html',
-        offerte: 'src/offerte.html',
         analisi: 'src/analisi.html',
         'k-bot': 'src/k-bot.html',
         contatti: 'src/contatti.html',

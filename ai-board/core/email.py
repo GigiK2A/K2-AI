@@ -191,10 +191,14 @@ async def send_confirmation_email(
     """
     Invia la mail di conferma al visitatore.
     Restituisce True se l'invio ha avuto successo, False altrimenti.
-    Non solleva eccezioni — gli errori vengono loggati.
+    Non solleva eccezioni — gli errori vengono loggati e notificati su Telegram.
     """
     if not email_configured():
-        logger.debug("Nessun provider email configurato — conferma saltata")
+        logger.warning(
+            "Email di conferma NON inviata a %s — nessun provider configurato "
+            "(RESEND_API_KEY o SMTP_HOST+SMTP_USER+SMTP_PASSWORD mancanti).",
+            to_email,
+        )
         return False
 
     subject = f"K2-AI — Messaggio ricevuto, {name.split()[0] if name else 'ciao'}"
@@ -206,7 +210,29 @@ async def send_confirmation_email(
             await _send_via_resend(to_email, subject, html, text)
             return True
         except Exception as exc:
-            logger.warning(f"Resend fallito ({exc}), provo SMTP…")
+            err = str(exc)
+            if "domain is not verified" in err or "validation_error" in err:
+                logger.error(
+                    "Email NON inviata — dominio '%s' non verificato su Resend. "
+                    "Vai su https://resend.com/domains e aggiungi il dominio. "
+                    "Dettaglio: %s",
+                    settings.email_from,
+                    err,
+                )
+                # Notifica Telegram per non perdere il lead
+                try:
+                    from interfaces.telegram.notifier import notify_sync, send_message
+                    notify_sync(
+                        send_message(
+                            f"⚠️ Email conferma NON inviata a {to_email}\n"
+                            f"Motivo: dominio non verificato su Resend.\n"
+                            f"Azione: verifica il dominio su https://resend.com/domains"
+                        )
+                    )
+                except Exception:
+                    pass
+            else:
+                logger.warning("Resend fallito (%s), provo SMTP…", exc)
 
     # Fallback SMTP
     if settings.smtp_host and settings.smtp_user and settings.smtp_password:
@@ -216,6 +242,6 @@ async def send_confirmation_email(
             await loop.run_in_executor(None, _send_via_smtp, to_email, subject, html, text)
             return True
         except Exception as exc:
-            logger.error(f"SMTP fallito: {exc}")
+            logger.error("SMTP fallito: %s", exc)
 
     return False

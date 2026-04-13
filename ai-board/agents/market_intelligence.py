@@ -1,4 +1,5 @@
 from agents.base import BoardAgent, get_search_tool
+from core.notion_tools import add_lead_to_pipeline, list_pipeline_status, save_to_memory
 from db.models import AgentName, LLMProvider
 
 
@@ -21,5 +22,5 @@ class MarketIntelligenceAgent(BoardAgent):
     ]
 
     def __init__(self):
-        self.tools = [get_search_tool()]
+        self.tools = [get_search_tool(), add_lead_to_pipeline, list_pipeline_status, save_to_memory]
         super().__init__()

@@ -1,4 +1,10 @@
 from agents.base import BoardAgent
+from core.notion_tools import (
+    create_board_task,
+    list_open_tasks,
+    save_to_memory,
+    update_board_task,
+)
 from db.models import AgentName, LLMProvider
 
 
@@ -18,4 +24,9 @@ class ChiefOfStaffAgent(BoardAgent):
         "Se ricevi debrief o aggiornamenti, estrai subito cio che va archiviato e cio che va eseguito",
         "Mantieni i briefing compatti, chiari e azionabili: niente testo narrativo inutile",
         "Quando mancano dati sullo stato reale, dichiaralo esplicitamente invece di inventare avanzamenti",
+        "Usa i tool Notion disponibili per creare task, aggiornare avanzamenti e salvare decisioni operative direttamente nel board — non limitarti a produrre testo.",
     ]
+
+    def __init__(self):
+        self.tools = [create_board_task, update_board_task, list_open_tasks, save_to_memory]
+        super().__init__()
