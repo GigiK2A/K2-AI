@@ -1,4 +1,3 @@
-const INTRO_STORAGE_KEY = 'kai-home-intro-seen';
 const HERO_VIDEO_PLAYBACK_RATE = 1.8;
 const HERO_MEDIA = {
   portraitVideo: '/hero-portrait-k2.mp4',
@@ -7,20 +6,8 @@ const HERO_MEDIA = {
   landscapePoster: '/hero-landscape-k2-static.png'
 };
 
-function hasSeenIntro() {
-  try {
-    return sessionStorage.getItem(INTRO_STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function markIntroSeen() {
-  try {
-    sessionStorage.setItem(INTRO_STORAGE_KEY, '1');
-  } catch {
-    // ignore storage failures
-  }
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -90,12 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   applyHeroMedia();
 
-  if (document.documentElement.classList.contains('skip-home-intro') || hasSeenIntro()) {
+  if (document.documentElement.classList.contains('skip-home-intro') || prefersReducedMotion()) {
     skipIntro();
     return;
   }
 
-  markIntroSeen();
   video.playbackRate = HERO_VIDEO_PLAYBACK_RATE;
 
   video.addEventListener('ended', skipIntro, { once: true });
