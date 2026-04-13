@@ -1,0 +1,50 @@
+<div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+    <p class="text-xs text-amber-700">L'output sarà salvato come Draft in attesa di approvazione.</p>
+</div>
+<form hx-post="/agents/marketing_strategy/run" hx-target="#run-result" hx-swap="outerHTML" hx-indicator="#run-spinner" class="space-y-5">
+    <input type="hidden" name="execution_mode" value="detail" />
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Tipo piano</label>
+            <select class="w-full bg-surface-container-low border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 py-3 px-4" name="tipo_piano">
+                <option>Lancio Prodotto</option>
+                <option>Growth Quarterly</option>
+                <option>Brand Awareness</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Canale focus</label>
+            <select class="w-full bg-surface-container-low border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 py-3 px-4" name="canale_focus">
+                <option>Search Engine (SEO/SEM)</option>
+                <option>Social Media</option>
+                <option>Direct Outreach</option>
+                <option>Content Marketing</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Obiettivo</label>
+            <select class="w-full bg-surface-container-low border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 py-3 px-4" name="obiettivo">
+                <option>Lead Generation</option>
+                <option>Retention</option>
+                <option>Conversion Optimization</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Nicchia target</label>
+            <select class="w-full bg-surface-container-low border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 py-3 px-4" name="nicchia_target">
+                <option>SaaS Enterprise</option>
+                <option>E-commerce SMB</option>
+                <option>Healthcare Tech</option>
+            </select>
+        </div>
+    </div>
+    <div>
+        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Vincoli</label>
+        <textarea class="w-full bg-surface-container-low border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 py-3 px-4 h-32" name="vincoli" placeholder="Inserisci budget, limitazioni legali o preferenze stilistiche..."></textarea>
+    </div>
+    <div class="flex items-center gap-3 pt-2">
+        <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white rounded-lg bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 transition-all">Esegui agente →</button>
+        <span id="run-spinner" class="htmx-indicator text-xs text-slate-400">In esecuzione...</span>
+    </div>
+</form>
+<div id="run-result" class="mt-4"></div>

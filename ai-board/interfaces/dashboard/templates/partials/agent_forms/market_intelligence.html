@@ -1,0 +1,47 @@
+<div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+    <p class="text-xs text-amber-700">L'output sarà salvato come Draft in attesa di approvazione.</p>
+</div>
+<form hx-post="/agents/market_intelligence/run" hx-target="#run-result" hx-swap="outerHTML" hx-indicator="#run-spinner" class="space-y-6">
+    <input type="hidden" name="execution_mode" value="detail" />
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Nicchia</label>
+            <select class="w-full bg-surface-container-low border-0 rounded-lg text-sm focus:ring-2 focus:ring-primary/20" name="nicchia">
+                <option>Logistica e Trasporti</option>
+                <option>E-commerce retail</option>
+                <option>Fintech B2B</option>
+            </select>
+        </div>
+        <div class="space-y-2">
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Focus analisi</label>
+            <select class="w-full bg-surface-container-low border-0 rounded-lg text-sm focus:ring-2 focus:ring-primary/20" name="focus_analisi">
+                <option>Competitività prezzi</option>
+                <option>Sentiment analisi</option>
+                <option>Quota di mercato</option>
+            </select>
+        </div>
+    </div>
+    <div class="space-y-2">
+        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Territorio</label>
+        <input class="w-full bg-surface-container-low border-0 rounded-lg text-sm focus:ring-2 focus:ring-primary/20" name="territorio" placeholder="Es: Nord Italia, Europa Centrale" type="text" />
+    </div>
+    <div class="space-y-2">
+        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Domanda specifica</label>
+        <textarea class="w-full bg-surface-container-low border-0 rounded-lg text-sm focus:ring-2 focus:ring-primary/20" name="domanda_specifica" placeholder="Quali sono i fattori critici per..." rows="3"></textarea>
+    </div>
+    <label class="flex items-center justify-between p-4 bg-primary-container/30 rounded-lg">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary">language</span>
+            <div>
+                <p class="text-sm font-bold text-on-primary-container">Includi ricerca web</p>
+                <p class="text-[11px] text-on-surface-variant">L'agente cercherà dati in tempo reale su Google News e blog di settore.</p>
+            </div>
+        </div>
+        <input checked class="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox" name="includi_ricerca_web" />
+    </label>
+    <div class="flex items-center gap-3 pt-2">
+        <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white rounded-lg bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 transition-all">Esegui agente →</button>
+        <span id="run-spinner" class="htmx-indicator text-xs text-slate-400">In esecuzione...</span>
+    </div>
+</form>
+<div id="run-result" class="mt-4"></div>

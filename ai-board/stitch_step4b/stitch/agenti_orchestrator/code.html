@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html class="light" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#323951",
+                    "on-secondary-fixed": "#403f43",
+                    "on-secondary-container": "#525155",
+                    "surface-container-highest": "#dbe4e7",
+                    "surface-container-high": "#e2e9ec",
+                    "surface-container-low": "#f1f4f6",
+                    "on-tertiary": "#faf8ff",
+                    "tertiary-container": "#d2d9f8",
+                    "background": "#f8f9fa",
+                    "primary-fixed-dim": "#d2d0ff",
+                    "surface": "#f8f9fa",
+                    "error-dim": "#4f0116",
+                    "error-container": "#ff8b9a",
+                    "secondary-fixed": "#e5e1e6",
+                    "on-background": "#2b3437",
+                    "primary-dim": "#4034d7",
+                    "tertiary-fixed": "#d2d9f8",
+                    "primary-fixed": "#e2dfff",
+                    "on-primary-container": "#3f33d6",
+                    "secondary": "#605e62",
+                    "on-tertiary-fixed-variant": "#4e556f",
+                    "on-error": "#fff7f7",
+                    "on-primary-fixed": "#2a13c5",
+                    "tertiary-fixed-dim": "#c4cbe9",
+                    "inverse-surface": "#0c0f10",
+                    "surface-variant": "#dbe4e7",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary": "#fcf8fc",
+                    "primary": "#4d44e3",
+                    "tertiary-dim": "#4b526c",
+                    "secondary-dim": "#545256",
+                    "outline": "#737c7f",
+                    "secondary-fixed-dim": "#d7d3d8",
+                    "on-surface-variant": "#586064",
+                    "surface-container": "#eaeff1",
+                    "surface-bright": "#f8f9fa",
+                    "on-primary": "#faf6ff",
+                    "on-primary-fixed-variant": "#4a40e0",
+                    "on-tertiary-container": "#444c65",
+                    "surface-tint": "#4d44e3",
+                    "surface-dim": "#d1dce0",
+                    "primary-container": "#e2dfff",
+                    "inverse-primary": "#8582ff",
+                    "inverse-on-surface": "#9b9d9e",
+                    "on-secondary-fixed-variant": "#5c5b5f",
+                    "secondary-container": "#e5e1e6",
+                    "tertiary": "#575e78",
+                    "on-error-container": "#782232",
+                    "error": "#9e3f4e",
+                    "on-surface": "#2b3437",
+                    "outline-variant": "#abb3b7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-[220px] h-screen fixed left-0 top-0 bg-slate-50 border-r-0 flex flex-col py-6 px-4 space-y-2 z-50">
+<div class="mb-8 px-2">
+<h1 class="text-lg font-bold tracking-tighter text-slate-900">The Intelligent Canvas</h1>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold opacity-60">Editorial Workspace</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Active State: Agenti -->
+<a class="flex items-center gap-3 px-3 py-2 bg-white text-indigo-600 rounded-lg shadow-sm font-semibold text-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+<span>Agenti</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[20px]">database</span>
+<span>Dataset</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[20px]">deployed_code</span>
+<span>Modelli</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span>Impostazioni</span>
+</a>
+</nav>
+<div class="pt-4 border-t border-slate-200/50 space-y-1">
+<button class="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm mb-4">
+<span class="material-symbols-outlined text-sm">add</span>
+                Nuovo Agente
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span>Aiuto</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Stage -->
+<main class="flex-1 ml-[220px] min-h-screen relative">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-[220px] z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/20 flex items-center justify-between px-8 h-16">
+<div class="flex items-center gap-4">
+<span class="text-xl font-black text-slate-900">AI Board</span>
+<div class="h-4 w-[1px] bg-slate-200 mx-2"></div>
+<nav class="flex gap-6">
+<a class="text-slate-500 hover:text-indigo-500 transition-colors text-sm font-medium" href="#">Dashboard</a>
+<a class="text-indigo-600 font-bold border-b-2 border-indigo-600 text-sm py-5" href="#">Agenti</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-slate-600 cursor-pointer">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full"></span>
+</div>
+<span class="material-symbols-outlined text-slate-400 hover:text-slate-600 cursor-pointer">history</span>
+<img alt="Admin Avatar" class="w-8 h-8 rounded-full object-cover ring-2 ring-slate-100" data-alt="close-up portrait of a professional woman with a minimalist tech aesthetic, soft natural lighting, high resolution" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAiVzrGg3CnYwo1MXRJ4uPu795GAPItdNNWFq5lnkEZDdzLWrIYRQuDLRkZfCi_8JCeVpG3WqloxTyXYx_0MuwviARoLYRPHz3VANgpFLrBImIAg21JCcWYzSGsrFfhsozom_MVV1-gkUNS_XgmejpFvwr5_9HeLe3AQUQlFTvx5uYOjWMWqRBWKcrnsGe5FDoDJe8te9jLxFJsFCvuGd6GkO6K1ILzKREbzC_tTbZqqI64JCw-WipqS7QBXK2G7kQ7q3Q5VNsj7M"/>
+</div>
+</header>
+<!-- Content Area -->
+<div class="pt-24 pb-12 px-12 max-w-7xl mx-auto">
+<!-- Breadcrumb & Header -->
+<nav class="mb-6 flex items-center gap-2 text-sm text-on-surface-variant font-medium">
+<span>Agenti</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-on-surface">Orchestrator</span>
+</nav>
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">hub</span>
+</div>
+<div>
+<h2 class="text-4xl font-extrabold tracking-tight text-on-surface">Orchestrator</h2>
+<p class="text-on-surface-variant font-medium">Coordinatore centrale</p>
+</div>
+</div>
+<div class="flex flex-wrap gap-3">
+<div class="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold ring-1 ring-emerald-100">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            OpenAI
+                        </div>
+<div class="px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full text-xs font-bold">
+                            gpt-4o
+                        </div>
+<div class="flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold ring-1 ring-slate-200">
+<span class="material-symbols-outlined text-xs">pause_circle</span>
+                            Inattivo
+                        </div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 rounded-md bg-surface-container-highest text-on-surface text-sm font-bold hover:bg-surface-container-high transition-all">Modifica</button>
+<button class="px-5 py-2.5 rounded-md bg-gradient-to-br from-primary to-primary-dim text-white text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">play_arrow</span>
+                        Attiva Agente
+                    </button>
+</div>
+</div>
+<!-- Tabs Section -->
+<div class="mb-8 border-b border-outline-variant/20">
+<div class="flex gap-8">
+<button class="pb-4 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600">System Prompt</button>
+<button class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Storico</button>
+<button class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Esegui</button>
+</div>
+</div>
+<!-- Tab Content: Identity & Instructions (Bento Style) -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Main Identity Card -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<div class="bg-surface-container-low p-6 rounded-xl space-y-6">
+<h3 class="text-xs font-black uppercase tracking-widest text-on-surface-variant opacity-60">Identity</h3>
+<div class="space-y-4">
+<div>
+<label class="block text-[11px] font-bold text-on-surface-variant uppercase mb-1">Ruolo</label>
+<p class="text-sm font-medium text-on-surface">Coordinatore centrale di workflow multi-agente</p>
+</div>
+<div>
+<label class="block text-[11px] font-bold text-on-surface-variant uppercase mb-1">Obiettivo principale</label>
+<p class="text-sm font-medium text-on-surface leading-relaxed">Scomporre richieste complesse in task atomici e assegnarli agli agenti specializzati verificandone l'output.</p>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-[11px] font-bold text-on-surface-variant uppercase mb-1">Provider</label>
+<p class="text-sm font-medium text-emerald-600">OpenAI</p>
+</div>
+<div>
+<label class="block text-[11px] font-bold text-on-surface-variant uppercase mb-1">Modello</label>
+<p class="text-sm font-medium text-on-surface">GPT-4o</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Visual Context Image -->
+<div class="relative h-48 rounded-xl overflow-hidden shadow-sm group">
+<img alt="Abstract logic flow" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="abstract artistic visualization of data flow, glowing neon blue and purple lines connected in complex patterns on a dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBw--wUK4va-TeN7jiqWem8nABWIDODFNYaZrtRbJaA3jnWjpmkBS249Z2Hsci1E9GR-ORzlBDJVCofX11QpzliJ3jWZimss2zFjQZwK3V_lt99NoFWesjT1vYK-DZfObYvq9wKKrsOoZrH4VThX5aA8TXi9MAgoTly6jkc_y8dwCr0rWlIUsp1qyFb4RynmOMe9NF0D5Ka8MWyX_gyi-OBloAbqStfcFii_FfSXH0X00Er7K3twZNuy281RfrCZjra8Xt7PJcT4Tc"/>
+<div class="absolute inset-0 bg-indigo-900/20 mix-blend-multiply"></div>
+<div class="absolute bottom-4 left-4">
+<span class="text-[10px] font-black text-white uppercase tracking-widest bg-white/20 backdrop-blur-md px-2 py-1 rounded">Visual Core</span>
+</div>
+</div>
+</div>
+<!-- Instructions Card -->
+<div class="col-span-12 lg:col-span-8">
+<div class="bg-white p-8 rounded-xl ring-1 ring-slate-100 shadow-sm min-h-full">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-xs font-black uppercase tracking-widest text-on-surface-variant opacity-60">Istruzioni Operative</h3>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">edit</span>
+</div>
+<div class="prose prose-slate max-w-none">
+<ul class="space-y-6 list-none p-0">
+<li class="flex gap-4">
+<span class="w-6 h-6 rounded-full bg-primary-container text-primary text-[10px] font-bold flex items-center justify-center shrink-0">01</span>
+<div>
+<p class="text-on-surface font-bold text-sm mb-1">Routing Intelligente</p>
+<p class="text-on-surface-variant text-sm leading-relaxed">Analizza ogni input per identificare l'intento dell'utente. Se il task richiede competenze specifiche, effettua il routing verso l'agente dedicato (Writer, Researcher, Coder).</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="w-6 h-6 rounded-full bg-primary-container text-primary text-[10px] font-bold flex items-center justify-center shrink-0">02</span>
+<div>
+<p class="text-on-surface font-bold text-sm mb-1">Standard Output JSON</p>
+<p class="text-on-surface-variant text-sm leading-relaxed">Ogni decisione di pianificazione deve essere emessa rigorosamente in formato JSON validato, includendo <code class="bg-slate-100 px-1 rounded text-xs">task_id</code>, <code class="bg-slate-100 px-1 rounded text-xs">assigned_to</code> e <code class="bg-slate-100 px-1 rounded text-xs">dependencies</code>.</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="w-6 h-6 rounded-full bg-primary-container text-primary text-[10px] font-bold flex items-center justify-center shrink-0">03</span>
+<div>
+<p class="text-on-surface font-bold text-sm mb-1">Limiti Operativi</p>
+<p class="text-on-surface-variant text-sm leading-relaxed">Non generare mai piani che superino i **5 task per ogni piano** di esecuzione. Se la complessità è superiore, richiedi una scomposizione gerarchica all'utente.</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="w-6 h-6 rounded-full bg-primary-container text-primary text-[10px] font-bold flex items-center justify-center shrink-0">04</span>
+<div>
+<p class="text-on-surface font-bold text-sm mb-1">Monitoraggio Loop</p>
+<p class="text-on-surface-variant text-sm leading-relaxed">Verifica ciclicamente lo stato dei task. In caso di fallimento di un nodo, tenta una strategia di recupero autonoma prima di segnalare l'errore.</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Run Form (Simplified for the layout) -->
+<div class="col-span-12 mt-6">
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm ring-1 ring-slate-100">
+<div class="flex items-center gap-2 mb-8">
+<span class="material-symbols-outlined text-indigo-600">terminal</span>
+<h3 class="text-lg font-bold text-on-surface">Esegui: Nuovo obiettivo</h3>
+</div>
+<form class="space-y-6">
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase mb-2">Descrizione Obiettivo</label>
+<textarea class="w-full bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-600/50 focus:border-indigo-600 p-4 text-sm" placeholder="Descrivi l'obiettivo che l'Orchestrator deve raggiungere..." rows="4"></textarea>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase mb-2">Orizzonte temporale</label>
+<select class="w-full bg-white border border-slate-200 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-600/50">
+<option>Oggi</option>
+<option>Settimana</option>
+<option>Mese</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase mb-2">Priorità</label>
+<select class="w-full bg-white border border-slate-200 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-600/50">
+<option>Alta</option>
+<option>Media</option>
+<option>Bassa</option>
+</select>
+</div>
+<div class="flex items-end pb-2.5">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600" type="checkbox"/>
+<span class="text-sm font-medium text-on-surface group-hover:text-indigo-600 transition-colors">Includi briefing Chief of Staff</span>
+</label>
+</div>
+</div>
+<div class="flex justify-end pt-4">
+<button class="px-8 py-3 bg-gradient-to-br from-primary to-primary-dim text-white font-bold rounded-md shadow-md hover:shadow-xl transition-all scale-100 active:scale-95" type="button">Lancia Esecuzione</button>
+</div>
+</form>
+</div>
+</div>
+<!-- History Preview -->
+<div class="col-span-12">
+<div class="bg-white rounded-xl ring-1 ring-slate-100 overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+<h3 class="text-sm font-bold text-on-surface">Storico Esecuzioni</h3>
+<button class="text-xs font-bold text-primary">Vedi tutto</button>
+</div>
+<div class="divide-y divide-slate-50">
+<!-- Run 1 -->
+<div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="text-sm font-bold text-on-surface">Report Trimestrale Marketing</p>
+<p class="text-xs text-on-surface-variant truncate max-w-md">"Analisi competitor e sintesi campagne social Q3..."</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-xs font-medium text-on-surface-variant">2 ore fa</span>
+<span class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">Completato</span>
+<span class="material-symbols-outlined text-slate-400 cursor-pointer">chevron_right</span>
+</div>
+</div>
+<!-- Run 2 -->
+<div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-indigo-500 animate-pulse">sync</span>
+<div>
+<p class="text-sm font-bold text-on-surface">Pianificazione Contenuti Blog</p>
+<p class="text-xs text-on-surface-variant truncate max-w-md">"Generazione di 12 titoli e outline per dicembre..."</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-xs font-medium text-on-surface-variant">15 min fa</span>
+<span class="text-xs font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">In corso</span>
+<span class="material-symbols-outlined text-slate-400 cursor-pointer">chevron_right</span>
+</div>
+</div>
+<!-- Run 3 -->
+<div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-error">error</span>
+<div>
+<p class="text-sm font-bold text-on-surface">Validazione Codice Python</p>
+<p class="text-xs text-on-surface-variant truncate max-w-md">"Debug della libreria di integrazione API..."</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-xs font-medium text-on-surface-variant">Ieri</span>
+<span class="text-xs font-bold bg-error/10 text-error px-2 py-0.5 rounded">Fallito</span>
+<span class="material-symbols-outlined text-slate-400 cursor-pointer">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

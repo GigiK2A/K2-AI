@@ -1,0 +1,37 @@
+<div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+    <p class="text-xs text-amber-700">L'output sarà salvato come Draft in attesa di approvazione.</p>
+</div>
+<form hx-post="/agents/sales_enablement/run" hx-target="#run-result" hx-swap="outerHTML" hx-indicator="#run-spinner" class="space-y-6">
+    <input type="hidden" name="execution_mode" value="detail" />
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+            <label class="text-xs font-semibold text-on-surface-variant ml-1">Tipo documento</label>
+            <select class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-md px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" name="tipo_documento">
+                <option>Sales Deck Custom</option>
+                <option>Executive Summary</option>
+                <option>One-Pager Comparativo</option>
+            </select>
+        </div>
+        <div class="space-y-2">
+            <label class="text-xs font-semibold text-on-surface-variant ml-1">Offerta</label>
+            <select class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-md px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" name="offerta">
+                <option>Enterprise Bundle v2</option>
+                <option>SME Essentials</option>
+                <option>Professional Services Add-on</option>
+            </select>
+        </div>
+    </div>
+    <div class="space-y-2">
+        <label class="text-xs font-semibold text-on-surface-variant ml-1">Dati cliente</label>
+        <textarea class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-md px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none" name="dati_cliente" placeholder="Inserisci nome azienda, settore e link LinkedIn..." rows="3"></textarea>
+    </div>
+    <div class="space-y-2">
+        <label class="text-xs font-semibold text-on-surface-variant ml-1">Note call</label>
+        <textarea class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-md px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none" name="note_call" placeholder="Incolla qui il transcript o i punti chiave emersi durante l'ultima conversazione..." rows="4"></textarea>
+    </div>
+    <div class="flex items-center gap-3 pt-2">
+        <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white rounded-lg bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 transition-all">Esegui agente →</button>
+        <span id="run-spinner" class="htmx-indicator text-xs text-slate-400">In esecuzione...</span>
+    </div>
+</form>
+<div id="run-result" class="mt-4"></div>

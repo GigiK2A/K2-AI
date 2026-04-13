@@ -1,0 +1,175 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "K-AI" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "K-AI" [ref=e5]
+      - list [ref=e6]:
+        - listitem [ref=e7]:
+          - link "Home" [ref=e8] [cursor=pointer]:
+            - /url: /
+        - listitem [ref=e9]:
+          - link "Metodo" [ref=e10] [cursor=pointer]:
+            - /url: /metodo.html
+        - listitem [ref=e11]:
+          - link "Laboratorio" [ref=e12] [cursor=pointer]:
+            - /url: /casi-studio.html
+        - listitem [ref=e13]:
+          - link "K-BOT" [ref=e14] [cursor=pointer]:
+            - /url: /k-bot.html
+        - listitem [ref=e15]:
+          - link "Contatti" [ref=e16] [cursor=pointer]:
+            - /url: /contatti.html
+      - link "Fai l'analisi con K-BOT →" [ref=e17] [cursor=pointer]:
+        - /url: "#diagnosi"
+  - generic [ref=e21]:
+    - paragraph [ref=e22]: K-AI / Sistemi AI operativi per PMI
+    - heading "\"La tecnologia non è nulla. Quello che conta è dare alle persone strumenti con cui possano fare cose straordinarie.\"" [level=1] [ref=e23]
+    - paragraph [ref=e24]: Steve Jobs
+    - paragraph [ref=e25]: "Costruiamo sistemi AI per il lavoro reale: agenti, automazioni e microapp che tolgono passaggi ripetitivi al team e restano sotto controllo umano. Il metodo è testato su di noi perché lo usiamo ogni giorno per lavorare meglio."
+    - generic [ref=e26]:
+      - link "Scopri se il tuo caso regge →" [ref=e27] [cursor=pointer]:
+        - /url: "#diagnosi"
+      - link "Parla direttamente con noi ↓" [ref=e28] [cursor=pointer]:
+        - /url: /contatti.html
+  - separator [ref=e29]
+  - generic [ref=e31]:
+    - generic [ref=e32]:
+      - generic [ref=e33]: 42h
+      - generic [ref=e34]: "Ore/settimana recuperate: come avere più capacità operativa senza aggiungere passaggi manuali"
+    - generic [ref=e35]:
+      - generic [ref=e36]: 14gg
+      - generic [ref=e37]: Dal brief al primo prototipo funzionante, testato con il tuo team e i tuoi dati
+    - generic [ref=e38]:
+      - generic [ref=e39]: 87%
+      - generic [ref=e40]: Tempo di revisione documentale ridotto nel primo caso legale misurato
+  - separator [ref=e41]
+  - generic [ref=e42]:
+    - generic [ref=e44]: Il contesto
+    - generic [ref=e45]:
+      - paragraph [ref=e47]:
+        - text: Il tuo team usa già ChatGPT per qualche task.
+        - emphasis [ref=e48]: Il lavoro ripetitivo, però, è ancora lì.
+      - paragraph [ref=e50]: "Il problema non è che manca l'AI. È che manca un sistema: regole chiare, dati nel posto giusto, passaggi misurabili, checkpoint umani. L'impatto arriva quando l'AI smette di essere una finestra aperta e diventa una parte del flusso di lavoro."
+    - generic [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]: Scenario comune 01
+        - paragraph [ref=e54]: Il team passa ore a smistare email, qualificare richieste e aggiornare sistemi a mano.
+      - generic [ref=e55]:
+        - generic [ref=e56]: Dopo K-AI
+        - paragraph [ref=e57]: Un agente AI legge, classifica, prepara risposte standard e aggiorna il CRM. Il team gestisce solo i casi che richiedono giudizio.
+      - generic [ref=e58]:
+        - generic [ref=e59]: Scenario comune 02
+        - paragraph [ref=e60]: Un ufficio legale rivede contratti standard e perde ore a leggere, confrontare, isolare clausole critiche e verificare precedenti.
+      - generic [ref=e61]:
+        - generic [ref=e62]: Dopo K-AI
+        - paragraph [ref=e63]: Il sistema analizza il documento, segnala anomalie e confronta con lo storico. L'avvocato riceve un brief operativo invece di ripartire da zero.
+  - separator [ref=e64]
+  - generic [ref=e65]:
+    - generic [ref=e67]: Il metodo nasce dal nostro lavoro
+    - paragraph [ref=e69]:
+      - text: Non è una demo da vendere.
+      - emphasis [ref=e70]: È un modo di lavorare che usiamo ogni giorno.
+    - generic [ref=e71]:
+      - generic [ref=e72]:
+        - generic [ref=e73]: "01"
+        - generic [ref=e74]: Prototipi che arrivano presto al test
+        - generic [ref=e75]: "In 14 giorni portiamo il caso su qualcosa che il team può provare davvero. Non serve una demo elegante: serve capire se il sistema riduce tempo, errori o passaggi inutili."
+      - generic [ref=e76]:
+        - generic [ref=e77]: "02"
+        - generic [ref=e78]: Automazioni nate dall'uso reale
+        - generic [ref=e79]: "Raccolta informazioni, analisi documentale, sintesi, organizzazione del contesto, preparazione delivery: sono pezzi del nostro metodo operativo. Da lì capiamo quali pattern possono essere utili anche fuori."
+      - generic [ref=e80]:
+        - generic [ref=e81]: "03"
+        - generic [ref=e82]: Sistemi dentro i tuoi strumenti
+        - generic [ref=e83]: "Email, CRM, ERP, Drive, gestionali, basi dati: l'AI deve entrare nel punto giusto del processo. Il team resta al comando, con checkpoint chiari e autonomia operativa."
+  - separator [ref=e84]
+  - generic [ref=e85]:
+    - generic [ref=e87]: Perché K-AI
+    - paragraph [ref=e89]:
+      - text: Il risultato viene prima del metodo.
+      - emphasis [ref=e90]: Il metodo serve a produrlo.
+    - generic [ref=e91]:
+      - generic [ref=e92]:
+        - generic [ref=e93]: —
+        - generic [ref=e94]:
+          - heading "Il metodo è testato su di noi" [level=3] [ref=e95]
+          - paragraph [ref=e96]: "Lo usiamo per gestire contesto, documenti, delivery, priorità e follow-up. Non è una promessa astratta: è la disciplina con cui lavoriamo anche internamente."
+      - generic [ref=e97]:
+        - generic [ref=e98]: —
+        - generic [ref=e99]:
+          - heading "In 14 giorni hai qualcosa da provare" [level=3] [ref=e100]
+          - paragraph [ref=e101]: Mettiamo in piedi una base concreta con i tuoi dati e il tuo team. Se regge, sappiamo dove investire. Se non regge, lo scopriamo prima di trasformarlo in un progetto lungo.
+      - generic [ref=e102]:
+        - generic [ref=e103]: —
+        - generic [ref=e104]:
+          - heading "Prima definiamo cosa misurare" [level=3] [ref=e105]
+          - paragraph [ref=e106]: Ore risparmiate, errori ridotti, velocità, qualità, throughput. Se non troviamo un KPI serio, il problema non è ancora pronto per diventare sistema.
+      - generic [ref=e107]:
+        - generic [ref=e108]: —
+        - generic [ref=e109]:
+          - heading "Il tuo team resta al comando" [level=3] [ref=e110]
+          - paragraph [ref=e111]: "Ogni sistema ha checkpoint umani e una logica leggibile. L'obiettivo non è sostituire il giudizio: è togliere il lavoro che lo consuma."
+  - separator [ref=e112]
+  - generic [ref=e114]:
+    - generic [ref=e115]:
+      - generic [ref=e117]: K-BOT
+      - heading "Descrivi il tuo processo. In 5 minuti capisci se l'AI può fare la differenza." [level=2] [ref=e118]:
+        - text: Descrivi il tuo processo.
+        - text: In 5 minuti capisci se l'AI può fare la differenza.
+      - paragraph [ref=e119]: "K-BOT raccoglie il contesto che serve: volume, tempi, errori, strumenti, vincoli. Da lì individua i punti in cui un sistema AI potrebbe togliere lavoro ripetitivo."
+      - paragraph [ref=e120]: Se il caso non regge, lo sai subito. Se regge, arrivi al contatto con una richiesta più chiara. Nessuna call obbligatoria.
+      - generic [ref=e121]:
+        - generic [ref=e122]:
+          - text: "01"
+          - paragraph [ref=e123]: Descrive il processo e identifica dove si perde tempo o qualità.
+        - generic [ref=e124]:
+          - text: "02"
+          - paragraph [ref=e125]: Verifica se esiste un pattern già testato che vale adattare.
+        - generic [ref=e126]:
+          - text: "03"
+          - paragraph [ref=e127]: "Indica il passo successivo: nessuna azione, prototipo, o contatto diretto."
+    - generic [ref=e128]:
+      - generic [ref=e129]:
+        - generic [ref=e133]:
+          - generic [ref=e134]: K-BOT
+          - generic [ref=e135]: Attivo ora
+        - generic [ref=e137]: "Ciao. Raccontami in 2-3 righe il processo che ti costa più tempo: cosa succede oggi, dove si blocca e quali strumenti usi già. Da lì capiamo se l'AI può fare la differenza"
+        - generic [ref=e138]:
+          - textbox "Descrivi il processo che ti sta costando più tempo..." [ref=e139]
+          - button "Invia" [ref=e140] [cursor=pointer]: →
+      - paragraph [ref=e141]:
+        - text: Interagisci con un sistema AI. I messaggi possono essere trattati da K-AI e dai fornitori tecnici necessari a generare la risposta. Dettagli in
+        - link "Privacy Policy" [ref=e142] [cursor=pointer]:
+          - /url: /privacy.html
+        - text: e
+        - link "Cookie Policy" [ref=e143] [cursor=pointer]:
+          - /url: /cookie.html
+        - text: .
+  - contentinfo [ref=e144]:
+    - generic [ref=e145]:
+      - generic [ref=e146]: K—AI
+      - list [ref=e147]:
+        - listitem [ref=e148]:
+          - link "Metodo" [ref=e149] [cursor=pointer]:
+            - /url: /metodo.html
+        - listitem [ref=e150]:
+          - link "Laboratorio" [ref=e151] [cursor=pointer]:
+            - /url: /casi-studio.html
+        - listitem [ref=e152]:
+          - link "K-BOT" [ref=e153] [cursor=pointer]:
+            - /url: /k-bot.html
+        - listitem [ref=e154]:
+          - link "Contatti" [ref=e155] [cursor=pointer]:
+            - /url: /contatti.html
+      - list [ref=e156]:
+        - listitem [ref=e157]:
+          - link "Privacy" [ref=e158] [cursor=pointer]:
+            - /url: /privacy.html
+        - listitem [ref=e159]:
+          - link "Cookie" [ref=e160] [cursor=pointer]:
+            - /url: /cookie.html
+        - listitem [ref=e161]:
+          - link "Note legali" [ref=e162] [cursor=pointer]:
+            - /url: /note-legali.html
+      - generic [ref=e163]: © 2025 K-AI

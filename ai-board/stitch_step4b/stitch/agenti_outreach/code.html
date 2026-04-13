@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="light" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#323951",
+                    "on-secondary-fixed": "#403f43",
+                    "on-secondary-container": "#525155",
+                    "surface-container-highest": "#dbe4e7",
+                    "surface-container-high": "#e2e9ec",
+                    "surface-container-low": "#f1f4f6",
+                    "on-tertiary": "#faf8ff",
+                    "tertiary-container": "#d2d9f8",
+                    "background": "#f8f9fa",
+                    "primary-fixed-dim": "#d2d0ff",
+                    "surface": "#f8f9fa",
+                    "error-dim": "#4f0116",
+                    "error-container": "#ff8b9a",
+                    "secondary-fixed": "#e5e1e6",
+                    "on-background": "#2b3437",
+                    "primary-dim": "#4034d7",
+                    "tertiary-fixed": "#d2d9f8",
+                    "primary-fixed": "#e2dfff",
+                    "on-primary-container": "#3f33d6",
+                    "secondary": "#605e62",
+                    "on-tertiary-fixed-variant": "#4e556f",
+                    "on-error": "#fff7f7",
+                    "on-primary-fixed": "#2a13c5",
+                    "tertiary-fixed-dim": "#c4cbe9",
+                    "inverse-surface": "#0c0f10",
+                    "surface-variant": "#dbe4e7",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary": "#fcf8fc",
+                    "primary": "#4d44e3",
+                    "tertiary-dim": "#4b526c",
+                    "secondary-dim": "#545256",
+                    "outline": "#737c7f",
+                    "secondary-fixed-dim": "#d7d3d8",
+                    "on-surface-variant": "#586064",
+                    "surface-container": "#eaeff1",
+                    "surface-bright": "#f8f9fa",
+                    "on-primary": "#faf6ff",
+                    "on-primary-fixed-variant": "#4a40e0",
+                    "on-tertiary-container": "#444c65",
+                    "surface-tint": "#4d44e3",
+                    "surface-dim": "#d1dce0",
+                    "primary-container": "#e2dfff",
+                    "inverse-primary": "#8582ff",
+                    "inverse-on-surface": "#9b9d9e",
+                    "on-secondary-fixed-variant": "#5c5b5f",
+                    "secondary-container": "#e5e1e6",
+                    "tertiary": "#575e78",
+                    "on-error-container": "#782232",
+                    "error": "#9e3f4e",
+                    "on-surface": "#2b3437",
+                    "outline-variant": "#abb3b7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+            font-size: 1.25rem;
+        }
+        .active-pill {
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            color: #2b3437;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        .bleed-card {
+            background-color: #f1f4f6;
+            border-left: 4px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .bleed-card:hover {
+            background-color: #eaeff1;
+        }
+        .bleed-card.active {
+            border-left-color: #4d44e3;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-[220px] h-screen fixed left-0 top-0 bg-slate-50 flex flex-col py-6 px-4 space-y-2 z-50">
+<div class="mb-8 px-2">
+<h1 class="text-lg font-bold tracking-tighter text-slate-900">The Intelligent Canvas</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Editorial Workspace</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Active Tab: Agenti -->
+<a class="flex items-center gap-3 px-3 py-2 bg-white text-indigo-600 rounded-lg shadow-sm font-semibold text-sm transition-transform scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span>Agenti</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">database</span>
+<span>Dataset</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">deployed_code</span>
+<span>Modelli</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Impostazioni</span>
+</a>
+</nav>
+<button class="mt-4 mb-8 mx-2 bg-indigo-600 text-white py-2 px-4 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm">
+            Nuovo Agente
+        </button>
+<div class="pt-4 border-t border-slate-200 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Aiuto</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-[220px] relative">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-[220px] z-40 h-16 glass-header border-b border-slate-200/20 flex items-center justify-between px-8">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black text-slate-900 tracking-tight">AI Board</span>
+<div class="flex items-center gap-6">
+<a class="text-slate-500 hover:text-indigo-500 transition-colors text-sm font-medium" href="#">Dashboard</a>
+<a class="text-indigo-600 font-bold border-b-2 border-indigo-600 text-sm py-5" href="#">Agenti</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/20">
+<span class="material-symbols-outlined text-slate-400 mr-2 text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs w-48 text-on-surface" placeholder="Cerca..." type="text"/>
+</div>
+<button class="text-slate-500 hover:text-indigo-500 p-1">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-slate-500 hover:text-indigo-500 p-1">
+<span class="material-symbols-outlined">history</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-indigo-100 overflow-hidden ml-2 ring-1 ring-slate-200">
+<img alt="Admin Avatar" class="w-full h-full object-cover" data-alt="professional headshot of a female tech lead with warm lighting and minimalist office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeLHNXjAvqNAfsvIJM6vZzBwZWPmjbvszXExTdynczT9xtMboA0-v7XWIkg0TWIupzD2TgFanXWMTV3vKpoLIwgCofi070Z1yCGGB6u7MLYR82Tw8r64gEzU_7T3kTXNNLM5za-yGHO-B5Erdrw6DkdCbkRpFkzVaQ_0cuz15GxFDCXZo75iSzJ9zE8he24z5EvZtY6aZ7qb0wC_n1BUcy-vqAJQ6F-NZMHwNS2A_veAgQF00fdLW2aDUKlxQiWyVhGK45RV8kHsk"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="mt-16 p-8 max-w-6xl mx-auto">
+<!-- Breadcrumb & Header -->
+<nav class="mb-6 flex items-center text-xs font-medium text-on-surface-variant gap-2">
+<span>Agenti</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface">Outreach</span>
+</nav>
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<h2 class="text-3xl font-bold tracking-tight text-on-surface">Outreach</h2>
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold uppercase tracking-wider">gpt-4o</span>
+</div>
+<p class="text-on-surface-variant text-sm font-medium">Primo contatto e follow-up</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">Provider</span>
+<div class="flex items-center gap-1.5 text-emerald-600 font-semibold text-sm">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            OpenAI
+                        </div>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant/30"></div>
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">Stato</span>
+<div class="text-on-surface-variant font-semibold text-sm">Inattivo</div>
+</div>
+<button class="ml-4 flex items-center gap-2 bg-gradient-to-br from-primary to-primary-dim text-white px-5 py-2.5 rounded-md text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                        Attiva Agente
+                    </button>
+</div>
+</div>
+<!-- Tabs Navigation -->
+<div class="flex items-center gap-8 border-b border-outline-variant/20 mb-8 overflow-x-auto">
+<button class="pb-4 text-sm font-bold text-primary border-b-2 border-primary whitespace-nowrap">System Prompt</button>
+<button class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">Storico</button>
+<button class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">Esegui</button>
+</div>
+<!-- Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Main Configuration Panel -->
+<div class="lg:col-span-8 space-y-8">
+<!-- Tab 1: Identity / System Prompt -->
+<section class="bg-surface-container-lowest p-8 rounded-xl shadow-[0_20px_40px_rgba(43,52,55,0.02)]">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">fingerprint</span>
+<h3 class="text-lg font-bold text-on-surface">Identity &amp; Instructions</h3>
+</div>
+<button class="text-primary text-xs font-bold hover:underline">Modifica</button>
+</div>
+<div class="space-y-6">
+<div class="bleed-card p-4 rounded-lg border-l-4 border-primary">
+<h4 class="text-[10px] font-bold text-primary uppercase tracking-widest mb-2">Cold Email Logic</h4>
+<p class="text-sm leading-relaxed text-on-surface-variant">
+                                    L'agente deve focalizzarsi sul valore unico della proposta, evitando gergo eccessivamente commerciale. La prima riga deve essere altamente personalizzata basandosi sul background del prospect.
+                                </p>
+</div>
+<div class="bleed-card p-4 rounded-lg active">
+<h4 class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">LinkedIn DM Strategy</h4>
+<p class="text-sm leading-relaxed text-on-surface-variant">
+                                    Mantenere il messaggio sotto i 300 caratteri. Usare un tono informale ma professionale. Chiedere un parere su un trend specifico prima di proporre la soluzione.
+                                </p>
+</div>
+<div class="bleed-card p-4 rounded-lg">
+<h4 class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Follow-up Rules</h4>
+<p class="text-sm leading-relaxed text-on-surface-variant">
+                                    Inviare il primo follow-up dopo 3 giorni lavorativi. Se nessuna risposta dopo il terzo tentativo, procedere con la "break-up" email educata.
+                                </p>
+</div>
+</div>
+</section>
+<!-- Tab 3 Content (Simplified version for context) -->
+<section class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/10 shadow-[0_20px_40px_rgba(43,52,55,0.02)]">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">terminal</span>
+<h3 class="text-lg font-bold text-on-surface">Esegui Generazione</h3>
+</div>
+<form class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Tipo messaggio</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50">
+<option>Cold Email</option>
+<option>LinkedIn DM</option>
+<option>Follow-up</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Offerta</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50">
+<option>Enterprise Suite</option>
+<option>Consultancy</option>
+<option>Free Trial</option>
+</select>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Dati prospect</label>
+<textarea class="w-full bg-surface-container-low border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/50 resize-none" placeholder="Incolla qui il profilo LinkedIn o note aziendali..." rows="4"></textarea>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container rounded-lg">
+<div class="flex items-center gap-6">
+<div class="space-y-1">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase">Tono</label>
+<select class="bg-transparent border-none text-xs font-bold p-0 focus:ring-0">
+<option>Professionale</option>
+<option>Amichevole</option>
+<option>Diretto</option>
+</select>
+</div>
+<div class="h-6 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-3">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase">A/B Variant</label>
+<button class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-primary" type="button">
+<span class="translate-x-4 pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+</button>
+</div>
+</div>
+<button class="bg-primary-container text-primary font-bold px-6 py-2 rounded-lg text-sm hover:bg-primary hover:text-white transition-all" type="submit">
+                                    Genera messaggi
+                                </button>
+</div>
+</form>
+</section>
+</div>
+<!-- Sidebar Contextual Panel -->
+<div class="lg:col-span-4 space-y-6">
+<!-- Performance Stats -->
+<div class="bg-white p-6 rounded-xl shadow-sm space-y-6">
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Performance Globali</h3>
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<div>
+<p class="text-2xl font-black text-on-surface">24%</p>
+<p class="text-xs text-on-surface-variant">Tasso di risposta</p>
+</div>
+<div class="text-emerald-500 flex items-center text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                                    +2.1%
+                                </div>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[24%]"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/10">
+<div>
+<p class="text-lg font-bold text-on-surface">1,204</p>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Runs Totali</p>
+</div>
+<div>
+<p class="text-lg font-bold text-on-surface">0.4s</p>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Latenza Media</p>
+</div>
+</div>
+</div>
+<!-- Recent History Mini -->
+<div class="bg-white p-6 rounded-xl shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Ultimi Log</h3>
+<span class="material-symbols-outlined text-slate-300">more_horiz</span>
+</div>
+<div class="space-y-4">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">mail</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Generata Email #482</p>
+<p class="text-[10px] text-on-surface-variant">Oggi, 14:22 • Prospect: Mario Rossi</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">chat_bubble</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Test A/B Variant B</p>
+<p class="text-[10px] text-on-surface-variant">Ieri, 18:05 • Conversione +15%</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">warning</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Agente Messo in Pausa</p>
+<p class="text-[10px] text-on-surface-variant">3 giorni fa • Intervento manuale</p>
+</div>
+</div>
+</div>
+<button class="w-full mt-6 py-2 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest border border-outline-variant/30 rounded-lg hover:bg-surface-container-low transition-colors">
+                            Vedi tutto lo storico
+                        </button>
+</div>
+<!-- AI Insights Bleed Card -->
+<div class="p-6 rounded-xl bg-indigo-50 border border-indigo-100 space-y-3">
+<div class="flex items-center gap-2 text-indigo-600">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="text-xs font-black uppercase tracking-tighter">AI Insight</span>
+</div>
+<p class="text-xs leading-relaxed text-indigo-900/80 italic font-medium">
+                            "I prospect nel settore FinTech rispondono meglio ai messaggi generati tra le 09:00 e le 10:30 CET. Considera di schedulare l'invio."
+                        </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

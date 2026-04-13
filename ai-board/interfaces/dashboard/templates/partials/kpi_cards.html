@@ -1,0 +1,39 @@
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Draft in attesa</p>
+  <div class="flex items-baseline gap-2">
+    <span class="text-3xl font-bold text-gray-900">{{ pending_approvals }}</span>
+    {% if pending_created_today %}
+    <span class="text-xs font-medium text-amber-500">+{{ pending_created_today }} oggi</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Agenti attivi</p>
+  <div class="flex items-baseline gap-2">
+    <span class="text-3xl font-bold text-gray-900">{{ active_agents_today }}</span>
+    <span class="text-xs font-medium {% if active_agents_delta > 0 %}text-emerald-500{% elif active_agents_delta < 0 %}text-rose-500{% else %}text-gray-400{% endif %}">
+      {% if active_agents_delta > 0 %}+{{ active_agents_delta }}{% elif active_agents_delta < 0 %}{{ active_agents_delta }}{% else %}—{% endif %}
+    </span>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Lead in pipeline</p>
+  <div class="flex items-baseline gap-2">
+    <span class="text-3xl font-bold text-gray-900">{{ pipeline_leads }}</span>
+    {% if pipeline_created_week %}
+    <span class="text-xs font-medium text-emerald-500">+{{ pipeline_created_week }} questa settimana</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Task completati</p>
+  <div class="flex items-baseline gap-2">
+    <span class="text-3xl font-bold text-gray-900">{{ tasks_done_week }}</span>
+    <span class="text-xs font-medium {% if tasks_done_change_pct >= 0 %}text-emerald-500{% else %}text-rose-500{% endif %}">
+      {% if tasks_done_change_pct >= 0 %}+{% endif %}{{ tasks_done_change_pct }}%
+    </span>
+  </div>
+</div>

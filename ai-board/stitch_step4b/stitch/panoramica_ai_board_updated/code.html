@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html class="light" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Board - Panoramica</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ff8b9a",
+                        "inverse-on-surface": "#9b9d9e",
+                        "surface-container-low": "#f1f4f6",
+                        "error-dim": "#4f0116",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed": "#2a13c5",
+                        "primary-fixed": "#e2dfff",
+                        "on-surface-variant": "#586064",
+                        "tertiary-container": "#d2d9f8",
+                        "surface-container-high": "#e2e9ec",
+                        "on-secondary": "#fcf8fc",
+                        "on-primary-fixed-variant": "#4a40e0",
+                        "secondary-fixed": "#e5e1e6",
+                        "on-tertiary-container": "#444c65",
+                        "tertiary-dim": "#4b526c",
+                        "error": "#9e3f4e",
+                        "inverse-primary": "#8582ff",
+                        "on-tertiary-fixed-variant": "#4e556f",
+                        "surface-dim": "#d1dce0",
+                        "surface-container-highest": "#dbe4e7",
+                        "outline": "#737c7f",
+                        "on-error-container": "#782232",
+                        "primary-dim": "#4034d7",
+                        "tertiary-fixed": "#d2d9f8",
+                        "on-tertiary": "#faf8ff",
+                        "on-primary": "#faf6ff",
+                        "on-secondary-fixed-variant": "#5c5b5f",
+                        "on-secondary-fixed": "#403f43",
+                        "outline-variant": "#abb3b7",
+                        "secondary": "#605e62",
+                        "primary-container": "#e2dfff",
+                        "surface-tint": "#4d44e3",
+                        "on-secondary-container": "#525155",
+                        "on-surface": "#2b3437",
+                        "on-primary-container": "#3f33d6",
+                        "primary": "#4d44e3",
+                        "inverse-surface": "#0c0f10",
+                        "on-background": "#2b3437",
+                        "background": "#f8f9fa",
+                        "on-error": "#fff7f7",
+                        "secondary-dim": "#545256",
+                        "tertiary-fixed-dim": "#c4cbe9",
+                        "primary-fixed-dim": "#d2d0ff",
+                        "secondary-fixed-dim": "#d7d3d8",
+                        "surface": "#f8f9fa",
+                        "surface-bright": "#f8f9fa",
+                        "tertiary": "#575e78",
+                        "on-tertiary-fixed": "#323951",
+                        "secondary-container": "#e5e1e6",
+                        "surface-variant": "#dbe4e7",
+                        "surface-container": "#eaeff1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar Integration -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-slate-50 dark:bg-slate-900 flex flex-col p-4 space-y-2 z-50">
+<div class="flex items-center gap-3 px-2 mb-8 mt-2">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold text-lg">A</div>
+<div class="flex flex-col">
+<span class="text-lg font-bold text-slate-900 dark:text-slate-50 tracking-tighter">AI Board</span>
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-semibold">Intelligence Hub</span>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Active Home Tab -->
+<a class="flex items-center gap-3 px-3 py-2 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 rounded-lg shadow-sm font-semibold transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">home</span>
+<span class="text-sm">Home</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+<span class="text-sm">Pipeline</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+<span class="text-sm">Agenti</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+<span class="text-sm">Approvals</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<span class="text-sm">Log</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">memory</span>
+<span class="text-sm">Memoria</span>
+</a>
+<a class="flex items-center justify-between px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors duration-150 rounded-lg group" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px]">folder</span>
+<span class="text-sm">Lavori</span>
+</div>
+<span class="flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-indigo-100 text-indigo-600 rounded-full">2</span>
+</a>
+</nav>
+<div class="pt-4 border-t border-slate-200 dark:border-slate-800">
+<div class="px-3 py-2 mb-2 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+<span class="text-[11px] font-medium text-slate-600 dark:text-slate-400">System Active</span>
+</div>
+</div>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-150 rounded-lg" href="#">
+<div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Professional studio portrait of a technology founder with a clean minimalist background and neutral lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFb2EQOhQRrUGddzIIlzQ2LxDfhKcZ1pNzWrNC-II5AlYOnAJa9L1t7jVFN18KdLrxfSDYkVvv6NFR3JaWrodc9bwvdridYlC-eG-Qs_LZThDpcOGQWkcwrWQpcx4p04sKaIu-EYHDELrd_BAP5ysr0AfPhFLNDgIFLZPpf3MtLvbmA6v5AD5BdfEqZn7G4hrJ3ol9zG0X5mbayNb36FAWEe2wn7El5LjFmwD_qV8tNkGZIHshStMu9FXv4Y9IRiVdTW7mtKc_NeE"/>
+</div>
+<span class="text-sm font-medium">Founder</span>
+</a>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-[220px] min-h-screen p-8 flex flex-col space-y-8 max-w-[1400px]">
+<!-- Header -->
+<header class="flex flex-col space-y-1">
+<h1 class="text-3xl font-bold tracking-tight text-on-surface">Panoramica</h1>
+<p class="text-sm text-on-surface-variant font-medium">Lunedì, 23 Maggio 2024</p>
+</header>
+<!-- KPI Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- KPI Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-transparent hover:border-outline-variant/20 transition-all duration-200 flex flex-col gap-2">
+<span class="text-[11px] uppercase tracking-wider text-on-surface-variant font-bold">Draft in attesa</span>
+<div class="flex items-baseline gap-3">
+<span class="text-4xl font-extrabold text-on-surface tracking-tighter">3</span>
+<span class="flex items-center text-xs font-bold text-error">
+<span class="material-symbols-outlined text-sm">arrow_upward</span>
+                        +1
+                    </span>
+</div>
+</div>
+<!-- KPI Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-transparent hover:border-outline-variant/20 transition-all duration-200 flex flex-col gap-2">
+<span class="text-[11px] uppercase tracking-wider text-on-surface-variant font-bold">Agenti attivi oggi</span>
+<div class="flex items-baseline gap-3">
+<span class="text-4xl font-extrabold text-on-surface tracking-tighter">7</span>
+<span class="flex items-center text-xs font-bold text-indigo-600">
+<span class="material-symbols-outlined text-sm">trending_flat</span>
+                        Stabile
+                    </span>
+</div>
+</div>
+<!-- KPI Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-transparent hover:border-outline-variant/20 transition-all duration-200 flex flex-col gap-2">
+<span class="text-[11px] uppercase tracking-wider text-on-surface-variant font-bold">Lead in pipeline</span>
+<div class="flex items-baseline gap-3">
+<span class="text-4xl font-extrabold text-on-surface tracking-tighter">12</span>
+<span class="flex items-center text-xs font-bold text-emerald-600">
+<span class="material-symbols-outlined text-sm">arrow_upward</span>
+                        +4
+                    </span>
+</div>
+</div>
+<!-- KPI Card 4 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-transparent hover:border-outline-variant/20 transition-all duration-200 flex flex-col gap-2">
+<span class="text-[11px] uppercase tracking-wider text-on-surface-variant font-bold">Task completati</span>
+<div class="flex items-baseline gap-3">
+<span class="text-4xl font-extrabold text-on-surface tracking-tighter">24</span>
+<span class="flex items-center text-xs font-bold text-emerald-600">
+<span class="material-symbols-outlined text-sm">arrow_upward</span>
+                        +12%
+                    </span>
+</div>
+</div>
+</section>
+<!-- Asymmetric Layout: Recent Activity & Pipeline -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column: Recent Activity Feed (Wide) -->
+<section class="lg:col-span-2 space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="text-xl font-bold tracking-tight">Attività Recente</h2>
+<button class="text-sm font-semibold text-primary hover:text-primary-dim transition-colors">Vedi tutto</button>
+</div>
+<div class="space-y-3">
+<!-- Activity Item 1 -->
+<div class="group relative flex items-center gap-4 p-4 bg-surface-container-lowest rounded-xl border-l-4 border-rose-400 hover:bg-white transition-all">
+<div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined">earth_engine</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="text-sm font-bold text-on-surface">Nuovo bozza articolo blog generata</h4>
+<span class="text-[11px] text-on-surface-variant">12 min fa</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-0.5">Analisi del mercato AI 2024: Trend e prospettive</p>
+</div>
+<div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-100 transition-colors">Approva</button>
+<button class="px-3 py-1.5 bg-rose-50 text-rose-700 text-xs font-bold rounded-lg hover:bg-rose-100 transition-colors">Rifiuta</button>
+</div>
+</div>
+<!-- Activity Item 2 -->
+<div class="group relative flex items-center gap-4 p-4 bg-surface-container-lowest rounded-xl border-l-4 border-blue-400 hover:bg-white transition-all">
+<div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined">threat_intelligence</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="text-sm font-bold text-on-surface">Report Competitor Aggiornato</h4>
+<span class="text-[11px] text-on-surface-variant">45 min fa</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-0.5">Rilevate 3 nuove feature rilasciate da Competitor X</p>
+</div>
+<div class="px-3 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-bold uppercase tracking-widest rounded-lg">Archiviato</div>
+</div>
+<!-- Activity Item 3 -->
+<div class="group relative flex items-center gap-4 p-4 bg-surface-container-lowest rounded-xl border-l-4 border-emerald-400 hover:bg-white transition-all">
+<div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined">demand_gen_campaign</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="text-sm font-bold text-on-surface">Prospect Qualificato: Marco Rossi</h4>
+<span class="text-[11px] text-on-surface-variant">2 ore fa</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-0.5">CTO presso TechInnovate Srl - Punteggio: 94/100</p>
+</div>
+<div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-100 transition-colors">Approva</button>
+<button class="px-3 py-1.5 bg-rose-50 text-rose-700 text-xs font-bold rounded-lg hover:bg-rose-100 transition-colors">Rifiuta</button>
+</div>
+</div>
+<!-- Activity Item 4 -->
+<div class="group relative flex items-center gap-4 p-4 bg-surface-container-lowest rounded-xl border-l-4 border-indigo-400 hover:bg-white transition-all">
+<div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined">authenticator</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="text-sm font-bold text-on-surface">Esecuzione Workflow settimanale</h4>
+<span class="text-[11px] text-on-surface-variant">3 ore fa</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-0.5">Sincronizzazione database completata con successo</p>
+</div>
+<div class="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-widest rounded-lg">Completato</div>
+</div>
+</div>
+</section>
+<!-- Right Column: Quick Pipeline & Stats (Narrow) -->
+<section class="space-y-6">
+<h2 class="text-xl font-bold tracking-tight">Quick Pipeline</h2>
+<div class="bg-surface-container-lowest p-6 rounded-xl border-transparent space-y-4">
+<!-- Pipeline Visualization -->
+<div class="flex flex-col space-y-3">
+<div class="flex justify-between items-center bg-surface-container-low p-3 rounded-lg border-l-4 border-slate-300">
+<span class="text-xs font-bold text-on-surface-variant">Identificazione</span>
+<span class="text-sm font-extrabold text-on-surface">4</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-3 rounded-lg border-l-4 border-slate-400">
+<span class="text-xs font-bold text-on-surface-variant">Qualificazione</span>
+<span class="text-sm font-extrabold text-on-surface">3</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-3 rounded-lg border-l-4 border-indigo-300">
+<span class="text-xs font-bold text-on-surface-variant">Contatto</span>
+<span class="text-sm font-extrabold text-on-surface">2</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-3 rounded-lg border-l-4 border-indigo-400">
+<span class="text-xs font-bold text-on-surface-variant">Chiamata</span>
+<span class="text-sm font-extrabold text-on-surface">1</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-3 rounded-lg border-l-4 border-indigo-500">
+<span class="text-xs font-bold text-on-surface-variant">Proposta</span>
+<span class="text-sm font-extrabold text-on-surface">1</span>
+</div>
+<div class="flex justify-between items-center bg-primary text-on-primary p-3 rounded-lg shadow-sm">
+<span class="text-xs font-bold">Chiuso (Vinto)</span>
+<span class="text-sm font-extrabold">1</span>
+</div>
+</div>
+<button class="w-full py-3 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold uppercase tracking-widest rounded-lg transition-all">Gestisci Pipeline</button>
+</div>
+<!-- Small Contextual Card -->
+<div class="bg-indigo-600 rounded-xl p-5 text-white overflow-hidden relative">
+<div class="relative z-10">
+<h5 class="text-sm font-bold opacity-90">AI Optimization</h5>
+<p class="text-xs mt-1 leading-relaxed opacity-80">I tuoi agenti sono al 85% dell'efficienza prevista per oggi.</p>
+<button class="mt-4 px-4 py-2 bg-white text-indigo-600 text-xs font-bold rounded-lg shadow-sm hover:bg-indigo-50 transition-colors">Ottimizza ora</button>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-20 transform rotate-12">
+<span class="material-symbols-outlined text-8xl" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Floating Action Button for specific screens -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform duration-150 group z-50">
+<span class="material-symbols-outlined text-2xl group-hover:rotate-90 transition-transform duration-300">add</span>
+</button>
+</body></html>

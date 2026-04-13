@@ -1,0 +1,80 @@
+<div class="flex gap-4 min-w-max">
+  {% for column in columns_meta %}
+  <div class="w-64 flex flex-col gap-3 shrink-0">
+
+    <!-- Colonna header -->
+    <div class="flex items-center justify-between px-1">
+      <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ column.label }}</span>
+      <span class="text-xs font-medium text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{{ column.count }}</span>
+    </div>
+
+    <!-- Lead cards -->
+    <div class="flex flex-col gap-2 min-h-[120px]">
+      {% if column.leads %}
+        {% for lead in column.leads %}
+        <div class="bg-white border border-gray-100 rounded-xl p-4 hover:border-indigo-200 hover:shadow-sm transition-all cursor-pointer group">
+          <!-- Nome/azienda -->
+          <p class="text-sm font-medium text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
+            {{ lead.display_name }}
+          </p>
+
+          <!-- Settore -->
+          {% if lead.sector_label and lead.sector_label != "Lead" %}
+          <p class="text-xs text-gray-400 mt-0.5 truncate">{{ lead.sector_label }}</p>
+          {% endif %}
+
+          <!-- Azione prossima -->
+          <p class="text-xs text-gray-500 mt-2 truncate">{{ lead.activity_text }}</p>
+
+          <!-- Footer -->
+          <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-50">
+            <span class="text-[11px] text-gray-400">{{ lead.date_label }}</span>
+            {% if lead.score_value != "?" %}
+            <span class="flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full {{ lead.score_dot_class }}"></span>
+              <span class="text-[11px] text-gray-400">{{ lead.score_value }}</span>
+            </span>
+            {% endif %}
+          </div>
+
+          <div class="mt-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {% if lead.next_status %}
+            <form method="post"
+                  action="/pipeline/lead/{{ lead.id }}/status"
+                  hx-post="/pipeline/lead/{{ lead.id }}/status"
+                  hx-target="#pipeline-board"
+                  hx-swap="innerHTML">
+              <input type="hidden" name="new_status" value="{{ lead.next_status }}" />
+              <button type="submit"
+                      class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100"
+                      title="Sposta in {{ lead.next_status_label }}">
+                <span class="material-symbols-outlined" style="font-size:14px">arrow_forward</span>
+                {{ lead.next_status_label }}
+              </button>
+            </form>
+            {% endif %}
+            <form method="post"
+                  action="/pipeline/lead/{{ lead.id }}/delete"
+                  hx-post="/pipeline/lead/{{ lead.id }}/delete"
+                  hx-target="#pipeline-board"
+                  hx-swap="innerHTML"
+                  hx-confirm="Eliminare questo lead?">
+              <button type="submit"
+                      class="inline-flex items-center justify-center rounded-lg px-2 py-1 text-rose-500 hover:bg-rose-50"
+                      title="Elimina lead">
+                <span class="material-symbols-outlined" style="font-size:14px">delete</span>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="flex items-center justify-center rounded-xl border-2 border-dashed border-gray-100 py-8">
+        <span class="text-xs text-gray-300">Vuoto</span>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+  {% endfor %}
+</div>

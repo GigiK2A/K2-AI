@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="max-w-6xl mx-auto w-full px-2 xl:px-0 space-y-10">
+    <header class="space-y-6">
+        <nav class="flex items-center gap-2 mb-2">
+            <a class="text-on-surface-variant text-xs font-medium tracking-tight hover:text-primary transition-colors" href="/agents">Agenti</a>
+            <span class="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
+            <span class="text-on-surface text-xs font-bold tracking-tight">{{ agent.display_name }}</span>
+        </nav>
+
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                <div class="flex items-center gap-4 mb-2">
+                    <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">{{ agent.display_name }}</h2>
+                    <span class="{{ agent.status_meta.class }} text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">{{ agent.status_meta.label }}</span>
+                </div>
+                <p class="text-on-surface-variant font-medium leading-relaxed max-w-xl">{{ agent.goal }}</p>
+            </div>
+            <div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-xl">
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest">Provider</span>
+                    <div class="flex items-center gap-1.5 {% if agent.provider == 'openai' %}text-emerald-600{% else %}text-primary{% endif %} font-bold text-sm">
+                        <div class="w-2 h-2 rounded-full {% if agent.provider == 'openai' %}bg-emerald-500{% else %}bg-primary{% endif %}"></div>
+                        {{ agent.provider|title }}
+                    </div>
+                </div>
+                <div class="w-px h-8 bg-outline-variant/30"></div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest">Modello</span>
+                    <span class="text-on-surface font-bold text-sm tracking-tight">{{ agent.model }}</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex gap-10 border-b border-outline-variant/20 mb-10 relative">
+        <button class="relative pb-4 text-sm font-bold text-primary group tab-btn" data-tab="system-prompt" onclick="switchTab('system-prompt')" type="button">
+            System Prompt
+            <div class="active-tab-indicator"></div>
+        </button>
+        <button class="pb-4 text-sm font-semibold text-on-surface-variant hover:text-on-surface transition-colors tab-btn" data-tab="history" onclick="switchTab('history')" type="button">
+            Storico
+        </button>
+        <button class="pb-4 text-sm font-semibold text-on-surface-variant hover:text-on-surface transition-colors tab-btn" data-tab="chat" onclick="switchTab('chat')" type="button">
+            Chat
+        </button>
+    </div>
+
+    <div class="grid grid-cols-12 gap-8">
+        <div id="tab-system-prompt" class="tab-panel col-span-12 {% if agent.internal_name != 'content_engine' %}lg:col-span-8{% endif %}">
+            {% include "partials/agent_system_prompt.html" %}
+        </div>
+
+        <div id="tab-history" class="tab-panel hidden col-span-12 {% if agent.internal_name != 'content_engine' %}lg:col-span-8{% endif %}" data-loaded="false">
+            <div class="bg-surface-container-low p-8 rounded-xl">
+                <div class="text-slate-400 text-sm">Caricamento storico...</div>
+            </div>
+        </div>
+
+        <div id="tab-chat" class="tab-panel hidden col-span-12 {% if agent.internal_name != 'content_engine' %}lg:col-span-8{% endif %}">
+            {% include "partials/agent_chat_panel.html" %}
+        </div>
+
+        {% if agent.internal_name != 'content_engine' %}
+        <div class="col-span-12 lg:col-span-4">
+            {% include "partials/agent_overview_sidebar.html" %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<style>
+    .active-tab-indicator {
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #4d44e3;
+    }
+</style>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach((button) => {
+    button.classList.remove('text-primary', 'font-bold');
+    button.classList.add('text-on-surface-variant', 'font-semibold');
+    const indicator = button.querySelector('.active-tab-indicator');
+    if (indicator) indicator.remove();
+  });
+
+  const panel = document.getElementById('tab-' + name);
+  if (panel) panel.classList.remove('hidden');
+
+  const button = document.querySelector('[data-tab="' + name + '"]');
+  if (button) {
+    button.classList.add('text-primary', 'font-bold');
+    button.classList.remove('text-on-surface-variant', 'font-semibold');
+    if (!button.querySelector('.active-tab-indicator')) {
+      const indicator = document.createElement('div');
+      indicator.className = 'active-tab-indicator';
+      button.appendChild(indicator);
+    }
+  }
+
+  if (name === 'history' && panel && panel.dataset.loaded !== 'true' && window.htmx) {
+    panel.dataset.loaded = 'true';
+    htmx.ajax('GET', '/agents/{{ agent.slug }}/history', {target: '#tab-history', swap: 'innerHTML'});
+  }
+}
+</script>
+{% endblock %}

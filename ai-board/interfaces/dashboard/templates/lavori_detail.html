@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html class="light" lang="it">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>{{ project.name }} - AI Board</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary-fixed": "#e2dfff",
+                "on-surface-variant": "#586064",
+                "on-primary-fixed": "#2a13c5",
+                "surface-container-high": "#e2e9ec",
+                "tertiary-container": "#d2d9f8",
+                "inverse-on-surface": "#9b9d9e",
+                "error-container": "#ff8b9a",
+                "surface-container-lowest": "#ffffff",
+                "surface-container-low": "#f1f4f6",
+                "error-dim": "#4f0116",
+                "on-primary-fixed-variant": "#4a40e0",
+                "on-secondary": "#fcf8fc",
+                "surface-dim": "#d1dce0",
+                "secondary-fixed": "#e5e1e6",
+                "on-tertiary-container": "#444c65",
+                "on-tertiary-fixed-variant": "#4e556f",
+                "inverse-primary": "#8582ff",
+                "error": "#9e3f4e",
+                "tertiary-fixed": "#d2d9f8",
+                "on-tertiary": "#faf8ff",
+                "primary-dim": "#4034d7",
+                "on-error-container": "#782232",
+                "surface-container-highest": "#dbe4e7",
+                "outline": "#737c7f",
+                "secondary": "#605e62",
+                "primary-container": "#e2dfff",
+                "outline-variant": "#abb3b7",
+                "on-primary": "#faf6ff",
+                "on-secondary-fixed": "#403f43",
+                "on-secondary-fixed-variant": "#5c5b5f",
+                "primary": "#4d44e3",
+                "inverse-surface": "#0c0f10",
+                "on-secondary-container": "#525155",
+                "surface-tint": "#4d44e3",
+                "on-primary-container": "#3f33d6",
+                "on-surface": "#2b3437",
+                "secondary-fixed-dim": "#d7d3d8",
+                "primary-fixed-dim": "#d2d0ff",
+                "tertiary-fixed-dim": "#c4cbe9",
+                "surface-bright": "#f8f9fa",
+                "surface": "#f8f9fa",
+                "on-error": "#fff7f7",
+                "background": "#f8f9fa",
+                "on-background": "#2b3437",
+                "secondary-dim": "#545256",
+                "secondary-container": "#e5e1e6",
+                "surface-container": "#eaeff1",
+                "surface-variant": "#dbe4e7",
+                "tertiary": "#575e78",
+                "on-tertiary-fixed": "#323951"
+              },
+              borderRadius: {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+              },
+              fontFamily: {
+                "headline": ["Inter"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+              }
+            }
+          }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #abb3b7; border-radius: 10px; }
+        .markdown-body { color: #2b3437; font-size: 0.92rem; line-height: 1.65; }
+        .markdown-body > * + * { margin-top: 0.85rem; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { color: #111827; font-weight: 700; line-height: 1.25; }
+        .markdown-body.text-white, .markdown-body.text-white * { color: inherit; }
+        .markdown-body.text-white strong, .markdown-body.text-white code { color: inherit; }
+        .markdown-body.text-white code { background: rgba(255,255,255,0.16); }
+        .markdown-body h1 { font-size: 1.4rem; }
+        .markdown-body h2 { font-size: 1.2rem; }
+        .markdown-body h3 { font-size: 1rem; }
+        .markdown-body strong { font-weight: 700; color: #111827; }
+        .markdown-body em { font-style: italic; }
+        .markdown-body ul, .markdown-body ol { padding-left: 1.2rem; }
+        .markdown-body li + li { margin-top: 0.35rem; }
+        .markdown-body blockquote { border-left: 3px solid #cbd5e1; padding-left: 0.9rem; color: #475569; }
+        .markdown-body table { width: 100%; border-collapse: collapse; border-radius: 0.5rem; background: white; font-size: 0.85rem; overflow: hidden; }
+        .markdown-body thead { background: #eef2ff; color: #3730a3; }
+        .markdown-body th, .markdown-body td { padding: 0.65rem 0.75rem; border: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+        .markdown-body code { background: #e2e8f0; color: #1e293b; padding: 0.1rem 0.35rem; border-radius: 0.35rem; font-size: 0.85em; }
+        .markdown-body pre { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 0.75rem; overflow-x: auto; }
+        .markdown-body pre code { background: transparent; color: inherit; padding: 0; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+    <aside class="fixed left-0 top-0 h-full w-[220px] bg-slate-50 flex flex-col p-4 space-y-2 z-50">
+        <div class="flex items-center gap-3 px-2 mb-8">
+            <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+                <span class="material-symbols-outlined text-sm">account_tree</span>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 leading-none">AI Board</h1>
+                <p class="text-[10px] text-on-surface-variant tracking-wider uppercase font-semibold">Intelligence Hub</p>
+            </div>
+        </div>
+        <nav class="flex-1 space-y-1">
+            <a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors rounded-lg font-inter body-sm tracking-tight" href="/">
+                <span class="material-symbols-outlined">home</span> Home
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2 bg-white text-indigo-600 rounded-lg shadow-sm font-semibold font-inter body-sm tracking-tight" href="/pipeline">
+                <span class="material-symbols-outlined">account_tree</span> Pipeline
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors rounded-lg font-inter body-sm tracking-tight" href="/agents">
+                <span class="material-symbols-outlined">smart_toy</span> Agenti
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors rounded-lg font-inter body-sm tracking-tight" href="/approvals">
+                <span class="material-symbols-outlined">verified_user</span> Approvazioni
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors rounded-lg font-inter body-sm tracking-tight" href="/logs">
+                <span class="material-symbols-outlined">history</span> Log
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors rounded-lg font-inter body-sm tracking-tight" href="/memory">
+                <span class="material-symbols-outlined">memory</span> Memoria
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors rounded-lg font-inter body-sm tracking-tight" href="/lavori">
+                <span class="material-symbols-outlined">folder</span> Lavori
+            </a>
+        </nav>
+        <div class="mt-auto border-t border-slate-200 pt-4 px-2">
+            <div class="flex items-center gap-3 px-1 py-2">
+                <img alt="Founder Avatar" class="w-8 h-8 rounded-full object-cover" src="{{ founder_avatar }}"/>
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-on-surface">Founder</span>
+                    <span class="text-[10px] text-green-500 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> System Active
+                    </span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="ml-[220px] min-h-screen flex flex-col">
+        <header class="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-xl border-b border-slate-100 flex justify-between items-center h-16 px-8">
+            <div class="flex items-center gap-4 flex-1">
+                <div class="relative w-full max-w-md">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+                    <input class="w-full bg-surface-container-low border-none rounded-full py-1.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Cerca nel progetto..." type="text"/>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <a class="flex items-center gap-2 bg-gradient-to-br from-primary to-primary-dim text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-sm hover:shadow-md transition-shadow" href="/lavori">
+                    <span class="material-symbols-outlined text-sm">add</span> Create New
+                </a>
+                <div class="h-6 w-px bg-slate-200 mx-2"></div>
+                <button class="text-on-surface-variant hover:text-primary transition-colors" type="button">
+                    <span class="material-symbols-outlined">notifications</span>
+                </button>
+                <button class="text-on-surface-variant hover:text-primary transition-colors" type="button">
+                    <span class="material-symbols-outlined">settings</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="p-8 flex flex-col">
+            {% include "partials/project_detail_content.html" %}
+        </main>
+    </div>
+
+    <div id="approval-modal"></div>
+
+    <script>
+        window.aiBoard = window.aiBoard || {};
+
+        window.aiBoard.initAiCharts = function (root = document) {
+            if (!window.Chart) return;
+            const nodes = [];
+            if (root.matches && root.matches("[data-ai-chart-config]")) nodes.push(root);
+            if (root.querySelectorAll) nodes.push(...root.querySelectorAll("[data-ai-chart-config]"));
+
+            for (const canvas of nodes) {
+                const existing = window.Chart.getChart(canvas);
+                if (existing) existing.destroy();
+                try {
+                    const config = JSON.parse(canvas.dataset.aiChartConfig || "{}");
+                    if (!config.options) config.options = {};
+                    if (!config.options.plugins) config.options.plugins = {};
+                    if (!config.options.plugins.legend) config.options.plugins.legend = { position: "bottom" };
+                    config.options.responsive = config.options.responsive !== false;
+                    new window.Chart(canvas, config);
+                } catch (error) {
+                    const wrapper = canvas.parentElement;
+                    if (wrapper) {
+                        wrapper.innerHTML = '<div class="text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg p-3">Impossibile renderizzare il grafico generato.</div>';
+                    }
+                }
+            }
+        };
+
+        document.getElementById("approval-modal").addEventListener("click", function (event) {
+            if (event.target === this) this.innerHTML = "";
+        });
+
+        document.addEventListener("DOMContentLoaded", function () {
+            window.aiBoard.initAiCharts(document);
+        });
+
+        document.body.addEventListener("htmx:afterSwap", function (event) {
+            window.aiBoard.initAiCharts(event.target);
+        });
+    </script>
+</body>
+</html>

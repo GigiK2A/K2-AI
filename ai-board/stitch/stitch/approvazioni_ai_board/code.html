@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+
+<html class="light" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Board - Approvazioni</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error-container": "#ff8b9a",
+                    "inverse-on-surface": "#9b9d9e",
+                    "surface-container-low": "#f1f4f6",
+                    "error-dim": "#4f0116",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed": "#2a13c5",
+                    "primary-fixed": "#e2dfff",
+                    "on-surface-variant": "#586064",
+                    "tertiary-container": "#d2d9f8",
+                    "surface-container-high": "#e2e9ec",
+                    "on-secondary": "#fcf8fc",
+                    "on-primary-fixed-variant": "#4a40e0",
+                    "secondary-fixed": "#e5e1e6",
+                    "on-tertiary-container": "#444c65",
+                    "tertiary-dim": "#4b526c",
+                    "error": "#9e3f4e",
+                    "inverse-primary": "#8582ff",
+                    "on-tertiary-fixed-variant": "#4e556f",
+                    "surface-dim": "#d1dce0",
+                    "surface-container-highest": "#dbe4e7",
+                    "outline": "#737c7f",
+                    "on-error-container": "#782232",
+                    "primary-dim": "#4034d7",
+                    "tertiary-fixed": "#d2d9f8",
+                    "on-tertiary": "#faf8ff",
+                    "on-primary": "#faf6ff",
+                    "on-secondary-fixed-variant": "#5c5b5f",
+                    "on-secondary-fixed": "#403f43",
+                    "outline-variant": "#abb3b7",
+                    "secondary": "#605e62",
+                    "primary-container": "#e2dfff",
+                    "surface-tint": "#4d44e3",
+                    "on-secondary-container": "#525155",
+                    "on-surface": "#2b3437",
+                    "on-primary-container": "#3f33d6",
+                    "primary": "#4d44e3",
+                    "inverse-surface": "#0c0f10",
+                    "on-background": "#2b3437",
+                    "background": "#f8f9fa",
+                    "on-error": "#fff7f7",
+                    "secondary-dim": "#545256",
+                    "tertiary-fixed-dim": "#c4cbe9",
+                    "primary-fixed-dim": "#d2d0ff",
+                    "secondary-fixed-dim": "#d7d3d8",
+                    "surface": "#f8f9fa",
+                    "surface-bright": "#f8f9fa",
+                    "tertiary": "#575e78",
+                    "on-tertiary-fixed": "#323951",
+                    "secondary-container": "#e5e1e6",
+                    "surface-variant": "#dbe4e7",
+                    "surface-container": "#eaeff1"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(248, 249, 250, 0.8);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar Anchor -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-slate-50 flex flex-col p-4 space-y-2 border-r border-slate-100 z-50">
+<div class="flex items-center gap-3 px-2 mb-8 mt-2">
+<div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[20px]" data-weight="fill" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div>
+<h1 class="text-lg font-bold text-slate-900 tracking-tight leading-tight">AI Board</h1>
+<p class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Intelligence Hub</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-slate-200/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">home</span>
+<span class="text-sm font-medium">Home</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-slate-200/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+<span class="text-sm font-medium">Pipeline</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-slate-200/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+<span class="text-sm font-medium">Agents</span>
+</a>
+<a class="flex items-center justify-between gap-3 px-3 py-2.5 bg-white text-indigo-600 rounded-lg shadow-sm font-semibold transition-all" href="#">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px]" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="text-sm">Approvals</span>
+</div>
+<span class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold">3</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-slate-200/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<span class="text-sm font-medium">Log</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-slate-200/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[20px]">memory</span>
+<span class="text-sm font-medium">Memoria</span>
+</a>
+</nav>
+<div class="pt-4 border-t border-slate-200">
+<div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-indigo-50/50 border border-indigo-100/50 mb-4">
+<div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+<span class="text-[11px] font-bold text-indigo-700 uppercase tracking-wide">System Active</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2">
+<img alt="Founder" class="w-8 h-8 rounded-full bg-slate-200 object-cover" data-alt="close up professional portrait of a tech founder with minimalist aesthetic clean studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfs_9bp8hojwzhk6c_QyqN1C7oFt2nuaKgojCrLiIJw0ioXicgX3obzBLsfl3XW1xmZrQqfF8x8ygjdaMG17quFXyOLhQyFRclCP9XPodT7Tuv72MJHFnBh-Iff8-m0G1b7bVGPsNYRW5dcdkzsDt4ohgrYwtFeQKNdub900qiXcnePQSXcH26Lv2wGDw_1nWKxbXbY40hdiEXBjnVZ2RlBIM_hFQGxjo50j6_TlNcqOvRoxYw8PDS8NsLihHMXspfSDLbzz0nR_g"/>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-slate-900 leading-tight">Founder</span>
+<span class="text-[11px] text-slate-500">Sistema attivo</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Stage -->
+<main class="ml-[220px] min-h-screen">
+<!-- TopNavBar Anchor -->
+<header class="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 h-16 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex items-baseline gap-3">
+<h2 class="text-2xl font-bold tracking-tighter text-on-surface">Approvazioni</h2>
+<span class="text-on-surface-variant font-medium text-sm">3 in attesa</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-lowest border-outline-variant/20 border rounded-xl text-sm w-64 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="Cerca tra le richieste..." type="text"/>
+</div>
+<button class="material-symbols-outlined p-2 text-on-surface-variant hover:text-primary transition-colors">notifications</button>
+<button class="material-symbols-outlined p-2 text-on-surface-variant hover:text-primary transition-colors">settings</button>
+<div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
+<button class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>Nuova Richiesta</span>
+</button>
+</div>
+</header>
+<!-- View Content -->
+<section class="max-w-5xl mx-auto p-12">
+<!-- Custom Tabs -->
+<div class="flex items-center gap-10 mb-12 border-b border-slate-100">
+<button class="pb-4 text-sm font-bold text-primary border-b-2 border-primary flex items-center gap-2">
+                    In attesa
+                    <span class="bg-primary text-white text-[10px] px-1.5 py-0.5 rounded font-black">3</span>
+</button>
+<button class="pb-4 text-sm font-medium text-outline-variant hover:text-on-surface transition-all flex items-center gap-2">
+                    Approvati
+                </button>
+<button class="pb-4 text-sm font-medium text-outline-variant hover:text-on-surface transition-all flex items-center gap-2">
+                    Rifiutati
+                </button>
+</div>
+<!-- Approval List -->
+<div class="space-y-6">
+<!-- Card 1: Content Engine -->
+<div class="group relative bg-surface-container-low p-6 rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300">
+<div class="flex items-start justify-between mb-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">article</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-on-surface">content_engine</span>
+<span class="w-1 h-1 rounded-full bg-slate-300"></span>
+<span class="text-[11px] font-medium text-outline uppercase tracking-wider">Post LinkedIn</span>
+</div>
+<p class="text-[11px] text-on-surface-variant">14 apr 2025 · 10:32</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="bg-white/80 border border-outline-variant/30 text-on-surface-variant p-2 rounded-lg hover:bg-white hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[18px]">push_pin</span>
+</button>
+<button class="bg-white/80 border border-outline-variant/30 text-on-surface-variant p-2 rounded-lg hover:bg-white hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="mb-6 pl-14">
+<p class="text-on-surface leading-relaxed text-[15px] font-medium mb-1 line-clamp-2">"Il nostro primo cliente siamo stati noi stessi. Abbiamo costruito l'AI Board per scalare le nostre operazioni interne e ora..."</p>
+<p class="text-on-surface-variant text-sm italic">...clicca per visualizzare il testo completo dell'articolo e i metadati associati.</p>
+</div>
+<div class="pl-14 flex items-center gap-3">
+<button class="bg-[#22c55e] text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>Approva</span>
+</button>
+<button class="bg-[#ef4444] text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+<span>Rifiuta</span>
+</button>
+<button class="bg-primary text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+<span>Vedi completo</span>
+</button>
+<button class="bg-slate-100 text-slate-600 px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-200 transition-all">
+<span class="material-symbols-outlined text-[18px]">add_comment</span>
+<span>Nota</span>
+</button>
+</div>
+</div>
+<!-- Card 2: Market Intelligence -->
+<div class="group relative bg-surface-container-low p-6 rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300">
+<div class="flex items-start justify-between mb-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-secondary-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[24px]">insights</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-on-surface">market_intelligence</span>
+<span class="w-1 h-1 rounded-full bg-slate-300"></span>
+<span class="text-[11px] font-medium text-outline uppercase tracking-wider">Report di mercato</span>
+</div>
+<p class="text-[11px] text-on-surface-variant">14 apr 2025 · 09:15</p>
+</div>
+</div>
+</div>
+<div class="mb-6 pl-14">
+<p class="text-on-surface leading-relaxed text-[15px] font-medium mb-1 line-clamp-2">Analisi competitiva Q2 2025: i trend emergenti nel settore LLM Ops indicano uno spostamento verso l'automazione dei processi di approvazione...</p>
+</div>
+<div class="pl-14 flex items-center gap-3">
+<button class="bg-[#22c55e] text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>Approva</span>
+</button>
+<button class="bg-[#ef4444] text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+<span>Rifiuta</span>
+</button>
+<button class="bg-primary text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+<span>Vedi completo</span>
+</button>
+</div>
+</div>
+<!-- Card 3: Lead Generation -->
+<div class="group relative bg-surface-container-low p-6 rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300">
+<div class="flex items-start justify-between mb-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-tertiary-container flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[24px]">group_add</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-on-surface">lead_generation</span>
+<span class="w-1 h-1 rounded-full bg-slate-300"></span>
+<span class="text-[11px] font-medium text-outline uppercase tracking-wider">Lista prospect</span>
+</div>
+<p class="text-[11px] text-on-surface-variant">14 apr 2025 · 08:45</p>
+</div>
+</div>
+</div>
+<div class="mb-6 pl-14">
+<p class="text-on-surface leading-relaxed text-[15px] font-medium mb-1 line-clamp-2">Identificati 24 nuovi lead qualificati nel settore FinTech (Serie A+) con interesse pregresso in soluzioni di AI integrata...</p>
+</div>
+<div class="pl-14 flex items-center gap-3">
+<button class="bg-[#22c55e] text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>Approva</span>
+</button>
+<button class="bg-[#ef4444] text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+<span>Rifiuta</span>
+</button>
+<button class="bg-primary text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+<span>Vedi completo</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Overlay Modal: Vedi Completo -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4 hidden">
+<div class="bg-white w-full max-w-[700px] max-h-[870px] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-white/20">
+<!-- Modal Header -->
+<div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+<div>
+<h3 class="text-xl font-bold text-on-surface tracking-tight">Dettaglio Approvazione</h3>
+<p class="text-sm text-outline flex items-center gap-2 mt-1">
+<span class="font-bold text-primary">content_engine</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+<span>Post LinkedIn</span>
+</p>
+</div>
+<button class="material-symbols-outlined p-2 hover:bg-slate-100 rounded-full transition-colors text-outline">close</button>
+</div>
+<!-- Modal Content (Scrollable) -->
+<div class="flex-1 overflow-y-auto px-8 py-8 space-y-6">
+<div class="bg-surface-container-lowest border border-slate-100 p-6 rounded-2xl">
+<h4 class="text-xs font-bold uppercase tracking-widest text-outline mb-4">Testo Generato</h4>
+<p class="text-on-surface leading-relaxed text-[16px]">
+                        Il nostro primo cliente siamo stati noi stessi. Abbiamo costruito l'AI Board per scalare le nostre operazioni interne e ora stiamo vedendo risultati incredibili in termini di velocità ed efficienza strategica.<br/><br/>
+                        Ogni giorno, i nostri agenti AI elaborano migliaia di dati di mercato, creano bozze per i contenuti social e gestiscono la pipeline di lead generation senza supervisione costante. L'unico collo di bottiglia? La qualità umana. Ed è qui che entri in gioco tu: la dashboard di approvazione garantisce che ogni output mantenga il DNA del nostro brand.<br/><br/>
+                        È un nuovo modo di lavorare: non più creatori da zero, ma curatori di intelligenza. Qual è la tua sfida più grande quando si tratta di integrare l'AI nel tuo workflow quotidiano?<br/><br/>
+                        #AIBoard #Innovation #AI #BusinessStrategy #FutureOfWork
+                    </p>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+<h4 class="text-[10px] font-bold uppercase tracking-widest text-outline mb-2">Metadati</h4>
+<div class="space-y-1">
+<p class="text-xs text-on-surface flex justify-between"><span>Lunghezza:</span> <span class="font-bold">1,240 caratteri</span></p>
+<p class="text-xs text-on-surface flex justify-between"><span>Sentiment:</span> <span class="font-bold text-primary">Ispirazionale</span></p>
+<p class="text-xs text-on-surface flex justify-between"><span>Keywords:</span> <span class="font-bold">AI, Strategy, Workflow</span></p>
+</div>
+</div>
+<div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+<h4 class="text-[10px] font-bold uppercase tracking-widest text-outline mb-2">Analisi Performance (Predizione)</h4>
+<div class="flex items-center gap-4 mt-2">
+<div class="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[85%]"></div>
+</div>
+<span class="text-xs font-black text-primary">85% Match</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Footer (Fixed) -->
+<div class="px-8 py-6 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+<button class="bg-white border border-outline-variant/30 text-on-surface px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all">Aggiungi Nota</button>
+<div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
+<button class="bg-[#ef4444] text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+<span>Rifiuta</span>
+</button>
+<button class="bg-[#22c55e] text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>Approva</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

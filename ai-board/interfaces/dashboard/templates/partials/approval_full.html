@@ -1,0 +1,39 @@
+<div class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-6 z-[100]">
+    <div class="w-full max-w-4xl bg-surface-container-lowest rounded-2xl shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{{ approval.agent.replace("_", " ").title() }}</p>
+                <h3 class="text-xl font-bold tracking-tight">{{ approval.content_type.replace("_", " ").title() }}</h3>
+            </div>
+            <button class="px-3 py-2 rounded-lg bg-surface-container-high text-on-surface text-sm font-medium" hx-get="/approvals/close-modal" hx-target="#approval-modal" hx-swap="innerHTML">Chiudi</button>
+        </div>
+        <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <div class="rounded-xl bg-surface-container-low p-4">
+                <p class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Preview</p>
+                <div class="markdown-body text-sm text-on-surface">{{ approval.content_preview|markdown_html }}</div>
+            </div>
+            {% if task_text %}
+            <div class="rounded-xl bg-surface-container-low p-4">
+                <p class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Task</p>
+                <div class="markdown-body text-sm text-on-surface">{{ task_text|markdown_html }}</div>
+            </div>
+            {% endif %}
+            {% if full_output %}
+            <div class="rounded-xl bg-surface-container-low p-4">
+                <p class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Contenuto completo</p>
+                <div class="markdown-body text-sm text-on-surface">{{ full_output|markdown_html }}</div>
+            </div>
+            {% endif %}
+            {% if extra_context %}
+            <div class="rounded-xl bg-surface-container-low p-4">
+                <p class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Contesto aggiuntivo</p>
+                <pre class="text-sm text-on-surface whitespace-pre-wrap font-body">{{ extra_context|pretty_json }}</pre>
+            </div>
+            {% endif %}
+            <div class="rounded-xl bg-surface-container-low p-4">
+                <p class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">JSON grezzo</p>
+                <pre class="text-sm text-on-surface whitespace-pre-wrap font-body">{{ full_content_json }}</pre>
+            </div>
+        </div>
+    </div>
+</div>

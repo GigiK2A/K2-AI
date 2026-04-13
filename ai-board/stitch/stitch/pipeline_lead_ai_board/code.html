@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="light" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Board - Pipeline Lead</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ff8b9a",
+                        "inverse-on-surface": "#9b9d9e",
+                        "surface-container-low": "#f1f4f6",
+                        "error-dim": "#4f0116",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed": "#2a13c5",
+                        "primary-fixed": "#e2dfff",
+                        "on-surface-variant": "#586064",
+                        "tertiary-container": "#d2d9f8",
+                        "surface-container-high": "#e2e9ec",
+                        "on-secondary": "#fcf8fc",
+                        "on-primary-fixed-variant": "#4a40e0",
+                        "secondary-fixed": "#e5e1e6",
+                        "on-tertiary-container": "#444c65",
+                        "tertiary-dim": "#4b526c",
+                        "error": "#9e3f4e",
+                        "inverse-primary": "#8582ff",
+                        "on-tertiary-fixed-variant": "#4e556f",
+                        "surface-dim": "#d1dce0",
+                        "surface-container-highest": "#dbe4e7",
+                        "outline": "#737c7f",
+                        "on-error-container": "#782232",
+                        "primary-dim": "#4034d7",
+                        "tertiary-fixed": "#d2d9f8",
+                        "on-tertiary": "#faf8ff",
+                        "on-primary": "#faf6ff",
+                        "on-secondary-fixed-variant": "#5c5b5f",
+                        "on-secondary-fixed": "#403f43",
+                        "outline-variant": "#abb3b7",
+                        "secondary": "#605e62",
+                        "primary-container": "#e2dfff",
+                        "surface-tint": "#4d44e3",
+                        "on-secondary-container": "#525155",
+                        "on-surface": "#2b3437",
+                        "on-primary-container": "#3f33d6",
+                        "primary": "#4d44e3",
+                        "inverse-surface": "#0c0f10",
+                        "on-background": "#2b3437",
+                        "background": "#f8f9fa",
+                        "on-error": "#fff7f7",
+                        "secondary-dim": "#545256",
+                        "tertiary-fixed-dim": "#c4cbe9",
+                        "primary-fixed-dim": "#d2d0ff",
+                        "secondary-fixed-dim": "#d7d3d8",
+                        "surface": "#f8f9fa",
+                        "surface-bright": "#f8f9fa",
+                        "tertiary": "#575e78",
+                        "on-tertiary-fixed": "#323951",
+                        "secondary-container": "#e5e1e6",
+                        "surface-variant": "#dbe4e7",
+                        "surface-container": "#eaeff1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-container">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-slate-50 dark:bg-slate-900 flex flex-col p-4 space-y-2 z-50">
+<div class="flex items-center gap-3 px-2 mb-8">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold text-lg">A</div>
+<div>
+<h1 class="text-lg font-bold text-slate-900 dark:text-slate-50 leading-tight">AI Board</h1>
+<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-medium">Intelligence Hub</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors rounded-lg group scale-95 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">home</span>
+<span class="font-inter body-sm tracking-tight">Home</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 rounded-lg shadow-sm font-semibold transition-colors group scale-95 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+<span class="font-inter body-sm tracking-tight">Pipeline</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors rounded-lg group scale-95 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+<span class="font-inter body-sm tracking-tight">Agents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors rounded-lg group scale-95 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+<span class="font-inter body-sm tracking-tight">Approvals</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors rounded-lg group scale-95 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<span class="font-inter body-sm tracking-tight">Log</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/80 transition-colors rounded-lg group scale-95 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">memory</span>
+<span class="font-inter body-sm tracking-tight">Memoria</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer">
+<img alt="Founder" class="w-8 h-8 rounded-full bg-slate-200" data-alt="Close up professional portrait of a tech founder with a friendly expression and neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVYPcAMoeE8eBn9j-p7KDnO4_u4Ouw8l3CDIE-se_TraUi7E6dPuq4N4LGDeNGrs8aoY9so_R2-u_rF3ybaPJtU7Mbbk-diKFIwR6qXcsIRNl48c85Tp3U2zWxNj90f3T7OERjGJIy1_ZuQppjkL2ql-A39GA-ZoWL6UyCZgEMmmBEocreUQchT1i8LnItPTvm-I1xrRl_mevOrF0XOW4Q4NrsfBueQF4o9plcykJPikOxzterzUk0yv6KrOvRZ5DkDEOqoLXO3vI"/>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-slate-900 dark:text-slate-50">Founder</span>
+<span class="text-[10px] text-indigo-600 font-medium">System Active</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-[220px] min-h-screen flex flex-col">
+<!-- Header Section -->
+<header class="h-24 px-8 flex items-center justify-between bg-surface/50 backdrop-blur-sm sticky top-0 z-30">
+<div>
+<h2 class="text-2xl font-bold tracking-tight text-on-surface">Pipeline Lead</h2>
+<p class="text-sm text-on-surface-variant">Gestione flussi di acquisizione e conversione</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-highest text-on-surface rounded-md text-sm font-medium hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+<span>Filtra</span>
+</button>
+<button class="flex items-center gap-2 px-6 py-2 bg-gradient-to-br from-primary to-primary-dim text-white rounded-md text-sm font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span>Nuovo lead</span>
+</button>
+</div>
+</header>
+<!-- Kanban Board Container -->
+<div class="flex-1 overflow-x-auto no-scrollbar p-8 pt-0">
+<div class="flex gap-6 h-full min-w-max pb-8">
+<!-- Column: Identificato -->
+<div class="w-72 flex flex-col gap-4">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold uppercase tracking-wider text-on-surface">Identificato</h3>
+<span class="px-2 py-0.5 bg-surface-container-high text-[10px] font-bold rounded-full text-on-surface-variant">3</span>
+</div>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-on-surface">more_horiz</span>
+</div>
+<!-- Lead Cards -->
+<div class="flex flex-col gap-3">
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/20 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="px-2 py-1 bg-primary-container text-on-primary-container text-[10px] font-bold rounded">Studi tecnici</span>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[11px] font-bold text-on-surface">8</span>
+</div>
+</div>
+<h4 class="font-semibold text-sm text-on-surface mb-3 group-hover:text-primary transition-colors">Studio Rossi &amp; Associati</h4>
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">event_repeat</span>
+<span>Richiesta info inviata</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<span class="text-[10px] text-outline">12 Ott 2023</span>
+<div class="flex -space-x-2">
+<img class="w-5 h-5 rounded-full border border-white" data-alt="Minimalist abstract avatar of a professional team member" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7Xby3FHniaqddWk7bwNWOHmkiwBZRuGmlYT8oWRlKTvtrQegiObvJN1iAMDw8WSEX--RDKHzDewLmxdfqB3I5_JsV7jE9-qhME9-Jgor1G4MNaq--fVQZT9RBpbPUWpoBb2Y4LSYAXWIV4RJY2JUQuYeiKjTrs4WAiZ7_JS_p1vmhL78WzmXmYhhNSHVtbciASWJ-_jdxHicxIAyZ_T84bwwZtApOdFRnqgwstf0GF2GkTO8DzWKnOKX0jQCcXg4XBoghfW_ugU4"/>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/20 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded">E-commerce</span>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="text-[11px] font-bold text-on-surface">6</span>
+</div>
+</div>
+<h4 class="font-semibold text-sm text-on-surface mb-3 group-hover:text-primary transition-colors">Lux Fashion Group</h4>
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">search</span>
+<span>Arricchimento dati</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<span class="text-[10px] text-outline">13 Ott 2023</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/20 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="px-2 py-1 bg-primary-container text-on-primary-container text-[10px] font-bold rounded">Logistica</span>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[11px] font-bold text-on-surface">9</span>
+</div>
+</div>
+<h4 class="font-semibold text-sm text-on-surface mb-3 group-hover:text-primary transition-colors">FastTrack Cargo SRL</h4>
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">mail</span>
+<span>Primo contatto AI</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<span class="text-[10px] text-outline">14 Ott 2023</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Qualificato -->
+<div class="w-72 flex flex-col gap-4">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold uppercase tracking-wider text-on-surface">Qualificato</h3>
+<span class="px-2 py-0.5 bg-surface-container-high text-[10px] font-bold rounded-full text-on-surface-variant">2</span>
+</div>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-on-surface">more_horiz</span>
+</div>
+<div class="flex flex-col gap-3">
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/20 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded">Manifattura</span>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[11px] font-bold text-on-surface">8</span>
+</div>
+</div>
+<h4 class="font-semibold text-sm text-on-surface mb-3 group-hover:text-primary transition-colors">Officine Meccaniche Milanesi</h4>
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">person_check</span>
+<span>Decision maker trovato</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<span class="text-[10px] text-outline">10 Ott 2023</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/20 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="px-2 py-1 bg-primary-container text-on-primary-container text-[10px] font-bold rounded">Fintech</span>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[11px] font-bold text-on-surface">10</span>
+</div>
+</div>
+<h4 class="font-semibold text-sm text-on-surface mb-3 group-hover:text-primary transition-colors">NeoBank Solutions</h4>
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+<span>Alto interesse LinkedIn</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<span class="text-[10px] text-outline">09 Ott 2023</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Contattato -->
+<div class="w-72 flex flex-col gap-4">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold uppercase tracking-wider text-on-surface">Contattato</h3>
+<span class="px-2 py-0.5 bg-surface-container-high text-[10px] font-bold rounded-full text-on-surface-variant">2</span>
+</div>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-on-surface">more_horiz</span>
+</div>
+<div class="flex flex-col gap-3">
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/20 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded">Software</span>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="text-[11px] font-bold text-on-surface">7</span>
+</div>
+</div>
+<h4 class="font-semibold text-sm text-on-surface mb-3 group-hover:text-primary transition-colors">DataMind Analytics</h4>
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>Follow-up tra 2 giorni</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<span class="text-[10px] text-outline">11 Ott 2023</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/20 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="px-2 py-1 bg-primary-container text-on-primary-container text-[10px] font-bold rounded">Energia</span>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[11px] font-bold text-on-surface">9</span>
+</div>
+</div>
+<h4 class="font-semibold text-sm text-on-surface mb-3 group-hover:text-primary transition-colors">GreenGrid Italia</h4>
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">phone_forwarded</span>
+<span>Attesa richiamata</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-container">
+<span class="text-[10px] text-outline">12 Ott 2023</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Call fissata (Empty State Placeholder) -->
+<div class="w-72 flex flex-col gap-4">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold uppercase tracking-wider text-on-surface">Call fissata</h3>
+<span class="px-2 py-0.5 bg-surface-container-high text-[10px] font-bold rounded-full text-on-surface-variant">0</span>
+</div>
+</div>
+<div class="flex-1 rounded-lg border-2 border-dashed border-outline-variant/20 flex flex-col items-center justify-center p-8 opacity-40">
+<span class="material-symbols-outlined text-[32px] text-outline mb-2">calendar_today</span>
+<p class="text-[10px] font-medium text-center uppercase tracking-widest">Nessuna call</p>
+</div>
+</div>
+<!-- Column: Proposta inviata -->
+<div class="w-72 flex flex-col gap-4">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold uppercase tracking-wider text-on-surface">Proposta inviata</h3>
+<span class="px-2 py-0.5 bg-surface-container-high text-[10px] font-bold rounded-full text-on-surface-variant">0</span>
+</div>
+</div>
+<div class="flex-1 rounded-lg border-2 border-dashed border-outline-variant/20 flex flex-col items-center justify-center p-8 opacity-40">
+<span class="material-symbols-outlined text-[32px] text-outline mb-2">description</span>
+<p class="text-[10px] font-medium text-center uppercase tracking-widest">Nessun preventivo</p>
+</div>
+</div>
+<!-- Column: Chiuso (Dimmed) -->
+<div class="w-72 flex flex-col gap-4 opacity-50 grayscale-[0.2]">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold uppercase tracking-wider text-on-surface">Chiuso</h3>
+<span class="px-2 py-0.5 bg-surface-container-high text-[10px] font-bold rounded-full text-on-surface-variant">0</span>
+</div>
+</div>
+<div class="flex-1 rounded-lg border-2 border-dashed border-outline-variant/20 flex flex-col items-center justify-center p-8">
+<span class="material-symbols-outlined text-[32px] text-outline mb-2">verified</span>
+<p class="text-[10px] font-medium text-center uppercase tracking-widest">Storico vuoto</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Intelligence Tooltip (UI Flair) -->
+<div class="fixed bottom-8 right-8 bg-surface-container-lowest border border-primary/20 p-4 rounded-xl shadow-2xl flex items-center gap-4 max-w-sm z-50">
+<div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Suggerimento AI</p>
+<p class="text-[11px] text-on-surface-variant leading-relaxed">Studio Rossi &amp; Associati non riceve contatti da 3 giorni. Ti consiglio di inviare il case study 'Legal Tech'.</p>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,71 @@
+<div id="agent-chat-panel" class="space-y-8">
+    {% if chat_error %}
+    <div class="bg-rose-50 border border-rose-100 rounded-xl p-4 text-sm text-rose-700">
+        {{ chat_error }}
+    </div>
+    {% endif %}
+
+    <section class="bg-surface-container-low p-8 rounded-xl">
+        <div class="flex items-center justify-between mb-8 gap-4">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">forum</span>
+                <h3 class="text-lg font-bold tracking-tight">Chat con {{ agent.display_name }}</h3>
+            </div>
+            <span class="text-xs font-medium text-on-surface-variant bg-surface-container-high px-2 py-1 rounded">Modalità conversazione</span>
+        </div>
+
+        <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/10 overflow-hidden">
+            <div class="max-h-[480px] overflow-y-auto custom-scrollbar p-5 bg-surface-container-low">
+                {% set chat_fragment = "agent_chat" %}
+                {% set chat_target_id = "#agent-chat-panel" %}
+                {% set chat_agent_slug = agent.slug %}
+                {% set chat_agent_label = agent.display_name %}
+                {% set chat_empty_text = "Nessuna conversazione salvata per questo agente." %}
+                {% include "partials/chat_messages.html" %}
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-surface-container-lowest p-8 rounded-xl shadow-sm">
+        <div class="flex items-center justify-between mb-8 gap-4">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">chat</span>
+                <h3 class="text-lg font-bold tracking-tight">Nuovo messaggio</h3>
+            </div>
+            <span class="text-xs font-medium text-on-surface-variant bg-surface-container-high px-2 py-1 rounded">Salvataggio automatico</span>
+        </div>
+
+        <form
+            hx-post="/agents/{{ agent.slug }}/chat"
+            hx-target="#agent-chat-panel"
+            hx-swap="outerHTML"
+            hx-encoding="multipart/form-data"
+            class="space-y-6">
+            <div>
+                <label class="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Messaggio</label>
+                <textarea
+                    id="agent-chat-message"
+                    name="message"
+                    rows="8"
+                    class="w-full bg-surface-container-low border-none rounded-lg text-sm py-3 focus:ring-2 focus:ring-primary/20 transition-all resize-y"
+                    placeholder="Scrivi qui il tuo messaggio per {{ agent.display_name }}. Puoi anche allegare file di supporto."></textarea>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Allegati</label>
+                <input
+                    type="file"
+                    name="attachments"
+                    multiple
+                    class="w-full bg-surface-container-low border-none rounded-lg text-sm py-2.5 focus:ring-2 focus:ring-primary/20 transition-all" />
+                <p class="text-xs text-on-surface-variant mt-2">I file testuali vengono letti e passati automaticamente nel contesto della chat.</p>
+            </div>
+
+            <div class="flex justify-end">
+                <button class="bg-primary text-on-primary px-8 py-3 rounded-lg font-bold text-sm hover:opacity-95 shadow-lg shadow-primary/10 transition-all active:scale-95" type="submit">
+                    Invia messaggio
+                </button>
+            </div>
+        </form>
+    </section>
+</div>

@@ -1,0 +1,39 @@
+<div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+    <p class="text-xs text-amber-700">L'output sarà salvato come Draft in attesa di approvazione.</p>
+</div>
+<form hx-post="/agents/risk_human_review/run" hx-target="#run-result" hx-swap="outerHTML" hx-indicator="#run-spinner" class="space-y-5">
+    <input type="hidden" name="execution_mode" value="detail" />
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Tipo contenuto</label>
+            <select class="w-full bg-surface-container-lowest border-0 ring-1 ring-outline-variant/30 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-primary/50 transition-all appearance-none" name="tipo_contenuto">
+                <option>Post Social</option>
+                <option>Comunicato Stampa</option>
+                <option>Email Marketing</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Focus</label>
+            <select class="w-full bg-surface-container-lowest border-0 ring-1 ring-outline-variant/30 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-primary/50 transition-all appearance-none" name="focus">
+                <option>Legale &amp; Privacy</option>
+                <option>Brand Identity</option>
+                <option>Full Audit</option>
+            </select>
+        </div>
+    </div>
+    <div>
+        <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Contenuto</label>
+        <textarea class="w-full bg-surface-container-lowest border-0 ring-1 ring-outline-variant/30 rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-primary/50 transition-all resize-none" name="contenuto" placeholder="Incolla qui il testo da analizzare..." rows="4"></textarea>
+    </div>
+    <label class="flex items-center justify-between py-2">
+        <div class="flex items-center gap-3">
+            <input checked class="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox" name="corrected_version" />
+            <span class="text-sm font-medium text-on-surface">Corrected version</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white rounded-lg bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 transition-all">Esegui agente →</button>
+            <span id="run-spinner" class="htmx-indicator text-xs text-slate-400">In esecuzione...</span>
+        </div>
+    </label>
+</form>
+<div id="run-result" class="mt-4"></div>

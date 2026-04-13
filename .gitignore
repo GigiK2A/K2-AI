@@ -1,0 +1,53 @@
+# Secrets — mai committare
+.env
+.env.local
+.env.notion
+*.env
+
+# Video e file binari grandi
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V7
+.Trashes
+
+# Logs e runtime
+*.log
+.run/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Upload utenti (file caricati a runtime)
+ai-board/uploads/
+
+# Playwright e tool interni
+.playwright-cli/
+output/
+tmp/
+
+# Claude Code config (locale)
+.claude/
+
+# AI-board link locale
+ai-board-link
+
+# IDE
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K2-AI | Sistemi AI operativi per PMI — Metodo testato sul lavoro reale</title>
+  <meta name="description" content="K2-AI costruisce sistemi AI operativi per PMI: automazioni, agenti e workflow basati su un metodo che usiamo ogni giorno nel nostro lavoro.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/nav.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/pages.css">
+  <script src="/home-boot.js"></script>
+</head>
+<body class="home-page">
+
+  <!-- NAV -->
+  <nav id="navbar">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo" aria-label="K2-AI">
+        <img src="./logo-nav.png?v=20260413" alt="K2-AI">
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/metodo.html">Metodo</a></li>
+        <li><a href="/casi-studio.html">Laboratorio</a></li>
+        <li><a href="/k-bot.html">K-BOT</a></li>
+        <li><a href="/workshop.html">Workshop</a></li>
+        <li><a href="/contatti.html">Contatti</a></li>
+      </ul>
+      <a href="#diagnosi" class="nav-cta">Fai l'analisi con K-BOT →</a>
+      <button class="nav-hamburger" aria-label="Menu">
+        <span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MOBILE OVERLAY -->
+  <div class="nav-overlay">
+    <a href="/">Home</a>
+    <a href="/metodo.html">Metodo</a>
+    <a href="/casi-studio.html">Laboratorio</a>
+    <a href="/k-bot.html">K-BOT</a>
+    <a href="/workshop.html">Workshop</a>
+    <a href="/contatti.html">Contatti</a>
+  </div>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero hero-video-section">
+    <!-- Video di sfondo -->
+    <video
+      id="hero-video"
+      class="hero-video"
+      muted
+      playsinline
+      preload="metadata"
+      poster="/hero-landscape-k2-static.png"
+      aria-hidden="true"
+    >
+      <source src="/hero-portrait-k2.mp4" type="video/mp4" media="(orientation: portrait)">
+      <source src="/hero-landscape-k2.mp4" type="video/mp4" media="(orientation: landscape)">
+      <source src="/hero-landscape-k2.mp4" type="video/mp4">
+    </video>
+    <picture class="hero-static-frame" aria-hidden="true">
+      <source srcset="/hero-portrait-k2-static.png" media="(orientation: portrait)">
+      <source srcset="/hero-landscape-k2-static.png" media="(orientation: landscape)">
+      <img src="/hero-landscape-k2-static.png" alt="">
+    </picture>
+    <!-- Overlay gradiente per leggibilità testo -->
+    <div class="hero-video-overlay"></div>
+
+    <!-- Contenuto: inizia invisibile, appare al termine del video -->
+    <div class="hero-content" id="hero-content">
+      <p class="hero-eyebrow">K2-AI / Sistemi AI operativi per PMI</p>
+      <h1 class="display-xl hero-title">
+        "La tecnologia non è nulla. Quello che conta è dare alle persone strumenti con cui possano fare cose straordinarie."
+      </h1>
+      <p class="hero-author">Steve Jobs</p>
+      <p class="hero-subcopy">
+        Costruiamo sistemi AI per il lavoro reale: agenti, automazioni e microapp che tolgono passaggi ripetitivi al team e restano sotto controllo umano. Il metodo è testato su di noi perché lo usiamo ogni giorno per lavorare meglio.
+      </p>
+      <div class="hero-actions">
+        <a href="#diagnosi" class="btn btn-primary">Scopri se il tuo caso regge →</a>
+        <a href="/contatti.html" class="hero-link">Parla direttamente con noi ↓</a>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hr-section">
+
+  <!-- ═══ NUMERI ═══ -->
+  <section class="home-stats-section">
+    <div class="grid-3">
+      <div class="stat reveal">
+        <div class="stat-value">42h</div>
+        <div class="stat-label">Ore/settimana recuperate: come avere più capacità operativa senza aggiungere passaggi manuali</div>
+      </div>
+      <div class="stat reveal reveal-delay-1">
+        <div class="stat-value">14gg</div>
+        <div class="stat-label">Dal brief al primo prototipo funzionante, testato con il tuo team e i tuoi dati</div>
+      </div>
+      <div class="stat reveal reveal-delay-2">
+        <div class="stat-value">87%</div>
+        <div class="stat-label">Tempo di revisione documentale ridotto nel primo caso legale misurato</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hr-section">
+
+  <!-- ═══ IL PROBLEMA ═══ -->
+  <section>
+    <div class="section-label reveal">
+      <span>Il contesto</span>
+    </div>
+    <div class="grid-2 home-context-grid">
+      <div class="reveal">
+        <p class="statement">
+          Il tuo team usa già ChatGPT per qualche task.<br>
+          <em>Il lavoro ripetitivo, però, è ancora lì.</em>
+        </p>
+      </div>
+      <div class="reveal reveal-delay-1 home-context-copy">
+        <p class="copy-15">
+          Il problema non è che manca l'AI. È che manca un sistema: regole chiare, dati nel posto giusto, passaggi misurabili, checkpoint umani. L'impatto arriva quando l'AI smette di essere una finestra aperta e diventa una parte del flusso di lavoro.
+        </p>
+      </div>
+    </div>
+
+    <div class="problema-grid reveal reveal-delay-1">
+      <div class="problema-item">
+        <span class="problema-item-num">Scenario comune 01</span>
+        <p>Il team passa ore a smistare email, qualificare richieste e aggiornare sistemi a mano.</p>
+      </div>
+      <div class="problema-item">
+        <span class="problema-item-num">Dopo K2-AI</span>
+        <p>Un agente AI legge, classifica, prepara risposte standard e aggiorna il CRM. Il team gestisce solo i casi che richiedono giudizio.</p>
+      </div>
+      <div class="problema-item">
+        <span class="problema-item-num">Scenario comune 02</span>
+        <p>Un ufficio legale rivede contratti standard e perde ore a leggere, confrontare, isolare clausole critiche e verificare precedenti.</p>
+      </div>
+      <div class="problema-item">
+        <span class="problema-item-num">Dopo K2-AI</span>
+        <p>Il sistema analizza il documento, segnala anomalie e confronta con lo storico. L'avvocato riceve un brief operativo invece di ripartire da zero.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hr-section">
+
+  <!-- ═══ COSA COSTRUIAMO ═══ -->
+  <section>
+    <div class="section-label reveal">
+      <span>Il metodo nasce dal nostro lavoro</span>
+    </div>
+    <div class="statement-wrap-sm">
+      <p class="statement reveal">
+        Non è una demo da vendere.<br>
+        <em>È un modo di lavorare che usiamo ogni giorno.</em>
+      </p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card reveal">
+        <div class="card-number">01</div>
+        <div class="card-title">Prototipi che arrivano presto al test</div>
+        <div class="card-body">In 14 giorni portiamo il caso su qualcosa che il team può provare davvero. Non serve una demo elegante: serve capire se il sistema riduce tempo, errori o passaggi inutili.</div>
+      </div>
+      <div class="card reveal reveal-delay-1">
+        <div class="card-number">02</div>
+        <div class="card-title">Automazioni nate dall'uso reale</div>
+        <div class="card-body">Raccolta informazioni, analisi documentale, sintesi, organizzazione del contesto, preparazione delivery: sono pezzi del nostro metodo operativo. Da lì capiamo quali pattern possono essere utili anche fuori.</div>
+      </div>
+      <div class="card reveal reveal-delay-2">
+        <div class="card-number">03</div>
+        <div class="card-title">Sistemi dentro i tuoi strumenti</div>
+        <div class="card-body">Email, CRM, ERP, Drive, gestionali, basi dati: l'AI deve entrare nel punto giusto del processo. Il team resta al comando, con checkpoint chiari e autonomia operativa.</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hr-section">
+
+  <!-- ═══ PERCHÉ K2-AI ═══ -->
+  <section>
+    <div class="section-label reveal">
+      <span>Perché K2-AI</span>
+    </div>
+    <div class="statement-wrap-md">
+      <p class="statement reveal">
+        Il risultato viene prima del metodo.<br>
+        <em>Il metodo serve a produrlo.</em>
+      </p>
+    </div>
+
+    <div class="home-why-list">
+      <div class="step reveal">
+        <div class="step-num">—</div>
+        <div class="step-content">
+          <h3>Il metodo è testato su di noi</h3>
+          <p>Lo usiamo per gestire contesto, documenti, delivery, priorità e follow-up. Non è una promessa astratta: è la disciplina con cui lavoriamo anche internamente.</p>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">—</div>
+        <div class="step-content">
+          <h3>In 14 giorni hai qualcosa da provare</h3>
+          <p>Mettiamo in piedi una base concreta con i tuoi dati e il tuo team. Se regge, sappiamo dove investire. Se non regge, lo scopriamo prima di trasformarlo in un progetto lungo.</p>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">—</div>
+        <div class="step-content">
+          <h3>Prima definiamo cosa misurare</h3>
+          <p>Ore risparmiate, errori ridotti, velocità, qualità, throughput. Se non troviamo un KPI serio, il problema non è ancora pronto per diventare sistema.</p>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">—</div>
+        <div class="step-content">
+          <h3>Il tuo team resta al comando</h3>
+          <p>Ogni sistema ha checkpoint umani e una logica leggibile. L'obiettivo non è sostituire il giudizio: è togliere il lavoro che lo consuma.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hr-section">
+
+  <!-- ═══ BOT / DIAGNOSI ═══ -->
+  <section id="diagnosi" class="diagnosi-section">
+    <div class="diagnosi-grid">
+
+      <div>
+        <div class="section-label reveal">
+          <span>K-BOT</span>
+        </div>
+        <h2 class="display-md reveal reveal-delay-1 diagnosi-title">
+          Descrivi il tuo processo.<br>In 5 minuti capisci se l'AI può fare la differenza.
+        </h2>
+        <p class="reveal reveal-delay-2 diagnosi-copy-a">
+          K-BOT raccoglie il contesto che serve: volume, tempi, errori, strumenti, vincoli. Da lì individua i punti in cui un sistema AI potrebbe togliere lavoro ripetitivo.
+        </p>
+        <p class="reveal reveal-delay-3 diagnosi-copy-b">
+          Se il caso non regge, lo sai subito. Se regge, arrivi al contatto con una richiesta più chiara. Nessuna call obbligatoria.
+        </p>
+        <div class="reveal reveal-delay-4 diagnosi-points">
+          <div class="diagnosi-point">
+            <span class="diagnosi-point-num">01</span>
+            <p class="diagnosi-point-copy">Descrive il processo e identifica dove si perde tempo o qualità.</p>
+          </div>
+          <div class="diagnosi-point">
+            <span class="diagnosi-point-num">02</span>
+            <p class="diagnosi-point-copy">Verifica se esiste un pattern già testato che vale adattare.</p>
+          </div>
+          <div class="diagnosi-point">
+            <span class="diagnosi-point-num">03</span>
+            <p class="diagnosi-point-copy">Indica il passo successivo: nessuna azione, prototipo, o contatto diretto.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal reveal-delay-2">
+        <div class="chat-widget diagnosi-chat">
+          <div class="chat-header">
+            <div class="chat-header-main">
+              <div class="chat-status"></div>
+              <div class="chat-header-copy">
+                <span class="chat-header-text">K-BOT</span>
+                <span class="chat-header-sub">Attivo ora</span>
+              </div>
+            </div>
+          </div>
+          <div class="chat-messages" id="chat-messages"></div>
+          <form class="chat-input-area" id="chat-form">
+            <textarea
+              id="chat-input"
+              placeholder="Descrivi il processo che ti sta costando più tempo..."
+              rows="1"
+              enterkeyhint="send"
+            ></textarea>
+            <button id="chat-send" type="submit" aria-label="Invia">→</button>
+          </form>
+        </div>
+        <p class="micro-legal-note chat-legal-note">
+          Interagisci con un sistema AI. I messaggi possono essere trattati da K2-AI e dai fornitori tecnici necessari a generare la risposta. Dettagli in <a href="/privacy.html">Privacy Policy</a> e <a href="/cookie.html">Cookie Policy</a>.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer>
+    <div class="footer-inner footer-inner-legal">
+      <span class="footer-logo"><img src="./logo-nav.png?v=20260413" alt="K2-AI"></span>
+      <ul class="footer-links">
+        <li><a href="/metodo.html">Metodo</a></li>
+        <li><a href="/casi-studio.html">Laboratorio</a></li>
+        <li><a href="/k-bot.html">K-BOT</a></li>
+        <li><a href="/workshop.html">Workshop</a></li>
+        <li><a href="/contatti.html">Contatti</a></li>
+      </ul>
+      <ul class="footer-legal-links">
+        <li><a href="/privacy.html">Privacy</a></li>
+        <li><a href="/cookie.html">Cookie</a></li>
+        <li><a href="/note-legali.html">Note legali</a></li>
+      </ul>
+      <span class="footer-copy">© 2025 K2-AI</span>
+    </div>
+  </footer>
+
+  <script type="module" src="./js/scroll.js"></script>
+  <script type="module" src="./js/nav.js"></script>
+  <script type="module" src="./js/home-intro.js"></script>
+  <script type="module" src="./js/chat.js"></script>
+</body>
+</html>

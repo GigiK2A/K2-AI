@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+
+<html class="light" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#323951",
+                    "on-secondary-fixed": "#403f43",
+                    "on-secondary-container": "#525155",
+                    "surface-container-highest": "#dbe4e7",
+                    "surface-container-high": "#e2e9ec",
+                    "surface-container-low": "#f1f4f6",
+                    "on-tertiary": "#faf8ff",
+                    "tertiary-container": "#d2d9f8",
+                    "background": "#f8f9fa",
+                    "primary-fixed-dim": "#d2d0ff",
+                    "surface": "#f8f9fa",
+                    "error-dim": "#4f0116",
+                    "error-container": "#ff8b9a",
+                    "secondary-fixed": "#e5e1e6",
+                    "on-background": "#2b3437",
+                    "primary-dim": "#4034d7",
+                    "tertiary-fixed": "#d2d9f8",
+                    "primary-fixed": "#e2dfff",
+                    "on-primary-container": "#3f33d6",
+                    "secondary": "#605e62",
+                    "on-tertiary-fixed-variant": "#4e556f",
+                    "on-error": "#fff7f7",
+                    "on-primary-fixed": "#2a13c5",
+                    "tertiary-fixed-dim": "#c4cbe9",
+                    "inverse-surface": "#0c0f10",
+                    "surface-variant": "#dbe4e7",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary": "#fcf8fc",
+                    "primary": "#4d44e3",
+                    "tertiary-dim": "#4b526c",
+                    "secondary-dim": "#545256",
+                    "outline": "#737c7f",
+                    "secondary-fixed-dim": "#d7d3d8",
+                    "on-surface-variant": "#586064",
+                    "surface-container": "#eaeff1",
+                    "surface-bright": "#f8f9fa",
+                    "on-primary": "#faf6ff",
+                    "on-primary-fixed-variant": "#4a40e0",
+                    "on-tertiary-container": "#444c65",
+                    "surface-tint": "#4d44e3",
+                    "surface-dim": "#d1dce0",
+                    "primary-container": "#e2dfff",
+                    "inverse-primary": "#8582ff",
+                    "inverse-on-surface": "#9b9d9e",
+                    "on-secondary-fixed-variant": "#5c5b5f",
+                    "secondary-container": "#e5e1e6",
+                    "tertiary": "#575e78",
+                    "on-error-container": "#782232",
+                    "error": "#9e3f4e",
+                    "on-surface": "#2b3437",
+                    "outline-variant": "#abb3b7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab-border {
+            position: relative;
+        }
+        .active-tab-border::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #4d44e3;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar Anchor -->
+<aside class="w-[220px] h-screen fixed left-0 top-0 bg-slate-50 flex flex-col py-6 px-4 space-y-2 z-50">
+<div class="mb-8 px-2">
+<h1 class="text-lg font-bold tracking-tighter text-slate-900">The Intelligent Canvas</h1>
+<p class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">Editorial Workspace</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[18px]">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 bg-white text-indigo-600 rounded-lg shadow-sm font-semibold text-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">smart_toy</span>
+                Agenti
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[18px]">database</span>
+                Dataset
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[18px]">deployed_code</span>
+                Modelli
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+                Impostazioni
+            </a>
+</nav>
+<div class="pt-4 border-t border-slate-200/50 space-y-1">
+<button class="w-full mb-4 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-md shadow-indigo-200 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                Nuovo Agente
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span>
+                Aiuto
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-200/50 transition-colors duration-200 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+                Logout
+            </a>
+</div>
+</aside>
+<!-- Main Content Stage -->
+<main class="ml-[220px] min-h-screen">
+<!-- TopNavBar Anchor -->
+<header class="fixed top-0 right-0 left-[220px] z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/20 h-16 flex items-center justify-between px-8">
+<div class="flex items-center gap-4">
+<span class="text-xl font-black text-slate-900 tracking-tight">AI Board</span>
+<div class="h-4 w-[1px] bg-slate-200"></div>
+<nav class="flex gap-6">
+<a class="text-slate-500 text-sm font-medium hover:text-indigo-500 transition-colors" href="#">Dashboard</a>
+<a class="text-indigo-600 text-sm font-bold border-b-2 border-indigo-600 h-16 flex items-center" href="#">Agenti</a>
+</nav>
+</div>
+<div class="flex items-center gap-5">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+<input class="bg-surface-container-lowest border border-slate-200/50 rounded-lg pl-10 pr-4 py-1.5 text-xs w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="Cerca risorse..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">history</span>
+</button>
+<img alt="Admin Avatar" class="w-8 h-8 rounded-full border border-slate-200 shadow-sm" data-alt="Close-up professional portrait of a woman in a minimalist studio setting with soft neutral lighting and clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDM-XBNjLEPUS2nraXPvCHZR2j59BOxv-N7qPkZrum-6FN1k76c5sbZw1QgmFyOBpJUiAJXYyy5a8M90aD7Fb3S4bDYLIWNy_CkCY7YqO1yee_gML4OTU4wkFmDS_pXbL2hdT_QLxpFWsz8Moasl1qMK384Yn1wvz8GNqt4dWjVYua0tFagXu7ymY8LlqryorSBcFnkjiHJedx2HRdCElN7E5-F8IX44YJlIl0lQIT1DtginN_62B4bjrJX1Kn7-rg-Yur7g7x7ddc"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="pt-24 px-10 pb-12 max-w-7xl mx-auto">
+<!-- Breadcrumb & Header -->
+<div class="mb-10">
+<nav class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-4">
+<a class="hover:text-primary transition-colors" href="#">Agenti</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface">Chief of Staff</span>
+</nav>
+<div class="flex items-end justify-between">
+<div>
+<h2 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Chief of Staff</h2>
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1.5 px-2.5 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+                                Braccio operativo
+                            </span>
+<span class="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[11px] font-bold">
+<span class="material-symbols-outlined text-[14px]">terminal</span>
+                                OpenAI
+                            </span>
+<span class="flex items-center gap-1.5 text-on-surface-variant text-[11px] font-medium">
+<span class="material-symbols-outlined text-[16px]">model_training</span>
+                                gpt-4o
+                            </span>
+<span class="flex items-center gap-1.5 text-error text-[11px] font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                                Inattivo
+                            </span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 bg-surface-container-highest text-on-surface text-sm font-semibold rounded-lg hover:bg-surface-container-high transition-colors">
+                            Modifica
+                        </button>
+<button class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-dim text-on-primary text-sm font-bold rounded-lg shadow-lg shadow-indigo-200 active:scale-95 transition-transform">
+                            Attiva Agente
+                        </button>
+</div>
+</div>
+</div>
+<!-- Tabs Section -->
+<div class="border-b border-slate-200 mb-8">
+<div class="flex gap-10">
+<button class="pb-4 text-sm font-bold text-primary active-tab-border">System Prompt</button>
+<button class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Storico</button>
+<button class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Esegui</button>
+</div>
+</div>
+<!-- Layout: 2/3 Content, 1/3 Intelligence Sidebar -->
+<div class="grid grid-cols-12 gap-10">
+<!-- Main Activity Area -->
+<div class="col-span-8 space-y-8">
+<!-- Identity Section -->
+<section class="bg-surface-container-lowest rounded-xl p-8 border border-slate-100/50 shadow-sm">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<h3 class="text-lg font-bold text-on-surface tracking-tight">Identity &amp; Purpose</h3>
+</div>
+<div class="space-y-6">
+<div>
+<label class="text-[10px] uppercase font-black tracking-widest text-on-surface-variant block mb-2">Istruzioni Operative</label>
+<div class="bg-surface-container-low p-6 rounded-lg border-l-4 border-primary">
+<p class="text-sm text-on-surface leading-relaxed font-medium mb-4 italic">
+                                        "Sei il Chief of Staff per una redazione digitale. Il tuo obiettivo è l'eccellenza operativa attraverso la scomposizione e l'allocazione delle risorse."
+                                    </p>
+<ul class="space-y-4">
+<li class="flex gap-3">
+<span class="w-5 h-5 rounded-full bg-primary-container text-primary flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+<div>
+<p class="text-sm font-bold text-on-surface">Scomposizione Task</p>
+<p class="text-xs text-on-surface-variant mt-1 leading-relaxed">Identifica ogni sotto-attività atomica necessaria per il completamento del piano editoriale corrente.</p>
+</div>
+</li>
+<li class="flex gap-3">
+<span class="w-5 h-5 rounded-full bg-primary-container text-primary flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+<div>
+<p class="text-sm font-bold text-on-surface">Mappatura Dipendenze</p>
+<p class="text-xs text-on-surface-variant mt-1 leading-relaxed">Assicurati che nessun agente inizi un task se il prerequisito non è validato dallo specialista competente.</p>
+</div>
+</li>
+<li class="flex gap-3">
+<span class="w-5 h-5 rounded-full bg-primary-container text-primary flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
+<div>
+<p class="text-sm font-bold text-on-surface">Briefing Sintetico</p>
+<p class="text-xs text-on-surface-variant mt-1 leading-relaxed">Ogni output deve essere un briefing operativo inferiore a 300 parole, privo di convenevoli e orientato all'azione.</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+<!-- Esegui Form (Secondary display as card) -->
+<section class="bg-surface-container-low rounded-xl p-8">
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+<h3 class="text-lg font-bold text-on-surface tracking-tight">Genera briefing</h3>
+</div>
+</div>
+<form class="space-y-6">
+<div class="grid grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Tipo briefing</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none">
+<option>Giornaliero</option>
+<option>Settimanale</option>
+<option>Post-piano</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Modello IA</label>
+<div class="px-4 py-3 bg-surface-container-lowest border border-outline-variant/10 rounded-lg text-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+                                        gpt-4o (Predefinito)
+                                    </div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Contesto aggiuntivo</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Inserisci note specifiche per questa esecuzione..." rows="4"></textarea>
+</div>
+<div class="grid grid-cols-2 gap-6 pt-4">
+<label class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg cursor-pointer hover:bg-white transition-colors group">
+<span class="text-sm font-semibold text-on-surface">Includi alert scadenze</span>
+<input checked="" class="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg cursor-pointer hover:bg-white transition-colors group">
+<span class="text-sm font-semibold text-on-surface">Includi blocchi attivi</span>
+<input class="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox"/>
+</label>
+</div>
+<div class="pt-6">
+<button class="w-full py-4 bg-primary text-on-primary font-bold rounded-lg shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 active:scale-[0.98] transition-transform" type="button">
+<span class="material-symbols-outlined">auto_fix</span>
+                                    Esegui Generazione Briefing
+                                </button>
+</div>
+</form>
+</section>
+</div>
+<!-- Right Sidebar: Stats & Intelligence -->
+<div class="col-span-4 space-y-6">
+<!-- Performance Card -->
+<div class="bg-white rounded-xl p-6 border border-slate-100 shadow-sm">
+<h4 class="text-[11px] font-black uppercase tracking-widest text-on-surface-variant mb-4">Statistiche Globali</h4>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-sm text-on-surface-variant">Esecuzioni Totali</span>
+<span class="text-sm font-bold text-on-surface">1,284</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm text-on-surface-variant">Success Rate</span>
+<span class="text-sm font-bold text-emerald-600">99.2%</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm text-on-surface-variant">Token Medio / Run</span>
+<span class="text-sm font-bold text-on-surface">450</span>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-slate-100">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[11px] font-bold text-on-surface">Utilizzo Quota</span>
+<span class="text-[11px] font-bold text-primary">72%</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[72%] rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- History Quick View -->
+<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+<div class="p-6 border-b border-slate-50">
+<h4 class="text-[11px] font-black uppercase tracking-widest text-on-surface-variant">Ultime Run</h4>
+</div>
+<div class="divide-y divide-slate-50">
+<div class="p-4 hover:bg-slate-50 transition-colors">
+<div class="flex items-center justify-between mb-1">
+<span class="text-xs font-bold text-on-surface">Briefing_Daily_Redazione</span>
+<span class="text-[10px] text-on-surface-variant">2h fa</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 font-bold rounded">Successo</span>
+<span class="text-[10px] text-on-surface-variant">420 parole</span>
+</div>
+</div>
+<div class="p-4 hover:bg-slate-50 transition-colors">
+<div class="flex items-center justify-between mb-1">
+<span class="text-xs font-bold text-on-surface">Briefing_Weekly_Strategy</span>
+<span class="text-[10px] text-on-surface-variant">Ieri</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 font-bold rounded">Successo</span>
+<span class="text-[10px] text-on-surface-variant">890 parole</span>
+</div>
+</div>
+<div class="p-4 hover:bg-slate-50 transition-colors">
+<div class="flex items-center justify-between mb-1">
+<span class="text-xs font-bold text-on-surface">Generazione_Task_SEO</span>
+<span class="text-[10px] text-on-surface-variant">3gg fa</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] px-1.5 py-0.5 bg-error-container/20 text-error font-bold rounded">Fallito</span>
+<span class="text-[10px] text-on-surface-variant">API Timeout</span>
+</div>
+</div>
+</div>
+<button class="w-full py-3 text-xs font-bold text-primary bg-slate-50 hover:bg-slate-100 transition-colors">
+                            Vedi tutto lo storico
+                        </button>
+</div>
+<!-- AI Insights -->
+<div class="bg-primary-container rounded-xl p-6 relative overflow-hidden">
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary text-[20px]">lightbulb</span>
+<h4 class="text-xs font-bold text-primary uppercase tracking-wider">AI Suggestion</h4>
+</div>
+<p class="text-xs text-on-primary-container leading-relaxed font-medium">
+                                Questo agente tende a superare il limite di 300 parole quando il contesto include più di 5 task attivi. Considera di attivare la "Scomposizione Gerarchica" per migliorare la sintesi.
+                            </p>
+</div>
+<!-- Abstract decoration -->
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-[100px] text-primary">analytics</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

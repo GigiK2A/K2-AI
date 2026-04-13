@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Sticky header #}
+<header class="sticky top-0 z-40 bg-white/80 backdrop-blur-xl px-10 py-6 flex items-end justify-between border-b border-slate-100">
+    <div>
+        <nav class="flex items-center gap-2 text-[10px] font-medium text-on-surface-variant uppercase tracking-widest mb-2">
+            <span>Sistema</span>
+            <span class="material-symbols-outlined text-[12px]">chevron_right</span>
+            <span class="text-primary">Log attività</span>
+        </nav>
+        <h1 class="text-4xl font-bold tracking-tighter text-on-surface leading-none">Log attività</h1>
+    </div>
+    <div class="flex items-center gap-3">
+        <form hx-get="/logs" hx-target="#logs-table" hx-swap="outerHTML" class="flex items-center gap-3">
+            <div class="relative">
+                <button type="button" class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-primary/20 text-sm font-medium hover:bg-surface-container-low transition-colors shadow-sm" onclick="toggleAgentFilter()">
+                    <span class="material-symbols-outlined text-lg text-primary">filter_list</span>
+                    <span>{{ filter_agent or "Filtra Agente" }}</span>
+                    <span class="material-symbols-outlined text-sm">expand_more</span>
+                </button>
+                <div id="agent-filter-dropdown" class="hidden absolute right-0 top-full mt-1 bg-white border border-outline-variant/20 rounded-xl shadow-xl z-50 w-56 py-2">
+                    <button type="button" onclick="selectAgent('')" class="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-low transition-colors {% if not filter_agent %}text-primary font-semibold{% endif %}">Tutti gli agenti</button>
+                    {% for agent_name in agents_list %}
+                    <button type="button" onclick="selectAgent('{{ agent_name }}')" class="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-low transition-colors {% if filter_agent == agent_name %}text-primary font-semibold{% endif %}">{{ agent_name }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <input type="hidden" name="agent" id="filter-agent-input" value="{{ filter_agent or '' }}" />
+            <input type="hidden" name="page" value="1" />
+        </form>
+        <button class="flex items-center justify-center w-10 h-10 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                hx-get="/logs{% if filter_agent %}?agent={{ filter_agent }}{% endif %}" hx-target="#logs-table" hx-swap="outerHTML">
+            <span class="material-symbols-outlined">refresh</span>
+        </button>
+    </div>
+</header>
+
+{# Content #}
+<div class="px-10 pb-10 pt-8 flex-1">
+    {% include "partials/logs_table.html" %}
+
+    {# Stats footer #}
+    <div class="mt-10 p-8 rounded-2xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 flex items-center justify-between">
+        <div>
+            <h3 class="text-base font-bold tracking-tight mb-1">Riepilogo attività</h3>
+            <p class="text-sm text-on-surface-variant">{{ total_count }} esecuzioni totali registrate nel sistema.</p>
+        </div>
+        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bar_chart</span>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAgentFilter() {
+    document.getElementById('agent-filter-dropdown').classList.toggle('hidden');
+}
+function selectAgent(name) {
+    document.getElementById('filter-agent-input').value = name;
+    document.querySelector('#agent-filter-dropdown').parentElement.parentElement.querySelector('button span:nth-child(2)').textContent = name || 'Filtra Agente';
+    document.getElementById('agent-filter-dropdown').classList.add('hidden');
+    htmx.ajax('GET', '/logs?agent=' + encodeURIComponent(name) + '&page=1', {target: '#logs-table', swap: 'outerHTML'});
+}
+document.addEventListener('click', function(e) {
+    const dd = document.getElementById('agent-filter-dropdown');
+    if (dd && !dd.parentElement.contains(e.target)) dd.classList.add('hidden');
+});
+</script>
+{% endblock %}

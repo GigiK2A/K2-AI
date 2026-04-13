@@ -1,0 +1,34 @@
+<section class="bg-surface-container p-6 rounded-xl h-full border border-outline-variant/10">
+    <div class="flex items-center justify-between mb-8">
+        <h3 class="text-sm font-bold uppercase tracking-widest text-on-surface-variant">Storico esecuzioni</h3>
+        <button class="text-primary text-xs font-bold hover:underline" onclick="switchTab('history')" type="button">Vedi Tutti</button>
+    </div>
+
+    <div class="space-y-4">
+        {% for item in quick_history %}
+        <div class="bg-surface-container-lowest p-4 rounded-lg flex items-center gap-4 group cursor-pointer hover:shadow-md transition-shadow {% if item.muted %}opacity-60{% endif %}">
+            <div class="w-10 h-10 rounded {{ item.icon_box }} flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-bold truncate">{{ item.title }}</h4>
+                <p class="text-[10px] text-on-surface-variant font-medium">{{ item.meta_line }}</p>
+            </div>
+            <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">{{ item.trailing_icon }}</span>
+        </div>
+        {% else %}
+        <div class="bg-surface-container-lowest p-4 rounded-lg text-sm text-on-surface-variant">
+            Nessuna esecuzione registrata.
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mt-8 p-6 bg-primary-container rounded-xl border-l-4 border-primary">
+        <span class="text-[10px] font-bold text-on-primary-container/60 uppercase tracking-widest">{{ agent_summary.title }}</span>
+        <div class="text-3xl font-black text-on-primary-container mt-1">{{ agent_summary.value }}</div>
+        <div class="mt-4 flex items-center gap-2 text-xs font-bold text-on-primary-container">
+            <span class="material-symbols-outlined text-[16px]">trending_up</span>
+            {{ agent_summary.footer }}
+        </div>
+    </div>
+</section>

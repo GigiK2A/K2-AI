@@ -1,0 +1,114 @@
+{% if agent.internal_name == "content_engine" %}
+<div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-8">
+    <div class="space-y-8">
+        <section class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/10">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="material-symbols-outlined text-primary">fingerprint</span>
+                <h3 class="text-lg font-bold tracking-tight text-primary">Identity &amp; Constraints</h3>
+            </div>
+
+            <div class="bg-surface-container-low rounded-xl border-l-4 border-primary px-8 py-7 mb-5">
+                <p class="text-[15px] leading-10 italic text-on-surface">
+                    "Tu sei un Senior Editor specializzato in contenuti concreti e autorevoli. Il tuo obiettivo è trasformare brief pratici in testi pronti da pubblicare, con tono umano, zero hype e una CTA chiara."
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {% for card in content_engine_cards %}
+                <div class="rounded-xl border border-outline-variant/20 bg-white px-6 py-5">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-lg border border-primary/20 text-primary flex items-center justify-center">
+                            <span class="material-symbols-outlined">{{ card.icon }}</span>
+                        </div>
+                        <div>
+                            <h4 class="text-[13px] font-extrabold uppercase tracking-tight">{{ card.title }}</h4>
+                            <p class="text-sm text-on-surface-variant mt-2 leading-relaxed">{{ card.body }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold uppercase tracking-[0.18em] text-on-surface-variant">Ultimi Output</h3>
+                <button class="text-primary text-sm font-bold hover:underline" onclick="switchTab('history')" type="button">Vedi tutto</button>
+            </div>
+
+            <div class="space-y-4">
+                {% for item in content_engine_recent_outputs %}
+                <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm px-6 py-5 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-primary-container text-primary flex items-center justify-center">
+                        <span class="material-symbols-outlined">{{ item.icon }}</span>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-bold tracking-tight text-on-surface">{{ item.title }}</h4>
+                        <p class="text-sm text-on-surface-variant">{{ item.subtitle }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm px-6 py-5 text-sm text-on-surface-variant">
+                    Nessun contenuto ancora generato dal Content Engine.
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="bg-surface-container-lowest rounded-[26px] shadow-xl shadow-slate-200/50 border border-outline-variant/10 p-10 h-fit sticky top-24">
+        <div class="mb-10">
+            <h3 class="text-[22px] font-extrabold tracking-tight text-on-surface">Produci contenuto</h3>
+            <p class="text-[16px] text-on-surface-variant mt-2">Configura i parametri per la nuova generazione.</p>
+        </div>
+
+        {% include "partials/agent_forms/content_engine.html" %}
+    </div>
+</div>
+{% else %}
+<div class="space-y-8">
+    <section class="bg-surface-container-low p-8 rounded-xl">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-primary">terminal</span>
+            <h3 class="text-lg font-bold tracking-tight">Identity &amp; Purpose</h3>
+        </div>
+        <div class="space-y-6">
+            {% for section in prompt_sections %}
+            <div class="group border-l-4 {% if loop.first %}border-primary{% else %}border-outline-variant/40{% endif %} pl-6 py-2">
+                <h4 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">{{ section.title }}</h4>
+                <p class="text-on-surface text-sm leading-relaxed">{{ section.body }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="bg-surface-container-lowest p-8 rounded-xl shadow-sm">
+        <div class="flex items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">tune</span>
+                <h3 class="text-lg font-bold tracking-tight">Contesto Operativo</h3>
+            </div>
+            <span class="text-xs font-medium text-on-surface-variant bg-surface-container-high px-2 py-1 rounded">Prompt condiviso</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <span class="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Ruolo</span>
+                <p class="text-sm text-on-surface leading-relaxed">{{ agent.role }}</p>
+            </div>
+            <div>
+                <span class="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Motore attivo</span>
+                <p class="text-sm text-on-surface leading-relaxed">{{ agent.provider|title }} · <span class="font-mono">{{ agent.model }}</span></p>
+            </div>
+            <div>
+                <span class="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Provider di riserva</span>
+                <p class="text-sm text-on-surface leading-relaxed">{{ agent.fallback_provider|title }} · <span class="font-mono">{{ agent.fallback_model }}</span></p>
+            </div>
+            <div>
+                <span class="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Memoria iniettata</span>
+                <p class="text-sm text-on-surface leading-relaxed">business.* · offers.* · proof.* · rules.* · messaging.*</p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endif %}

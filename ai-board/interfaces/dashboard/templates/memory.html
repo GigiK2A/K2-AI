@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Sticky top header #}
+<header class="sticky top-0 z-40 h-16 px-8 flex justify-between items-center bg-white/80 backdrop-blur-xl border-b border-slate-100">
+    <h2 class="text-xl font-bold tracking-tight text-on-surface">Memoria condivisa</h2>
+    <div class="flex items-center gap-4">
+        <button class="px-4 py-2 rounded-md bg-white border border-outline-variant/30 text-sm font-medium text-on-surface hover:bg-surface-container-low transition-colors"
+                hx-get="/memory" hx-target="body" hx-push-url="true">
+            Aggiorna
+        </button>
+    </div>
+</header>
+
+{# Two-panel layout #}
+<div class="flex flex-1 overflow-hidden">
+    {# Category sidebar #}
+    <aside class="w-[240px] bg-surface-container-low p-6 flex flex-col gap-6 shrink-0 border-r border-surface-container">
+        <div>
+            <h3 class="text-[11px] uppercase tracking-widest text-on-surface-variant font-bold mb-4">Categorie</h3>
+            <ul class="space-y-1">
+                {% for category_name, rows in categories.items() %}
+                <li>
+                    <button class="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-left transition-colors {% if selected_category == category_name %}bg-surface-container-lowest text-primary font-semibold shadow-sm{% else %}text-on-surface-variant hover:bg-surface-container-high{% endif %}"
+                            hx-get="/memory/{{ category_name }}"
+                            hx-target="#memory-list"
+                            hx-swap="outerHTML">
+                        <span>{{ category_name }}</span>
+                        <span class="{% if selected_category == category_name %}bg-primary/10 text-primary{% else %}text-outline{% endif %} text-[10px] px-1.5 py-0.5 rounded-full">{{ rows|length }}</span>
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+
+    {# Content area #}
+    <section class="flex-1 bg-surface p-8 overflow-y-auto">
+        <div class="max-w-3xl">
+            {% include "partials/memory_list.html" %}
+        </div>
+    </section>
+</div>
+{% endblock %}

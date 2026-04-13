@@ -1,0 +1,5 @@
+<span id="sidebar-approvals-badge"
+      class="{% if sidebar_approvals_count %}flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-indigo-100 text-indigo-600 rounded-full{% else %}hidden{% endif %}"
+      hx-get="/approvals/badge"
+      hx-trigger="load, every 30s"
+      hx-swap="outerHTML">{{ sidebar_approvals_count }}</span>

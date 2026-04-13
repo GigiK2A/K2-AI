@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl space-y-6">
+
+  {% if created %}
+  <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
+    Pacchetto aggiunto al workshop.
+  </div>
+  {% endif %}
+
+  {% if deleted %}
+  <div class="rounded-xl border border-rose-100 bg-rose-50 px-5 py-4 text-sm text-rose-800">
+    Pacchetto rimosso dal workshop.
+  </div>
+  {% endif %}
+
+  {% if uploaded %}
+  <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
+    File HTML caricato correttamente.
+  </div>
+  {% endif %}
+
+  {% if removed_file %}
+  <div class="rounded-xl border border-amber-100 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+    File HTML rimosso dal pacchetto.
+  </div>
+  {% endif %}
+
+  <section class="rounded-2xl border border-gray-100 bg-white p-6">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Workshop pubblico</p>
+        <h2 class="mt-2 text-lg font-semibold text-gray-900">Gestione pacchetti pronti</h2>
+        <p class="mt-2 text-sm leading-6 text-gray-600">
+          Qui aggiungi e rimuovi i pacchetti mostrati nella pagina <strong>/workshop.html</strong> del sito.
+          Per ogni pacchetto puoi caricare un file HTML che il visitatore potrà aprire direttamente.
+        </p>
+      </div>
+      <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">{{ packages|length }} pacchetti</span>
+    </div>
+  </section>
+
+  <!-- FORM AGGIUNGI -->
+  <section class="rounded-2xl border border-gray-100 bg-white p-6">
+    <h3 class="text-sm font-semibold uppercase tracking-widest text-gray-500">Aggiungi pacchetto</h3>
+
+    <!-- UPLOAD HTML con AI auto-fill -->
+    <div class="mt-4 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/50 p-4">
+      <p class="text-xs font-medium text-indigo-700 mb-2">
+        Carica il file HTML del pacchetto — l'AI compila automaticamente tutti i campi
+      </p>
+      <div class="flex items-center gap-3 flex-wrap">
+        <input type="file" id="ai-extract-file" accept=".html,.htm"
+               class="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-200" />
+        <button type="button" id="ai-extract-btn"
+                class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled>
+          Compila con AI
+        </button>
+        <span id="ai-extract-status" class="text-xs text-gray-500 hidden"></span>
+      </div>
+    </div>
+
+    <form id="add-package-form" method="post" action="/workshop-admin/add" enctype="multipart/form-data" class="mt-4 grid gap-3 lg:grid-cols-2">
+      <input id="f-title" name="title" required placeholder="Titolo pacchetto"
+             class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <input id="f-subtitle" name="subtitle" placeholder="Sottotitolo"
+             class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <input id="f-price" name="price" placeholder="Prezzo (es. Da €2.900)"
+             class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <input id="f-delivery" name="delivery" placeholder="Delivery (es. 2-4 settimane)"
+             class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <textarea id="f-description" name="description" rows="3" placeholder="Descrizione"
+                class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 lg:col-span-2"></textarea>
+      <textarea id="f-includes" name="includes" rows="5" placeholder="Cosa include (una riga per voce)"
+                class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 lg:col-span-2"></textarea>
+      <input id="f-cta-label" name="cta_label" placeholder="Testo pulsante CTA (es. Richiedi workshop)"
+             class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <input id="f-cta-href" name="cta_href" value="/contatti.html" placeholder="Link CTA (es. /contatti.html)"
+             class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+
+      <!-- File HTML nascosto — viene copiato dal file selezionato sopra -->
+      <input type="file" id="f-html-file" name="html_file" accept=".html,.htm" class="hidden" />
+
+      <div class="lg:col-span-2 flex items-center gap-3">
+        <button type="submit"
+                class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">
+          Aggiungi al workshop
+        </button>
+        <span id="f-file-badge" class="hidden text-xs rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 font-medium">
+          File HTML allegato
+        </span>
+      </div>
+    </form>
+  </section>
+
+  <!-- LISTA PACCHETTI -->
+  <section class="rounded-2xl border border-gray-100 bg-white p-6">
+    <h3 class="text-sm font-semibold uppercase tracking-widest text-gray-500">Pacchetti pubblicati</h3>
+    <div class="mt-4 space-y-4">
+      {% for item in packages %}
+      <div class="rounded-xl border border-gray-100 p-5">
+        <div class="flex items-start justify-between gap-4">
+
+          <!-- Info pacchetto -->
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-900">{{ item.title }}</p>
+            {% if item.subtitle %}
+            <p class="mt-1 text-xs text-gray-500">{{ item.subtitle }}</p>
+            {% endif %}
+            <div class="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+              {% if item.price %}<span class="rounded bg-gray-100 px-2 py-0.5">{{ item.price }}</span>{% endif %}
+              {% if item.delivery %}<span class="rounded bg-gray-100 px-2 py-0.5">{{ item.delivery }}</span>{% endif %}
+            </div>
+            {% if item.description %}
+            <p class="mt-2 text-sm text-gray-600">{{ item.description }}</p>
+            {% endif %}
+            {% if item.includes %}
+            <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-600">
+              {% for row in item.includes %}
+              <li>{{ row }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+
+            <!-- FILE HTML -->
+            <div class="mt-4 rounded-lg border border-dashed border-gray-200 p-3">
+              {% if item.html_file %}
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  File HTML caricato
+                </span>
+                <a href="{{ item.html_file }}" target="_blank"
+                   class="text-xs text-indigo-600 hover:underline truncate max-w-xs">
+                  Apri file →
+                </a>
+                <!-- Sostituisci file -->
+                <form method="post" action="/workshop-admin/{{ item.id }}/upload-html"
+                      enctype="multipart/form-data" class="flex items-center gap-2">
+                  <input type="file" name="html_file" accept=".html,.htm" required
+                         class="text-xs text-gray-500 file:mr-2 file:rounded file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-xs file:text-gray-700 hover:file:bg-gray-200" />
+                  <button type="submit"
+                          class="rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50">
+                    Sostituisci
+                  </button>
+                </form>
+                <!-- Rimuovi file -->
+                <form method="post" action="/workshop-admin/{{ item.id }}/remove-html">
+                  <button type="submit"
+                          onclick="return confirm('Rimuovere il file HTML da questo pacchetto?')"
+                          class="text-xs text-rose-600 hover:underline">
+                    Rimuovi file
+                  </button>
+                </form>
+              </div>
+              {% else %}
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-400">Nessun file HTML caricato</span>
+                <form method="post" action="/workshop-admin/{{ item.id }}/upload-html"
+                      enctype="multipart/form-data" class="flex items-center gap-2">
+                  <input type="file" name="html_file" accept=".html,.htm" required
+                         class="text-xs text-gray-500 file:mr-2 file:rounded file:border-0 file:bg-indigo-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-indigo-700 hover:file:bg-indigo-100" />
+                  <button type="submit"
+                          class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700">
+                    Carica
+                  </button>
+                </form>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Rimuovi pacchetto -->
+          <form method="post" action="/workshop-admin/{{ item.id }}/delete" class="shrink-0">
+            <button type="submit"
+                    onclick="return confirm('Rimuovere questo pacchetto dal workshop?')"
+                    class="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50">
+              Rimuovi
+            </button>
+          </form>
+
+        </div>
+      </div>
+      {% else %}
+      <div class="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500">
+        Nessun pacchetto ancora pubblicato.
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const fileInput  = document.getElementById('ai-extract-file');
+  const extractBtn = document.getElementById('ai-extract-btn');
+  const status     = document.getElementById('ai-extract-status');
+  const hiddenFile = document.getElementById('f-html-file');
+  const fileBadge  = document.getElementById('f-file-badge');
+
+  // Abilita il pulsante quando c'è un file selezionato
+  fileInput.addEventListener('change', () => {
+    extractBtn.disabled = !fileInput.files.length;
+  });
+
+  extractBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    extractBtn.disabled = true;
+    status.textContent  = 'Analisi AI in corso…';
+    status.classList.remove('hidden', 'text-rose-600');
+    status.classList.add('text-indigo-600');
+
+    try {
+      const form = new FormData();
+      form.append('html_file', file);
+      const res  = await fetch('/workshop-admin/extract-fields', { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.detail || 'Errore estrazione');
+      }
+
+      const f = data.fields;
+      setValue('f-title',     f.title     || '');
+      setValue('f-subtitle',  f.subtitle  || '');
+      setValue('f-price',     f.price     || '');
+      setValue('f-delivery',  f.delivery  || '');
+      setValue('f-description', f.description || '');
+      setValue('f-includes',  Array.isArray(f.includes) ? f.includes.join('\n') : (f.includes || ''));
+      setValue('f-cta-label', f.cta_label || '');
+      setValue('f-cta-href',  f.cta_href  || '/contatti.html');
+
+      // Trasferisce il file selezionato nel campo hidden del form
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      hiddenFile.files = dt.files;
+      fileBadge.classList.remove('hidden');
+
+      status.textContent = 'Campi compilati. Controlla e salva.';
+      status.classList.replace('text-indigo-600', 'text-emerald-700');
+    } catch (err) {
+      status.textContent = 'Errore: ' + err.message;
+      status.classList.replace('text-indigo-600', 'text-rose-600');
+    } finally {
+      extractBtn.disabled = false;
+    }
+  });
+
+  function setValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  }
+})();
+</script>
+{% endblock %}

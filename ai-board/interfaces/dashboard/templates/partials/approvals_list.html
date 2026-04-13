@@ -1,0 +1,120 @@
+{# Pending panel #}
+<div id="panel-pending" class="tab-panel space-y-5">
+    {% for item in pending %}
+    <div class="approval-card group relative bg-surface-container-low p-6 rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300">
+        <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-primary shrink-0">
+                    <span class="material-symbols-outlined text-[22px]">
+                        {% if item.content_type == "linkedin_post" or item.content_type == "post" %}article
+                        {% elif item.content_type == "report" or item.content_type == "market_report" %}insights
+                        {% elif item.content_type == "lead_list" or item.content_type == "prospect" %}group_add
+                        {% elif item.content_type == "email" or item.content_type == "outreach" %}mail
+                        {% else %}draft{% endif %}
+                    </span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-on-surface">{{ item.agent }}</span>
+                        <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                        <span class="text-[11px] font-medium text-outline uppercase tracking-wider">{{ (item.content_type or "draft").replace("_", " ") }}</span>
+                    </div>
+                    <p class="text-[11px] text-on-surface-variant mt-0.5">{{ item.created_at|datetime }}</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button class="bg-white/80 border border-outline-variant/30 text-on-surface-variant p-2 rounded-lg hover:bg-white hover:text-primary transition-all"
+                        hx-get="/approvals/{{ item.id }}/full"
+                        hx-target="#approval-modal"
+                        hx-swap="innerHTML">
+                    <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+                </button>
+            </div>
+        </div>
+        <div class="mb-6 pl-14">
+            <p class="text-on-surface leading-relaxed text-[15px] font-medium line-clamp-2">{{ (item.content_preview or "Nessuna anteprima disponibile.")|plain_text }}</p>
+        </div>
+        <div class="pl-14 flex items-center gap-3 flex-wrap">
+            <form hx-post="/approvals/{{ item.id }}/approve" hx-target="#approvals-list" hx-swap="outerHTML">
+                <button type="submit" class="bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-emerald-600 active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                    Approva
+                </button>
+            </form>
+            <form hx-post="/approvals/{{ item.id }}/reject" hx-target="#approvals-list" hx-swap="outerHTML">
+                <button type="submit" class="bg-rose-500 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-rose-600 active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-[18px]">cancel</span>
+                    Rifiuta
+                </button>
+            </form>
+            <button class="bg-slate-100 text-slate-600 px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-200 transition-all"
+                    hx-get="/approvals/{{ item.id }}/full"
+                    hx-target="#approval-modal"
+                    hx-swap="innerHTML">
+                <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+                Vedi completo
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <span class="material-symbols-outlined text-[48px] text-outline-variant mb-4">check_circle</span>
+        <p class="text-base font-semibold text-on-surface">Tutto approvato</p>
+        <p class="text-sm text-on-surface-variant mt-1">Nessun draft in attesa di revisione.</p>
+    </div>
+    {% endfor %}
+</div>
+
+{# Approved panel #}
+<div id="panel-approved" class="tab-panel hidden space-y-4">
+    {% for item in approved %}
+    <div class="approval-card flex items-start gap-4 p-5 bg-surface-container-lowest rounded-xl border border-outline-variant/10 hover:border-emerald-200 transition-all">
+        <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">task_alt</span>
+        </div>
+        <div class="flex-1">
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-sm font-bold text-on-surface">{{ item.agent }}</span>
+                <span class="text-[11px] text-on-surface-variant">{{ item.reviewed_at|datetime }}</span>
+            </div>
+            <p class="text-sm text-on-surface-variant mt-1">{{ item.content_preview|plain_text|truncate(160) }}</p>
+        </div>
+        <span class="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase rounded-full shrink-0">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Approvato
+        </span>
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <span class="material-symbols-outlined text-[48px] text-outline-variant mb-4">history</span>
+        <p class="text-sm text-on-surface-variant">Nessun draft approvato di recente.</p>
+    </div>
+    {% endfor %}
+</div>
+
+{# Rejected panel #}
+<div id="panel-rejected" class="tab-panel hidden space-y-4">
+    {% for item in rejected %}
+    <div class="approval-card flex items-start gap-4 p-5 bg-surface-container-lowest rounded-xl border border-outline-variant/10 hover:border-rose-200 transition-all">
+        <div class="w-9 h-9 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">cancel</span>
+        </div>
+        <div class="flex-1">
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-sm font-bold text-on-surface">{{ item.agent }}</span>
+                <span class="text-[11px] text-on-surface-variant">{{ item.reviewed_at|datetime }}</span>
+            </div>
+            <p class="text-sm text-on-surface-variant mt-1">{{ item.content_preview|plain_text|truncate(160) }}</p>
+        </div>
+        <span class="flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold uppercase rounded-full shrink-0">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+            Rifiutato
+        </span>
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <span class="material-symbols-outlined text-[48px] text-outline-variant mb-4">history</span>
+        <p class="text-sm text-on-surface-variant">Nessun rifiuto registrato.</p>
+    </div>
+    {% endfor %}
+</div>

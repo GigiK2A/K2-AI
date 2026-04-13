@@ -1,0 +1,8 @@
+<div class="markdown-toolbar flex flex-wrap gap-2">
+    <button type="button" onclick="window.aiBoard.insertMarkdown('{{ textarea_id }}', '**', '**', 'grassetto')">B</button>
+    <button type="button" onclick="window.aiBoard.insertMarkdown('{{ textarea_id }}', '*', '*', 'corsivo')"><em>I</em></button>
+    <button type="button" onclick="window.aiBoard.insertMarkdownBlock('{{ textarea_id }}', '- punto 1\n- punto 2')">Lista</button>
+    <button type="button" onclick="window.aiBoard.insertMarkdownBlock('{{ textarea_id }}', '| Colonna | Valore |\n| --- | --- |\n| Riga | Dato |')">Tabella</button>
+    <button type="button" onclick="window.aiBoard.insertMarkdownBlock('{{ textarea_id }}', '> Nota importante')">Quote</button>
+    <button type="button" onclick="window.aiBoard.insertMarkdownBlock('{{ textarea_id }}', '```text\ncontenuto\n```')">Code</button>
+</div>
