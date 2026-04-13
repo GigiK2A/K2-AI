@@ -41,10 +41,20 @@ async def startup_checks() -> None:
 
     logger.success(f"Agenti unificati: {len(AGENT_REGISTRY)} caricati")
 
-    if not settings.anthropic_api_key.startswith("sk-ant"):
-        logger.warning("ANTHROPIC_API_KEY non sembra valida — il failover verso Anthropic non sarà disponibile.")
-    if not settings.openai_api_key.startswith("sk-"):
-        logger.warning("OPENAI_API_KEY non sembra valida — il failover verso OpenAI non sarà disponibile.")
+    if settings.anthropic_api_key:
+        if not settings.anthropic_api_key.startswith("sk-ant"):
+            logger.warning("ANTHROPIC_API_KEY non sembra valida — il failover verso Anthropic non sarà disponibile.")
+    else:
+        logger.warning("ANTHROPIC_API_KEY non impostata — Anthropic non sarà disponibile.")
+
+    if settings.openai_api_key:
+        if not settings.openai_api_key.startswith("sk-"):
+            logger.warning("OPENAI_API_KEY non sembra valida — il failover verso OpenAI non sarà disponibile.")
+    else:
+        logger.warning("OPENAI_API_KEY non impostata — OpenAI non sarà disponibile.")
+
+    if not settings.telegram_bot_token or not settings.telegram_chat_id:
+        logger.warning("Telegram non configurato: bot Telegram non verrà avviato.")
 
     console.print("[green]Sistema pronto[/green]")
     console.print(f"  Supabase: {'connesso' if supabase_configured() else 'disattivo (Notion-only)'}")
@@ -92,10 +102,13 @@ async def main():
     server = uvicorn.Server(config)
 
     tg_app = None
-    if settings.telegram_mode == "webhook" and settings.telegram_webhook_url:
-        tg_app = await start_webhook(settings.telegram_webhook_url)
+    if settings.telegram_bot_token and settings.telegram_chat_id:
+        if settings.telegram_mode == "webhook" and settings.telegram_webhook_url:
+            tg_app = await start_webhook(settings.telegram_webhook_url)
+        else:
+            tg_app = await start_polling()
     else:
-        tg_app = await start_polling()
+        logger.warning("Bot Telegram non avviato: mancano TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID.")
 
     stop_event = asyncio.Event()
     signal_task = asyncio.create_task(_wait_for_signal(stop_event))

@@ -151,6 +151,17 @@
   <script type="module" src="./js/nav.js"></script>
   <script type="module">
     const API_BASE_URL = import.meta.env?.VITE_KAI_API_BASE_URL || '';
+    function resolveApiBaseUrl() {
+      if (API_BASE_URL.trim()) {
+        return API_BASE_URL.replace(/\/$/, '');
+      }
+      if (import.meta.env?.DEV) {
+        return '';
+      }
+      return window.location.origin.replace(/\/$/, '');
+    }
+
+    const WORKSHOP_BASE_URL = resolveApiBaseUrl();
 
     async function loadWorkshopPackages() {
       const loading = document.getElementById('workshop-loading');
@@ -158,7 +169,7 @@
       const error = document.getElementById('workshop-error');
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/workshop/packages`, {
+        const res = await fetch(`${WORKSHOP_BASE_URL}/api/workshop/packages`, {
           headers: { 'Accept': 'application/json' },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -183,7 +194,7 @@
               </ul>
             ` : ''}
             ${pkg.html_url ? `
-            <a href="${escAttr(API_BASE_URL + pkg.html_url)}" target="_blank" rel="noopener"
+            <a href="${escAttr(WORKSHOP_BASE_URL + pkg.html_url)}" target="_blank" rel="noopener"
                class="btn full-width-button" style="margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px">
               <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Apri scheda pacchetto

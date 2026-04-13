@@ -7,11 +7,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # LLM — Anthropic
-    anthropic_api_key: str = Field(..., description="Chiave API Anthropic")
+    anthropic_api_key: Optional[str] = Field(default=None, description="Chiave API Anthropic")
     default_anthropic_model: str = Field(default="claude-sonnet-4-6")
 
     # LLM — OpenAI
-    openai_api_key: str = Field(..., description="Chiave API OpenAI")
+    openai_api_key: Optional[str] = Field(default=None, description="Chiave API OpenAI")
     default_openai_model: str = Field(default="gpt-4o")
     default_openai_mini_model: str = Field(default="gpt-4o-mini")
     tavily_api_key: Optional[str] = Field(default=None)
@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     supabase_service_key: Optional[str] = Field(default=None, description="Chiave service role Supabase")
 
     # Telegram
-    telegram_bot_token: str = Field(..., description="Token bot Telegram")
-    telegram_chat_id: str = Field(..., description="Chat ID del fondatore")
+    telegram_bot_token: Optional[str] = Field(default=None, description="Token bot Telegram")
+    telegram_chat_id: Optional[str] = Field(default=None, description="Chat ID del fondatore")
     telegram_mode: str = Field(default="polling")
     telegram_webhook_url: Optional[str] = Field(default=None)
 
