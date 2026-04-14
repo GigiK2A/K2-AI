@@ -1,8 +1,10 @@
-const HERO_VIDEO_PLAYBACK_RATE = 1;
-const HERO_VIDEO_VERSION = '20260414-2';
+const HERO_VIDEO_PLAYBACK_RATE = 1.15;
+const HERO_VIDEO_VERSION = '20260414-3';
 const HERO_MEDIA = {
+  mobileVideo: `/hero-mobile.mp4?v=${HERO_VIDEO_VERSION}`,
   portraitVideo: `/hero-portrait-k2.mp4?v=${HERO_VIDEO_VERSION}`,
   landscapeVideo: `/hero-landscape-k2.mp4?v=${HERO_VIDEO_VERSION}`,
+  mobilePoster: '/hero-mobile-static.png',
   portraitPoster: '/hero-portrait-k2-static.png',
   landscapePoster: '/hero-landscape-k2-static.png'
 };
@@ -39,11 +41,24 @@ document.addEventListener('DOMContentLoaded', () => {
     return window.matchMedia('(orientation: portrait)').matches || window.innerHeight > window.innerWidth;
   }
 
+  function isMobileViewport() {
+    return window.matchMedia('(max-width: 900px)').matches;
+  }
+
   function applyHeroMedia() {
     if (!video) return;
     const portrait = isPortraitViewport();
-    const nextVideo = portrait ? HERO_MEDIA.portraitVideo : HERO_MEDIA.landscapeVideo;
-    const nextPoster = portrait ? HERO_MEDIA.portraitPoster : HERO_MEDIA.landscapePoster;
+    const mobile = isMobileViewport();
+    let nextVideo = HERO_MEDIA.landscapeVideo;
+    let nextPoster = HERO_MEDIA.landscapePoster;
+
+    if (mobile && portrait) {
+      nextVideo = HERO_MEDIA.mobileVideo;
+      nextPoster = HERO_MEDIA.mobilePoster;
+    } else if (portrait) {
+      nextVideo = HERO_MEDIA.portraitVideo;
+      nextPoster = HERO_MEDIA.portraitPoster;
+    }
 
     if (staticFrameImg) {
       staticFrameImg.src = nextPoster;
@@ -79,16 +94,21 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
+  video.muted = true;
+  video.playsInline = true;
   video.playbackRate = HERO_VIDEO_PLAYBACK_RATE;
-  video.loop = true;
+  video.loop = false;
 
   video.addEventListener('error', skipIntro, { once: true });
 
-  videoFallback = window.setTimeout(showContent, 3000);
+  video.addEventListener('ended', showContent, { once: true });
 
   video.addEventListener('playing', () => {
     window.clearTimeout(videoFallback);
-    window.setTimeout(showContent, 3000);
+    const remainingSeconds = Number.isFinite(video.duration) && video.duration > 0
+      ? Math.max(1, (video.duration - video.currentTime) / Math.max(0.1, video.playbackRate))
+      : 8;
+    videoFallback = window.setTimeout(showContent, Math.ceil((remainingSeconds + 1) * 1000));
   }, { once: true });
 
   video.preload = 'auto';
