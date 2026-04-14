@@ -16,7 +16,7 @@ function resolveApiBaseUrl() {
   if (import.meta.env.DEV) {
     return '';
   }
-  return window.location.origin.replace(/\/$/, '');
+  return 'https://api.k2-ai.it';
 }
 
 const CHAT_ENDPOINT = `${resolveApiBaseUrl()}/api/intake/kbot-chat`;

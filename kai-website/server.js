@@ -17,6 +17,7 @@ const MIME_TYPES = {
   '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',
@@ -38,15 +39,48 @@ function send(res, status, headers, body) {
   res.end(body);
 }
 
-function serveFile(res, filePath) {
-  fs.readFile(filePath, (err, data) => {
+function serveFile(req, res, filePath) {
+  fs.stat(filePath, (statErr, stats) => {
+    if (statErr || !stats.isFile()) {
+      send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not found');
+      return;
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+    const range = req.headers.range;
+
+    if (range) {
+      const match = range.match(/bytes=(\d*)-(\d*)/);
+      const start = match && match[1] ? parseInt(match[1], 10) : 0;
+      const end = match && match[2] ? parseInt(match[2], 10) : stats.size - 1;
+
+      if (!match || start >= stats.size || end >= stats.size || start > end) {
+        send(res, 416, { 'Content-Range': `bytes */${stats.size}` }, '');
+        return;
+      }
+
+      res.writeHead(206, {
+        'Content-Type': contentType,
+        'Content-Length': String(end - start + 1),
+        'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+        'Accept-Ranges': 'bytes'
+      });
+      fs.createReadStream(filePath, { start, end }).pipe(res);
+      return;
+    }
+
+    fs.readFile(filePath, (err, data) => {
     if (err) {
       send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not found');
       return;
     }
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-    send(res, 200, { 'Content-Type': contentType }, data);
+      send(res, 200, {
+        'Content-Type': contentType,
+        'Content-Length': String(stats.size),
+        'Accept-Ranges': 'bytes'
+      }, data);
+    });
   });
 }
 
@@ -65,7 +99,7 @@ const server = http.createServer((req, res) => {
 
   const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
   const filePath = path.join(DIST_DIR, safePath);
-  serveFile(res, filePath);
+  serveFile(req, res, filePath);
 });
 
 server.listen(PORT, '0.0.0.0', () => {
