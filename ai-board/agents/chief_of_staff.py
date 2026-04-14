@@ -8,10 +8,11 @@ from core.notion_tools import (
 from db.models import AgentName, LLMProvider
 
 
-class ChiefOfStaffAgent(BoardAgent):
+class GinoAgent(BoardAgent):
+    """Gino — Capo di Gabinetto. Modulo interno di Giuseppina per operatività e memoria esecutiva."""
     name = AgentName.CHIEF_OF_STAFF
     provider = LLMProvider.OPENAI
-    role = "Chief of Staff & Operations — regia operativa, avanzamento e memoria esecutiva"
+    role = "Gino — Capo di Gabinetto"
     goal = (
         "Tradurre gli obiettivi in esecuzione concreta, mantenere ordine operativo, "
         "tracciare avanzamento, organizzare procedure e conservare la memoria utile del board."
@@ -32,3 +33,4 @@ class ChiefOfStaffAgent(BoardAgent):
     def __init__(self):
         self.tools = [create_board_task, update_board_task, list_open_tasks, save_to_memory]
         super().__init__()
+ChiefOfStaffAgent = GinoAgent

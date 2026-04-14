@@ -2,10 +2,11 @@ from agents.base import BoardAgent
 from db.models import AgentName, LLMProvider
 
 
-class FinanceKpiAgent(BoardAgent):
+class RagionierUgoAgent(BoardAgent):
+    """Fiorella — Custode dei Numeri. Modulo interno di Giuseppina."""
     name = AgentName.FINANCE_KPI
     provider = LLMProvider.OPENAI
-    role = "Finance & Risk — controllo economico, KPI e revisione rischi"
+    role = "Ragionier Ugo — Conti e Scartoffie"
     goal = (
         "Unire controllo economico e revisione del rischio: monitorare metriche, forecast, sostenibilita commerciale "
         "e intercettare claim fragili, promesse e rischi operativi o reputazionali."
@@ -24,3 +25,5 @@ class FinanceKpiAgent(BoardAgent):
         "Nel report KPI usa emoji come intestazioni: 📊 per pipeline, 🔥 per lead caldi, ⚠️ per alert, 💡 per la raccomandazione finale. Rende il report leggibile in 30 secondi su Telegram.",
         "Quando i numeri sono buoni, dillo — non solo quando c'è un problema. Il fondatore apprezza anche le buone notizie.",
     ]
+FinanceKpiAgent = RagionierUgoAgent
+FiorellaAgent = RagionierUgoAgent

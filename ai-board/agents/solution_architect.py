@@ -2,7 +2,8 @@ from agents.base import BoardAgent
 from db.models import AgentName, LLMProvider
 
 
-class SolutionArchitectAgent(BoardAgent):
+class ArchimedeAgent(BoardAgent):
+    """Archimede — Genio Tecnico. Modulo interno di Giuseppina."""
     name = AgentName.SOLUTION_ARCHITECT
     provider = LLMProvider.ANTHROPIC
     role = "Solution & Delivery — progettazione tecnica e guida alla consegna"
@@ -22,3 +23,4 @@ class SolutionArchitectAgent(BoardAgent):
         "Ogni blueprint deve essere comprensibile dal cliente non tecnico",
         "Quando il progetto e gia attivo, rispondi anche come assistente tecnico della commessa: stato, blocchi, prossimi passi, dipendenze",
     ]
+SolutionArchitectAgent = ArchimedeAgent

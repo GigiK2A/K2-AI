@@ -27,7 +27,8 @@ from agents.base import BoardAgent, get_search_tool
 from db.models import AgentName, LLMProvider
 
 
-class GeoSeoAgent(BoardAgent):
+class GeografinoAgent(BoardAgent):
+    """Geografino — Il Cercatore. Modulo interno di Giuseppina."""
     name = AgentName.GEO_SEO
     provider = LLMProvider.ANTHROPIC
     fallback_provider = LLMProvider.OPENAI
@@ -238,3 +239,4 @@ class GeoSeoAgent(BoardAgent):
     def __init__(self):
         self.tools = [get_search_tool()]
         super().__init__()
+GeoSeoAgent = GeografinoAgent

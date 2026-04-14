@@ -19,8 +19,8 @@ from core.orchestrator import chat_agent, run_agent, run_objective
 from core.text import markdown_to_plain_text, truncate_text
 from db.client import get_service_client
 from db.models import AgentName
-from interfaces.telegram.assistant import cancel_word, confirm_word, execute_pending_action, handle_text_message
-from interfaces.telegram.keyboards import approval_keyboard, agent_selector_keyboard
+from interfaces.telegram.assistant import cancel_word, confirm_word, execute_action, execute_pending_action, handle_text_message, operational_shortcut
+from interfaces.telegram.keyboards import approval_keyboard
 
 PENDING_ATTACHMENTS_KEY = "pending_telegram_attachments"
 TELEGRAM_CHAT_UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads" / "chat" / "telegram"
@@ -440,38 +440,30 @@ async def task_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Redirect: tutto passa da Giuseppina. /agent è rimasto per compatibilità."""
     if not is_authorized(update) or not update.message:
         return
 
-    if context.args and len(context.args) >= 2:
-        agent_str = context.args[0]
-        task = " ".join(context.args[1:])
-        try:
-            agent_name = AgentName(agent_str)
-        except ValueError:
-            await update.message.reply_text(
-                f"Agente non trovato: `{agent_str}`\nUsa /agent per vedere la lista.",
-                parse_mode=ParseMode.MARKDOWN,
-            )
-            return
-
-        msg = await update.message.reply_text(f"Esecuzione `{agent_name.value}`...", parse_mode=ParseMode.MARKDOWN)
-        result = await run_agent_async(agent_name, task, _telegram_agent_chat_context(agent_name))
+    task = " ".join(context.args) if context.args else ""
+    if task:
+        msg = await update.message.reply_text("Giuseppina ci pensa...", parse_mode=ParseMode.MARKDOWN)
+        orchestrator_ctx = _telegram_agent_chat_context(AgentName.ORCHESTRATOR)
+        result = await run_agent_async(AgentName.ORCHESTRATOR, task, orchestrator_ctx)
         if result["status"] == "error":
             await msg.edit_text(f"Errore: {result.get('error')}")
             return
-
         output = truncate(result.get("output", ""))
         approval_id = result.get("approval_id")
         keyboard = approval_keyboard(approval_id) if approval_id else None
-        context.user_data["active_agent_chat"] = agent_name.value
+        context.user_data["active_agent_chat"] = AgentName.ORCHESTRATOR.value
         await msg.edit_text(
-            f"{agent_name.value} — Draft pronto\n\n{output}\n\n[Chat attiva: scrivi \"esci dalla chat\" per chiuderla]",
+            f"Giuseppina\n\n{output}\n\n[Chat attiva: scrivi \"esci dalla chat\" per chiuderla]",
             reply_markup=keyboard,
         )
-        return
-
-    await update.message.reply_text("Seleziona un agente:", reply_markup=agent_selector_keyboard())
+    else:
+        await update.message.reply_text(
+            "Scrivi direttamente il tuo messaggio — Giuseppina gestisce tutto."
+        )
 
 
 async def approvals_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -697,23 +689,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     normalized_text = markdown_to_plain_text(text).strip()
 
-    if "selected_agent" in context.user_data:
-        agent_str = context.user_data.pop("selected_agent")
-        try:
-            agent_name = AgentName(agent_str)
-        except ValueError:
-            await update.message.reply_text(f"Agente non valido: {agent_str}")
-            return
-
-        msg = await update.message.reply_text(f"...", parse_mode=ParseMode.MARKDOWN)
-        response_text = await chat_agent_async(agent_name, text, _telegram_agent_chat_context(agent_name))
-        context.user_data["active_agent_chat"] = agent_name.value
-        agent_display = agent_name.value.replace("_", " ").title()
-        await msg.edit_text(
-            f"{agent_display}\n\n{truncate(response_text)}\n\n[scrivi \"esci dalla chat\" per chiudere]",
-        )
-        return
-
     if "pending_assistant_action" in context.user_data:
         if confirm_word(normalized_text):
             pending_action = context.user_data.pop("pending_assistant_action")
@@ -750,43 +725,48 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if "active_agent_chat" in context.user_data:
         if normalized_text.lower() in CHAT_EXIT_PHRASES:
-            agent_name = context.user_data.pop("active_agent_chat")
+            context.user_data.pop("active_agent_chat")
             _pop_pending_attachments(context)
-            await update.message.reply_text(f"Chat con {agent_name.replace('_', ' ').title()} chiusa.")
+            await update.message.reply_text("Ok, sono qui se hai altro.")
             return
+        # Redirect: active_agent_chat non bypassa più Giuseppina
+        # Cade nel blocco Giuseppina sotto
 
-        active_agent = context.user_data["active_agent_chat"]
+    # Shortcut operativi espliciti (approvals, logs, status, pipeline list)
+    shortcut = operational_shortcut(normalized_text)
+    if shortcut:
         try:
-            agent_name = AgentName(active_agent)
-        except ValueError:
-            context.user_data.pop("active_agent_chat", None)
-            await update.message.reply_text("La chat agente attiva non è più valida. Usa /agent per riaprirla.")
+            response = await run_sync(execute_action, shortcut)
+        except Exception as exc:
+            logger.exception(f"Errore in operational_shortcut: {exc}")
+            await update.message.reply_text(f"Errore: {str(exc)[:200]}")
             return
-
-        pending_attachments = _pop_pending_attachments(context)
-        task_with_attachments = _build_task_with_attachments(text, pending_attachments)
-        chat_ctx = _telegram_agent_chat_context(agent_name)
-        if pending_attachments:
-            chat_ctx["attachments"] = [{"name": a["name"], "path": a["path"], "size_bytes": a["size_bytes"], "excerpt": a.get("excerpt")} for a in pending_attachments]
-
-        response_text = await chat_agent_async(agent_name, task_with_attachments, chat_ctx)
-        await update.message.reply_text(truncate(response_text))
+        if response.pending_action:
+            context.user_data["pending_assistant_action"] = response.pending_action
+        if response.delegate:
+            await _dispatch_delegate(update, context, response.delegate)
+            return
+        await update.message.reply_text(response.text)
         return
 
+    # Tutti gli altri messaggi → Giuseppina
+    pending_attachments = _pop_pending_attachments(context)
+    task_with_attachments = _build_task_with_attachments(text, pending_attachments)
+    chat_ctx = _telegram_agent_chat_context(AgentName.ORCHESTRATOR)
+    if pending_attachments:
+        chat_ctx["attachments"] = [
+            {"name": a["name"], "path": a["path"], "size_bytes": a["size_bytes"], "excerpt": a.get("excerpt")}
+            for a in pending_attachments
+        ]
+
+    msg = await update.message.reply_text("…")
     try:
-        response = await run_sync(handle_text_message, normalized_text)
+        response_text = await chat_agent_async(AgentName.ORCHESTRATOR, task_with_attachments, chat_ctx)
     except Exception as exc:
-        logger.exception(f"Errore in handle_text_message: {exc}")
-        await update.message.reply_text(f"Errore durante l'elaborazione.\n\nDettaglio: {str(exc)[:200]}")
+        logger.exception(f"Errore chat Giuseppina: {exc}")
+        await msg.edit_text(f"Errore durante l'elaborazione.\n\nDettaglio: {str(exc)[:200]}")
         return
-    if response.pending_action:
-        context.user_data["pending_assistant_action"] = response.pending_action
-    if response.activate_agent_chat:
-        context.user_data["active_agent_chat"] = response.activate_agent_chat
-    if response.delegate:
-        await _dispatch_delegate(update, context, response.delegate)
-        return
-    await update.message.reply_text(response.text)
+    await msg.edit_text(truncate(response_text))
 
 
 async def attachment_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):

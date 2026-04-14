@@ -67,6 +67,46 @@ def handle_text_message(text: str) -> AssistantResponse:
     return execute_action(action)
 
 
+def operational_shortcut(text: str) -> dict[str, Any] | None:
+    """
+    Intercetta solo i comandi operativi espliciti e non ambigui.
+    Restituisce None per tutto il resto — il messaggio andrà a Giuseppina.
+    NON gestisce: quick_chat, run_objective, run_agent, greetings.
+    """
+    lowered = _normalize(text)
+    if not lowered:
+        return {"action": "help"}
+
+    if _contains_any(lowered, ("che lavori ci sono", "quali lavori ci sono", "quali commesse", "quali progetti",
+                               "lista lavori", "lista commesse", "lista progetti", "mostra lavori",
+                               "mostra le commesse", "fammi vedere i lavori", "fammi vedere le commesse")):
+        return {"action": "list_projects"}
+
+    if _contains_any(lowered, ("stato board", "come siamo messi", "situazione generale", "status board", "stato generale")):
+        return {"action": "status"}
+
+    if ("draft" in lowered or "approvaz" in lowered):
+        if _contains_any(lowered, list(LIST_WORDS) + ["quanti"]):
+            return {"action": "list_approvals"}
+        if "approva" in lowered:
+            approval_id = _extract_approval_id(text)
+            return {"action": "approve_approval", "target_id": approval_id, "latest": approval_id is None}
+        if "rifiuta" in lowered or "rigetta" in lowered:
+            approval_id = _extract_approval_id(text)
+            return {"action": "reject_approval", "target_id": approval_id, "latest": approval_id is None}
+
+    if "log" in lowered and _contains_any(lowered, list(LIST_WORDS) + ["ultimi", "recenti"]):
+        return {"action": "list_logs"}
+
+    if "pipeline" in lowered and _contains_any(lowered, list(LIST_WORDS) + ["stato"]):
+        return {"action": "list_pipeline"}
+
+    if "memoria" in lowered and _contains_any(lowered, list(LIST_WORDS)):
+        return {"action": "list_memory"}
+
+    return None
+
+
 def execute_pending_action(action: dict[str, Any]) -> AssistantResponse:
     return execute_action(action, confirmed=True)
 

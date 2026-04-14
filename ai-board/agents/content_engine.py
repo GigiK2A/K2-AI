@@ -41,7 +41,8 @@ from agents.base import BoardAgent
 from db.models import AgentName, LLMProvider
 
 
-class ContentEngineAgent(BoardAgent):
+class GenoveffaAgent(BoardAgent):
+    """Genoveffa — Regina dei Contenuti. Modulo interno di Giuseppina."""
     name = AgentName.CONTENT_ENGINE
     provider = LLMProvider.ANTHROPIC
     fallback_provider = LLMProvider.OPENAI
@@ -264,3 +265,4 @@ class ContentEngineAgent(BoardAgent):
         "esplicitamente una richiesta di file ('dammi il PDF', 'genera il report', 'crea la proposta'). "
         "Analisi, pareri, valutazioni di opzioni, consigli strategici → SEMPRE testo, mai un documento.",
     ]
+ContentEngineAgent = GenoveffaAgent

@@ -2,27 +2,27 @@ from typing import Optional
 
 from loguru import logger
 
-from agents.chief_of_staff import ChiefOfStaffAgent
-from agents.content_engine import ContentEngineAgent
-from agents.finance_kpi import FinanceKpiAgent
-from agents.geo_seo import GeoSeoAgent
-from agents.legal import LegalAgent
+from agents.chief_of_staff import GinoAgent
+from agents.content_engine import GenoveffaAgent
+from agents.finance_kpi import RagionierUgoAgent
+from agents.geo_seo import GeografinoAgent
+from agents.legal import AvvocataPinaAgent
 from agents.market_intelligence import MarketIntelligenceAgent
-from agents.orchestrator import OrchestratorAgent
-from agents.sales_enablement import SalesEnablementAgent
-from agents.solution_architect import SolutionArchitectAgent
+from agents.orchestrator import GiuseppinaAgent
+from agents.sales_enablement import PeppePipelineAgent
+from agents.solution_architect import ArchimedeAgent
 from db.models import AgentName
 
 AGENT_REGISTRY: dict[AgentName, type] = {
-    AgentName.ORCHESTRATOR: OrchestratorAgent,
-    AgentName.CHIEF_OF_STAFF: ChiefOfStaffAgent,
-    AgentName.CONTENT_ENGINE: ContentEngineAgent,
+    AgentName.ORCHESTRATOR: GiuseppinaAgent,
+    AgentName.CHIEF_OF_STAFF: GinoAgent,
+    AgentName.CONTENT_ENGINE: GenoveffaAgent,
     AgentName.MARKET_INTELLIGENCE: MarketIntelligenceAgent,
-    AgentName.SALES_ENABLEMENT: SalesEnablementAgent,
-    AgentName.SOLUTION_ARCHITECT: SolutionArchitectAgent,
-    AgentName.FINANCE_KPI: FinanceKpiAgent,
-    AgentName.LEGAL: LegalAgent,
-    AgentName.GEO_SEO: GeoSeoAgent,
+    AgentName.SALES_ENABLEMENT: PeppePipelineAgent,
+    AgentName.SOLUTION_ARCHITECT: ArchimedeAgent,
+    AgentName.FINANCE_KPI: RagionierUgoAgent,
+    AgentName.LEGAL: AvvocataPinaAgent,
+    AgentName.GEO_SEO: GeografinoAgent,
 }
 
 AGENT_ALIAS_MAP: dict[AgentName, AgentName] = {

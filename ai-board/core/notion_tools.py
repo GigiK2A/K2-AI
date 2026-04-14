@@ -287,3 +287,113 @@ def list_pipeline_status(limit: int = 15) -> str:
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore list_pipeline_status: {exc}")
         return f"Errore lettura pipeline: {exc}"
+
+
+def list_clients(limit: int = 20) -> str:
+    """
+    Legge l'elenco dei clienti dal database Clienti di Notion.
+    Usa questa funzione per vedere i clienti esistenti, cercare un cliente per nome o settore.
+
+    Args:
+        limit: Numero massimo di clienti da restituire (default 20).
+
+    Returns:
+        Elenco clienti con nome, settore, stato relazione e contatto.
+    """
+    if not notion_board.notion_enabled():
+        return "Notion non abilitato."
+    try:
+        clients = notion_board.list_clients()[:limit]
+        if not clients:
+            return "Nessun cliente trovato nel database Clienti."
+        lines = [f"Clienti ({len(clients)}):"]
+        for c in clients:
+            name = c.get("company_name") or c.get("name") or "—"
+            sector = c.get("sector") or "—"
+            status = c.get("relationship_status") or c.get("stato_relazione") or "—"
+            contact = c.get("contact_name") or "—"
+            email = c.get("email") or ""
+            lines.append(f"- {name} | settore: {sector} | stato: {status} | referente: {contact}{' | ' + email if email else ''}")
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.warning(f"[notion_tools] Errore list_clients: {exc}")
+        return f"Errore lettura clienti: {exc}"
+
+
+def search_client(name_or_company: str) -> str:
+    """
+    Cerca un cliente specifico nel database Clienti di Notion per nome o azienda.
+    Usa questa funzione quando il fondatore menziona un cliente specifico e vuoi
+    verificarne i dati o collegarlo a un task/pipeline.
+
+    Args:
+        name_or_company: Nome del cliente o dell'azienda da cercare.
+
+    Returns:
+        Dettagli del cliente trovato, o messaggio se non trovato.
+    """
+    if not notion_board.notion_enabled():
+        return "Notion non abilitato."
+    try:
+        client = notion_board.find_client_by_name(name_or_company)
+        if not client:
+            return f"Nessun cliente trovato con il nome '{name_or_company}'."
+        name = client.get("company_name") or client.get("name") or "—"
+        lines = [
+            f"Cliente trovato: {name}",
+            f"Settore: {client.get('sector') or '—'}",
+            f"Referente: {client.get('contact_name') or '—'}",
+            f"Email: {client.get('email') or '—'}",
+            f"Telefono: {client.get('phone') or '—'}",
+            f"Stato relazione: {client.get('relationship_status') or '—'}",
+            f"Note: {client.get('notes') or '—'}",
+            f"ID Notion: {client.get('id', '')[:8]}...",
+        ]
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.warning(f"[notion_tools] Errore search_client: {exc}")
+        return f"Errore ricerca cliente: {exc}"
+
+
+def create_or_update_client(
+    company_name: str,
+    contact_name: str = "",
+    email: str = "",
+    sector: str = "",
+    phone: str = "",
+    notes: str = "",
+) -> str:
+    """
+    Crea un nuovo cliente in Notion o aggiorna uno esistente se trovato per nome/email.
+    Usa questa funzione quando il fondatore dice 'aggiungi cliente', 'crea cliente',
+    'inserisci questa azienda nei clienti' o simili.
+
+    Args:
+        company_name: Nome dell'azienda (obbligatorio).
+        contact_name: Nome del referente principale.
+        email: Email aziendale o del referente.
+        sector: Settore (es. Manifatturiero, Retail, Hospitality, Tecnologia).
+        phone: Numero di telefono.
+        notes: Note aggiuntive, contesto, provenienza.
+
+    Returns:
+        Conferma creazione/aggiornamento con ID Notion, o messaggio di errore.
+    """
+    if not notion_board.notion_enabled():
+        return "Notion non abilitato — cliente non salvato."
+    if not company_name or not company_name.strip():
+        return "Per creare un cliente mi serve almeno il nome dell'azienda."
+    try:
+        client_id = notion_board.create_or_get_client(
+            company_name=company_name.strip(),
+            contact_name=contact_name,
+            email=email,
+            sector=sector or "Altro",
+            phone=phone,
+            notes=notes,
+        )
+        logger.info(f"[notion_tools] Cliente '{company_name}' creato/aggiornato. ID: {client_id}")
+        return f"Cliente '{company_name}' salvato in Notion. ID: {client_id[:8]}..."
+    except Exception as exc:
+        logger.warning(f"[notion_tools] Errore create_or_update_client: {exc}")
+        return f"Errore salvataggio cliente: {exc}"

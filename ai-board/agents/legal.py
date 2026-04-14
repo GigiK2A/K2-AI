@@ -21,12 +21,13 @@ from agents.base import BoardAgent
 from db.models import AgentName, LLMProvider
 
 
-class LegalAgent(BoardAgent):
+class AvvocataPinaAgent(BoardAgent):
+    """Agostino — L Avvocato del Board. Modulo interno di Giuseppina."""
     name = AgentName.LEGAL
     provider = LLMProvider.ANTHROPIC
     fallback_provider = LLMProvider.OPENAI
 
-    role = "Legal Counsel AI — analisi documentale, contratti e compliance"
+    role = "Avvocata Pina — Paranoia Legale"
     goal = (
         "Analizzare documenti legali, contratti e accordi con precisione; "
         "identificare rischi, lacune di compliance e clausole problematiche; "
@@ -99,3 +100,5 @@ class LegalAgent(BoardAgent):
         "Usa linguaggio preciso ma accessibile: evita latinismi non necessari, spiega i termini tecnici",
         "Tutti gli output sono DRAFT — richiedono approvazione del fondatore prima di uso esterno",
     ]
+LegalAgent = AvvocataPinaAgent
+AgostinoAgent = AvvocataPinaAgent

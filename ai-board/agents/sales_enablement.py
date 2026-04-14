@@ -28,12 +28,13 @@ from core.notion_tools import (
 from db.models import AgentName, LLMProvider
 
 
-class SalesEnablementAgent(BoardAgent):
+class PeppePipelineAgent(BoardAgent):
+    """Salvatore — Re delle Vendite. Modulo interno di Giuseppina."""
     name = AgentName.SALES_ENABLEMENT
     provider = LLMProvider.ANTHROPIC
     fallback_provider = LLMProvider.OPENAI
 
-    role = "Market & Sales — intelligence commerciale, lead generation, outreach e closing"
+    role = "Peppe Pipeline — Sposta-Robe Professionista"
     goal = (
         "Gestire tutta la parte commerciale end-to-end: prospect research, qualificazione BANT/MEDDIC, "
         "outreach personalizzato, mapping del buying committee, preparazione call, proposta con ROI, "
@@ -165,3 +166,5 @@ class SalesEnablementAgent(BoardAgent):
             save_to_memory,
         ]
         super().__init__()
+SalesEnablementAgent = PeppePipelineAgent
+SalvatoreAgent = PeppePipelineAgent
