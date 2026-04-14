@@ -16,6 +16,25 @@ function resolveApiBaseUrl() {
 
 const CONTACT_ENDPOINT = `${resolveApiBaseUrl()}/api/intake/contact`;
 
+function mapContactError(status, detail) {
+  const detailText = String(detail || '').trim();
+
+  if (status === 400) {
+    if (detailText) return `Invio non riuscito: ${detailText}.`;
+    return 'Invio non riuscito: controlla i campi del modulo e riprova.';
+  }
+
+  if (status === 429) {
+    return 'Hai fatto troppi tentativi in poco tempo. Attendi un minuto e riprova.';
+  }
+
+  if (status === 0) {
+    return 'Errore di rete. Controlla la connessione e riprova.';
+  }
+
+  return 'Errore nell\'invio. Riprova più tardi o contattaci direttamente.';
+}
+
 function setFeedback(success, error, type, form) {
   if (type === 'success' && form) {
     // Nasconde tutto il form e mostra solo il messaggio di successo
@@ -110,7 +129,20 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        let detail = '';
+        try {
+          const body = await response.json();
+          if (body && typeof body.detail === 'string') {
+            detail = body.detail;
+          }
+        } catch {
+          // ignore invalid json
+        }
+        const mapped = mapContactError(response.status, detail);
+        const err = new Error(mapped);
+        err.status = response.status;
+        err.detail = detail;
+        throw err;
       }
 
       form.reset();
@@ -119,7 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
       setFeedback(success, error, 'success', form);
     } catch (requestError) {
       console.error('Contact form error:', requestError);
-      error.textContent = 'Errore nell\'invio. Riprova più tardi o contattaci direttamente.';
+      const status = Number(requestError?.status || 0);
+      const detail = requestError?.detail;
+      const message = requestError?.message || mapContactError(status, detail);
+      error.textContent = message;
       setFeedback(success, error, 'error');
     } finally {
       submitButton.disabled = false;
