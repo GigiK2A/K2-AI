@@ -1,14 +1,11 @@
 const HERO_VIDEO_PLAYBACK_RATE = 1;
+const HERO_VIDEO_VERSION = '20260414-2';
 const HERO_MEDIA = {
-  portraitVideo: '/hero-portrait-k2.mp4',
-  landscapeVideo: '/hero-landscape-k2.mp4',
+  portraitVideo: `/hero-portrait-k2.mp4?v=${HERO_VIDEO_VERSION}`,
+  landscapeVideo: `/hero-landscape-k2.mp4?v=${HERO_VIDEO_VERSION}`,
   portraitPoster: '/hero-portrait-k2-static.png',
   landscapePoster: '/hero-landscape-k2-static.png'
 };
-
-function prefersReducedMotion() {
-  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   const section = document.querySelector('.hero-video-section');
@@ -77,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   applyHeroMedia();
 
-  if (document.documentElement.classList.contains('skip-home-intro') || prefersReducedMotion()) {
+  if (document.documentElement.classList.contains('skip-home-intro')) {
     skipIntro();
     return;
   }
