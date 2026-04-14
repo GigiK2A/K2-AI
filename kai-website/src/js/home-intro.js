@@ -1,4 +1,4 @@
-const HERO_VIDEO_PLAYBACK_RATE = 1.8;
+const HERO_VIDEO_PLAYBACK_RATE = 1;
 const HERO_MEDIA = {
   portraitVideo: '/hero-portrait-k2.mp4',
   landscapeVideo: '/hero-landscape-k2.mp4',
@@ -83,25 +83,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   video.playbackRate = HERO_VIDEO_PLAYBACK_RATE;
+  video.loop = true;
 
-  video.addEventListener('ended', skipIntro, { once: true });
   video.addEventListener('error', skipIntro, { once: true });
 
   videoFallback = window.setTimeout(showContent, 3000);
 
   video.addEventListener('playing', () => {
     window.clearTimeout(videoFallback);
-
-    if (video.duration && Number.isFinite(video.duration)) {
-      window.setTimeout(showContent, ((video.duration / video.playbackRate) * 1000) + 500);
-      return;
-    }
-
-    video.addEventListener('durationchange', () => {
-      if (video.duration && Number.isFinite(video.duration)) {
-        window.setTimeout(showContent, ((video.duration / video.playbackRate) * 1000) + 500);
-      }
-    }, { once: true });
+    window.setTimeout(showContent, 3000);
   }, { once: true });
 
   video.preload = 'auto';
