@@ -1,11 +1,11 @@
 const HERO_VIDEO_PLAYBACK_RATE = 1.15;
-const HERO_VIDEO_VERSION = '20260414-3';
+const HERO_VIDEO_VERSION = '20260414-4';
 const HERO_MEDIA = {
-  mobileVideo: `/hero-mobile.mp4?v=${HERO_VIDEO_VERSION}`,
-  portraitVideo: `/hero-portrait-k2.mp4?v=${HERO_VIDEO_VERSION}`,
+  mobileVideo: `/hero-vertical-k2.mp4?v=${HERO_VIDEO_VERSION}`,
+  portraitVideo: `/hero-vertical-k2.mp4?v=${HERO_VIDEO_VERSION}`,
   landscapeVideo: `/hero-landscape-k2.mp4?v=${HERO_VIDEO_VERSION}`,
-  mobilePoster: '/hero-mobile-static.png',
-  portraitPoster: '/hero-portrait-k2-static.png',
+  mobilePoster: '/hero-vertical-k2-static.png',
+  portraitPoster: '/hero-vertical-k2-static.png',
   landscapePoster: '/hero-landscape-k2-static.png'
 };
 
@@ -87,17 +87,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
+  // Setup PRIMA di applyHeroMedia così load() parte già con preload='auto'
+  video.muted = true;
+  video.playsInline = true;
+  video.playbackRate = HERO_VIDEO_PLAYBACK_RATE;
+  video.loop = false;
+  video.preload = 'auto';
+
   applyHeroMedia();
 
   if (document.documentElement.classList.contains('skip-home-intro')) {
     skipIntro();
     return;
   }
-
-  video.muted = true;
-  video.playsInline = true;
-  video.playbackRate = HERO_VIDEO_PLAYBACK_RATE;
-  video.loop = false;
 
   video.addEventListener('error', skipIntro, { once: true });
 
@@ -111,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
     videoFallback = window.setTimeout(showContent, Math.ceil((remainingSeconds + 1) * 1000));
   }, { once: true });
 
-  video.preload = 'auto';
   const onViewportChange = () => {
     if (!document.documentElement.classList.contains('skip-home-intro') && !section?.classList.contains('is-static')) {
       applyHeroMedia();

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core import notion_board
 from core.config import settings
-from core.email import send_confirmation_email
+from core.email import send_confirmation_email, send_team_notification_email
 from core.text import markdown_to_telegram_html
 from db.client import get_service_client
 from interfaces.telegram.notifier import notify_sync, send_long_message, send_message
@@ -692,28 +692,33 @@ async def create_contact_intake(request: Request):
                 status="pending",
             )
             task_id = None
+            asyncio.create_task(
+                _dispatch_contact_internal_analysis(
+                    payload,
+                    client_id=client_id,
+                    intake_page_id=intake_page_id,
+                )
+            )
+            asyncio.create_task(
+                send_confirmation_email(
+                    to_email=payload.email,
+                    name=payload.name,
+                    company_role=payload.company_role or None,
+                    message=payload.message,
+                )
+            )
+            asyncio.create_task(
+                send_team_notification_email(
+                    name=payload.name,
+                    email=payload.email,
+                    company_role=payload.company_role or None,
+                    sector=payload.sector or None,
+                    message=payload.message,
+                )
+            )
+            return {"ok": True, "client_id": client_id, "project_id": project_id, "lead_id": lead_id, "task_id": task_id}
         except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Non sono riuscito a registrare la richiesta in Notion",
-            ) from exc
-
-        asyncio.create_task(
-            _dispatch_contact_internal_analysis(
-                payload,
-                client_id=client_id,
-                intake_page_id=intake_page_id,
-            )
-        )
-        asyncio.create_task(
-            send_confirmation_email(
-                to_email=payload.email,
-                name=payload.name,
-                company_role=payload.company_role or None,
-                message=payload.message,
-            )
-        )
-        return {"ok": True, "client_id": client_id, "project_id": project_id, "lead_id": lead_id, "task_id": task_id}
+            logger.error(f"Notion contact intake failed, falling back to DB: {exc}")
 
     client = get_service_client()
 
@@ -789,6 +794,15 @@ async def create_contact_intake(request: Request):
             to_email=payload.email,
             name=payload.name,
             company_role=payload.company_role or None,
+            message=payload.message,
+        )
+    )
+    asyncio.create_task(
+        send_team_notification_email(
+            name=payload.name,
+            email=payload.email,
+            company_role=payload.company_role or None,
+            sector=payload.sector or None,
             message=payload.message,
         )
     )

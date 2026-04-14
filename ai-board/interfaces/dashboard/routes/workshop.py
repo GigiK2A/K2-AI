@@ -253,9 +253,14 @@ async def workshop_packages_api():
         if not item.get("active"):
             continue
         pkg = dict(item)
-        # Espone html_url come percorso API relativo invece del path fisico del file
+        # Espone html_url solo se il file esiste fisicamente su disco
         if pkg.get("html_file"):
-            pkg["html_url"] = f"/api/workshop/packages/{pkg['id']}/html"
+            relative = pkg["html_file"].lstrip("/")
+            full_path = Path(__file__).resolve().parents[3] / relative
+            if full_path.exists() and full_path.is_relative_to(WORKSHOP_UPLOADS_DIR):
+                pkg["html_url"] = f"/api/workshop/packages/{pkg['id']}/html"
+            else:
+                pkg["html_url"] = None
         else:
             pkg["html_url"] = None
         packages.append(pkg)

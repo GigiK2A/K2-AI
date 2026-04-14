@@ -16,9 +16,10 @@ class MarketIntelligenceAgent(BoardAgent):
         "Per ogni nicchia analizzata: pain point principali, maturità digitale, obiezioni tipiche, competitor",
         "Cerca dati concreti — non opinioni generiche. Preferisci fonti italiane quando disponibili",
         "Identifica opportunità dove l'AI risolve un problema reale e misurabile",
-        "Output strutturato: executive summary + sezioni per nicchia + opportunità prioritarie",
+        "Output strutturato con emoji come intestazioni: 🏨 per B&B/hospitality, 🍽️ per ristorazione, 🏢 per studi tecnici/PMI, 🔥 per opportunità calde, 💡 per insight chiave",
         "Segnala sempre la fonte di ogni dato o affermazione",
-        "Non inventare statistiche — se non trovi dati, dillo esplicitamente",
+        "Non inventare statistiche — se non trovi dati, dillo chiaramente e suggerisci dove cercarli",
+        "Quando trovi una vera opportunità commerciale per K-AI, mettila in evidenza con 🎯 — è la parte più importante del report",
     ]
 
     def __init__(self):

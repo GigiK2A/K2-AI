@@ -245,3 +245,117 @@ async def send_confirmation_email(
             logger.error("SMTP fallito: %s", exc)
 
     return False
+
+
+# ── Notifica team nuovo contatto ──────────────────────────────────────────────
+
+_TEAM_NOTIFICATION_HTML = """<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Nuovo contatto — K2-AI</title>
+<style>
+  body {{ margin:0; padding:0; background:#0a0a0a; font-family:'Helvetica Neue',Arial,sans-serif; color:#e5e5e5; }}
+  .wrap {{ max-width:560px; margin:40px auto; padding:0 16px; }}
+  .card {{ background:#141414; border:1px solid #2a2a2a; padding:32px; }}
+  .label {{ font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#888; margin-bottom:24px; }}
+  h1 {{ font-size:20px; font-weight:600; color:#f5f5f5; margin:0 0 20px; }}
+  .row {{ margin-bottom:12px; font-size:14px; }}
+  .key {{ color:#555; margin-bottom:2px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }}
+  .val {{ color:#ccc; }}
+  .msg {{ background:#1a1a1a; border-left:2px solid #333; padding:12px 16px; margin-top:16px; font-size:14px; color:#bbb; white-space:pre-wrap; line-height:1.6; }}
+  .divider {{ border:none; border-top:1px solid #222; margin:20px 0; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="label">K2-AI · Nuovo contatto dal sito</div>
+    <h1>Richiesta inbound da {name}</h1>
+    <div class="row"><div class="key">Nome</div><div class="val">{name}</div></div>
+    {company_row}
+    <div class="row"><div class="key">Email</div><div class="val">{email}</div></div>
+    {sector_row}
+    <hr class="divider">
+    <div class="key">Messaggio</div>
+    <div class="msg">{message}</div>
+  </div>
+</div>
+</body>
+</html>"""
+
+_TEAM_NOTIFICATION_TEXT = """K2-AI — Nuovo contatto dal sito
+
+Nome: {name}
+{company_line}Email: {email}
+{sector_line}
+Messaggio:
+{message}
+"""
+
+
+async def send_team_notification_email(
+    *,
+    name: str,
+    email: str,
+    company_role: Optional[str] = None,
+    sector: Optional[str] = None,
+    message: str,
+) -> bool:
+    """
+    Invia una notifica email al team K2-AI per ogni nuovo contatto.
+    Usa EMAIL_REPLY_TO come destinatario (fallback: non invia).
+    Non solleva eccezioni.
+    """
+    team_email = settings.email_reply_to
+    if not team_email:
+        logger.debug("Team notification email skipped: EMAIL_REPLY_TO not set")
+        return False
+    if not email_configured():
+        logger.warning("Team notification NON inviata — nessun provider email configurato")
+        return False
+
+    company_row = (
+        f'<div class="row"><div class="key">Azienda / ruolo</div><div class="val">{company_role[:120]}</div></div>'
+        if company_role else ""
+    )
+    sector_row = (
+        f'<div class="row"><div class="key">Settore</div><div class="val">{sector[:80]}</div></div>'
+        if sector else ""
+    )
+    company_line = f"Azienda: {company_role[:120]}\n" if company_role else ""
+    sector_line = f"Settore: {sector[:80]}" if sector else ""
+
+    html = _TEAM_NOTIFICATION_HTML.format(
+        name=name[:80],
+        email=email[:160],
+        company_row=company_row,
+        sector_row=sector_row,
+        message=message[:2000],
+    )
+    text = _TEAM_NOTIFICATION_TEXT.format(
+        name=name[:80],
+        company_line=company_line,
+        email=email[:160],
+        sector_line=sector_line,
+        message=message[:2000],
+    )
+    subject = f"K2-AI · Nuovo contatto: {name[:60]}"
+
+    if settings.resend_api_key and settings.resend_api_key.strip():
+        try:
+            await _send_via_resend(team_email, subject, html, text)
+            return True
+        except Exception as exc:
+            logger.warning("Resend team notification fallita (%s), provo SMTP…", exc)
+
+    if settings.smtp_host and settings.smtp_user and settings.smtp_password:
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, _send_via_smtp, team_email, subject, html, text)
+            return True
+        except Exception as exc:
+            logger.error("SMTP team notification fallita: %s", exc)
+
+    return False

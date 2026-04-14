@@ -75,10 +75,21 @@ function serveFile(req, res, filePath) {
       send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not found');
       return;
     }
+      // HTML: rivalidazione obbligatoria ad ogni richiesta (no CDN cache)
+      // Asset con hash nel nome: cache immutabile 1 anno
+      const isHtml = ext === '.html';
+      const hasHash = /\-[a-zA-Z0-9_]{8,}\.[a-z]+$/.test(filePath);
+      const cacheControl = isHtml
+        ? 'no-cache, no-store, must-revalidate'
+        : hasHash
+          ? 'public, max-age=31536000, immutable'
+          : 'public, max-age=3600';
+
       send(res, 200, {
         'Content-Type': contentType,
         'Content-Length': String(stats.size),
-        'Accept-Ranges': 'bytes'
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': cacheControl,
       }, data);
     });
   });

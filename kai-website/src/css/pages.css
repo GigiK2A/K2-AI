@@ -962,9 +962,9 @@ html.skip-home-intro .home-page #navbar {
   .home-page .hero-video,
   .home-page .hero-static-frame img {
     object-fit: cover;
-    object-position: 48% 42%;
-    transform: scale(1.34);
-    transform-origin: 48% 42%;
+    object-position: 50% 50%;
+    transform: scale(1.0);
+    transform-origin: 50% 50%;
   }
 
   .home-page .hero-video-overlay {
@@ -1007,9 +1007,9 @@ html.skip-home-intro .home-page #navbar {
 
   .home-page .hero-video,
   .home-page .hero-static-frame img {
-    object-position: 48% 42%;
-    transform: scale(1.36);
-    transform-origin: 48% 42%;
+    object-position: 50% 50%;
+    transform: scale(1.0);
+    transform-origin: 50% 50%;
   }
 }
 

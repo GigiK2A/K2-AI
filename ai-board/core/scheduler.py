@@ -87,10 +87,9 @@ def _normalize_result(job_id: str, result: dict[str, Any]) -> bool:
 
 
 def _collect_daily_brief_inputs() -> dict[str, Any]:
+    from core import notion_board
     from core.approval import get_pending_approvals
-    from db.client import get_service_client
 
-    client = get_service_client()
     now_utc = datetime.now(UTC)
     today = _today_rome()
 
@@ -101,28 +100,17 @@ def _collect_daily_brief_inputs() -> dict[str, Any]:
         if created_at and created_at <= now_utc - timedelta(hours=4):
             old_pending.append(item)
 
-    tasks_resp = (
-        client.table("tasks")
-        .select("title,assigned_to,priority,status,created_at")
-        .in_("status", [TaskStatus.PENDING.value, TaskStatus.RUNNING.value])
-        .order("priority", desc=True)
-        .limit(5)
-        .execute()
-    )
-    active_tasks = tasks_resp.data or []
+    all_tasks = notion_board.list_tasks()
+    active_statuses = {TaskStatus.PENDING.value, TaskStatus.RUNNING.value}
+    active_tasks = sorted(
+        [t for t in all_tasks if t.get("status") in active_statuses],
+        key=lambda t: t.get("priority") or 3,
+        reverse=True,
+    )[:5]
+    all_leads = notion_board.list_pipeline_leads()
+    all_leads_sorted = sorted(all_leads, key=lambda l: l.get("score") or 0, reverse=True)
 
-    leads_resp = (
-        client.table("pipeline_leads")
-        .select("name,company,status,score,next_action,next_action_date")
-        .order("score", desc=True)
-        .limit(50)
-        .execute()
-    )
-    leads = [
-        lead
-        for lead in (leads_resp.data or [])
-        if lead.get("status") not in {"won", "lost"}
-    ]
+    leads = [l for l in all_leads_sorted if l.get("status") not in {"won", "lost"}]
 
     due_leads: list[dict[str, Any]] = []
     for lead in leads:
@@ -141,29 +129,25 @@ def _collect_daily_brief_inputs() -> dict[str, Any]:
 
 
 def _collect_weekly_plan_inputs() -> dict[str, Any]:
-    from db.client import get_service_client
+    from core import notion_board
 
-    client = get_service_client()
     today = _today_rome()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=4)
     week_ago = (today - timedelta(days=7)).isoformat()
 
-    leads_resp = client.table("pipeline_leads").select("name,status,score,next_action,next_action_date").execute()
-    leads = leads_resp.data or []
+    leads = notion_board.list_pipeline_leads()
+    all_approvals = notion_board.list_approvals(statuses=["approved"])
+    approved_assets = [
+        a for a in all_approvals
+        if (a.get("reviewed_at") or "") >= week_ago
+    ]
+
     lead_counts: dict[str, int] = {}
     for lead in leads:
         status = str(lead.get("status") or "unknown")
         lead_counts[status] = lead_counts.get(status, 0) + 1
 
-    approved_resp = (
-        client.table("approvals")
-        .select("agent,content_type,reviewed_at")
-        .eq("status", TaskStatus.APPROVED.value)
-        .gte("reviewed_at", week_ago)
-        .execute()
-    )
-    approved_assets = approved_resp.data or []
     focus_leads = [
         lead
         for lead in sorted(leads, key=lambda item: item.get("score") or 0, reverse=True)
@@ -180,32 +164,15 @@ def _collect_weekly_plan_inputs() -> dict[str, Any]:
 
 
 def _collect_kpi_inputs() -> dict[str, Any]:
-    from db.client import get_service_client
+    from core import notion_board
 
-    client = get_service_client()
     today = _today_rome()
     start_of_month = today.replace(day=1).isoformat()
     start_of_week = today - timedelta(days=today.weekday())
-    start_of_day = _now_rome().replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC).isoformat()
 
-    leads = client.table("pipeline_leads").select("status,created_at").execute().data or []
-    approvals = (
-        client.table("approvals")
-        .select("status,reviewed_at")
-        .eq("status", TaskStatus.APPROVED.value)
-        .gte("reviewed_at", start_of_month)
-        .execute()
-        .data
-        or []
-    )
-    runs_today = (
-        client.table("agent_logs")
-        .select("id")
-        .gte("created_at", start_of_day)
-        .execute()
-        .data
-        or []
-    )
+    leads = notion_board.list_pipeline_leads()
+    all_approvals = notion_board.list_approvals(statuses=["approved"])
+    approvals = [a for a in all_approvals if (a.get("reviewed_at") or "") >= start_of_month]
 
     lead_counts: dict[str, int] = {}
     leads_this_week = 0
@@ -220,14 +187,16 @@ def _collect_kpi_inputs() -> dict[str, Any]:
         count for status, count in lead_counts.items() if status not in {"won", "lost"}
     )
 
+    active_leads = [l for l in leads if l.get("status") not in {"won", "lost"}]
+
     return {
         "today_label": today.strftime("%d/%m/%Y"),
         "leads_total": len(leads),
         "leads_this_week": leads_this_week,
         "active_pipeline": active_pipeline,
         "approved_this_month": len(approvals),
-        "runs_today": len(runs_today),
         "lead_counts": lead_counts,
+        "active_leads": active_leads,
         "mrr_available": False,
     }
 
@@ -263,29 +232,13 @@ def _extract_task_due_date(task: dict[str, Any]) -> datetime | None:
 
 
 def _collect_task_reminder_inputs() -> dict[str, Any]:
+    from core import notion_board
+
     today = _today_rome()
     week_limit = today + timedelta(days=7)
     active_tasks: list[dict[str, Any]] = []
 
-    from core import notion_board
-
-    if notion_board.notion_enabled():
-
-        tasks = notion_board.list_tasks()
-    else:
-        from db.client import get_service_client
-
-        client = get_service_client()
-        tasks = (
-            client.table("tasks")
-            .select("id,title,assigned_to,status,priority,created_at,input_data")
-            .in_("status", list(ACTIVE_TASK_STATUSES))
-            .order("priority")
-            .limit(400)
-            .execute()
-            .data
-            or []
-        )
+    tasks = notion_board.list_tasks()
 
     for task in tasks:
         status = str(task.get("status") or "").strip().lower()
@@ -423,24 +376,56 @@ async def job_daily_brief() -> bool:
     logger.info("Scheduler: avvio briefing giornaliero")
     try:
         inputs = await _run_sync(_collect_daily_brief_inputs)
+
+        def _fmt_tasks(items: list[dict]) -> str:
+            if not items:
+                return "  Nessuna"
+            return "\n".join(
+                f"  - [{item.get('status','?')}] P{item.get('priority','?')} · {item.get('title','?')} (agente: {item.get('assigned_to','?')})"
+                for item in items
+            )
+
+        def _fmt_leads(items: list[dict]) -> str:
+            if not items:
+                return "  Nessuno"
+            return "\n".join(
+                f"  - {l.get('name','?')} | stato: {l.get('status','?')} | score: {l.get('score','n/d')} | prossima azione: {l.get('next_action','?')} (scad. {l.get('next_action_date','?')})"
+                for l in items
+            )
+
+        def _fmt_approvals(items: list[dict]) -> str:
+            if not items:
+                return "  Nessuna"
+            return "\n".join(
+                f"  - {a.get('agent','?')} · {str(a.get('content_preview') or '')[:80]}"
+                for a in items
+            )
+
         task = f"""Genera il briefing operativo del giorno per il fondatore.
 
 Data: {inputs["today_label"]}
 
-Contesto reale:
-- Draft in attesa: {inputs["pending_count"]}
-- Approvazioni in attesa da oltre 4 ore: {len(inputs["old_pending"])}
-- Task attivi principali: {[item.get("title") for item in inputs["active_tasks"]]}
-- Lead attivi principali: {[f"{item.get('name')} ({item.get('status')})" for item in inputs["active_leads"]]}
-- Lead con next_action in scadenza o scaduta: {[item.get("name") for item in inputs["due_leads"]]}
+DRAFT IN ATTESA: {inputs["pending_count"]} totali
+Fermi da oltre 4 ore ({len(inputs["old_pending"])}):
+{_fmt_approvals(inputs["old_pending"])}
+
+TASK ATTIVI ({len(inputs["active_tasks"])}):
+{_fmt_tasks(inputs["active_tasks"])}
+
+LEAD ATTIVI ({len(inputs["active_leads"])}):
+{_fmt_leads(inputs["active_leads"])}
+
+LEAD CON SCADENZA OGGI O GIÀ SCADUTA ({len(inputs["due_leads"])}):
+{_fmt_leads(inputs["due_leads"])}
 
 Il briefing deve contenere:
-1. Le 3 priorita assolute di oggi
-2. Alert su approvazioni ferme oltre 4 ore
-3. Lead da sbloccare oggi con next action scaduta o in scadenza
-4. Una raccomandazione operativa molto concreta per la mattinata
+🎯 Le 3 priorità assolute di oggi (nomina cosa e perché)
+⚠️ Alert su approvazioni ferme oltre 4 ore (quali, da chi)
+🔥 Lead da sbloccare oggi: elencali per nome con l'azione specifica da fare
+💡 Una raccomandazione operativa concreta per la mattinata
 
-Formato: lista numerata, denso, zero filler, massimo 250 parole."""
+Tono: diretto, umano, come se lo stesse scrivendo un collega che conosce bene la situazione.
+Formato: usa le emoji come intestazioni di sezione, testo denso e azionabile, massimo 300 parole."""
 
         from core.orchestrator import run_agent
 
@@ -500,8 +485,8 @@ async def job_task_deadline_reminder() -> bool:
         if inputs["no_due_date_count"]:
             lines += [
                 "",
-                f"Task senza scadenza: {inputs['no_due_date_count']}",
-                "Imposta la data di scadenza per includerle nei reminder settimanali.",
+                f"Task senza data di scadenza: {inputs['no_due_date_count']}",
+                "Imposta la scadenza per includerle nei reminder.",
             ]
 
         notify_sync(send_message("\n".join(lines)))
@@ -517,21 +502,40 @@ async def job_weekly_plan() -> bool:
     logger.info("Scheduler: avvio piano settimanale")
     try:
         inputs = await _run_sync(_collect_weekly_plan_inputs)
+
+        def _fmt_lead_counts(counts: dict) -> str:
+            if not counts:
+                return "  Nessun lead in pipeline"
+            return "\n".join(f"  - {status}: {n}" for status, n in sorted(counts.items()))
+
+        def _fmt_focus_leads(items: list[dict]) -> str:
+            if not items:
+                return "  Nessuno"
+            return "\n".join(
+                f"  - {l.get('name','?')} | stato: {l.get('status','?')} | score: {l.get('score','n/d')} | prossima azione: {l.get('next_action','?')} (scad. {l.get('next_action_date','?')})"
+                for l in items
+            )
+
         task = f"""Genera il piano operativo per la settimana {inputs["week_start"]} - {inputs["week_end"]}.
 
-Stato attuale:
-- Pipeline lead per stato: {inputs["lead_counts"]}
-- Output approvati negli ultimi 7 giorni: {inputs["approved_assets_count"]}
-- Lead da tenere in focus: {[f"{item.get('name')} ({item.get('status')}, score {item.get('score') or 'n/d'})" for item in inputs["focus_leads"]]}
+PIPELINE ({sum(inputs["lead_counts"].values())} lead totali):
+{_fmt_lead_counts(inputs["lead_counts"])}
+
+OUTPUT APPROVATI NEGLI ULTIMI 7 GIORNI: {inputs["approved_assets_count"]}
+
+LEAD IN FOCUS ({len(inputs["focus_leads"])}):
+{_fmt_focus_leads(inputs["focus_leads"])}
 
 Il piano deve contenere:
-1. Un solo obiettivo principale, misurabile
-2. I 5 task prioritari con agente assegnato e giorno target
-3. Contenuti da produrre con canale e nicchia target
-4. Lead da contattare o far avanzare in pipeline
-5. Un KPI unico da monitorare questa settimana
+🎯 Un solo obiettivo principale misurabile per la settimana
+📋 I 5 task prioritari: agente assegnato, giorno target, output atteso
+✍️ Contenuti da produrre: canale, nicchia target, angolo
+🔥 Lead da contattare o far avanzare: elencali per nome con l'azione specifica
+📊 Un KPI unico da monitorare
 
-Formato: lun-ven, denso, operativo, senza testo generico."""
+Tono: come un piano che scriverebbe un chief of staff che conosce bene il business — concreto, senza fronzoli.
+Formato: usa le emoji come intestazioni, lun-ven strutturato, zero testo generico. Per ogni lead citalo per nome.
+IMPORTANTE: Non inventare dati. Usa esclusivamente i lead e le informazioni forniti sopra."""
 
         from core.orchestrator import run_agent
 
@@ -555,25 +559,44 @@ async def job_kpi_update() -> bool:
     logger.info("Scheduler: avvio aggiornamento KPI")
     try:
         inputs = await _run_sync(_collect_kpi_inputs)
+
+        def _fmt_pipeline_breakdown(counts: dict) -> str:
+            if not counts:
+                return "  Nessun dato"
+            return "\n".join(f"  - {status}: {n}" for status, n in sorted(counts.items()))
+
+        def _fmt_active_leads(items: list[dict]) -> str:
+            if not items:
+                return "  Nessuno"
+            return "\n".join(
+                f"  - {l.get('name','?')} | stato: {l.get('status','?')} | score: {l.get('score','n/d')} | azione: {l.get('next_action','?')}"
+                for l in items[:15]
+            )
+
         task = f"""Genera il report KPI serale di oggi {inputs["today_label"]}.
 
-Dati reali dal sistema:
+DATI REALI DA NOTION:
 - Lead totali in pipeline: {inputs["leads_total"]}
 - Nuovi lead questa settimana: {inputs["leads_this_week"]}
-- Lead attivi (non won/lost): {inputs["active_pipeline"]}
+- Lead attivi (esclusi won/lost): {inputs["active_pipeline"]}
 - Asset approvati questo mese: {inputs["approved_this_month"]}
-- Run agenti oggi: {inputs["runs_today"]}
-- Breakdown pipeline: {inputs["lead_counts"]}
-- Dati MRR disponibili nel DB: {"si" if inputs["mrr_available"] else "no"}
+- Dati MRR: non disponibili
+
+BREAKDOWN PIPELINE PER STATO:
+{_fmt_pipeline_breakdown(inputs["lead_counts"])}
+
+LEAD ATTIVI ({len(inputs["active_leads"])}):
+{_fmt_active_leads(inputs["active_leads"])}
 
 Il report deve contenere:
-1. Stato pipeline rispetto alla capacita commerciale attuale
-2. Velocita di acquisizione lead della settimana
-3. Produttivita del board oggi e nel mese
-4. Alert se qualcosa e sotto soglia
-5. Una raccomandazione per domani mattina
+📊 Stato pipeline: quanti lead per stato, dove si accumula, cosa si muove
+🚀 Velocità di acquisizione: lead nuovi questa settimana vs capacità attuale
+✅ Produttività board: asset approvati nel mese
+⚠️ Alert espliciti se qualcosa è sotto soglia o fermo
+💡 Una raccomandazione concreta per domani mattina
 
-Formato: numeri in evidenza, massimo 200 parole, segnala esplicitamente i dati mancanti invece di inventarli."""
+Tono: diretto e umano, come una call di fine giornata con il fondatore — non un report formale.
+Regole: cita i numeri reali forniti, non inventare dati mancanti — segnalali come "dato non disponibile". Massimo 250 parole."""
 
         from core.orchestrator import run_agent
 
@@ -639,14 +662,14 @@ async def job_market_pulse() -> bool:
         today = _today_rome()
         task = """Fai una ricerca rapida sul mercato italiano per le nostre tre nicchie.
 
-Per ognuna cerca notizie, trend e opportunita degli ultimi 7 giorni:
+Per ognuna cerca notizie, trend e opportunità degli ultimi 7 giorni:
 1. B&B e affittacamere in Italia: cambiamenti normativi, trend occupancy, problemi comuni
-2. Ristorazione locale italiana: sfide gestionali, digitalizzazione, novita di settore
-3. Studi tecnici e PMI italiane: adozione AI, problemi operativi, opportunita
+2. Ristorazione locale italiana: sfide gestionali, digitalizzazione, novità di settore
+3. Studi tecnici e PMI italiane: adozione AI, problemi operativi, opportunità
 
 Output richiesto:
 - 2-3 segnali concreti per nicchia
-- 1 opportunita commerciale immediata per noi
+- 1 opportunità commerciale immediata per noi
 - 1 argomento da usare nei contenuti LinkedIn di questa settimana
 - link o fonte per ogni segnale quando disponibili
 
