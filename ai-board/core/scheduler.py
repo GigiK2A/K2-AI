@@ -666,18 +666,24 @@ Regole: cita i numeri reali forniti, non inventare dati mancanti — segnalali c
 async def job_approval_reminder() -> bool:
     logger.info("Scheduler: check approvazioni pendenti")
     try:
-        from core.approval import get_pending_approvals
+        from core.approval import expire_stale_approvals, get_pending_approvals
         from interfaces.telegram.notifier import notify_sync, send_message
 
+        # Prima scadi i draft vecchi (>48h): non devono restare appesi per sempre
+        expired = await _run_sync(expire_stale_approvals)
+        if expired:
+            logger.info(f"Scaduti {expired} draft stale prima del reminder")
+
+        # Ora controlla i draft rimasti (freschi, tra 8h e 48h)
         pending = await _run_sync(get_pending_approvals)
         if not pending:
             return True
 
-        cutoff = datetime.now(UTC) - timedelta(hours=8)
+        cutoff_old = datetime.now(UTC) - timedelta(hours=8)
         old_pending = []
         for item in pending:
             created_at = _parse_datetime(item.get("created_at"))
-            if created_at and created_at <= cutoff:
+            if created_at and created_at <= cutoff_old:
                 old_pending.append(item)
 
         if not old_pending:
@@ -685,9 +691,12 @@ async def job_approval_reminder() -> bool:
 
         lines = []
         for item in old_pending[:5]:
-            agent = str(item.get("agent") or "?").replace("_", " ")
+            agent = str(item.get("agent") or "?").replace("_", " ").title()
             preview = str(item.get("content_preview") or "").replace("\n", " ").strip()
-            lines.append(f"- {agent}: {preview[:80]}")
+            preview_short = preview[:80] + ("…" if len(preview) > 80 else "")
+            created_at = _parse_datetime(item.get("created_at"))
+            age_h = int((datetime.now(UTC) - created_at).total_seconds() / 3600) if created_at else "?"
+            lines.append(f"- {agent} ({age_h}h fa): {preview_short}")
 
         text = (
             f"{len(old_pending)} draft in attesa da oltre 8 ore\n\n"

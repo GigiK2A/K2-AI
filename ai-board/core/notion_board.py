@@ -206,6 +206,15 @@ def _database_id(title: str) -> str:
     return database_id
 
 
+def _database_id_optional(title: str) -> str | None:
+    """Come _database_id ma ritorna None invece di sollevare eccezione.
+
+    Da usare per database opzionali (es. Log AI) dove l'assenza
+    non deve bloccare il flusso principale.
+    """
+    return get_database_ids().get(title)
+
+
 # ─── Schema discovery ────────────────────────────────────────────────────────
 # Cache locale: dict[db_title, {prop_name: prop_type}]
 _schema_cache: dict[str, dict[str, str]] = {}
@@ -1016,7 +1025,15 @@ def create_agent_log(
     project_id: str | None = None,
     requires_approval: bool = False,
 ) -> str:
-    database_id = _database_id(DB_LOGS)
+    from loguru import logger as _log
+    database_id = _database_id_optional(DB_LOGS)
+    if not database_id:
+        _log.warning(
+            f"Database Notion '{DB_LOGS}' non trovato: log saltato "
+            f"(agent={agent}, action={action[:60]}). "
+            "Verifica che il database esista e sia condiviso con l'integrazione."
+        )
+        return ""
     provider_value = PROVIDER_TO_NOTION.get(str(llm_provider or "").lower(), "Altro") if llm_provider else None
     payload = {
         "parent": {"database_id": database_id},
@@ -1042,6 +1059,10 @@ def create_agent_log(
 
 
 def list_agent_logs(agent_name: str | None = None, limit: int = 500) -> list[dict]:
+    if not _database_id_optional(DB_LOGS):
+        from loguru import logger as _log
+        _log.warning(f"Database Notion '{DB_LOGS}' non trovato: list_agent_logs ritorna lista vuota")
+        return []
     pages = _query_database(DB_LOGS, sorts=[{"timestamp": "created_time", "direction": "descending"}])
     logs = [_log_from_page(page) for page in pages if not page.get("archived")]
     if agent_name:

@@ -540,6 +540,105 @@
   margin-bottom: 64px;
 }
 
+/* ─── Package Carousel ─── */
+.pkg-carousel-outer {
+  margin-bottom: 64px;
+}
+
+.pkg-carousel {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.pkg-carousel-viewport {
+  flex: 1;
+  overflow: hidden;
+  perspective: 1200px;
+}
+
+.pkg-carousel-track {
+  display: flex;
+  gap: 28px;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.pkg-carousel-track .offerta-card {
+  flex: 0 0 100%;
+  width: 100%;
+  transition: opacity 0.45s ease, transform 0.5s ease;
+}
+
+.pkg-carousel-track .offerta-card:not(.pkg-active) {
+  opacity: 0.25;
+  transform: scale(0.95) rotateY(4deg);
+}
+
+.pkg-carousel-track .offerta-card.pkg-active {
+  opacity: 1;
+  transform: scale(1) rotateY(0deg);
+}
+
+.pkg-arrow {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  user-select: none;
+}
+
+.pkg-arrow:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pkg-arrow:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.pkg-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.pkg-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-hover);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.25s, transform 0.25s;
+}
+
+.pkg-dot.active {
+  background: var(--text-primary);
+  transform: scale(1.5);
+}
+
+@media (max-width: 600px) {
+  .pkg-arrow {
+    width: 36px;
+    height: 36px;
+  }
+  .pkg-carousel {
+    gap: 10px;
+  }
+}
+
 .offers-faq-list {
   max-width: 720px;
   display: flex;

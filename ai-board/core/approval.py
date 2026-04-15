@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 from loguru import logger
@@ -6,6 +6,9 @@ from loguru import logger
 from core import notion_board
 from db.client import get_service_client
 from db.models import TaskStatus
+
+# Draft più vecchi di questo soglia vengono scaduti automaticamente
+DRAFT_EXPIRY_HOURS = 48
 
 
 def get_pending_approvals() -> list[dict]:
@@ -86,6 +89,48 @@ def reject(approval_id: str, notes: Optional[str] = None) -> bool:
     except Exception as exc:
         logger.error(f"Errore rifiuto {approval_id}: {exc}")
         return False
+
+
+def expire_stale_approvals(max_age_hours: int = DRAFT_EXPIRY_HOURS) -> int:
+    """Chiude tutti i draft pending più vecchi di max_age_hours.
+
+    Restituisce il numero di draft scaduti.
+    Non solleva eccezioni: fallisce silenziosamente con log.
+    """
+    expired_count = 0
+    cutoff = datetime.now(UTC) - timedelta(hours=max_age_hours)
+    note = f"Scaduto automaticamente dopo {max_age_hours}h senza revisione"
+
+    try:
+        pending = get_pending_approvals()
+        for item in pending:
+            try:
+                raw = item.get("created_at") or ""
+                if not raw:
+                    continue
+                # Gestisce sia datetime objects che stringhe ISO
+                if isinstance(raw, datetime):
+                    created_at = raw if raw.tzinfo else raw.replace(tzinfo=UTC)
+                else:
+                    raw_str = str(raw).replace("Z", "+00:00")
+                    created_at = datetime.fromisoformat(raw_str)
+                    if not created_at.tzinfo:
+                        created_at = created_at.replace(tzinfo=UTC)
+
+                if created_at <= cutoff:
+                    approval_id = item.get("id")
+                    if approval_id:
+                        reject(approval_id, notes=note)
+                        expired_count += 1
+                        logger.info(f"Draft {approval_id} scaduto automaticamente (età: {max_age_hours}h)")
+            except Exception as exc:
+                logger.warning(f"Errore scadenza draft {item.get('id')}: {exc}")
+    except Exception as exc:
+        logger.error(f"Errore expire_stale_approvals: {exc}")
+
+    if expired_count:
+        logger.info(f"Scaduti {expired_count} draft stale (soglia: {max_age_hours}h)")
+    return expired_count
 
 
 def get_approval(approval_id: str) -> Optional[dict]:

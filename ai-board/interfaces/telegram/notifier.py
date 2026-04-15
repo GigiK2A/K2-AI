@@ -17,8 +17,14 @@ def get_bot() -> Bot:
     return _bot
 
 
-def _split_text(text: str, max_len: int = 4000) -> list[str]:
-    """Divide il testo in chunk da max_len caratteri, spezzando sui newline."""
+_TG_MAX = 4096  # Limite Telegram per messaggio singolo
+
+
+def _split_text(text: str, max_len: int = _TG_MAX) -> list[str]:
+    """Divide il testo in chunk ≤ max_len, spezzando su paragrafi o newline.
+
+    Non tronca mai: garantisce che tutto il contenuto venga inviato.
+    """
     if len(text) <= max_len:
         return [text]
     chunks: list[str] = []
@@ -26,10 +32,17 @@ def _split_text(text: str, max_len: int = 4000) -> list[str]:
         if len(text) <= max_len:
             chunks.append(text)
             break
-        split_at = text.rfind("\n", 0, max_len)
+        # Prova a spezzare sull'ultimo doppio newline (paragrafo)
+        split_at = text.rfind("\n\n", 0, max_len)
+        if split_at <= 0:
+            # Fallback: ultimo newline
+            split_at = text.rfind("\n", 0, max_len)
+        if split_at <= 0:
+            # Fallback: ultima parola
+            split_at = text.rfind(" ", 0, max_len)
         if split_at <= 0:
             split_at = max_len
-        chunks.append(text[:split_at])
+        chunks.append(text[:split_at].rstrip())
         text = text[split_at:].lstrip("\n")
     return chunks
 
@@ -39,15 +52,19 @@ async def send_message(
     keyboard: InlineKeyboardMarkup | None = None,
     parse_mode: str | None = None,
 ) -> bool:
-    """Invia messaggio al fondatore."""
+    """Invia messaggio al fondatore. Se supera il limite Telegram lo spezza."""
     try:
         bot = get_bot()
-        await bot.send_message(
-            chat_id=settings.telegram_chat_id,
-            text=text[:4096],
-            reply_markup=keyboard,
-            parse_mode=parse_mode,
-        )
+        chunks = _split_text(text)
+        for i, chunk in enumerate(chunks):
+            # La keyboard va solo sull'ultimo chunk
+            kb = keyboard if i == len(chunks) - 1 else None
+            await bot.send_message(
+                chat_id=settings.telegram_chat_id,
+                text=chunk,
+                reply_markup=kb,
+                parse_mode=parse_mode,
+            )
         return True
     except Exception as exc:
         logger.error(f"Errore invio notifica Telegram: {exc}")
@@ -69,11 +86,23 @@ async def notify_draft_ready(agent_name: str, approval_id: str, preview: str) ->
     from interfaces.telegram.keyboards import approval_keyboard
 
     readable_agent = agent_name.replace("_", " ").title()
-    cleaned_preview = truncate_text(markdown_to_plain_text(preview), 500, suffix="\n…")
+    # Converti markdown in testo piano, tronca su confine di paragrafo
+    plain = markdown_to_plain_text(preview)
+    if len(plain) > 500:
+        # Tronca su paragrafo o riga per non spezzare frasi
+        para = plain.rfind("\n\n", 0, 480)
+        if para > 200:
+            plain = plain[:para].rstrip() + "\n…"
+        else:
+            line = plain.rfind("\n", 0, 480)
+            if line > 200:
+                plain = plain[:line].rstrip() + "\n…"
+            else:
+                plain = truncate_text(plain, 500, suffix="\n…")
     text = (
         f"Draft pronto\n\n"
         f"Agente: {readable_agent}\n"
-        f"Anteprima:\n{cleaned_preview}"
+        f"Anteprima:\n{plain}"
     )
     return await send_message(text, keyboard=approval_keyboard(approval_id))
 

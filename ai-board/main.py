@@ -51,6 +51,21 @@ async def startup_checks() -> None:
         except Exception as _schema_exc:
             logger.warning(f"Schema Notion non caricato (non bloccante): {_schema_exc}")
 
+        # Verifica esplicita database Log AI — critica per persistenza log agenti
+        try:
+            _db_ids = _nb.get_database_ids()
+            if _nb.DB_LOGS in _db_ids:
+                logger.success(f"Notion '{_nb.DB_LOGS}': trovato (ID: {_db_ids[_nb.DB_LOGS]})")
+            else:
+                _available = sorted(_db_ids.keys())
+                logger.warning(
+                    f"Notion '{_nb.DB_LOGS}' NON trovato — i log AI saranno saltati. "
+                    f"Database disponibili: {_available}. "
+                    "Verifica che il database esista e sia condiviso con l'integrazione Notion."
+                )
+        except Exception as _log_check_exc:
+            logger.warning(f"Verifica Notion '{_nb.DB_LOGS}' fallita: {_log_check_exc}")
+
     if settings.anthropic_api_key:
         if not settings.anthropic_api_key.startswith("sk-ant"):
             logger.warning("ANTHROPIC_API_KEY non sembra valida — il failover verso Anthropic non sarà disponibile.")

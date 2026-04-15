@@ -44,6 +44,12 @@ _message_timestamps: dict[str, deque[float]] = {}
 # dict[chat_id, set[last_N_message_hashes]] per dedup
 _recent_message_hashes: dict[str, deque[str]] = {}
 
+# ─── Update-ID dedup (Telegram retry webhook) ────────────────────────────────
+# Gli update_id Telegram sono globali per bot: uso dict singolo, non per-chat.
+# Dopo 30s un update_id viene rimosso → nessuna perdita di memoria.
+_seen_update_ids: dict[int, float] = {}
+DEDUP_UPDATE_ID_TTL = 30  # secondi
+
 
 def _get_timestamps(chat_id: str) -> deque[float]:
     if chat_id not in _message_timestamps:
@@ -105,6 +111,35 @@ def check_dedup(chat_id: str, message_text: str) -> bool:
             return True
 
     recent.append((msg_hash, now))
+    return False
+
+
+def check_dedup_update_id(update_id: int) -> bool:
+    """
+    Ritorna True se questo update_id è già stato processato di recente.
+
+    Telegram può reinviare lo stesso update in caso di retry webhook o
+    lentezza del bot. Questo garantisce idempotenza a livello di update.
+
+    TTL: 30 secondi. GC automatico sopra 500 entry.
+    Gli update_id Telegram sono sequenziali e globali per bot — nessuna
+    collisione tra chat diverse.
+    """
+    now = time.monotonic()
+
+    # GC leggero: rimuovi entry scadute quando il dict cresce
+    if len(_seen_update_ids) > 500:
+        cutoff = now - DEDUP_UPDATE_ID_TTL
+        to_delete = [k for k, v in _seen_update_ids.items() if v < cutoff]
+        for k in to_delete:
+            del _seen_update_ids[k]
+
+    if update_id in _seen_update_ids:
+        if (now - _seen_update_ids[update_id]) < DEDUP_UPDATE_ID_TTL:
+            logger.debug(f"[rate_limit] update_id={update_id} già processato (retry Telegram), drop")
+            return True
+        # Scaduto: aggiorna timestamp e riprocessa
+    _seen_update_ids[update_id] = now
     return False
 
 

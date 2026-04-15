@@ -19,6 +19,12 @@ router = APIRouter()
 
 WORKSHOP_MEMORY_KEY = "offers.workshop_packages"
 WORKSHOP_UPLOADS_DIR = Path(__file__).resolve().parents[3] / "uploads" / "workshop"
+WORKSHOP_ASSETS_DIR = WORKSHOP_UPLOADS_DIR / "assets"
+
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+ALLOWED_IMAGE_MIMETYPES = {
+    "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+}
 WORKSHOP_DEFAULT_PACKAGES = [
     {
         "id": "starter-14gg",
@@ -273,9 +279,35 @@ async def workshop_packages_api():
     )
 
 
+def _inject_base_tag(html: str, package_id: str) -> str:
+    """Inietta un <base href="..."> nel <head> dell'HTML se non presente.
+
+    Questo fa sì che tutti i path relativi nelle immagini (src="foto.jpg")
+    si risolvano contro /uploads/workshop/assets/{package_id}/ invece che
+    contro l'URL dell'endpoint API, dove le immagini non esistono.
+
+    Se l'HTML ha già un <base> tag lo lascia intatto.
+    """
+    # Non iniettare se c'è già un <base> tag
+    if re.search(r"<base\b", html, re.IGNORECASE):
+        return html
+
+    base_url = f"/uploads/workshop/assets/{package_id}/"
+    base_tag = f'<base href="{base_url}">'
+
+    # Inserisci subito dopo <head> o <head ...>
+    head_match = re.search(r"<head(?:[^>]*)>", html, re.IGNORECASE)
+    if head_match:
+        insert_at = head_match.end()
+        return html[:insert_at] + "\n  " + base_tag + html[insert_at:]
+
+    # Fallback: inserisci prima di qualsiasi altro tag se <head> manca
+    return base_tag + "\n" + html
+
+
 @router.get("/api/workshop/packages/{package_id}/html")
 async def workshop_package_html(package_id: str):
-    """Serve il file HTML del pacchetto — accessibile dal sito pubblico."""
+    """Serve il file HTML del pacchetto con base tag iniettato per le immagini."""
     target_id = _as_text(package_id, max_len=120)
     packages = _load_workshop_packages()
     target = next((p for p in packages if p.get("id") == target_id), None)
@@ -288,8 +320,12 @@ async def workshop_package_html(package_id: str):
     if not full_path.exists() or not full_path.is_relative_to(WORKSHOP_UPLOADS_DIR):
         raise HTTPException(status_code=404, detail="File non trovato su disco")
 
+    html = full_path.read_text(encoding="utf-8", errors="replace")
+    # Inietta base tag: le immagini con path relativi si risolvono correttamente
+    html = _inject_base_tag(html, target_id)
+
     from fastapi.responses import HTMLResponse
-    return HTMLResponse(content=full_path.read_text(encoding="utf-8", errors="replace"))
+    return HTMLResponse(content=html)
 
 
 # ── Pannello admin ────────────────────────────────────────────────────────────
@@ -406,16 +442,93 @@ async def workshop_admin_remove_html(request: Request, package_id: str):
     return RedirectResponse(url="/workshop-admin?removed_file=1", status_code=303)
 
 
+@router.post("/workshop-admin/{package_id}/upload-image")
+async def workshop_admin_upload_image(
+    request: Request,
+    package_id: str,
+    image_file: UploadFile = File(...),
+):
+    """Carica un'immagine associata a un pacchetto.
+
+    Le immagini vengono salvate in /uploads/workshop/assets/{package_id}/
+    e sono accessibili via /uploads/workshop/assets/{package_id}/{filename}.
+
+    Il file HTML del pacchetto può usare questi path relativi direttamente
+    (es. <img src="foto.jpg">) grazie al base tag iniettato automaticamente.
+    """
+    _require_admin(request)
+    target_id = _as_text(package_id, max_len=120)
+    packages = _load_workshop_packages()
+    if not any(p.get("id") == target_id for p in packages):
+        raise HTTPException(status_code=404, detail="Pacchetto non trovato")
+
+    content = await image_file.read()
+    if len(content) > 10 * 1024 * 1024:  # 10 MB max per immagine
+        raise HTTPException(status_code=400, detail="Immagine troppo grande (max 10 MB)")
+
+    # Valida estensione
+    original_name = image_file.filename or "image"
+    ext = Path(original_name).suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Formato non supportato. Usa: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}",
+        )
+
+    # Salva in assets/{package_id}/
+    pkg_assets_dir = WORKSHOP_ASSETS_DIR / target_id
+    pkg_assets_dir.mkdir(parents=True, exist_ok=True)
+
+    # Usa il nome originale (sanitizzato) per render facile nei path relativi HTML
+    safe_name = re.sub(r"[^\w.\-]", "_", Path(original_name).stem) + ext
+    dest = pkg_assets_dir / safe_name
+    dest.write_bytes(content)
+
+    web_url = f"/uploads/workshop/assets/{target_id}/{safe_name}"
+    logger.info(f"Immagine caricata per pacchetto {target_id}: {web_url}")
+    return RedirectResponse(
+        url=f"/workshop-admin?uploaded_image=1&img_url={web_url}&pkg_id={target_id}",
+        status_code=303,
+    )
+
+
+@router.get("/workshop-admin/{package_id}/images")
+async def workshop_admin_list_images(request: Request, package_id: str):
+    """Elenca le immagini caricate per un pacchetto (JSON, per uso admin)."""
+    _require_admin(request)
+    target_id = _as_text(package_id, max_len=120)
+    pkg_assets_dir = WORKSHOP_ASSETS_DIR / target_id
+    images = []
+    if pkg_assets_dir.exists():
+        for f in sorted(pkg_assets_dir.iterdir()):
+            if f.is_file() and f.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
+                images.append({
+                    "filename": f.name,
+                    "url": f"/uploads/workshop/assets/{target_id}/{f.name}",
+                    "size_kb": round(f.stat().st_size / 1024, 1),
+                })
+    return JSONResponse({"ok": True, "images": images})
+
+
 @router.post("/workshop-admin/{package_id}/delete")
 async def workshop_admin_delete(request: Request, package_id: str):
     _require_admin(request)
     target_id = _as_text(package_id, max_len=120)
     packages = _load_workshop_packages()
 
-    # Rimuovi anche il file HTML associato
+    # Rimuovi file HTML e immagini associate
     target = next((p for p in packages if p.get("id") == target_id), None)
     if target and target.get("html_file"):
         _delete_html_file(target["html_file"])
+
+    # Rimuovi la cartella immagini del pacchetto
+    pkg_assets_dir = WORKSHOP_ASSETS_DIR / target_id
+    if pkg_assets_dir.exists():
+        import shutil
+        try:
+            shutil.rmtree(pkg_assets_dir)
+        except Exception as exc:
+            logger.warning(f"Impossibile rimuovere assets pacchetto {target_id}: {exc}")
 
     packages = [item for item in packages if item.get("id") != target_id]
     actor = getattr(request.state, "board_user", {}) or {}

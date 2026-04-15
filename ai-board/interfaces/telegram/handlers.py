@@ -13,7 +13,8 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from core.action_guard import cancel_pending_confirmation, has_pending_confirmation, pop_pending_confirmation
-from core.rate_limit import check_dedup, check_rate_limit
+from core.rate_limit import check_dedup, check_dedup_update_id, check_rate_limit
+from core.session_state import add_turn, build_context_for_agent
 from core.approval import approve, get_approval, get_pending_approvals, reject
 from core.business_audit import log_business_action
 from core.config import settings
@@ -290,11 +291,30 @@ def is_authorized(update: Update) -> bool:
 
 
 def truncate(text: str, max_len: int = 3800) -> str:
-    """Telegram max 4096 chars. Tronca con avviso."""
+    """Converte markdown in testo piano e tronca al limite Telegram.
+
+    Se tronca, cerca di spezzare su una riga vuota o a fine paragrafo
+    per evitare frasi monche.
+    """
     cleaned = markdown_to_plain_text(text)
     if len(cleaned) <= max_len:
         return cleaned
-    return truncate_text(cleaned, max_len, suffix="\n\n[output troncato - vedi dashboard per completo]")
+    # Prova a spezzare sull'ultimo paragrafo (doppio newline) entro il limite
+    suffix = "\n\n[output troncato]"
+    cut_at = max_len - len(suffix)
+    # Cerca l'ultimo paragrafo entro cut_at
+    para_break = cleaned.rfind("\n\n", 0, cut_at)
+    if para_break > cut_at // 2:
+        return cleaned[:para_break].rstrip() + suffix
+    # Fallback: spezza sull'ultimo newline
+    line_break = cleaned.rfind("\n", 0, cut_at)
+    if line_break > cut_at // 2:
+        return cleaned[:line_break].rstrip() + suffix
+    # Ultimo fallback: tronca a parola intera
+    space = cleaned.rfind(" ", 0, cut_at)
+    if space > 0:
+        return cleaned[:space].rstrip() + suffix
+    return cleaned[:cut_at] + suffix
 
 
 async def run_sync(func: Callable[..., Any], *args, **kwargs) -> Any:
@@ -543,12 +563,30 @@ async def approvals_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Nessun draft in attesa di approvazione.")
         return
 
-    await update.message.reply_text(f"*{len(pending)} draft in attesa:*", parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(f"{len(pending)} draft in attesa:")
     for item in pending[:5]:
         agent = item.get("agent", "?")
         preview = truncate(item.get("content_preview", ""), 220)
         created = item.get("created_at", "")[:16].replace("T", " ")
-        text = f"Agente: {agent.replace('_', ' ').title()}\nCreato: {created}\nAnteprima:\n{preview}"
+        # Calcola età in ore se possibile
+        age_str = ""
+        try:
+            from datetime import UTC, datetime
+            raw = item.get("created_at", "")
+            if raw:
+                raw_str = str(raw).replace("Z", "+00:00")
+                created_dt = datetime.fromisoformat(raw_str)
+                if not created_dt.tzinfo:
+                    created_dt = created_dt.replace(tzinfo=UTC)
+                age_h = int((datetime.now(UTC) - created_dt).total_seconds() / 3600)
+                age_str = f" ({age_h}h fa)"
+        except Exception:
+            pass
+        text = (
+            f"Agente: {agent.replace('_', ' ').title()}{age_str}\n"
+            f"Creato: {created}\n"
+            f"Anteprima:\n{preview}"
+        )
         await update.message.reply_text(
             text,
             reply_markup=approval_keyboard(item["id"]),
@@ -556,8 +594,7 @@ async def approvals_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if len(pending) > 5:
         await update.message.reply_text(
-            f"_...e altri {len(pending) - 5} draft. Vedi dashboard per tutti._",
-            parse_mode=ParseMode.MARKDOWN,
+            f"... e altri {len(pending) - 5} draft. Vedi dashboard per tutti.",
         )
 
 
@@ -567,17 +604,24 @@ async def status_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     pending_count, tasks, lead_counts = await run_sync(_load_status_snapshot)
 
+    def _esc(s: str) -> str:
+        """Escape markdown special chars in dynamic content."""
+        return s.replace("_", r"\_").replace("*", r"\*").replace("`", r"\`").replace("[", r"\[")
+
     text = "*Status AI Board*\n\n"
     text += f"*Draft in attesa:* {pending_count}\n\n"
     if tasks:
         text += "*Task recenti:*\n"
         for task in tasks:
-            text += f"  • `{task['assigned_to']}` — {task['title'][:40]} [{task['status']}]\n"
+            agent_name = _esc(str(task['assigned_to']))
+            title = _esc(task['title'][:40])
+            task_status = _esc(str(task['status']))
+            text += f"  • `{agent_name}` — {title} [{task_status}]\n"
 
     if lead_counts:
         text += "\n*Pipeline lead:*\n"
         for status, count in lead_counts.items():
-            text += f"  • {status}: {count}\n"
+            text += f"  • {_esc(str(status))}: {count}\n"
 
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
@@ -686,6 +730,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update) or not update.callback_query:
         return
 
+    # Dedup su update_id: callback duplicati (retry Telegram) → drop silenzioso
+    if update.update_id and check_dedup_update_id(update.update_id):
+        return
+
     query = update.callback_query
     await query.answer()
     parts = query.data.split(":", 2) if query.data else []
@@ -754,6 +802,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update) or not update.message or not update.message.text:
         return
 
+    # ── Dedup primaria su update_id: Telegram può reinviare lo stesso update ──
+    # Controllo prima di tutto il resto per massima efficienza
+    if update.update_id and check_dedup_update_id(update.update_id):
+        return
+
     req_id = str(uuid.uuid4())[:8]
     text = update.message.text
     normalized_text = markdown_to_plain_text(text).strip()
@@ -765,7 +818,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Recupera undo stack da Supabase se sessione nuova (dopo restart processo)
     load_session_from_supabase(chat_id)
 
-    # ── Dedup: drop silenzioso se stesso messaggio entro 5s (Telegram webhook retry) ──
+    # ── Dedup secondaria su testo: stessa stringa entro 5s (fallback) ──────────
     if check_dedup(chat_id, normalized_text):
         logger.debug(f"[{req_id}] Messaggio deduplicato per chat {chat_id}, drop silenzioso")
         return
@@ -899,15 +952,17 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Tutti gli altri messaggi → Giuseppina
     pending_attachments = _pop_pending_attachments(context)
     task_with_attachments = _build_task_with_attachments(text, pending_attachments)
-    # Il contesto al modello è minimal: solo allegati se presenti, nessun metadata tecnico
-    chat_ctx: dict[str, Any] = {}
+
+    # Contesto a Giuseppina: storico conversazione (per riferimenti impliciti) + allegati
+    # build_context_for_agent carica lazy dal DB al primo accesso per continuità post-restart
+    chat_ctx: dict[str, Any] = build_context_for_agent(chat_id)
     if pending_attachments:
         chat_ctx["attachments"] = [
             {"name": a["name"], "excerpt": a.get("excerpt")}
             for a in pending_attachments
         ]
 
-    logger.info(f"[{req_id}] → Giuseppina | attachments={len(pending_attachments)}")
+    logger.info(f"[{req_id}] → Giuseppina | attachments={len(pending_attachments)} | history_turns={len(chat_ctx.get('conversation_history', []))//2}")
     msg = await update.message.reply_text("…")
     await lock.acquire()
     try:
@@ -918,6 +973,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     finally:
         lock.release()
+
+    # Salva il turno in sessione per il prossimo messaggio
+    add_turn(chat_id, text, response_text)
+
     logger.info(f"[{req_id}] risposta generata: {len(response_text)} chars")
     await msg.edit_text(truncate(response_text))
 
@@ -925,6 +984,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def attachment_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler per documenti e foto inviati al bot."""
     if not is_authorized(update) or not update.message:
+        return
+
+    if update.update_id and check_dedup_update_id(update.update_id):
         return
 
     attachments = await _collect_telegram_attachments(update)
