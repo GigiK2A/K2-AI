@@ -86,8 +86,25 @@ def _normalize_result(job_id: str, result: dict[str, Any]) -> bool:
     return False
 
 
-def _collect_daily_brief_inputs() -> dict[str, Any]:
+def _safe_list_tasks() -> list[dict[str, Any]]:
+    """Lista task da Notion se disponibile, altrimenti da Supabase."""
     from core import notion_board
+    if notion_board.notion_enabled():
+        return notion_board.list_tasks()
+    from db.client import get_service_client
+    resp = get_service_client().table("tasks").select("*").order("created_at", desc=True).limit(100).execute()
+    return resp.data or []
+
+
+def _safe_list_pipeline_leads() -> list[dict[str, Any]]:
+    """Lista lead da Notion se disponibile, altrimenti lista vuota (pipeline Supabase non strutturata)."""
+    from core import notion_board
+    if notion_board.notion_enabled():
+        return notion_board.list_pipeline_leads()
+    return []
+
+
+def _collect_daily_brief_inputs() -> dict[str, Any]:
     from core.approval import get_pending_approvals
 
     now_utc = datetime.now(UTC)
@@ -100,14 +117,14 @@ def _collect_daily_brief_inputs() -> dict[str, Any]:
         if created_at and created_at <= now_utc - timedelta(hours=4):
             old_pending.append(item)
 
-    all_tasks = notion_board.list_tasks()
+    all_tasks = _safe_list_tasks()
     active_statuses = {TaskStatus.PENDING.value, TaskStatus.RUNNING.value}
     active_tasks = sorted(
         [t for t in all_tasks if t.get("status") in active_statuses],
         key=lambda t: t.get("priority") or 3,
         reverse=True,
     )[:5]
-    all_leads = notion_board.list_pipeline_leads()
+    all_leads = _safe_list_pipeline_leads()
     all_leads_sorted = sorted(all_leads, key=lambda l: l.get("score") or 0, reverse=True)
 
     leads = [l for l in all_leads_sorted if l.get("status") not in {"won", "lost"}]
@@ -136,8 +153,8 @@ def _collect_weekly_plan_inputs() -> dict[str, Any]:
     week_end = week_start + timedelta(days=4)
     week_ago = (today - timedelta(days=7)).isoformat()
 
-    leads = notion_board.list_pipeline_leads()
-    all_approvals = notion_board.list_approvals(statuses=["approved"])
+    leads = _safe_list_pipeline_leads()
+    all_approvals = notion_board.list_approvals(statuses=["approved"]) if notion_board.notion_enabled() else []
     approved_assets = [
         a for a in all_approvals
         if (a.get("reviewed_at") or "") >= week_ago
@@ -170,8 +187,8 @@ def _collect_kpi_inputs() -> dict[str, Any]:
     start_of_month = today.replace(day=1).isoformat()
     start_of_week = today - timedelta(days=today.weekday())
 
-    leads = notion_board.list_pipeline_leads()
-    all_approvals = notion_board.list_approvals(statuses=["approved"])
+    leads = _safe_list_pipeline_leads()
+    all_approvals = notion_board.list_approvals(statuses=["approved"]) if notion_board.notion_enabled() else []
     approvals = [a for a in all_approvals if (a.get("reviewed_at") or "") >= start_of_month]
 
     lead_counts: dict[str, int] = {}
@@ -232,13 +249,11 @@ def _extract_task_due_date(task: dict[str, Any]) -> datetime | None:
 
 
 def _collect_task_reminder_inputs() -> dict[str, Any]:
-    from core import notion_board
-
     today = _today_rome()
     week_limit = today + timedelta(days=7)
     active_tasks: list[dict[str, Any]] = []
 
-    tasks = notion_board.list_tasks()
+    tasks = _safe_list_tasks()
 
     for task in tasks:
         status = str(task.get("status") or "").strip().lower()
@@ -302,6 +317,30 @@ def _archive_logs(rows: list[dict[str, Any]]) -> int:
     client.table("agent_logs_archive").upsert(payload).execute()
     client.table("agent_logs").delete().in_("id", ids).execute()
     return len(ids)
+
+
+def validate_env_on_startup() -> None:
+    """
+    Verifica configurazione ambiente all'avvio.
+    Log warning se Notion non è configurato (scheduler usa Supabase come fallback).
+    Eccezione solo se Supabase non è raggiungibile.
+    """
+    from core import notion_board
+
+    if notion_board.notion_enabled():
+        logger.info("Scheduler: Notion configurato e abilitato")
+    else:
+        logger.warning(
+            "Scheduler: Notion non configurato o NOTION_PAGE_ID mancante — "
+            "i job useranno Supabase come fallback per task e lead"
+        )
+    # Verifica Supabase
+    try:
+        from db.client import get_service_client
+        get_service_client().table("tasks").select("id").limit(1).execute()
+        logger.info("Scheduler: Supabase raggiungibile")
+    except Exception as exc:
+        raise RuntimeError(f"Scheduler: Supabase non raggiungibile — {exc}") from exc
 
 
 def setup_scheduler() -> AsyncIOScheduler:

@@ -81,11 +81,12 @@ async def _wait_for_signal(stop_event: asyncio.Event) -> None:
 async def main():
     await startup_checks()
 
-    from core.scheduler import setup_scheduler
+    from core.scheduler import setup_scheduler, validate_env_on_startup
     from interfaces.dashboard.app import create_dashboard_app
     from interfaces.telegram.bot import start_polling, start_webhook, stop as stop_bot
     import uvicorn
 
+    validate_env_on_startup()
     sched = setup_scheduler()
     sched.start()
     logger.success(f"Scheduler avviato: {len(sched.get_jobs())} job attivi")

@@ -13,7 +13,6 @@ from telegram.ext import ContextTypes
 
 from core.approval import approve, get_approval, get_pending_approvals, reject
 from core.config import settings
-from core.conversation import build_agent_conversation_context
 from core.memory import set_memory
 from core.orchestrator import chat_agent, run_agent, run_objective
 from core.text import markdown_to_plain_text, truncate_text
@@ -241,16 +240,10 @@ async def run_objective_async(objective: str) -> dict:
     return await run_sync(run_objective, objective)
 
 
-def _telegram_agent_chat_context(agent_name: AgentName) -> dict[str, Any]:
-    return {
-        "chat_history": build_agent_conversation_context(agent_name, limit=12),
-        "interface": "telegram",
-        "channel": "telegram_agent_chat",
-        "__board": {
-            "content_type": "telegram_agent_chat",
-            "requested_by": "telegram_agent_chat",
-        },
-    }
+def _telegram_agent_chat_context(_agent_name: AgentName) -> dict[str, Any]:
+    # Niente chat_history (Giuseppina la carica autonomamente in chat()),
+    # niente metadata tecnici che inquinano il prompt LLM.
+    return {}
 
 
 def _load_status_snapshot() -> tuple[int, list[dict], dict[str, int]]:
@@ -712,7 +705,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         note = None if text == "/skip" else text
         success = await run_sync(reject, approval_id, note)
         if success:
-            await update.message.reply_text(f"Draft rifiutato.\n`{approval_id[:8]}...`", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text("Draft rifiutato.")
         else:
             await update.message.reply_text("Errore durante il rifiuto.")
         return
@@ -720,7 +713,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "pending_note" in context.user_data:
         approval_id = context.user_data.pop("pending_note")
         await run_sync(_save_approval_note, approval_id, text)
-        await update.message.reply_text(f"Nota salvata su `{approval_id[:8]}...`", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text("Nota salvata.")
         return
 
     if "active_agent_chat" in context.user_data:
