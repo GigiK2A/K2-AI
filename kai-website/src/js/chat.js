@@ -1,6 +1,26 @@
 const API_BASE_URL = import.meta.env.VITE_KAI_API_BASE_URL || '';
-const CHAT_STORAGE_KEY = 'kai-analysis-chat-history';
-const CHAT_SESSION_KEY = 'kai-analysis-session-id';
+
+// Contesto pacchetto: presente quando l'utente arriva da /workshop.html
+// tramite il link CTA di un pacchetto specifico (?pkg=ID&pkg_title=TITLE)
+const PKG_CTX = (() => {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const id = (p.get('pkg') || '').trim().slice(0, 120);
+    if (!id) return null;
+    const title = (p.get('pkg_title') || id).trim().slice(0, 160);
+    return { id, title };
+  } catch { return null; }
+})();
+
+// Se arriva da un pacchetto, usa storage key separato per non mescolare
+// le chat di pacchetti diversi o la chat generica
+const CHAT_STORAGE_KEY = PKG_CTX
+  ? `kai-chat-pkg-${PKG_CTX.id}`
+  : 'kai-analysis-chat-history';
+const CHAT_SESSION_KEY = PKG_CTX
+  ? `kai-session-pkg-${PKG_CTX.id}`
+  : 'kai-analysis-session-id';
+
 const CONTACT_PREFILL_KEY = 'kai-contact-prefill';
 const CONTACT_PREFILL_META_KEY = 'kai-contact-prefill-meta';
 const CONTACT_PREFILL_SOURCE_KEY = 'kai-contact-prefill-source';
@@ -21,10 +41,15 @@ function resolveApiBaseUrl() {
 
 const CHAT_ENDPOINT = `${resolveApiBaseUrl()}/api/intake/kbot-chat`;
 
-const FIRST_MESSAGE = {
-  role: 'assistant',
-  content: "Ciao. Raccontami in 2-3 righe il processo che ti costa più tempo: cosa succede oggi, dove si blocca e quali strumenti usi già. Da lì capiamo se l'AI può fare la differenza."
-};
+const FIRST_MESSAGE = PKG_CTX
+  ? {
+      role: 'assistant',
+      content: `Ciao! Stai guardando il pacchetto **${PKG_CTX.title}**.\n\nRaccontami il processo che vorresti ottimizzare: cosa succede oggi, dove si perde tempo e quali strumenti usi già. Così vediamo subito se questo pacchetto è adatto al tuo caso.`
+    }
+  : {
+      role: 'assistant',
+      content: "Ciao. Raccontami in 2-3 righe il processo che ti costa più tempo: cosa succede oggi, dove si blocca e quali strumenti usi già. Da lì capiamo se l'AI può fare la differenza."
+    };
 
 function generateSessionId() {
   const cryptoApi = globalThis.crypto;
@@ -206,7 +231,11 @@ function buildContactPrefill() {
   const latestDiagnosis = assistantMessages.at(-1);
   const problem = userMessages.length > 0 ? truncateText(userMessages[0], 850) : '';
 
-  const internalParts = ['Arrivo da K-BOT.'];
+  const internalParts = [
+    PKG_CTX
+      ? `Arrivo da K-BOT — pacchetto di interesse: ${PKG_CTX.title} (ID: ${PKG_CTX.id}).`
+      : 'Arrivo da K-BOT.'
+  ];
 
   if (problem) {
     internalParts.push(`Problema da risolvere:\n${problem}`);
@@ -242,7 +271,10 @@ function persistContactPrefill() {
   try {
     sessionStorage.setItem(CONTACT_PREFILL_KEY, prefill.publicMessage);
     sessionStorage.setItem(CONTACT_PREFILL_META_KEY, prefill.internalContext);
-    sessionStorage.setItem(CONTACT_PREFILL_SOURCE_KEY, 'k-bot');
+    sessionStorage.setItem(
+      CONTACT_PREFILL_SOURCE_KEY,
+      PKG_CTX ? `k-bot_pkg_${PKG_CTX.id}` : 'k-bot'
+    );
   } catch {
     // ignore storage failures
   }
@@ -317,6 +349,13 @@ async function sendMessage() {
   sendBtn.disabled = true;
 
   try {
+    const chatPayload = {
+      session_id: getOrCreateSessionId(),
+      source_page: PKG_CTX ? `k-bot_pkg_${PKG_CTX.id}` : 'k-bot',
+      messages,
+    };
+    if (PKG_CTX) chatPayload.package_context = PKG_CTX;
+
     const res = await fetch(CHAT_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -324,11 +363,7 @@ async function sendMessage() {
         Accept: 'application/json',
         'X-KAI-Request': 'fetch'
       },
-      body: JSON.stringify({
-        session_id: getOrCreateSessionId(),
-        source_page: 'k-bot',
-        messages
-      })
+      body: JSON.stringify(chatPayload)
     });
 
     if (res.status === 429) {

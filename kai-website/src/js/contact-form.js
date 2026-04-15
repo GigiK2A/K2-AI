@@ -1,4 +1,16 @@
 const API_BASE_URL = import.meta.env.VITE_KAI_API_BASE_URL || '';
+
+// Contesto pacchetto dalla URL (?pkg=ID&pkg_title=TITLE)
+const PKG_CTX = (() => {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const id = (p.get('pkg') || '').trim().slice(0, 120);
+    if (!id) return null;
+    const title = (p.get('pkg_title') || id).trim().slice(0, 160);
+    return { id, title };
+  } catch { return null; }
+})();
+
 const CONTACT_PREFILL_KEY = 'kai-contact-prefill';
 const CONTACT_PREFILL_META_KEY = 'kai-contact-prefill-meta';
 const CONTACT_PREFILL_SOURCE_KEY = 'kai-contact-prefill-source';
@@ -83,8 +95,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const prefill = loadContactPrefill();
 
   if (messageField && !messageField.value.trim() && prefill.message) {
+    // Arriva da K-BOT: usa il testo generato dalla chat
     messageField.value = prefill.message;
-    form.dataset.sourcePage = prefill.source === 'k-bot' ? 'k-bot_to_contatti' : 'contatti';
+    form.dataset.sourcePage = prefill.source || 'k-bot_to_contatti';
+  } else if (messageField && !messageField.value.trim() && PKG_CTX) {
+    // Arriva direttamente da un pacchetto Suite AI (senza passare per K-BOT)
+    messageField.value =
+      `Buongiorno, sono interessato al pacchetto Suite AI «${PKG_CTX.title}».\n\n` +
+      `Processo da ottimizzare: [descrivi qui in 2-3 righe cosa fa il team oggi]\n` +
+      `Dove si perde tempo: [il collo di bottiglia principale]\n` +
+      `Strumenti già in uso: [es. Excel, CRM, gestionale]\n\n` +
+      `Vorrei capire se questo pacchetto si adatta al mio caso.`;
+    form.dataset.sourcePage = 'workshop_to_contatti';
+    form.dataset.packageId = PKG_CTX.id;
+    form.dataset.packageTitle = PKG_CTX.title;
   } else {
     form.dataset.sourcePage = 'contatti';
   }
@@ -106,13 +130,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formData = new FormData(form);
 
+    // Contesto interno: da K-BOT (se presente) oppure dal pacchetto di provenienza
+    const internalContext = prefill.internalContext ||
+      (PKG_CTX
+        ? `Contatto diretto dalla pagina Suite AI — pacchetto: ${PKG_CTX.title} (ID: ${PKG_CTX.id})`
+        : '');
+
     const payload = {
       name: String(formData.get('name') || '').trim(),
       email: String(formData.get('email') || '').trim(),
       company_role: String(formData.get('azienda') || '').trim(),
       sector: String(formData.get('settore') || '').trim(),
       message: String(formData.get('messaggio') || '').trim(),
-      internal_context: prefill.internalContext,
+      internal_context: internalContext,
       source_page: form.dataset.sourcePage || 'contatti',
       website: honeypot ? honeypot.value.trim() : ''
     };

@@ -213,7 +213,7 @@
               Apri scheda pacchetto
             </a>
             ` : ''}
-            <a href="${escAttr(pkg.cta_href || '/contatti.html')}" class="btn${i === 1 ? ' btn-primary' : ''} full-width-button">
+            <a href="${escAttr(pkgCta(pkg))}" class="btn${i === 1 ? ' btn-primary' : ''} full-width-button">
               ${escHtml(pkg.cta_label || 'Richiedi info')} →
             </a>
           </div>
@@ -309,6 +309,15 @@
       window.addEventListener('resize', () => go(current, false));
 
       go(0, false);
+    }
+
+    // Costruisce il link CTA di un pacchetto aggiungendo i parametri di contesto
+    // così K-BOT e il form contatti sanno già a quale pacchetto si è interessati
+    function pkgCta(pkg) {
+      const base = pkg.cta_href || '/contatti.html';
+      const params = 'pkg=' + encodeURIComponent(pkg.id) +
+                     '&pkg_title=' + encodeURIComponent(pkg.title || pkg.subtitle || '');
+      return base.includes('?') ? base + '&' + params : base + '?' + params;
     }
 
     loadWorkshopPackages();
