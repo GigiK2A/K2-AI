@@ -697,6 +697,7 @@ def create_task(
     task_type: str = "Operativo",
     project_id: str | None = None,
     lead_id: str | None = None,
+    client_id: str | None = None,
     due_date: str | date | datetime | None = None,
 ) -> str:
     database_id = _database_id(DB_TASKS)
@@ -714,6 +715,7 @@ def create_task(
             "Priorità": _select(PRIORITY_TO_NOTION.get(priority, "Media")),
             "Scadenza": _date(due_date),
             "Output": _rich_text(output_notes),
+            "Cliente": _relation(client_id),        # relation (rinominata da 'Cliente collegato')
             "Commessa": _relation(project_id),
             "Lead collegato": _relation(lead_id),
         },

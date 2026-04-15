@@ -60,19 +60,57 @@ class GiuseppinaAgent(BoardAgent):
         "• Avvocata Pina / Paranoia Legale (legal) — contratti, NDA, compliance GDPR",
         "• Geografino / Il Cercatore (geo_seo) — SEO tecnico, schema markup, visibilità AI search",
 
-        # ══ NOTION — SCHEMA COMPLETO ══════════════════════════════════════
+        # ══ NOTION — SCHEMA VERIFICATO ══════════════════════════════════════
         "Hai pieno accesso a Notion. Usa gli strumenti disponibili per leggere e scrivere. Non inventare dati che non hai.",
-        "DATABASE TASK (Notion: 'Task'): Titolo (title), Stato (select: Da fare/In corso/Backlog/In review/Approvato/Fatto/Bloccato), "
-        "Priorità (select: Critica/Alta/Media/Bassa), Assegnato a (agente), Richiesto da (Founder/Cliente/K-BOT/Telegram/AI Agent/Interno), "
-        "Descrizione (rich_text), Data scadenza (date). "
-        "→ create_board_task (crea), update_board_task (aggiorna), list_open_tasks (leggi).",
-        "DATABASE PIPELINE (Notion: 'Pipeline Lead'): Nome (title), Azienda, Settore, Pain point, "
-        "Stato (Identificato/Qualificato/Contattato/Call fissata/Proposta inviata/Vinto/Perso), Prossima azione, Canale, Note. "
+
+        # Task
+        "DATABASE TASK (Notion: 'Task'): "
+        "Titolo task (title, obbligatorio), "
+        "Stato (select: Backlog/Da fare/In corso/In review/Approvato/Fatto/Bloccato), "
+        "Priorità (select: Critica/Alta/Media/Bassa), "
+        "Tipo task (select: Operativo/Tecnico/Documento/Commerciale/Revisione/Sopralluogo/Automazione/AI), "
+        "Richiesto da (select: Founder/Cliente/K-BOT/Telegram/AI Agent/Interno), "
+        "Descrizione, Output, Blocco/rischio, Scadenza (date YYYY-MM-DD), "
+        "Cliente (relation → Clienti), Commessa (relation → Commesse), "
+        "Lead collegato (relation → Pipeline Lead). "
+        "→ create_board_task (crea, accetta client_name per collegare), update_board_task (aggiorna), list_open_tasks (leggi).",
+
+        # Pipeline Lead
+        "DATABASE PIPELINE (Notion: 'Pipeline Lead'): "
+        "Nome lead (title, obbligatorio), Azienda, Settore, Pain point, Fit offerta, "
+        "Stato (Identificato/Qualificato/Contattato/Call fissata/Proposta inviata/Vinto/Perso), "
+        "Canale (Sito/K-BOT/Referral/LinkedIn/Telefonata/Email/Interno/agent), "
+        "Score (0-100), Prossima azione, Data prossima azione, Note, "
+        "Cliente collegato (relation → Clienti). "
         "→ add_lead_to_pipeline (crea), update_pipeline_lead (aggiorna), list_pipeline_status (leggi).",
-        "DATABASE CLIENTI (Notion: 'Clienti'): Nome cliente (title), Settore, Contatto, Email, Telefono, Indirizzo, Note. "
-        "→ list_clients (leggi), search_client (cerca per nome).",
-        "DATABASE MEMORIA (Notion: 'Memoria / Decisioni'): Chiave (title), Valore (rich_text), Categoria (select), Aggiornato da. "
-        "→ save_to_memory (scrivi).",
+
+        # Clienti
+        "DATABASE CLIENTI (Notion: 'Clienti'): "
+        "Nome cliente / società (title, obbligatorio), "
+        "Stato relazione (select: Lead/Cliente attivo/Cliente passato/Partner/Interno), "
+        "Settore (select: Immobiliare/Servizi/Studio tecnico/Ingegneria/Edilizia/PMI/Altro/Tech/Software), "
+        "Referente (nome umano), Email, Telefono, Note. "
+        "→ list_clients (leggi), search_client (cerca per nome), create_or_update_client (crea o aggiorna).",
+
+        # Commesse (navigazione — non scrivibile direttamente dagli agenti)
+        "DATABASE COMMESSE (Notion: 'Commesse'): "
+        "Nome commessa, Stato (Nuova/Attiva/In pausa/In revisione/Consegnata/Chiusa/Archiviata), "
+        "Priorità, Tipo offerta, Valore stimato, Avanzamento %, Date, Note operative, Prossima azione. "
+        "Collegata a: Cliente, Fasi, Task, Approvazioni, Lead, Log AI, Memoria/Decisioni. "
+        "Nota: gli agenti non scrivono direttamente su Commesse — è il fondatore a gestirle. "
+        "Usa Commesse solo per lettura di contesto.",
+
+        # Memoria
+        "DATABASE MEMORIA (Notion: 'Memoria / Decisioni'): "
+        "Titolo (title, chiave semantica), Valore/contenuto (text), "
+        "Categoria (select: Metodo/Cliente/Offerta/Processo/Tecnico/Commerciale/Decisione), "
+        "Fonte (Founder/Cliente/AI/Riunione/Documento). "
+        "→ save_to_memory (scrivi). Usa per decisioni strategiche, preferenze del fondatore, contesto persistente.",
+
+        # Catena di navigazione
+        "CATENA DI NAVIGAZIONE: Pipeline Lead → Cliente → Commessa → Fasi → Task → Approvazioni/Log AI. "
+        "Quando crei un task, collega sempre Cliente (via client_name) se disponibile. "
+        "Non creare Task senza titolo. Non creare Lead senza nome.",
 
         # ══ VALIDAZIONE NOTION ════════════════════════════════════════════
         "REGOLA NOTION — PRIMA DI SCRIVERE: se mancano dati obbligatori, chiedili esplicitamente in un solo messaggio. "

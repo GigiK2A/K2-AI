@@ -147,6 +147,7 @@ def create_board_task(
     assigned_to: str = "",
     notes: str = "",
     due_date: str = "",
+    client_name: str = "",
 ) -> str:
     """
     Crea un nuovo task nel board Notion.
@@ -159,6 +160,7 @@ def create_board_task(
         assigned_to: Nome o ruolo a cui assegnare il task (es. "founder", "sales").
         notes: Note aggiuntive o contesto.
         due_date: Data di scadenza in formato YYYY-MM-DD (opzionale).
+        client_name: Nome dell'azienda cliente da collegare al task (opzionale ma consigliato).
 
     Returns:
         Conferma creazione task, o messaggio di errore con campo mancante.
@@ -169,6 +171,15 @@ def create_board_task(
     if not notion_board.notion_enabled():
         return "Notion non abilitato — task non creato."
     try:
+        # Risolvi cliente per nome se fornito
+        client_id: str | None = None
+        if client_name and client_name.strip():
+            client = notion_board.find_client_by_name(client_name.strip())
+            if client:
+                client_id = client["id"]
+            else:
+                logger.warning(f"[notion_tools] Cliente '{client_name}' non trovato — task creato senza link cliente.")
+
         notion_board.create_task(
             title=title[:120].strip(),
             description=description,
@@ -179,9 +190,11 @@ def create_board_task(
             notes=notes,
             task_type="Operativo",
             due_date=due_date or None,
+            client_id=client_id,
         )
-        logger.info(f"[notion_tools] Task '{title}' creato.")
-        return f"Task '{title.strip()[:80]}' creato nel board Notion."
+        client_str = f" (collegato a '{client_name.strip()}')" if client_id else ""
+        logger.info(f"[notion_tools] Task '{title}' creato{client_str}.")
+        return f"Task '{title.strip()[:80]}' creato nel board Notion{client_str}."
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore create_board_task: {exc}")
         return f"Errore creazione task: {exc}"
