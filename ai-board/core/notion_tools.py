@@ -1,21 +1,60 @@
 """
 Funzioni Notion esposte come tool agli agenti del board.
 
-Ogni funzione wrappa un'operazione su notion_board con gestione errori,
-così gli agenti possono scrivere su Notion in autonomia senza crashare.
+Ogni funzione wrappa un'operazione su notion_board con:
+- gestione errori
+- business audit trail
+- undo stack (per operazioni reversibili)
+- risk level check (L3 = conferma esplicita richiesta)
 
 Regole output:
 - Nessun ID tecnico nei return (né UUID, né page_id, né abbreviazioni)
 - Testo naturale, leggibile dall'agente e interpretabile per risposta utente
 - Errori chiari: distingui errore pre-write (dati mancanti) da errore write (Notion down)
+
+Session context:
+- Telegram handler deve chiamare set_current_session(chat_id) prima di ogni invocazione agente
+- Così i tool sanno a quale sessione associare undo stack e conferme L3
 """
 from __future__ import annotations
+
+import threading
+from typing import Any
 
 from loguru import logger
 
 from core import notion_board
+from core.action_guard import (
+    ActionRisk,
+    build_confirmation_prompt,
+    get_action_risk,
+    store_pending_confirmation,
+)
+from core.business_audit import log_business_action
+from core.undo import push_undo
 
 
+# ─── Session context thread-safe ────────────────────────────────────────────
+_tls = threading.local()
+
+
+def set_current_session(session_id: str | int) -> None:
+    """
+    Imposta la sessione corrente per questo thread.
+    Deve essere chiamato dal Telegram handler prima di ogni GiuseppinaAgent.chat().
+    """
+    _tls.session_id = str(session_id)
+
+
+def get_current_session() -> str | None:
+    return getattr(_tls, "session_id", None)
+
+
+def clear_current_session() -> None:
+    _tls.session_id = None
+
+
+# ─── Helpers interni ─────────────────────────────────────────────────────────
 def _validate_required(field_name: str, value: str, label: str = "") -> str | None:
     """Ritorna None se valido, stringa di errore se mancante."""
     if not value or not str(value).strip():
@@ -24,6 +63,26 @@ def _validate_required(field_name: str, value: str, label: str = "") -> str | No
     return None
 
 
+def _check_l3_confirmation(func_name: str, kwargs: dict[str, Any], summary: str) -> str | None:
+    """
+    Se l'azione è L3 (WRITE_SENSITIVE), salva pending confirmation e ritorna prompt.
+    Ritorna None se L1/L2 (procedi normalmente).
+    """
+    risk = get_action_risk(func_name, kwargs)
+    if risk != ActionRisk.WRITE_SENSITIVE:
+        return None
+
+    session = get_current_session()
+    if not session:
+        # Nessuna sessione Telegram → non possiamo fare il gate, procedi comunque
+        logger.warning(f"[notion_tools] Azione L3 '{func_name}' eseguita senza sessione Telegram attiva")
+        return None
+
+    store_pending_confirmation(session, func_name, kwargs, summary)
+    return build_confirmation_prompt(func_name, kwargs)
+
+
+# ─── Tool: add_lead_to_pipeline ──────────────────────────────────────────────
 def add_lead_to_pipeline(
     name: str,
     company: str = "",
@@ -53,7 +112,7 @@ def add_lead_to_pipeline(
     if not notion_board.notion_enabled():
         return "Notion non abilitato — lead non salvato."
     try:
-        notion_board.create_pipeline_lead(
+        result = notion_board.create_pipeline_lead(
             name=name.strip(),
             company=company.strip() if company else "",
             sector=sector or "Altro",
@@ -62,14 +121,43 @@ def add_lead_to_pipeline(
             next_action=next_action or "Qualifica iniziale",
             notes=notes,
         )
+        entity_id = result.get("id", "") if isinstance(result, dict) else ""
         company_str = f" ({company.strip()})" if company and company.strip() else ""
+        label = f"{name.strip()}{company_str}"
+
+        # Undo: creazione → archivia se undo
+        session = get_current_session()
+        if session and entity_id:
+            push_undo(
+                session_id=session,
+                action_type="create",
+                entity_type="lead",
+                entity_id=entity_id,
+                entity_name=label,
+                action_description=f"Lead '{label}' aggiunto alla pipeline",
+            )
+
+        log_business_action(
+            action=f"Lead '{label}' aggiunto alla pipeline Notion",
+            entity_type="lead",
+            entity_name=label,
+            outcome="success",
+        )
         logger.info(f"[notion_tools] Lead '{name}' aggiunto alla pipeline.")
         return f"Lead '{name.strip()}'{company_str} aggiunto alla pipeline Notion."
     except Exception as exc:
+        log_business_action(
+            action=f"Tentativo aggiunta lead '{name}' — fallito",
+            entity_type="lead",
+            entity_name=name,
+            outcome="error",
+            details={"error": str(exc)},
+        )
         logger.warning(f"[notion_tools] Errore add_lead_to_pipeline: {exc}")
         return f"Errore nell'aggiunta del lead: {exc}"
 
 
+# ─── Tool: update_pipeline_lead ─────────────────────────────────────────────
 def update_pipeline_lead(
     name_or_id: str,
     status: str = "",
@@ -92,6 +180,13 @@ def update_pipeline_lead(
     """
     if not notion_board.notion_enabled():
         return "Notion non abilitato — lead non aggiornato."
+
+    # Check L3 (status won/lost richiede conferma)
+    kwargs = {"name_or_id": name_or_id, "status": status, "next_action": next_action, "notes": notes}
+    confirmation_prompt = _check_l3_confirmation("update_pipeline_lead", kwargs, f"Aggiorna lead '{name_or_id}' → {status}")
+    if confirmation_prompt:
+        return confirmation_prompt
+
     try:
         # Prova prima come ID diretto
         target_id = name_or_id.strip()
@@ -114,7 +209,29 @@ def update_pipeline_lead(
             ]
             if not matches:
                 return f"Lead '{name_or_id}' non trovato nella pipeline."
-            target_id = matches[0]["id"]
+            matched_lead = matches[0]
+            target_id = matched_lead["id"]
+
+            # Cattura pre-state per undo
+            session = get_current_session()
+            if session and (status or next_action):
+                pre_state: dict[str, Any] = {}
+                if status and matched_lead.get("status"):
+                    pre_state["status"] = matched_lead["status"]
+                if next_action and matched_lead.get("next_action"):
+                    pre_state["next_action"] = matched_lead["next_action"]
+                if notes and matched_lead.get("notes"):
+                    pre_state["notes"] = matched_lead["notes"]
+                if pre_state:
+                    push_undo(
+                        session_id=session,
+                        action_type="update",
+                        entity_type="lead",
+                        entity_id=target_id,
+                        entity_name=matched_lead.get("name", name_or_id),
+                        pre_state=pre_state,
+                        action_description=f"Lead aggiornato: status={status or '—'}",
+                    )
 
         props: dict = {}
         if status:
@@ -132,14 +249,29 @@ def update_pipeline_lead(
         if props:
             notion_board._request("PATCH", f"/pages/{target_id}", json={"properties": props})
 
-        logger.info(f"[notion_tools] Lead '{name_or_id}' aggiornato.")
         status_str = f" — stato: {status}" if status else ""
+        log_business_action(
+            action=f"Lead '{name_or_id}' aggiornato{status_str}",
+            entity_type="lead",
+            entity_name=name_or_id,
+            outcome="success",
+            details={"status": status, "next_action": next_action},
+        )
+        logger.info(f"[notion_tools] Lead '{name_or_id}' aggiornato.")
         return f"Lead '{name_or_id}' aggiornato in Notion{status_str}."
     except Exception as exc:
+        log_business_action(
+            action=f"Tentativo aggiornamento lead '{name_or_id}' — fallito",
+            entity_type="lead",
+            entity_name=name_or_id,
+            outcome="error",
+            details={"error": str(exc)},
+        )
         logger.warning(f"[notion_tools] Errore update_pipeline_lead: {exc}")
         return f"Errore aggiornamento lead: {exc}"
 
 
+# ─── Tool: create_board_task ─────────────────────────────────────────────────
 def create_board_task(
     title: str,
     description: str = "",
@@ -171,7 +303,6 @@ def create_board_task(
     if not notion_board.notion_enabled():
         return "Notion non abilitato — task non creato."
     try:
-        # Risolvi cliente per nome se fornito
         client_id: str | None = None
         if client_name and client_name.strip():
             client = notion_board.find_client_by_name(client_name.strip())
@@ -180,7 +311,7 @@ def create_board_task(
             else:
                 logger.warning(f"[notion_tools] Cliente '{client_name}' non trovato — task creato senza link cliente.")
 
-        notion_board.create_task(
+        result = notion_board.create_task(
             title=title[:120].strip(),
             description=description,
             assigned_to=assigned_to or "founder",
@@ -192,14 +323,43 @@ def create_board_task(
             due_date=due_date or None,
             client_id=client_id,
         )
+        entity_id = result if isinstance(result, str) else (result.get("id", "") if isinstance(result, dict) else "")
         client_str = f" (collegato a '{client_name.strip()}')" if client_id else ""
+
+        # Undo: creazione task
+        session = get_current_session()
+        if session and entity_id:
+            push_undo(
+                session_id=session,
+                action_type="create",
+                entity_type="task",
+                entity_id=entity_id,
+                entity_name=title[:80],
+                action_description=f"Task '{title[:80]}' creato",
+            )
+
+        log_business_action(
+            action=f"Task '{title[:80]}' creato nel board{client_str}",
+            entity_type="task",
+            entity_name=title[:80],
+            outcome="success",
+            details={"priority": priority, "client": client_name},
+        )
         logger.info(f"[notion_tools] Task '{title}' creato{client_str}.")
         return f"Task '{title.strip()[:80]}' creato nel board Notion{client_str}."
     except Exception as exc:
+        log_business_action(
+            action=f"Tentativo creazione task '{title[:80]}' — fallito",
+            entity_type="task",
+            entity_name=title[:80],
+            outcome="error",
+            details={"error": str(exc)},
+        )
         logger.warning(f"[notion_tools] Errore create_board_task: {exc}")
         return f"Errore creazione task: {exc}"
 
 
+# ─── Tool: update_board_task ─────────────────────────────────────────────────
 def update_board_task(
     task_id: str,
     status: str = "",
@@ -221,16 +381,60 @@ def update_board_task(
         return "Notion non abilitato — task non aggiornato."
     if not task_id or not task_id.strip():
         return "ID task mancante — non posso aggiornare."
+
+    # Check L3 (done/rejected richiede conferma)
+    kwargs = {"task_id": task_id, "status": status, "notes": notes}
+    confirmation_prompt = _check_l3_confirmation("update_board_task", kwargs, f"Aggiorna task → {status}")
+    if confirmation_prompt:
+        return confirmation_prompt
+
     try:
+        # Cattura pre-state per undo se cambio status
+        if status:
+            session = get_current_session()
+            if session:
+                try:
+                    page = notion_board._request("GET", f"/pages/{task_id.strip()}")
+                    current_notion_status = page.get("properties", {}).get("Stato", {}).get("select", {}).get("name", "")
+                    current_status = notion_board.TASK_STATUS_FROM_NOTION.get(current_notion_status, current_notion_status)
+                    if current_status:
+                        push_undo(
+                            session_id=session,
+                            action_type="update",
+                            entity_type="task",
+                            entity_id=task_id.strip(),
+                            entity_name=task_id[:20],
+                            pre_state={"status": current_status},
+                            action_description=f"Task portato a stato '{status}'",
+                        )
+                except Exception:
+                    pass  # Pre-state capture non bloccante
+
         notion_board.update_task_status(task_id.strip(), status or "running", notes)
-        logger.info(f"[notion_tools] Task aggiornato a '{status}'.")
+
         status_str = f" — stato: {status}" if status else ""
+        log_business_action(
+            action=f"Task aggiornato{status_str}",
+            entity_type="task",
+            entity_name=task_id[:20],
+            outcome="success",
+            details={"status": status},
+        )
+        logger.info(f"[notion_tools] Task aggiornato a '{status}'.")
         return f"Task aggiornato in Notion{status_str}."
     except Exception as exc:
+        log_business_action(
+            action=f"Tentativo aggiornamento task — fallito",
+            entity_type="task",
+            entity_name=task_id[:20],
+            outcome="error",
+            details={"error": str(exc)},
+        )
         logger.warning(f"[notion_tools] Errore update_board_task: {exc}")
         return f"Errore aggiornamento task: {exc}"
 
 
+# ─── Tool: save_to_memory ────────────────────────────────────────────────────
 def save_to_memory(
     key: str,
     value: str,
@@ -256,6 +460,12 @@ def save_to_memory(
     try:
         from core.memory import set_memory
         set_memory(key, value, category=category, updated_by="ai_agent")
+        log_business_action(
+            action=f"Memoria salvata: '{key}' (categoria: {category})",
+            entity_type="memory",
+            entity_name=key,
+            outcome="success",
+        )
         logger.info(f"[notion_tools] Memoria '{key}' salvata (categoria: {category}).")
         return f"Memorizzato: '{key}' salvato nella categoria '{category}'."
     except Exception as exc:
@@ -263,6 +473,7 @@ def save_to_memory(
         return f"Errore salvataggio memoria: {exc}"
 
 
+# ─── Tool: list_open_tasks ───────────────────────────────────────────────────
 def list_open_tasks(limit: int = 10) -> str:
     """
     Legge i task aperti dal board Notion (stato: pending, running, review).
@@ -294,6 +505,7 @@ def list_open_tasks(limit: int = 10) -> str:
         return f"Errore lettura task: {exc}"
 
 
+# ─── Tool: list_pipeline_status ─────────────────────────────────────────────
 def list_pipeline_status(limit: int = 15) -> str:
     """
     Legge lo stato attuale della pipeline commerciale da Notion.
@@ -324,6 +536,7 @@ def list_pipeline_status(limit: int = 15) -> str:
         return f"Errore lettura pipeline: {exc}"
 
 
+# ─── Tool: list_clients ──────────────────────────────────────────────────────
 def list_clients(limit: int = 20) -> str:
     """
     Legge l'elenco dei clienti dal database Clienti di Notion.
@@ -358,6 +571,7 @@ def list_clients(limit: int = 20) -> str:
         return f"Errore lettura clienti: {exc}"
 
 
+# ─── Tool: search_client ─────────────────────────────────────────────────────
 def search_client(name_or_company: str) -> str:
     """
     Cerca un cliente specifico nel database Clienti di Notion per nome o azienda.
@@ -392,6 +606,7 @@ def search_client(name_or_company: str) -> str:
         return f"Errore ricerca cliente: {exc}"
 
 
+# ─── Tool: create_or_update_client ───────────────────────────────────────────
 def create_or_update_client(
     company_name: str,
     contact_name: str = "",
@@ -422,7 +637,7 @@ def create_or_update_client(
     if not notion_board.notion_enabled():
         return "Notion non abilitato — cliente non salvato."
     try:
-        notion_board.create_or_get_client(
+        result = notion_board.create_or_get_client(
             company_name=company_name.strip(),
             contact_name=contact_name,
             email=email,
@@ -430,8 +645,36 @@ def create_or_update_client(
             phone=phone,
             notes=notes,
         )
+        entity_id = result.get("id", "") if isinstance(result, dict) else ""
+
+        # Undo: creazione cliente
+        session = get_current_session()
+        if session and entity_id:
+            push_undo(
+                session_id=session,
+                action_type="create",
+                entity_type="client",
+                entity_id=entity_id,
+                entity_name=company_name.strip(),
+                action_description=f"Cliente '{company_name.strip()}' creato",
+            )
+
+        log_business_action(
+            action=f"Cliente '{company_name.strip()}' salvato nel database Clienti",
+            entity_type="client",
+            entity_name=company_name.strip(),
+            outcome="success",
+            details={"sector": sector, "contact": contact_name},
+        )
         logger.info(f"[notion_tools] Cliente '{company_name}' creato/aggiornato.")
         return f"Cliente '{company_name.strip()}' salvato nel database Clienti."
     except Exception as exc:
+        log_business_action(
+            action=f"Tentativo salvataggio cliente '{company_name}' — fallito",
+            entity_type="client",
+            entity_name=company_name,
+            outcome="error",
+            details={"error": str(exc)},
+        )
         logger.warning(f"[notion_tools] Errore create_or_update_client: {exc}")
         return f"Errore salvataggio cliente: {exc}"

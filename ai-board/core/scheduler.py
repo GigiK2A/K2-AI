@@ -406,6 +406,14 @@ def setup_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
         misfire_grace_time=7200,
     )
+    scheduler.add_job(
+        job_schema_refresh,
+        CronTrigger(hour="*/6", minute=0, timezone=ROME),  # ogni 6 ore
+        id="schema_refresh",
+        name="Refresh schema Notion",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
 
     logger.info(f"Scheduler configurato: {len(scheduler.get_jobs())} job attivi")
     return scheduler
@@ -767,3 +775,20 @@ async def job_cleanup_logs() -> bool:
         logger.error(f"Errore job_cleanup_logs: {exc}")
         _notify_scheduler_error("cleanup_logs", message)
         return False
+
+
+
+async def job_schema_refresh() -> bool:
+    """Aggiorna cache schema Notion ogni 6 ore. Non bloccante, non critico."""
+    logger.info("Scheduler: avvio refresh schema Notion")
+    try:
+        from core import notion_board
+        if not notion_board.notion_enabled():
+            logger.debug("Scheduler schema_refresh: Notion non abilitato, skip")
+            return True
+        schemas = await _run_sync(notion_board.refresh_all_schemas)
+        logger.success(f"Schema Notion aggiornato: {len(schemas)} database")
+        return True
+    except Exception as exc:
+        logger.warning(f"Scheduler schema_refresh fallito (non critico): {exc}")
+        return True  # Non notificare — è non critico

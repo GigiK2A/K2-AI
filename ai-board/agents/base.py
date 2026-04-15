@@ -40,6 +40,11 @@ class BoardAgent:
     - model: str (override del modello, opzionale)
     """
 
+    # Guardrail: lunghezza massima input in caratteri (evita costi esplosivi)
+    _MAX_INPUT_CHARS = 80_000
+    # Soglia warning token (log quando output supera questo valore)
+    _TOKEN_WARN_THRESHOLD = 4_000
+
     name: AgentName | None = None
     role: str = ""
     goal: str = ""
@@ -135,6 +140,42 @@ class BoardAgent:
 
 ## ISTRUZIONI OPERATIVE
 {instructions_text}
+
+## IDENTITÀ CONDIVISA DEL BOARD
+Sei parte di un board AI con una voce unica. Anche se hai una specializzazione,
+il fondatore deve percepire coerenza nell'identità complessiva.
+Queste regole valgono per tutti i membri del board, te incluso:
+
+**Tono e registro:**
+- Parla sempre in italiano, con linguaggio diretto, umano, non burocratico
+- Sii caldo e coinvolto, non distaccato o formale
+- Rispondi al registro del fondatore: se scrive breve e informale, rispondi breve e informale
+- Se il messaggio è urgente, vai subito al punto — zero preamboli
+- Non iniziare mai con "Certo!", "Ottima domanda!", "Ho analizzato..." — inizia con il contenuto
+
+**Come chiedere chiarimenti:**
+- Fai UNA domanda precisa, non tre generiche
+- Proponi un'interpretazione e chiedi conferma: "Ho capito che vuoi X — è corretto?"
+- Non fare la lista di "possibili interpretazioni" — scegli quella più probabile
+
+**Come confermare un'azione:**
+- Breve: "Fatto. [nome entità] creato/aggiornato."
+- Se il fondatore ha chiesto qualcosa di specifico, aggiungi il risultato preciso
+- Non ripetere l'intera richiesta per confermarla
+- Non fare la lista di "cosa hai fatto" — il fondatore ha visto la richiesta
+
+**Come strutturare le risposte:**
+- Risposta breve (1-4 righe): per conferme, aggiornamenti, risposte semplici
+- Risposta strutturata (sezioni + bullet): per analisi, valutazioni, piani
+- Mai muri di testo senza struttura visiva
+- Termina con 1-2 domande SOLO se servono per sbloccare la prossima decisione — non per abitudine
+
+**Cosa non fare mai:**
+- Non mostrare ID tecnici, UUID, metadata di sistema
+- Non dire "Come posso aiutarti?" o "Resto a disposizione"
+- Non fare riassunti finali dopo aver già risposto
+- Non scusarsi per limitazioni ipotetiche
+- Non fingere di non avere accesso a informazioni che hai
 
 ## TONO E PERSONALITÀ
 - Parla come un collega competente e coinvolto, non come un assistente formale
@@ -238,6 +279,13 @@ Regole aggiuntive:
             safe_ctx = self._json_safe(context)
             prompt += f"\n\n## Contesto\n{json.dumps(safe_ctx, ensure_ascii=False, indent=2)}"
 
+        # Guardrail: tronca input eccessivamente lungo
+        if len(prompt) > self._MAX_INPUT_CHARS:
+            logger.warning(
+                f"[{self.agent_name}] Input troncato: {len(prompt)} chars > {self._MAX_INPUT_CHARS} limite"
+            )
+            prompt = prompt[:self._MAX_INPUT_CHARS] + "\n\n[input troncato per limite dimensioni]"
+
         attempts = self._provider_attempts()
         if not attempts:
             return "Nessun provider LLM disponibile."
@@ -245,7 +293,15 @@ Regole aggiuntive:
         for attempt_provider, attempt_model in attempts:
             try:
                 response = self._ensure_agent(attempt_provider, attempt_model).run(prompt)
-                return self._extract_content(response)
+                result = self._extract_content(response)
+                # Guardrail: log warning se output molto lungo (costo alto)
+                tokens = self._extract_tokens_used(response)
+                if tokens and tokens > self._TOKEN_WARN_THRESHOLD:
+                    logger.warning(
+                        f"[{self.agent_name}] Token elevati: {tokens} token usati "
+                        f"({attempt_provider.value}:{attempt_model})"
+                    )
+                return result
             except Exception as exc:
                 logger.warning(f"[{self.agent_name}] Chat tentativo {attempt_provider.value} fallito: {exc}")
 
@@ -276,6 +332,13 @@ Regole aggiuntive:
         prompt = task
         if safe_context:
             prompt += f"\n\n## Contesto aggiuntivo\n{json.dumps(safe_context, ensure_ascii=False, indent=2)}"
+
+        # Guardrail: tronca prompt eccessivamente lungo
+        if len(prompt) > self._MAX_INPUT_CHARS:
+            logger.warning(
+                f"[{self.agent_name}] Prompt run troncato: {len(prompt)} chars > {self._MAX_INPUT_CHARS} limite"
+            )
+            prompt = prompt[:self._MAX_INPUT_CHARS] + "\n\n[input troncato per limite dimensioni]"
 
         logger.info(f"[{self.agent_name}] Avvio task: {task[:80]}...")
         stored_task_id = self._create_task(task_id=task_id, task=task, context=safe_context, requested_by=requested_by)
@@ -341,6 +404,11 @@ Regole aggiuntive:
             duration_ms = int((time.time() - start) * 1000)
             output_text = self._extract_content(response)
             tokens_used = self._extract_tokens_used(response)
+            if tokens_used and tokens_used > self._TOKEN_WARN_THRESHOLD:
+                logger.warning(
+                    f"[{self.agent_name}] Token elevati in run: {tokens_used} "
+                    f"({used_provider.value}:{used_model})"
+                )
 
             approval_id = self._create_approval(
                 task_id=task_id,

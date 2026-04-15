@@ -206,6 +206,78 @@ def _database_id(title: str) -> str:
     return database_id
 
 
+# ─── Schema discovery ────────────────────────────────────────────────────────
+# Cache locale: dict[db_title, {prop_name: prop_type}]
+_schema_cache: dict[str, dict[str, str]] = {}
+
+
+def get_database_schema(db_title: str, force_refresh: bool = False) -> dict[str, str]:
+    """
+    Restituisce lo schema di un database Notion come {nome_proprietà: tipo}.
+    Cached in memoria. Usa force_refresh=True per invalidare.
+
+    Tipi comuni: title, rich_text, select, multi_select, date, number,
+                 checkbox, relation, formula, rollup, url, email, phone_number.
+    """
+    if not force_refresh and db_title in _schema_cache:
+        return _schema_cache[db_title]
+
+    try:
+        db_id = _database_id(db_title)
+        db_meta = _request("GET", f"/databases/{db_id}")
+        properties = db_meta.get("properties", {})
+        schema = {
+            prop_name: prop_data.get("type", "unknown")
+            for prop_name, prop_data in properties.items()
+        }
+        _schema_cache[db_title] = schema
+        return schema
+    except Exception as exc:
+        # Non bloccante: ritorna cache stale o empty
+        if db_title in _schema_cache:
+            return _schema_cache[db_title]
+        raise NotionBoardError(f"Impossibile caricare schema per '{db_title}': {exc}") from exc
+
+
+def refresh_all_schemas() -> dict[str, dict[str, str]]:
+    """
+    Ricarica gli schemi di tutti i database noti.
+    Da chiamare all'avvio e/o periodicamente.
+    Ritorna dict[db_title, schema].
+    """
+    from loguru import logger
+    schemas: dict[str, dict[str, str]] = {}
+    try:
+        db_ids = get_database_ids()
+    except Exception as exc:
+        logger.warning(f"[notion_board] Schema refresh fallito (get_database_ids): {exc}")
+        return schemas
+
+    for title in db_ids:
+        if title in IGNORED_DATABASES:
+            continue
+        try:
+            schemas[title] = get_database_schema(title, force_refresh=True)
+            logger.debug(f"[notion_board] Schema caricato: {title} ({len(schemas[title])} proprietà)")
+        except Exception as exc:
+            logger.warning(f"[notion_board] Schema refresh fallito per '{title}': {exc}")
+
+    return schemas
+
+
+def validate_schema_field(db_title: str, field_name: str) -> bool:
+    """
+    Ritorna True se il campo esiste nello schema del database.
+    Utile per pre-validazione prima di write operations.
+    Non bloccante: ritorna True se schema non disponibile (evita falsi negativi).
+    """
+    try:
+        schema = get_database_schema(db_title)
+        return field_name in schema
+    except Exception:
+        return True  # Fail open: se non possiamo verificare, procediamo
+
+
 def _rich_text(value: str | None) -> dict:
     if not value:
         return {"rich_text": []}
@@ -529,6 +601,15 @@ def archive_all_board_data() -> dict[str, int]:
             continue
         archived_counts[title] = archive_database_pages(title)
     return archived_counts
+
+
+def archive_page(page_id: str) -> None:
+    """
+    Archivia una pagina Notion (soft delete reversibile).
+    Usato dal sistema undo per annullare creazioni.
+    La pagina rimane recuperabile da Notion ma non compare nelle query normali.
+    """
+    _request("PATCH", f"/pages/{page_id}", json={"archived": True})
 
 
 def list_tasks(status_filter: str | None = None) -> list[dict]:

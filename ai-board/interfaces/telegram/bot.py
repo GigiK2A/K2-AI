@@ -22,11 +22,13 @@ from interfaces.telegram.handlers import (
     memory_handler,
     message_handler,
     pipeline_handler,
+    refresh_schema_handler,
     schedule_handler,
     skip_handler,
     start_handler,
     status_handler,
     task_handler,
+    undo_handler,
 )
 
 _current_app: Optional[Application] = None
@@ -59,6 +61,8 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("log", log_handler))
     app.add_handler(CommandHandler("pipeline", pipeline_handler))
     app.add_handler(CommandHandler("skip", skip_handler))
+    app.add_handler(CommandHandler("undo", undo_handler))
+    app.add_handler(CommandHandler("refresh_schema", refresh_schema_handler))
 
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(MessageHandler((filters.Document.ALL | filters.PHOTO) & ~filters.COMMAND, attachment_message_handler))

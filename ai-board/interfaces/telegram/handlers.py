@@ -12,11 +12,16 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from core.action_guard import cancel_pending_confirmation, has_pending_confirmation, pop_pending_confirmation
+from core.rate_limit import check_dedup, check_rate_limit
 from core.approval import approve, get_approval, get_pending_approvals, reject
+from core.business_audit import log_business_action
 from core.config import settings
 from core.memory import set_memory
+from core.notion_tools import set_current_session
 from core.orchestrator import chat_agent, run_agent, run_objective
 from core.text import markdown_to_plain_text, truncate_text
+from core.undo import describe_undo, execute_undo, has_undo, load_session_from_supabase, pop_undo
 from db.client import get_service_client
 from db.models import AgentName
 from interfaces.telegram.assistant import cancel_word, confirm_word, execute_action, execute_pending_action, handle_text_message, operational_shortcut
@@ -24,6 +29,17 @@ from interfaces.telegram.keyboards import approval_keyboard
 
 PENDING_ATTACHMENTS_KEY = "pending_telegram_attachments"
 TELEGRAM_CHAT_UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads" / "chat" / "telegram"
+
+# ── Queue leggera per-chat ───────────────────────────────────────────────────
+# Previene processing concorrente dello stesso chat_id.
+# Se arrivano 2 messaggi rapidi, il secondo aspetta che il primo finisca.
+_CHAT_LOCKS: dict[str, asyncio.Lock] = {}
+
+
+def _get_chat_lock(chat_id: str) -> asyncio.Lock:
+    if chat_id not in _CHAT_LOCKS:
+        _CHAT_LOCKS[chat_id] = asyncio.Lock()
+    return _CHAT_LOCKS[chat_id]
 
 TEXT_ATTACHMENT_EXTENSIONS = {
     ".txt", ".md", ".markdown", ".csv", ".json", ".log",
@@ -129,21 +145,79 @@ def _pop_pending_attachments(context: ContextTypes.DEFAULT_TYPE) -> list[dict[st
     return attachments
 
 
+def _classify_attachment_intent(text: str) -> str:
+    """
+    Determina come l'utente vuole usare l'allegato:
+    - 'analyze': vuole un'analisi/estrazione dal documento
+    - 'context': il documento è contesto di supporto per una domanda
+    - 'execute': vuole un'azione concreta basata sul documento
+    - 'unknown': nessun testo — il bot deve dedurre
+    """
+    if not text:
+        return "unknown"
+    lowered = text.lower()
+    execute_hints = ("crea", "genera", "scrivi", "produci", "lancia", "esegui", "costruisci", "aggiungi", "inserisci")
+    analyze_hints = ("analizza", "dimmi cosa", "cosa contiene", "cosa dice", "riassumi", "estrai", "leggi", "interpreta", "valuta")
+    context_hints = ("basandoti su", "usando questo", "considera questo", "tenendo conto", "in base a", "rispetto a questo")
+    if any(h in lowered for h in execute_hints):
+        return "execute"
+    if any(h in lowered for h in analyze_hints):
+        return "analyze"
+    if any(h in lowered for h in context_hints):
+        return "context"
+    return "unknown"
+
+
 def _build_task_with_attachments(text: str, attachments: list[dict[str, Any]]) -> str:
-    """Costruisce il testo del task includendo gli estratti degli allegati."""
-    base = str(text or "").strip() or "Analizza gli allegati e rispondi in modo utile e operativo."
+    """
+    Costruisce il testo del task includendo gli estratti degli allegati.
+    Aggiunge hint esplicito su come usare il contenuto in base all'intento rilevato.
+    """
+    base = str(text or "").strip()
     if not attachments:
-        return base
-    lines = [base, "", "## Allegati caricati"]
+        return base or "Rispondi in modo utile e operativo."
+
+    intent = _classify_attachment_intent(base)
+
+    # Hint specifico per tipo di intento
+    intent_hints = {
+        "execute": (
+            "Il fondatore ha allegato un documento e vuole che tu esegua un'azione concreta basandoti su di esso. "
+            "Usa il contenuto estratto come base per l'azione richiesta, non come argomento da riassumere."
+        ),
+        "analyze": (
+            "Il fondatore vuole un'analisi del documento allegato. "
+            "Concentrati sul contenuto estratto, identifica i punti chiave, le implicazioni operative e le azioni che ne derivano."
+        ),
+        "context": (
+            "Il documento allegato è contesto di supporto per la risposta. "
+            "Usalo per rispondere in modo più preciso alla domanda del fondatore, senza fare un riassunto del documento."
+        ),
+        "unknown": (
+            "Il fondatore ha allegato un documento senza istruzioni esplicite. "
+            "Determina autonomamente se vuole un'analisi, un'azione operativa o se il documento è contesto. "
+            "Se non è chiaro, chiedi direttamente."
+        ),
+    }
+
+    if not base:
+        base = "Analizza il documento allegato e rispondi in modo utile e operativo."
+
+    lines = [base, "", "## Allegato ricevuto"]
     for index, item in enumerate(attachments[:4], start=1):
-        meta = f" ({item['size_bytes']} byte)" if item.get("size_bytes") else ""
-        lines.append(f"{index}. {item.get('name', 'allegato')}{meta}")
+        name = item.get("name", "allegato")
+        size = item.get("size_bytes", 0)
+        size_str = f" · {size // 1024}KB" if size > 1024 else (f" · {size}B" if size else "")
+        lines.append(f"**File {index}: {name}{size_str}**")
         excerpt = str(item.get("excerpt") or "").strip()
         if excerpt:
-            lines.append("Estratto:")
-            lines.append(truncate_text(excerpt, 2000))
-    lines.append("")
-    lines.append("Usa il contenuto degli allegati per rispondere o generare il deliverable richiesto.")
+            lines.append("Contenuto estratto:")
+            lines.append(truncate_text(excerpt, 2500))
+        else:
+            lines.append("_(contenuto non estraibile — file binario o vuoto)_")
+        lines.append("")
+
+    lines.append(f"**Istruzione:** {intent_hints[intent]}")
     return "\n".join(lines)
 
 
@@ -685,6 +759,82 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     normalized_text = markdown_to_plain_text(text).strip()
     logger.info(f"[{req_id}] msg ricevuto: {normalized_text[:80]!r}")
 
+    # Imposta sessione corrente per undo stack e action guard L3
+    chat_id = str(update.effective_chat.id) if update.effective_chat else req_id
+    set_current_session(chat_id)
+    # Recupera undo stack da Supabase se sessione nuova (dopo restart processo)
+    load_session_from_supabase(chat_id)
+
+    # ── Dedup: drop silenzioso se stesso messaggio entro 5s (Telegram webhook retry) ──
+    if check_dedup(chat_id, normalized_text):
+        logger.debug(f"[{req_id}] Messaggio deduplicato per chat {chat_id}, drop silenzioso")
+        return
+
+    # ── Rate limit: max 20 msg/60s ───────────────────────────────────────────
+    allowed, reason = check_rate_limit(chat_id)
+    if not allowed:
+        await update.message.reply_text(reason)
+        return
+
+    # ── Queue leggera: se già in processing, drop + avvisa ───────────────────
+    lock = _get_chat_lock(chat_id)
+    if lock.locked():
+        logger.debug(f"[{req_id}] Chat {chat_id} occupata — drop messaggio concorrente")
+        await update.message.reply_text("Sto ancora elaborando il messaggio precedente, un momento...")
+        return
+
+    # ── Gestione conferma/annulla azioni L3 (action_guard) ──────────────────
+    if has_pending_confirmation(chat_id):
+        lowered = normalized_text.lower().strip()
+        if lowered in ("conferma", "sì", "si", "ok", "procedi", "vai"):
+            record = pop_pending_confirmation(chat_id)
+            if record:
+                func_name = record["func_name"]
+                kwargs = record["kwargs"]
+                # Importa e chiama la funzione originale
+                from core import notion_tools as _nt
+                func = getattr(_nt, func_name, None)
+                if func is None:
+                    await update.message.reply_text("Errore: funzione non trovata per questa azione.")
+                    return
+                msg = await update.message.reply_text("Esecuzione in corso...")
+                try:
+                    result = await run_sync(func, **kwargs)
+                    log_business_action(
+                        action=f"Azione L3 confermata: {func_name}",
+                        entity_type=kwargs.get("name_or_id", kwargs.get("task_id", "?"))[:50],
+                        entity_name=str(kwargs.get("name_or_id", kwargs.get("task_id", "?"))),
+                        outcome="confirmed",
+                        actor="founder",
+                        intent=record.get("summary", ""),
+                    )
+                    await msg.edit_text(result)
+                except Exception as exc:
+                    logger.error(f"[{req_id}] Errore esecuzione L3 confermata: {exc}")
+                    await msg.edit_text(f"Errore durante l'esecuzione: {str(exc)[:200]}")
+                return
+        elif lowered in ("annulla", "no", "stop", "lascia perdere"):
+            cancelled = cancel_pending_confirmation(chat_id)
+            if cancelled:
+                log_business_action(
+                    action="Azione L3 annullata dal fondatore",
+                    entity_type="unknown",
+                    entity_name="?",
+                    outcome="cancelled",
+                    actor="founder",
+                )
+                await update.message.reply_text("Operazione annullata.")
+                return
+        else:
+            # Messaggio diverso con conferma pendente: ricorda all'utente
+            await update.message.reply_text(
+                "⚠️ Ho un'azione sensibile in attesa di conferma.\n\n"
+                "Scrivi **conferma** per procedere oppure **annulla** per scartare.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+    # ── Fine gestione L3 ────────────────────────────────────────────────────
+
     if "pending_assistant_action" in context.user_data:
         if confirm_word(normalized_text):
             pending_action = context.user_data.pop("pending_assistant_action")
@@ -759,12 +909,15 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logger.info(f"[{req_id}] → Giuseppina | attachments={len(pending_attachments)}")
     msg = await update.message.reply_text("…")
+    await lock.acquire()
     try:
         response_text = await chat_agent_async(AgentName.ORCHESTRATOR, task_with_attachments, chat_ctx)
     except Exception as exc:
         logger.exception(f"[{req_id}] Errore chat Giuseppina: {exc}")
         await msg.edit_text("Si è verificato un errore. Riprova tra un momento.")
         return
+    finally:
+        lock.release()
     logger.info(f"[{req_id}] risposta generata: {len(response_text)} chars")
     await msg.edit_text(truncate(response_text))
 
@@ -836,6 +989,77 @@ async def attachment_message_handler(update: Update, context: ContextTypes.DEFAU
                 f"Allegat{'o' if total == 1 else 'i'} ricevut{'o' if total == 1 else 'i'}: {names}\n\n"
                 f"Ora dimmi cosa vuoi fare, oppure usa /agent per scegliere un agente specifico."
             )
+
+
+async def refresh_schema_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /refresh-schema — forza reload degli schemi Notion.
+    Utile dopo aver modificato proprietà nei database Notion.
+    """
+    if not is_authorized(update) or not update.message:
+        return
+
+    from core import notion_board as _nb
+    if not _nb.notion_enabled():
+        await update.message.reply_text("Notion non abilitato — schema non disponibile.")
+        return
+
+    msg = await update.message.reply_text("Ricarico schema Notion...")
+    try:
+        schemas = await run_sync(_nb.refresh_all_schemas)
+        db_list = "\n".join(f"• {title} ({len(props)} proprietà)" for title, props in schemas.items())
+        await msg.edit_text(
+            f"Schema Notion aggiornato.\n\n{db_list}" if db_list else "Schema aggiornato (nessun DB trovato)."
+        )
+    except Exception as exc:
+        logger.error(f"[refresh_schema_handler] Errore: {exc}")
+        await msg.edit_text(f"Errore durante il refresh schema: {str(exc)[:200]}")
+
+
+async def undo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /undo — annulla l'ultima azione eseguita da Giuseppina su Notion.
+    Funziona per: creazione task/lead/cliente, aggiornamenti stato.
+    Stack undo per-sessione (persiste finché il processo è in esecuzione).
+    """
+    if not is_authorized(update) or not update.message:
+        return
+
+    chat_id = str(update.effective_chat.id) if update.effective_chat else None
+    if not chat_id:
+        await update.message.reply_text("Impossibile determinare la sessione corrente.")
+        return
+
+    if not has_undo(chat_id):
+        await update.message.reply_text(
+            "Nessuna azione recente da annullare.\n\n"
+            "_Lo stack undo si azzera al riavvio del sistema._",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
+    record = pop_undo(chat_id)
+    if not record:
+        await update.message.reply_text("Azione scaduta o non più annullabile.")
+        return
+
+    description = describe_undo(record)
+    msg = await update.message.reply_text(f"Annullo: {description}...")
+
+    try:
+        result = await run_sync(execute_undo, record)
+        log_business_action(
+            action=f"Undo eseguito: {description}",
+            entity_type=record.get("entity_type", "unknown"),
+            entity_name=record.get("entity_name", "?"),
+            outcome="success",
+            actor="founder",
+            intent="/undo",
+        )
+        await msg.edit_text(f"✅ {result}")
+    except Exception as exc:
+        logger.error(f"[undo_handler] Errore: {exc}")
+        await msg.edit_text(f"Errore durante l'undo: {str(exc)[:200]}")
 
 
 async def _dispatch_delegate(update: Update, context: ContextTypes.DEFAULT_TYPE, delegate: str) -> None:

@@ -41,6 +41,16 @@ async def startup_checks() -> None:
 
     logger.success(f"Agenti unificati: {len(AGENT_REGISTRY)} caricati")
 
+    # Schema sync Notion: carica schemi DB all'avvio per validazione pre-write
+    from core import notion_board as _nb
+    if _nb.notion_enabled():
+        logger.info("Caricamento schema Notion...")
+        try:
+            schemas = _nb.refresh_all_schemas()
+            logger.success(f"Schema Notion: {len(schemas)} database caricati")
+        except Exception as _schema_exc:
+            logger.warning(f"Schema Notion non caricato (non bloccante): {_schema_exc}")
+
     if settings.anthropic_api_key:
         if not settings.anthropic_api_key.startswith("sk-ant"):
             logger.warning("ANTHROPIC_API_KEY non sembra valida — il failover verso Anthropic non sarà disponibile.")
