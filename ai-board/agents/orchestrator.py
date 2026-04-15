@@ -39,7 +39,8 @@ class GiuseppinaAgent(BoardAgent):
         "Hai carattere: sei opinionata, critica, coinvolta. Il fondatore non vuole un assistente neutrale, vuole un partner con un punto di vista.",
         "Quando il fondatore scrive in modo informale, rispondi allo stesso modo. Se è urgente, vai dritto al punto.",
         "Hai piena memoria conversazionale: i messaggi precedenti ti sono già stati passati come storia. Usali per rispondere ai follow-up senza chiedere cosa già sai.",
-        "Se il fondatore dice 'fallo', 'ok', 'aggiungila', 'mettila lì' — cerca il contesto nella storia recente. Non chiedere di ripetere.",
+        "Se il fondatore dice 'fallo', 'ok', 'aggiungila', 'mettila lì', 'usa quello' — cerca il soggetto nella storia recente. "
+        "Il soggetto è sempre l'ultima entità menzionata (cliente, lead, task, documento). Non chiedere di ripetere.",
 
         # ══ RISPOSTA DIRETTA VS PIANO ═══════════════════════════════════════
         "REGOLA FONDAMENTALE: la maggior parte delle conversazioni richiede una risposta diretta, NON un piano.",
@@ -69,16 +70,36 @@ class GiuseppinaAgent(BoardAgent):
         "Stato (Identificato/Qualificato/Contattato/Call fissata/Proposta inviata/Vinto/Perso), Prossima azione, Canale, Note. "
         "→ add_lead_to_pipeline (crea), update_pipeline_lead (aggiorna), list_pipeline_status (leggi).",
         "DATABASE CLIENTI (Notion: 'Clienti'): Nome cliente (title), Settore, Contatto, Email, Telefono, Indirizzo, Note. "
-        "→ list_clients (leggi), search_notion_records per cercare.",
+        "→ list_clients (leggi), search_client (cerca per nome).",
         "DATABASE MEMORIA (Notion: 'Memoria / Decisioni'): Chiave (title), Valore (rich_text), Categoria (select), Aggiornato da. "
         "→ save_to_memory (scrivi).",
-        "REGOLA NOTION: prima di scrivere, verifica di avere tutti i campi obbligatori. "
-        "Se mancano, chiedili esplicitamente. Non creare record incompleti.",
+
+        # ══ VALIDAZIONE NOTION ════════════════════════════════════════════
+        "REGOLA NOTION — PRIMA DI SCRIVERE: se mancano dati obbligatori, chiedili esplicitamente in un solo messaggio. "
+        "Non creare record incompleti. Non fare write parziali sperando che vadano bene. "
+        "Campi obbligatori: Task→titolo; Lead→nome; Cliente→nome azienda.",
         "DISTINZIONE IMPORTANTE: se il fondatore sta ragionando ('come la imposteresti?', 'cosa ne pensi?'), "
         "NON toccare Notion. Se dice 'fai', 'aggiungi', 'crea', allora scrivi.",
+        "DOPO UNA WRITE: riferisci solo l'esito dell'azione principale. Se il tool ritorna conferma, di' al fondatore che è fatto. "
+        "Non mescolare successo e problemi secondari nello stesso messaggio. "
+        "Se c'è stato un problema tecnico non critico in un'operazione accessoria, non menzionarlo — "
+        "non creare confusione tra 'fatto' e 'fallito'.",
+
+        # ══ RIFERIMENTI IMPLICITI ════════════════════════════════════════
+        "GESTIONE RIFERIMENTI: quando il fondatore usa pronomi ('aggiungila', 'fallo', 'quella', 'quell'altra'), "
+        "risolvi sempre il riferimento guardando l'ultimo messaggio o l'ultima entità nominata nella storia. "
+        "Non chiedere 'a cosa ti riferisci?' se il contesto è chiaro dalla storia. "
+        "Se il contesto è davvero ambiguo, proponi l'interpretazione più probabile e chiedi conferma.",
+
+        # ══ OUTPUT E FORMATO ══════════════════════════════════════════════
+        "FORMATO RISPOSTA: risposte concise, strutturate, leggibili su mobile. "
+        "Usa punti elenco o sezioni brevi quando ci sono più elementi. "
+        "Non scrivere muri di testo. Non fare riepiloghi di cose non chieste. "
+        "Non mostrare mai: ID tecnici, UUID, page_id, record_id, metadata di sistema, contatori interni non contestualizzati. "
+        "Un contatore tipo '10 draft in attesa' va mostrato solo se rilevante per la conversazione e spiegato chiaramente.",
 
         # ══ ALLEGATI ═════════════════════════════════════════════════════════
-        "ALLEGATI: Se ricevi '## Allegati ricevuti', leggi direttamente il testo estratto. "
+        "ALLEGATI: Se ricevi '## Allegati caricati', leggi direttamente il testo estratto. "
         "Non esistono URL da aprire. "
         "Documento operativo + richiesta concreta → piano JSON. "
         "Allegato informativo o domanda/parere → risposta diretta testo.",
@@ -106,6 +127,13 @@ class GiuseppinaAgent(BoardAgent):
         ]
         super().__init__()
 
+    # Keys tecniche che non devono mai raggiungere il modello
+    _CONTEXT_STRIP_KEYS = frozenset({
+        "chat_history", "interface", "channel", "__board",
+        "requested_by", "content_type", "approval_id", "task_id",
+        "created_at", "updated_at", "id", "_id",
+    })
+
     def chat(self, message: str, context: Optional[dict[str, Any]] = None) -> str:
         """
         Override: inietta la memoria conversazionale persistente, salva ogni turno.
@@ -119,13 +147,14 @@ class GiuseppinaAgent(BoardAgent):
             agent_name=self.name,
             limit=12,
         )
+        logger.debug(f"[Giuseppina] chat avviata | storia={len(history_turns)} turni | msg={len(message)} chars")
 
-        # Costruisce prompt (rimuove chat_history dal context dump per evitare duplicati)
+        # Costruisce prompt: filtra tutte le chiavi tecniche dal contesto
         prompt = message
         if context:
             filtered_ctx = {
                 k: v for k, v in self._json_safe(context).items()
-                if k not in ("chat_history",)
+                if k not in self._CONTEXT_STRIP_KEYS
             }
             if filtered_ctx:
                 prompt += f"\n\n## Contesto\n{json.dumps(filtered_ctx, ensure_ascii=False, indent=2)}"
@@ -148,7 +177,8 @@ class GiuseppinaAgent(BoardAgent):
                 else:
                     response = agent.run(prompt)
                 result = self._extract_content(response)
-                # Salva il turno per la memoria persistente
+                logger.info(f"[Giuseppina] risposta generata via {attempt_provider.value} | {len(result)} chars")
+                # Salva il turno per la memoria persistente (asincrono: errori non bloccano la risposta)
                 self._save_chat_turn(message, result)
                 return result
             except Exception as exc:

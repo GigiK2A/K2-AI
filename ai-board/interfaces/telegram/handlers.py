@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 from datetime import UTC, datetime
 from functools import partial
 from io import BytesIO
@@ -398,7 +399,7 @@ async def skip_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         approval_id = context.user_data.pop("pending_reject")
         success = await run_sync(reject, approval_id, None)
         if success:
-            await update.message.reply_text(f"Draft rifiutato.\n`{approval_id[:8]}...`", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text("Draft rifiutato.")
         else:
             await update.message.reply_text("Errore durante il rifiuto.")
         return
@@ -621,7 +622,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         success = await run_sync(approve, approval_id)
         if success:
             await query.edit_message_reply_markup(reply_markup=None)
-            await query.message.reply_text(f"Approvato.\n`{approval_id[:8]}...`", parse_mode=ParseMode.MARKDOWN)
+            await query.message.reply_text("Approvato.")
         else:
             await query.message.reply_text("Errore durante l'approvazione.")
         return
@@ -679,8 +680,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update) or not update.message or not update.message.text:
         return
 
+    req_id = str(uuid.uuid4())[:8]
     text = update.message.text
     normalized_text = markdown_to_plain_text(text).strip()
+    logger.info(f"[{req_id}] msg ricevuto: {normalized_text[:80]!r}")
 
     if "pending_assistant_action" in context.user_data:
         if confirm_word(normalized_text):
@@ -728,10 +731,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Shortcut operativi espliciti (approvals, logs, status, pipeline list)
     shortcut = operational_shortcut(normalized_text)
     if shortcut:
+        logger.info(f"[{req_id}] → operational_shortcut: {shortcut.get('action', '?')}")
         try:
             response = await run_sync(execute_action, shortcut)
         except Exception as exc:
-            logger.exception(f"Errore in operational_shortcut: {exc}")
+            logger.exception(f"[{req_id}] Errore in operational_shortcut: {exc}")
             await update.message.reply_text(f"Errore: {str(exc)[:200]}")
             return
         if response.pending_action:
@@ -745,20 +749,23 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Tutti gli altri messaggi → Giuseppina
     pending_attachments = _pop_pending_attachments(context)
     task_with_attachments = _build_task_with_attachments(text, pending_attachments)
-    chat_ctx = _telegram_agent_chat_context(AgentName.ORCHESTRATOR)
+    # Il contesto al modello è minimal: solo allegati se presenti, nessun metadata tecnico
+    chat_ctx: dict[str, Any] = {}
     if pending_attachments:
         chat_ctx["attachments"] = [
-            {"name": a["name"], "path": a["path"], "size_bytes": a["size_bytes"], "excerpt": a.get("excerpt")}
+            {"name": a["name"], "excerpt": a.get("excerpt")}
             for a in pending_attachments
         ]
 
+    logger.info(f"[{req_id}] → Giuseppina | attachments={len(pending_attachments)}")
     msg = await update.message.reply_text("…")
     try:
         response_text = await chat_agent_async(AgentName.ORCHESTRATOR, task_with_attachments, chat_ctx)
     except Exception as exc:
-        logger.exception(f"Errore chat Giuseppina: {exc}")
-        await msg.edit_text(f"Errore durante l'elaborazione.\n\nDettaglio: {str(exc)[:200]}")
+        logger.exception(f"[{req_id}] Errore chat Giuseppina: {exc}")
+        await msg.edit_text("Si è verificato un errore. Riprova tra un momento.")
         return
+    logger.info(f"[{req_id}] risposta generata: {len(response_text)} chars")
     await msg.edit_text(truncate(response_text))
 
 
@@ -787,9 +794,10 @@ async def attachment_message_handler(update: Update, context: ContextTypes.DEFAU
                 return
 
             task = _build_task_with_attachments(caption, attachments)
-            chat_ctx = _telegram_agent_chat_context(agent_name)
-            chat_ctx["attachments"] = [{"name": a["name"], "path": a["path"], "size_bytes": a["size_bytes"], "excerpt": a.get("excerpt")} for a in attachments]
-            msg = await update.message.reply_text(f"...")
+            chat_ctx: dict[str, Any] = {
+                "attachments": [{"name": a["name"], "excerpt": a.get("excerpt")} for a in attachments]
+            }
+            msg = await update.message.reply_text("...")
             response_text = await chat_agent_async(agent_name, task, chat_ctx)
             await msg.edit_text(truncate(response_text))
         else:
@@ -812,7 +820,7 @@ async def attachment_message_handler(update: Update, context: ContextTypes.DEFAU
             # Ha caption: lancia come obiettivo orchestrator
             all_attachments = _pop_pending_attachments(context)
             task = _build_task_with_attachments(caption, all_attachments)
-            msg = await update.message.reply_text(f"Documento(i) ricevuto. Avvio analisi...\n`{caption[:60]}`", parse_mode=ParseMode.MARKDOWN)
+            msg = await update.message.reply_text("Documento ricevuto. Avvio analisi...")
             result = await run_objective_async(task)
             if result["status"] == "error":
                 await msg.edit_text(f"Errore: {result.get('error', 'sconosciuto')}")

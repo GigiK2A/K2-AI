@@ -3,12 +3,25 @@ Funzioni Notion esposte come tool agli agenti del board.
 
 Ogni funzione wrappa un'operazione su notion_board con gestione errori,
 così gli agenti possono scrivere su Notion in autonomia senza crashare.
+
+Regole output:
+- Nessun ID tecnico nei return (né UUID, né page_id, né abbreviazioni)
+- Testo naturale, leggibile dall'agente e interpretabile per risposta utente
+- Errori chiari: distingui errore pre-write (dati mancanti) da errore write (Notion down)
 """
 from __future__ import annotations
 
 from loguru import logger
 
 from core import notion_board
+
+
+def _validate_required(field_name: str, value: str, label: str = "") -> str | None:
+    """Ritorna None se valido, stringa di errore se mancante."""
+    if not value or not str(value).strip():
+        display = label or field_name
+        return f"Campo obbligatorio mancante: '{display}'. Richiedilo al fondatore prima di procedere."
+    return None
 
 
 def add_lead_to_pipeline(
@@ -24,7 +37,7 @@ def add_lead_to_pipeline(
     Usa questa funzione quando identifichi un prospect o una potenziale opportunità commerciale.
 
     Args:
-        name: Nome del lead o del referente principale.
+        name: Nome del lead o del referente principale (obbligatorio).
         company: Nome dell'azienda del lead.
         sector: Settore (es. Manifatturiero, Retail, Tecnologia, Sanità, Turismo).
         pain_point: Problema principale o esigenza rilevata.
@@ -32,25 +45,29 @@ def add_lead_to_pipeline(
         notes: Note aggiuntive, contesto, fonti.
 
     Returns:
-        Conferma con ID Notion del lead creato, o messaggio di errore.
+        Conferma dell'aggiunta, o messaggio di errore con campo mancante.
     """
+    err = _validate_required("name", name, "nome del lead")
+    if err:
+        return err
     if not notion_board.notion_enabled():
         return "Notion non abilitato — lead non salvato."
     try:
-        lead_id = notion_board.create_pipeline_lead(
-            name=name,
-            company=company,
+        notion_board.create_pipeline_lead(
+            name=name.strip(),
+            company=company.strip() if company else "",
             sector=sector or "Altro",
             pain_point=pain_point,
             channel="agent",
             next_action=next_action or "Qualifica iniziale",
             notes=notes,
         )
-        logger.info(f"[notion_tools] Lead '{name}' aggiunto alla pipeline. ID: {lead_id}")
-        return f"Lead '{name}' ({company}) aggiunto alla pipeline Notion. ID: {lead_id}"
+        company_str = f" ({company.strip()})" if company and company.strip() else ""
+        logger.info(f"[notion_tools] Lead '{name}' aggiunto alla pipeline.")
+        return f"Lead '{name.strip()}'{company_str} aggiunto alla pipeline Notion."
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore add_lead_to_pipeline: {exc}")
-        return f"Errore aggiunta lead: {exc}"
+        return f"Errore nell'aggiunta del lead: {exc}"
 
 
 def update_pipeline_lead(
@@ -79,7 +96,7 @@ def update_pipeline_lead(
         # Prova prima come ID diretto
         target_id = name_or_id.strip()
         lead = None
-        if len(target_id) == 36 or len(target_id) == 32:
+        if len(target_id) in (32, 36):
             try:
                 page = notion_board._request("GET", f"/pages/{target_id}")
                 if not page.get("archived"):
@@ -116,7 +133,8 @@ def update_pipeline_lead(
             notion_board._request("PATCH", f"/pages/{target_id}", json={"properties": props})
 
         logger.info(f"[notion_tools] Lead '{name_or_id}' aggiornato.")
-        return f"Lead '{name_or_id}' aggiornato in Notion (stato: {status or 'invariato'})."
+        status_str = f" — stato: {status}" if status else ""
+        return f"Lead '{name_or_id}' aggiornato in Notion{status_str}."
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore update_pipeline_lead: {exc}")
         return f"Errore aggiornamento lead: {exc}"
@@ -135,7 +153,7 @@ def create_board_task(
     Usa questa funzione per registrare un'azione da fare, un follow-up o un deliverable.
 
     Args:
-        title: Titolo chiaro e azionabile del task (massimo 120 caratteri).
+        title: Titolo chiaro e azionabile del task (obbligatorio, massimo 120 caratteri).
         description: Descrizione dettagliata di cosa fare e perché.
         priority: Priorità numerica: 1=Critica, 2=Alta, 3=Media, 4=Bassa.
         assigned_to: Nome o ruolo a cui assegnare il task (es. "founder", "sales").
@@ -143,13 +161,16 @@ def create_board_task(
         due_date: Data di scadenza in formato YYYY-MM-DD (opzionale).
 
     Returns:
-        Conferma con ID Notion del task creato, o messaggio di errore.
+        Conferma creazione task, o messaggio di errore con campo mancante.
     """
+    err = _validate_required("title", title, "titolo del task")
+    if err:
+        return err
     if not notion_board.notion_enabled():
         return "Notion non abilitato — task non creato."
     try:
-        task_id = notion_board.create_task(
-            title=title[:120],
+        notion_board.create_task(
+            title=title[:120].strip(),
             description=description,
             assigned_to=assigned_to or "founder",
             priority=priority,
@@ -159,8 +180,8 @@ def create_board_task(
             task_type="Operativo",
             due_date=due_date or None,
         )
-        logger.info(f"[notion_tools] Task '{title}' creato. ID: {task_id}")
-        return f"Task '{title}' creato nel board Notion. ID: {task_id}"
+        logger.info(f"[notion_tools] Task '{title}' creato.")
+        return f"Task '{title.strip()[:80]}' creato nel board Notion."
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore create_board_task: {exc}")
         return f"Errore creazione task: {exc}"
@@ -185,10 +206,13 @@ def update_board_task(
     """
     if not notion_board.notion_enabled():
         return "Notion non abilitato — task non aggiornato."
+    if not task_id or not task_id.strip():
+        return "ID task mancante — non posso aggiornare."
     try:
-        notion_board.update_task_status(task_id, status or "running", notes)
-        logger.info(f"[notion_tools] Task '{task_id}' aggiornato a '{status}'.")
-        return f"Task {task_id} aggiornato (stato: {status or 'invariato'})."
+        notion_board.update_task_status(task_id.strip(), status or "running", notes)
+        logger.info(f"[notion_tools] Task aggiornato a '{status}'.")
+        status_str = f" — stato: {status}" if status else ""
+        return f"Task aggiornato in Notion{status_str}."
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore update_board_task: {exc}")
         return f"Errore aggiornamento task: {exc}"
@@ -220,7 +244,7 @@ def save_to_memory(
         from core.memory import set_memory
         set_memory(key, value, category=category, updated_by="ai_agent")
         logger.info(f"[notion_tools] Memoria '{key}' salvata (categoria: {category}).")
-        return f"Memoria '{key}' salvata nel board (categoria: {category})."
+        return f"Memorizzato: '{key}' salvato nella categoria '{category}'."
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore save_to_memory: {exc}")
         return f"Errore salvataggio memoria: {exc}"
@@ -249,10 +273,8 @@ def list_open_tasks(limit: int = 10) -> str:
             return "Nessun task aperto nel board."
         lines = [f"Task aperti ({len(open_tasks)}):"]
         for t in open_tasks:
-            lines.append(
-                f"- [{t.get('status')}] {t.get('title', 'senza titolo')}"
-                f"{' — scadenza: ' + t['due_date'] if t.get('due_date') else ''}"
-            )
+            due_str = f" — scadenza: {t['due_date']}" if t.get("due_date") else ""
+            lines.append(f"- [{t.get('status')}] {t.get('title', 'senza titolo')}{due_str}")
         return "\n".join(lines)
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore list_open_tasks: {exc}")
@@ -278,10 +300,10 @@ def list_pipeline_status(limit: int = 15) -> str:
             return "Pipeline vuota — nessun lead presente."
         lines = [f"Pipeline commerciale ({len(leads)} lead):"]
         for lead in leads:
+            next_str = f" → {lead.get('next_action')}" if lead.get("next_action") else ""
             lines.append(
                 f"- [{lead.get('status', '?')}] {lead.get('name', '?')}"
-                f" · {lead.get('company', '')} · score {lead.get('score', '?')}"
-                f"{' → ' + lead.get('next_action', '') if lead.get('next_action') else ''}"
+                f" · {lead.get('company', '')}{next_str}"
             )
         return "\n".join(lines)
     except Exception as exc:
@@ -313,7 +335,10 @@ def list_clients(limit: int = 20) -> str:
             status = c.get("relationship_status") or c.get("stato_relazione") or "—"
             contact = c.get("contact_name") or "—"
             email = c.get("email") or ""
-            lines.append(f"- {name} | settore: {sector} | stato: {status} | referente: {contact}{' | ' + email if email else ''}")
+            lines.append(
+                f"- {name} | settore: {sector} | stato: {status} | referente: {contact}"
+                + (f" | {email}" if email else "")
+            )
         return "\n".join(lines)
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore list_clients: {exc}")
@@ -340,14 +365,13 @@ def search_client(name_or_company: str) -> str:
             return f"Nessun cliente trovato con il nome '{name_or_company}'."
         name = client.get("company_name") or client.get("name") or "—"
         lines = [
-            f"Cliente trovato: {name}",
+            f"Cliente: {name}",
             f"Settore: {client.get('sector') or '—'}",
             f"Referente: {client.get('contact_name') or '—'}",
             f"Email: {client.get('email') or '—'}",
             f"Telefono: {client.get('phone') or '—'}",
             f"Stato relazione: {client.get('relationship_status') or '—'}",
             f"Note: {client.get('notes') or '—'}",
-            f"ID Notion: {client.get('id', '')[:8]}...",
         ]
         return "\n".join(lines)
     except Exception as exc:
@@ -377,14 +401,15 @@ def create_or_update_client(
         notes: Note aggiuntive, contesto, provenienza.
 
     Returns:
-        Conferma creazione/aggiornamento con ID Notion, o messaggio di errore.
+        Conferma creazione/aggiornamento, o messaggio di errore con campo mancante.
     """
+    err = _validate_required("company_name", company_name, "nome dell'azienda")
+    if err:
+        return err
     if not notion_board.notion_enabled():
         return "Notion non abilitato — cliente non salvato."
-    if not company_name or not company_name.strip():
-        return "Per creare un cliente mi serve almeno il nome dell'azienda."
     try:
-        client_id = notion_board.create_or_get_client(
+        notion_board.create_or_get_client(
             company_name=company_name.strip(),
             contact_name=contact_name,
             email=email,
@@ -392,8 +417,8 @@ def create_or_update_client(
             phone=phone,
             notes=notes,
         )
-        logger.info(f"[notion_tools] Cliente '{company_name}' creato/aggiornato. ID: {client_id}")
-        return f"Cliente '{company_name}' salvato in Notion. ID: {client_id[:8]}..."
+        logger.info(f"[notion_tools] Cliente '{company_name}' creato/aggiornato.")
+        return f"Cliente '{company_name.strip()}' salvato nel database Clienti."
     except Exception as exc:
         logger.warning(f"[notion_tools] Errore create_or_update_client: {exc}")
         return f"Errore salvataggio cliente: {exc}"

@@ -73,8 +73,7 @@ async def notify_draft_ready(agent_name: str, approval_id: str, preview: str) ->
     text = (
         f"Draft pronto\n\n"
         f"Agente: {readable_agent}\n"
-        f"Anteprima:\n{cleaned_preview}\n\n"
-        f"ID: {approval_id[:8]}..."
+        f"Anteprima:\n{cleaned_preview}"
     )
     return await send_message(text, keyboard=approval_keyboard(approval_id))
 
