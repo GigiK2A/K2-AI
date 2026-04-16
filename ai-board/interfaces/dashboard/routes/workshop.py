@@ -20,6 +20,15 @@ router = APIRouter()
 WORKSHOP_MEMORY_KEY = "offers.workshop_packages"
 WORKSHOP_UPLOADS_DIR = Path(__file__).resolve().parents[3] / "uploads" / "workshop"
 WORKSHOP_ASSETS_DIR = WORKSHOP_UPLOADS_DIR / "assets"
+REPO_ROOT_DIR = Path(__file__).resolve().parents[4]
+
+# Logo K2-AI — cercato in ordine di priorità nel repo
+_LOGO_SEARCH_PATHS = [
+    REPO_ROOT_DIR / "kai-website" / "src" / "public" / "logo-nav.png",
+    REPO_ROOT_DIR / "kai-website" / "src" / "logo-nav.png",
+    REPO_ROOT_DIR / "kai-website" / "logo-nav.png",
+]
+_LOGO_FILE: Path | None = next((p for p in _LOGO_SEARCH_PATHS if p.exists()), None)
 
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
 ALLOWED_IMAGE_MIMETYPES = {
@@ -279,6 +288,19 @@ async def workshop_packages_api():
     )
 
 
+@router.get("/api/workshop/logo")
+async def workshop_logo():
+    """Serve il logo K2-AI dal repo — usato dall'overlay iniettato negli HTML pacchetto."""
+    from fastapi.responses import FileResponse
+    if _LOGO_FILE is None:
+        raise HTTPException(status_code=404, detail="Logo non trovato")
+    return FileResponse(
+        str(_LOGO_FILE),
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 _FRONTEND_ORIGIN = "https://www.k2-ai.it"
 _FRONTEND_LOGO_URL = "https://www.k2-ai.it/logo-nav.png"
 
@@ -332,7 +354,7 @@ _LOGO_OVERLAY_HTML = (
     "position:fixed;top:16px;left:16px;z-index:2147483647;"
     "pointer-events:none;user-select:none;"
     '">'
-    '<img src="' + _FRONTEND_LOGO_URL + '" alt="K2-AI" '
+    '<img src="/api/workshop/logo" alt="K2-AI" '
     'style="height:40px;width:auto;display:block;'
     "filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));"
     '">'
