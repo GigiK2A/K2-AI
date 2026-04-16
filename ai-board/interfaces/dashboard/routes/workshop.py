@@ -279,6 +279,30 @@ async def workshop_packages_api():
     )
 
 
+_FRONTEND_ORIGIN = "https://www.k2-ai.it"
+
+# Attributi che possono contenere path assoluti del frontend
+_ABSOLUTE_SRC_RE = re.compile(
+    r"""((?:src|href|action)\s*=\s*["'])(/)""",
+    re.IGNORECASE,
+)
+
+
+def _rewrite_absolute_paths(html: str) -> str:
+    """Riscrive src="/...", href="/..." con prefisso frontend.
+
+    Gli HTML caricati dall'utente spesso usano path assoluti che funzionano
+    su www.k2-ai.it (es. /logo-nav.png, /assets/...) ma non su api.k2-ai.it.
+    Questa funzione li rende assoluti rispetto al dominio frontend.
+
+    Non tocca href="//...", href="https://...", href="http://...".
+    """
+    return _ABSOLUTE_SRC_RE.sub(
+        lambda m: m.group(1) + _FRONTEND_ORIGIN + "/",
+        html,
+    )
+
+
 def _inject_base_tag(html: str, package_id: str) -> str:
     """Inietta un <base href="..."> nel <head> dell'HTML se non presente.
 
@@ -321,7 +345,9 @@ async def workshop_package_html(package_id: str):
         raise HTTPException(status_code=404, detail="File non trovato su disco")
 
     html = full_path.read_text(encoding="utf-8", errors="replace")
-    # Inietta base tag: le immagini con path relativi si risolvono correttamente
+    # 1) Riscrive path assoluti /... → https://www.k2-ai.it/... (logo, assets frontend)
+    html = _rewrite_absolute_paths(html)
+    # 2) Inietta base tag: path relativi → /uploads/workshop/assets/{id}/
     html = _inject_base_tag(html, target_id)
 
     from fastapi.responses import HTMLResponse
