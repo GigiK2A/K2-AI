@@ -280,6 +280,7 @@ async def workshop_packages_api():
 
 
 _FRONTEND_ORIGIN = "https://www.k2-ai.it"
+_FRONTEND_LOGO_URL = "https://www.k2-ai.it/logo-nav.png"
 
 # Attributi che possono contenere path assoluti del frontend
 _ABSOLUTE_SRC_RE = re.compile(
@@ -287,20 +288,43 @@ _ABSOLUTE_SRC_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Nomi file logo riconosciuti (relativi, senza leading slash)
+_LOGO_FILENAMES_RE = re.compile(
+    r"""(src\s*=\s*["'])(?!https?://)(?!data:)(\.{0,2}\/?)?(logo[\w\-]*\.(?:png|svg|jpg|webp)|k2[\w\-]*logo[\w\-]*\.(?:png|svg|jpg|webp))(["'])""",
+    re.IGNORECASE,
+)
+
+
+def _fix_mojibake(html: str) -> str:
+    """Tenta di correggere UTF-8 doppiamente encodato (mojibake).
+
+    Pattern tipico: il file è UTF-8 ma è stato letto come Latin-1 e
+    risalvato, producendo sequenze tipo Â· (·), â¬ (€), Ã¨ (è).
+    """
+    try:
+        fixed = html.encode("latin-1").decode("utf-8")
+        return fixed
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        return html  # già ok o non recuperabile
+
 
 def _rewrite_absolute_paths(html: str) -> str:
-    """Riscrive src="/...", href="/..." con prefisso frontend.
+    """Riscrive src="/...", href="/..." con prefisso frontend e logo relativi.
 
-    Gli HTML caricati dall'utente spesso usano path assoluti che funzionano
-    su www.k2-ai.it (es. /logo-nav.png, /assets/...) ma non su api.k2-ai.it.
-    Questa funzione li rende assoluti rispetto al dominio frontend.
-
-    Non tocca href="//...", href="https://...", href="http://...".
+    1) Path assoluti: src="/logo-nav.png" → src="https://www.k2-ai.it/logo-nav.png"
+    2) Logo relativi: src="logo.png" / src="./logo.png" → URL frontend logo
     """
-    return _ABSOLUTE_SRC_RE.sub(
+    # 1) Path assoluti con leading /
+    html = _ABSOLUTE_SRC_RE.sub(
         lambda m: m.group(1) + _FRONTEND_ORIGIN + "/",
         html,
     )
+    # 2) Nomi file logo relativi → URL assoluta logo K2-AI
+    html = _LOGO_FILENAMES_RE.sub(
+        lambda m: m.group(1) + _FRONTEND_LOGO_URL + m.group(4),
+        html,
+    )
+    return html
 
 
 def _inject_base_tag(html: str, package_id: str) -> str:
@@ -345,9 +369,11 @@ async def workshop_package_html(package_id: str):
         raise HTTPException(status_code=404, detail="File non trovato su disco")
 
     html = full_path.read_text(encoding="utf-8", errors="replace")
-    # 1) Riscrive path assoluti /... → https://www.k2-ai.it/... (logo, assets frontend)
+    # 0) Correggi mojibake (UTF-8 doppiamente encodato da editor sbagliato)
+    html = _fix_mojibake(html)
+    # 1) Riscrive path assoluti /... e logo relativi → https://www.k2-ai.it/...
     html = _rewrite_absolute_paths(html)
-    # 2) Inietta base tag: path relativi → /uploads/workshop/assets/{id}/
+    # 2) Inietta base tag: altri path relativi → /uploads/workshop/assets/{id}/
     html = _inject_base_tag(html, target_id)
 
     from fastapi.responses import HTMLResponse
