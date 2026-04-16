@@ -327,6 +327,33 @@ def _rewrite_absolute_paths(html: str) -> str:
     return html
 
 
+_LOGO_OVERLAY_HTML = (
+    '<div id="k2ai-logo-badge" style="'
+    "position:fixed;top:16px;left:16px;z-index:2147483647;"
+    "pointer-events:none;user-select:none;"
+    '">'
+    '<img src="' + _FRONTEND_LOGO_URL + '" alt="K2-AI" '
+    'style="height:40px;width:auto;display:block;'
+    "filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));"
+    '">'
+    "</div>"
+)
+
+
+def _inject_logo_overlay(html: str) -> str:
+    """Inietta il logo K2-AI fisso in alto a sinistra sopra ogni contenuto.
+
+    Usa position:fixed + z-index massimo (2147483647) così resta visibile
+    indipendentemente dal layout dell'HTML caricato dall'utente.
+    Inserito subito dopo <body> o come primo elemento del documento.
+    """
+    body_match = re.search(r"<body(?:[^>]*)>", html, re.IGNORECASE)
+    if body_match:
+        insert_at = body_match.end()
+        return html[:insert_at] + "\n" + _LOGO_OVERLAY_HTML + html[insert_at:]
+    return _LOGO_OVERLAY_HTML + "\n" + html
+
+
 def _inject_base_tag(html: str, package_id: str) -> str:
     """Inietta un <base href="..."> nel <head> dell'HTML se non presente.
 
@@ -375,6 +402,8 @@ async def workshop_package_html(package_id: str):
     html = _rewrite_absolute_paths(html)
     # 2) Inietta base tag: altri path relativi → /uploads/workshop/assets/{id}/
     html = _inject_base_tag(html, target_id)
+    # 3) Inietta logo K2-AI fisso in alto a sinistra, sopra tutto
+    html = _inject_logo_overlay(html)
 
     from fastapi.responses import HTMLResponse
     return HTMLResponse(content=html)
