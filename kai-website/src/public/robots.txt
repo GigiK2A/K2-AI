@@ -1,4 +1,79 @@
+# robots.txt — K2-AI
+# https://www.k2-ai.it/
+# Aggiornato: 2026-04-16
+
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /cgi-bin/
+Disallow: /*?utm_
 
-Sitemap: https://k-ai.it/sitemap.xml
+# Google
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+# Bing
+User-agent: Bingbot
+Allow: /
+
+User-agent: BingPreview
+Allow: /
+
+# OpenAI (ChatGPT)
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic (Claude)
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# Apple
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Common Crawl (usato da molti LLM)
+User-agent: CCBot
+Allow: /
+
+# Meta AI
+User-agent: FacebookBot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+# ByteDance
+User-agent: Bytespider
+Allow: /
+
+# Sitemap
+Sitemap: https://www.k2-ai.it/sitemap.xml

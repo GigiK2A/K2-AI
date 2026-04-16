@@ -10,6 +10,16 @@
       ],
       "destination": "https://www.k2-ai.it/$1",
       "permanent": true
+    },
+    {
+      "source": "/casi-studio.html",
+      "destination": "/laboratorio.html",
+      "permanent": true
+    },
+    {
+      "source": "/workshop.html",
+      "destination": "/suite-ai.html",
+      "permanent": true
     }
   ],
   "rewrites": [

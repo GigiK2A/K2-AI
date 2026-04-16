@@ -103,7 +103,18 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  let urlPath = (req.url || '/').split('?')[0];
+  // 301 redirects — URL rename (casi-studio → laboratorio, workshop → suite-ai)
+  const REDIRECTS_301 = {
+    '/casi-studio.html': '/laboratorio.html',
+    '/workshop.html': '/suite-ai.html',
+  };
+  const rawPath = (req.url || '/').split('?')[0];
+  if (REDIRECTS_301[rawPath]) {
+    send(res, 301, { Location: REDIRECTS_301[rawPath] }, '');
+    return;
+  }
+
+  let urlPath = rawPath;
   if (urlPath === '/') {
     urlPath = '/index.html';
   }

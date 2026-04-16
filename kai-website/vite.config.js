@@ -101,6 +101,7 @@ export default defineConfig({
         main: 'src/index.html',
         metodo: 'src/metodo.html',
         'casi-studio': 'src/casi-studio.html',
+        laboratorio: 'src/laboratorio.html',
         analisi: 'src/analisi.html',
         'k-bot': 'src/k-bot.html',
         contatti: 'src/contatti.html',
@@ -108,6 +109,7 @@ export default defineConfig({
         cookie: 'src/cookie.html',
         'note-legali': 'src/note-legali.html',
         workshop: 'src/workshop.html',
+        'suite-ai': 'src/suite-ai.html',
       }
     }
   },

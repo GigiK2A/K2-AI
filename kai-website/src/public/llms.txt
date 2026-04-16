@@ -1,0 +1,68 @@
+# K2-AI
+
+> K2-AI e una realta italiana di ingegneria dei sistemi AI operativi per PMI. Costruisce agenti, automazioni documentali, microapp e board decisionali che si integrano nei tool esistenti del cliente (CRM, ERP, email, Slack, Drive, gestionali custom). Il metodo e testato prima internamente, poi adattato ai clienti. I KPI si definiscono prima del go-live. Sede: Perugia, Italia. Entita legale: K2A S.R.L.S., P.IVA IT03655920548, REA PG-304896.
+
+## Posizionamento
+
+- K2-AI NON e una agenzia di consulenza marketing AI.
+- K2-AI costruisce sistemi AI operativi che restano sotto controllo umano.
+- Principio: "less is more" — a volte la scelta migliore e togliere complessita invece di aggiungere AI.
+- Un progetto parte solo quando il valore e misurabile con un KPI definito a priori.
+
+## KPI dichiarati e verificabili (casi interni misurati)
+
+- 42 ore a settimana recuperate sui flussi operativi interni.
+- 14 giorni dal brief al primo prototipo testato con il team e i dati del cliente.
+- 87% di riduzione del tempo di revisione documentale nel primo caso legale misurato.
+- Da 4 ore a 30 minuti sulla preparazione di bozze ricorrenti (preventivi, calcoli).
+- +100% di engagement sulla presenza digitale della societa madre dopo il nuovo sito.
+
+## Metodo in 4 fasi
+
+- Diagnosi — mappatura del flusso reale, stima di impatto, pattern riutilizzabili.
+- Architettura — scelta modelli, integrazione con tool esistenti, checkpoint umani, prototipo.
+- Implementazione — integrazione API in CRM/ERP/email/Slack/Drive/gestionali, formazione team, documentazione.
+- Misurazione — KPI pre-definiti, review post go-live, ottimizzazione inclusa.
+
+## Offerta
+
+### Progetti su misura
+
+- Agenti AI (es. smistamento email e qualifica lead con aggiornamento CRM)
+- Board di agenti decisionali per management (sintesi, alert, priorita)
+- Automazioni documentali e RAG aziendale (lettura, verifica, redazione)
+- Microapp mirate (preventivi, configuratori, verbali di cantiere)
+- Integrazioni con gestionali italiani e custom
+
+### Suite AI — pacchetti pronti (pre-ordine, contattare per disponibilita)
+
+- K2-AI HOST — Revenue management per strutture ricettive. Da EUR 59/mese + fee 15% su delta RevPAR.
+- K2-AI WEB — Sito AI con copy, SEO e brand voice. Dalla brief al live in 48 ore. Da EUR 995 (Fondatori).
+- K2-AI STUDIO — Suite AI per studi di ingegneria italiani. -70% tempo su redazione e pratiche. Da EUR 2.490/mese + IVA.
+
+## Tecnologie usate
+
+- LLM: Claude (Anthropic), OpenAI GPT, Gemini (Google), Ollama locale.
+- Framework: LangChain, sistemi RAG, Python, FastAPI.
+- Backend & dati: Supabase.
+- Automazioni: n8n, Zapier, Make.
+
+## K-BOT — diagnosi AI gratuita
+
+K-BOT e il sistema di diagnosi AI di K2-AI. In circa 5 minuti di chat raccoglie il contesto di un processo aziendale (volume, tempi, errori, strumenti, vincoli) e restituisce uno di quattro esiti: stop, chiarimento, prototipo in 14 giorni, contatto diretto. Gratuito, nessuna call obbligatoria. URL: https://www.k2-ai.it/k-bot.html
+
+## Contatti
+
+- Sito web: https://www.k2-ai.it/
+- Email commerciale: info@k2-ai.it
+- Risposta garantita entro 24 ore lavorative.
+- Sede: Perugia, Umbria, Italia.
+
+## Link principali
+
+- [Home](https://www.k2-ai.it/): posizionamento e KPI.
+- [Metodo](https://www.k2-ai.it/metodo.html): il metodo in 4 fasi.
+- [Laboratorio](https://www.k2-ai.it/laboratorio.html): 5 casi AI reali con KPI misurati.
+- [K-BOT](https://www.k2-ai.it/k-bot.html): diagnosi AI gratuita in 5 minuti.
+- [Suite AI](https://www.k2-ai.it/suite-ai.html): pacchetti HOST, WEB, STUDIO.
+- [Contatti](https://www.k2-ai.it/contatti.html): scrivere direttamente al team.
