@@ -27,6 +27,13 @@ from db.client import get_service_client
 from db.models import AgentName
 from interfaces.telegram.assistant import cancel_word, confirm_word, execute_action, execute_pending_action, handle_text_message, operational_shortcut
 from interfaces.telegram.keyboards import approval_keyboard
+from interfaces.telegram.presentation import (
+    approval_is_recent,
+    clean_preview,
+    sanitize_user_error_message,
+    smart_truncate,
+    visible_agent_label,
+)
 
 PENDING_ATTACHMENTS_KEY = "pending_telegram_attachments"
 TELEGRAM_CHAT_UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads" / "chat" / "telegram"
@@ -234,7 +241,7 @@ def _format_plan_for_telegram(output: str) -> str:
         tasks = plan.get("tasks") or []
         lines.append(f"\n{len(tasks)} task generati:")
         for i, task in enumerate(tasks[:5], 1):
-            agent = str(task.get("agent", "?")).replace("_", " ").title()
+            agent = visible_agent_label(task.get("agent", "?"))
             title = str(task.get("title", ""))
             priority = task.get("priority", "")
             lines.append(f"{i}. [{agent}] {title}" + (f" (p{priority})" if priority else ""))
@@ -296,25 +303,7 @@ def truncate(text: str, max_len: int = 3800) -> str:
     Se tronca, cerca di spezzare su una riga vuota o a fine paragrafo
     per evitare frasi monche.
     """
-    cleaned = markdown_to_plain_text(text)
-    if len(cleaned) <= max_len:
-        return cleaned
-    # Prova a spezzare sull'ultimo paragrafo (doppio newline) entro il limite
-    suffix = "\n\n[output troncato]"
-    cut_at = max_len - len(suffix)
-    # Cerca l'ultimo paragrafo entro cut_at
-    para_break = cleaned.rfind("\n\n", 0, cut_at)
-    if para_break > cut_at // 2:
-        return cleaned[:para_break].rstrip() + suffix
-    # Fallback: spezza sull'ultimo newline
-    line_break = cleaned.rfind("\n", 0, cut_at)
-    if line_break > cut_at // 2:
-        return cleaned[:line_break].rstrip() + suffix
-    # Ultimo fallback: tronca a parola intera
-    space = cleaned.rfind(" ", 0, cut_at)
-    if space > 0:
-        return cleaned[:space].rstrip() + suffix
-    return cleaned[:cut_at] + suffix
+    return smart_truncate(text, max_len=max_len, suffix="\n\n[output troncato]")
 
 
 async def run_sync(func: Callable[..., Any], *args, **kwargs) -> Any:
@@ -406,7 +395,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     context.user_data["active_agent_chat"] = AgentName.ORCHESTRATOR.value
     text = (
-        "AI Board attivo. Sono il tuo Orchestrator — dimmi cosa vuoi fare.\n\n"
+        "AI Board attivo. Sono Giuseppina — dimmi cosa vuoi fare.\n\n"
         "Puoi scrivermi qualsiasi obiettivo, caricare documenti o fare domande.\n"
         "Coinvolgerò i giusti agenti del board quando necessario.\n\n"
         "_Comandi rapidi:_\n"
@@ -453,7 +442,7 @@ async def schedule_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as exc:
             logger.error(f"Errore esecuzione manuale job {job_id}: {exc}")
             await msg.edit_text(
-                f"Errore durante il job `{job_id}`:\n`{str(exc)[:300]}`",
+                f"Job `{job_id}` non completato.\n{sanitize_user_error_message(exc)}",
                 parse_mode=ParseMode.MARKDOWN,
             )
             return
@@ -495,7 +484,7 @@ async def skip_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if success:
             await update.message.reply_text("Draft rifiutato.")
         else:
-            await update.message.reply_text("Errore durante il rifiuto.")
+            await update.message.reply_text("Non sono riuscita a salvare il rifiuto. Riprova.")
         return
     await update.message.reply_text("Nessuna operazione da saltare.")
 
@@ -516,7 +505,7 @@ async def task_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = await run_objective_async(objective)
 
     if result["status"] == "error":
-        await msg.edit_text(f"Errore: {result.get('error', 'sconosciuto')}")
+        await msg.edit_text(sanitize_user_error_message(result.get("error")))
         return
 
     raw_output = result.get("output", "")
@@ -538,7 +527,7 @@ async def agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         orchestrator_ctx = _telegram_agent_chat_context(AgentName.ORCHESTRATOR)
         result = await run_agent_async(AgentName.ORCHESTRATOR, task, orchestrator_ctx)
         if result["status"] == "error":
-            await msg.edit_text(f"Errore: {result.get('error')}")
+            await msg.edit_text(sanitize_user_error_message(result.get("error")))
             return
         output = truncate(result.get("output", ""))
         approval_id = result.get("approval_id")
@@ -563,10 +552,12 @@ async def approvals_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Nessun draft in attesa di approvazione.")
         return
 
-    await update.message.reply_text(f"{len(pending)} draft in attesa:")
-    for item in pending[:5]:
-        agent = item.get("agent", "?")
-        preview = truncate(item.get("content_preview", ""), 220)
+    recent_pending = [item for item in pending if approval_is_recent(item.get("created_at"))]
+    shown = recent_pending or pending
+    await update.message.reply_text(f"{len(shown)} draft in attesa:")
+    for item in shown[:5]:
+        agent = visible_agent_label(item.get("agent", "?"))
+        preview = clean_preview(item.get("content_preview", ""), 220)
         created = item.get("created_at", "")[:16].replace("T", " ")
         # Calcola età in ore se possibile
         age_str = ""
@@ -583,7 +574,7 @@ async def approvals_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
         text = (
-            f"Agente: {agent.replace('_', ' ').title()}{age_str}\n"
+            f"Area: {agent}{age_str}\n"
             f"Creato: {created}\n"
             f"Anteprima:\n{preview}"
         )
@@ -592,9 +583,14 @@ async def approvals_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=approval_keyboard(item["id"]),
         )
 
-    if len(pending) > 5:
+    if len(shown) > 5:
         await update.message.reply_text(
-            f"... e altri {len(pending) - 5} draft. Vedi dashboard per tutti.",
+            f"... e altri {len(shown) - 5} draft. Vedi dashboard per tutti.",
+        )
+    hidden_old = len(pending) - len(shown)
+    if hidden_old > 0:
+        await update.message.reply_text(
+            f"Ho nascosto {hidden_old} draft molto vecchi per mantenere l'elenco pulito."
         )
 
 
@@ -613,7 +609,7 @@ async def status_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if tasks:
         text += "*Task recenti:*\n"
         for task in tasks:
-            agent_name = _esc(str(task['assigned_to']))
+            agent_name = _esc(visible_agent_label(task.get("assigned_to")))
             title = _esc(task['title'][:40])
             task_status = _esc(str(task['status']))
             text += f"  • `{agent_name}` — {title} [{task_status}]\n"
@@ -670,8 +666,9 @@ async def log_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ts = row["created_at"][:16].replace("T", " ")
         status_emoji = "✓" if row["status"] in ("draft", "done", "approved") else "✗"
         ms = row.get("duration_ms", 0)
+        area = visible_agent_label(row.get("agent"))
         text += (
-            f"{status_emoji} `{row['agent']}` [{row.get('llm_model', '?')}]\n"
+            f"{status_emoji} `{area}` [{row.get('llm_model', '?')}]\n"
             f"   {row['action'][:50]}...\n"
             f"   {ts} — {ms}ms\n\n"
         )
@@ -746,7 +743,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_reply_markup(reply_markup=None)
             await query.message.reply_text("Approvato.")
         else:
-            await query.message.reply_text("Errore durante l'approvazione.")
+            await query.message.reply_text("Non sono riuscita ad approvare il draft. Riprova.")
         return
 
     if action == "reject" and len(parts) >= 2:
@@ -778,7 +775,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         agent_str = parts[1]
         context.user_data["selected_agent"] = agent_str
         await query.message.reply_text(
-            f"Agente selezionato: `{agent_str}`\n\nScrivi il task da eseguire:",
+            f"Area selezionata: {visible_agent_label(agent_str)}\n\nScrivi il task da eseguire:",
             parse_mode=ParseMode.MARKDOWN,
         )
         return
@@ -848,7 +845,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 from core import notion_tools as _nt
                 func = getattr(_nt, func_name, None)
                 if func is None:
-                    await update.message.reply_text("Errore: funzione non trovata per questa azione.")
+                    await update.message.reply_text("Azione non disponibile in questo momento.")
                     return
                 msg = await update.message.reply_text("Esecuzione in corso...")
                 try:
@@ -864,7 +861,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await msg.edit_text(result)
                 except Exception as exc:
                     logger.error(f"[{req_id}] Errore esecuzione L3 confermata: {exc}")
-                    await msg.edit_text(f"Errore durante l'esecuzione: {str(exc)[:200]}")
+                    await msg.edit_text(sanitize_user_error_message(exc))
                 return
         elif lowered in ("annulla", "no", "stop", "lascia perdere"):
             cancelled = cancel_pending_confirmation(chat_id)
@@ -913,7 +910,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if success:
             await update.message.reply_text("Draft rifiutato.")
         else:
-            await update.message.reply_text("Errore durante il rifiuto.")
+            await update.message.reply_text("Non sono riuscita a salvare il rifiuto. Riprova.")
         return
 
     if "pending_note" in context.user_data:
@@ -939,7 +936,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             response = await run_sync(execute_action, shortcut)
         except Exception as exc:
             logger.exception(f"[{req_id}] Errore in operational_shortcut: {exc}")
-            await update.message.reply_text(f"Errore: {str(exc)[:200]}")
+            await update.message.reply_text(sanitize_user_error_message(exc))
             return
         if response.pending_action:
             context.user_data["pending_assistant_action"] = response.pending_action
@@ -1020,7 +1017,7 @@ async def attachment_message_handler(update: Update, context: ContextTypes.DEFAU
             prev = _get_pending_attachments(context)
             _store_pending_attachments(context, [*prev, *attachments])
             total = len(_get_pending_attachments(context))
-            agent_display = active_agent_name.replace("_", " ").title()
+            agent_display = visible_agent_label(active_agent_name)
             await update.message.reply_text(
                 f"{total} allegat{'o' if total == 1 else 'i'} ricevut{'o' if total == 1 else 'i'}. "
                 f"Ora scrivi cosa vuoi fare — li invio a {agent_display}."
@@ -1038,7 +1035,7 @@ async def attachment_message_handler(update: Update, context: ContextTypes.DEFAU
             msg = await update.message.reply_text("Documento ricevuto. Avvio analisi...")
             result = await run_objective_async(task)
             if result["status"] == "error":
-                await msg.edit_text(f"Errore: {result.get('error', 'sconosciuto')}")
+                await msg.edit_text(sanitize_user_error_message(result.get("error")))
                 return
             raw_output = result.get("output", "")
             plan_text = _format_plan_for_telegram(raw_output)
@@ -1075,7 +1072,7 @@ async def refresh_schema_handler(update: Update, context: ContextTypes.DEFAULT_T
         )
     except Exception as exc:
         logger.error(f"[refresh_schema_handler] Errore: {exc}")
-        await msg.edit_text(f"Errore durante il refresh schema: {str(exc)[:200]}")
+        await msg.edit_text(sanitize_user_error_message(exc))
 
 
 async def undo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1121,7 +1118,7 @@ async def undo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"✅ {result}")
     except Exception as exc:
         logger.error(f"[undo_handler] Errore: {exc}")
-        await msg.edit_text(f"Errore durante l'undo: {str(exc)[:200]}")
+        await msg.edit_text(sanitize_user_error_message(exc))
 
 
 async def _dispatch_delegate(update: Update, context: ContextTypes.DEFAULT_TYPE, delegate: str) -> None:

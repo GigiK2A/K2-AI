@@ -10,11 +10,27 @@ from db.models import TaskStatus
 # Draft più vecchi di questo soglia vengono scaduti automaticamente
 DRAFT_EXPIRY_HOURS = 48
 
+# Content type che non richiedono approvazione: vengono filtrati da /approvals e dai reminder.
+# Devono essere gli stessi definiti in agents/base.py INFORMATIONAL_CONTENT_TYPES.
+_INFORMATIONAL_CONTENT_TYPES = frozenset({
+    "daily_brief",
+    "weekly_plan",
+    "market_pulse",
+    "kpi_update",
+    "task_reminder",
+})
+
+
+def _is_approval_required(item: dict) -> bool:
+    """True se il draft richiede approvazione esplicita (non è informativo)."""
+    return item.get("content_type") not in _INFORMATIONAL_CONTENT_TYPES
+
 
 def get_pending_approvals() -> list[dict]:
-    """Restituisce tutti i draft in attesa di approvazione."""
+    """Restituisce i draft in attesa di approvazione, escludendo quelli informativi."""
     if notion_board.notion_enabled():
-        return notion_board.list_approvals([TaskStatus.DRAFT.value, TaskStatus.REVIEW.value])
+        all_items = notion_board.list_approvals([TaskStatus.DRAFT.value, TaskStatus.REVIEW.value])
+        return [item for item in all_items if _is_approval_required(item)]
 
     client = get_service_client()
     response = (
@@ -24,7 +40,44 @@ def get_pending_approvals() -> list[dict]:
         .order("created_at", desc=True)
         .execute()
     )
-    return response.data or []
+    all_items = response.data or []
+    return [item for item in all_items if _is_approval_required(item)]
+
+
+def cleanup_informational_drafts() -> int:
+    """Migrazione una-tantum: marca come DONE i draft informativi ancora in stato DRAFT/REVIEW.
+
+    Chiama questa funzione all'avvio per ripulire il backlog legacy.
+    Restituisce il numero di record aggiornati.
+    """
+    try:
+        if notion_board.notion_enabled():
+            return 0  # Non supportato per Notion
+
+        client = get_service_client()
+        response = (
+            client.table("approvals")
+            .select("id, content_type")
+            .in_("status", [TaskStatus.DRAFT.value, TaskStatus.REVIEW.value])
+            .in_("content_type", list(_INFORMATIONAL_CONTENT_TYPES))
+            .execute()
+        )
+        items = response.data or []
+        if not items:
+            return 0
+
+        ids = [item["id"] for item in items]
+        client.table("approvals").update({
+            "status": TaskStatus.DONE.value,
+            "founder_notes": "Migrato automaticamente: contenuto informativo, non richiede approvazione",
+            "reviewed_at": datetime.utcnow().isoformat(),
+        }).in_("id", ids).execute()
+
+        logger.info(f"Cleanup backlog: {len(ids)} draft informativi marcati come DONE")
+        return len(ids)
+    except Exception as exc:
+        logger.warning(f"Errore cleanup_informational_drafts: {exc}")
+        return 0
 
 
 def approve(approval_id: str, notes: Optional[str] = None) -> bool:

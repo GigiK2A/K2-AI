@@ -12,6 +12,7 @@ from loguru import logger
 
 from core.config import settings
 from db.models import AgentName, TaskStatus
+from interfaces.telegram.presentation import clean_preview, sanitize_user_error_message, visible_agent_label
 
 ROME = pytz.timezone("Europe/Rome")
 
@@ -68,19 +69,19 @@ def _job_context(job_id: str, content_type: str, **data: Any) -> dict[str, Any]:
 def _notify_scheduler_error(job_id: str, message: str) -> None:
     from interfaces.telegram.notifier import notify_error, notify_sync
 
-    notify_sync(notify_error(f"scheduler:{job_id}", message))
+    notify_sync(notify_error(f"scheduler:{job_id}", sanitize_user_error_message(message)))
 
 
 def _normalize_result(job_id: str, result: dict[str, Any]) -> bool:
     status = result.get("status")
-    approval_id = result.get("approval_id")
-    if status == TaskStatus.DRAFT.value and approval_id:
+    # DRAFT → output approvabile salvato, DONE → output informativo inviato direttamente
+    if status in (TaskStatus.DRAFT.value, TaskStatus.DONE.value):
         return True
     if status == "error":
         logger.error(f"Scheduler {job_id}: errore agente - {result.get('error', 'sconosciuto')}")
         return False
 
-    error = result.get("error") or "job completato senza draft approvabile"
+    error = result.get("error") or "job completato con stato inatteso"
     logger.error(f"Scheduler {job_id}: esecuzione incompleta - {error}")
     _notify_scheduler_error(job_id, str(error))
     return False
@@ -444,7 +445,7 @@ async def job_daily_brief() -> bool:
             if not items:
                 return "  Nessuna"
             return "\n".join(
-                f"  - {a.get('agent','?')} · {str(a.get('content_preview') or '')[:80]}"
+                f"  - {visible_agent_label(a.get('agent','?'))} · {clean_preview(a.get('content_preview') or '', max_len=100)}"
                 for a in items
             )
 
@@ -503,7 +504,7 @@ async def job_task_deadline_reminder() -> bool:
         overdue_tasks = inputs["overdue_tasks"]
 
         lines = [
-            f"Project Operations — promemoria task automatico ({inputs['today_label']})",
+            f"{visible_agent_label('project_operations')} — promemoria task ({inputs['today_label']})",
             f"Task attive: {inputs['active_count']}",
             "",
             f"Task urgenti: {len(urgent_tasks)}",
@@ -603,60 +604,63 @@ IMPORTANTE: Non inventare dati. Usa esclusivamente i lead e le informazioni forn
 
 
 async def job_kpi_update() -> bool:
+    """Report KPI informativo — inviato direttamente, senza approval né draft."""
     logger.info("Scheduler: avvio aggiornamento KPI")
     try:
+        from interfaces.telegram.notifier import notify_sync, send_message
+
         inputs = await _run_sync(_collect_kpi_inputs)
 
-        def _fmt_pipeline_breakdown(counts: dict) -> str:
-            if not counts:
-                return "  Nessun dato"
-            return "\n".join(f"  - {status}: {n}" for status, n in sorted(counts.items()))
+        total = inputs["leads_total"]
+        new_week = inputs["leads_this_week"]
+        active = inputs["active_pipeline"]
+        approved_month = inputs["approved_this_month"]
+        today = inputs["today_label"]
+        lead_counts = inputs["lead_counts"]
+        active_leads = inputs.get("active_leads", [])
 
-        def _fmt_active_leads(items: list[dict]) -> str:
-            if not items:
-                return "  Nessuno"
-            return "\n".join(
-                f"  - {l.get('name','?')} | stato: {l.get('status','?')} | score: {l.get('score','n/d')} | azione: {l.get('next_action','?')}"
-                for l in items[:15]
-            )
+        lines = [
+            f"📊 KPI — {today}",
+            "",
+            f"Pipeline totale: {total} lead",
+            f"Lead attivi (esclusi won/lost): {active}",
+            f"Nuovi questa settimana: {new_week}",
+            f"Asset approvati questo mese: {approved_month}",
+            f"MRR: dato non disponibile",
+        ]
 
-        task = f"""Genera il report KPI serale di oggi {inputs["today_label"]}.
+        if lead_counts:
+            lines.append("")
+            lines.append("Breakdown per stato:")
+            for status, count in sorted(lead_counts.items()):
+                lines.append(f"  - {status}: {count}")
 
-DATI REALI DA NOTION:
-- Lead totali in pipeline: {inputs["leads_total"]}
-- Nuovi lead questa settimana: {inputs["leads_this_week"]}
-- Lead attivi (esclusi won/lost): {inputs["active_pipeline"]}
-- Asset approvati questo mese: {inputs["approved_this_month"]}
-- Dati MRR: non disponibili
+        if active_leads:
+            shown = active_leads[:10]
+            lines.append("")
+            lines.append(f"Lead attivi ({len(shown)} di {len(active_leads)}):")
+            for lead in shown:
+                name = lead.get("name") or "?"
+                status = lead.get("status") or "?"
+                score = lead.get("score") or "n/d"
+                action = lead.get("next_action") or "—"
+                lines.append(f"  - {name} | {status} | score: {score} | {action}")
 
-BREAKDOWN PIPELINE PER STATO:
-{_fmt_pipeline_breakdown(inputs["lead_counts"])}
+        # Alert automatici
+        alerts: list[str] = []
+        if new_week == 0:
+            alerts.append("⚠️ Nessun nuovo lead questa settimana")
+        if active == 0:
+            alerts.append("⚠️ Pipeline attiva vuota")
+        if approved_month == 0:
+            alerts.append("⚠️ Nessun asset approvato questo mese")
+        if alerts:
+            lines.append("")
+            lines.extend(alerts)
 
-LEAD ATTIVI ({len(inputs["active_leads"])}):
-{_fmt_active_leads(inputs["active_leads"])}
-
-Il report deve contenere:
-📊 Stato pipeline: quanti lead per stato, dove si accumula, cosa si muove
-🚀 Velocità di acquisizione: lead nuovi questa settimana vs capacità attuale
-✅ Produttività board: asset approvati nel mese
-⚠️ Alert espliciti se qualcosa è sotto soglia o fermo
-💡 Una raccomandazione concreta per domani mattina
-
-Tono: diretto e umano, come una call di fine giornata con il fondatore — non un report formale.
-Regole: cita i numeri reali forniti, non inventare dati mancanti — segnalali come "dato non disponibile". Massimo 250 parole."""
-
-        from core.orchestrator import run_agent
-
-        result = await _run_sync(
-            run_agent,
-            AgentName.FINANCE_KPI,
-            task,
-            _job_context("kpi_update", "kpi_update", **inputs),
-        )
-        ok = _normalize_result("kpi_update", result)
-        if ok:
-            logger.success("KPI aggiornati")
-        return ok
+        notify_sync(send_message("\n".join(lines)))
+        logger.success("KPI inviato")
+        return True
     except Exception as exc:
         logger.error(f"Errore job_kpi_update: {exc}")
         _notify_scheduler_error("kpi_update", f"Errore aggiornamento KPI: {exc}")
@@ -691,9 +695,8 @@ async def job_approval_reminder() -> bool:
 
         lines = []
         for item in old_pending[:5]:
-            agent = str(item.get("agent") or "?").replace("_", " ").title()
-            preview = str(item.get("content_preview") or "").replace("\n", " ").strip()
-            preview_short = preview[:80] + ("…" if len(preview) > 80 else "")
+            agent = visible_agent_label(item.get("agent") or "?")
+            preview_short = clean_preview(item.get("content_preview") or "", max_len=100).replace("\n", " ")
             created_at = _parse_datetime(item.get("created_at"))
             age_h = int((datetime.now(UTC) - created_at).total_seconds() / 3600) if created_at else "?"
             lines.append(f"- {agent} ({age_h}h fa): {preview_short}")

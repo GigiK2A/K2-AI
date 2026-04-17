@@ -8,9 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from controllers import agents_router, home_router
 from core.board_auth import SESSION_COOKIE_NAME, get_user_from_session
 from core.config import get_allowed_origins, settings
-from interfaces.dashboard.routes import admin, approvals, agents, auth, board_chat, home, inbox, lavori, logs, memory, pipeline, public_intake, workshop
+from interfaces.dashboard.routes import admin, approvals, auth, board_chat, inbox, lavori, logs, memory, pipeline, public_intake, workshop
 
 PUBLIC_INTAKE_PATHS = {"/api/intake/contact", "/api/intake/kbot-chat"}
 AUTH_EXEMPT_PATHS = {"/healthz", "/webhook", "/login"}
@@ -184,11 +185,11 @@ def create_dashboard_app() -> FastAPI:
             response.headers["X-RateLimit-Remaining"] = str(remaining)
         return response
 
-    app.include_router(home.router)
+    app.include_router(home_router)
     app.include_router(auth.router)
     app.include_router(board_chat.router)
     app.include_router(pipeline.router)
-    app.include_router(agents.router)
+    app.include_router(agents_router)
     app.include_router(approvals.router)
     app.include_router(logs.router)
     app.include_router(memory.router)

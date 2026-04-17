@@ -1,4 +1,5 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from interfaces.telegram.presentation import visible_agent_label
 
 
 def approval_keyboard(approval_id: str) -> InlineKeyboardMarkup:
@@ -26,7 +27,7 @@ def agent_selector_keyboard() -> InlineKeyboardMarkup:
     for agent_name in list_agents():
         row.append(
             InlineKeyboardButton(
-                agent_name.replace("_", " ").title(),
+                visible_agent_label(agent_name),
                 callback_data=f"select_agent:{agent_name}",
             )
         )

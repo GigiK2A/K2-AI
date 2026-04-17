@@ -5,7 +5,11 @@ from loguru import logger
 from telegram import Bot, InlineKeyboardMarkup
 
 from core.config import settings
-from core.text import markdown_to_plain_text, truncate_text
+from interfaces.telegram.presentation import (
+    clean_preview,
+    sanitize_user_error_message,
+    visible_agent_label,
+)
 
 _bot: Optional[Bot] = None
 
@@ -81,38 +85,32 @@ async def send_long_message(text: str, parse_mode: str | None = None) -> bool:
     return True
 
 
+async def notify_informational(agent_name: str, content_type: str, text: str) -> bool:
+    """Invia un messaggio informativo direttamente, senza draft né bottoni di approvazione."""
+    label = visible_agent_label(f"scheduler:{content_type}") or visible_agent_label(agent_name)
+    return await send_message(f"{label}\n\n{text}")
+
+
 async def notify_draft_ready(agent_name: str, approval_id: str, preview: str) -> bool:
     """Notifica che un draft è pronto per revisione."""
     from interfaces.telegram.keyboards import approval_keyboard
 
-    readable_agent = agent_name.replace("_", " ").title()
-    # Converti markdown in testo piano, tronca su confine di paragrafo
-    plain = markdown_to_plain_text(preview)
-    if len(plain) > 500:
-        # Tronca su paragrafo o riga per non spezzare frasi
-        para = plain.rfind("\n\n", 0, 480)
-        if para > 200:
-            plain = plain[:para].rstrip() + "\n…"
-        else:
-            line = plain.rfind("\n", 0, 480)
-            if line > 200:
-                plain = plain[:line].rstrip() + "\n…"
-            else:
-                plain = truncate_text(plain, 500, suffix="\n…")
+    readable_agent = visible_agent_label(agent_name)
+    plain = clean_preview(preview, max_len=520)
     text = (
         f"Draft pronto\n\n"
-        f"Agente: {readable_agent}\n"
+        f"Area: {readable_agent}\n"
         f"Anteprima:\n{plain}"
     )
     return await send_message(text, keyboard=approval_keyboard(approval_id))
 
 
 async def notify_error(agent_name: str, error: str) -> bool:
-    """Notifica errore di un agente."""
+    """Notifica errore operativo con messaggio utente non tecnico."""
+    logger.warning(f"Errore interno da notificare (agent={agent_name}): {error}")
     text = (
-        f"Errore agente\n\n"
-        f"Agente: {agent_name}\n"
-        f"Errore: {error[:300]}"
+        f"{visible_agent_label(agent_name)}\n\n"
+        f"{sanitize_user_error_message(error)}"
     )
     return await send_message(text)
 

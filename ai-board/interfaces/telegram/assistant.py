@@ -17,6 +17,7 @@ from core.memory import invalidate_memory_cache, set_memory
 from core.text import markdown_to_plain_text, truncate_text
 from db.client import get_service_client
 from db.models import AgentName
+from interfaces.telegram.presentation import clean_preview, sanitize_user_error_message, visible_agent_label
 
 DEFAULT_PROJECT_PHASES = ["Discovery", "Implementazione", "Test", "Consegna"]
 UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
@@ -157,7 +158,7 @@ def execute_action(action: dict[str, Any], confirmed: bool = False) -> Assistant
         return handler(action, confirmed=confirmed)
     except Exception as exc:
         logger.exception(f"Errore azione Telegram assistant {action_name}: {exc}")
-        return AssistantResponse(f"Non sono riuscito a completare l'azione.\nDettaglio: {exc}")
+        return AssistantResponse(sanitize_user_error_message(exc))
 
 
 def _normalize(value: str) -> str:
@@ -182,7 +183,7 @@ def _extract_after_keywords(text: str, keywords: tuple[str, ...]) -> str | None:
 
 
 def _shorten_preview(value: Any, length: int = 160) -> str:
-    return truncate_text(markdown_to_plain_text(value), length)
+    return clean_preview(value, max_len=length)
 
 
 def _parse_iso_date(value: Any) -> str | None:
@@ -632,7 +633,7 @@ def _approve_approval(action: dict[str, Any], confirmed: bool = False) -> Assist
     notes = action.get("notes")
     if approve(approval_row["id"], notes):
         return AssistantResponse(
-            f"Draft approvato.\nAgente: {approval_row.get('agent')}\nID: {approval_row['id'][:8]}..."
+            f"Draft approvato.\nArea: {visible_agent_label(approval_row.get('agent'))}"
         )
     return AssistantResponse("Non sono riuscito ad approvare il draft.")
 
@@ -644,7 +645,7 @@ def _reject_approval(action: dict[str, Any], confirmed: bool = False) -> Assista
     notes = action.get("notes")
     if reject(approval_row["id"], notes):
         return AssistantResponse(
-            f"Draft rifiutato.\nAgente: {approval_row.get('agent')}\nID: {approval_row['id'][:8]}..."
+            f"Draft rifiutato.\nArea: {visible_agent_label(approval_row.get('agent'))}"
         )
     return AssistantResponse("Non sono riuscito a rifiutare il draft.")
 
@@ -706,11 +707,11 @@ def _run_agent_action(action: dict[str, Any], confirmed: bool = False) -> Assist
     }
     result = _run_agent(agent_name, task, chat_context)
     if result.get("status") == "error":
-        return AssistantResponse(f"Errore agente {agent_name.value}: {result.get('error')}")
+        return AssistantResponse(sanitize_user_error_message(result.get("error")))
 
     preview = _shorten_preview(result.get("output"), 700)
     return AssistantResponse(
-        f"Agente eseguito: {agent_name.value}\nStato: {result.get('status')}\nApproval ID: {result.get('approval_id')}\n\n{preview}",
+        f"Bozza pronta da {visible_agent_label(agent_name)}.\nStato: {result.get('status')}\n\n{preview}",
         activate_agent_chat=agent_name.value,
     )
 
@@ -725,15 +726,15 @@ def _run_objective_action(action: dict[str, Any], confirmed: bool = False) -> As
         or action.get("target_name")
     )
     if not objective:
-        return AssistantResponse("Descrivimi meglio l'obiettivo da passare all'Orchestrator.")
+        return AssistantResponse("Descrivimi meglio l'obiettivo da passare a Giuseppina.")
 
     result = _run_objective(objective)
     if result.get("status") == "error":
-        return AssistantResponse(f"Errore Orchestrator: {result.get('error')}")
+        return AssistantResponse(sanitize_user_error_message(result.get("error")))
 
     preview = _shorten_preview(result.get("output"), 700)
     return AssistantResponse(
-        f"Obiettivo inviato all'Orchestrator.\nApproval ID: {result.get('approval_id')}\n\n{preview}"
+        f"Obiettivo preso in carico da Giuseppina.\n\n{preview}"
     )
 
 

@@ -13,7 +13,17 @@ from core.config import settings
 from core.memory import get_memory_as_context
 from db.client import get_service_client
 from db.models import AgentName, LLMProvider, TaskStatus
-from interfaces.telegram.notifier import notify_draft_ready, notify_error, notify_sync
+from interfaces.telegram.notifier import notify_draft_ready, notify_error, notify_informational, notify_sync
+
+# Questi content_type producono output informativi: niente draft, niente approval.
+# L'output viene inviato direttamente all'utente come messaggio normale.
+INFORMATIONAL_CONTENT_TYPES: frozenset[str] = frozenset({
+    "daily_brief",
+    "weekly_plan",
+    "market_pulse",
+    "kpi_update",
+    "task_reminder",
+})
 
 
 def get_search_tool():
@@ -410,6 +420,46 @@ Regole aggiuntive:
                     f"({used_provider.value}:{used_model})"
                 )
 
+            logger.success(f"[{self.agent_name}] Task completato in {duration_ms}ms")
+            if used_provider != self.primary_provider:
+                logger.success(
+                    f"[{self.agent_name}] Output generato tramite fallback {used_provider.value}:{used_model}"
+                )
+
+            if content_type in INFORMATIONAL_CONTENT_TYPES:
+                # Output informativo: invia direttamente, senza draft né approvazione.
+                self._update_task_status(task_id, TaskStatus.DONE.value, output_text[:500])
+                self._log(
+                    task_id=task_id,
+                    action=task[:100],
+                    output_summary=output_text[:200],
+                    status=TaskStatus.DONE.value,
+                    duration_ms=duration_ms,
+                    tokens_used=tokens_used,
+                    llm_provider=used_provider,
+                    llm_model=used_model,
+                    project_id=project_id,
+                )
+                notify_sync(notify_informational(
+                    agent_name=self.agent_name,
+                    content_type=content_type,
+                    text=output_text,
+                ))
+                return {
+                    "status": TaskStatus.DONE.value,
+                    "agent": self.agent_name,
+                    "task": task,
+                    "output": output_text,
+                    "approval_required": False,
+                    "approval_id": None,
+                    "tokens_used": tokens_used,
+                    "duration_ms": duration_ms,
+                    "llm_provider": used_provider.value,
+                    "llm_model": used_model,
+                    "fallback_used": used_provider != self.primary_provider,
+                }
+
+            # Output che richiede approvazione esplicita.
             approval_id = self._create_approval(
                 task_id=task_id,
                 content_type=content_type,
@@ -430,12 +480,6 @@ Regole aggiuntive:
                 llm_model=used_model,
                 project_id=project_id,
             )
-
-            logger.success(f"[{self.agent_name}] Task completato in {duration_ms}ms")
-            if used_provider != self.primary_provider:
-                logger.success(
-                    f"[{self.agent_name}] Output generato tramite fallback {used_provider.value}:{used_model}"
-                )
             if approval_id:
                 notify_sync(notify_draft_ready(agent_name=self.agent_name, approval_id=approval_id, preview=output_text))
 

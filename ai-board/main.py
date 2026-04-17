@@ -41,31 +41,6 @@ async def startup_checks() -> None:
 
     logger.success(f"Agenti unificati: {len(AGENT_REGISTRY)} caricati")
 
-    # Schema sync Notion: carica schemi DB all'avvio per validazione pre-write
-    from core import notion_board as _nb
-    if _nb.notion_enabled():
-        logger.info("Caricamento schema Notion...")
-        try:
-            schemas = _nb.refresh_all_schemas()
-            logger.success(f"Schema Notion: {len(schemas)} database caricati")
-        except Exception as _schema_exc:
-            logger.warning(f"Schema Notion non caricato (non bloccante): {_schema_exc}")
-
-        # Verifica esplicita database Log AI — critica per persistenza log agenti
-        try:
-            _db_ids = _nb.get_database_ids()
-            if _nb.DB_LOGS in _db_ids:
-                logger.success(f"Notion '{_nb.DB_LOGS}': trovato (ID: {_db_ids[_nb.DB_LOGS]})")
-            else:
-                _available = sorted(_db_ids.keys())
-                logger.warning(
-                    f"Notion '{_nb.DB_LOGS}' NON trovato — i log AI saranno saltati. "
-                    f"Database disponibili: {_available}. "
-                    "Verifica che il database esista e sia condiviso con l'integrazione Notion."
-                )
-        except Exception as _log_check_exc:
-            logger.warning(f"Verifica Notion '{_nb.DB_LOGS}' fallita: {_log_check_exc}")
-
     if settings.anthropic_api_key:
         if not settings.anthropic_api_key.startswith("sk-ant"):
             logger.warning("ANTHROPIC_API_KEY non sembra valida — il failover verso Anthropic non sarà disponibile.")
@@ -106,12 +81,11 @@ async def _wait_for_signal(stop_event: asyncio.Event) -> None:
 async def main():
     await startup_checks()
 
-    from core.scheduler import setup_scheduler, validate_env_on_startup
+    from core.scheduler import setup_scheduler
     from interfaces.dashboard.app import create_dashboard_app
     from interfaces.telegram.bot import start_polling, start_webhook, stop as stop_bot
     import uvicorn
 
-    validate_env_on_startup()
     sched = setup_scheduler()
     sched.start()
     logger.success(f"Scheduler avviato: {len(sched.get_jobs())} job attivi")
