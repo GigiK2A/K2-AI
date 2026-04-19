@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import UTC, date, datetime, timedelta
 from functools import partial
 from typing import Any, Callable
@@ -28,6 +29,29 @@ ACTIVE_TASK_STATUSES = {
     TaskStatus.DRAFT.value,
 }
 
+_ROUTINE_WEEKDAY_ONLY_JOBS = {
+    "task_deadline_reminder",
+    "daily_brief",
+    "weekly_plan",
+    "kpi_update",
+    "approval_reminder",
+    "market_pulse",
+    "cleanup_logs",
+    "schema_refresh",
+}
+_RUNNING_JOBS: set[str] = set()
+_LAST_JOB_RUN_TS: dict[str, float] = {}
+_JOB_MIN_INTERVAL_SECONDS = {
+    "task_deadline_reminder": 180,
+    "daily_brief": 180,
+    "weekly_plan": 180,
+    "kpi_update": 180,
+    "approval_reminder": 180,
+    "market_pulse": 180,
+    "cleanup_logs": 180,
+    "schema_refresh": 180,
+}
+
 
 async def _run_sync(func: Callable[..., Any], *args, **kwargs) -> Any:
     loop = asyncio.get_running_loop()
@@ -40,6 +64,46 @@ def _now_rome() -> datetime:
 
 def _today_rome() -> date:
     return _now_rome().date()
+
+
+def _is_weekend_rome(now: datetime | None = None) -> bool:
+    probe = now or _now_rome()
+    return probe.weekday() >= 5
+
+
+def _begin_job(job_id: str) -> bool:
+    now = _now_rome()
+    if job_id in _ROUTINE_WEEKDAY_ONLY_JOBS and _is_weekend_rome(now):
+        logger.info(f"Scheduler: skip {job_id} (weekend)")
+        return False
+
+    now_monotonic = time.monotonic()
+    min_interval = _JOB_MIN_INTERVAL_SECONDS.get(job_id, 180)
+    last_run = _LAST_JOB_RUN_TS.get(job_id)
+    if last_run is not None and (now_monotonic - last_run) < min_interval:
+        logger.warning(
+            f"Scheduler: skip {job_id} (trigger duplicato entro {min_interval}s)"
+        )
+        return False
+    if job_id in _RUNNING_JOBS:
+        logger.warning(f"Scheduler: skip {job_id} (job già in esecuzione)")
+        return False
+
+    _RUNNING_JOBS.add(job_id)
+    _LAST_JOB_RUN_TS[job_id] = now_monotonic
+    return True
+
+
+def _end_job(job_id: str) -> None:
+    _RUNNING_JOBS.discard(job_id)
+
+
+def _event_dedup_key(job_id: str) -> str:
+    now = _now_rome()
+    bucket = now.strftime("%Y-%m-%d")
+    if job_id == "approval_reminder":
+        bucket = f"{bucket}:{now.hour:02d}"
+    return f"scheduler:{job_id}:{bucket}"
 
 
 def _parse_datetime(value: Any) -> datetime | None:
@@ -116,15 +180,36 @@ def _collect_daily_brief_inputs() -> dict[str, Any]:
     for item in pending:
         created_at = _parse_datetime(item.get("created_at"))
         if created_at and created_at <= now_utc - timedelta(hours=4):
-            old_pending.append(item)
+            old_pending.append({
+                "agent": item.get("agent"),
+                "content_preview": item.get("content_preview"),
+                "created_at": item.get("created_at"),
+            })
 
     all_tasks = _safe_list_tasks()
     active_statuses = {TaskStatus.PENDING.value, TaskStatus.RUNNING.value}
-    active_tasks = sorted(
-        [t for t in all_tasks if t.get("status") in active_statuses],
+    # Exclude scheduler-generated tasks: their description contains previous prompts
+    # which would contaminate the agent context and cause multi-day content bleeding.
+    active_tasks_raw = sorted(
+        [
+            t for t in all_tasks
+            if t.get("status") in active_statuses
+            and not str(t.get("requested_by") or "").startswith("scheduler:")
+        ],
         key=lambda t: t.get("priority") or 3,
         reverse=True,
     )[:5]
+    # Strip to display-only fields — never pass description/input_data to agent context.
+    active_tasks = [
+        {
+            "title": t.get("title"),
+            "status": t.get("status"),
+            "priority": t.get("priority"),
+            "assigned_to": t.get("assigned_to"),
+        }
+        for t in active_tasks_raw
+    ]
+
     all_leads = _safe_list_pipeline_leads()
     all_leads_sorted = sorted(all_leads, key=lambda l: l.get("score") or 0, reverse=True)
 
@@ -136,13 +221,22 @@ def _collect_daily_brief_inputs() -> dict[str, Any]:
         if due_date and due_date.astimezone(ROME).date() <= today:
             due_leads.append(lead)
 
+    def _strip_lead(l: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "name": l.get("name"),
+            "status": l.get("status"),
+            "score": l.get("score"),
+            "next_action": l.get("next_action"),
+            "next_action_date": str(l.get("next_action_date") or ""),
+        }
+
     return {
         "today_label": today.strftime("%d/%m/%Y"),
         "pending_count": len(pending),
         "old_pending": old_pending,
         "active_tasks": active_tasks,
-        "active_leads": leads[:5],
-        "due_leads": due_leads[:5],
+        "active_leads": [_strip_lead(l) for l in leads[:5]],
+        "due_leads": [_strip_lead(l) for l in due_leads[:5]],
     }
 
 
@@ -166,11 +260,21 @@ def _collect_weekly_plan_inputs() -> dict[str, Any]:
         status = str(lead.get("status") or "unknown")
         lead_counts[status] = lead_counts.get(status, 0) + 1
 
-    focus_leads = [
+    focus_leads_raw = [
         lead
         for lead in sorted(leads, key=lambda item: item.get("score") or 0, reverse=True)
         if lead.get("status") not in {"won", "lost"}
     ][:8]
+    focus_leads = [
+        {
+            "name": l.get("name"),
+            "status": l.get("status"),
+            "score": l.get("score"),
+            "next_action": l.get("next_action"),
+            "next_action_date": str(l.get("next_action_date") or ""),
+        }
+        for l in focus_leads_raw
+    ]
 
     return {
         "week_start": week_start.strftime("%d/%m"),
@@ -385,7 +489,7 @@ def setup_scheduler() -> AsyncIOScheduler:
     )
     scheduler.add_job(
         job_approval_reminder,
-        CronTrigger(hour="12,20", minute=0, timezone=ROME),
+        CronTrigger(day_of_week="mon-fri", hour="12,20", minute=0, timezone=ROME),
         id="approval_reminder",
         name="Reminder approvazioni",
         replace_existing=True,
@@ -401,7 +505,7 @@ def setup_scheduler() -> AsyncIOScheduler:
     )
     scheduler.add_job(
         job_cleanup_logs,
-        CronTrigger(day_of_week="sun", hour=3, minute=0, timezone=ROME),
+        CronTrigger(day_of_week="mon", hour=3, minute=0, timezone=ROME),
         id="cleanup_logs",
         name="Cleanup log",
         replace_existing=True,
@@ -409,7 +513,7 @@ def setup_scheduler() -> AsyncIOScheduler:
     )
     scheduler.add_job(
         job_schema_refresh,
-        CronTrigger(hour="*/6", minute=0, timezone=ROME),  # ogni 6 ore
+        CronTrigger(day_of_week="mon-fri", hour="*/6", minute=0, timezone=ROME),  # ogni 6 ore
         id="schema_refresh",
         name="Refresh schema Notion",
         replace_existing=True,
@@ -421,6 +525,8 @@ def setup_scheduler() -> AsyncIOScheduler:
 
 
 async def job_daily_brief() -> bool:
+    if not _begin_job("daily_brief"):
+        return True
     logger.info("Scheduler: avvio briefing giornaliero")
     try:
         inputs = await _run_sync(_collect_daily_brief_inputs)
@@ -481,7 +587,13 @@ Formato: usa le emoji come intestazioni di sezione, testo denso e azionabile, ma
             run_agent,
             AgentName.CHIEF_OF_STAFF,
             task,
-            _job_context("daily_brief", "daily_brief", **inputs),
+            _job_context(
+                "daily_brief",
+                "daily_brief",
+                event_dedup_key=_event_dedup_key("daily_brief"),
+                event_dedup_ttl_seconds=5400,
+                **inputs,
+            ),
         )
         ok = _normalize_result("daily_brief", result)
         if ok:
@@ -491,12 +603,16 @@ Formato: usa le emoji come intestazioni di sezione, testo denso e azionabile, ma
         logger.error(f"Errore job_daily_brief: {exc}")
         _notify_scheduler_error("daily_brief", f"Errore briefing giornaliero: {exc}")
         return False
+    finally:
+        _end_job("daily_brief")
 
 
 async def job_task_deadline_reminder() -> bool:
+    if not _begin_job("task_deadline_reminder"):
+        return True
     logger.info("Scheduler: avvio promemoria task")
     try:
-        from interfaces.telegram.notifier import notify_sync, send_message
+        from interfaces.telegram.notifier import notify_informational, notify_sync
 
         inputs = await _run_sync(_collect_task_reminder_inputs)
         urgent_tasks = inputs["urgent_tasks"]
@@ -504,7 +620,7 @@ async def job_task_deadline_reminder() -> bool:
         overdue_tasks = inputs["overdue_tasks"]
 
         lines = [
-            f"{visible_agent_label('project_operations')} — promemoria task ({inputs['today_label']})",
+            f"Promemoria task ({inputs['today_label']})",
             f"Task attive: {inputs['active_count']}",
             "",
             f"Task urgenti: {len(urgent_tasks)}",
@@ -537,16 +653,28 @@ async def job_task_deadline_reminder() -> bool:
                 "Imposta la scadenza per includerle nei reminder.",
             ]
 
-        notify_sync(send_message("\n".join(lines)))
+        notify_sync(
+            notify_informational(
+                agent_name=AgentName.CHIEF_OF_STAFF.value,
+                content_type="task_reminder",
+                text="\n".join(lines),
+                dedup_key=_event_dedup_key("task_deadline_reminder"),
+                dedup_ttl_seconds=5400,
+            )
+        )
         logger.success("Promemoria task inviato")
         return True
     except Exception as exc:
         logger.error(f"Errore job_task_deadline_reminder: {exc}")
         _notify_scheduler_error("task_deadline_reminder", f"Errore promemoria task: {exc}")
         return False
+    finally:
+        _end_job("task_deadline_reminder")
 
 
 async def job_weekly_plan() -> bool:
+    if not _begin_job("weekly_plan"):
+        return True
     logger.info("Scheduler: avvio piano settimanale")
     try:
         inputs = await _run_sync(_collect_weekly_plan_inputs)
@@ -591,7 +719,13 @@ IMPORTANTE: Non inventare dati. Usa esclusivamente i lead e le informazioni forn
             run_agent,
             AgentName.ORCHESTRATOR,
             task,
-            _job_context("weekly_plan", "weekly_plan", **inputs),
+            _job_context(
+                "weekly_plan",
+                "weekly_plan",
+                event_dedup_key=_event_dedup_key("weekly_plan"),
+                event_dedup_ttl_seconds=5400,
+                **inputs,
+            ),
         )
         ok = _normalize_result("weekly_plan", result)
         if ok:
@@ -601,13 +735,17 @@ IMPORTANTE: Non inventare dati. Usa esclusivamente i lead e le informazioni forn
         logger.error(f"Errore job_weekly_plan: {exc}")
         _notify_scheduler_error("weekly_plan", f"Errore piano settimanale: {exc}")
         return False
+    finally:
+        _end_job("weekly_plan")
 
 
 async def job_kpi_update() -> bool:
     """Report KPI informativo — inviato direttamente, senza approval né draft."""
+    if not _begin_job("kpi_update"):
+        return True
     logger.info("Scheduler: avvio aggiornamento KPI")
     try:
-        from interfaces.telegram.notifier import notify_sync, send_message
+        from interfaces.telegram.notifier import notify_informational, notify_sync
 
         inputs = await _run_sync(_collect_kpi_inputs)
 
@@ -658,20 +796,32 @@ async def job_kpi_update() -> bool:
             lines.append("")
             lines.extend(alerts)
 
-        notify_sync(send_message("\n".join(lines)))
+        notify_sync(
+            notify_informational(
+                agent_name=AgentName.FINANCE_KPI.value,
+                content_type="kpi_update",
+                text="\n".join(lines),
+                dedup_key=_event_dedup_key("kpi_update"),
+                dedup_ttl_seconds=5400,
+            )
+        )
         logger.success("KPI inviato")
         return True
     except Exception as exc:
         logger.error(f"Errore job_kpi_update: {exc}")
         _notify_scheduler_error("kpi_update", f"Errore aggiornamento KPI: {exc}")
         return False
+    finally:
+        _end_job("kpi_update")
 
 
 async def job_approval_reminder() -> bool:
+    if not _begin_job("approval_reminder"):
+        return True
     logger.info("Scheduler: check approvazioni pendenti")
     try:
         from core.approval import expire_stale_approvals, get_pending_approvals
-        from interfaces.telegram.notifier import notify_sync, send_message
+        from interfaces.telegram.notifier import notify_informational, notify_sync
 
         # Prima scadi i draft vecchi (>48h): non devono restare appesi per sempre
         expired = await _run_sync(expire_stale_approvals)
@@ -706,16 +856,28 @@ async def job_approval_reminder() -> bool:
             + "\n".join(lines)
             + "\n\nUsa /approvals per gestirli."
         )
-        notify_sync(send_message(text))
+        notify_sync(
+            notify_informational(
+                agent_name=AgentName.CHIEF_OF_STAFF.value,
+                content_type="approval_reminder",
+                text=text,
+                dedup_key=_event_dedup_key("approval_reminder"),
+                dedup_ttl_seconds=5400,
+            )
+        )
         logger.info(f"Reminder inviato: {len(old_pending)} draft pendenti")
         return True
     except Exception as exc:
         logger.error(f"Errore job_approval_reminder: {exc}")
         _notify_scheduler_error("approval_reminder", f"Errore reminder approvazioni: {exc}")
         return False
+    finally:
+        _end_job("approval_reminder")
 
 
 async def job_market_pulse() -> bool:
+    if not _begin_job("market_pulse"):
+        return True
     logger.info("Scheduler: avvio market pulse")
     try:
         today = _today_rome()
@@ -743,6 +905,8 @@ Formato: bullet list densa, italiana, nessuna statistica inventata."""
             _job_context(
                 "market_pulse",
                 "market_pulse",
+                event_dedup_key=_event_dedup_key("market_pulse"),
+                event_dedup_ttl_seconds=5400,
                 date=today.strftime("%d/%m/%Y"),
                 lookback_days=7,
                 geography="Italia",
@@ -757,9 +921,13 @@ Formato: bullet list densa, italiana, nessuna statistica inventata."""
         logger.error(f"Errore job_market_pulse: {exc}")
         _notify_scheduler_error("market_pulse", f"Errore market pulse: {exc}")
         return False
+    finally:
+        _end_job("market_pulse")
 
 
 async def job_cleanup_logs() -> bool:
+    if not _begin_job("cleanup_logs"):
+        return True
     logger.info("Scheduler: avvio cleanup log")
     try:
         total_archived = 0
@@ -787,11 +955,15 @@ async def job_cleanup_logs() -> bool:
         logger.error(f"Errore job_cleanup_logs: {exc}")
         _notify_scheduler_error("cleanup_logs", message)
         return False
+    finally:
+        _end_job("cleanup_logs")
 
 
 
 async def job_schema_refresh() -> bool:
     """Aggiorna cache schema Notion ogni 6 ore. Non bloccante, non critico."""
+    if not _begin_job("schema_refresh"):
+        return True
     logger.info("Scheduler: avvio refresh schema Notion")
     try:
         from core import notion_board
@@ -804,3 +976,5 @@ async def job_schema_refresh() -> bool:
     except Exception as exc:
         logger.warning(f"Scheduler schema_refresh fallito (non critico): {exc}")
         return True  # Non notificare — è non critico
+    finally:
+        _end_job("schema_refresh")
