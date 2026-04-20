@@ -110,6 +110,17 @@ export default defineConfig({
         'note-legali': 'src/note-legali.html',
         workshop: 'src/workshop.html',
         'suite-ai': 'src/suite-ai.html',
+        // Pillar hub v2
+        'pillar-agenti-email-crm': 'src/suite-ai/agenti-email-crm.html',
+        'pillar-automazioni-amministrative': 'src/suite-ai/automazioni-amministrative.html',
+        'pillar-ai-legale-contratti': 'src/suite-ai/ai-legale-contratti.html',
+        'pillar-ai-ingegneria-progettazione': 'src/suite-ai/ai-ingegneria-progettazione.html',
+        'pillar-microapp-documenti-tecnici': 'src/suite-ai/microapp-documenti-tecnici.html',
+        'pillar-ai-customer-service-ticket': 'src/suite-ai/ai-customer-service-ticket.html',
+        'pillar-rag-knowledge-base': 'src/suite-ai/rag-knowledge-base.html',
+        'pillar-ai-compliance-audit': 'src/suite-ai/ai-compliance-audit.html',
+        'pillar-ai-controllo-gestione-reporting': 'src/suite-ai/ai-controllo-gestione-reporting.html',
+        'pillar-integrazione-gestionali-erp': 'src/suite-ai/integrazione-gestionali-erp.html',
       }
     }
   },
