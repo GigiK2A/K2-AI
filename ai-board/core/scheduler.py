@@ -717,7 +717,7 @@ IMPORTANTE: Non inventare dati. Usa esclusivamente i lead e le informazioni forn
 
         result = await _run_sync(
             run_agent,
-            AgentName.ORCHESTRATOR,
+            AgentName.CHIEF_OF_STAFF,
             task,
             _job_context(
                 "weekly_plan",
