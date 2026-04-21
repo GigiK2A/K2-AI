@@ -159,6 +159,81 @@ body.nav-open {
   overflow: hidden;
 }
 
+/* ─── Suite AI Dropdown ─── */
+
+.nav-has-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(12, 12, 12, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  list-style: none;
+  padding: 8px 0;
+  min-width: 260px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.nav-has-dropdown:hover .nav-dropdown-menu,
+.nav-has-dropdown:focus-within .nav-dropdown-menu {
+  display: block;
+}
+
+.nav-dropdown-menu li {
+  padding: 0;
+}
+
+.nav-dropdown-menu a {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary) !important;
+  padding: 10px 16px;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.nav-dropdown-menu a:hover,
+.nav-dropdown-menu a.active {
+  color: var(--text-primary) !important;
+  background: rgba(255,255,255,0.04);
+}
+
+/* Mobile overlay submenu */
+
+.nav-overlay-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+  margin-top: -16px;
+}
+
+.nav-overlay-submenu a {
+  font-family: var(--font-body) !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  color: var(--text-secondary) !important;
+}
+
+.nav-overlay-submenu a:hover,
+.nav-overlay-submenu a.active {
+  color: var(--text-primary) !important;
+}
+
 /* ─── Responsive ─── */
 
 @media (max-width: 768px) {

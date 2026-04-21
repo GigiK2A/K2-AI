@@ -25,7 +25,7 @@ _CONTEXT_BY_AGENT = {
 
 _CONTEXT_BY_SCHEDULER_JOB = {
     "daily_brief": "Briefing operativo",
-    "weekly_plan": "Briefing operativo",
+    "weekly_plan": "Piano settimanale",
     "kpi_update": "KPI",
     "market_pulse": "Analisi mercato",
     "task_deadline_reminder": "Briefing operativo",
