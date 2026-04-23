@@ -1,4 +1,14 @@
 {
+  "functions": {
+    "api/kbot/generate-pdf.ts": { "maxDuration": 60 },
+    "api/**/*.ts": { "maxDuration": 30 }
+  },
+  "crons": [
+    {
+      "path": "/api/kbot/cleanup",
+      "schedule": "0 2 * * 0"
+    }
+  ],
   "redirects": [
     {
       "source": "/(.*)",
@@ -59,7 +69,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' https://api.fontshare.com https://fonts.googleapis.com; font-src 'self' https://api.fontshare.com https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; connect-src 'self' https://api.k2-ai.it; form-action 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' https://api.fontshare.com https://fonts.googleapis.com; font-src 'self' https://api.fontshare.com https://fonts.gstatic.com; img-src 'self' data: https://*.stripe.com; media-src 'self'; connect-src 'self' https://api.k2-ai.it https://*.stripe.com https://checkout.stripe.com; frame-src https://*.stripe.com https://checkout.stripe.com; form-action 'self' https://*.stripe.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
         }
       ]
     },

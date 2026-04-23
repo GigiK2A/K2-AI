@@ -474,8 +474,8 @@
 
 .analysis-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 64px;
   align-items: start;
 }
 
@@ -493,7 +493,7 @@
 }
 
 .analysis-chat-widget {
-  height: 620px;
+  height: 760px;
   max-width: none;
 }
 

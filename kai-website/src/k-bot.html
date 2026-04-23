@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="./css/nav.css">
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/pages.css">
+  <link rel="stylesheet" href="./css/kbot-react.css">
   <!-- JSON-LD: Organization + ProfessionalService + WebSite -->
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.k2-ai.it/#organization","name":"K2-AI","legalName":"K2A S.R.L.S.","alternateName":["K2AI","K2 AI"],"url":"https://www.k2-ai.it/","logo":{"@type":"ImageObject","url":"https://www.k2-ai.it/logo-nav.png","width":600,"height":200},"description":"K2-AI progetta e implementa sistemi AI operativi per PMI italiane: agenti, automazioni documentali, microapp e board decisionali integrati nei tool esistenti (CRM, ERP, email, Drive, gestionali).","taxID":"IT03655920548","vatID":"IT03655920548","identifier":[{"@type":"PropertyValue","propertyID":"REA","value":"PG-304896"}],"address":{"@type":"PostalAddress","addressCountry":"IT","addressRegion":"Umbria","addressLocality":"Perugia"},"contactPoint":[{"@type":"ContactPoint","contactType":"customer support","email":"info@k2-ai.it","availableLanguage":["it"]}],"sameAs":["https://www.k2aingegneria.it/","https://www.linkedin.com/company/k2-ai/"],"knowsAbout":["Sistemi AI operativi per PMI","Agenti AI","Automazioni documentali","Microapp aziendali","RAG","LangChain","Claude","OpenAI","n8n","Supabase","Zapier"]},{"@type":"ProfessionalService","@id":"https://www.k2-ai.it/#service","name":"K2-AI — Sistemi AI operativi per PMI","provider":{"@id":"https://www.k2-ai.it/#organization"},"areaServed":{"@type":"Country","name":"Italia"},"serviceType":["AI system engineering","Agent AI","Document automation","Microapp development"],"description":"K2-AI costruisce sistemi AI che tolgono passaggi ripetitivi al team e restano sotto controllo umano. Dal brief al primo prototipo in 14 giorni."},{"@type":"WebSite","@id":"https://www.k2-ai.it/#website","url":"https://www.k2-ai.it/","name":"K2-AI","publisher":{"@id":"https://www.k2-ai.it/#organization"},"inLanguage":"it-IT"}]}</script>
   <!-- JSON-LD: BreadcrumbList -->
@@ -102,30 +103,7 @@
 
       <div class="reveal reveal-delay-2">
         <div class="chat-widget analysis-chat-widget">
-          <div class="chat-header">
-            <div class="chat-header-main">
-              <div class="chat-status"></div>
-              <div class="chat-header-copy">
-                <span class="chat-header-text">K-BOT</span>
-                <span class="chat-header-sub">Attiva ora</span>
-              </div>
-            </div>
-            <button id="chat-reset" class="chat-reset" type="button">Reset chat</button>
-          </div>
-          <p class="chat-note">I messaggi restano salvati solo nella sessione corrente del browser e puoi cancellarli in qualsiasi momento.</p>
-          <p class="micro-legal-note chat-legal-note">
-            Interagisci con un sistema AI. I messaggi vengono gestiti dal board operativo K2-AI e dai provider tecnici necessari a generare la risposta. Dettagli in <a href="/privacy.html">Privacy Policy</a> e <a href="/cookie.html">Cookie Policy</a>.
-          </p>
-          <div class="chat-messages" id="chat-messages"></div>
-          <form class="chat-input-area" id="chat-form">
-            <textarea
-              id="chat-input"
-              placeholder="Descrivi il processo, il problema o l'idea che vuoi valutare..."
-              rows="1"
-              enterkeyhint="send"
-            ></textarea>
-            <button id="chat-send" type="submit" aria-label="Invia">→</button>
-          </form>
+          <div id="kbot-react-root"></div>
         </div>
       </div>
     </div>
@@ -226,6 +204,6 @@
 
   <script type="module" src="./js/scroll.js"></script>
   <script type="module" src="./js/nav.js"></script>
-  <script type="module" src="./js/chat.js"></script>
+  <script type="module" src="./js/kbot-react-entry.tsx"></script>
 </body>
 </html>

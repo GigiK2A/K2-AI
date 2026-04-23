@@ -1,0 +1,125 @@
+{
+  "meta": {
+    "settore": "Studio commercialista / CdL",
+    "skill_attive": [
+      "diagnosi-ai-operativa-pmi",
+      "contabilita-bilancio",
+      "fiscale-tributario-italiano",
+      "programmazione-controllo",
+      "analisi-bilancio-pmi"
+    ],
+    "data_generazione": "2026-04-23T14:45:00.000Z",
+    "versione_modello": "claude-sonnet-4-6"
+  },
+  "executive_summary": "Lo studio gestisce un volume clienti in crescita con processi amministrativi ancora frammentati tra email, gestionale e fogli condivisi. Il collo di bottiglia principale è la riconciliazione documentale pre-scadenza, che assorbe ore qualificate e aumenta il rischio di errori su F24 e dichiarazioni. L'opportunità immediata è strutturare un flusso unico di intake documenti, validazione automatica e reminder proattivi per cliente. In scenario conservativo il recupero è di 9-12 ore/settimana, con riduzione del rework operativo e miglioramento della puntualità. In scenario realistico, con automazioni graduali su 90 giorni, il recupero sale a 14-16 ore/settimana.",
+  "sezioni": [
+    {
+      "tipo": "analisi_verticale",
+      "titolo": "1) Mappa colli di bottiglia fiscali",
+      "contenuto": "La lavorazione pre-scadenza dipende da passaggi manuali ridondanti: raccolta documenti via canali non standard, verifiche multiple su allegati incompleti e riconciliazione dati a ridosso delle scadenze. Questo genera picchi operativi nel periodo 10-16 del mese e aumento del rischio di rilavorazioni. La priorita operativa e ridurre variabilita input e tempi morti di inseguimento cliente.",
+      "elementi_visivi": [
+        {
+          "tipo": "tabella",
+          "titolo": "Tempi medi per attivita ripetitive",
+          "dati": {
+            "colonne": ["Attivita", "Tempo attuale", "Tempo target", "Delta"],
+            "righe": [
+              ["Raccolta documenti", "6.5 h/settimana", "2.0 h/settimana", "-69%"],
+              ["Riconciliazione F24", "5.8 h/settimana", "1.7 h/settimana", "-71%"],
+              ["Solleciti clienti", "4.2 h/settimana", "1.5 h/settimana", "-64%"],
+              ["Controllo quadrature", "3.6 h/settimana", "1.8 h/settimana", "-50%"]
+            ]
+          }
+        },
+        {
+          "tipo": "gauge",
+          "titolo": "Indice maturita operativa",
+          "dati": {
+            "valore": 46,
+            "label": "Maturita processo",
+            "soglie": { "verde": 70, "giallo": 40 }
+          }
+        }
+      ]
+    },
+    {
+      "tipo": "benchmark",
+      "titolo": "2) Benchmark produttivita studio",
+      "contenuto": "Confrontando il profilo operativo con benchmark settore commercialista (Gartner SMB 2024, Assintel 2025), lo studio e sopra media per ore spese su attivita a basso valore. L'intervento consigliato e mirato su intake e riconciliazione, non su sostituzione completa del gestionale. Cio minimizza rischio di adozione e massimizza ritorno nei primi 90 giorni.",
+      "elementi_visivi": [
+        {
+          "tipo": "grafico_barre",
+          "titolo": "Ore/settimana per cluster operativo",
+          "dati": {
+            "labels": ["Raccolta", "Riconciliazione", "Solleciti", "Rework"],
+            "valori": [6.5, 5.8, 4.2, 3.1],
+            "unita": "h"
+          }
+        }
+      ]
+    },
+    {
+      "tipo": "roadmap",
+      "titolo": "3) Flusso target 0-90 giorni",
+      "contenuto": "La roadmap prevede rollout graduale in tre fasi: standardizzazione intake documenti, automazione controlli e attivazione reporting settimanale. L'obiettivo e ottenere velocemente stabilita operativa senza interrompere il ciclo fiscale corrente.",
+      "elementi_visivi": [
+        {
+          "tipo": "schema_flusso",
+          "titolo": "Flusso operativo target",
+          "dati": {
+            "nodi": [
+              { "id": "n1", "label": "Intake" },
+              { "id": "n2", "label": "Validazione" },
+              { "id": "n3", "label": "Riconciliazione" },
+              { "id": "n4", "label": "Report KPI" }
+            ],
+            "archi": [
+              { "da": "n1", "a": "n2" },
+              { "da": "n2", "a": "n3" },
+              { "da": "n3", "a": "n4" }
+            ]
+          }
+        },
+        {
+          "tipo": "tabella",
+          "titolo": "Milestone implementazione",
+          "dati": {
+            "colonne": ["Fase", "Durata", "Output", "KPI target"],
+            "righe": [
+              ["Fase 1", "0-30 giorni", "Canale intake unico", "-30% solleciti"],
+              ["Fase 2", "31-60 giorni", "Validazione documenti", "-40% errori input"],
+              ["Fase 3", "61-90 giorni", "Dashboard operativa", "-50% tempo rework"]
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "automazioni_consigliate": [
+    {
+      "area": "Intake documentale clienti",
+      "descrizione": "Canale unico con checklist dinamica, verifica allegati mancanti e reminder automatici per tipologia pratica.",
+      "impatto_stimato": "4-5 ore/settimana risparmiate",
+      "complessita": "bassa",
+      "orizzonte": "0-3 mesi"
+    },
+    {
+      "area": "Riconciliazione pre-F24",
+      "descrizione": "Pipeline assistita AI per estrazione dati da documenti e confronto con movimenti in gestionale.",
+      "impatto_stimato": "5-6 ore/settimana risparmiate",
+      "complessita": "media",
+      "orizzonte": "3-6 mesi"
+    },
+    {
+      "area": "Cruscotto KPI di studio",
+      "descrizione": "Report settimanale su backlog, pratiche a rischio scadenza e saturazione team con alert prioritari.",
+      "impatto_stimato": "3-4 ore/settimana risparmiate",
+      "complessita": "media",
+      "orizzonte": "3-6 mesi"
+    }
+  ],
+  "prossimo_passo": {
+    "testo": "Se vuoi, trasformiamo questa diagnosi in piano operativo 30-60 giorni con integrazioni reali sul tuo stack.",
+    "messaggio_precompilato": "Ciao K2-AI, ho ricevuto la Diagnosi AI Operativa per studio commercialista e voglio pianificare una call per discutere roadmap e implementazione."
+  }
+}

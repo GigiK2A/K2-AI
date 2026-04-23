@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
 const securityHeaders = {
   'Content-Security-Policy': [
@@ -91,7 +92,7 @@ function blockSensitiveFallbacks() {
 
 export default defineConfig({
   root: 'src',
-  plugins: [blockSensitiveFallbacks()],
+  plugins: [react(), blockSensitiveFallbacks()],
   build: {
     outDir: '../dist',
     emptyOutDir: true,
