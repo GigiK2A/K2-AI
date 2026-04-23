@@ -13,13 +13,16 @@ export default async function handler(req: any, res: any) {
   }
 
   // Verifica chiave segreta (Vercel cron passa Authorization: Bearer <secret>)
+  // Accetta CLEANUP_SECRET_KEY (manuale) o CRON_SECRET (Vercel cron built-in)
   const cleanupKey = getSystemEnvVar('CLEANUP_SECRET_KEY')
-  if (cleanupKey) {
+  const cronSecret = process.env.CRON_SECRET
+  const acceptedKey = cleanupKey || cronSecret
+  if (acceptedKey) {
     const authHeader = (req.headers?.['authorization'] || '') as string
     const incomingKey = authHeader.replace(/^Bearer\s+/i, '').trim() ||
       (req.headers?.[CLEANUP_SECRET] || '') as string
 
-    if (incomingKey !== cleanupKey) {
+    if (incomingKey !== acceptedKey) {
       return sendJson(res, 401, { error: 'Unauthorized' })
     }
   }

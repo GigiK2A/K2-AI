@@ -61,6 +61,11 @@ export default async function handler(req: any, res: any) {
 
     if (sessionError || !session) return sendJson(res, 404, { error: 'Not found' })
 
+    // Rate limiting: il teaser non si rigenera se già presente
+    if (session.collected_data?.teaser) {
+      return sendJson(res, 200, { teaser: session.collected_data.teaser, cached: true })
+    }
+
     const skillNames = resolveSkillNames(session.sector)
     const systemPrompt = loadSkillBundle(skillNames, {
       maxTotalChars: TEASER_SYSTEM_MAX_CHARS,

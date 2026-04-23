@@ -40,3 +40,7 @@ CREATE TABLE IF NOT EXISTS kbot_conversions (
 CREATE INDEX IF NOT EXISTS idx_kbot_sessions_email ON kbot_sessions(email);
 CREATE INDEX IF NOT EXISTS idx_kbot_sessions_status ON kbot_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_kbot_sessions_sector ON kbot_sessions(sector);
+CREATE INDEX IF NOT EXISTS idx_kbot_sessions_paid_at ON kbot_sessions(paid_at) WHERE paid_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_kbot_sessions_created_at ON kbot_sessions(created_at);
+CREATE INDEX IF NOT EXISTS idx_kbot_conversions_session ON kbot_conversions(session_id);
+CREATE INDEX IF NOT EXISTS idx_kbot_conversions_stripe ON kbot_conversions(stripe_session_id) WHERE stripe_session_id IS NOT NULL;
