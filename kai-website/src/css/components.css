@@ -846,3 +846,110 @@ footer {
     gap: 48px !important;
   }
 }
+
+/* ─── Newsletter form ─── */
+.newsletter-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 48px 40px;
+  max-width: 560px;
+}
+
+.contact-newsletter {
+  margin-top: 56px;
+  max-width: 520px;
+}
+
+.newsletter-block h3 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+
+.newsletter-block p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin: 0 0 24px;
+  line-height: 1.6;
+}
+
+.newsletter-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.newsletter-form input[type="email"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 16px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.newsletter-form input[type="email"]:focus {
+  border-color: var(--text-primary);
+}
+
+.newsletter-form input[type="email"]::placeholder {
+  color: var(--text-muted);
+}
+
+.newsletter-form button[type="submit"] {
+  padding: 12px 24px;
+  background: var(--text-primary);
+  color: var(--bg-base);
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.newsletter-form button[type="submit"]:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.newsletter-form button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.newsletter-msg {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 14px;
+  min-height: 20px;
+}
+
+.newsletter-msg--ok { color: #28a745; }
+.newsletter-msg--err { color: #dc3545; }
+
+.newsletter-privacy {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -110,6 +110,8 @@ export default defineConfig({
         'note-legali': 'src/note-legali.html',
         workshop: 'src/workshop.html',
         'suite-ai': 'src/suite-ai.html',
+        'newsletter-ok': 'src/newsletter-ok.html',
+        'newsletter-error': 'src/newsletter-error.html',
         // Pillar hub v2
         'pillar-agenti-email-crm': 'src/suite-ai/agenti-email-crm.html',
         'pillar-automazioni-amministrative': 'src/suite-ai/automazioni-amministrative.html',
