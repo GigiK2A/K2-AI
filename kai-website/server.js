@@ -133,6 +133,32 @@ async function sendConfirmationEmail(email, token) {
   });
 }
 
+async function sendWelcomeEmail(email) {
+  const resendApiKey = getEnvVar('RESEND_API_KEY');
+  if (!resendApiKey) return;
+
+  const resend = new Resend(resendApiKey);
+
+  await resend.emails.send({
+    from: 'K2-AI <noreply@k2-ai.it>',
+    to: [email],
+    subject: 'Iscrizione confermata alla newsletter K2-AI',
+    html: `
+      <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;color:#212529">
+        <h2 style="margin-bottom:8px;color:#0d1117">Iscrizione confermata</h2>
+        <p>Sei dentro: da ora riceverai il briefing K2-AI con le novità più utili dal mondo dell'intelligenza artificiale.</p>
+        <p>La newsletter è pensata per essere semplice: poche notizie, spiegate bene, con attenzione a creator, PMI e team operativi.</p>
+        <a href="${escapeHtml(SITE_URL)}/contatti"
+           style="display:inline-block;margin:16px 0;padding:12px 24px;background:#0d1117;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">
+          Visita K2-AI
+        </a>
+        <hr style="border:none;border-top:1px solid #DEE2E6;margin:20px 0"/>
+        <p style="font-size:11px;color:#adb5bd">K2A S.R.L.S. - P.IVA IT03655920548</p>
+      </div>
+    `,
+  });
+}
+
 async function handleNewsletterSubscribe(req, res) {
   if (req.method === 'OPTIONS') {
     send(res, 204, {
@@ -216,7 +242,7 @@ async function handleNewsletterConfirm(req, res) {
   const token = url.searchParams.get('token') || '';
 
   if (!token || token.length < 32) {
-    send(res, 302, { Location: '/newsletter-error.html' }, '');
+    send(res, 302, { Location: '/newsletter-error' }, '');
     return;
   }
 
@@ -235,11 +261,12 @@ async function handleNewsletterConfirm(req, res) {
     .single();
 
   if (error || !data) {
-    send(res, 302, { Location: '/newsletter-error.html' }, '');
+    send(res, 302, { Location: '/newsletter-error' }, '');
     return;
   }
 
-  send(res, 302, { Location: '/newsletter-ok.html' }, '');
+  await sendWelcomeEmail(data.email);
+  send(res, 302, { Location: '/newsletter-ok' }, '');
 }
 
 function serveFile(req, res, filePath) {
@@ -306,12 +333,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 301 redirects — URL rename (casi-studio → laboratorio, workshop → suite-ai)
+  // 301 redirects - URL rename and clean URLs.
   const REDIRECTS_301 = {
-    '/casi-studio.html': '/laboratorio.html',
-    '/workshop.html': '/suite-ai.html',
+    '/casi-studio': '/laboratorio',
+    '/casi-studio.html': '/laboratorio',
+    '/workshop': '/suite-ai',
+    '/workshop.html': '/suite-ai',
   };
   const rawPath = (req.url || '/').split('?')[0];
+  const rawQuery = (req.url || '').includes('?') ? `?${(req.url || '').split('?').slice(1).join('?')}` : '';
 
   if (rawPath === '/api/newsletter/subscribe') {
     handleNewsletterSubscribe(req, res).catch(err => {
@@ -324,13 +354,18 @@ const server = http.createServer((req, res) => {
   if (rawPath === '/api/newsletter/confirm') {
     handleNewsletterConfirm(req, res).catch(err => {
       console.error('Newsletter confirm error:', err);
-      send(res, 302, { Location: '/newsletter-error.html' }, '');
+      send(res, 302, { Location: '/newsletter-error' }, '');
     });
     return;
   }
 
   if (REDIRECTS_301[rawPath]) {
-    send(res, 301, { Location: REDIRECTS_301[rawPath] }, '');
+    send(res, 301, { Location: `${REDIRECTS_301[rawPath]}${rawQuery}` }, '');
+    return;
+  }
+
+  if (rawPath !== '/index.html' && rawPath.endsWith('.html')) {
+    send(res, 301, { Location: `${rawPath.slice(0, -5)}${rawQuery}` }, '');
     return;
   }
 
@@ -340,7 +375,10 @@ const server = http.createServer((req, res) => {
   }
 
   const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
-  const filePath = path.join(DIST_DIR, safePath);
+  let filePath = path.join(DIST_DIR, safePath);
+  if (!path.extname(filePath)) {
+    filePath = `${filePath}.html`;
+  }
   serveFile(req, res, filePath);
 });
 

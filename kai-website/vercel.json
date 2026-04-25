@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "redirects": [
     {
       "source": "/(.*)",
@@ -13,12 +14,12 @@
     },
     {
       "source": "/casi-studio.html",
-      "destination": "/laboratorio.html",
+      "destination": "/laboratorio",
       "permanent": true
     },
     {
       "source": "/workshop.html",
-      "destination": "/suite-ai.html",
+      "destination": "/suite-ai",
       "permanent": true
     }
   ],

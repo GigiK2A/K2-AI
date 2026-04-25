@@ -1,6 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_KAI_API_BASE_URL || '';
 
-// Contesto pacchetto: presente quando l'utente arriva da /workshop.html
+// Contesto pacchetto: presente quando l'utente arriva da /suite-ai
 // tramite il link CTA di un pacchetto specifico (?pkg=ID&pkg_title=TITLE)
 const PKG_CTX = (() => {
   try {
@@ -148,7 +148,7 @@ function truncateText(text, maxLength) {
 
 function cleanAssistantContactText(text) {
   return String(text || '')
-    .replace(/(?:^|\n)\s*\/contatti\.html\s*(?:$|\n)/gi, '\n')
+    .replace(/(?:^|\n)\s*\/contatti(?:\.html)?\s*(?:$|\n)/gi, '\n')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -408,15 +408,15 @@ function _renderAssistantContent(text) {
   const fragment = document.createDocumentFragment();
 
   const cleaned = text
-    // rimuovi varianti comuni di "link: /contatti.html" o "su /contatti.html"
-    .replace(/(?:al seguente link|seguente link|link|su|a)\s*:\s*\/contatti\.html/gi, '')
-    .replace(/\/contatti\.html/gi, '')
+    // rimuovi varianti comuni di "link: /contatti" o "su /contatti"
+    .replace(/(?:al seguente link|seguente link|link|su|a)\s*:\s*\/contatti(?:\.html)?/gi, '')
+    .replace(/\/contatti(?:\.html)?/gi, '')
     .trim()
     // rimuovi puntini/virgole/punti residui a fine frase prima del bottone
     .replace(/[,.:]\s*$/, '');
 
-  // Se il testo originale conteneva /contatti.html, aggiungi il bottone in fondo
-  const hasContact = /\/contatti\.html/i.test(text);
+  // Se il testo originale conteneva /contatti, aggiungi il bottone in fondo
+  const hasContact = /\/contatti(?:\.html)?/i.test(text);
   const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
   let cursor = 0;
   let match;
@@ -443,7 +443,7 @@ function _renderAssistantContent(text) {
 
   if (hasContact) {
     const contactBtn = document.createElement('a');
-    contactBtn.href = '/contatti.html';
+    contactBtn.href = '/contatti';
     contactBtn.className = 'chat-cta-btn';
     contactBtn.dataset.contactCta = '1';
     contactBtn.textContent = 'Scrivici →';

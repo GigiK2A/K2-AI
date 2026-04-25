@@ -49,7 +49,7 @@
 
 ## K-BOT — diagnosi AI gratuita
 
-K-BOT e il sistema di diagnosi AI di K2-AI. In circa 5 minuti di chat raccoglie il contesto di un processo aziendale (volume, tempi, errori, strumenti, vincoli) e restituisce uno di quattro esiti: stop, chiarimento, prototipo in 14 giorni, contatto diretto. Gratuito, nessuna call obbligatoria. URL: https://www.k2-ai.it/k-bot.html
+K-BOT e il sistema di diagnosi AI di K2-AI. In circa 5 minuti di chat raccoglie il contesto di un processo aziendale (volume, tempi, errori, strumenti, vincoli) e restituisce uno di quattro esiti: stop, chiarimento, prototipo in 14 giorni, contatto diretto. Gratuito, nessuna call obbligatoria. URL: https://www.k2-ai.it/k-bot
 
 ## Contatti
 
@@ -61,8 +61,8 @@ K-BOT e il sistema di diagnosi AI di K2-AI. In circa 5 minuti di chat raccoglie 
 ## Link principali
 
 - [Home](https://www.k2-ai.it/): posizionamento e KPI.
-- [Metodo](https://www.k2-ai.it/metodo.html): il metodo in 4 fasi.
-- [Laboratorio](https://www.k2-ai.it/laboratorio.html): 5 casi AI reali con KPI misurati.
-- [K-BOT](https://www.k2-ai.it/k-bot.html): diagnosi AI gratuita in 5 minuti.
-- [Suite AI](https://www.k2-ai.it/suite-ai.html): pacchetti HOST, WEB, STUDIO.
-- [Contatti](https://www.k2-ai.it/contatti.html): scrivere direttamente al team.
+- [Metodo](https://www.k2-ai.it/metodo): il metodo in 4 fasi.
+- [Laboratorio](https://www.k2-ai.it/laboratorio): 5 casi AI reali con KPI misurati.
+- [K-BOT](https://www.k2-ai.it/k-bot): diagnosi AI gratuita in 5 minuti.
+- [Suite AI](https://www.k2-ai.it/suite-ai): pacchetti HOST, WEB, STUDIO.
+- [Contatti](https://www.k2-ai.it/contatti): scrivere direttamente al team.
