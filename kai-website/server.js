@@ -197,8 +197,6 @@ async function handleNewsletterSubscribe(req, res) {
     name: recipientName,
     confirmed: false,
     confirm_token: token,
-    is_active: true,
-    newsletter_ai: true,
     source,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
