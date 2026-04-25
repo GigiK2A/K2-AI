@@ -876,16 +876,17 @@ footer {
 }
 
 .newsletter-form {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
 }
 
 .newsletter-form input[type="email"] {
-  flex: 1;
-  min-width: 200px;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
   padding: 12px 16px;
-  background: var(--bg-base);
+  background: #070707;
   border: 1px solid var(--border);
   color: var(--text-primary);
   font-family: var(--font-body);
@@ -903,21 +904,32 @@ footer {
 }
 
 .newsletter-form button[type="submit"] {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
   padding: 12px 24px;
-  background: var(--text-primary);
-  color: var(--bg-base);
-  border: none;
+  background: #f5f5f5;
+  color: #080808 !important;
+  border: 1px solid #f5f5f5;
   font-family: var(--font-mono);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.05em;
   cursor: pointer;
-  transition: opacity 0.2s;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
   white-space: nowrap;
 }
 
 .newsletter-form button[type="submit"]:hover:not(:disabled) {
-  opacity: 0.85;
+  background: #ffffff;
+  border-color: #ffffff;
+  transform: translateY(-1px);
 }
 
 .newsletter-form button[type="submit"]:disabled {
