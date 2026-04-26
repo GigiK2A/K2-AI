@@ -166,7 +166,4 @@ kai-website/
 
 ## 12. Contatti
 
-- **Luca** (product owner, strategia, copy): ing.luca.rossi@gmail.com
-- **Luigi** (sviluppo, SEO tecnico): implementazione
-
-Se Claude Code ha un dubbio non risolvibile dai file canonici, Luigi chiede a Luca prima di procedere.
+- **Owner**: rluigiluca@gmail.com
