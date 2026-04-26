@@ -4,12 +4,13 @@ import react from '@vitejs/plugin-react'
 const securityHeaders = {
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
+    "img-src 'self' data: https://*.stripe.com",
     "media-src 'self'",
-    "font-src 'self'",
-    "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 http://192.168.0.62:8000 http://192.168.1.169:8000",
+    "font-src 'self' https://api.fontshare.com https://fonts.gstatic.com",
+    "connect-src 'self' http://localhost:3000 http://localhost:8000 http://127.0.0.1:8000 http://192.168.0.62:8000 http://192.168.1.169:8000 https://*.stripe.com https://checkout.stripe.com ws://localhost:3000 ws://127.0.0.1:3000",
+    "frame-src https://*.stripe.com https://checkout.stripe.com",
     "form-action 'self'",
     "frame-ancestors 'none'",
     "object-src 'none'",
@@ -111,17 +112,8 @@ export default defineConfig({
         'note-legali': 'src/note-legali.html',
         workshop: 'src/workshop.html',
         'suite-ai': 'src/suite-ai.html',
-        // Pillar hub v2
-        'pillar-agenti-email-crm': 'src/suite-ai/agenti-email-crm.html',
-        'pillar-automazioni-amministrative': 'src/suite-ai/automazioni-amministrative.html',
-        'pillar-ai-legale-contratti': 'src/suite-ai/ai-legale-contratti.html',
-        'pillar-ai-ingegneria-progettazione': 'src/suite-ai/ai-ingegneria-progettazione.html',
-        'pillar-microapp-documenti-tecnici': 'src/suite-ai/microapp-documenti-tecnici.html',
-        'pillar-ai-customer-service-ticket': 'src/suite-ai/ai-customer-service-ticket.html',
-        'pillar-rag-knowledge-base': 'src/suite-ai/rag-knowledge-base.html',
-        'pillar-ai-compliance-audit': 'src/suite-ai/ai-compliance-audit.html',
-        'pillar-ai-controllo-gestione-reporting': 'src/suite-ai/ai-controllo-gestione-reporting.html',
-        'pillar-integrazione-gestionali-erp': 'src/suite-ai/integrazione-gestionali-erp.html',
+        'newsletter-ok': 'src/newsletter-ok.html',
+        'newsletter-error': 'src/newsletter-error.html',
       }
     }
   },
