@@ -4,9 +4,33 @@ on:
   push:
     branches: ["main", "master"]
   pull_request:
+  workflow_dispatch:
+  schedule:
+    # GitHub usa UTC: 18/19 UTC coprono le 20:00 Europe/Rome con cambio ora.
+    - cron: "0 18,19 * * *"
 
 jobs:
+  rome-time-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+    steps:
+      - id: gate
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$(TZ=Europe/Rome date +%H)" = "20" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   website-build:
+    needs: rome-time-gate
+    if: needs.rome-time-gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,6 +50,8 @@ jobs:
         run: npm run build
 
   board-sanity:
+    needs: rome-time-gate
+    if: needs.rome-time-gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
