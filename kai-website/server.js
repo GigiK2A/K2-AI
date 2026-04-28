@@ -191,20 +191,37 @@ QUALITÀ ANALISI:
 - Contestualizza ogni segnale: un crediti/ricavi alto in uno studio a commessa è normale; in un'azienda prodotto è un problema.
 - Non inventare numeri non presenti nel materiale. Se un dato manca, indicalo esplicitamente.
 
-CHIUSURA RACCOLTA:
-- Quando hai abbastanza materiale, scrivi una frase di chiusura senza domande e includi esattamente: report_ready: true
-- L'ULTIMO messaggio NON deve MAI terminare con una domanda.
-- L'ultimo messaggio è una dichiarazione di avanzamento, non una richiesta di informazioni.`;
+CHIUSURA RACCOLTA — REGOLA ASSOLUTA:
+- Quando hai abbastanza materiale, scrivi una frase di chiusura dichiarativa e includi esattamente: report_ready: true
+- L'ULTIMO messaggio NON deve MAI contenere un punto interrogativo.
+- L'ultimo messaggio è UNA SOLA FRASE DICHIARATIVA tipo: "Ho abbastanza materiale per procedere con l'analisi." oppure "Il documento è chiaro, procedo con la lettura strutturata."
+- Anche se hai dubbi, dichiara che procedi: i dubbi li gestisce il report.
+- VIETATO scrivere domande nel messaggio che contiene report_ready: true.`;
 
   const leadRules = `
 Modalità CONTATTO.
 Obiettivo: capire contesto, problema, urgenza e fit commerciale in modo naturale.
 Conversazione naturale: una domanda alla volta, basata sulla risposta precedente. Niente script rigido.
 NON chiedere mai email, telefono, disponibilità o dati di contatto: ci pensa il form dopo.
-Quando hai processo, attrito, obiettivo e urgenza (bastano 3-5 scambi), scrivi una sintesi del caso SENZA domande finali.
-La sintesi deve rispondere a: "Qual è il processo, prototipo o applicazione che vogliono costruire?" ed essere leggibile da chi riceverà il lead.
-Formato sintesi: descrivi settore/ruolo, problema operativo, contesto attuale, obiettivo e urgenza se emersa.
-Dopo la sintesi includi esattamente: lead_ready: true`;
+
+Quando hai processo, attrito, obiettivo e urgenza (bastano 3-5 scambi), produci il messaggio finale con questa struttura ESATTA:
+
+[2-3 frasi dichiarative per l'utente: conferma che hai capito il quadro e che stai mandando il brief al team. NESSUNA domanda.]
+
+BRIEF_START
+Settore/ruolo: [settore e ruolo dell'utente]
+Processo attuale: [descrizione del workflow o processo che costa tempo/qualità oggi]
+Problema principale: [il collo di bottiglia o attrito emerso dalla conversazione]
+Obiettivo: [cosa vuole costruire, automatizzare o migliorare]
+Urgenza: [se emersa, altrimenti ometti]
+BRIEF_END
+
+lead_ready: true
+
+REGOLE OBBLIGATORIE per il messaggio finale:
+- Il testo PRIMA di BRIEF_START non deve MAI terminare con una domanda.
+- Il BRIEF deve essere scritto come testo continuativo leggibile da un operatore umano.
+- Il BRIEF deve basarsi sull'INTERA conversazione, non solo sull'ultimo messaggio.`;
 
   return `
 Sei K-BOT di K2-AI. Parli in italiano, tono umano, diretto, normale.
@@ -237,12 +254,34 @@ function detectKbotNextAction(mode, step, collectedData, assistantMessage) {
   return 'continue';
 }
 
+function extractLeadBrief(raw) {
+  const match = String(raw || '').match(/BRIEF_START\s*([\s\S]*?)\s*BRIEF_END/i);
+  if (!match) return '';
+  return match[1]
+    .replace(/^Settore\/ruolo:\s*/im, 'Settore: ')
+    .trim();
+}
+
 function cleanKbotAssistantMessage(message) {
   return String(message || '')
+    .replace(/BRIEF_START[\s\S]*?BRIEF_END/gi, '')
     .replace(/report_ready\s*:\s*true/gi, '')
     .replace(/lead_ready\s*:\s*true/gi, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim() || 'Ricevuto. Dimmi pure un dettaglio in più e procediamo.';
+}
+
+function stripTrailingQuestion(text) {
+  const t = String(text || '').trimEnd();
+  if (!t.endsWith('?')) return t;
+  // Remove the last sentence that ends with ?
+  const lastSentenceEnd = Math.max(
+    t.lastIndexOf('.', t.length - 2),
+    t.lastIndexOf('!', t.length - 2),
+    t.lastIndexOf('\n', t.length - 2),
+  );
+  if (lastSentenceEnd > 0) return t.slice(0, lastSentenceEnd + 1).trim();
+  return 'Ho abbastanza materiale. Procedo con l\'analisi.';
 }
 
 function readJsonBody(req, maxBytes = 16 * 1024) {
@@ -618,7 +657,7 @@ async function handleKbotChat(req, res) {
     const anthropic = createAnthropicClient();
     const response = await anthropic.messages.create({
       model: KBOT_MODEL,
-      max_tokens: 700,
+      max_tokens: 900,
       system: buildKbotSystemPrompt({ mode, sector: session.sector, step, session }),
       messages: compactKbotMessages(persistedMessages).map(message => ({
         role: message.role,
@@ -631,12 +670,19 @@ async function handleKbotChat(req, res) {
     return sendJson(res, 500, { error: `Errore AI: ${aiErr instanceof Error ? aiErr.message : String(aiErr)}` });
   }
 
-  const assistantMessage = cleanKbotAssistantMessage(rawAssistant);
+  const isReportReady = /report_ready\s*:\s*true/i.test(rawAssistant);
+  const isLeadReady = /lead_ready\s*:\s*true/i.test(rawAssistant);
+
+  let assistantMessage = cleanKbotAssistantMessage(rawAssistant);
+  if (isReportReady) assistantMessage = stripTrailingQuestion(assistantMessage);
+
+  const leadBrief = isLeadReady ? extractLeadBrief(rawAssistant) : '';
+
   const collectedData = {
     ...(session.collected_data || {}),
     mode,
-    ...(mode === 'report' && /report_ready\s*:\s*true/i.test(rawAssistant) ? { report_ready: true } : {}),
-    ...(mode === 'lead' && /lead_ready\s*:\s*true/i.test(rawAssistant) ? { lead_ready: true } : {}),
+    ...(isReportReady ? { report_ready: true } : {}),
+    ...(isLeadReady ? { lead_ready: true } : {}),
   };
   const nextAction = detectKbotNextAction(mode, step, collectedData, rawAssistant);
   const updatedMessages = [
@@ -661,7 +707,7 @@ async function handleKbotChat(req, res) {
     path: mode === 'lead' ? 'B' : 'A',
     next_action: nextAction,
     session: { step: step + 1, mode },
-    ...(nextAction === 'show_contact_form' ? { contact_summary: assistantMessage } : {}),
+    ...(nextAction === 'show_contact_form' ? { contact_summary: leadBrief || assistantMessage } : {}),
   });
 }
 
