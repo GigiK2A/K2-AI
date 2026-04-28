@@ -120,8 +120,7 @@ function extractQuestions(text: string): string[] {
     if (!normalized) continue
 
     if (normalized.includes('?')) {
-      const parts = normalized
-        .split(/(?<=\?)/g)
+      const parts = (normalized.match(/[^?]*\?/g) || [])
         .map(part => part.trim())
         .filter(part => part.endsWith('?') && part.length > 8)
       collected.push(...parts)
