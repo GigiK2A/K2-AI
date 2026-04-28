@@ -10,6 +10,7 @@ document.querySelectorAll('.nav-links a, .nav-overlay a').forEach(link => {
 
 // Hamburger toggle
 const hamburger = document.querySelector('.nav-hamburger');
+const overlay = document.querySelector('.nav-overlay');
 
 if (hamburger && overlay) {
   hamburger.addEventListener('click', () => {

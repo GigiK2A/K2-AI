@@ -183,10 +183,7 @@
       if (API_BASE_URL.trim()) {
         return API_BASE_URL.replace(/\/$/, '');
       }
-      if (import.meta.env?.DEV) {
-        return '';
-      }
-      return 'https://api.k2-ai.it';
+      return '';
     }
 
     const WORKSHOP_BASE_URL = resolveApiBaseUrl();

@@ -19,11 +19,8 @@ function resolveApiBaseUrl() {
   if (API_BASE_URL.trim()) {
     return API_BASE_URL.replace(/\/$/, '');
   }
-  // In dev, Vite proxy forwards /api → localhost:8000 (same origin, no CORS)
-  if (import.meta.env.DEV) {
-    return '';
-  }
-  return 'https://api.k2-ai.it';
+  // Usa same-origin in ogni ambiente: in produzione il server web fa proxy su api.k2-ai.it
+  return '';
 }
 
 const CONTACT_ENDPOINT = `${resolveApiBaseUrl()}/api/intake/contact`;

@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -10,6 +11,7 @@ const DIST_DIR = path.join(__dirname, 'dist');
 const REDIRECT_HOST = 'k2-ai.it';
 const CANONICAL_HOST = 'www.k2-ai.it';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.k2-ai.it';
+const API_PROXY_BASE = process.env.API_PROXY_BASE || 'https://api.k2-ai.it';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -99,6 +101,93 @@ function readJsonBody(req) {
     });
     req.on('error', reject);
   });
+}
+
+function readRawBody(req, maxBytes = 8 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let total = 0;
+    req.on('data', chunk => {
+      total += chunk.length;
+      if (total > maxBytes) {
+        req.destroy();
+        reject(new Error('Body too large'));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+function shouldForwardRequestHeader(name) {
+  const lower = String(name || '').toLowerCase();
+  if (!lower) return false;
+  if (lower === 'host') return false;
+  if (lower === 'connection') return false;
+  if (lower === 'content-length') return false;
+  if (lower === 'accept-encoding') return false;
+  if (lower === 'x-forwarded-host' || lower === 'x-forwarded-proto' || lower === 'x-forwarded-for') return false;
+  return true;
+}
+
+function shouldForwardResponseHeader(name) {
+  const lower = String(name || '').toLowerCase();
+  if (!lower) return false;
+  if (lower === 'connection') return false;
+  if (lower === 'transfer-encoding') return false;
+  if (lower === 'content-length') return false;
+  return true;
+}
+
+async function proxyApiRequest(req, res, rawPath, rawQuery) {
+  const upstreamUrl = `${API_PROXY_BASE}${rawPath}${rawQuery}`;
+  const method = (req.method || 'GET').toUpperCase();
+
+  const forwardedHeaders = {};
+  Object.entries(req.headers || {}).forEach(([name, value]) => {
+    if (!shouldForwardRequestHeader(name) || value == null) return;
+    forwardedHeaders[name] = value;
+  });
+  forwardedHeaders['x-forwarded-host'] = CANONICAL_HOST;
+  forwardedHeaders['x-forwarded-proto'] = 'https';
+
+  let bodyBuffer = null;
+  if (!['GET', 'HEAD'].includes(method)) {
+    bodyBuffer = await readRawBody(req);
+    if (bodyBuffer.length > 0) {
+      forwardedHeaders['content-length'] = String(bodyBuffer.length);
+    }
+  }
+
+  const upstreamReq = https.request(upstreamUrl, {
+    method,
+    headers: forwardedHeaders,
+  }, upstreamRes => {
+    const responseHeaders = {};
+    Object.entries(upstreamRes.headers || {}).forEach(([name, value]) => {
+      if (!shouldForwardResponseHeader(name) || value == null) return;
+      responseHeaders[name] = value;
+    });
+
+    if (rawPath.startsWith('/api/workshop/')) {
+      responseHeaders['Cache-Control'] = 'no-store';
+    }
+
+    res.writeHead(upstreamRes.statusCode || 502, responseHeaders);
+    upstreamRes.pipe(res);
+  });
+
+  upstreamReq.on('error', err => {
+    console.error('API proxy error:', err);
+    sendJson(res, 502, { error: 'Upstream API non disponibile' });
+  });
+
+  if (bodyBuffer && bodyBuffer.length > 0) {
+    upstreamReq.write(bodyBuffer);
+  }
+  upstreamReq.end();
 }
 
 function generateToken() {
@@ -355,6 +444,14 @@ const server = http.createServer((req, res) => {
     handleNewsletterConfirm(req, res).catch(err => {
       console.error('Newsletter confirm error:', err);
       send(res, 302, { Location: '/newsletter-error' }, '');
+    });
+    return;
+  }
+
+  if (rawPath.startsWith('/api/')) {
+    proxyApiRequest(req, res, rawPath, rawQuery).catch(err => {
+      console.error('API proxy failure:', err);
+      sendJson(res, 502, { error: 'Errore proxy API' });
     });
     return;
   }
