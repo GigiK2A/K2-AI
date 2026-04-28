@@ -13,6 +13,7 @@ export function PaymentBox({ sessionId, isGeneratingPdf, pdfUrl, onTestGenerate 
   const [checkoutState, setCheckoutState] = useState<CheckoutState>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [email, setEmail] = useState('')
+  const isFreeTest = (import.meta.env.VITE_KBOT_REPORT_FREE ?? 'true') !== 'false'
 
   if (pdfUrl) {
     return (
@@ -27,6 +28,12 @@ export function PaymentBox({ sessionId, isGeneratingPdf, pdfUrl, onTestGenerate 
 
   async function startCheckout() {
     if (checkoutState === 'loading') return
+
+    if (isFreeTest) {
+      onTestGenerate()
+      return
+    }
+
     setCheckoutState('loading')
     setErrorMsg('')
 
@@ -63,18 +70,20 @@ export function PaymentBox({ sessionId, isGeneratingPdf, pdfUrl, onTestGenerate 
     <div className="kbot-payment-box">
       <p className="kbot-payment-label">Piano d'azione operativo</p>
       <p className="kbot-payment-desc">
-        7 pagine con priorità, tempi e template pronti — consegna in 10 minuti via email.
+        Report di analisi generato con le skill interne K2-AI: lettura del materiale, segnali, rischi e punti da verificare.
       </p>
-      <p className="kbot-payment-price">19€</p>
+      <p className="kbot-payment-price">{isFreeTest ? 'Free test' : '19€'}</p>
 
-      <input
-        type="email"
-        className="kbot-payment-email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        placeholder="La tua email (dove ti mandiamo il PDF)"
-        autoComplete="email"
-      />
+      {!isFreeTest && (
+        <input
+          type="email"
+          className="kbot-payment-email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="La tua email (dove ti mandiamo il PDF)"
+          autoComplete="email"
+        />
+      )}
 
       <button
         type="button"
@@ -82,7 +91,9 @@ export function PaymentBox({ sessionId, isGeneratingPdf, pdfUrl, onTestGenerate 
         onClick={startCheckout}
         disabled={checkoutState === 'loading'}
       >
-        {checkoutState === 'loading' ? 'Apertura pagamento…' : 'Ottieni il report completo →'}
+        {isFreeTest
+          ? (isGeneratingPdf ? 'Generazione report…' : 'Genera report gratuito →')
+          : (checkoutState === 'loading' ? 'Apertura pagamento…' : 'Ottieni il report completo →')}
       </button>
 
       {checkoutState === 'error' && (
@@ -98,17 +109,19 @@ export function PaymentBox({ sessionId, isGeneratingPdf, pdfUrl, onTestGenerate 
         </p>
       )}
 
-      <p className="kbot-payment-fallback">
+      {!isFreeTest && (
+        <p className="kbot-payment-fallback">
         Oppure{' '}
-        <button
-          type="button"
-          className="kbot-link-btn"
-          onClick={onTestGenerate}
-          disabled={isGeneratingPdf}
-        >
-          {isGeneratingPdf ? 'generazione in corso…' : 'genera PDF in modalità demo'}
-        </button>
-      </p>
+          <button
+            type="button"
+            className="kbot-link-btn"
+            onClick={onTestGenerate}
+            disabled={isGeneratingPdf}
+          >
+            {isGeneratingPdf ? 'generazione in corso…' : 'genera PDF in modalità demo'}
+          </button>
+        </p>
+      )}
     </div>
   )
 }

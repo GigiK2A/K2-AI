@@ -5,7 +5,8 @@ import { ContactForm } from './ContactForm'
 import { PaymentBox } from './PaymentBox'
 
 type PathType = 'A' | 'B' | 'unknown'
-type Stage = 'sector' | 'problem' | 'router' | 'conversation'
+type KBotMode = 'report' | 'lead' | ''
+type Stage = 'mode' | 'sector' | 'problem' | 'router' | 'conversation'
 type ChatMsg = { role: 'user' | 'assistant'; text: string }
 type UploadedFile = { name: string; type: string; size: number; publicUrl: string }
 type AdaptiveAnswers = Record<string, string>
@@ -202,14 +203,15 @@ function prettifyUserText(text: string): string {
 }
 
 export function KBot() {
-  const [stage, setStage] = useState<Stage>('sector')
+  const [stage, setStage] = useState<Stage>('mode')
+  const [mode, setMode] = useState<KBotMode>('')
   const [selectedSector, setSelectedSector] = useState('')
   const [problem, setProblem] = useState('')
   const [sessionId, setSessionId] = useState('')
   const [path, setPath] = useState<PathType>('unknown')
   const [step, setStep] = useState(1)
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: 'assistant', text: 'Ciao! Sono K-BOT. Prima di tutto: in quale settore operi?' },
+    { role: 'assistant', text: 'Ciao, sono K-BOT. Vuoi analizzare un documento/caso e ottenere un report, oppure vuoi capire se ha senso parlarne con il team K2-AI?' },
   ])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -236,7 +238,7 @@ export function KBot() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   const canReply = (inputValue.trim().length > 0 || queuedFiles.length > 0) && !isLoading
-  const canStart = selectedSector.length > 0 && !isLoading
+  const canStart = mode.length > 0 && selectedSector.length > 0 && !isLoading
   const teaserSignals = useMemo(() => teaser?.segnali || [], [teaser])
   const hasAdaptiveForm = adaptiveQuestions.length > 1
   const canSendAdaptive = hasAdaptiveForm && !isLoading
@@ -345,13 +347,14 @@ export function KBot() {
   }
 
   function resetChat() {
-    setStage('sector')
+    setStage('mode')
+    setMode('')
     setSelectedSector('')
     setProblem('')
     setSessionId('')
     setPath('unknown')
     setStep(1)
-    setMessages([{ role: 'assistant', text: 'Ciao! Sono K-BOT. Prima di tutto: in quale settore operi?' }])
+    setMessages([{ role: 'assistant', text: 'Ciao, sono K-BOT. Vuoi analizzare un documento/caso e ottenere un report, oppure vuoi capire se ha senso parlarne con il team K2-AI?' }])
     setInputValue('')
     setIsLoading(false)
     setIsTyping(false)
@@ -373,13 +376,31 @@ export function KBot() {
     setIsFullscreen(prev => !prev)
   }
 
+  async function onSelectMode(nextMode: Exclude<KBotMode, ''>) {
+    if (stage !== 'mode' || isLoading) return
+
+    setMode(nextMode)
+    setPath(nextMode === 'lead' ? 'B' : 'A')
+    addMessage('user', nextMode === 'report' ? 'Voglio un report di analisi' : 'Voglio capire se parlarne con voi')
+    await botSay(
+      nextMode === 'report'
+        ? 'Perfetto. Lavoriamo sul report: mi serve solo il settore, poi puoi descrivere il caso o allegare il documento.'
+        : 'Perfetto. Qui mi interessa capire bene contesto, problema e urgenza, poi ti mando su contatti con un riepilogo già pulito.',
+    )
+    setStage('sector')
+  }
+
   async function onSelectSector(slug: string) {
     if (stage !== 'sector' || isLoading) return
 
     const label = SECTORS.find(s => s.slug === slug)?.label || slug
     setSelectedSector(slug)
     addMessage('user', label)
-    await botSay('Perfetto. Ora descrivi in parole tue cosa ti serve: processo, collo di bottiglia, strumenti in uso.')
+    await botSay(
+      mode === 'report'
+        ? 'Ora descrivi cosa vuoi analizzare. Se hai un file, puoi allegarlo subito: lo uso come materiale del report.'
+        : 'Ora raccontami il processo o il problema: cosa succede oggi, dove si blocca, e cosa vorresti ottenere.',
+    )
     setStage('problem')
   }
 
@@ -390,20 +411,36 @@ export function KBot() {
     setTypingLabel('K-BOT sta elaborando la tua richiesta…')
     setIsTyping(true)
     try {
-      const session = await postJson('/api/kbot/session', { sector: selectedSector })
+      const session = await postJson('/api/kbot/session', { sector: selectedSector, mode })
       const sid = session.session_id
       setSessionId(sid)
-      capture('kbot_started', { sector: selectedSector })
+      capture('kbot_started', { sector: selectedSector, mode })
 
       const initialProblem = problem.trim() || 'Non ho dettagli aggiuntivi al momento.'
       addMessage('user', initialProblem)
-      capture('kbot_problem_submitted', { sector: selectedSector, has_problem: problem.trim().length > 0 })
-      await postJson('/api/kbot/chat', { session_id: sid, message: initialProblem, step: 1 })
+      capture('kbot_problem_submitted', { sector: selectedSector, mode, has_problem: problem.trim().length > 0 })
+      const data = await postJson('/api/kbot/chat', { session_id: sid, message: initialProblem, step: 1 })
       setIsTyping(false)
 
-      await botSay(ROUTER_TEXT, 120)
-      setStep(2)
-      setStage('router')
+      setPath(mode === 'lead' ? 'B' : 'A')
+      setStep(data.session?.step || 2)
+      setStage('conversation')
+      await botSay(data.message || 'Ok, continuiamo da qui.', 120)
+
+      if (mode === 'report' && (data.next_action === 'show_report' || data.next_action === 'show_teaser')) {
+        setTeaserLoading(true)
+        try {
+          const teaserResp = await postJson('/api/kbot/teaser', { session_id: sid })
+          setTeaser(teaserResp.teaser)
+          capture('kbot_teaser_viewed', { sector: selectedSector, mode })
+        } finally {
+          setTeaserLoading(false)
+        }
+      }
+
+      if (mode === 'lead' && data.next_action === 'show_contact_form') {
+        setShowContactForm(true)
+      }
     } catch (error) {
       setIsTyping(false)
       addMessage('assistant', friendlyError(error))
@@ -504,7 +541,7 @@ export function KBot() {
       setPath(nextPath)
       setIsTyping(false)
 
-      if (nextPath === 'A' && !teaser && data.next_action === 'show_teaser') {
+      if (nextPath === 'A' && !teaser && (data.next_action === 'show_teaser' || data.next_action === 'show_report')) {
         await botAnalyzeThenSay(data.message || 'Analisi completata.')
         setTeaserLoading(true)
         try {
@@ -583,9 +620,9 @@ export function KBot() {
       const resp = await postJson('/api/kbot/generate-pdf', { session_id: sessionId, test_mode: true })
       if (resp?.pdf_url) {
         setPdfUrl(resp.pdf_url)
-        await botSay('PDF generato. Puoi aprirlo dal link qui sotto.', 120)
+        await botSay('Report generato. Puoi aprirlo dal link qui sotto.', 120)
       } else {
-        addMessage('assistant', 'Non sono riuscito a generare il PDF in questo tentativo. Riprova tra poco.')
+        addMessage('assistant', 'Non sono riuscito a generare il report in questo tentativo. Riprova tra poco.')
       }
     } catch (error) {
       addMessage('assistant', friendlyError(error))
@@ -693,10 +730,12 @@ export function KBot() {
         accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.txt,.png,.jpg,.jpeg"
       />
 
-      {stage !== 'sector' && !teaser && !showContactForm && (
+      {stage !== 'mode' && stage !== 'sector' && !teaser && !showContactForm && (
         <div className="kbot-progress">
           {(['problem', 'router', 'conversation'] as const).map((s, i) => {
-            const labels = ['Descrivi il caso', 'Tipo di analisi', path === 'B' ? 'Qualifica' : 'Approfondimento']
+            const labels = mode === 'lead'
+              ? ['Descrivi il caso', 'Qualifica', 'Riepilogo']
+              : ['Materiale', 'Lettura', 'Report']
             const active = s === stage || (s === 'conversation' && stage === 'router' && step > 2)
             const done = (s === 'problem' && ['router', 'conversation'].includes(stage)) ||
                          (s === 'router' && stage === 'conversation')
@@ -709,7 +748,7 @@ export function KBot() {
           })}
           <div className={`kbot-progress-step ${teaserLoading || teaser ? 'active' : ''}`}>
             <span className="kbot-progress-dot">4</span>
-            <span className="kbot-progress-label">{path === 'B' ? 'Contatto' : 'Analisi'}</span>
+            <span className="kbot-progress-label">{mode === 'lead' ? 'Contatto' : 'Report'}</span>
           </div>
         </div>
       )}
@@ -726,6 +765,32 @@ export function KBot() {
             <span className="td" />
             <span className="td" />
             <span className="kbot-typing-label">{typingLabel}</span>
+          </div>
+        )}
+
+        {stage === 'mode' && (
+          <div className="kbot-option-panel msg-in">
+            <p className="kbot-stage-label">Scegli cosa vuoi fare</p>
+            <div className="kbot-mode-grid">
+              <button
+                type="button"
+                className="kbot-mode-card"
+                onClick={() => onSelectMode('report')}
+                disabled={isLoading}
+              >
+                <span className="kbot-mode-title">Analisi e report</span>
+                <span className="kbot-mode-copy">Carichi o descrivi un caso. K-BOT produce un report di lettura usando le skill interne.</span>
+              </button>
+              <button
+                type="button"
+                className="kbot-mode-card"
+                onClick={() => onSelectMode('lead')}
+                disabled={isLoading}
+              >
+                <span className="kbot-mode-title">Parlare con K2-AI</span>
+                <span className="kbot-mode-copy">K-BOT capisce contesto, urgenza e fit, poi ti manda su contatti con un brief ordinato.</span>
+              </button>
+            </div>
           </div>
         )}
 

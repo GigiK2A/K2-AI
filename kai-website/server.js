@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
+const Anthropic = require('@anthropic-ai/sdk');
 
 const PORT = process.env.PORT || 4173;
 const DIST_DIR = path.join(__dirname, 'dist');
@@ -12,6 +13,8 @@ const REDIRECT_HOST = 'k2-ai.it';
 const CANONICAL_HOST = 'www.k2-ai.it';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.k2-ai.it';
 const API_PROXY_BASE = process.env.API_PROXY_BASE || 'https://api.k2-ai.it';
+const KBOT_MODEL = process.env.KBOT_MODEL || 'claude-haiku-4-5';
+const SKILLS_DIR = path.join(__dirname, 'lib', 'skills');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -29,6 +32,34 @@ const MIME_TYPES = {
   '.ttf': 'font/ttf',
   '.map': 'application/octet-stream'
 };
+
+const SECTOR_LABELS = {
+  'studio-ingegneria': 'Studio di ingegneria / architettura',
+  'commercialista': 'Studio commercialista / CdL',
+  'manifatturiero': 'Manifatturiero / produzione',
+  'servizi-b2b': 'Servizi B2B / consulenza',
+  'hospitality': 'Hospitality / ricettivo',
+  'commercio-ecommerce': 'Commercio / e-commerce',
+  'tlc': 'TLC / infrastrutture',
+  'studio-legale': 'Studio legale',
+  'pubblica-amministrazione': 'Pubblica Amministrazione',
+};
+
+const SECTOR_BUNDLES = {
+  'studio-ingegneria': ['diagnosi-ai-operativa-pmi', 'progettista-strutturale', 'progettazione-architettonica', 'direzione-lavori'],
+  'commercialista': ['diagnosi-ai-operativa-pmi', 'contabilita-bilancio', 'fiscale-tributario-italiano', 'analisi-bilancio-pmi', 'budget-forecast-pmi'],
+  'manifatturiero': ['diagnosi-ai-operativa-pmi', 'programmazione-controllo', 'strategia-competitiva', 'analisi-settore-pmi'],
+  'servizi-b2b': ['diagnosi-ai-operativa-pmi', 'strategia-competitiva', 'marketing-strategico', 'crm-customer-experience'],
+  'hospitality': ['diagnosi-ai-operativa-pmi', 'flusso-hostboost-ricettive', 'marketing-strategico', 'pricing-optimizer'],
+  'commercio-ecommerce': ['diagnosi-ai-operativa-pmi', 'ecommerce-marketing-pmi', 'audit-seo-tecnico', 'crm-customer-experience'],
+  'tlc': ['diagnosi-ai-operativa-pmi', 'verifica-pe-terzi', 'progettista-strutturale', 'cse-coordinatore-sicurezza'],
+  'studio-legale': ['diagnosi-ai-operativa-pmi', 'diritto-italiano', 'diritto-societario-italiano', 'it-law-privacy-ai'],
+  'pubblica-amministrazione': ['diagnosi-ai-operativa-pmi', 'consulente-pa-operativa', 'consulente-finanza-pubblica', 'it-law-privacy-ai'],
+};
+
+const VALID_KBOT_SECTORS = new Set(Object.keys(SECTOR_LABELS));
+const VALID_KBOT_MODES = new Set(['report', 'lead']);
+const skillCache = new Map();
 
 function normalizeHost(req) {
   const xfHost = req.headers['x-forwarded-host'];
@@ -80,6 +111,118 @@ function createSupabaseAdminClient() {
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
+}
+
+function createAnthropicClient() {
+  const apiKey = getEnvVar('ANTHROPIC_API_KEY');
+  if (!apiKey) {
+    throw new Error('Missing ANTHROPIC_API_KEY');
+  }
+  return new Anthropic({ apiKey });
+}
+
+function resolveKbotSectorLabel(sector) {
+  return SECTOR_LABELS[sector] || 'PMI italiana';
+}
+
+function resolveKbotSkillNames(sector) {
+  return SECTOR_BUNDLES[sector] || ['diagnosi-ai-operativa-pmi'];
+}
+
+function readSkill(skillName, maxChars = 5200) {
+  const cacheKey = `${skillName}:${maxChars}`;
+  if (skillCache.has(cacheKey)) return skillCache.get(cacheKey);
+
+  const skillPath = path.join(SKILLS_DIR, skillName, 'SKILL.md');
+  if (!fs.existsSync(skillPath)) return '';
+
+  const raw = fs.readFileSync(skillPath, 'utf8');
+  const content = raw.length > maxChars ? `${raw.slice(0, maxChars)}\n\n[skill troncata]` : raw;
+  skillCache.set(cacheKey, content);
+  return content;
+}
+
+function loadKbotSkillBundle(sector) {
+  const chunks = resolveKbotSkillNames(sector)
+    .map(skillName => {
+      const content = readSkill(skillName);
+      return content ? `\n\n# SKILL: ${skillName}\n${content}` : '';
+    })
+    .filter(Boolean);
+
+  return chunks.join('\n').slice(0, 26000);
+}
+
+function compactKbotMessages(messages, maxMessages = 14, maxChars = 1100) {
+  return (Array.isArray(messages) ? messages : [])
+    .slice(-maxMessages)
+    .map(message => ({
+      role: message.role === 'assistant' ? 'assistant' : 'user',
+      content: String(message.content || '').slice(0, maxChars),
+      ts: message.ts,
+    }));
+}
+
+function buildKbotSystemPrompt({ mode, sector, step, session }) {
+  const sectorLabel = resolveKbotSectorLabel(sector);
+  const skills = loadKbotSkillBundle(sector);
+  const files = Array.isArray(session?.collected_data?.uploaded_files)
+    ? session.collected_data.uploaded_files
+    : [];
+  const fileContext = files.length
+    ? `\nAllegati disponibili:\n${files.slice(-4).map(file => `- ${file.name}: ${String(file.extractedSummary || '').slice(0, 1200)}`).join('\n')}`
+    : '\nNessun allegato ancora disponibile.';
+
+  const reportRules = `
+Modalità REPORT.
+Obiettivo: analizzare documenti, dati o un caso specifico usando le skill interne. Non vendere automazioni e non trasformare il report in una richiesta di progetto.
+Conversazione naturale: fai domande mirate solo quando servono davvero per interpretare il materiale. Evita domande statiche.
+Dopo 1-2 turni utili, se hai abbastanza contesto, chiudi con una frase breve e includi esattamente: report_ready: true
+Il report finale deve descrivere cosa emerge dall'analisi: segnali, rischi, punti da verificare, lettura tecnica e priorità informative.`;
+
+  const leadRules = `
+Modalità CONTATTO.
+Obiettivo: capire contesto, problema, urgenza e fit commerciale, poi portare verso /contatti.html.
+Conversazione naturale: una domanda alla volta, basata sulla risposta precedente. Niente script rigido.
+Quando hai processo, attrito, obiettivo e urgenza, sintetizza il caso e includi esattamente: lead_ready: true`;
+
+  return `
+Sei K-BOT di K2-AI. Parli in italiano, tono umano, diretto, normale.
+Settore: ${sectorLabel}
+Step: ${step}
+
+Regole generali:
+- Una domanda alla volta.
+- Massimo 3 frasi per turno, salvo quando stai chiudendo.
+- Niente markdown pesante, tabelle o JSON in chat.
+- Non inventare numeri o conclusioni da documenti non leggibili.
+- Se l'utente risponde in modo vago, chiedi un chiarimento concreto invece di seguire uno schema fisso.
+
+${mode === 'lead' ? leadRules : reportRules}
+${fileContext}
+
+Skill interne disponibili:
+${skills}
+`.slice(0, 32000);
+}
+
+function detectKbotNextAction(mode, step, collectedData, assistantMessage) {
+  const text = String(assistantMessage || '').toLowerCase();
+  if (mode === 'report' && (text.includes('report_ready: true') || step >= 4 || collectedData.report_ready)) {
+    return 'show_report';
+  }
+  if (mode === 'lead' && (text.includes('lead_ready: true') || step >= 5 || collectedData.lead_ready)) {
+    return 'show_contact_form';
+  }
+  return 'continue';
+}
+
+function cleanKbotAssistantMessage(message) {
+  return String(message || '')
+    .replace(/report_ready\s*:\s*true/gi, '')
+    .replace(/lead_ready\s*:\s*true/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim() || 'Ricevuto. Dimmi pure un dettaglio in più e procediamo.';
 }
 
 function readJsonBody(req) {
@@ -397,6 +540,340 @@ async function handleNewsletterConfirm(req, res) {
   send(res, 302, { Location: '/newsletter-ok' }, '');
 }
 
+async function handleKbotSession(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  const body = await readJsonBody(req);
+  const sector = String(body.sector || '').trim();
+  const mode = String(body.mode || '').trim();
+
+  if (!VALID_KBOT_SECTORS.has(sector)) return sendJson(res, 400, { error: 'Settore non valido' });
+  if (!VALID_KBOT_MODES.has(mode)) return sendJson(res, 400, { error: 'Modalità non valida' });
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('kbot_sessions')
+    .insert({
+      sector,
+      path: mode === 'lead' ? 'B' : 'A',
+      status: 'active',
+      step: 1,
+      messages: [],
+      collected_data: { mode },
+    })
+    .select('id')
+    .single();
+
+  if (error) return sendJson(res, 500, { error: error.message });
+  sendJson(res, 200, { session_id: data.id, mode });
+}
+
+async function handleKbotChat(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  const body = await readJsonBody(req);
+  const sessionId = String(body.session_id || '').trim();
+  const userMessage = String(body.message || '').trim().slice(0, 6000);
+  if (!sessionId || !userMessage) return sendJson(res, 400, { error: 'session_id e message obbligatori' });
+
+  const supabase = createSupabaseAdminClient();
+  const { data: session, error: sessionError } = await supabase
+    .from('kbot_sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .single();
+
+  if (sessionError || !session) return sendJson(res, 404, { error: 'Session not found' });
+
+  const mode = session.collected_data?.mode === 'lead' ? 'lead' : 'report';
+  const step = Number(session.step || 1);
+  const previousMessages = Array.isArray(session.messages) ? session.messages : [];
+  const persistedMessages = [
+    ...previousMessages,
+    { role: 'user', content: userMessage, ts: new Date().toISOString() },
+  ];
+
+  const anthropic = createAnthropicClient();
+  const response = await anthropic.messages.create({
+    model: KBOT_MODEL,
+    max_tokens: 700,
+    system: buildKbotSystemPrompt({ mode, sector: session.sector, step, session }),
+    messages: compactKbotMessages(persistedMessages).map(message => ({
+      role: message.role,
+      content: message.content,
+    })),
+  });
+
+  const rawAssistant = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
+  const assistantMessage = cleanKbotAssistantMessage(rawAssistant);
+  const collectedData = {
+    ...(session.collected_data || {}),
+    mode,
+    ...(mode === 'report' && /report_ready\s*:\s*true/i.test(rawAssistant) ? { report_ready: true } : {}),
+    ...(mode === 'lead' && /lead_ready\s*:\s*true/i.test(rawAssistant) ? { lead_ready: true } : {}),
+  };
+  const nextAction = detectKbotNextAction(mode, step, collectedData, rawAssistant);
+  const updatedMessages = [
+    ...persistedMessages,
+    { role: 'assistant', content: assistantMessage, ts: new Date().toISOString() },
+  ];
+
+  await supabase
+    .from('kbot_sessions')
+    .update({
+      messages: updatedMessages,
+      step: step + 1,
+      path: mode === 'lead' ? 'B' : 'A',
+      collected_data: collectedData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+
+  sendJson(res, 200, {
+    message: assistantMessage,
+    mode,
+    path: mode === 'lead' ? 'B' : 'A',
+    next_action: nextAction,
+    session: { step: step + 1, mode },
+  });
+}
+
+function sanitizeKbotFileName(name) {
+  return String(name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
+}
+
+function decodeKbotText(buffer) {
+  return buffer.toString('utf8').replace(/\u0000/g, '').replace(/\r\n/g, '\n').trim();
+}
+
+function isTextLikeFile(mime, name) {
+  const lower = String(name || '').toLowerCase();
+  return String(mime || '').startsWith('text/') || /\.(txt|md|csv|json|xml)$/i.test(lower);
+}
+
+async function summarizeKbotPdf(base64, fileName) {
+  const anthropic = createAnthropicClient();
+  const response = await anthropic.messages.create({
+    model: KBOT_MODEL,
+    max_tokens: 900,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: `Leggi il PDF "${fileName}" e restituisci una sintesi analitica in italiano: tipo documento, elementi importanti, dati leggibili, rischi o punti da verificare. Non proporre automazioni.` },
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+        ],
+      },
+    ],
+  });
+  return response.content?.[0]?.type === 'text' ? response.content[0].text.trim() : '';
+}
+
+async function handleKbotUpload(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  const body = await readJsonBody(req);
+  const sessionId = String(body.session_id || '').trim();
+  const files = Array.isArray(body.files) ? body.files.slice(0, 5) : [];
+  if (!sessionId || files.length === 0) return sendJson(res, 400, { error: 'session_id e files obbligatori' });
+
+  const supabase = createSupabaseAdminClient();
+  const out = [];
+
+  for (const file of files) {
+    const name = sanitizeKbotFileName(file.name);
+    const mime = String(file.type || 'application/octet-stream');
+    const raw = String(file.base64 || '').replace(/^data:.*;base64,/, '');
+    const buffer = Buffer.from(raw, 'base64');
+    if (buffer.length > 4 * 1024 * 1024) return sendJson(res, 413, { error: `File troppo grande: ${name}` });
+
+    let extractedSummary = '';
+    let extractedText = '';
+    let extractionMethod = 'none';
+
+    if (isTextLikeFile(mime, name)) {
+      extractedText = decodeKbotText(buffer).slice(0, 30000);
+      extractedSummary = extractedText.slice(0, 3000);
+      extractionMethod = 'text-decode';
+    } else if (mime === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) {
+      extractedSummary = await summarizeKbotPdf(raw, name);
+      extractionMethod = extractedSummary ? 'claude-summary' : 'none';
+    }
+
+    out.push({
+      name,
+      type: mime,
+      size: Number(file.size || buffer.length),
+      publicUrl: '',
+      path: '',
+      extractedSummary: extractedSummary || 'Documento ricevuto, ma il testo non è leggibile in modo affidabile.',
+      extractedText,
+      extractionMethod,
+    });
+  }
+
+  const { data: session } = await supabase
+    .from('kbot_sessions')
+    .select('collected_data')
+    .eq('id', sessionId)
+    .single();
+
+  const prevFiles = Array.isArray(session?.collected_data?.uploaded_files)
+    ? session.collected_data.uploaded_files
+    : [];
+
+  await supabase
+    .from('kbot_sessions')
+    .update({
+      collected_data: {
+        ...(session?.collected_data || {}),
+        uploaded_files: [...prevFiles, ...out],
+      },
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+
+  sendJson(res, 200, { files: out });
+}
+
+async function handleKbotTeaser(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  const body = await readJsonBody(req);
+  const sessionId = String(body.session_id || '').trim();
+  const supabase = createSupabaseAdminClient();
+  const { data: session, error } = await supabase.from('kbot_sessions').select('*').eq('id', sessionId).single();
+  if (error || !session) return sendJson(res, 404, { error: 'Session not found' });
+
+  const messages = Array.isArray(session.messages) ? session.messages : [];
+  const files = Array.isArray(session.collected_data?.uploaded_files) ? session.collected_data.uploaded_files : [];
+  const anthropic = createAnthropicClient();
+  const response = await anthropic.messages.create({
+    model: KBOT_MODEL,
+    max_tokens: 1200,
+    system: `Sei K-BOT. Produci solo JSON valido per un teaser di report analitico, non commerciale. Usa skill e contesto, non proporre automazioni. Campi: settore, skill_attive array, segnali array massimo 3 con priorita/titolo/sintesi/anteprima_analisi, hook_pdf.`,
+    messages: [{
+      role: 'user',
+      content: `Settore: ${resolveKbotSectorLabel(session.sector)}\nConversazione:\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\nAllegati:\n${files.map(f => `${f.name}: ${f.extractedSummary}`).join('\n\n')}`,
+    }],
+  });
+
+  let teaser;
+  try {
+    teaser = JSON.parse(String(response.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim());
+  } catch {
+    teaser = {
+      settore: resolveKbotSectorLabel(session.sector),
+      skill_attive: resolveKbotSkillNames(session.sector),
+      segnali: [{ priorita: 'rilevante', titolo: 'Punto da verificare', sintesi: 'Il materiale richiede una lettura strutturata.', anteprima_analisi: 'Nel report completo trovi la lettura dei segnali principali.' }],
+      hook_pdf: 'Il report gratuito raccoglie lettura tecnica, punti aperti e priorità di verifica.',
+    };
+  }
+
+  await supabase
+    .from('kbot_sessions')
+    .update({ status: 'teaser_shown', collected_data: { ...(session.collected_data || {}), teaser }, updated_at: new Date().toISOString() })
+    .eq('id', sessionId);
+
+  sendJson(res, 200, { teaser });
+}
+
+async function handleKbotContact(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+  const body = await readJsonBody(req);
+  const sessionId = String(body.session_id || '').trim();
+  const email = String(body.email || '').trim();
+  const disponibilita = String(body.disponibilita || '').trim();
+  if (!sessionId) return sendJson(res, 400, { error: 'session_id obbligatorio' });
+
+  const supabase = createSupabaseAdminClient();
+  await supabase
+    .from('kbot_sessions')
+    .update({ status: 'contacted', email: email || null, disponibilita: disponibilita || null, updated_at: new Date().toISOString() })
+    .eq('id', sessionId);
+
+  sendJson(res, 200, { ok: true });
+}
+
+async function handleKbotGenerateReport(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+  const body = await readJsonBody(req);
+  const sessionId = String(body.session_id || '').trim();
+  const supabase = createSupabaseAdminClient();
+  const { data: session, error } = await supabase.from('kbot_sessions').select('*').eq('id', sessionId).single();
+  if (error || !session) return sendJson(res, 404, { error: 'Session not found' });
+
+  const messages = Array.isArray(session.messages) ? session.messages : [];
+  const files = Array.isArray(session.collected_data?.uploaded_files) ? session.collected_data.uploaded_files : [];
+  const anthropic = createAnthropicClient();
+  const response = await anthropic.messages.create({
+    model: KBOT_MODEL,
+    max_tokens: 2600,
+    system: `${buildKbotSystemPrompt({ mode: 'report', sector: session.sector, step: session.step || 1, session })}\n\nOra produci un report finale in HTML semplice. Deve essere analitico, gratuito per test, basato sulle skill interne e sui documenti. Non vendere automazioni e non usare script.`,
+    messages: [{
+      role: 'user',
+      content: `Crea il report finale.\nConversazione:\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\nAllegati:\n${files.map(f => `${f.name}: ${f.extractedSummary}`).join('\n\n')}`,
+    }],
+  });
+
+  const reportBody = response.content?.[0]?.type === 'text' ? response.content[0].text : '<p>Report non disponibile.</p>';
+  const html = `<!doctype html><html lang="it"><meta charset="utf-8"><title>Report K-BOT</title><body style="font-family:Inter,Arial,sans-serif;max-width:820px;margin:40px auto;line-height:1.55;color:#111"><h1>Report K-BOT</h1>${reportBody}</body></html>`;
+  const reportUrl = `/api/kbot/report?id=${encodeURIComponent(sessionId)}`;
+
+  await supabase
+    .from('kbot_sessions')
+    .update({
+      status: 'paid',
+      pdf_url: reportUrl,
+      collected_data: { ...(session.collected_data || {}), report_html: html },
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+
+  sendJson(res, 200, { pdf_url: reportUrl, free: true });
+}
+
+async function handleKbotReport(req, res) {
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
+  const url = new URL(req.url || '/', SITE_URL);
+  const id = url.searchParams.get('id');
+  if (!id) return send(res, 400, { 'Content-Type': 'text/plain; charset=utf-8' }, 'id obbligatorio');
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.from('kbot_sessions').select('collected_data').eq('id', id).single();
+  const html = data?.collected_data?.report_html;
+  if (error || !html) return send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Report non trovato');
+
+  send(res, 200, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+  }, html);
+}
+
+async function handleKbotStatus(req, res) {
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
+  const url = new URL(req.url || '/', SITE_URL);
+  const id = url.searchParams.get('id');
+  if (!id) return sendJson(res, 400, { error: 'id obbligatorio' });
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.from('kbot_sessions').select('status, pdf_url').eq('id', id).single();
+  if (error || !data) return sendJson(res, 404, { error: 'Session not found' });
+  sendJson(res, 200, { status: data.status, pdf_url: data.pdf_url || null });
+}
+
+async function handleKbotApi(req, res, rawPath) {
+  if (rawPath === '/api/kbot/session') return handleKbotSession(req, res);
+  if (rawPath === '/api/kbot/chat') return handleKbotChat(req, res);
+  if (rawPath === '/api/kbot/upload') return handleKbotUpload(req, res);
+  if (rawPath === '/api/kbot/teaser') return handleKbotTeaser(req, res);
+  if (rawPath === '/api/kbot/contact') return handleKbotContact(req, res);
+  if (rawPath === '/api/kbot/generate-pdf') return handleKbotGenerateReport(req, res);
+  if (rawPath === '/api/kbot/report') return handleKbotReport(req, res);
+  if (rawPath === '/api/kbot/status') return handleKbotStatus(req, res);
+  return sendJson(res, 404, { error: 'K-BOT endpoint not found' });
+}
+
 function serveFile(req, res, filePath) {
   fs.stat(filePath, (statErr, stats) => {
     if (statErr || !stats.isFile()) {
@@ -483,6 +960,14 @@ const server = http.createServer((req, res) => {
     handleNewsletterConfirm(req, res).catch(err => {
       console.error('Newsletter confirm error:', err);
       send(res, 302, { Location: '/newsletter-error' }, '');
+    });
+    return;
+  }
+
+  if (rawPath.startsWith('/api/kbot/')) {
+    handleKbotApi(req, res, rawPath).catch(err => {
+      console.error('K-BOT API error:', err);
+      sendJson(res, 500, { error: 'Errore temporaneo K-BOT' });
     });
     return;
   }

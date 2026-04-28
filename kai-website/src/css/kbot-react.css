@@ -294,6 +294,45 @@
   gap: 10px;
 }
 
+.kbot-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.kbot-mode-card {
+  border: 1px solid #39414d;
+  background: #0b1018;
+  border-radius: 4px;
+  min-height: 132px;
+  padding: 14px;
+  text-align: left;
+  color: #edf1f7;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-body);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.kbot-mode-card:hover {
+  border-color: #5f6f89;
+  background: #0f1624;
+}
+
+.kbot-mode-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.kbot-mode-copy {
+  color: #a8b0bd;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .kbot-sector-card {
   border: 1px solid #39414d;
   background: #0b1018;
@@ -605,6 +644,7 @@
 
 @media (max-width: 1024px) {
   .kbot-sector-grid,
+  .kbot-mode-grid,
   .kbot-teaser-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -630,6 +670,7 @@
   }
 
   .kbot-sector-grid,
+  .kbot-mode-grid,
   .kbot-teaser-grid {
     grid-template-columns: 1fr;
   }
