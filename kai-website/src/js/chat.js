@@ -155,7 +155,7 @@ function cleanAssistantContactText(text) {
 
 function splitIntoSentences(text) {
   return String(text || '')
-    .split(/[\n\r]+|(?<=[.!?])\s+/)
+    .replace(/([.!?])\s+/g, '$1\n').split(/[\n\r]+/)
     .map(line => line.trim())
     .filter(Boolean);
 }
