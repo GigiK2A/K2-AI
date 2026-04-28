@@ -9,7 +9,7 @@ import {
 } from '../../lib/skills/sectors.config'
 import { getAnthropicApiKey, getSystemEnvVar } from '../../lib/env/system'
 
-export const MODEL = 'claude-haiku-4-5'
+export const MODEL = 'claude-haiku-4-5-20251001'
 export const CHAT_SYSTEM_MAX_CHARS = 26000
 export const TEASER_SYSTEM_MAX_CHARS = 110000
 export const PDF_SYSTEM_MAX_CHARS = 140000

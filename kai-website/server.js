@@ -13,7 +13,7 @@ const REDIRECT_HOST = 'k2-ai.it';
 const CANONICAL_HOST = 'www.k2-ai.it';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.k2-ai.it';
 const API_PROXY_BASE = process.env.API_PROXY_BASE || 'https://api.k2-ai.it';
-const KBOT_MODEL = process.env.KBOT_MODEL || 'claude-haiku-4-5';
+const KBOT_MODEL = process.env.KBOT_MODEL || 'claude-haiku-4-5-20251001';
 const SKILLS_DIR = path.join(__dirname, 'lib', 'skills');
 
 const MIME_TYPES = {
@@ -593,18 +593,24 @@ async function handleKbotChat(req, res) {
     { role: 'user', content: userMessage, ts: new Date().toISOString() },
   ];
 
-  const anthropic = createAnthropicClient();
-  const response = await anthropic.messages.create({
-    model: KBOT_MODEL,
-    max_tokens: 700,
-    system: buildKbotSystemPrompt({ mode, sector: session.sector, step, session }),
-    messages: compactKbotMessages(persistedMessages).map(message => ({
-      role: message.role,
-      content: message.content,
-    })),
-  });
+  let rawAssistant = '';
+  try {
+    const anthropic = createAnthropicClient();
+    const response = await anthropic.messages.create({
+      model: KBOT_MODEL,
+      max_tokens: 700,
+      system: buildKbotSystemPrompt({ mode, sector: session.sector, step, session }),
+      messages: compactKbotMessages(persistedMessages).map(message => ({
+        role: message.role,
+        content: message.content,
+      })),
+    });
+    rawAssistant = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
+  } catch (aiErr) {
+    console.error('Anthropic API error in handleKbotChat:', aiErr);
+    return sendJson(res, 500, { error: `Errore AI: ${aiErr instanceof Error ? aiErr.message : String(aiErr)}` });
+  }
 
-  const rawAssistant = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
   const assistantMessage = cleanKbotAssistantMessage(rawAssistant);
   const collectedData = {
     ...(session.collected_data || {}),
