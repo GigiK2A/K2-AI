@@ -256,7 +256,7 @@ export function KBot() {
     if (chatStreamRef.current) {
       chatStreamRef.current.scrollTop = chatStreamRef.current.scrollHeight
     }
-  }, [messages, isTyping, stage, teaser, showContactForm])
+  }, [messages, isTyping, stage, teaser, contactSummary])
 
   useEffect(() => {
     document.body.classList.toggle('kbot-fullscreen-open', isFullscreen)
@@ -817,7 +817,7 @@ export function KBot() {
           </div>
         )}
 
-        {hasAdaptiveForm && !showContactForm && !teaser && (
+        {hasAdaptiveForm && !contactSummary && !teaser && (
           <div className="kbot-option-panel msg-in">
             <p className="kbot-stage-label">Compila le risposte rapide</p>
             <div className="kbot-adaptive-form">
