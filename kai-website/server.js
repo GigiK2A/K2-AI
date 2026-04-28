@@ -264,11 +264,103 @@ function extractLeadBrief(raw) {
 
 function cleanKbotAssistantMessage(message) {
   return String(message || '')
+    .replace(/```json[\s\S]*?```/gi, '')
+    .replace(/```[\s\S]*?```/gi, '')
+    .replace(/\*\*teaser gratuito\*\*[\s\S]*$/i, '')
+    .replace(/teaser gratuito[\s\S]*$/i, '')
     .replace(/BRIEF_START[\s\S]*?BRIEF_END/gi, '')
     .replace(/report_ready\s*:\s*true/gi, '')
     .replace(/lead_ready\s*:\s*true/gi, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim() || 'Ricevuto. Dimmi pure un dettaglio in più e procediamo.';
+}
+
+function extractJsonFromText(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  const fenced = raw.match(/```json\s*([\s\S]*?)\s*```/i);
+  const candidate = fenced ? fenced[1] : raw;
+  const first = candidate.indexOf('{');
+  const last = candidate.lastIndexOf('}');
+  if (first === -1 || last === -1 || last <= first) return null;
+  try {
+    return JSON.parse(candidate.slice(first, last + 1));
+  } catch {
+    return null;
+  }
+}
+
+function renderStructuredReportHtml(report, sectorLabel) {
+  const safe = report || {};
+  const title = escapeHtml(String(safe.title || `Report di analisi - ${sectorLabel}`));
+  const summary = escapeHtml(String(safe.executive_summary || 'Analisi completata con i dati disponibili.'));
+  const dataPoints = Array.isArray(safe.data_points) ? safe.data_points : [];
+  const signals = Array.isArray(safe.signals) ? safe.signals : [];
+  const priorities = Array.isArray(safe.priorities) ? safe.priorities : [];
+  const checks = Array.isArray(safe.checks) ? safe.checks : [];
+
+  const dataHtml = dataPoints.length
+    ? `<ul>${dataPoints.map(item => `<li>${escapeHtml(String(item))}</li>`).join('')}</ul>`
+    : '<p>Dati quantitativi non disponibili in forma leggibile nel materiale ricevuto.</p>';
+
+  const signalsHtml = signals.length
+    ? signals.map(item => {
+      const levelRaw = String(item.level || 'media').toLowerCase();
+      const level = ['critica', 'alta', 'media'].includes(levelRaw) ? levelRaw : 'media';
+      return `<section class="signal ${level}">
+  <h3>${escapeHtml(String(item.title || 'Segnale'))}</h3>
+  <p><strong>Sintomo:</strong> ${escapeHtml(String(item.symptom || 'n/d'))}</p>
+  <p><strong>Causa strutturale:</strong> ${escapeHtml(String(item.cause || 'n/d'))}</p>
+  <p><strong>Impatto operativo:</strong> ${escapeHtml(String(item.impact || 'n/d'))}</p>
+</section>`;
+    }).join('')
+    : '<p>Nessun segnale strutturato disponibile.</p>';
+
+  const prioritiesHtml = priorities.length
+    ? `<ol>${priorities.map(item => `<li>${escapeHtml(String(item))}</li>`).join('')}</ol>`
+    : '<p>Definire priorita operative dopo verifica dati.</p>';
+
+  const checksHtml = checks.length
+    ? `<ul>${checks.map(item => `<li>${escapeHtml(String(item))}</li>`).join('')}</ul>`
+    : '<p>Nessun punto aggiuntivo.</p>';
+
+  return `<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title>
+<style>
+body{font-family:Inter,Arial,sans-serif;max-width:920px;margin:36px auto;padding:0 18px;line-height:1.6;color:#121212}
+h1{font-size:32px;line-height:1.15;margin:0 0 12px}
+h2{font-size:22px;margin:28px 0 10px}
+h3{font-size:18px;margin:0 0 8px}
+.meta{color:#5f6b7a;font-size:13px;margin-bottom:22px}
+.box{border:1px solid #e3e7ee;background:#f8fafc;padding:16px}
+.signal{border:1px solid #e3e7ee;padding:14px;margin:0 0 12px}
+.signal.critica{border-left:4px solid #b42318}
+.signal.alta{border-left:4px solid #dd6b20}
+.signal.media{border-left:4px solid #1d4ed8}
+ul,ol{padding-left:20px}
+</style>
+</head>
+<body>
+<h1>${title}</h1>
+<p class="meta">Settore: ${escapeHtml(String(sectorLabel))} | Report K-BOT - K2-AI</p>
+<section class="box">
+  <h2>Executive Summary</h2>
+  <p>${summary}</p>
+</section>
+<h2>Dati Analizzati</h2>
+${dataHtml}
+<h2>Segnali Identificati</h2>
+${signalsHtml}
+<h2>Priorita Operative</h2>
+${prioritiesHtml}
+<h2>Punti da Verificare</h2>
+${checksHtml}
+</body>
+</html>`;
 }
 
 function stripTrailingQuestion(text) {
@@ -912,51 +1004,40 @@ async function handleKbotGenerateReport(req, res) {
   const sectorLabel = resolveKbotSectorLabel(session.sector);
   const anthropic = createAnthropicClient();
 
-  const reportSystemPrompt = `Sei un analista senior di K2-AI. Produci un report di analisi professionale in HTML.
+  const reportSystemPrompt = `Sei un analista senior di K2-AI.
+Produci SOLO JSON valido (nessun markdown, nessun testo prima o dopo JSON).
 
-OBIETTIVO: report conclusivo, strutturato, al livello di una consulenza professionale reale. Non un riassunto della conversazione, non marketing.
+OBIETTIVO:
+- report conclusivo, strutturato, al livello di una consulenza professionale reale
+- distinguere chiaramente sintomi e cause strutturali
+- niente upsell, niente proposta automazioni AI
 
-TEMPLATE OBBLIGATORIO — usa esattamente questa struttura HTML:
+REGOLE:
+- Non inventare numeri se non presenti nei materiali.
+- Se un dato manca, scrivi "non disponibile nel materiale".
+- Nessuna domanda finale.
+- Massimo 5 segnali.
+- Usa un tono tecnico ma leggibile da imprenditore/manager.
 
-<h1>[Titolo specifico — es. "Analisi Bilancio 2024 — EagleProjects S.p.A."]</h1>
-<p class="meta">Settore: ${sectorLabel} | Report K-BOT — K2-AI</p>
+OUTPUT JSON ESATTO:
+{
+  "title": "Titolo specifico del report",
+  "executive_summary": "3-5 frasi con quadro complessivo e priorita",
+  "data_points": ["dato 1", "dato 2", "dato 3"],
+  "signals": [
+    {
+      "level": "critica|alta|media",
+      "title": "titolo segnale",
+      "symptom": "cosa si osserva nei dati",
+      "cause": "causa strutturale contestualizzata al settore",
+      "impact": "impatto operativo concreto"
+    }
+  ],
+  "priorities": ["azione prioritaria 1", "azione prioritaria 2", "azione prioritaria 3"],
+  "checks": ["punto da verificare 1", "punto da verificare 2"]
+}
 
-<div class="executive-summary">
-<h2>Executive Summary</h2>
-<p>[3-5 frasi: situazione complessiva, segnali principali, orientamento. Nessuna domanda. Nessun allarmismo generico. Conclusivo.]</p>
-</div>
-
-<h2>Dati Analizzati</h2>
-[Tabella o elenco strutturato con i valori chiave estratti dal materiale. Se disponibili: ricavi, costi, margini, indici. Se non disponibili per un dato: indica "non disponibile nel materiale" — non inventare.]
-
-<h2>Segnali Identificati</h2>
-[Per ogni segnale (massimo 5):
-<div class="signal [critica|alta|media]">
-  <span class="badge [critica|alta|media]">[CRITICA|ALTA|MEDIA]</span>
-  <h3>[Titolo segnale]</h3>
-  <p><strong>Sintomo:</strong> [cosa si vede nei dati — con numeri se disponibili]</p>
-  <p><strong>Causa strutturale:</strong> [perché accade, nel contesto operativo del settore — es. per uno studio a commessa, crediti alti sono normali ma se superano X mesi sono un problema di governance contrattuale]</p>
-  <p><strong>Impatto operativo:</strong> [effetto concreto sull'azienda]</p>
-</div>]
-
-<h2>Analisi di Dettaglio</h2>
-[Sezione tecnica: indici calcolati, confronti anno su anno, benchmark di settore dove disponibili. Usa i framework delle skill interne. Per bilanci: ROE/ROI/ROS, liquidità corrente, D/E, CCC. Per altri settori: metriche rilevanti dal contesto.]
-
-<h2>Azioni Prioritarie</h2>
-[3-5 azioni specifiche e realizzabili, con orizzonte temporale (immediato/3 mesi/6 mesi). Concrete, non generiche.]
-
-<h2>Punti da Approfondire</h2>
-[2-3 informazioni aggiuntive che permetterebbero un'analisi più precisa — non domande all'utente, ma indicazioni per chi usa il report.]
-
-REGOLE QUALITÀ:
-- Distingui SEMPRE sintomi da cause strutturali.
-- Contestualizza nel modello di business del settore.
-- Non usare "potrebbe", "forse", "si potrebbe valutare" — sii diretto.
-- Non terminare il report con domande.
-- Non proporre automazioni AI.
-- Se un dato numerico non è nel materiale, NON inventarlo.
-
-SKILL INTERNE DISPONIBILI (usa i framework, gli indici e i benchmark pertinenti):
+SKILL INTERNE DISPONIBILI (usa i framework pertinenti):
 ${skills.slice(0, 22000)}`;
 
   const response = await anthropic.messages.create({
@@ -969,38 +1050,22 @@ ${skills.slice(0, 22000)}`;
     }],
   });
 
-  const reportBody = response.content?.[0]?.type === 'text' ? response.content[0].text : '<p>Report non disponibile.</p>';
-  const html = `<!doctype html>
-<html lang="it">
-<head><meta charset="utf-8"><title>Report K-BOT — K2-AI</title>
-<style>
-  body{font-family:'Helvetica Neue',Arial,sans-serif;max-width:860px;margin:40px auto;line-height:1.65;color:#1a202c;padding:0 24px}
-  h1{font-size:26px;color:#0d1b2a;border-bottom:2px solid #e2e8f0;padding-bottom:12px;margin-bottom:6px}
-  h2{font-size:19px;color:#1a365d;margin-top:36px;border-left:4px solid #3182ce;padding-left:12px}
-  h3{font-size:15px;color:#2d3748;margin:12px 0 6px}
-  .meta{color:#718096;font-size:13px;margin-bottom:28px}
-  .executive-summary{background:#f7fafc;border:1px solid #e2e8f0;padding:20px 24px;margin:20px 0 32px;border-radius:4px}
-  .executive-summary h2{border-left:none;padding-left:0;margin-top:0}
-  .signal{border:1px solid #e2e8f0;padding:16px;margin-bottom:14px;border-radius:4px}
-  .signal.critica{border-left:4px solid #e53e3e}
-  .signal.alta{border-left:4px solid #dd6b20}
-  .signal.media{border-left:4px solid #d69e2e}
-  .badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:2px;margin-bottom:8px}
-  .badge.critica{background:#fed7d7;color:#c53030}
-  .badge.alta{background:#feebc8;color:#c05621}
-  .badge.media{background:#fefcbf;color:#b7791f}
-  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
-  th{background:#edf2f7;padding:8px 12px;text-align:left;font-weight:600;border:1px solid #e2e8f0}
-  td{padding:8px 12px;border:1px solid #e2e8f0}
-  strong{color:#2d3748}
-  p{margin:8px 0}
-</style>
-</head>
-<body>
-${reportBody}
-<hr style="margin:40px 0;border:none;border-top:1px solid #e2e8f0">
-<p style="font-size:12px;color:#a0aec0">Report generato da K-BOT · K2-AI · ${new Date().toLocaleDateString('it-IT')}</p>
-</body></html>`;
+  const rawReportText = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
+  const parsedReport = extractJsonFromText(rawReportText) || {
+    title: `Report di analisi - ${sectorLabel}`,
+    executive_summary: 'Analisi completata con i dati disponibili. Le priorita sono definite in base alle evidenze raccolte nella conversazione e negli allegati.',
+    data_points: ['Dati principali estratti dal materiale disponibile'],
+    signals: [{
+      level: 'media',
+      title: 'Segnale da verificare',
+      symptom: 'Il materiale raccolto mostra un punto di attenzione operativo.',
+      cause: 'La causa strutturale richiede verifica puntuale con dati integrativi.',
+      impact: 'Possibile rallentamento dell’esecuzione e della previsione economica.',
+    }],
+    priorities: ['Consolidare i dati economici e operativi in un unico tracciato', 'Definire 3 priorita con owner e scadenza', 'Verificare impatto delle priorita su margine e tempi di delivery'],
+    checks: ['Disponibilita serie storiche complete', 'Dettaglio per cliente/commessa/linea'],
+  };
+  const html = renderStructuredReportHtml(parsedReport, sectorLabel);
   const reportUrl = `/api/kbot/report?id=${encodeURIComponent(sessionId)}`;
 
   await supabase

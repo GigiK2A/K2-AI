@@ -435,14 +435,7 @@ export function KBot() {
       await botSay(data.message || 'Ok, continuiamo da qui.', 120)
 
       if (mode === 'report' && (data.next_action === 'show_report' || data.next_action === 'show_teaser')) {
-        setTeaserLoading(true)
-        try {
-          const teaserResp = await postJson('/api/kbot/teaser', { session_id: sid })
-          setTeaser(teaserResp.teaser)
-          capture('kbot_teaser_viewed', { sector: selectedSector, mode })
-        } finally {
-          setTeaserLoading(false)
-        }
+        await generatePdfTest()
       }
 
       if (mode === 'lead' && data.next_action === 'show_contact_form') {
@@ -548,16 +541,9 @@ export function KBot() {
       setPath(nextPath)
       setIsTyping(false)
 
-      if (nextPath === 'A' && !teaser && (data.next_action === 'show_teaser' || data.next_action === 'show_report')) {
+      if (mode === 'report' && nextPath === 'A' && !pdfUrl && (data.next_action === 'show_teaser' || data.next_action === 'show_report')) {
         await botAnalyzeThenSay(data.message || 'Analisi completata.')
-        setTeaserLoading(true)
-        try {
-          const teaserResp = await postJson('/api/kbot/teaser', { session_id: sessionId })
-          setTeaser(teaserResp.teaser)
-          capture('kbot_teaser_viewed', { sector: selectedSector })
-        } finally {
-          setTeaserLoading(false)
-        }
+        await generatePdfTest()
       } else {
         await botSay(data.message || '')
       }
