@@ -8,3 +8,10 @@ dist
 .env
 .env.local
 *.env
+lib/
+tmp/
+docs/
+components/
+supabase/
+.playwright-cli
+.run
