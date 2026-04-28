@@ -334,25 +334,37 @@ if (canvas) {
       return;
     }
 
-    frame += 1;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
-    ctx.fillRect(0, 0, width, height);
+    try {
+      if (!started) {
+        canvas.parentElement?.classList.add('neural-ready');
+        started = true;
+      }
 
-    const time = timestamp * 0.001;
-    for (const neuron of neurons) {
-      neuron.draw(time);
+      frame += 1;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
+      ctx.fillRect(0, 0, width, height);
+
+      const time = timestamp * 0.001;
+      for (const neuron of neurons) {
+        neuron.draw(time);
+      }
+
+      pulses = pulses.filter((pulse) => {
+        const isAlive = pulse.update();
+        if (isAlive) pulse.draw();
+        return isAlive;
+      });
+
+      if (frame % 14 === 0) spawnPulse();
+      if (pulses.length < neurons.length * 0.5) spawnPulse();
+
+      rafId = window.requestAnimationFrame(render);
+    } catch (error) {
+      console.error('Hero neural render failed:', error);
+      canvas.parentElement?.classList.remove('neural-ready');
+      started = false;
+      rafId = 0;
     }
-
-    pulses = pulses.filter((pulse) => {
-      const isAlive = pulse.update();
-      if (isAlive) pulse.draw();
-      return isAlive;
-    });
-
-    if (frame % 14 === 0) spawnPulse();
-    if (pulses.length < neurons.length * 0.5) spawnPulse();
-
-    rafId = window.requestAnimationFrame(render);
   }
 
   function resizeCanvas() {
@@ -379,10 +391,6 @@ if (canvas) {
 
   function startLoop() {
     if (rafId || reducedMotionQuery.matches) return;
-    if (!started) {
-      canvas.parentElement?.classList.add('neural-ready');
-      started = true;
-    }
     rafId = window.requestAnimationFrame(render);
   }
 
@@ -405,6 +413,8 @@ if (canvas) {
   function handleReducedMotionChange() {
     if (reducedMotionQuery.matches) {
       stopLoop();
+      canvas.parentElement?.classList.remove('neural-ready');
+      started = false;
       return;
     }
 

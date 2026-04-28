@@ -27,6 +27,7 @@ const CONTACT_PREFILL_SOURCE_KEY = 'kai-contact-prefill-source';
 const MAX_STORED_MESSAGES = 24;
 const messages = [];
 let isSending = false;
+let chatBooted = false;
 
 function resolveApiBaseUrl() {
   if (API_BASE_URL.trim()) {
@@ -278,6 +279,8 @@ function persistContactPrefill() {
 }
 
 function initChat() {
+  if (chatBooted) return;
+
   const container = document.getElementById('chat-messages');
   const input = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send');
@@ -285,6 +288,7 @@ function initChat() {
   const resetBtn = document.getElementById('chat-reset');
 
   if (!container || !input || !sendBtn) return;
+  chatBooted = true;
   getOrCreateSessionId();
 
   const savedMessages = loadMessages();

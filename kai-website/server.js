@@ -138,6 +138,8 @@ function shouldForwardResponseHeader(name) {
   if (lower === 'connection') return false;
   if (lower === 'transfer-encoding') return false;
   if (lower === 'content-length') return false;
+  if (lower === 'www-authenticate') return false;
+  if (lower === 'proxy-authenticate') return false;
   return true;
 }
 
@@ -165,6 +167,14 @@ async function proxyApiRequest(req, res, rawPath, rawQuery) {
     method,
     headers: forwardedHeaders,
   }, upstreamRes => {
+    const statusCode = upstreamRes.statusCode || 502;
+
+    if (rawPath.startsWith('/api/kbot/') && statusCode === 401) {
+      upstreamRes.resume();
+      sendJson(res, 503, { error: 'K-BOT temporaneamente non disponibile' });
+      return;
+    }
+
     const responseHeaders = {};
     Object.entries(upstreamRes.headers || {}).forEach(([name, value]) => {
       if (!shouldForwardResponseHeader(name) || value == null) return;
@@ -175,7 +185,7 @@ async function proxyApiRequest(req, res, rawPath, rawQuery) {
       responseHeaders['Cache-Control'] = 'no-store';
     }
 
-    res.writeHead(upstreamRes.statusCode || 502, responseHeaders);
+    res.writeHead(statusCode, responseHeaders);
     upstreamRes.pipe(res);
   });
 
