@@ -198,13 +198,16 @@ section {
 /* ─── Scroll reveal ─── */
 
 .reveal {
-  opacity: 0;
-  transform: translateY(24px);
   transition: opacity 0.6s var(--ease-cinema),
               transform 0.6s var(--ease-cinema);
 }
 
-.reveal.visible {
+html.js-scroll .reveal {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+html.js-scroll .reveal.visible {
   opacity: 1;
   transform: translateY(0);
 }

@@ -1,3 +1,4 @@
+document.documentElement.classList.add('js-scroll');
 const revealEls = document.querySelectorAll('.reveal');
 
 const observer = new IntersectionObserver((entries) => {
@@ -14,7 +15,7 @@ revealEls.forEach(el => observer.observe(el));
 // Fallback: rendi visibile tutto dopo 1.5s se l'observer non ha triggerato
 setTimeout(() => {
   revealEls.forEach(el => el.classList.add('visible'));
-}, 1500);
+}, 800);
 
 const root = document.documentElement;
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
