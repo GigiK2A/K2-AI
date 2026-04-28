@@ -324,11 +324,22 @@ async function handleNewsletterSubscribe(req, res) {
   });
 
   if (error) {
+    const rawErrorText = [
+      error.code,
+      error.message,
+      error.details,
+      error.hint,
+      error.constraint,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
     // If we cannot read existing rows (permissions/policies) and hit a duplicate
     // on insert, degrade gracefully as "already subscribed".
     const isDuplicate =
       error.code === '23505' ||
-      /duplicate key|unique constraint/i.test(String(error.message || ''));
+      /duplicate key|unique constraint|already exists|email_key|newsletter_subscribers_email_key/.test(rawErrorText);
 
     if (isDuplicate) {
       sendJson(res, 200, { ok: true, already: true });

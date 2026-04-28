@@ -132,9 +132,20 @@ export default async function handler(req: any, res: any) {
   })
 
   if (error) {
+    const rawErrorText = [
+      error.code,
+      error.message,
+      (error as any).details,
+      (error as any).hint,
+      (error as any).constraint,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
     const isDuplicate =
       error.code === '23505' ||
-      /duplicate key|unique constraint/i.test(String(error.message || ''))
+      /duplicate key|unique constraint|already exists|email_key|newsletter_subscribers_email_key/.test(rawErrorText)
 
     if (isDuplicate) {
       return sendJson(res, 200, { ok: true, already: true })
