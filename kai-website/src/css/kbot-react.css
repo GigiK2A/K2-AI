@@ -157,7 +157,7 @@
 
 .kbot-msg-row.user {
   justify-content: flex-end;
-  flex-direction: row-reverse;
+  flex-direction: row;
 }
 
 .kbot-avatar {
