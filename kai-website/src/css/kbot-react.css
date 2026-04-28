@@ -96,7 +96,10 @@
 
 .kbot-header-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .kbot-top-btn {
@@ -1012,4 +1015,26 @@
   background-size: 400px 100%;
   animation: kbot-shimmer 1.4s ease-in-out infinite;
   animation-delay: 0.3s;
+}
+
+/* Contact CTA */
+.kbot-contact-cta {
+  padding: 16px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid #1e2530;
+}
+
+.kbot-contact-cta-hint {
+  font-size: 13px;
+  color: #8b949e;
+  margin: 0;
+}
+
+.kbot-contact-btn {
+  align-self: flex-start;
+  font-size: 14px;
+  padding: 12px 24px;
+  letter-spacing: 0.02em;
 }

@@ -89,10 +89,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const submitButton = form.querySelector('[type="submit"]');
   const honeypot = form.querySelector('input[name="website"]');
   const messageField = form.querySelector('textarea[name="messaggio"]');
+  const settoreField = form.querySelector('select[name="settore"]');
   const prefill = loadContactPrefill();
 
+  // Pre-seleziona settore da URL param (es. ?settore=finance)
+  const urlParams = new URLSearchParams(window.location.search);
+  const settoreParam = (urlParams.get('settore') || '').trim();
+  if (settoreField && settoreParam) {
+    const opt = settoreField.querySelector(`option[value="${settoreParam}"]`);
+    if (opt) settoreField.value = settoreParam;
+  }
+
   if (messageField && !messageField.value.trim() && prefill.message) {
-    // Arriva da K-BOT: usa il testo generato dalla chat
     messageField.value = prefill.message;
     form.dataset.sourcePage = prefill.source || 'k-bot_to_contatti';
   } else if (messageField && !messageField.value.trim() && PKG_CTX) {

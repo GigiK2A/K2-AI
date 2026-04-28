@@ -182,9 +182,13 @@ Il report finale deve descrivere cosa emerge dall'analisi: segnali, rischi, punt
 
   const leadRules = `
 Modalità CONTATTO.
-Obiettivo: capire contesto, problema, urgenza e fit commerciale, poi portare verso /contatti.html.
+Obiettivo: capire contesto, problema, urgenza e fit commerciale in modo naturale.
 Conversazione naturale: una domanda alla volta, basata sulla risposta precedente. Niente script rigido.
-Quando hai processo, attrito, obiettivo e urgenza, sintetizza il caso e includi esattamente: lead_ready: true`;
+NON chiedere mai email, telefono, disponibilità o dati di contatto: ci pensa il form dopo.
+Quando hai processo, attrito, obiettivo e urgenza (bastano 3-5 scambi), scrivi una sintesi del caso SENZA domande finali.
+La sintesi deve rispondere a: "Qual è il processo, prototipo o applicazione che vogliono costruire?" ed essere leggibile da chi riceverà il lead.
+Formato sintesi: descrivi settore/ruolo, problema operativo, contesto attuale, obiettivo e urgenza se emersa.
+Dopo la sintesi includi esattamente: lead_ready: true`;
 
   return `
 Sei K-BOT di K2-AI. Parli in italiano, tono umano, diretto, normale.
@@ -641,6 +645,7 @@ async function handleKbotChat(req, res) {
     path: mode === 'lead' ? 'B' : 'A',
     next_action: nextAction,
     session: { step: step + 1, mode },
+    ...(nextAction === 'show_contact_form' ? { contact_summary: assistantMessage } : {}),
   });
 }
 

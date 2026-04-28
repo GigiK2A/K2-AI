@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ChatBubble } from './ChatBubble'
 import { TeaserCard } from './TeaserCard'
-import { ContactForm } from './ContactForm'
 import { PaymentBox } from './PaymentBox'
 
 type PathType = 'A' | 'B' | 'unknown'
@@ -202,6 +201,18 @@ function prettifyUserText(text: string): string {
   return raw.trim()
 }
 
+const SECTOR_TO_CONTACT_SETTORE: Record<string, string> = {
+  'studio-ingegneria': 'ops',
+  'commercialista': 'finance',
+  'manifatturiero': 'ops',
+  'servizi-b2b': 'altro',
+  'hospitality': 'altro',
+  'commercio-ecommerce': 'marketing',
+  'tlc': 'tech',
+  'studio-legale': 'legale',
+  'pubblica-amministrazione': 'altro',
+}
+
 export function KBot() {
   const [stage, setStage] = useState<Stage>('mode')
   const [mode, setMode] = useState<KBotMode>('')
@@ -220,9 +231,7 @@ export function KBot() {
   const [teaser, setTeaser] = useState<any>(null)
   const [pdfUrl, setPdfUrl] = useState('')
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
-  const [showContactForm, setShowContactForm] = useState(false)
-  const [email, setEmail] = useState('')
-  const [disponibilita, setDisponibilita] = useState('')
+  const [contactSummary, setContactSummary] = useState('')
   const [queuedFiles, setQueuedFiles] = useState<File[]>([])
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -362,9 +371,7 @@ export function KBot() {
     setTeaser(null)
     setPdfUrl('')
     setIsGeneratingPdf(false)
-    setShowContactForm(false)
-    setEmail('')
-    setDisponibilita('')
+    setContactSummary('')
     setQueuedFiles([])
     setIsDragOver(false)
     setIsFullscreen(false)
@@ -439,7 +446,7 @@ export function KBot() {
       }
 
       if (mode === 'lead' && data.next_action === 'show_contact_form') {
-        setShowContactForm(true)
+        setContactSummary(data.contact_summary || data.message || '')
       }
     } catch (error) {
       setIsTyping(false)
@@ -556,7 +563,7 @@ export function KBot() {
       }
 
       if (nextPath === 'B' && data.next_action === 'show_contact_form') {
-        setShowContactForm(true)
+        setContactSummary(data.contact_summary || data.message || '')
       }
     } catch (error) {
       setIsTyping(false)
@@ -583,35 +590,6 @@ export function KBot() {
     await runConversationTurn(payload)
   }
 
-  async function submitContact() {
-    if (!sessionId) return
-    setIsLoading(true)
-
-    try {
-      await postJson('/api/kbot/contact', {
-        session_id: sessionId,
-        email,
-        disponibilita,
-      })
-
-      capture('kbot_contact_submitted', { sector: selectedSector })
-
-      const summary = encodeURIComponent(messages.slice(-6).map(m => `${m.role}: ${m.text}`).join(' | '))
-      const q = new URLSearchParams({
-        email: email || '',
-        settore: selectedSector,
-        disponibilita: disponibilita || '',
-        kbot_session_id: sessionId,
-        messaggio: summary,
-      })
-
-      window.location.href = `/contatti.html?${q.toString()}`
-    } catch (error) {
-      addMessage('assistant', friendlyError(error))
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   async function generatePdfTest() {
     if (!sessionId || isGeneratingPdf || isLoading) return
@@ -631,16 +609,25 @@ export function KBot() {
     }
   }
 
-  function crossoverToB() {
-    setPath('B')
-    setShowContactForm(true)
-    capture('kbot_crossover_clicked', { from: 'A', to: 'B' })
+  function goToContacts(summary?: string) {
+    const text = (summary || contactSummary).trim()
+    const settore = SECTOR_TO_CONTACT_SETTORE[selectedSector] || ''
+    const sectorLabel = SECTORS.find(s => s.slug === selectedSector)?.label || ''
+    try {
+      sessionStorage.setItem('kai-contact-prefill', text)
+      sessionStorage.setItem('kai-contact-prefill-meta', `Lead da K-BOT — settore: ${sectorLabel}, sessione: ${sessionId}`)
+      sessionStorage.setItem('kai-contact-prefill-source', 'k-bot_lead')
+    } catch {}
+    const params = new URLSearchParams()
+    if (settore) params.set('settore', settore)
+    capture('kbot_contact_clicked', { sector: selectedSector, session_id: sessionId })
+    window.location.href = `/contatti.html${params.toString() ? `?${params.toString()}` : ''}`
   }
 
-  function crossoverToA() {
-    setPath('A')
-    setShowContactForm(false)
-    capture('kbot_crossover_clicked', { from: 'B', to: 'A' })
+  function crossoverToB() {
+    setPath('B')
+    setContactSummary('__pending__')
+    capture('kbot_crossover_clicked', { from: 'A', to: 'B' })
   }
 
   function onFilesSelected(list: FileList | null) {
@@ -730,7 +717,7 @@ export function KBot() {
         accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.txt,.png,.jpg,.jpeg"
       />
 
-      {stage !== 'mode' && stage !== 'sector' && !teaser && !showContactForm && (
+      {stage !== 'mode' && stage !== 'sector' && !teaser && !contactSummary && (
         <div className="kbot-progress">
           {(['problem', 'router', 'conversation'] as const).map((s, i) => {
             const labels = mode === 'lead'
@@ -932,7 +919,7 @@ export function KBot() {
                 onTestGenerate={generatePdfTest}
               />
             )}
-            <button type="button" className="kbot-link-btn" onClick={crossoverToB}>Preferisci un approccio su misura? →</button>
+            <button type="button" className="kbot-link-btn" onClick={crossoverToB}>Preferisci parlare direttamente con il team? →</button>
           </div>
         )}
       </div>
@@ -949,7 +936,7 @@ export function KBot() {
         </div>
       )}
 
-      {(stage === 'router' || stage === 'conversation') && !hasAdaptiveForm && !showContactForm && !teaser && (
+      {(stage === 'router' || stage === 'conversation') && !hasAdaptiveForm && !contactSummary && !teaser && (
         <div
           className={`kbot-input-row ${isDragOver ? 'drag-over' : ''}`}
           onDragOver={event => {
@@ -995,16 +982,21 @@ export function KBot() {
         </div>
       )}
 
-      {path === 'B' && showContactForm && (
-        <ContactForm
-          email={email}
-          disponibilita={disponibilita}
-          loading={isLoading}
-          onEmailChange={setEmail}
-          onDisponibilitaChange={setDisponibilita}
-          onSubmit={submitContact}
-          onCrossoverToA={crossoverToA}
-        />
+      {contactSummary && contactSummary !== '__pending__' && (
+        <div className="kbot-contact-cta">
+          <p className="kbot-contact-cta-hint">Ho preparato un riepilogo del tuo caso per il team K2-AI.</p>
+          <button type="button" className="kbot-btn-primary kbot-contact-btn" onClick={() => goToContacts()}>
+            Contattaci →
+          </button>
+        </div>
+      )}
+
+      {contactSummary === '__pending__' && (
+        <div className="kbot-contact-cta">
+          <button type="button" className="kbot-btn-primary kbot-contact-btn" onClick={() => goToContacts()}>
+            Contattaci →
+          </button>
+        </div>
       )}
       </div>
     </>
