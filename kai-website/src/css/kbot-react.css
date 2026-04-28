@@ -502,8 +502,17 @@
 }
 
 .kbot-priority.critica { background: #3b1e22; color: #ffb7be; }
+.kbot-priority.alta { background: #3a2b17; color: #ffd8a8; }
 .kbot-priority.rilevante { background: #3a2b17; color: #ffd8a8; }
+.kbot-priority.media { background: #16333c; color: #a7edf9; }
 .kbot-priority.da_monitorare { background: #16333c; color: #a7edf9; }
+
+.kbot-teaser-causa {
+  font-size: 12px;
+  color: #8b949e;
+  margin: 4px 0 6px;
+  line-height: 1.4;
+}
 
 .kbot-teaser-blur {
   margin-top: 8px;

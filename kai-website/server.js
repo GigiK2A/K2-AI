@@ -14,6 +14,7 @@ const CANONICAL_HOST = 'www.k2-ai.it';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.k2-ai.it';
 const API_PROXY_BASE = process.env.API_PROXY_BASE || 'https://api.k2-ai.it';
 const KBOT_MODEL = process.env.KBOT_MODEL || 'claude-haiku-4-5-20251001';
+const REPORT_MODEL = process.env.REPORT_MODEL || 'claude-sonnet-4-6';
 const SKILLS_DIR = path.join(__dirname, 'lib', 'skills');
 
 const MIME_TYPES = {
@@ -175,10 +176,25 @@ function buildKbotSystemPrompt({ mode, sector, step, session }) {
 
   const reportRules = `
 Modalità REPORT.
-Obiettivo: analizzare documenti, dati o un caso specifico usando le skill interne. Non vendere automazioni e non trasformare il report in una richiesta di progetto.
-Conversazione naturale: fai domande mirate solo quando servono davvero per interpretare il materiale. Evita domande statiche.
-Dopo 1-2 turni utili, se hai abbastanza contesto, chiudi con una frase breve e includi esattamente: report_ready: true
-Il report finale deve descrivere cosa emerge dall'analisi: segnali, rischi, punti da verificare, lettura tecnica e priorità informative.`;
+Obiettivo: analizzare documenti, dati o un caso specifico usando le skill interne al livello di una consulenza professionale reale.
+
+RACCOLTA DATI (massima economia):
+- Se l'utente ha allegato materiale o descritto il caso in dettaglio: NON fare domande. Procedi subito verso l'analisi.
+- Se manca UN'informazione critica (es. settore ATECO, anno di riferimento): fai UNA sola domanda, non un elenco.
+- MAI spezzare una singola esigenza in più sotto-domande consecutive.
+- Dopo al massimo 1-2 scambi, chiudi la raccolta.
+- Considera il modello di business tipico del settore: commessa per ingegneria/architettura, parcella per studi legali/commercialisti, abbonamento/canone per SaaS/TLC, ciclo produzione-magazzino per manifatturiero.
+
+QUALITÀ ANALISI:
+- Distingui SEMPRE tra sintomo (cosa appare nei dati) e causa strutturale (perché accade, nel contesto operativo del settore).
+- Usa le skill interne per applicare indici, framework e benchmark corretti — non fare letture generiche da "Excel allarmista".
+- Contestualizza ogni segnale: un crediti/ricavi alto in uno studio a commessa è normale; in un'azienda prodotto è un problema.
+- Non inventare numeri non presenti nel materiale. Se un dato manca, indicalo esplicitamente.
+
+CHIUSURA RACCOLTA:
+- Quando hai abbastanza materiale, scrivi una frase di chiusura senza domande e includi esattamente: report_ready: true
+- L'ULTIMO messaggio NON deve MAI terminare con una domanda.
+- L'ultimo messaggio è una dichiarazione di avanzamento, non una richiesta di informazioni.`;
 
   const leadRules = `
 Modalità CONTATTO.
@@ -758,14 +774,44 @@ async function handleKbotTeaser(req, res) {
 
   const messages = Array.isArray(session.messages) ? session.messages : [];
   const files = Array.isArray(session.collected_data?.uploaded_files) ? session.collected_data.uploaded_files : [];
+  const skills = loadKbotSkillBundle(session.sector);
   const anthropic = createAnthropicClient();
   const response = await anthropic.messages.create({
-    model: KBOT_MODEL,
-    max_tokens: 1200,
-    system: `Sei K-BOT. Produci solo JSON valido per un teaser di report analitico, non commerciale. Usa skill e contesto, non proporre automazioni. Campi: settore, skill_attive array, segnali array massimo 3 con priorita/titolo/sintesi/anteprima_analisi, hook_pdf.`,
+    model: REPORT_MODEL,
+    max_tokens: 1600,
+    system: `Sei un analista senior di K2-AI. Produci un teaser di analisi professionale in formato JSON valido.
+
+OBIETTIVO: identificare i 3 segnali più rilevanti del caso, distinguendo sintomi da cause strutturali.
+
+REGOLE ANALISI:
+- Ogni segnale deve avere una causa strutturale plausibile nel contesto del settore (non solo la lettura numerica).
+- priorita: usa "critica" solo per rischi immediati di liquidità/insolvenza o violazioni normative; "alta" per inefficienze strutturali significative; "media" per opportunità di miglioramento.
+- anteprima_analisi: 1-2 frasi tecniche che mostrano la profondità dell'analisi completa — non marketing, non allarmismo generico.
+- hook_pdf: frase che descrive cosa trova l'utente nel report completo (strutturato, con indici, benchmark, azioni).
+- NON proporre automazioni AI nel teaser.
+- Usa le skill interne disponibili per applicare i framework corretti al settore.
+
+OUTPUT: JSON con questa struttura esatta:
+{
+  "settore": "label settore",
+  "skill_attive": ["skill1", "skill2"],
+  "segnali": [
+    {
+      "priorita": "critica|alta|media",
+      "titolo": "titolo breve del segnale",
+      "sintesi": "1-2 frasi: cosa emerge dai dati",
+      "causa_strutturale": "perché accade, nel contesto operativo del settore",
+      "anteprima_analisi": "cosa approfondisce il report completo"
+    }
+  ],
+  "hook_pdf": "frase descrittiva del report completo"
+}
+
+SKILL INTERNE DISPONIBILI:
+${skills.slice(0, 18000)}`,
     messages: [{
       role: 'user',
-      content: `Settore: ${resolveKbotSectorLabel(session.sector)}\nConversazione:\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\nAllegati:\n${files.map(f => `${f.name}: ${f.extractedSummary}`).join('\n\n')}`,
+      content: `Settore: ${resolveKbotSectorLabel(session.sector)}\n\nConversazione:\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nAllegati:\n${files.map(f => `${f.name}:\n${String(f.extractedSummary || f.extractedText || '').slice(0, 3000)}`).join('\n\n')}`,
     }],
   });
 
@@ -776,8 +822,8 @@ async function handleKbotTeaser(req, res) {
     teaser = {
       settore: resolveKbotSectorLabel(session.sector),
       skill_attive: resolveKbotSkillNames(session.sector),
-      segnali: [{ priorita: 'rilevante', titolo: 'Punto da verificare', sintesi: 'Il materiale richiede una lettura strutturata.', anteprima_analisi: 'Nel report completo trovi la lettura dei segnali principali.' }],
-      hook_pdf: 'Il report gratuito raccoglie lettura tecnica, punti aperti e priorità di verifica.',
+      segnali: [{ priorita: 'media', titolo: 'Analisi in elaborazione', sintesi: 'Il materiale è stato acquisito e richiede una lettura strutturata.', causa_strutturale: 'Da definire nel report completo.', anteprima_analisi: 'Il report include lettura tecnica, indici di settore e priorità di verifica.' }],
+      hook_pdf: 'Il report struttura lettura tecnica, segnali con cause, benchmark di settore e azioni prioritarie.',
     };
   }
 
@@ -816,19 +862,99 @@ async function handleKbotGenerateReport(req, res) {
 
   const messages = Array.isArray(session.messages) ? session.messages : [];
   const files = Array.isArray(session.collected_data?.uploaded_files) ? session.collected_data.uploaded_files : [];
+  const skills = loadKbotSkillBundle(session.sector);
+  const sectorLabel = resolveKbotSectorLabel(session.sector);
   const anthropic = createAnthropicClient();
+
+  const reportSystemPrompt = `Sei un analista senior di K2-AI. Produci un report di analisi professionale in HTML.
+
+OBIETTIVO: report conclusivo, strutturato, al livello di una consulenza professionale reale. Non un riassunto della conversazione, non marketing.
+
+TEMPLATE OBBLIGATORIO — usa esattamente questa struttura HTML:
+
+<h1>[Titolo specifico — es. "Analisi Bilancio 2024 — EagleProjects S.p.A."]</h1>
+<p class="meta">Settore: ${sectorLabel} | Report K-BOT — K2-AI</p>
+
+<div class="executive-summary">
+<h2>Executive Summary</h2>
+<p>[3-5 frasi: situazione complessiva, segnali principali, orientamento. Nessuna domanda. Nessun allarmismo generico. Conclusivo.]</p>
+</div>
+
+<h2>Dati Analizzati</h2>
+[Tabella o elenco strutturato con i valori chiave estratti dal materiale. Se disponibili: ricavi, costi, margini, indici. Se non disponibili per un dato: indica "non disponibile nel materiale" — non inventare.]
+
+<h2>Segnali Identificati</h2>
+[Per ogni segnale (massimo 5):
+<div class="signal [critica|alta|media]">
+  <span class="badge [critica|alta|media]">[CRITICA|ALTA|MEDIA]</span>
+  <h3>[Titolo segnale]</h3>
+  <p><strong>Sintomo:</strong> [cosa si vede nei dati — con numeri se disponibili]</p>
+  <p><strong>Causa strutturale:</strong> [perché accade, nel contesto operativo del settore — es. per uno studio a commessa, crediti alti sono normali ma se superano X mesi sono un problema di governance contrattuale]</p>
+  <p><strong>Impatto operativo:</strong> [effetto concreto sull'azienda]</p>
+</div>]
+
+<h2>Analisi di Dettaglio</h2>
+[Sezione tecnica: indici calcolati, confronti anno su anno, benchmark di settore dove disponibili. Usa i framework delle skill interne. Per bilanci: ROE/ROI/ROS, liquidità corrente, D/E, CCC. Per altri settori: metriche rilevanti dal contesto.]
+
+<h2>Azioni Prioritarie</h2>
+[3-5 azioni specifiche e realizzabili, con orizzonte temporale (immediato/3 mesi/6 mesi). Concrete, non generiche.]
+
+<h2>Punti da Approfondire</h2>
+[2-3 informazioni aggiuntive che permetterebbero un'analisi più precisa — non domande all'utente, ma indicazioni per chi usa il report.]
+
+REGOLE QUALITÀ:
+- Distingui SEMPRE sintomi da cause strutturali.
+- Contestualizza nel modello di business del settore.
+- Non usare "potrebbe", "forse", "si potrebbe valutare" — sii diretto.
+- Non terminare il report con domande.
+- Non proporre automazioni AI.
+- Se un dato numerico non è nel materiale, NON inventarlo.
+
+SKILL INTERNE DISPONIBILI (usa i framework, gli indici e i benchmark pertinenti):
+${skills.slice(0, 22000)}`;
+
   const response = await anthropic.messages.create({
-    model: KBOT_MODEL,
-    max_tokens: 2600,
-    system: `${buildKbotSystemPrompt({ mode: 'report', sector: session.sector, step: session.step || 1, session })}\n\nOra produci un report finale in HTML semplice. Deve essere analitico, gratuito per test, basato sulle skill interne e sui documenti. Non vendere automazioni e non usare script.`,
+    model: REPORT_MODEL,
+    max_tokens: 4096,
+    system: reportSystemPrompt,
     messages: [{
       role: 'user',
-      content: `Crea il report finale.\nConversazione:\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\nAllegati:\n${files.map(f => `${f.name}: ${f.extractedSummary}`).join('\n\n')}`,
+      content: `Produci il report finale.\n\nConversazione:\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nAllegati:\n${files.map(f => `${f.name}:\n${String(f.extractedSummary || f.extractedText || '').slice(0, 4000)}`).join('\n\n')}`,
     }],
   });
 
   const reportBody = response.content?.[0]?.type === 'text' ? response.content[0].text : '<p>Report non disponibile.</p>';
-  const html = `<!doctype html><html lang="it"><meta charset="utf-8"><title>Report K-BOT</title><body style="font-family:Inter,Arial,sans-serif;max-width:820px;margin:40px auto;line-height:1.55;color:#111"><h1>Report K-BOT</h1>${reportBody}</body></html>`;
+  const html = `<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Report K-BOT — K2-AI</title>
+<style>
+  body{font-family:'Helvetica Neue',Arial,sans-serif;max-width:860px;margin:40px auto;line-height:1.65;color:#1a202c;padding:0 24px}
+  h1{font-size:26px;color:#0d1b2a;border-bottom:2px solid #e2e8f0;padding-bottom:12px;margin-bottom:6px}
+  h2{font-size:19px;color:#1a365d;margin-top:36px;border-left:4px solid #3182ce;padding-left:12px}
+  h3{font-size:15px;color:#2d3748;margin:12px 0 6px}
+  .meta{color:#718096;font-size:13px;margin-bottom:28px}
+  .executive-summary{background:#f7fafc;border:1px solid #e2e8f0;padding:20px 24px;margin:20px 0 32px;border-radius:4px}
+  .executive-summary h2{border-left:none;padding-left:0;margin-top:0}
+  .signal{border:1px solid #e2e8f0;padding:16px;margin-bottom:14px;border-radius:4px}
+  .signal.critica{border-left:4px solid #e53e3e}
+  .signal.alta{border-left:4px solid #dd6b20}
+  .signal.media{border-left:4px solid #d69e2e}
+  .badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:2px;margin-bottom:8px}
+  .badge.critica{background:#fed7d7;color:#c53030}
+  .badge.alta{background:#feebc8;color:#c05621}
+  .badge.media{background:#fefcbf;color:#b7791f}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th{background:#edf2f7;padding:8px 12px;text-align:left;font-weight:600;border:1px solid #e2e8f0}
+  td{padding:8px 12px;border:1px solid #e2e8f0}
+  strong{color:#2d3748}
+  p{margin:8px 0}
+</style>
+</head>
+<body>
+${reportBody}
+<hr style="margin:40px 0;border:none;border-top:1px solid #e2e8f0">
+<p style="font-size:12px;color:#a0aec0">Report generato da K-BOT · K2-AI · ${new Date().toLocaleDateString('it-IT')}</p>
+</body></html>`;
   const reportUrl = `/api/kbot/report?id=${encodeURIComponent(sessionId)}`;
 
   await supabase
