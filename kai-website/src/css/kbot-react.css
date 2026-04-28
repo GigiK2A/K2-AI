@@ -146,16 +146,18 @@
 
 .kbot-msg-row {
   display: flex;
-  gap: 8px;
+  width: 100%;
+  gap: 10px;
   align-items: flex-start;
 }
 
 .kbot-msg-row.assistant {
-  align-self: flex-start;
+  justify-content: flex-start;
 }
 
 .kbot-msg-row.user {
-  align-self: flex-end;
+  justify-content: flex-end;
+  flex-direction: row-reverse;
 }
 
 .kbot-avatar {
@@ -177,16 +179,23 @@
   animation: botAvatarPulse 1.8s ease-in-out infinite;
 }
 
+.kbot-avatar.user {
+  background: #1a2333;
+  border-color: #4a5d82;
+  color: #d6e2ff;
+}
+
 .msg-in {
   animation: fadeUp 0.28s ease forwards;
 }
 
 .kbot-bubble {
-  max-width: 86%;
-  padding: 13px 14px;
+  max-width: min(82%, 760px);
+  padding: 14px 16px;
   border: 1px solid #2f353f;
   background: #0e1117;
   color: #ebeff5;
+  border-radius: 8px;
 }
 
 .kbot-bubble.assistant {
@@ -195,9 +204,8 @@
 }
 
 .kbot-bubble.user {
-  align-self: flex-end;
-  border-color: #3f4c63;
-  background: #111727;
+  border-color: #4a5a78;
+  background: #131c2f;
 }
 
 .kbot-bubble.assistant::after {
@@ -224,8 +232,8 @@
 
 .kbot-bubble-text {
   white-space: pre-wrap;
-  font-size: 17px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.6;
   color: #e6eaf1;
   word-break: break-word;
   overflow-wrap: anywhere;

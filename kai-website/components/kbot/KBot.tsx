@@ -123,7 +123,14 @@ function extractQuestions(text: string): string[] {
       const parts = (normalized.match(/[^?]*\?/g) || [])
         .map(part => part.trim())
         .filter(part => part.endsWith('?') && part.length > 8)
-      collected.push(...parts)
+      if (parts.length > 0) {
+        // Unifica domande consecutive nello stesso contesto in una singola domanda
+        const merged = parts
+          .map(part => part.replace(/\?+$/g, '').trim())
+          .filter(Boolean)
+          .join(' · ')
+        if (merged.length > 8) collected.push(`${merged}?`)
+      }
       continue
     }
 
@@ -132,7 +139,20 @@ function extractQuestions(text: string): string[] {
     }
   }
 
-  return Array.from(new Set(collected)).slice(0, 5)
+  const unique = Array.from(new Set(collected)).slice(0, 4)
+  if (unique.length <= 1) return unique
+
+  // Se sono domande consecutive sullo stesso tema, usa un solo campo
+  const merged = unique
+    .map(q => q.replace(/\?+$/g, '').trim())
+    .filter(Boolean)
+    .join(' · ')
+
+  if (merged.length > 18 && merged.length < 420) {
+    return [`${merged}?`]
+  }
+
+  return unique
 }
 
 function detectAdaptiveKind(question: string): 'email' | 'budget' | 'long' | 'text' {
@@ -249,8 +269,8 @@ export function KBot() {
   const canReply = (inputValue.trim().length > 0 || queuedFiles.length > 0) && !isLoading
   const canStart = mode.length > 0 && selectedSector.length > 0 && !isLoading
   const teaserSignals = useMemo(() => teaser?.segnali || [], [teaser])
-  const hasAdaptiveForm = adaptiveQuestions.length > 1
-  const canSendAdaptive = hasAdaptiveForm && !isLoading
+  const hasAdaptiveForm = adaptiveQuestions.length > 0
+  const canSendAdaptive = !isLoading
 
   useEffect(() => {
     if (chatStreamRef.current) {
@@ -684,12 +704,6 @@ export function KBot() {
           </div>
         </div>
         <div className="kbot-header-actions">
-          <button type="button" className="kbot-top-btn" onClick={() => fileInputRef.current?.click()}>
-            ALLEGA
-          </button>
-          <button type="button" className="kbot-top-btn" onClick={toggleFullscreen}>
-            {isFullscreen ? 'RIDUCI' : 'FULLSCREEN'}
-          </button>
           <button type="button" className="kbot-top-btn" onClick={resetChat}>RESET CHAT</button>
         </div>
       </div>
@@ -702,29 +716,6 @@ export function KBot() {
         style={{ display: 'none' }}
         accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.txt,.png,.jpg,.jpeg"
       />
-
-      {stage !== 'mode' && stage !== 'sector' && !teaser && !contactSummary && (
-        <div className="kbot-progress">
-          {(['problem', 'router', 'conversation'] as const).map((s, i) => {
-            const labels = mode === 'lead'
-              ? ['Descrivi il caso', 'Qualifica', 'Riepilogo']
-              : ['Materiale', 'Lettura', 'Report']
-            const active = s === stage || (s === 'conversation' && stage === 'router' && step > 2)
-            const done = (s === 'problem' && ['router', 'conversation'].includes(stage)) ||
-                         (s === 'router' && stage === 'conversation')
-            return (
-              <div key={s} className={`kbot-progress-step ${done ? 'done' : ''} ${active && !done ? 'active' : ''}`}>
-                <span className="kbot-progress-dot">{done ? '✓' : i + 1}</span>
-                <span className="kbot-progress-label">{labels[i]}</span>
-              </div>
-            )
-          })}
-          <div className={`kbot-progress-step ${teaserLoading || teaser ? 'active' : ''}`}>
-            <span className="kbot-progress-dot">4</span>
-            <span className="kbot-progress-label">{mode === 'lead' ? 'Contatto' : 'Report'}</span>
-          </div>
-        </div>
-      )}
 
       <div className="kbot-chat-stream" ref={chatStreamRef}>
         {messages.map((m, i) => (
