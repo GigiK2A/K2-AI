@@ -1,3 +1,5 @@
+const revealEls = document.querySelectorAll('.reveal');
+
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -5,9 +7,14 @@ const observer = new IntersectionObserver((entries) => {
       observer.unobserve(entry.target);
     }
   });
-}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+}, { threshold: 0.05, rootMargin: '0px 0px 0px 0px' });
 
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+revealEls.forEach(el => observer.observe(el));
+
+// Fallback: rendi visibile tutto dopo 1.5s se l'observer non ha triggerato
+setTimeout(() => {
+  revealEls.forEach(el => el.classList.add('visible'));
+}, 1500);
 
 const root = document.documentElement;
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
