@@ -363,6 +363,49 @@ ${checksHtml}
 </html>`;
 }
 
+function chooseReportTemplateProfile(sector, collectedData, messages) {
+  const text = [
+    String(collectedData?.problem_description || ''),
+    ...((Array.isArray(messages) ? messages : []).map(m => String(m?.content || ''))),
+  ].join(' ').toLowerCase();
+
+  if (sector === 'commercialista' || text.includes('bilancio') || text.includes('ebitda') || text.includes('debito')) {
+    return 'financial_diagnosis';
+  }
+  if (sector === 'studio-ingegneria' || sector === 'tlc' || text.includes('commessa') || text.includes('cantier')) {
+    return 'operations_commesse';
+  }
+  if (sector === 'manifatturiero' || text.includes('produzion') || text.includes('magazzino') || text.includes('scorte')) {
+    return 'operations_production';
+  }
+  return 'general_service';
+}
+
+function buildPdfAnalysisPrompt({ session, sectorLabel, skills, profile }) {
+  const messages = Array.isArray(session?.messages) ? session.messages : [];
+  const files = Array.isArray(session?.collected_data?.uploaded_files) ? session.collected_data.uploaded_files : [];
+  const compactConversation = compactKbotMessages(messages, 24, 2200);
+
+  return `Produci l'ANALISI COMPLETA JSON per il PDF della Diagnosi AI Operativa.
+
+SETTORE: ${sectorLabel}
+PROFILO TEMPLATE DA USARE: ${profile}
+DATI RACCOLTI: ${JSON.stringify(session?.collected_data || {}, null, 2)}
+CONVERSAZIONE: ${compactConversation.map(m => `${m.role}: ${m.content}`).join('\n')}
+ALLEGATI ESTRATTI: ${files.map(f => `${f.name}: ${(String(f.extractedSummary || f.extractedText || '')).slice(0, 2400)}`).join('\n\n')}
+
+Vincoli:
+- Produci SOLO JSON valido.
+- Struttura allineata alla skill diagnosi-ai-operativa-pmi (analisi completa).
+- Minimo 3 sezioni verticali con elementi visivi (includi almeno 1 tabella, 1 grafico barre, 1 gauge).
+- Distingui sintomo e causa strutturale.
+- NON proporre automazioni come call-to-action commerciale: sezione automazioni solo come lettura analitica interna.
+- Nessun testo markdown o prose fuori JSON.
+
+Skill bundle disponibile:
+${skills.slice(0, 22000)}`;
+}
+
 function stripTrailingQuestion(text) {
   const t = String(text || '').trimEnd();
   if (!t.endsWith('?')) return t;
@@ -999,81 +1042,100 @@ async function handleKbotGenerateReport(req, res) {
   if (error || !session) return sendJson(res, 404, { error: 'Session not found' });
 
   const messages = Array.isArray(session.messages) ? session.messages : [];
-  const files = Array.isArray(session.collected_data?.uploaded_files) ? session.collected_data.uploaded_files : [];
   const skills = loadKbotSkillBundle(session.sector);
   const sectorLabel = resolveKbotSectorLabel(session.sector);
   const anthropic = createAnthropicClient();
-
-  const reportSystemPrompt = `Sei un analista senior di K2-AI.
-Produci SOLO JSON valido (nessun markdown, nessun testo prima o dopo JSON).
-
-OBIETTIVO:
-- report conclusivo, strutturato, al livello di una consulenza professionale reale
-- distinguere chiaramente sintomi e cause strutturali
-- niente upsell, niente proposta automazioni AI
-
-REGOLE:
-- Non inventare numeri se non presenti nei materiali.
-- Se un dato manca, scrivi "non disponibile nel materiale".
-- Nessuna domanda finale.
-- Massimo 5 segnali.
-- Usa un tono tecnico ma leggibile da imprenditore/manager.
-
-OUTPUT JSON ESATTO:
-{
-  "title": "Titolo specifico del report",
-  "executive_summary": "3-5 frasi con quadro complessivo e priorita",
-  "data_points": ["dato 1", "dato 2", "dato 3"],
-  "signals": [
-    {
-      "level": "critica|alta|media",
-      "title": "titolo segnale",
-      "symptom": "cosa si osserva nei dati",
-      "cause": "causa strutturale contestualizzata al settore",
-      "impact": "impatto operativo concreto"
-    }
-  ],
-  "priorities": ["azione prioritaria 1", "azione prioritaria 2", "azione prioritaria 3"],
-  "checks": ["punto da verificare 1", "punto da verificare 2"]
-}
-
-SKILL INTERNE DISPONIBILI (usa i framework pertinenti):
-${skills.slice(0, 22000)}`;
+  const profile = chooseReportTemplateProfile(session.sector, session.collected_data || {}, messages);
 
   const response = await anthropic.messages.create({
     model: REPORT_MODEL,
     max_tokens: 4096,
-    system: reportSystemPrompt,
+    system: 'Sei un analista senior di K2-AI. Restituisci esclusivamente JSON valido.',
     messages: [{
       role: 'user',
-      content: `Produci il report finale.\n\nConversazione:\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nAllegati:\n${files.map(f => `${f.name}:\n${String(f.extractedSummary || f.extractedText || '').slice(0, 4000)}`).join('\n\n')}`,
+      content: buildPdfAnalysisPrompt({
+        session,
+        sectorLabel,
+        skills,
+        profile,
+      }),
     }],
   });
 
   const rawReportText = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
-  const parsedReport = extractJsonFromText(rawReportText) || {
-    title: `Report di analisi - ${sectorLabel}`,
-    executive_summary: 'Analisi completata con i dati disponibili. Le priorita sono definite in base alle evidenze raccolte nella conversazione e negli allegati.',
-    data_points: ['Dati principali estratti dal materiale disponibile'],
-    signals: [{
-      level: 'media',
-      title: 'Segnale da verificare',
-      symptom: 'Il materiale raccolto mostra un punto di attenzione operativo.',
-      cause: 'La causa strutturale richiede verifica puntuale con dati integrativi.',
-      impact: 'Possibile rallentamento dell’esecuzione e della previsione economica.',
-    }],
-    priorities: ['Consolidare i dati economici e operativi in un unico tracciato', 'Definire 3 priorita con owner e scadenza', 'Verificare impatto delle priorita su margine e tempi di delivery'],
-    checks: ['Disponibilita serie storiche complete', 'Dettaglio per cliente/commessa/linea'],
+  const analysisJson = extractJsonFromText(rawReportText) || {
+    meta: {
+      settore: sectorLabel,
+      skill_attive: resolveKbotSkillNames(session.sector),
+      data_generazione: new Date().toISOString(),
+      versione_modello: 'fallback-local',
+      template_profile: profile,
+    },
+    executive_summary: 'Analisi completata in fallback con i dati disponibili. Struttura coerente con template di sistema.',
+    sezioni: [
+      {
+        tipo: 'analisi_verticale',
+        titolo: 'Contesto raccolto',
+        contenuto: `Settore: ${sectorLabel}\nProfilo template: ${profile}\nProblema: ${session?.collected_data?.problem_description || 'non disponibile nel materiale'}`,
+        elementi_visivi: [],
+      },
+      {
+        tipo: 'benchmark',
+        titolo: 'Segnali principali',
+        contenuto: 'Sono emersi punti di attenzione operativi da verificare su base dati completa.',
+        elementi_visivi: [],
+      },
+      {
+        tipo: 'roadmap',
+        titolo: 'Priorita',
+        contenuto: '1. Consolidare dati\n2. Identificare cause strutturali\n3. Definire azioni a 90 giorni',
+        elementi_visivi: [],
+      },
+    ],
+    automazioni_consigliate: [],
+    prossimo_passo: {
+      testo: 'Report generato in modalita fallback.',
+      messaggio_precompilato: '',
+    },
   };
-  const html = renderStructuredReportHtml(parsedReport, sectorLabel);
-  const reportUrl = `/api/kbot/report?id=${encodeURIComponent(sessionId)}`;
+
+  const pdfRuntime = require('./lib/pdf/generator.js');
+  const generatePdfFn = pdfRuntime.generateDiagnosiPDF || (pdfRuntime.default && pdfRuntime.default.generateDiagnosiPDF);
+  if (typeof generatePdfFn !== 'function') {
+    return sendJson(res, 500, { error: 'generateDiagnosiPDF non disponibile' });
+  }
+  const pdfBuffer = await generatePdfFn(analysisJson);
+
+  const REPORTS_BUCKET = 'kbot-reports';
+  const fileName = `kbot-${sessionId}-${Date.now()}.pdf`;
+  let { error: uploadError } = await supabase.storage
+    .from(REPORTS_BUCKET)
+    .upload(fileName, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+
+  if (uploadError && uploadError.message && uploadError.message.toLowerCase().includes('bucket not found')) {
+    await supabase.storage.createBucket(REPORTS_BUCKET, { public: true });
+    const retry = await supabase.storage
+      .from(REPORTS_BUCKET)
+      .upload(fileName, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+    uploadError = retry.error;
+  }
+  if (uploadError) {
+    return sendJson(res, 500, { error: `Upload PDF fallito: ${uploadError.message}` });
+  }
+
+  const { data: publicData } = supabase.storage.from(REPORTS_BUCKET).getPublicUrl(fileName);
+  const reportUrl = publicData.publicUrl;
 
   await supabase
     .from('kbot_sessions')
     .update({
       status: 'paid',
       pdf_url: reportUrl,
-      collected_data: { ...(session.collected_data || {}), report_html: html },
+      collected_data: {
+        ...(session.collected_data || {}),
+        template_profile: profile,
+        report_json: analysisJson,
+      },
       updated_at: new Date().toISOString(),
     })
     .eq('id', sessionId);
