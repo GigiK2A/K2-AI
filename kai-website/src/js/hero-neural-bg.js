@@ -418,6 +418,10 @@ if (canvas) {
 
     window.addEventListener('resize', resizeCanvas, { passive: true });
     document.addEventListener('visibilitychange', handleVisibility);
-    reducedMotionQuery.addEventListener('change', handleReducedMotionChange);
+    if (typeof reducedMotionQuery.addEventListener === 'function') {
+      reducedMotionQuery.addEventListener('change', handleReducedMotionChange);
+    } else if (typeof reducedMotionQuery.addListener === 'function') {
+      reducedMotionQuery.addListener(handleReducedMotionChange);
+    }
   }
 }

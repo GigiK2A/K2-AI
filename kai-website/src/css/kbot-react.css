@@ -4,6 +4,17 @@
   font-family: var(--font-sans);
 }
 
+.kbot-mount-error {
+  min-height: 760px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #f3f4f6;
+  background: #090b0f;
+  border: 1px solid #2a2f36;
+}
+
 .kbot-fullscreen-open {
   overflow: hidden;
 }

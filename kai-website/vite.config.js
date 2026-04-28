@@ -1,5 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import fs from 'fs'
+import path from 'path'
 
 const securityHeaders = {
   'Content-Security-Policy': [
@@ -114,6 +116,7 @@ export default defineConfig({
         'suite-ai': 'src/suite-ai.html',
         'newsletter-ok': 'src/newsletter-ok.html',
         'newsletter-error': 'src/newsletter-error.html',
+        ...collectSuiteAiHtmlInputs(),
       }
     }
   },
@@ -139,3 +142,16 @@ export default defineConfig({
     }
   }
 })
+
+function collectSuiteAiHtmlInputs() {
+  const suiteDir = path.resolve(process.cwd(), 'src/suite-ai')
+  if (!fs.existsSync(suiteDir)) return {}
+
+  const entries = {}
+  for (const fileName of fs.readdirSync(suiteDir)) {
+    if (!fileName.endsWith('.html')) continue
+    const slug = fileName.replace(/\.html$/i, '')
+    entries[`suite-ai/${slug}`] = `src/suite-ai/${fileName}`
+  }
+  return entries
+}

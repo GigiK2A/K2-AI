@@ -48,5 +48,9 @@ function requestNeuralUpdate() {
 
 window.addEventListener('scroll', requestNeuralUpdate, { passive: true });
 window.addEventListener('resize', requestNeuralUpdate, { passive: true });
-reducedMotionQuery.addEventListener('change', requestNeuralUpdate);
+if (typeof reducedMotionQuery.addEventListener === 'function') {
+  reducedMotionQuery.addEventListener('change', requestNeuralUpdate);
+} else if (typeof reducedMotionQuery.addListener === 'function') {
+  reducedMotionQuery.addListener(requestNeuralUpdate);
+}
 requestNeuralUpdate();

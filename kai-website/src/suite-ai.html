@@ -190,6 +190,11 @@
     }
 
     const WORKSHOP_BASE_URL = resolveApiBaseUrl();
+    const FALLBACK_PACKAGES = [
+      { id: 'ai-ingegneria-progettazione', title: 'AI Ingegneria Progettazione', subtitle: 'Suite tecnica', html_url: '/suite-ai/ai-ingegneria-progettazione.html', cta_href: '/k-bot.html', cta_label: 'Fai diagnosi' },
+      { id: 'microapp-documenti-tecnici', title: 'Microapp Documenti Tecnici', subtitle: 'Operativita documentale', html_url: '/suite-ai/microapp-documenti-tecnici.html', cta_href: '/k-bot.html', cta_label: 'Fai diagnosi' },
+      { id: 'integrazione-gestionali-erp', title: 'Integrazione Gestionali ERP', subtitle: 'Flussi e integrazioni', html_url: '/suite-ai/integrazione-gestionali-erp.html', cta_href: '/k-bot.html', cta_label: 'Fai diagnosi' },
+    ];
 
     async function loadWorkshopPackages() {
       const loading = document.getElementById('workshop-loading');
@@ -204,13 +209,25 @@
         const data = await res.json();
         const packages = Array.isArray(data.packages) ? data.packages : [];
 
-        if (packages.length === 0) {
-          loading.style.display = 'none';
-          error.style.display = '';
-          return;
-        }
+        renderPackages(packages.length ? packages : FALLBACK_PACKAGES, { fromFallback: packages.length === 0 });
+      } catch (err) {
+        console.error('Workshop packages load error:', err);
+        renderPackages(FALLBACK_PACKAGES, { fromFallback: true });
+      }
+    }
 
-        grid.innerHTML = packages.map((pkg, i) => `
+    function renderPackages(packages, { fromFallback = false } = {}) {
+      const loading = document.getElementById('workshop-loading');
+      const grid = document.getElementById('workshop-grid');
+      const error = document.getElementById('workshop-error');
+
+      if (!packages.length) {
+        loading.style.display = 'none';
+        error.style.display = '';
+        return;
+      }
+
+      grid.innerHTML = packages.map((pkg, i) => `
           <div class="offerta-card reveal${i === 1 ? ' featured' : ''} reveal-delay-${i}">
             <div class="offerta-name">${escHtml(pkg.subtitle || pkg.title)}</div>
             <div class="offerta-title">${escHtml(pkg.title)}</div>
@@ -222,7 +239,7 @@
               </ul>
             ` : ''}
             ${pkg.html_url ? `
-            <a href="${escAttr(WORKSHOP_BASE_URL + pkg.html_url)}" target="_blank" rel="noopener"
+            <a href="${escAttr(cleanUrl(pkg.html_url))}" target="_blank" rel="noopener"
                class="btn full-width-button" style="margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px">
               <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Apri scheda pacchetto
@@ -234,19 +251,15 @@
           </div>
         `).join('');
 
-        loading.style.display = 'none';
-        grid.style.display = '';
-
-        // Le card sono iniettate dinamicamente: l'IntersectionObserver non le
-        // osserva. Aggiungiamo visible con un leggero stagger manuale.
-        grid.querySelectorAll('.reveal').forEach((el, i) => {
-          setTimeout(() => el.classList.add('visible'), i * 80);
-        });
-
-      } catch (err) {
-        console.error('Workshop packages load error:', err);
-        loading.style.display = 'none';
-        error.style.display = '';
+      loading.style.display = 'none';
+      grid.style.display = '';
+      error.style.display = fromFallback ? '' : 'none';
+      grid.querySelectorAll('.reveal').forEach((el, i) => {
+        setTimeout(() => el.classList.add('visible'), i * 80);
+      });
+      if (fromFallback) {
+        const note = error?.querySelector('.note-row span:last-child');
+        if (note) note.textContent = 'Modalita fallback attiva: elenco locale caricato. Se manca un pacchetto nuovo, va aggiunto all’API o alla cartella /src/suite-ai.';
       }
     }
 
@@ -266,6 +279,10 @@
         return escHtml(s);
       }
       return '/contatti.html';
+    }
+
+    function cleanUrl(url) {
+      return String(url || '').replace(/\.html(?=([?#]|$))/g, '');
     }
 
     // Costruisce il link CTA di un pacchetto aggiungendo i parametri di contesto

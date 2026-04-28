@@ -483,4 +483,8 @@ function resetChat() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', initChat);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initChat, { once: true });
+} else {
+  initChat();
+}
