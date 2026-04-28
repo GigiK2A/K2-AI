@@ -283,11 +283,17 @@ async function handleNewsletterSubscribe(req, res) {
   const recipientName = email;
   const supabase = createSupabaseAdminClient();
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('newsletter_subscribers')
     .select('id, confirmed')
     .eq('email', email)
     .single();
+
+  // `single()` returns PGRST116 when no rows are found: that case is expected.
+  // Any other error is logged for diagnostics and we continue with insert fallback.
+  if (existingError && existingError.code !== 'PGRST116') {
+    console.warn('Newsletter lookup warning:', existingError);
+  }
 
   if (existing) {
     if (existing.confirmed) {
@@ -318,6 +324,18 @@ async function handleNewsletterSubscribe(req, res) {
   });
 
   if (error) {
+    // If we cannot read existing rows (permissions/policies) and hit a duplicate
+    // on insert, degrade gracefully as "already subscribed".
+    const isDuplicate =
+      error.code === '23505' ||
+      /duplicate key|unique constraint/i.test(String(error.message || ''));
+
+    if (isDuplicate) {
+      sendJson(res, 200, { ok: true, already: true });
+      return;
+    }
+
+    console.error('Newsletter insert error:', error);
     sendJson(res, 500, { error: 'Errore salvataggio' });
     return;
   }

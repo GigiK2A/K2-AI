@@ -93,11 +93,17 @@ export default async function handler(req: any, res: any) {
   const supabase = createSupabaseAdminClient()
 
   // Check duplicate
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('newsletter_subscribers')
     .select('id, confirmed')
     .eq('email', email)
     .single()
+
+  // `single()` returns PGRST116 when no rows are found: expected.
+  // Log any other lookup error and fallback to insert path.
+  if (existingError && existingError.code !== 'PGRST116') {
+    console.warn('Newsletter lookup warning:', existingError)
+  }
 
   if (existing) {
     if (existing.confirmed) {
@@ -126,6 +132,15 @@ export default async function handler(req: any, res: any) {
   })
 
   if (error) {
+    const isDuplicate =
+      error.code === '23505' ||
+      /duplicate key|unique constraint/i.test(String(error.message || ''))
+
+    if (isDuplicate) {
+      return sendJson(res, 200, { ok: true, already: true })
+    }
+
+    console.error('Newsletter insert error:', error)
     return sendJson(res, 500, { error: 'Errore salvataggio' })
   }
 
