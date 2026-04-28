@@ -229,12 +229,12 @@ function cleanKbotAssistantMessage(message) {
     .trim() || 'Ricevuto. Dimmi pure un dettaglio in più e procediamo.';
 }
 
-function readJsonBody(req) {
+function readJsonBody(req, maxBytes = 16 * 1024) {
   return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', chunk => {
       data += chunk.toString();
-      if (data.length > 16 * 1024) {
+      if (data.length > maxBytes) {
         req.destroy();
         reject(new Error('Body too large'));
       }
@@ -683,7 +683,7 @@ async function summarizeKbotPdf(base64, fileName) {
 async function handleKbotUpload(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
 
-  const body = await readJsonBody(req);
+  const body = await readJsonBody(req, 24 * 1024 * 1024);
   const sessionId = String(body.session_id || '').trim();
   const files = Array.isArray(body.files) ? body.files.slice(0, 5) : [];
   if (!sessionId || files.length === 0) return sendJson(res, 400, { error: 'session_id e files obbligatori' });
