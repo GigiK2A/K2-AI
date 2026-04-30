@@ -81,7 +81,7 @@ function renderGrid(grid, countEl) {
          </a>`
       : ''
 
-    const kbotUrl = `/k-bot.html?service=${esc(svc.id)}&sname=${encodeURIComponent(svc.name)}`
+    const kbotUrl = `/k-bot.html?service=${esc(svc.id)}`
 
     return `
       <div class="sas-card" style="animation-delay:${(i % 6) * 55}ms" data-id="${esc(svc.id)}">

@@ -293,6 +293,39 @@
   resize: vertical;
 }
 
+.kbot-service-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #a5b4fc;
+  background: rgba(165,180,252,.08);
+  border: 1px solid rgba(165,180,252,.18);
+  border-radius: 20px;
+  padding: 4px 12px 4px 9px;
+  margin-bottom: 12px;
+}
+
+.kbot-service-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a5b4fc;
+  flex-shrink: 0;
+}
+
+.kbot-service-badge-change {
+  margin-left: 4px;
+  font-size: 11px;
+  color: rgba(165,180,252,.55);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color .15s;
+}
+.kbot-service-badge-change:hover { color: #a5b4fc; }
+
 .kbot-stage-label {
   margin: 0 0 10px;
   font-size: 14px;

@@ -30,6 +30,36 @@ const CONTENT_TYPES = [
   { slug: 'generico',          label: 'Altro',                           desc: 'Qualsiasi altro tipo di documento o analisi' },
 ]
 
+type ServicePreset = { name: string; sector: string; contentType: string }
+const SERVICE_MAP: Record<string, ServicePreset> = {
+  P01: { name: 'Agenti AI Email & CRM',            sector: 'servizi-b2b',      contentType: 'processo-operativo' },
+  P02: { name: 'Automazioni Amministrative',        sector: 'commercialista',   contentType: 'bilancio' },
+  P03: { name: 'AI Legale & Contratti',             sector: 'studio-legale',    contentType: 'contratto-legale' },
+  P04: { name: 'AI Ingegneria & Progettazione',     sector: 'studio-ingegneria',contentType: 'documento-tecnico' },
+  P05: { name: 'Microapp Documenti Tecnici',        sector: 'servizi-b2b',      contentType: 'documento-tecnico' },
+  P06: { name: 'AI Customer Service & Ticket',      sector: 'servizi-b2b',      contentType: 'processo-operativo' },
+  P07: { name: 'RAG Knowledge Base',                sector: 'servizi-b2b',      contentType: 'generico' },
+  P08: { name: 'AI Compliance & Audit',             sector: 'commercialista',   contentType: 'contratto-legale' },
+  P09: { name: 'AI Controllo di Gestione',          sector: 'commercialista',   contentType: 'bilancio' },
+  P10: { name: 'Integrazione Gestionali & ERP',     sector: 'studio-ingegneria',contentType: 'documento-tecnico' },
+  P11: { name: 'AI Marketing & Contenuti',          sector: 'servizi-b2b',      contentType: 'marketing-seo' },
+  P12: { name: 'Diagnosi Strategica PMI',           sector: 'servizi-b2b',      contentType: 'generico' },
+  P13: { name: 'Agevolazioni & Finanza Agevolata',  sector: 'commercialista',   contentType: 'bilancio' },
+  P14: { name: 'AI Edilizia & Appalti Pubblici',    sector: 'studio-ingegneria',contentType: 'documento-tecnico' },
+  P15: { name: 'AI HR & Recruiting',                sector: 'servizi-b2b',      contentType: 'processo-operativo' },
+  P16: { name: 'AI Real Estate & Tokenizzazione',   sector: 'servizi-b2b',      contentType: 'generico' },
+  P17: { name: 'AI Data Analytics & BI',            sector: 'servizi-b2b',      contentType: 'generico' },
+  P18: { name: 'AI UX & Design System',             sector: 'servizi-b2b',      contentType: 'processo-operativo' },
+  P19: { name: 'AI Efficienza Energetica',          sector: 'studio-ingegneria',contentType: 'documento-tecnico' },
+  P20: { name: 'AI Hospitality & Revenue',          sector: 'hospitality',      contentType: 'processo-operativo' },
+}
+
+function getServiceParam(): string | null {
+  if (typeof window === 'undefined') return null
+  const id = new URLSearchParams(window.location.search).get('service')
+  return (id && SERVICE_MAP[id]) ? id : null
+}
+
 const SECTORS = [
   { slug: 'studio-ingegneria', label: 'Studio ingegneria / architettura' },
   { slug: 'commercialista', label: 'Studio commercialista / CdL' },
@@ -243,17 +273,28 @@ const SECTOR_TO_CONTACT_SETTORE: Record<string, string> = {
 }
 
 export function KBot() {
-  const [stage, setStage] = useState<Stage>('mode')
-  const [mode, setMode] = useState<KBotMode>('')
-  const [selectedSector, setSelectedSector] = useState('')
-  const [contentType, setContentType] = useState('')
+  const [selectedService, setSelectedService] = useState<string | null>(getServiceParam)
+  const [stage, setStage] = useState<Stage>(() => getServiceParam() ? 'problem' : 'mode')
+  const [mode, setMode] = useState<KBotMode>(() => getServiceParam() ? 'report' : '')
+  const [selectedSector, setSelectedSector] = useState<string>(() => {
+    const id = getServiceParam(); return id ? SERVICE_MAP[id].sector : ''
+  })
+  const [contentType, setContentType] = useState<string>(() => {
+    const id = getServiceParam(); return id ? SERVICE_MAP[id].contentType : ''
+  })
   const [problem, setProblem] = useState('')
   const [sessionId, setSessionId] = useState('')
-  const [path, setPath] = useState<PathType>('unknown')
+  const [path, setPath] = useState<PathType>(() => getServiceParam() ? 'A' : 'unknown')
   const [step, setStep] = useState(1)
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: 'assistant', text: 'Ciao, sono K-BOT. Vuoi analizzare un documento/caso e ottenere un report, oppure vuoi capire se ha senso parlarne con il team K2-AI?' },
-  ])
+  const [messages, setMessages] = useState<ChatMsg[]>(() => {
+    const id = getServiceParam()
+    if (!id) return [{ role: 'assistant', text: 'Ciao, sono K-BOT. Vuoi analizzare un documento/caso e ottenere un report, oppure vuoi capire se ha senso parlarne con il team K2-AI?' }]
+    const svc = SERVICE_MAP[id]
+    return [
+      { role: 'assistant', text: `Ciao, sono K-BOT. Sei arrivato dal servizio ${svc.name}.` },
+      { role: 'assistant', text: 'Descrivimi il tuo caso oppure carica direttamente un documento. Lo analizzo con le skill specifiche per questo servizio e produco la diagnosi operativa.' },
+    ]
+  })
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
@@ -386,6 +427,7 @@ export function KBot() {
   }
 
   function resetChat() {
+    setSelectedService(null)
     setStage('mode')
     setMode('')
     setSelectedSector('')
@@ -460,7 +502,12 @@ export function KBot() {
     setTypingLabel('K-BOT sta elaborando la tua richiesta…')
     setIsTyping(true)
     try {
-      const session = await postJson('/api/kbot/session', { sector: selectedSector, mode, content_type: contentType || undefined })
+      const session = await postJson('/api/kbot/session', {
+        sector: selectedSector,
+        mode,
+        content_type: contentType || undefined,
+        ...(selectedService ? { service_id: selectedService } : {}),
+      })
       const sid = session.session_id
       setSessionId(sid)
       capture('kbot_started', { sector: selectedSector, mode })
@@ -839,6 +886,13 @@ export function KBot() {
 
         {stage === 'problem' && (
           <div className="kbot-option-panel msg-in">
+            {selectedService && SERVICE_MAP[selectedService] && (
+              <div className="kbot-service-badge">
+                <span className="kbot-service-badge-dot" />
+                {SERVICE_MAP[selectedService].name}
+                <a href="/suite-ai.html" className="kbot-service-badge-change">Cambia</a>
+              </div>
+            )}
             <p className="kbot-stage-label">Descrivi in parole tue cosa ti serve</p>
             <textarea
               className="kbot-problem-textarea"

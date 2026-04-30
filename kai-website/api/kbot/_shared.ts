@@ -9,6 +9,12 @@ import {
   PATH_B_KEYWORDS,
 } from '../../lib/skills/sectors.config'
 import { getAnthropicApiKey, getSystemEnvVar } from '../../lib/env/system'
+import { SUITE_AI_SERVICES } from '../../src/data/suiteAiServices'
+
+const SERVICE_SKILLS_MAP: Record<string, string[]> = Object.fromEntries(
+  SUITE_AI_SERVICES.map(s => [s.id, s.skills]),
+)
+export const VALID_SERVICE_IDS = new Set(SUITE_AI_SERVICES.map(s => s.id))
 
 export const MODEL = 'claude-haiku-4-5-20251001'
 export const CHAT_SYSTEM_MAX_CHARS = 26000
@@ -241,8 +247,14 @@ export function resolveSkillNames(sector: string | undefined): string[] {
   return SECTOR_BUNDLES[sector || ''] || ['diagnosi-ai-operativa-pmi']
 }
 
-/** Rileva skill corrette: content_type esplicito → auto-detect da file → sector */
+/** Rileva skill corrette: service_id → content_type → auto-detect da file → sector */
 export function resolveSkillNamesForSession(session: any): string[] {
+  // 0. service_id ha priorità massima: usa le skill specifiche del servizio
+  const serviceId = session?.collected_data?.service_id
+  if (serviceId && SERVICE_SKILLS_MAP[serviceId]?.length > 0) {
+    return SERVICE_SKILLS_MAP[serviceId]
+  }
+
   // 1. content_type esplicito salvato in sessione
   const contentType = session?.collected_data?.content_type
   if (contentType && CONTENT_TYPE_BUNDLES[contentType]?.length > 0) {

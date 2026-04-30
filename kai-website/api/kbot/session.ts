@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient, ensurePost, parseJsonBody, sendJson } from './_shared'
+import { createSupabaseAdminClient, ensurePost, parseJsonBody, sendJson, VALID_SERVICE_IDS } from './_shared'
 import { SECTOR_BUNDLES, CONTENT_TYPE_BUNDLES } from '../../lib/skills/sectors.config'
 
 const VALID_SECTORS = new Set(Object.keys(SECTOR_BUNDLES))
@@ -9,7 +9,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const supabase = createSupabaseAdminClient()
-    const { sector, content_type, mode } = await parseJsonBody(req)
+    const { sector, content_type, mode, service_id } = await parseJsonBody(req)
 
     if (!sector || !VALID_SECTORS.has(String(sector))) {
       return sendJson(res, 400, { error: 'Settore non valido.' })
@@ -17,6 +17,13 @@ export default async function handler(req: any, res: any) {
 
     const validContentType = content_type && VALID_CONTENT_TYPES.has(String(content_type))
       ? String(content_type) : null
+
+    const validServiceId = service_id && VALID_SERVICE_IDS.has(String(service_id))
+      ? String(service_id) : null
+
+    const collectedData: Record<string, any> = {}
+    if (validContentType) collectedData.content_type = validContentType
+    if (validServiceId) collectedData.service_id = validServiceId
 
     const { data, error } = await supabase
       .from('kbot_sessions')
@@ -26,7 +33,7 @@ export default async function handler(req: any, res: any) {
         messages: [],
         path: 'unknown',
         step: 1,
-        collected_data: validContentType ? { content_type: validContentType } : {},
+        collected_data: collectedData,
         ...(mode ? { mode } : {}),
       })
       .select('id')
