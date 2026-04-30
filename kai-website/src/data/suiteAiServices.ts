@@ -1,8 +1,12 @@
+export type ServiceCategory = 'sales-marketing' | 'finance-admin' | 'legal-compliance' | 'engineering-tech' | 'operations' | 'strategy'
+export type TargetGroup = 'pmi' | 'studi' | 'finance' | 'tech' | 'marketing' | 'hospitality'
+
 export interface SuiteAiService {
   id: string
   name: string
   shortDescription: string
-  category: 'sales-marketing' | 'finance-admin' | 'legal-compliance' | 'engineering-tech' | 'operations' | 'strategy'
+  category: ServiceCategory
+  targetGroup: TargetGroup
   skills: string[]
   useCases: string[]
   target: string
@@ -24,6 +28,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Sequenze follow-up multi-touch su lead freddi',
       'Riassunto thread email → aggiornamento note account',
     ],
+    targetGroup: 'pmi',
     target: 'PMI con team commerciale 2-15 persone e CRM (HubSpot, Pipedrive, Airtable)',
     recommendedTier: 'WEB',
     tags: ['email', 'crm', 'sales', 'automazione', 'lead'],
@@ -41,6 +46,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Generazione report mensile costi/ricavi da più fonti',
       'Archiviazione e indicizzazione documenti fiscali',
     ],
+    targetGroup: 'studi',
     target: 'Studi commercialisti, PMI con contabilità interna, uffici amministrativi',
     recommendedTier: 'HOST',
     tags: ['contabilità', 'fatture', 'amministrazione', 'excel', 'automazione'],
@@ -58,6 +64,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Sintesi executive di contratti >50 pagine in 2 minuti',
       'Checklist GDPR su nuovi accordi di trattamento dati',
     ],
+    targetGroup: 'studi',
     target: 'Studi legali, uffici legali PMI, studi notarili, HR con contrattualistica frequente',
     recommendedTier: 'WEB',
     tags: ['contratti', 'legale', 'NDA', 'GDPR', 'compliance'],
@@ -75,6 +82,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Revisione relazioni tecniche con NTC 2018 e Eurocodici',
       'Sintesi SAL (Stato Avanzamento Lavori) da documenti cantiere',
     ],
+    targetGroup: 'studi',
     target: 'Studi di ingegneria strutturale e civile, imprese edili, coordinatori sicurezza',
     recommendedTier: 'STUDIO',
     tags: ['ingegneria', 'cantiere', 'strutturale', 'capitolato', 'sicurezza'],
@@ -92,6 +100,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Schede prodotto da datasheet tecnici in 5 lingue',
       'Aggiornamento automatico manuali quando cambia la versione',
     ],
+    targetGroup: 'pmi',
     target: 'Uffici tecnici, product manager, IT manager, team qualità e certificazione',
     recommendedTier: 'HOST',
     tags: ['documenti', 'manuali', 'PDF', 'runbook', 'template'],
@@ -109,6 +118,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Generazione articolo KB da ogni ticket risolto',
       'Escalation automatica su ticket con sentiment negativo alto',
     ],
+    targetGroup: 'pmi',
     target: 'SaaS, e-commerce, aziende B2B con supporto clienti interno, team helpdesk',
     recommendedTier: 'HOST',
     tags: ['customer service', 'ticket', 'helpdesk', 'automazione', 'KB'],
@@ -126,6 +136,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Digest settimanale automatico delle note meeting',
       'Onboarding: risposta alle 50 domande più frequenti dei nuovi assunti',
     ],
+    targetGroup: 'pmi',
     target: 'PMI con documentazione distribuita, team remoti, aziende in crescita rapida',
     recommendedTier: 'WEB',
     tags: ['RAG', 'knowledge base', 'ricerca', 'Notion', 'documenti'],
@@ -143,6 +154,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Test di compliance SOX su processi finanziari',
       'Audit de minimis: calcolo cumulativo aiuti ricevuti',
     ],
+    targetGroup: 'studi',
     target: 'Responsabili compliance, RSPP, CFO, studi di consulenza normativa',
     recommendedTier: 'WEB',
     tags: ['compliance', 'audit', 'SOX', 'sicurezza lavoro', 'Transizione 5.0'],
@@ -160,6 +172,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Forecast rolling su ricavi/costi con scenario base e stress',
       'Alert automatico su margine sotto soglia per linea prodotto',
     ],
+    targetGroup: 'finance',
     target: 'CFO, controller, direzione PMI, studi commercialisti con clienti strutturati',
     recommendedTier: 'STUDIO',
     tags: ['controllo gestione', 'cruscotto', 'budget', 'forecast', 'KPI'],
@@ -177,6 +190,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Gestione change request con impatto stimato automatico',
       'Riconciliazione dati tra due gestionali dopo migrazione',
     ],
+    targetGroup: 'tech',
     target: 'IT manager PMI, sviluppatori interni, consulenti ERP, responsabili digitale',
     recommendedTier: 'STUDIO',
     tags: ['ERP', 'integrazione', 'SQL', 'API', 'gestionale'],
@@ -194,6 +208,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Articolo SEO long-form 1500 parole con struttura ottimizzata',
       'Brief per agenzia creativa generato da obiettivi di business',
     ],
+    targetGroup: 'marketing',
     target: 'Marketing manager, founder PMI, agenzie digitali, e-commerce',
     recommendedTier: 'WEB',
     tags: ['marketing', 'contenuti', 'SEO', 'copywriting', 'campagne'],
@@ -210,6 +225,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Piano crescita: 3 leve prioritarie con impatto stimato',
       'One-pager executive per presentazione a finanziatori',
     ],
+    targetGroup: 'finance',
     target: 'Imprenditori PMI, CFO, advisor M&A, studi di consulenza strategica',
     recommendedTier: 'STUDIO',
     tags: ['strategia', 'diagnosi', 'bilancio', 'crescita', 'benchmark'],
@@ -226,6 +242,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Bozza relazione tecnica per domanda credito R&S',
       'Calcolo cumulo aiuti de minimis ultimi 3 esercizi',
     ],
+    targetGroup: 'finance',
     target: 'CFO, imprenditori PMI in fase di investimento, consulenti finanza agevolata',
     recommendedTier: 'WEB',
     tags: ['agevolazioni', 'Transizione 5.0', 'Sabatini', 'credito imposta', 'finanza'],
@@ -242,6 +259,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'PSC: generazione fascicolo sicurezza da planimetrie e fasi',
       'SAL mensile: confronto avanzamento fisico vs cronoprogramma',
     ],
+    targetGroup: 'studi',
     target: 'Imprese edili, studi di ingegneria, coordinatori sicurezza, RUP enti pubblici',
     recommendedTier: 'STUDIO',
     tags: ['edilizia', 'appalti', 'PSC', 'cantiere', 'gare pubbliche'],
@@ -258,6 +276,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Piano onboarding 30-60-90 giorni generato da job description',
       'Ciclo di performance review con template e calibrazione',
     ],
+    targetGroup: 'pmi',
     target: 'HR manager, uffici del personale PMI, founder in fase di crescita organica',
     recommendedTier: 'WEB',
     tags: ['HR', 'recruiting', 'onboarding', 'performance', 'persone'],
@@ -274,6 +293,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Analisi rendimento e stress test su asset commerciale',
       'Data room preparation per investitori istituzionali',
     ],
+    targetGroup: 'finance',
     target: 'Family office, fondi immobiliari, studi legali RE, developer immobiliari',
     recommendedTier: 'STUDIO',
     tags: ['real estate', 'tokenizzazione', 'immobiliare', 'due diligence', 'investimenti'],
@@ -290,6 +310,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Query SQL generate da domande business in linguaggio naturale',
       'Report settimanale automatico con anomalie evidenziate',
     ],
+    targetGroup: 'tech',
     target: 'Data analyst, CFO, marketing manager con dati da analizzare, team operations',
     recommendedTier: 'STUDIO',
     tags: ['analytics', 'BI', 'dashboard', 'SQL', 'machine learning'],
@@ -306,6 +327,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'UX copy review: chiarezza, tone of voice, call to action',
       'Sintesi user research: pattern da 50 interviste in 1 report',
     ],
+    targetGroup: 'tech',
     target: 'Designer, product manager, team frontend, startup in fase di scaling',
     recommendedTier: 'WEB',
     tags: ['UX', 'design', 'accessibilità', 'design system', 'prodotto'],
@@ -322,6 +344,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Calcolo ROI e payback per investimento in efficientamento',
       'Verifica ammissibilità misure per Conto Termico 2.0',
     ],
+    targetGroup: 'studi',
     target: 'Energy manager, responsabili produzione, PMI manifatturiero, ESCO',
     recommendedTier: 'WEB',
     tags: ['energia', 'efficienza', 'HVAC', 'impianti', 'diagnosi energetica'],
@@ -338,6 +361,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Ottimizzazione listing OTA: testo, foto, politiche cancellazione',
       'Report mensile performance con raccomandazioni operative',
     ],
+    targetGroup: 'hospitality',
     target: 'Hotel indipendenti, B&B, agriturismo, gestori affitti brevi, PMI hospitality',
     recommendedTier: 'HOST',
     tags: ['hospitality', 'hotel', 'revenue', 'OTA', 'pricing'],
@@ -360,3 +384,22 @@ export const TIERS = [
   { slug: 'WEB', label: 'WEB' },
   { slug: 'STUDIO', label: 'STUDIO' },
 ] as const
+
+export const TARGET_GROUPS = [
+  { slug: 'all', label: 'Tutti' },
+  { slug: 'pmi', label: 'PMI & Founder' },
+  { slug: 'studi', label: 'Studi professionali' },
+  { slug: 'finance', label: 'Finance & CFO' },
+  { slug: 'tech', label: 'Tech & IT' },
+  { slug: 'marketing', label: 'Marketing' },
+  { slug: 'hospitality', label: 'Hospitality' },
+] as const
+
+export const CATEGORY_META: Record<ServiceCategory, { label: string; color: string }> = {
+  'sales-marketing':  { label: 'Sales & Marketing',   color: '#f59e0b' },
+  'finance-admin':    { label: 'Finance & Admin',      color: '#10b981' },
+  'legal-compliance': { label: 'Legal & Compliance',   color: '#818cf8' },
+  'engineering-tech': { label: 'Ingegneria & Tech',    color: '#60a5fa' },
+  'operations':       { label: 'Operations',           color: '#a78bfa' },
+  'strategy':         { label: 'Strategia',            color: '#f472b6' },
+}

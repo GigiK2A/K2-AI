@@ -1,87 +1,158 @@
-import { SUITE_AI_SERVICES, CATEGORIES } from '../data/suiteAiServices.ts'
+import { SUITE_AI_SERVICES, CATEGORIES, TARGET_GROUPS, CATEGORY_META } from '../data/suiteAiServices.ts'
 
 let activeCategory = 'all'
+let activeTarget = 'all'
+let searchQuery = ''
 
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-function renderFilters(container) {
-  container.innerHTML = CATEGORIES.map(cat => `
-    <button
-      class="sas-filter-btn${cat.slug === activeCategory ? ' active' : ''}"
-      data-cat="${escHtml(cat.slug)}"
-      type="button"
-    >${escHtml(cat.label)}</button>
-  `).join('')
+/* ── Filters ─────────────────────────────────── */
 
-  container.querySelectorAll('.sas-filter-btn').forEach(btn => {
+function renderCatFilters(el) {
+  el.innerHTML = CATEGORIES.map(c => `
+    <button class="sas-filter-btn${c.slug === activeCategory ? ' active' : ''}"
+      data-cat="${esc(c.slug)}" type="button">${esc(c.label)}</button>
+  `).join('') + '<span class="sas-filter-divider"></span>'
+
+  el.querySelectorAll('.sas-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       activeCategory = btn.dataset.cat
-      renderFilters(container)
-      renderGrid(document.getElementById('sas-grid'))
+      renderCatFilters(el)
+      refresh()
     })
   })
 }
 
-function renderGrid(grid) {
-  const filtered = activeCategory === 'all'
-    ? SUITE_AI_SERVICES
-    : SUITE_AI_SERVICES.filter(s => s.category === activeCategory)
+function renderTargetFilters(el) {
+  el.innerHTML = TARGET_GROUPS.map(t => `
+    <button class="sas-filter-btn${t.slug === activeTarget ? ' active' : ''}"
+      data-tgt="${esc(t.slug)}" type="button">${esc(t.label)}</button>
+  `).join('')
 
-  if (!filtered.length) {
-    grid.innerHTML = '<div class="sas-empty">Nessun servizio in questa categoria.</div>'
+  el.querySelectorAll('.sas-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTarget = btn.dataset.tgt
+      renderTargetFilters(el)
+      refresh()
+    })
+  })
+}
+
+/* ── Grid ────────────────────────────────────── */
+
+function filtered() {
+  const q = searchQuery.trim().toLowerCase()
+  return SUITE_AI_SERVICES.filter(s => {
+    if (activeCategory !== 'all' && s.category !== activeCategory) return false
+    if (activeTarget !== 'all' && s.targetGroup !== activeTarget) return false
+    if (q) {
+      const haystack = [s.name, s.shortDescription, s.target, ...s.tags, ...s.skills]
+        .join(' ').toLowerCase()
+      if (!haystack.includes(q)) return false
+    }
+    return true
+  })
+}
+
+function renderGrid(grid, countEl) {
+  const services = filtered()
+  if (countEl) countEl.textContent = `${services.length} servizi`
+
+  if (!services.length) {
+    grid.innerHTML = '<div class="sas-empty">Nessun servizio corrisponde ai filtri selezionati.</div>'
     return
   }
 
-  grid.innerHTML = filtered.map((svc, i) => {
-    const tags = svc.tags.slice(0, 4).map(t => `<span class="sas-tag">${escHtml(t)}</span>`).join('')
-    const link = svc.pillarUrl
-      ? `<a href="${escHtml(svc.pillarUrl)}" class="sas-card-link">Scopri di più <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 6h8M6 2l4 4-4 4"/></svg></a>`
-      : `<span class="sas-card-nopillar">Scheda in arrivo</span>`
+  grid.innerHTML = services.map((svc, i) => {
+    const meta = CATEGORY_META[svc.category]
+    const catSlug = esc(svc.category)
+    const skills = svc.skills.slice(0, 3).map(s =>
+      `<span class="sas-skill">${esc(s)}</span>`
+    ).join('')
 
-    const delay = (i % 6) * 60
+    const btnScopri = svc.pillarUrl
+      ? `<a href="${esc(svc.pillarUrl)}" class="sas-btn-scopri">
+           Scopri
+           <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 6h8M6 2l4 4-4 4"/></svg>
+         </a>`
+      : ''
+
+    const kbotUrl = `/k-bot.html?service=${esc(svc.id)}&sname=${encodeURIComponent(svc.name)}`
 
     return `
-      <div
-        class="sas-card"
-        style="animation-delay:${delay}ms"
-        data-id="${escHtml(svc.id)}"
-      >
-        <div class="sas-card-top">
-          <span class="sas-card-id">${escHtml(svc.id)}</span>
-          <span class="sas-tier-badge sas-tier-${escHtml(svc.recommendedTier)}">${escHtml(svc.recommendedTier)}</span>
+      <div class="sas-card" style="animation-delay:${(i % 6) * 55}ms" data-id="${esc(svc.id)}">
+        <div class="sas-card-head">
+          <span class="sas-cat-badge sas-cat-${catSlug}">${esc(meta.label)}</span>
+          <span class="sas-tier-chip">${esc(svc.recommendedTier)}</span>
         </div>
-        <div class="sas-card-name">${escHtml(svc.name)}</div>
-        <p class="sas-card-desc">${escHtml(svc.shortDescription)}</p>
-        <div class="sas-card-tags">${tags}</div>
-        ${link}
+        <div class="sas-card-name">${esc(svc.name)}</div>
+        <p class="sas-card-desc">${esc(svc.shortDescription)}</p>
+        <div class="sas-skills">${skills}</div>
+        <div class="sas-card-actions">
+          <a href="${kbotUrl}" class="sas-btn-kbot">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
+            Avvia con K-BOT
+          </a>
+          ${btnScopri}
+        </div>
       </div>
     `
   }).join('')
 
-  // Trigger blur-fade-in via IntersectionObserver
+  /* Stagger with IntersectionObserver */
   const io = new IntersectionObserver((entries, obs) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('sas-visible')
-        obs.unobserve(entry.target)
-      }
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('sas-visible'); obs.unobserve(e.target) }
     })
-  }, { threshold: 0.05 })
-
-  grid.querySelectorAll('.sas-card').forEach(card => io.observe(card))
+  }, { threshold: 0.04 })
+  grid.querySelectorAll('.sas-card').forEach(c => io.observe(c))
 }
 
-export function initSuiteAiServices() {
-  const filtersEl = document.getElementById('sas-filters')
-  const gridEl = document.getElementById('sas-grid')
-  if (!filtersEl || !gridEl) return
+/* ── Steps reveal ────────────────────────────── */
 
-  renderFilters(filtersEl)
-  renderGrid(gridEl)
+function initStepsReveal() {
+  const io = new IntersectionObserver((entries, obs) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('sas-visible'); obs.unobserve(e.target) }
+    })
+  }, { threshold: 0.15 })
+  document.querySelectorAll('.sas-step').forEach((el, i) => {
+    el.style.transitionDelay = `${i * 90}ms`
+    io.observe(el)
+  })
+}
+
+/* ── Refresh ─────────────────────────────────── */
+
+function refresh() {
+  const grid = document.getElementById('sas-grid')
+  const countEl = document.getElementById('sas-count')
+  if (grid) renderGrid(grid, countEl)
+}
+
+/* ── Init ────────────────────────────────────── */
+
+export function initSuiteAiServices() {
+  const catFiltersEl = document.getElementById('sas-cat-filters')
+  const tgtFiltersEl = document.getElementById('sas-target-filters')
+  const gridEl = document.getElementById('sas-grid')
+  const searchEl = document.getElementById('sas-search')
+  const countEl = document.getElementById('sas-count')
+
+  if (catFiltersEl) renderCatFilters(catFiltersEl)
+  if (tgtFiltersEl) renderTargetFilters(tgtFiltersEl)
+  if (gridEl) renderGrid(gridEl, countEl)
+
+  if (searchEl) {
+    searchEl.addEventListener('input', () => {
+      searchQuery = searchEl.value
+      refresh()
+    })
+  }
+
+  initStepsReveal()
 }
