@@ -454,8 +454,11 @@ export function KBot() {
       setStage('conversation')
       await botSay(data.message || 'Ok, continuiamo da qui.', 120)
 
-      if (mode === 'report' && (data.next_action === 'show_report' || data.next_action === 'show_teaser')) {
-        await generatePdfTest()
+      if (data.pdf_url && !pdfUrl) setPdfUrl(data.pdf_url)
+
+      if (mode === 'report' && path === 'A' && !teaser &&
+          (data.next_action === 'show_report' || data.next_action === 'show_teaser' || data.pdf_url)) {
+        await fetchTeaser()
       }
 
       if (mode === 'lead' && data.next_action === 'show_contact_form') {
@@ -561,9 +564,12 @@ export function KBot() {
       setPath(nextPath)
       setIsTyping(false)
 
-      if (mode === 'report' && nextPath === 'A' && !pdfUrl && (data.next_action === 'show_teaser' || data.next_action === 'show_report')) {
+      if (data.pdf_url && !pdfUrl) setPdfUrl(data.pdf_url)
+
+      if (mode === 'report' && nextPath === 'A' && !teaser &&
+          (data.next_action === 'show_teaser' || data.next_action === 'show_report' || nextStep >= 3 || data.pdf_url)) {
         await botAnalyzeThenSay(data.message || 'Analisi completata.')
-        await generatePdfTest()
+        await fetchTeaser()
       } else {
         await botSay(data.message || '')
       }
@@ -597,14 +603,26 @@ export function KBot() {
   }
 
 
+  async function fetchTeaser() {
+    if (!sessionId || teaser) return
+    setTeaserLoading(true)
+    try {
+      const data = await postJson('/api/kbot/teaser', { session_id: sessionId })
+      if (data?.teaser) setTeaser(data.teaser)
+    } catch (error) {
+      addMessage('assistant', friendlyError(error))
+    } finally {
+      setTeaserLoading(false)
+    }
+  }
+
   async function generatePdfTest() {
-    if (!sessionId || isGeneratingPdf || isLoading) return
+    if (!sessionId || isGeneratingPdf) return
     setIsGeneratingPdf(true)
     try {
       const resp = await postJson('/api/kbot/generate-pdf', { session_id: sessionId, test_mode: true })
       if (resp?.pdf_url) {
         setPdfUrl(resp.pdf_url)
-        await botSay('Report generato. Puoi aprirlo dal link qui sotto.', 120)
       } else {
         addMessage('assistant', 'Non sono riuscito a generare il report in questo tentativo. Riprova tra poco.')
       }
