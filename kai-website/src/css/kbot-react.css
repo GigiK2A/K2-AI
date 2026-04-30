@@ -802,6 +802,33 @@
   margin: 8px 0 0;
 }
 
+.kbot-pdf-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 0;
+}
+
+.kbot-pdf-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #2a2f36;
+  border-top-color: #3b5bdb;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: kbot-spin 0.8s linear infinite;
+}
+
+@keyframes kbot-spin {
+  to { transform: rotate(360deg); }
+}
+
+.kbot-pdf-loading-text {
+  font-size: 12px;
+  color: #8b949e;
+}
+
 /* Banner ritorno post-pagamento */
 .kbot-paid-banner {
   display: flex;

@@ -109,6 +109,13 @@ export function PaymentBox({ sessionId, isGeneratingPdf, pdfUrl, onTestGenerate 
         </p>
       )}
 
+      {isGeneratingPdf && (
+        <div className="kbot-pdf-loading">
+          <span className="kbot-pdf-spinner" />
+          <span className="kbot-pdf-loading-text">La creazione del report potrebbe richiedere qualche minuto…</span>
+        </div>
+      )}
+
       {!isFreeTest && (
         <p className="kbot-payment-fallback">
         Oppure{' '}
