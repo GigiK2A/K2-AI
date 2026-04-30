@@ -101,6 +101,52 @@ export const SECTOR_LABELS: Record<string, string> = {
   'pubblica-amministrazione': 'Pubblica Amministrazione',
 }
 
+/** Mappa tipo-contenuto → bundle skill (sovrascrive sector quando rilevato) */
+export const CONTENT_TYPE_BUNDLES: Record<string, string[]> = {
+  'bilancio': [
+    'diagnosi-ai-operativa-pmi',
+    'analisi-bilancio-pmi',
+    'contabilita-bilancio',
+    'bilancio-consolidato-analisi',
+    'budget-forecast-pmi',
+    'programmazione-controllo',
+    'corporate-finance',
+  ],
+  'contratto-legale': [
+    'diagnosi-ai-operativa-pmi',
+    'diritto-italiano',
+    'diritto-societario-italiano',
+    'it-law-privacy-ai',
+    'antitrust-concorrenza-ue',
+  ],
+  'processo-operativo': [
+    'diagnosi-ai-operativa-pmi',
+    'programmazione-controllo',
+    'crm-customer-experience',
+    'budget-forecast-pmi',
+    'cruscotto-direzionale',
+  ],
+  'marketing-seo': [
+    'diagnosi-ai-operativa-pmi',
+    'audit-seo-tecnico',
+    'digital-marketing-performance',
+    'marketing-strategico',
+    'ecommerce-marketing-pmi',
+  ],
+  'documento-tecnico': [], // usa sector bundle
+  'generico': ['diagnosi-ai-operativa-pmi'],
+}
+
+/** Label leggibili per tipo di contenuto */
+export const CONTENT_TYPE_LABELS: Record<string, string> = {
+  'bilancio':          'Bilancio / documenti contabili',
+  'contratto-legale':  'Contratto / documento legale',
+  'processo-operativo': 'Processo operativo / flusso',
+  'marketing-seo':     'Marketing / SEO / digitale',
+  'documento-tecnico': 'Documento tecnico / progettuale',
+  'generico':          'Altro',
+}
+
 /** Keywords che indicano PATH A (consulenza automatica) */
 export const PATH_A_KEYWORDS = [
   'analisi', 'verifica', 'check', 'report', 'bilancio', 'seo',

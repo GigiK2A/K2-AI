@@ -5,7 +5,7 @@ import { PaymentBox } from './PaymentBox'
 
 type PathType = 'A' | 'B' | 'unknown'
 type KBotMode = 'report' | 'lead' | ''
-type Stage = 'mode' | 'sector' | 'problem' | 'router' | 'conversation'
+type Stage = 'mode' | 'sector' | 'content-type' | 'problem' | 'router' | 'conversation'
 type ChatMsg = { role: 'user' | 'assistant'; text: string }
 type UploadedFile = { name: string; type: string; size: number; publicUrl: string }
 type AdaptiveAnswers = Record<string, string>
@@ -20,6 +20,15 @@ const ROUTER_TEXT =
   "Quello che descrivi è un caso specifico su cui vuoi un'analisi rapida, o fa parte di un progetto più ampio che vorresti strutturare?"
 const TYPING_FRAMES = ['K-BOT sta scrivendo...', 'K-BOT sta elaborando...', 'K-BOT sta ragionando...']
 const ADAPTIVE_OTHER_LABEL = 'Altro da aggiungere (opzionale)'
+
+const CONTENT_TYPES = [
+  { slug: 'bilancio',          label: 'Bilancio / contabilità',          desc: 'Bilancio, conto economico, nota integrativa, rendiconto' },
+  { slug: 'contratto-legale',  label: 'Contratto / documento legale',    desc: 'Contratti, accordi, pareri, documenti normativi' },
+  { slug: 'processo-operativo',label: 'Processo operativo / flusso',     desc: 'Flussi interni, CRM, ERP, procedure aziendali' },
+  { slug: 'marketing-seo',     label: 'Marketing / SEO / digitale',      desc: 'Sito, campagne, analytics, posizionamento' },
+  { slug: 'documento-tecnico', label: 'Documento tecnico / progettuale', desc: 'Relazioni, computi, tavole, perizie, capitolati' },
+  { slug: 'generico',          label: 'Altro',                           desc: 'Qualsiasi altro tipo di documento o analisi' },
+]
 
 const SECTORS = [
   { slug: 'studio-ingegneria', label: 'Studio ingegneria / architettura' },
@@ -237,6 +246,7 @@ export function KBot() {
   const [stage, setStage] = useState<Stage>('mode')
   const [mode, setMode] = useState<KBotMode>('')
   const [selectedSector, setSelectedSector] = useState('')
+  const [contentType, setContentType] = useState('')
   const [problem, setProblem] = useState('')
   const [sessionId, setSessionId] = useState('')
   const [path, setPath] = useState<PathType>('unknown')
@@ -267,7 +277,7 @@ export function KBot() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   const canReply = (inputValue.trim().length > 0 || queuedFiles.length > 0) && !isLoading
-  const canStart = mode.length > 0 && selectedSector.length > 0 && !isLoading
+  const canStart = mode.length > 0 && selectedSector.length > 0 && (mode !== 'report' || contentType.length > 0) && !isLoading
   const teaserSignals = useMemo(() => teaser?.segnali || [], [teaser])
   const hasAdaptiveForm = adaptiveQuestions.length > 0
   const canSendAdaptive = !isLoading
@@ -379,6 +389,7 @@ export function KBot() {
     setStage('mode')
     setMode('')
     setSelectedSector('')
+    setContentType('')
     setProblem('')
     setSessionId('')
     setPath('unknown')
@@ -423,11 +434,22 @@ export function KBot() {
     const label = SECTORS.find(s => s.slug === slug)?.label || slug
     setSelectedSector(slug)
     addMessage('user', label)
-    await botSay(
-      mode === 'report'
-        ? 'Ora descrivi cosa vuoi analizzare. Se hai un file, puoi allegarlo subito: lo uso come materiale del report.'
-        : 'Ora raccontami il processo o il problema: cosa succede oggi, dove si blocca, e cosa vorresti ottenere.',
-    )
+    if (mode === 'report') {
+      await botSay('Perfetto. Ora dimmi: che tipo di materiale o analisi hai bisogno?')
+      setStage('content-type')
+    } else {
+      await botSay('Ora raccontami il processo o il problema: cosa succede oggi, dove si blocca, e cosa vorresti ottenere.')
+      setStage('problem')
+    }
+  }
+
+  async function onSelectContentType(slug: string) {
+    if (stage !== 'content-type' || isLoading) return
+
+    const label = CONTENT_TYPES.find(c => c.slug === slug)?.label || slug
+    setContentType(slug)
+    addMessage('user', label)
+    await botSay('Perfetto. Descrivi cosa vuoi analizzare, o allega direttamente il documento: lo uso come materiale del report.')
     setStage('problem')
   }
 
@@ -438,7 +460,7 @@ export function KBot() {
     setTypingLabel('K-BOT sta elaborando la tua richiesta…')
     setIsTyping(true)
     try {
-      const session = await postJson('/api/kbot/session', { sector: selectedSector, mode })
+      const session = await postJson('/api/kbot/session', { sector: selectedSector, mode, content_type: contentType || undefined })
       const sid = session.session_id
       setSessionId(sid)
       capture('kbot_started', { sector: selectedSector, mode })
@@ -789,6 +811,26 @@ export function KBot() {
                   disabled={Boolean(selectedSector && selectedSector !== sector.slug) || isLoading}
                 >
                   {sector.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {stage === 'content-type' && (
+          <div className="kbot-option-panel msg-in">
+            <p className="kbot-stage-label">Che tipo di materiale hai?</p>
+            <div className="kbot-sector-grid">
+              {CONTENT_TYPES.map(ct => (
+                <button
+                  key={ct.slug}
+                  type="button"
+                  className={`kbot-sector-card ${contentType === ct.slug ? 'active' : ''} ${contentType && contentType !== ct.slug ? 'disabled' : ''}`}
+                  onClick={() => onSelectContentType(ct.slug)}
+                  disabled={Boolean(contentType && contentType !== ct.slug) || isLoading}
+                  title={ct.desc}
+                >
+                  {ct.label}
                 </button>
               ))}
             </div>

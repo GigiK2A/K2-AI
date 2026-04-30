@@ -7,7 +7,7 @@ import {
   parseJsonBody,
   TEASER_SYSTEM_MAX_CHARS,
   resolveSectorLabel,
-  resolveSkillNames,
+  resolveSkillNamesForSession,
   sendJson,
 } from './_shared'
 import { loadSkillBundle } from '../../lib/skills/loader'
@@ -66,7 +66,7 @@ export default async function handler(req: any, res: any) {
       return sendJson(res, 200, { teaser: session.collected_data.teaser, cached: true })
     }
 
-    const skillNames = resolveSkillNames(session.sector)
+    const skillNames = resolveSkillNamesForSession(session)
     const systemPrompt = loadSkillBundle(skillNames, {
       maxTotalChars: TEASER_SYSTEM_MAX_CHARS,
       maxPerSkillChars: 24000,

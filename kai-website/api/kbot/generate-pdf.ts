@@ -9,19 +9,54 @@ import {
   parseJsonBody,
   PDF_SYSTEM_MAX_CHARS,
   resolveSectorLabel,
-  resolveSkillNames,
+  resolveSkillNamesForSession,
   sendJson,
 } from './_shared'
 import { loadSkillBundle } from '../../lib/skills/loader'
 import { getSystemEnvVar } from '../../lib/env/system'
 
+function extractJsonRobust(raw: string): any {
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/\n?```/g, '').trim()
+  try { return JSON.parse(cleaned) } catch {}
+  const start = cleaned.indexOf('{')
+  const end = cleaned.lastIndexOf('}')
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(cleaned.slice(start, end + 1)) } catch {}
+  }
+  throw new Error('No valid JSON in response')
+}
+
+function buildFileExtracts(session: any): string {
+  const uploadedFiles = Array.isArray(session?.collected_data?.uploaded_files)
+    ? session.collected_data.uploaded_files : []
+  if (uploadedFiles.length === 0) return ''
+  const parts = uploadedFiles.map((f: any) => {
+    const text = String(f.extractedText || f.extractedSummary || '').slice(0, 12000)
+    return text ? `### ${f.name}\n${text}` : `### ${f.name}\n(Contenuto non estraibile)`
+  })
+  return `\n\nMATERIALE ALLEGATO:\n${parts.join('\n\n---\n\n')}`
+}
+
 function buildFallbackAnalysis(session: any, sectorLabel: string, skillNames: string[]) {
   const teaserSignals = Array.isArray(session?.collected_data?.teaser?.segnali)
-    ? session.collected_data.teaser.segnali
-    : []
+    ? session.collected_data.teaser.segnali : []
   const uploadedFiles = Array.isArray(session?.collected_data?.uploaded_files)
-    ? session.collected_data.uploaded_files
-    : []
+    ? session.collected_data.uploaded_files : []
+  const problem = session?.collected_data?.problem_description || ''
+
+  const fileContents = uploadedFiles
+    .map((f: any) => {
+      const text = String(f.extractedText || f.extractedSummary || '').slice(0, 4000)
+      return text ? `**${f.name}**\n${text}` : null
+    })
+    .filter(Boolean)
+    .join('\n\n')
+
+  const segnaliContent = teaserSignals.length > 0
+    ? teaserSignals.map((s: any, i: number) =>
+        `**${i + 1}. ${s.titolo || 'Segnale'}** (${s.priorita || 'rilevante'})\n${s.sintesi || ''}`
+      ).join('\n\n')
+    : 'Segnali non disponibili: è necessaria una nuova elaborazione con il modello AI.'
 
   return {
     meta: {
@@ -30,56 +65,51 @@ function buildFallbackAnalysis(session: any, sectorLabel: string, skillNames: st
       data_generazione: new Date().toISOString(),
       versione_modello: 'fallback-local',
     },
-    executive_summary:
-      'Report generato in modalita fallback. Sono stati usati i dati raccolti in chat e gli allegati disponibili per produrre una diagnosi operativa preliminare.',
+    executive_summary: problem
+      ? `Diagnosi per: ${sectorLabel}. Problema dichiarato: ${problem.slice(0, 400)}`
+      : `Diagnosi per: ${sectorLabel}. Analisi basata sul materiale allegato.`,
     sezioni: [
       {
         tipo: 'analisi_verticale',
-        titolo: 'Contesto raccolto',
-        contenuto:
-          `Settore: ${sectorLabel}\n\n` +
-          `Problema dichiarato: ${session?.collected_data?.problem_description || 'Non specificato'}\n\n` +
-          `Path: ${session?.path || 'unknown'}`,
-        elementi_visivi: [
-          {
-            tipo: 'tabella',
-            titolo: 'Allegati ricevuti',
-            dati: {
-              colonne: ['File', 'Tipo', 'Dimensione'],
-              righe: uploadedFiles.map((f: any) => [f.name || '-', f.type || '-', String(f.size || '-')]),
-            },
+        titolo: 'Contesto e materiale analizzato',
+        contenuto: [
+          problem && `**Problema dichiarato:**\n${problem}`,
+          fileContents && `**Contenuto allegati:**\n${fileContents}`,
+        ].filter(Boolean).join('\n\n') || 'Nessun dato disponibile.',
+        elementi_visivi: uploadedFiles.length > 0 ? [{
+          tipo: 'tabella',
+          titolo: 'Allegati ricevuti',
+          dati: {
+            colonne: ['File', 'Tipo'],
+            righe: uploadedFiles.map((f: any) => [f.name || '-', f.type || '-']),
           },
-        ],
+        }] : [],
       },
       {
         tipo: 'benchmark',
-        titolo: 'Segnali emersi',
-        contenuto:
-          teaserSignals.length > 0
-            ? teaserSignals.map((s: any, i: number) => `${i + 1}. ${s.titolo || 'Segnale'} - ${s.sintesi || ''}`).join('\n')
-            : 'Non sono presenti segnali teaser consolidati: serve una nuova elaborazione completa.',
+        titolo: 'Segnali principali emersi',
+        contenuto: segnaliContent,
         elementi_visivi: [],
       },
       {
         tipo: 'roadmap',
-        titolo: 'Prossimi passi consigliati',
-        contenuto:
-          '1. Verifica qualita dati allegati\n2. Conferma obiettivo decisionale del report\n3. Esegui elaborazione completa con modello AI e benchmark settore',
+        titolo: 'Priorità operative',
+        contenuto: '1. Consolidare i dati chiave mancanti\n2. Identificare le cause strutturali dei segnali emersi\n3. Definire le azioni prioritarie a 90 giorni con il team K2-AI',
         elementi_visivi: [],
       },
     ],
     automazioni_consigliate: [
       {
-        area: 'Raccolta documentale',
-        descrizione: 'Pipeline automatica ingestione e normalizzazione allegati bilancio',
-        impatto_stimato: '2-4 ore/settimana risparmiate',
+        area: 'Raccolta e analisi documentale',
+        descrizione: 'Pipeline AI per ingestione, lettura e sintesi automatica dei documenti aziendali',
+        impatto_stimato: '3-5 ore/settimana risparmiate',
         complessita: 'media',
         orizzonte: '0-3 mesi',
       },
     ],
     prossimo_passo: {
-      testo: 'Conferma i dati chiave mancanti per ricevere il report completo.',
-      messaggio_precompilato: `Ciao K2-AI, vorrei completare la Diagnosi AI Operativa per il settore ${sectorLabel}.`,
+      testo: 'Contatta il team K2-AI per approfondire i segnali emersi e definire il piano operativo.',
+      messaggio_precompilato: `Ciao K2-AI, ho ricevuto la diagnosi per ${sectorLabel} e vorrei approfondire i risultati.`,
     },
   }
 }
@@ -118,7 +148,7 @@ export default async function handler(req: any, res: any) {
       return sendJson(res, 200, { pdf_url: session.pdf_url, cached: true })
     }
 
-    const skillNames = resolveSkillNames(session.sector)
+    const skillNames = resolveSkillNamesForSession(session)
     const systemPrompt = loadSkillBundle(skillNames, {
       maxTotalChars: PDF_SYSTEM_MAX_CHARS,
       maxPerSkillChars: 30000,
@@ -129,21 +159,40 @@ export default async function handler(req: any, res: any) {
       24,
       2600,
     )
+    const fileExtracts = buildFileExtracts(session)
+    const sectorLabel = resolveSectorLabel(session.sector)
 
     const userPrompt = `
 Produci l'ANALISI COMPLETA JSON per il PDF della Diagnosi AI Operativa.
 
-SETTORE: ${resolveSectorLabel(session.sector)}
-DATI RACCOLTI: ${JSON.stringify(session.collected_data || {}, null, 2)}
-CONVERSAZIONE: ${compactConversation.map((m: any) => `${m.role}: ${m.content}`).join('\n')}
+SETTORE: ${sectorLabel}
+SKILL ATTIVE: ${skillNames.join(', ')}
+PROBLEMA DICHIARATO: ${session?.collected_data?.problem_description || 'non specificato'}
+${fileExtracts}
 
-Il JSON deve seguire ESATTAMENTE lo schema definito nella skill diagnosi-ai-operativa-pmi
-(sezione "Formato ANALISI COMPLETA"). Includi almeno:
-- 3 sezioni di analisi verticale con elementi visivi (tabelle + 1 grafico barre + 1 gauge)
-- 3-4 automazioni consigliate con stime concrete
-- Executive summary dettagliato (5-6 righe)
+CONVERSAZIONE:
+${compactConversation.map((m: any) => `${m.role}: ${m.content}`).join('\n')}
 
-Produci SOLO il JSON valido. Niente testo fuori dal JSON.
+SCHEMA OBBLIGATORIO (produci SOLO questo JSON, niente altro):
+{
+  "meta": { "settore": "...", "skill_attive": [...], "data_generazione": "ISO", "versione_modello": "claude-sonnet-4-6" },
+  "executive_summary": "3-4 righe: situazione attuale, problema principale, opportunità principale.",
+  "sezioni": [
+    {
+      "tipo": "analisi_verticale",
+      "titolo": "...",
+      "contenuto": "testo dettagliato in italiano, cita numeri e dati dal materiale allegato",
+      "elementi_visivi": [{ "tipo": "tabella|grafico_barre|gauge", "titolo": "...", "dati": {} }]
+    }
+  ],
+  "automazioni_consigliate": [
+    { "area": "...", "descrizione": "...", "impatto_stimato": "X ore/settimana", "complessita": "bassa|media|alta", "orizzonte": "0-3 mesi|3-6 mesi" }
+  ],
+  "prossimo_passo": { "testo": "CTA verso call K2-AI", "messaggio_precompilato": "..." }
+}
+
+Includi almeno 3 sezioni analisi verticale basate sul materiale allegato, 3-4 automazioni con stime concrete.
+Produci SOLO il JSON valido, senza markdown attorno.
 `
 
     let analysisJson: any
@@ -156,9 +205,9 @@ Produci SOLO il JSON valido. Niente testo fuori dal JSON.
       })
 
       const rawText = response.content[0]?.type === 'text' ? response.content[0].text : '{}'
-      analysisJson = JSON.parse(rawText.replace(/```json\n?|\n?```/g, '').trim())
+      analysisJson = extractJsonRobust(rawText)
     } catch {
-      analysisJson = buildFallbackAnalysis(session, resolveSectorLabel(session.sector), skillNames)
+      analysisJson = buildFallbackAnalysis(session, sectorLabel, skillNames)
     }
 
     const pdfRuntime = (await import('../../lib/pdf/generator.js')) as any

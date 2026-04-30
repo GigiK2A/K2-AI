@@ -9,7 +9,8 @@ import {
   extractStructuredData,
   MODEL,
   parseJsonBody,
-  resolveSkillNames,
+  resolveSkillNamesForSession,
+  stripClosingQuestion,
   sendJson,
 } from './_shared'
 
@@ -122,7 +123,7 @@ export default async function handler(req: any, res: any) {
       path = detectPath(userMessage, session.collected_data?.problem_description || '')
     }
 
-    const skillNames = resolveSkillNames(session.sector)
+    const skillNames = resolveSkillNamesForSession(session)
     const systemPrompt = buildSystemPrompt(skillNames, path, stepNum, session)
 
     const modelMessages = compactMessages(modelMessagesInput).map(m => ({ role: m.role, content: m.content }))
@@ -151,7 +152,13 @@ export default async function handler(req: any, res: any) {
     // Anti-stallo PATH A: se dopo upload file il bot non pone alcuna domanda, chiudi verso teaser.
     if (path === 'A' && stepNum >= 3 && hasUploadedFiles && !hasQuestion(assistantMessage)) {
       updatedData.analysis_ready = true
-      assistantMessage = 'Ho ricevuto il bilancio e ho dati sufficienti. Ti mostro subito i segnali principali nel teaser.'
+      assistantMessage = 'Ho ricevuto il materiale e ho dati sufficienti. Ti mostro subito i segnali principali.'
+    }
+
+    // Messaggio di chiusura PATH A: niente domande finali
+    if (updatedData.analysis_ready && hasQuestion(assistantMessage)) {
+      assistantMessage = stripClosingQuestion(assistantMessage)
+      if (!assistantMessage) assistantMessage = 'Analisi completata. Procedo con i segnali principali.'
     }
 
     const updatedMessages: ChatMessage[] = [

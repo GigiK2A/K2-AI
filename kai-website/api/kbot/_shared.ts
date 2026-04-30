@@ -4,6 +4,7 @@ import { loadSkillBundle } from '../../lib/skills/loader'
 import {
   SECTOR_BUNDLES,
   SECTOR_LABELS,
+  CONTENT_TYPE_BUNDLES,
   PATH_A_KEYWORDS,
   PATH_B_KEYWORDS,
 } from '../../lib/skills/sectors.config'
@@ -238,6 +239,48 @@ export function determineNextAction(path: KbotPath, step: number, data: SessionD
 
 export function resolveSkillNames(sector: string | undefined): string[] {
   return SECTOR_BUNDLES[sector || ''] || ['diagnosi-ai-operativa-pmi']
+}
+
+/** Rileva skill corrette: content_type esplicito → auto-detect da file → sector */
+export function resolveSkillNamesForSession(session: any): string[] {
+  // 1. content_type esplicito salvato in sessione
+  const contentType = session?.collected_data?.content_type
+  if (contentType && CONTENT_TYPE_BUNDLES[contentType]?.length > 0) {
+    return CONTENT_TYPE_BUNDLES[contentType]
+  }
+
+  // 2. Auto-detect dal testo estratto dagli allegati
+  const uploadedFiles = Array.isArray(session?.collected_data?.uploaded_files)
+    ? session.collected_data.uploaded_files
+    : []
+  const allText = uploadedFiles
+    .map((f: any) => String(f.extractedText || f.extractedSummary || '').toLowerCase().slice(0, 3000))
+    .join(' ')
+
+  if (allText.length > 80) {
+    const financialHits = (allText.match(
+      /\b(ricavi|fatturato|utile|perdita|patrimonio netto|stato patrimoniale|conto economico|nota integrativa|ebitda|debiti verso|crediti verso|capitale sociale|fondo)\b/g,
+    ) || []).length
+    if (financialHits >= 3) return CONTENT_TYPE_BUNDLES['bilancio']
+
+    const legalHits = (allText.match(
+      /\b(contratto|articolo\s+\d|comma\s+\d|decreto legislativo|legge n\.|sentenza|giurisprudenza|clausola|stipulato)\b/g,
+    ) || []).length
+    if (legalHits >= 3) return CONTENT_TYPE_BUNDLES['contratto-legale']
+  }
+
+  // 3. Fallback a sector
+  return resolveSkillNames(session?.sector)
+}
+
+/** Rimuove l'ultima domanda da un messaggio di chiusura */
+export function stripClosingQuestion(text: string): string {
+  const cleaned = text.trim()
+  // Se finisce con ?, rimuovi l'ultima frase interrogativa
+  if (!cleaned.endsWith('?')) return cleaned
+  // Trova l'ultima frase che inizia dopo . ! ?
+  const stripped = cleaned.replace(/[.!?]\s+[^.!?]*\?[^?]*$/, '.').replace(/\s*[^.!?]*\?[^?]*$/, '')
+  return stripped.trim() || cleaned
 }
 
 export function resolveSectorLabel(sector: string | undefined): string {
