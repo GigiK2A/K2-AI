@@ -33,6 +33,11 @@
     }
   ],
   "rewrites": [
+    { "source": "/suite-ai/services", "destination": "/api/suite-ai/services" },
+    { "source": "/suite-ai/services/:id", "destination": "/api/suite-ai/services/:id" },
+    { "source": "/kbot/session", "destination": "/api/kbot/session" },
+    { "source": "/kbot/message", "destination": "/api/kbot/message" },
+    { "source": "/kbot/report", "destination": "/api/kbot/report" },
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
   "headers": [
