@@ -16,6 +16,7 @@ const API_PROXY_BASE = process.env.API_PROXY_BASE || 'https://api.k2-ai.it';
 const KBOT_MODEL = process.env.KBOT_MODEL || 'claude-haiku-4-5-20251001';
 const REPORT_MODEL = process.env.REPORT_MODEL || 'claude-sonnet-4-6';
 const SKILLS_DIR = path.join(__dirname, 'lib', 'skills');
+const SUITE_AI_SERVICES = require('./lib/kbot/services-data.json');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -60,6 +61,7 @@ const SECTOR_BUNDLES = {
 
 const VALID_KBOT_SECTORS = new Set(Object.keys(SECTOR_LABELS));
 const VALID_KBOT_MODES = new Set(['report', 'lead']);
+const SUITE_AI_SERVICE_BY_ID = new Map(SUITE_AI_SERVICES.map(service => [service.id, service]));
 const skillCache = new Map();
 
 function normalizeHost(req) {
@@ -126,7 +128,30 @@ function resolveKbotSectorLabel(sector) {
   return SECTOR_LABELS[sector] || 'PMI italiana';
 }
 
-function resolveKbotSkillNames(sector) {
+function normalizeServiceId(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function getSuiteAiService(serviceId) {
+  return SUITE_AI_SERVICE_BY_ID.get(normalizeServiceId(serviceId)) || null;
+}
+
+function toPublicSuiteAiService(service) {
+  if (!service) return null;
+  const { skills, ...publicService } = service;
+  return publicService;
+}
+
+function validateServiceId(serviceId) {
+  const normalized = normalizeServiceId(serviceId);
+  if (!normalized) return { ok: false, error: 'serviceId obbligatorio' };
+  if (!getSuiteAiService(normalized)) return { ok: false, error: 'serviceId non valido' };
+  return { ok: true, serviceId: normalized };
+}
+
+function resolveKbotSkillNames(sector, serviceId) {
+  const service = getSuiteAiService(serviceId);
+  if (service && Array.isArray(service.skills) && service.skills.length > 0) return service.skills;
   return SECTOR_BUNDLES[sector] || ['diagnosi-ai-operativa-pmi'];
 }
 
@@ -143,8 +168,8 @@ function readSkill(skillName, maxChars = 5200) {
   return content;
 }
 
-function loadKbotSkillBundle(sector) {
-  const chunks = resolveKbotSkillNames(sector)
+function loadKbotSkillBundle(sector, serviceId) {
+  const chunks = resolveKbotSkillNames(sector, serviceId)
     .map(skillName => {
       const content = readSkill(skillName);
       return content ? `\n\n# SKILL: ${skillName}\n${content}` : '';
@@ -166,7 +191,9 @@ function compactKbotMessages(messages, maxMessages = 14, maxChars = 1100) {
 
 function buildKbotSystemPrompt({ mode, sector, step, session }) {
   const sectorLabel = resolveKbotSectorLabel(sector);
-  const skills = loadKbotSkillBundle(sector);
+  const serviceId = session?.collected_data?.service_id;
+  const service = getSuiteAiService(serviceId);
+  const skills = loadKbotSkillBundle(sector, serviceId);
   const files = Array.isArray(session?.collected_data?.uploaded_files)
     ? session.collected_data.uploaded_files
     : [];
@@ -226,6 +253,7 @@ REGOLE OBBLIGATORIE per il messaggio finale:
   return `
 Sei K-BOT di K2-AI. Parli in italiano, tono umano, diretto, normale.
 Settore: ${sectorLabel}
+${service ? `Servizio Suite AI selezionato: ${service.id} - ${service.name}` : ''}
 Step: ${step}
 
 Regole generali:
@@ -734,12 +762,98 @@ async function handleNewsletterConfirm(req, res) {
   send(res, 302, { Location: '/newsletter-ok' }, '');
 }
 
+function serializeKbotSession(session) {
+  const collectedData = session?.collected_data && typeof session.collected_data === 'object'
+    ? session.collected_data
+    : {};
+  const extractedData = collectedData.extractedData && typeof collectedData.extractedData === 'object'
+    ? collectedData.extractedData
+    : collectedData;
+
+  return {
+    id: String(session?.id || ''),
+    serviceId: normalizeServiceId(collectedData.service_id),
+    messages: Array.isArray(session?.messages) ? session.messages : [],
+    extractedData,
+    summary: typeof collectedData.summary === 'string' ? collectedData.summary : null,
+    recommendedTier: typeof collectedData.recommendedTier === 'string' ? collectedData.recommendedTier : null,
+    timestamps: {
+      createdAt: typeof session?.created_at === 'string' ? session.created_at : null,
+      updatedAt: typeof session?.updated_at === 'string' ? session.updated_at : null,
+    },
+  };
+}
+
+function normalizeIncomingMessages(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(item => {
+      if (!item || typeof item !== 'object') return null;
+      const role = item.role === 'assistant' ? 'assistant' : item.role === 'user' ? 'user' : null;
+      const content = String(item.content || item.text || '').trim().slice(0, 6000);
+      if (!role || !content) return null;
+      return { role, content, ts: typeof item.ts === 'string' ? item.ts : new Date().toISOString() };
+    })
+    .filter(Boolean);
+}
+
+function mergeKbotMessages(storedMessages, incomingMessages) {
+  const merged = Array.isArray(storedMessages) ? [...storedMessages] : [];
+  for (const incoming of incomingMessages) {
+    const exists = merged.some(stored =>
+      stored.role === incoming.role &&
+      stored.content === incoming.content &&
+      (!stored.ts || !incoming.ts || stored.ts === incoming.ts),
+    );
+    if (!exists) merged.push(incoming);
+  }
+  return merged;
+}
+
+function appendKbotUserMessage(messages, message) {
+  const content = String(message || '').trim().slice(0, 6000);
+  if (!content) return messages;
+  const last = messages[messages.length - 1];
+  if (last?.role === 'user' && last.content === content) return messages;
+  return [...messages, { role: 'user', content, ts: new Date().toISOString() }];
+}
+
+function extractKbotSummaryBlock(text) {
+  const match = String(text || '').match(/CONSULENZA_SUMMARY_START\s*\n([\s\S]*?)\nCONSULENZA_SUMMARY_END/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1].trim());
+  } catch {
+    return null;
+  }
+}
+
+function stripKbotSummaryBlock(text) {
+  return String(text || '').replace(/\s*CONSULENZA_SUMMARY_START[\s\S]*?CONSULENZA_SUMMARY_END\s*/g, '').trim();
+}
+
+function handleSuiteAiServices(req, res, serviceId) {
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
+  if (serviceId) {
+    const service = getSuiteAiService(serviceId);
+    if (!service) return sendJson(res, 404, { error: 'Service not found' });
+    return sendJson(res, 200, { service: toPublicSuiteAiService(service) });
+  }
+  sendJson(res, 200, { services: SUITE_AI_SERVICES.map(toPublicSuiteAiService) });
+}
+
 async function handleKbotSession(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
 
   const body = await readJsonBody(req);
-  const sector = String(body.sector || '').trim();
-  const mode = String(body.mode || '').trim();
+  const explicitServiceId = body.serviceId || body.service_id;
+  const serviceValidation = explicitServiceId
+    ? validateServiceId(explicitServiceId)
+    : { ok: true, serviceId: 'P12' };
+  if (!serviceValidation.ok) return sendJson(res, 400, { error: serviceValidation.error });
+
+  const sector = String(body.sector || 'servizi-b2b').trim();
+  const mode = String(body.mode || 'report').trim();
 
   if (!VALID_KBOT_SECTORS.has(sector)) return sendJson(res, 400, { error: 'Settore non valido' });
   if (!VALID_KBOT_MODES.has(mode)) return sendJson(res, 400, { error: 'Modalità non valida' });
@@ -753,22 +867,28 @@ async function handleKbotSession(req, res) {
       status: 'active',
       step: 1,
       messages: [],
-      collected_data: { mode },
+      collected_data: {
+        mode,
+        service_id: serviceValidation.serviceId,
+        extractedData: {},
+      },
     })
-    .select('id')
+    .select('*')
     .single();
 
   if (error) return sendJson(res, 500, { error: error.message });
-  sendJson(res, 200, { session_id: data.id, mode });
+  sendJson(res, 200, { session_id: data.id, mode, session: serializeKbotSession(data) });
 }
 
 async function handleKbotChat(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
 
   const body = await readJsonBody(req);
-  const sessionId = String(body.session_id || '').trim();
+  const sessionId = String(body.session_id || body.sessionId || '').trim();
   const userMessage = String(body.message || '').trim().slice(0, 6000);
-  if (!sessionId || !userMessage) return sendJson(res, 400, { error: 'session_id e message obbligatori' });
+  if (!sessionId || (!userMessage && !Array.isArray(body.messages))) {
+    return sendJson(res, 400, { error: 'session_id e message obbligatori' });
+  }
 
   const supabase = createSupabaseAdminClient();
   const { data: session, error: sessionError } = await supabase
@@ -779,13 +899,17 @@ async function handleKbotChat(req, res) {
 
   if (sessionError || !session) return sendJson(res, 404, { error: 'Session not found' });
 
+  const requestedServiceId = body.serviceId || body.service_id || session.collected_data?.service_id;
+  const serviceValidation = validateServiceId(requestedServiceId || 'P12');
+  if (!serviceValidation.ok) return sendJson(res, 400, { error: serviceValidation.error });
+
   const mode = session.collected_data?.mode === 'lead' ? 'lead' : 'report';
   const step = Number(session.step || 1);
   const previousMessages = Array.isArray(session.messages) ? session.messages : [];
-  const persistedMessages = [
-    ...previousMessages,
-    { role: 'user', content: userMessage, ts: new Date().toISOString() },
-  ];
+  const persistedMessages = appendKbotUserMessage(
+    mergeKbotMessages(previousMessages, normalizeIncomingMessages(body.messages)),
+    userMessage,
+  );
 
   let rawAssistant = '';
   try {
@@ -793,7 +917,15 @@ async function handleKbotChat(req, res) {
     const response = await anthropic.messages.create({
       model: KBOT_MODEL,
       max_tokens: 900,
-      system: buildKbotSystemPrompt({ mode, sector: session.sector, step, session }),
+      system: buildKbotSystemPrompt({
+        mode,
+        sector: session.sector,
+        step,
+        session: {
+          ...session,
+          collected_data: { ...(session.collected_data || {}), service_id: serviceValidation.serviceId },
+        },
+      }),
       messages: compactKbotMessages(persistedMessages).map(message => ({
         role: message.role,
         content: message.content,
@@ -807,8 +939,9 @@ async function handleKbotChat(req, res) {
 
   const isReportReady = /report_ready\s*:\s*true/i.test(rawAssistant);
   const isLeadReady = /lead_ready\s*:\s*true/i.test(rawAssistant);
+  const summaryBlock = extractKbotSummaryBlock(rawAssistant);
 
-  let assistantMessage = cleanKbotAssistantMessage(rawAssistant);
+  let assistantMessage = cleanKbotAssistantMessage(stripKbotSummaryBlock(rawAssistant));
   if (isReportReady) assistantMessage = stripTrailingQuestion(assistantMessage);
 
   const leadBrief = isLeadReady ? extractLeadBrief(rawAssistant) : '';
@@ -816,8 +949,18 @@ async function handleKbotChat(req, res) {
   const collectedData = {
     ...(session.collected_data || {}),
     mode,
+    service_id: serviceValidation.serviceId,
     ...(isReportReady ? { report_ready: true } : {}),
     ...(isLeadReady ? { lead_ready: true } : {}),
+    ...(summaryBlock ? {
+      ...summaryBlock,
+      extractedData: {
+        ...((session.collected_data || {}).extractedData || {}),
+        ...summaryBlock,
+      },
+      summary: summaryBlock.summary,
+      recommendedTier: summaryBlock.recommendedTier,
+    } : {}),
   };
   const nextAction = detectKbotNextAction(mode, step, collectedData, rawAssistant);
   const updatedMessages = [
@@ -841,7 +984,8 @@ async function handleKbotChat(req, res) {
     mode,
     path: mode === 'lead' ? 'B' : 'A',
     next_action: nextAction,
-    session: { step: step + 1, mode },
+    session: { ...serializeKbotSession({ ...session, messages: updatedMessages, collected_data: collectedData, updated_at: new Date().toISOString() }), step: step + 1, mode },
+    ...(summaryBlock ? { v2_summary: summaryBlock, summary: summaryBlock } : {}),
     ...(nextAction === 'show_contact_form' ? { contact_summary: leadBrief || assistantMessage } : {}),
   });
 }
@@ -1143,7 +1287,97 @@ async function handleKbotGenerateReport(req, res) {
   sendJson(res, 200, { pdf_url: reportUrl, free: true });
 }
 
+async function handleKbotStructuredReport(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  const body = await readJsonBody(req);
+  const sessionId = String(body.session_id || body.sessionId || '').trim();
+  if (!sessionId) return sendJson(res, 400, { error: 'sessionId obbligatorio' });
+
+  const supabase = createSupabaseAdminClient();
+  const { data: session, error } = await supabase.from('kbot_sessions').select('*').eq('id', sessionId).single();
+  if (error || !session) return sendJson(res, 404, { error: 'Session not found' });
+
+  const serviceValidation = validateServiceId(body.serviceId || body.service_id || session.collected_data?.service_id || 'P12');
+  if (!serviceValidation.ok) return sendJson(res, 400, { error: serviceValidation.error });
+
+  const service = getSuiteAiService(serviceValidation.serviceId);
+  const messages = mergeKbotMessages(session.messages || [], normalizeIncomingMessages(body.messages));
+  const collectedData = {
+    ...(session.collected_data || {}),
+    service_id: serviceValidation.serviceId,
+  };
+  const compactConversation = compactKbotMessages(messages, 30, 1800);
+  const fallbackSummary = compactConversation
+    .filter(message => message.role === 'user')
+    .map(message => message.content)
+    .join('\n')
+    .slice(0, 1800) || 'Dato non fornito';
+
+  let report = {
+    title: `Report K-BOT - ${service?.name || serviceValidation.serviceId}`,
+    summary: collectedData.summary || fallbackSummary,
+    serviceName: service?.name || serviceValidation.serviceId,
+    recommendedTier: collectedData.recommendedTier || service?.recommendedTier || null,
+    extractedData: collectedData.extractedData || collectedData,
+    priorities: [],
+    risks: [],
+    nextStep: collectedData.nextStep || 'Valutare il caso con il team K2-AI e definire il perimetro operativo.',
+    conversationTurns: messages.length,
+  };
+
+  try {
+    const anthropic = createAnthropicClient();
+    const response = await anthropic.messages.create({
+      model: KBOT_MODEL,
+      max_tokens: 1600,
+      system: 'Sei K-BOT di K2-AI. Produci solo JSON valido, senza markdown.',
+      messages: [{
+        role: 'user',
+        content: `Genera un report sintetico in italiano usando TUTTA la conversazione, non solo l'ultimo messaggio.
+
+SERVIZIO: ${service?.name || serviceValidation.serviceId}
+TIER CONSIGLIATO SERVIZIO: ${service?.recommendedTier || 'n/d'}
+DATI RACCOLTI: ${JSON.stringify(collectedData, null, 2)}
+CONVERSAZIONE COMPLETA:
+${compactConversation.map(message => `${message.role}: ${message.content}`).join('\n')}
+
+Schema JSON:
+{"title":"...","summary":"...","serviceName":"...","recommendedTier":"HOST|WEB|STUDIO|null","extractedData":{},"priorities":["..."],"risks":["..."],"nextStep":"...","conversationTurns":0}`,
+      }],
+    });
+    const parsed = extractJsonFromText(response.content?.[0]?.type === 'text' ? response.content[0].text : '');
+    if (parsed) report = { ...report, ...parsed, conversationTurns: messages.length };
+  } catch (reportError) {
+    console.warn('K-BOT structured report fallback:', reportError);
+  }
+
+  const updatedCollectedData = {
+    ...collectedData,
+    report,
+    summary: report.summary,
+    recommendedTier: report.recommendedTier,
+    extractedData: report.extractedData || collectedData.extractedData || {},
+  };
+
+  const { data: updatedSession, error: updateError } = await supabase
+    .from('kbot_sessions')
+    .update({
+      status: 'report_ready',
+      messages,
+      collected_data: updatedCollectedData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+    .select('*')
+    .single();
+
+  if (updateError) return sendJson(res, 500, { error: updateError.message });
+  sendJson(res, 200, { report, session: serializeKbotSession(updatedSession) });
+}
+
 async function handleKbotReport(req, res) {
+  if (req.method === 'POST') return handleKbotStructuredReport(req, res);
   if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
   const url = new URL(req.url || '/', SITE_URL);
   const id = url.searchParams.get('id');
@@ -1277,6 +1511,27 @@ const server = http.createServer((req, res) => {
   if (rawPath.startsWith('/api/kbot/')) {
     handleKbotApi(req, res, rawPath).catch(err => {
       console.error('K-BOT API error:', err);
+      sendJson(res, 500, { error: 'Errore temporaneo K-BOT' });
+    });
+    return;
+  }
+
+  if (rawPath === '/suite-ai/services' || rawPath.startsWith('/suite-ai/services/')) {
+    const serviceId = rawPath === '/suite-ai/services'
+      ? ''
+      : decodeURIComponent(rawPath.replace('/suite-ai/services/', '').split('/')[0] || '');
+    handleSuiteAiServices(req, res, serviceId);
+    return;
+  }
+
+  const cleanKbotApiPath = {
+    '/kbot/session': '/api/kbot/session',
+    '/kbot/message': '/api/kbot/chat',
+    '/kbot/report': '/api/kbot/report',
+  }[rawPath];
+  if (cleanKbotApiPath) {
+    handleKbotApi(req, res, cleanKbotApiPath).catch(err => {
+      console.error('K-BOT clean API error:', err);
       sendJson(res, 500, { error: 'Errore temporaneo K-BOT' });
     });
     return;
