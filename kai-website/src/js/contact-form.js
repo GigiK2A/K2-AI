@@ -14,6 +14,7 @@ const PKG_CTX = (() => {
 const CONTACT_PREFILL_KEY = 'kai-contact-prefill';
 const CONTACT_PREFILL_META_KEY = 'kai-contact-prefill-meta';
 const CONTACT_PREFILL_SOURCE_KEY = 'kai-contact-prefill-source';
+const CONTACT_PREFILL_FIELDS_KEY = 'kai-contact-prefill-fields';
 
 function resolveApiBaseUrl() {
   if (API_BASE_URL.trim()) {
@@ -59,13 +60,21 @@ function setFeedback(success, error, type, form) {
 
 function loadContactPrefill() {
   try {
+    let fields = {};
+    try {
+      fields = JSON.parse(sessionStorage.getItem(CONTACT_PREFILL_FIELDS_KEY) || '{}') || {};
+    } catch {
+      fields = {};
+    }
+
     return {
       message: String(sessionStorage.getItem(CONTACT_PREFILL_KEY) || '').trim(),
       internalContext: String(sessionStorage.getItem(CONTACT_PREFILL_META_KEY) || '').trim(),
-      source: String(sessionStorage.getItem(CONTACT_PREFILL_SOURCE_KEY) || '').trim()
+      source: String(sessionStorage.getItem(CONTACT_PREFILL_SOURCE_KEY) || '').trim(),
+      fields
     };
   } catch {
-    return { message: '', internalContext: '', source: '' };
+    return { message: '', internalContext: '', source: '', fields: {} };
   }
 }
 
@@ -74,6 +83,7 @@ function clearContactPrefill() {
     sessionStorage.removeItem(CONTACT_PREFILL_KEY);
     sessionStorage.removeItem(CONTACT_PREFILL_META_KEY);
     sessionStorage.removeItem(CONTACT_PREFILL_SOURCE_KEY);
+    sessionStorage.removeItem(CONTACT_PREFILL_FIELDS_KEY);
   } catch {
     // ignore storage failures
   }
@@ -90,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const honeypot = form.querySelector('input[name="website"]');
   const messageField = form.querySelector('textarea[name="messaggio"]');
   const settoreField = form.querySelector('select[name="settore"]');
+  const companyField = form.querySelector('input[name="azienda"]');
   const prefill = loadContactPrefill();
 
   // Pre-seleziona settore da URL param (es. ?settore=finance)
@@ -98,6 +109,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (settoreField && settoreParam) {
     const opt = settoreField.querySelector(`option[value="${settoreParam}"]`);
     if (opt) settoreField.value = settoreParam;
+  } else if (settoreField && prefill.fields?.sector) {
+    const sector = String(prefill.fields.sector || '').trim();
+    const opt = settoreField.querySelector(`option[value="${sector}"]`);
+    if (opt) settoreField.value = sector;
+  }
+
+  if (companyField && !companyField.value.trim() && prefill.fields?.company_role) {
+    companyField.value = String(prefill.fields.company_role || '').trim();
   }
 
   if (messageField && !messageField.value.trim() && prefill.message) {

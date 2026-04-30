@@ -5,7 +5,14 @@ import { PaymentBox } from './PaymentBox'
 
 type PathType = 'A' | 'B' | 'unknown'
 type KBotMode = 'report' | 'lead' | ''
-type Stage = 'mode' | 'sector' | 'content-type' | 'problem' | 'router' | 'conversation'
+type Stage = 'mode' | 'problem' | 'conversation'
+type V2Summary = {
+  businessType?: string; problem?: string; goal?: string; urgency?: string
+  currentProcess?: string; dataAvailable?: string; notes?: string
+  summary?: string; recommendedServiceId?: string; recommendedServiceName?: string
+  recommendedTier?: 'HOST' | 'WEB' | 'STUDIO'; nextStep?: string
+  budget?: string; integrations?: string
+}
 type ChatMsg = { role: 'user' | 'assistant'; text: string }
 type UploadedFile = { name: string; type: string; size: number; publicUrl: string }
 type AdaptiveAnswers = Record<string, string>
@@ -20,15 +27,6 @@ const ROUTER_TEXT =
   "Quello che descrivi è un caso specifico su cui vuoi un'analisi rapida, o fa parte di un progetto più ampio che vorresti strutturare?"
 const TYPING_FRAMES = ['K-BOT sta scrivendo...', 'K-BOT sta elaborando...', 'K-BOT sta ragionando...']
 const ADAPTIVE_OTHER_LABEL = 'Altro da aggiungere (opzionale)'
-
-const CONTENT_TYPES = [
-  { slug: 'bilancio',          label: 'Bilancio / contabilità',          desc: 'Bilancio, conto economico, nota integrativa, rendiconto' },
-  { slug: 'contratto-legale',  label: 'Contratto / documento legale',    desc: 'Contratti, accordi, pareri, documenti normativi' },
-  { slug: 'processo-operativo',label: 'Processo operativo / flusso',     desc: 'Flussi interni, CRM, ERP, procedure aziendali' },
-  { slug: 'marketing-seo',     label: 'Marketing / SEO / digitale',      desc: 'Sito, campagne, analytics, posizionamento' },
-  { slug: 'documento-tecnico', label: 'Documento tecnico / progettuale', desc: 'Relazioni, computi, tavole, perizie, capitolati' },
-  { slug: 'generico',          label: 'Altro',                           desc: 'Qualsiasi altro tipo di documento o analisi' },
-]
 
 type ServicePreset = { name: string; sector: string; contentType: string }
 const SERVICE_MAP: Record<string, ServicePreset> = {
@@ -231,17 +229,19 @@ function prettifyUserText(text: string): string {
   const raw = String(text || '')
   if (!raw.trim()) return ''
 
-  if (raw.includes('Risposta:')) {
+  if (/Risposta(?: opzionale)?:/i.test(raw)) {
     const answers = raw
       .split('\n')
       .map(line => line.trim())
-      .filter(line => /^Risposta:/i.test(line))
-      .map(line => line.replace(/^Risposta:\s*/i, '').trim())
-      .filter(Boolean)
+      .filter(line => /^Risposta(?: opzionale)?:/i.test(line))
+      .map(line => line.replace(/^Risposta(?: opzionale)?:\s*/i, '').trim())
+      .filter(answer => answer && !/^saltata$/i.test(answer))
 
     if (answers.length > 0) {
       return `Risposte inviate:\n${answers.map(a => `• ${a}`).join('\n')}`
     }
+
+    return 'Risposte rapide saltate.'
   }
 
   if (raw.includes('Allegati caricati:')) {
@@ -258,6 +258,38 @@ function prettifyUserText(text: string): string {
   }
 
   return raw.trim()
+}
+
+function normalizeMsgText(text: string): string {
+  return String(text || '').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function mergeDisplayMessages(items: ChatMsg[]): ChatMsg[] {
+  const merged: ChatMsg[] = []
+
+  for (const item of items) {
+    const text = String(item.text || '').trim()
+    if (!text) continue
+
+    const last = merged[merged.length - 1]
+    const normalized = normalizeMsgText(text)
+    if (last && last.role === item.role) {
+      const lastNormalized = normalizeMsgText(last.text)
+      if (lastNormalized === normalized || lastNormalized.includes(normalized)) continue
+      if (normalized.includes(lastNormalized)) {
+        last.text = text
+        continue
+      }
+      if (item.role === 'user' && text.length < 900 && last.text.length < 1800) {
+        last.text = `${last.text}\n\n${text}`
+        continue
+      }
+    }
+
+    merged.push({ role: item.role, text })
+  }
+
+  return merged
 }
 
 const SECTOR_TO_CONTACT_SETTORE: Record<string, string> = {
@@ -303,6 +335,7 @@ export function KBot() {
   const [pdfUrl, setPdfUrl] = useState('')
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [contactSummary, setContactSummary] = useState('')
+  const [conversationSummary, setConversationSummary] = useState('')
   const [queuedFiles, setQueuedFiles] = useState<File[]>([])
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -311,6 +344,7 @@ export function KBot() {
   const [paidReturn, setPaidReturn] = useState<{ sessionId: string | null; pdfUrl: string | null } | null>(null)
   const [cancelledReturn, setCancelledReturn] = useState(false)
   const [teaserLoading, setTeaserLoading] = useState(false)
+  const [v2Summary, setV2Summary] = useState<V2Summary | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const chatStreamRef = useRef<HTMLDivElement | null>(null)
@@ -318,7 +352,7 @@ export function KBot() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   const canReply = (inputValue.trim().length > 0 || queuedFiles.length > 0) && !isLoading
-  const canStart = mode.length > 0 && selectedSector.length > 0 && (mode !== 'report' || contentType.length > 0) && !isLoading
+  const canStart = mode.length > 0 && !isLoading
   const teaserSignals = useMemo(() => teaser?.segnali || [], [teaser])
   const hasAdaptiveForm = adaptiveQuestions.length > 0
   const canSendAdaptive = !isLoading
@@ -389,7 +423,33 @@ export function KBot() {
 
   function addMessage(role: 'user' | 'assistant', text: string) {
     const formatted = role === 'assistant' ? prettifyAssistantText(text) : prettifyUserText(text)
-    setMessages(prev => [...prev, { role, text: formatted }])
+    if (!formatted) return
+    setMessages(prev => mergeDisplayMessages([...prev, { role, text: formatted }]))
+  }
+
+  function syncConversationState(data: any) {
+    const nextSummary =
+      data?.conversation_summary ||
+      data?.session?.extractedData?.conversationSummary ||
+      data?.session?.extractedData?.contactPrefillSummary ||
+      ''
+    if (nextSummary) setConversationSummary(String(nextSummary))
+
+    const nextContactSummary =
+      data?.contact_summary ||
+      data?.session?.extractedData?.contactPrefillSummary ||
+      data?.session?.extractedData?.summary ||
+      data?.v2_summary?.summary ||
+      ''
+    if (nextContactSummary && (data?.next_action === 'show_contact_form' || mode === 'lead')) {
+      setContactSummary(String(nextContactSummary))
+    }
+
+    if (data?.v2_summary) {
+      setV2Summary(data.v2_summary)
+    } else if (data?.summary && typeof data.summary === 'object') {
+      setV2Summary(data.summary)
+    }
   }
 
   function maybeShowAdaptiveForm(text: string) {
@@ -445,11 +505,13 @@ export function KBot() {
     setPdfUrl('')
     setIsGeneratingPdf(false)
     setContactSummary('')
+    setConversationSummary('')
     setQueuedFiles([])
     setIsDragOver(false)
     setIsFullscreen(false)
     setAdaptiveQuestions([])
     setAdaptiveAnswers({})
+    setV2Summary(null)
   }
 
   async function toggleFullscreen() {
@@ -461,37 +523,15 @@ export function KBot() {
 
     setMode(nextMode)
     setPath(nextMode === 'lead' ? 'B' : 'A')
+    // Default sector/contentType — v2 flow collects these naturally via conversation
+    setSelectedSector('servizi-b2b')
+    setContentType('generico')
     addMessage('user', nextMode === 'report' ? 'Voglio un report di analisi' : 'Voglio capire se parlarne con voi')
     await botSay(
       nextMode === 'report'
-        ? 'Perfetto. Lavoriamo sul report: mi serve solo il settore, poi puoi descrivere il caso o allegare il documento.'
-        : 'Perfetto. Qui mi interessa capire bene contesto, problema e urgenza, poi ti mando su contatti con un riepilogo già pulito.',
+        ? 'Perfetto. Descrivimi il caso o carica un documento: raccoglierò il contesto e produrrò il report.'
+        : 'Perfetto. Raccontami il tuo caso: capirò contesto, urgenza e fit, poi ti preparo un riepilogo ordinato per il team.',
     )
-    setStage('sector')
-  }
-
-  async function onSelectSector(slug: string) {
-    if (stage !== 'sector' || isLoading) return
-
-    const label = SECTORS.find(s => s.slug === slug)?.label || slug
-    setSelectedSector(slug)
-    addMessage('user', label)
-    if (mode === 'report') {
-      await botSay('Perfetto. Ora dimmi: che tipo di materiale o analisi hai bisogno?')
-      setStage('content-type')
-    } else {
-      await botSay('Ora raccontami il processo o il problema: cosa succede oggi, dove si blocca, e cosa vorresti ottenere.')
-      setStage('problem')
-    }
-  }
-
-  async function onSelectContentType(slug: string) {
-    if (stage !== 'content-type' || isLoading) return
-
-    const label = CONTENT_TYPES.find(c => c.slug === slug)?.label || slug
-    setContentType(slug)
-    addMessage('user', label)
-    await botSay('Perfetto. Descrivi cosa vuoi analizzare, o allega direttamente il documento: lo uso come materiale del report.')
     setStage('problem')
   }
 
@@ -515,59 +555,41 @@ export function KBot() {
       const initialProblem = problem.trim() || 'Non ho dettagli aggiuntivi al momento.'
       addMessage('user', initialProblem)
       capture('kbot_problem_submitted', { sector: selectedSector, mode, has_problem: problem.trim().length > 0 })
-      const data = await postJson('/api/kbot/chat', { session_id: sid, message: initialProblem, step: 1 })
+      const outgoingMessages = mergeDisplayMessages([...messages, { role: 'user', text: initialProblem }])
+      const data = await postJson('/api/kbot/chat', {
+        session_id: sid,
+        message: initialProblem,
+        step: 1,
+        messages: outgoingMessages.map(message => ({ role: message.role, content: message.text })),
+      })
+      syncConversationState(data)
       setIsTyping(false)
 
-      setPath(mode === 'lead' ? 'B' : 'A')
+      const startPath: PathType = mode === 'lead' ? 'B' : 'A'
+      setPath(startPath)
       setStep(data.session?.step || 2)
       setStage('conversation')
-      await botSay(data.message || 'Ok, continuiamo da qui.', 120)
 
       if (data.pdf_url && !pdfUrl) setPdfUrl(data.pdf_url)
 
-      if (mode === 'report' && path === 'A' && !teaser &&
-          (data.next_action === 'show_report' || data.next_action === 'show_teaser' || data.pdf_url)) {
-        await fetchTeaser()
+      if (data.next_action === 'show_summary' && data.v2_summary) {
+        if (mode === 'report' || startPath === 'A') {
+          await botAnalyzeThenSay(data.message || 'Analisi completata.')
+          await fetchTeaser()
+        } else {
+          await botSay(data.message || 'Ok, continuiamo da qui.', 120)
+          setContactSummary(data.contact_summary || data.v2_summary.summary || data.message || '')
+        }
+      } else {
+        await botSay(data.message || 'Ok, continuiamo da qui.', 120)
+        if (mode === 'report' && startPath === 'A' && !teaser &&
+            (data.next_action === 'show_report' || data.next_action === 'show_teaser' || data.pdf_url)) {
+          await fetchTeaser()
+        }
+        if (mode === 'lead' && data.next_action === 'show_contact_form') {
+          setContactSummary(data.contact_summary || data.message || '')
+        }
       }
-
-      if (mode === 'lead' && data.next_action === 'show_contact_form') {
-        setContactSummary(data.contact_summary || data.message || '')
-      }
-    } catch (error) {
-      setIsTyping(false)
-      addMessage('assistant', friendlyError(error))
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  async function sendRouterAnswer(answer: string) {
-    if (!sessionId || isLoading) return
-
-    const value = answer.trim()
-    if (!value) return
-
-    setIsLoading(true)
-    if (inputValue.trim()) setInputValue('')
-    setTypingLabel('K-BOT sta elaborando la tua risposta…')
-    setIsTyping(true)
-    addMessage('user', value)
-
-    try {
-      const data = await postJson('/api/kbot/chat', {
-        session_id: sessionId,
-        message: value,
-        step: 2,
-      })
-
-      const nextPath: PathType = data.path || 'unknown'
-      setPath(nextPath)
-      setStep(data.session?.step || 3)
-      capture('kbot_router_answered', { path: nextPath, sector: selectedSector, answer: value.slice(0, 40) })
-
-      setStage('conversation')
-      setIsTyping(false)
-      await botSay(data.message || 'Ok, proseguiamo.', 120)
     } catch (error) {
       setIsTyping(false)
       addMessage('assistant', friendlyError(error))
@@ -612,6 +634,7 @@ export function KBot() {
 
       const finalText = `${rawText.trim() || 'Ho allegato dei file da analizzare. Procedi con l’analisi del contenuto.'}${fileContext}`
       const userDisplayText = `${rawText.trim() || 'Ho allegato dei file da analizzare.'}${fileContext}`
+      const outgoingMessages = mergeDisplayMessages([...messages, { role: 'user', text: prettifyUserText(userDisplayText) }])
 
       addMessage('user', userDisplayText)
       setInputValue('')
@@ -625,7 +648,9 @@ export function KBot() {
         session_id: sessionId,
         message: finalText,
         step: currentStep,
+        messages: outgoingMessages.map(message => ({ role: message.role, content: message.text })),
       })
+      syncConversationState(data)
 
       const nextStep = data.session?.step || currentStep + 1
       const nextPath: PathType = data.path || path
@@ -635,8 +660,16 @@ export function KBot() {
 
       if (data.pdf_url && !pdfUrl) setPdfUrl(data.pdf_url)
 
-      if (mode === 'report' && nextPath === 'A' && !teaser &&
-          (data.next_action === 'show_teaser' || data.next_action === 'show_report' || nextStep >= 3 || data.pdf_url)) {
+      if (data.next_action === 'show_summary' && data.v2_summary) {
+        if (mode === 'report' || nextPath === 'A') {
+          await botAnalyzeThenSay(data.message || 'Analisi completata.')
+          await fetchTeaser()
+        } else {
+          await botSay(data.message || '')
+          setContactSummary(data.contact_summary || data.v2_summary.summary || data.message || '')
+        }
+      } else if (mode === 'report' && nextPath === 'A' && !teaser &&
+          (data.next_action === 'show_teaser' || data.next_action === 'show_report' || data.pdf_url)) {
         await botAnalyzeThenSay(data.message || 'Analisi completata.')
         await fetchTeaser()
       } else {
@@ -663,7 +696,7 @@ export function KBot() {
     if (!canSendAdaptive) return
     const payloadItems = adaptiveQuestions.map((q, idx) => {
       const value = (adaptiveAnswers[q] || '').trim()
-      return `${idx + 1}. ${q}\nRisposta: ${value || 'Non specificato'}`
+      return `${idx + 1}. ${q}\nRisposta opzionale: ${value || 'Saltata'}`
     })
     const payloadCore = payloadItems.join('\n\n')
     const extra = (adaptiveAnswers[ADAPTIVE_OTHER_LABEL] || '').trim()
@@ -702,14 +735,41 @@ export function KBot() {
     }
   }
 
+  function buildContactPrefill(summary?: string): string {
+    const sectorLabel = SECTORS.find(s => s.slug === selectedSector)?.label || ''
+    const serviceName = selectedService && SERVICE_MAP[selectedService] ? SERVICE_MAP[selectedService].name : ''
+    const summaryText = (summary || contactSummary || conversationSummary || v2Summary?.summary || '').trim()
+    const userContext = messages
+      .filter(message => message.role === 'user')
+      .map(message => message.text.trim())
+      .filter(Boolean)
+      .slice(-6)
+      .join('\n\n')
+
+    return [
+      serviceName ? `Servizio di partenza: ${serviceName}` : '',
+      sectorLabel ? `Settore: ${sectorLabel}` : '',
+      v2Summary?.recommendedTier ? `Tier consigliato: ${v2Summary.recommendedTier}` : '',
+      v2Summary?.recommendedServiceName ? `Servizio consigliato: ${v2Summary.recommendedServiceName}` : '',
+      summaryText ? `Sintesi K-BOT:\n${summaryText}` : '',
+      userContext ? `Contesto conversazione:\n${userContext}` : '',
+    ].filter(Boolean).join('\n\n').slice(0, 3000)
+  }
+
   function goToContacts(summary?: string) {
-    const text = (summary || contactSummary).trim()
+    const text = buildContactPrefill(summary)
     const settore = SECTOR_TO_CONTACT_SETTORE[selectedSector] || ''
     const sectorLabel = SECTORS.find(s => s.slug === selectedSector)?.label || ''
     try {
       sessionStorage.setItem('kai-contact-prefill', text)
       sessionStorage.setItem('kai-contact-prefill-meta', `Lead da K-BOT — settore: ${sectorLabel}, sessione: ${sessionId}`)
       sessionStorage.setItem('kai-contact-prefill-source', 'k-bot_lead')
+      sessionStorage.setItem('kai-contact-prefill-fields', JSON.stringify({
+        sector: settore,
+        company_role: v2Summary?.businessType || '',
+        service: selectedService || '',
+        recommendedTier: v2Summary?.recommendedTier || '',
+      }))
     } catch {}
     const params = new URLSearchParams()
     if (settore) params.set('settore', settore)
@@ -819,6 +879,42 @@ export function KBot() {
           </div>
         )}
 
+        {v2Summary && !teaser && !contactSummary && (
+          <div className="kbot-v2-summary msg-in">
+            <div className="kbot-v2-summary-header">
+              {v2Summary.businessType && (
+                <span className="kbot-v2-chip">{v2Summary.businessType}</span>
+              )}
+              {v2Summary.urgency && (
+                <span className={`kbot-v2-urgency kbot-v2-urgency-${v2Summary.urgency}`}>{v2Summary.urgency}</span>
+              )}
+              {v2Summary.recommendedTier && (
+                <span className={`kbot-v2-tier kbot-v2-tier-${v2Summary.recommendedTier.toLowerCase()}`}>
+                  {v2Summary.recommendedTier}
+                </span>
+              )}
+            </div>
+            {v2Summary.summary && (
+              <p className="kbot-v2-summary-text">{v2Summary.summary}</p>
+            )}
+            {v2Summary.recommendedServiceName && (
+              <div className="kbot-v2-service">
+                <span className="kbot-v2-service-label">Servizio consigliato</span>
+                <span className="kbot-v2-service-name">{v2Summary.recommendedServiceName}</span>
+              </div>
+            )}
+            {(v2Summary.integrations || v2Summary.budget) && (
+              <div className="kbot-v2-details">
+                {v2Summary.integrations && <span>Strumenti: {v2Summary.integrations}</span>}
+                {v2Summary.budget && <span>Budget: {v2Summary.budget}</span>}
+              </div>
+            )}
+            {v2Summary.nextStep && (
+              <p className="kbot-v2-next">{v2Summary.nextStep}</p>
+            )}
+          </div>
+        )}
+
         {stage === 'mode' && (
           <div className="kbot-option-panel msg-in">
             <p className="kbot-stage-label">Scegli cosa vuoi fare</p>
@@ -841,45 +937,6 @@ export function KBot() {
                 <span className="kbot-mode-title">Parlare con K2-AI</span>
                 <span className="kbot-mode-copy">K-BOT capisce contesto, urgenza e fit, poi ti manda su contatti con un brief ordinato.</span>
               </button>
-            </div>
-          </div>
-        )}
-
-        {stage === 'sector' && (
-          <div className="kbot-option-panel msg-in">
-            <p className="kbot-stage-label">Seleziona il tuo settore</p>
-            <div className="kbot-sector-grid">
-              {SECTORS.map(sector => (
-                <button
-                  key={sector.slug}
-                  type="button"
-                  className={`kbot-sector-card ${selectedSector === sector.slug ? 'active' : ''} ${selectedSector && selectedSector !== sector.slug ? 'disabled' : ''}`}
-                  onClick={() => onSelectSector(sector.slug)}
-                  disabled={Boolean(selectedSector && selectedSector !== sector.slug) || isLoading}
-                >
-                  {sector.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {stage === 'content-type' && (
-          <div className="kbot-option-panel msg-in">
-            <p className="kbot-stage-label">Che tipo di materiale hai?</p>
-            <div className="kbot-sector-grid">
-              {CONTENT_TYPES.map(ct => (
-                <button
-                  key={ct.slug}
-                  type="button"
-                  className={`kbot-sector-card ${contentType === ct.slug ? 'active' : ''} ${contentType && contentType !== ct.slug ? 'disabled' : ''}`}
-                  onClick={() => onSelectContentType(ct.slug)}
-                  disabled={Boolean(contentType && contentType !== ct.slug) || isLoading}
-                  title={ct.desc}
-                >
-                  {ct.label}
-                </button>
-              ))}
             </div>
           </div>
         )}
@@ -910,7 +967,7 @@ export function KBot() {
 
         {hasAdaptiveForm && !contactSummary && !teaser && (
           <div className="kbot-option-panel msg-in">
-            <p className="kbot-stage-label">Compila le risposte rapide</p>
+            <p className="kbot-stage-label">Compila le risposte rapide (tutto opzionale)</p>
             <div className="kbot-adaptive-form">
               {adaptiveQuestions.map(question => (
                 <label key={question} className="kbot-adaptive-field">
@@ -919,14 +976,14 @@ export function KBot() {
                     <textarea
                       value={adaptiveAnswers[question] || ''}
                       onChange={e => setAdaptiveAnswers(prev => ({ ...prev, [question]: e.target.value }))}
-                      placeholder="Scrivi qui la risposta…"
+                      placeholder="Risposta opzionale…"
                     />
                   ) : detectAdaptiveKind(question) === 'budget' ? (
                     <select
                       value={adaptiveAnswers[question] || ''}
                       onChange={e => setAdaptiveAnswers(prev => ({ ...prev, [question]: e.target.value }))}
                     >
-                      <option value="">Seleziona range budget…</option>
+                      <option value="">Salta o scegli un range…</option>
                       <option value="< 2.000€">{"< 2.000€"}</option>
                       <option value="2.000€ - 5.000€">{"2.000€ - 5.000€"}</option>
                       <option value="5.000€ - 10.000€">{"5.000€ - 10.000€"}</option>
@@ -937,7 +994,7 @@ export function KBot() {
                       type={detectAdaptiveKind(question) === 'email' ? 'email' : 'text'}
                       value={adaptiveAnswers[question] || ''}
                       onChange={e => setAdaptiveAnswers(prev => ({ ...prev, [question]: e.target.value }))}
-                      placeholder="Scrivi qui la risposta…"
+                      placeholder="Risposta opzionale…"
                     />
                   )}
                 </label>
@@ -947,31 +1004,11 @@ export function KBot() {
                 <textarea
                   value={adaptiveAnswers[ADAPTIVE_OTHER_LABEL] || ''}
                   onChange={e => setAdaptiveAnswers(prev => ({ ...prev, [ADAPTIVE_OTHER_LABEL]: e.target.value }))}
-                  placeholder="Indicazioni extra utili per adattare meglio la risposta…"
+                  placeholder="Indicazioni extra opzionali…"
                 />
               </label>
               <button type="button" className="kbot-choice-chip" onClick={submitAdaptiveForm} disabled={!canSendAdaptive}>
-                Invia risposte
-              </button>
-            </div>
-          </div>
-        )}
-
-        {stage === 'router' && (
-          <div className="kbot-option-panel msg-in">
-            <div className="kbot-choice-row">
-              <button type="button" className="kbot-choice-chip" onClick={() => sendRouterAnswer('Caso specifico')} disabled={isLoading}>Caso specifico</button>
-              <button type="button" className="kbot-choice-chip" onClick={() => sendRouterAnswer('Progetto più ampio')} disabled={isLoading}>Progetto più ampio</button>
-              <button
-                type="button"
-                className="kbot-choice-chip"
-                onClick={() => {
-                  setInputValue('Altro: ')
-                  inputRef.current?.focus()
-                }}
-                disabled={isLoading}
-              >
-                Altro
+                Invia / salta
               </button>
             </div>
           </div>
@@ -1027,7 +1064,7 @@ export function KBot() {
         </div>
       )}
 
-      {(stage === 'router' || stage === 'conversation') && !hasAdaptiveForm && !contactSummary && !teaser && (
+      {stage === 'conversation' && !hasAdaptiveForm && !contactSummary && !teaser && (
         <div
           className={`kbot-input-row ${isDragOver ? 'drag-over' : ''}`}
           onDragOver={event => {
@@ -1049,25 +1086,15 @@ export function KBot() {
             onKeyDown={e => {
               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault()
-                if (stage === 'router' && inputValue.trim()) sendRouterAnswer(inputValue)
-                else if (stage === 'conversation' && canReply) sendConversationMessage()
+                if (canReply) sendConversationMessage()
               }
             }}
-            placeholder={
-              stage === 'router'
-                ? 'Oppure rispondi a parole tue…'
-                : 'Scrivi qui la tua risposta…'
-            }
+            placeholder="Scrivi qui la tua risposta…"
           />
 
           <div className="kbot-input-actions">
             <button type="button" className="kbot-attach-btn" onClick={() => fileInputRef.current?.click()}>Allega file</button>
-
-            {stage === 'router' ? (
-              <button type="button" onClick={() => sendRouterAnswer(inputValue)} disabled={!inputValue.trim() || isLoading}>Invia</button>
-            ) : (
-              <button type="button" onClick={sendConversationMessage} disabled={!canReply}>Invia</button>
-            )}
+            <button type="button" onClick={sendConversationMessage} disabled={!canReply}>Invia</button>
           </div>
           <div className="kbot-drop-hint">Trascina qui PDF, bilanci o documenti da analizzare (max 5 file)</div>
         </div>

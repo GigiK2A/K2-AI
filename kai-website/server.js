@@ -189,11 +189,89 @@ function compactKbotMessages(messages, maxMessages = 14, maxChars = 1100) {
     }));
 }
 
+function detectKbotIntent(text, mode = 'report') {
+  const value = String(text || '').toLowerCase();
+  if (!value.trim()) return 'empty';
+  if (/[?？]/.test(value) || /^(come|cosa|quanto|quando|dove|perché|perche|quale|puoi|sapresti|mi spieghi)\b/.test(value)) {
+    return 'question';
+  }
+  if (/\b(preventivo|contatto|call|chiamata|parlare|sentirci|demo|consulenza)\b/.test(value)) return 'contact_request';
+  if (/\b(report|pdf|analisi|diagnosi|valutazione|audit|check)\b/.test(value)) return 'report_request';
+  if (/\b(allego|file|documento|pdf|excel|csv|bilancio|contratto)\b/.test(value)) return 'document_context';
+  if (mode === 'lead') return 'lead_context';
+  return 'case_context';
+}
+
+function buildDynamicConversationSummary(messages, collectedData = {}, latestIntent = '') {
+  const existing = String(collectedData.conversationSummary || collectedData.summary || '').trim();
+  const allMessages = Array.isArray(messages) ? messages : [];
+  const userMessages = allMessages.filter(message => message.role === 'user').map(message => String(message.content || '').trim()).filter(Boolean);
+  const assistantMessages = allMessages.filter(message => message.role === 'assistant').map(message => String(message.content || '').trim()).filter(Boolean);
+  const latestUser = userMessages[userMessages.length - 1] || '';
+  const firstUser = userMessages[0] || '';
+  const serviceId = collectedData.service_id ? `Servizio: ${collectedData.service_id}. ` : '';
+  const uploadedFiles = Array.isArray(collectedData.uploaded_files)
+    ? collectedData.uploaded_files.map(file => file.name).filter(Boolean)
+    : [];
+
+  const facts = [
+    serviceId && serviceId.trim(),
+    collectedData.businessType ? `Tipo attività: ${collectedData.businessType}.` : '',
+    collectedData.problem ? `Problema: ${collectedData.problem}.` : '',
+    collectedData.currentProcess ? `Processo attuale: ${collectedData.currentProcess}.` : '',
+    collectedData.goal ? `Obiettivo: ${collectedData.goal}.` : '',
+    collectedData.urgency ? `Urgenza: ${collectedData.urgency}.` : '',
+    collectedData.integrations ? `Strumenti/integrazioni: ${collectedData.integrations}.` : '',
+    uploadedFiles.length ? `Allegati: ${uploadedFiles.join(', ')}.` : '',
+    firstUser ? `Contesto iniziale: ${firstUser}` : '',
+    latestUser && latestUser !== firstUser ? `Ultimo contributo utente: ${latestUser}` : '',
+    latestIntent ? `Intent corrente: ${latestIntent}.` : '',
+    assistantMessages.length ? `Ultima risposta K-BOT: ${assistantMessages[assistantMessages.length - 1]}` : '',
+  ].filter(Boolean);
+
+  const merged = [existing, ...facts].filter(Boolean).join('\n');
+  const lines = merged
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+  const unique = [];
+  const seen = new Set();
+  for (const line of lines) {
+    const key = line.toLowerCase().replace(/\s+/g, ' ').slice(0, 180);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(line);
+  }
+
+  return unique.join('\n').slice(-2600);
+}
+
+function buildContactPrefillSummary(session, collectedData) {
+  const summary = String(collectedData.conversationSummary || collectedData.summary || '').trim();
+  const service = getSuiteAiService(collectedData.service_id);
+  const messages = Array.isArray(session?.messages) ? session.messages : [];
+  const userContext = messages
+    .filter(message => message.role === 'user')
+    .map(message => String(message.content || '').trim())
+    .filter(Boolean)
+    .slice(-6)
+    .join('\n\n');
+
+  return [
+    service ? `Servizio di partenza: ${service.name} (${service.id})` : '',
+    collectedData.recommendedTier ? `Tier consigliato: ${collectedData.recommendedTier}` : '',
+    summary ? `Sintesi K-BOT:\n${summary}` : '',
+    userContext ? `Contesto conversazione:\n${userContext}` : '',
+  ].filter(Boolean).join('\n\n').slice(0, 3000);
+}
+
 function buildKbotSystemPrompt({ mode, sector, step, session }) {
   const sectorLabel = resolveKbotSectorLabel(sector);
   const serviceId = session?.collected_data?.service_id;
   const service = getSuiteAiService(serviceId);
   const skills = loadKbotSkillBundle(sector, serviceId);
+  const conversationSummary = String(session?.collected_data?.conversationSummary || '').trim();
+  const currentIntent = String(session?.collected_data?.currentIntent || '').trim();
   const files = Array.isArray(session?.collected_data?.uploaded_files)
     ? session.collected_data.uploaded_files
     : [];
@@ -252,12 +330,21 @@ REGOLE OBBLIGATORIE per il messaggio finale:
 
   return `
 Sei K-BOT di K2-AI. Parli in italiano, tono umano, diretto, normale.
+Sei un agente operativo: devi capire l'intento, rispondere alle domande dell'utente quando le fa, mantenere memoria del caso e decidere il prossimo passo sensato. Non sei un modulo rigido.
 Settore: ${sectorLabel}
 ${service ? `Servizio Suite AI selezionato: ${service.id} - ${service.name}` : ''}
 Step: ${step}
+Intent corrente rilevato: ${currentIntent || 'n/d'}
+
+MEMORIA DINAMICA DELLA CONVERSAZIONE:
+${conversationSummary || 'Nessun summary ancora disponibile.'}
 
 Regole generali:
 - Una domanda alla volta.
+- Tutte le risposte dell'utente sono opzionali: se manca un dato, non bloccare la conversazione.
+- Se l'utente fa una domanda, rispondi prima in modo utile e poi, solo se serve, fai una singola domanda successiva.
+- Evita duplicazioni: non ripetere domande già coperte nella memoria dinamica.
+- Usa tutta la conversazione e la memoria dinamica, non solo l'ultimo messaggio.
 - Massimo 3 frasi per turno, salvo quando stai chiudendo.
 - Niente markdown pesante, tabelle o JSON in chat.
 - Non inventare numeri o conclusioni da documenti non leggibili.
@@ -810,6 +897,33 @@ function mergeKbotMessages(storedMessages, incomingMessages) {
   return merged;
 }
 
+function coalesceKbotMessages(messages) {
+  const out = [];
+  for (const message of Array.isArray(messages) ? messages : []) {
+    const role = message.role === 'assistant' ? 'assistant' : 'user';
+    const content = String(message.content || '').trim();
+    if (!content) continue;
+    const last = out[out.length - 1];
+    const normalized = content.toLowerCase().replace(/\s+/g, ' ');
+    if (last && last.role === role) {
+      const lastNormalized = String(last.content || '').toLowerCase().replace(/\s+/g, ' ');
+      if (lastNormalized === normalized || lastNormalized.includes(normalized)) continue;
+      if (normalized.includes(lastNormalized)) {
+        last.content = content;
+        last.ts = message.ts || last.ts;
+        continue;
+      }
+      if (role === 'user' && content.length < 900 && String(last.content || '').length < 1800) {
+        last.content = `${last.content}\n\n${content}`;
+        last.ts = message.ts || last.ts;
+        continue;
+      }
+    }
+    out.push({ ...message, role, content });
+  }
+  return out;
+}
+
 function appendKbotUserMessage(messages, message) {
   const content = String(message || '').trim().slice(0, 6000);
   if (!content) return messages;
@@ -906,10 +1020,16 @@ async function handleKbotChat(req, res) {
   const mode = session.collected_data?.mode === 'lead' ? 'lead' : 'report';
   const step = Number(session.step || 1);
   const previousMessages = Array.isArray(session.messages) ? session.messages : [];
-  const persistedMessages = appendKbotUserMessage(
+  const persistedMessages = coalesceKbotMessages(appendKbotUserMessage(
     mergeKbotMessages(previousMessages, normalizeIncomingMessages(body.messages)),
     userMessage,
-  );
+  ));
+  const currentIntent = detectKbotIntent(userMessage || persistedMessages[persistedMessages.length - 1]?.content || '', mode);
+  const preAssistantSummary = buildDynamicConversationSummary(persistedMessages, {
+    ...(session.collected_data || {}),
+    service_id: serviceValidation.serviceId,
+    currentIntent,
+  }, currentIntent);
 
   let rawAssistant = '';
   try {
@@ -923,7 +1043,12 @@ async function handleKbotChat(req, res) {
         step,
         session: {
           ...session,
-          collected_data: { ...(session.collected_data || {}), service_id: serviceValidation.serviceId },
+          collected_data: {
+            ...(session.collected_data || {}),
+            service_id: serviceValidation.serviceId,
+            currentIntent,
+            conversationSummary: preAssistantSummary,
+          },
         },
       }),
       messages: compactKbotMessages(persistedMessages).map(message => ({
@@ -950,6 +1075,7 @@ async function handleKbotChat(req, res) {
     ...(session.collected_data || {}),
     mode,
     service_id: serviceValidation.serviceId,
+    currentIntent,
     ...(isReportReady ? { report_ready: true } : {}),
     ...(isLeadReady ? { lead_ready: true } : {}),
     ...(summaryBlock ? {
@@ -967,6 +1093,8 @@ async function handleKbotChat(req, res) {
     ...persistedMessages,
     { role: 'assistant', content: assistantMessage, ts: new Date().toISOString() },
   ];
+  collectedData.conversationSummary = buildDynamicConversationSummary(updatedMessages, collectedData, currentIntent);
+  collectedData.contactPrefillSummary = buildContactPrefillSummary({ ...session, messages: updatedMessages }, collectedData);
 
   await supabase
     .from('kbot_sessions')
@@ -985,8 +1113,12 @@ async function handleKbotChat(req, res) {
     path: mode === 'lead' ? 'B' : 'A',
     next_action: nextAction,
     session: { ...serializeKbotSession({ ...session, messages: updatedMessages, collected_data: collectedData, updated_at: new Date().toISOString() }), step: step + 1, mode },
+    conversation_summary: collectedData.conversationSummary,
+    contact_summary: nextAction === 'show_contact_form'
+      ? (collectedData.contactPrefillSummary || leadBrief || assistantMessage)
+      : collectedData.contactPrefillSummary,
+    intent: currentIntent,
     ...(summaryBlock ? { v2_summary: summaryBlock, summary: summaryBlock } : {}),
-    ...(nextAction === 'show_contact_form' ? { contact_summary: leadBrief || assistantMessage } : {}),
   });
 }
 
@@ -1302,11 +1434,12 @@ async function handleKbotStructuredReport(req, res) {
   if (!serviceValidation.ok) return sendJson(res, 400, { error: serviceValidation.error });
 
   const service = getSuiteAiService(serviceValidation.serviceId);
-  const messages = mergeKbotMessages(session.messages || [], normalizeIncomingMessages(body.messages));
+  const messages = coalesceKbotMessages(mergeKbotMessages(session.messages || [], normalizeIncomingMessages(body.messages)));
   const collectedData = {
     ...(session.collected_data || {}),
     service_id: serviceValidation.serviceId,
   };
+  collectedData.conversationSummary = buildDynamicConversationSummary(messages, collectedData, 'report_request');
   const compactConversation = compactKbotMessages(messages, 30, 1800);
   const fallbackSummary = compactConversation
     .filter(message => message.role === 'user')
@@ -1316,7 +1449,7 @@ async function handleKbotStructuredReport(req, res) {
 
   let report = {
     title: `Report K-BOT - ${service?.name || serviceValidation.serviceId}`,
-    summary: collectedData.summary || fallbackSummary,
+    summary: collectedData.conversationSummary || collectedData.summary || fallbackSummary,
     serviceName: service?.name || serviceValidation.serviceId,
     recommendedTier: collectedData.recommendedTier || service?.recommendedTier || null,
     extractedData: collectedData.extractedData || collectedData,
@@ -1358,6 +1491,12 @@ Schema JSON:
     summary: report.summary,
     recommendedTier: report.recommendedTier,
     extractedData: report.extractedData || collectedData.extractedData || {},
+    contactPrefillSummary: buildContactPrefillSummary({ ...session, messages }, {
+      ...collectedData,
+      summary: report.summary,
+      recommendedTier: report.recommendedTier,
+      extractedData: report.extractedData || collectedData.extractedData || {},
+    }),
   };
 
   const { data: updatedSession, error: updateError } = await supabase
