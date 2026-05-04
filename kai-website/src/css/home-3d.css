@@ -392,11 +392,6 @@
 
 /* ── Contesto section ────────────────────────────────────────────────────── */
 
-.home-page .home-context-grid {
-  gap: 80px;
-  margin-bottom: 80px;
-}
-
 .home-page .statement {
   font-size: clamp(2.2rem, 4.5vw, 4rem);
   font-weight: 700;
@@ -1227,18 +1222,26 @@ body.home-page[data-home-chapter="cta"] {
 
 .home-page .context-chapter {
   padding-top: clamp(90px, 12vw, 180px);
-  max-width: min(1320px, calc(100% - var(--pad-x) * 2));
-  margin-left: max(var(--pad-x), 7vw);
-  margin-right: auto;
+  max-width: min(1500px, calc(100% - var(--pad-x) * 2));
+  margin-right: max(var(--pad-x), 5vw);
+  margin-left: auto;
   --title-occlusion: 0;
 }
 
-.home-page .home-context-grid {
-  align-items: end;
+.home-page .home-context-intro {
+  max-width: 720px;
+  margin-bottom: 32px;
+}
+
+.home-page .home-context-support {
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: clamp(70px, 9vw, 120px);
 }
 
 .home-page .context-signal-panel {
-  margin-top: 36px;
   display: grid;
   grid-template-columns: max-content 1fr max-content;
   align-items: center;
@@ -1373,7 +1376,7 @@ body.home-page[data-home-chapter="cta"] {
   z-index: 4;
 }
 
-.home-page .home-context-grid > .reveal:first-child,
+.home-page .home-context-intro,
 .home-page .statement-wrap-sm,
 .home-page .statement-wrap-md {
   position: relative;
@@ -1708,7 +1711,7 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
   }
 
   .home-page .evidence-wall .stats-3d-grid,
-  .home-page .context-chapter .home-context-grid,
+  .home-page .context-chapter .home-context-support,
   .home-page .method-architecture .statement-wrap-sm,
   .home-page .principles-manifesto .statement-wrap-md,
   .home-page .diagnostic-chamber .diagnosi-grid {
