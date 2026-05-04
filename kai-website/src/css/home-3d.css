@@ -1227,6 +1227,7 @@ body.home-page[data-home-chapter="cta"] {
   max-width: min(1320px, calc(100% - var(--pad-x) * 2));
   margin-left: max(var(--pad-x), 7vw);
   margin-right: auto;
+  --title-occlusion: 0;
 }
 
 .home-page .home-context-grid {
@@ -1265,6 +1266,7 @@ body.home-page[data-home-chapter="cta"] {
   gap: 1px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.07);
+  z-index: 4;
 }
 
 .home-page .transformation-sequence::before {
@@ -1304,10 +1306,12 @@ body.home-page[data-home-chapter="cta"] {
   max-width: min(1500px, calc(100% - var(--pad-x) * 2));
   margin-right: max(var(--pad-x), 5vw);
   margin-left: auto;
+  --title-occlusion: 0;
 }
 
 .home-page .method-grid {
   position: relative;
+  z-index: 4;
 }
 
 .home-page .method-grid::before {
@@ -1353,11 +1357,39 @@ body.home-page[data-home-chapter="cta"] {
 .home-page .principles-manifesto {
   padding-top: clamp(90px, 12vw, 180px);
   max-width: min(1180px, calc(100% - var(--pad-x) * 2));
+  --title-occlusion: 0;
 }
 
 .home-page .manifesto-list .step {
   min-height: 190px;
   align-items: center;
+}
+
+.home-page .manifesto-list {
+  position: relative;
+  z-index: 4;
+}
+
+.home-page .home-context-grid > .reveal:first-child,
+.home-page .statement-wrap-sm,
+.home-page .statement-wrap-md {
+  position: relative;
+  z-index: 1;
+}
+
+.home-page .context-chapter .statement,
+.home-page .method-architecture .statement,
+.home-page .principles-manifesto .statement {
+  opacity: calc(1 - var(--title-occlusion, 0) * 0.9);
+  filter: blur(calc(var(--title-occlusion, 0) * 1.8px)) brightness(calc(1 - var(--title-occlusion, 0) * 0.62));
+  transition: opacity 180ms linear, filter 180ms linear;
+}
+
+.home-page .context-chapter .statement em,
+.home-page .method-architecture .statement em,
+.home-page .principles-manifesto .statement em {
+  opacity: calc(1 - var(--title-occlusion, 0) * 0.82);
+  transition: opacity 180ms linear;
 }
 
 .home-page .manifesto-list .step-content h3 {

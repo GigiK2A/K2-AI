@@ -5,7 +5,7 @@ import { hasFinePointer, prefersReducedMotion, supportsIntersectionObserver } fr
 
 const REDUCED_MOTION = prefersReducedMotion()
 const HAS_FINE_POINTER = hasFinePointer()
-const IS_MOBILE = window.innerWidth < 768 || !HAS_FINE_POINTER
+const IS_SMALL_VIEWPORT = window.innerWidth < 768
 const CHAPTER_LABELS = {
   hero: '00 / ingresso nel sistema',
   evidence: '01 / proof operativo',
@@ -29,7 +29,7 @@ const STAGE_COPY = {
 
 // ── Magnetic cursor dot ───────────────────────────────────────────────────────
 function initCursorDot() {
-  if (REDUCED_MOTION || IS_MOBILE || !HAS_FINE_POINTER) return
+  if (REDUCED_MOTION || IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
 
   const dot = document.createElement('div')
   dot.id = 'cursor-dot'
@@ -120,7 +120,7 @@ function initCursorDot() {
 
 // ── 3D card tilt ──────────────────────────────────────────────────────────────
 function initCardTilt() {
-  if (REDUCED_MOTION || IS_MOBILE || !HAS_FINE_POINTER) return
+  if (REDUCED_MOTION || IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
 
   const cards = document.querySelectorAll('.home-page .card, .home-page .stat-3d, .home-page .problema-item, .home-page .home-final-cta-inner')
 
@@ -203,7 +203,7 @@ function initStatCounters() {
 
 // ── Hero title character split animation ─────────────────────────────────────
 function initHeroTextAnim() {
-  if (REDUCED_MOTION || IS_MOBILE) return
+  if (REDUCED_MOTION) return
   const title = document.querySelector('.hero-3d-title')
   if (!title) return
 
@@ -239,7 +239,7 @@ function initHeroTextAnim() {
 
 // ── ReactBits-inspired spotlight surfaces ────────────────────────────────────
 function initSpotlightSurfaces() {
-  if (REDUCED_MOTION || IS_MOBILE || !HAS_FINE_POINTER) return
+  if (REDUCED_MOTION || IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
 
   document.querySelectorAll('.home-page .spotlight-surface').forEach(surface => {
     let rafId = null
@@ -257,7 +257,7 @@ function initSpotlightSurfaces() {
 
 // ── Gentle magnetic CTA behaviour ────────────────────────────────────────────
 function initMagneticActions() {
-  if (REDUCED_MOTION || IS_MOBILE || !HAS_FINE_POINTER) return
+  if (REDUCED_MOTION || IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
 
   document.querySelectorAll('.home-page .btn, .home-page .hero-3d-link, .home-page .nav-cta').forEach(el => {
     el.addEventListener('pointermove', e => {
@@ -277,7 +277,7 @@ function initMagneticActions() {
 
 // ── Scroll state machine: active chapter, lit surfaces, method progress ───────
 function initHomeChapterState() {
-  if (IS_MOBILE) return
+  if (IS_SMALL_VIEWPORT) return
 
   const chapters = [...document.querySelectorAll('.home-page [data-home-chapter]')]
   if (!chapters.length) return
@@ -367,6 +367,26 @@ function initHomeChapterState() {
       surface.classList.toggle('is-lit', lit)
     })
 
+    const titleOcclusionPairs = [
+      ['.home-page .context-chapter', '.home-page .context-chapter .statement', '.home-page .transformation-sequence'],
+      ['.home-page .method-architecture', '.home-page .method-architecture .statement', '.home-page .method-grid'],
+      ['.home-page .principles-manifesto', '.home-page .principles-manifesto .statement', '.home-page .manifesto-list'],
+    ]
+
+    titleOcclusionPairs.forEach(([sectionSel, titleSel, blockerSel]) => {
+      const section = document.querySelector(sectionSel)
+      const title = document.querySelector(titleSel)
+      const blocker = document.querySelector(blockerSel)
+      if (!section || !title || !blocker) return
+
+      const titleRect = title.getBoundingClientRect()
+      const blockerRect = blocker.getBoundingClientRect()
+      const overlapStart = titleRect.top + titleRect.height * 0.22
+      const overlapRange = Math.max(titleRect.height * 0.72, 1)
+      const occlusion = clamp((overlapStart - blockerRect.top) / overlapRange, 0, 1)
+      section.style.setProperty('--title-occlusion', occlusion.toFixed(3))
+    })
+
     document.querySelectorAll('.home-page .reveal, .home-page .card, .home-page .step, .home-page .problema-item, .home-page .diagnosi-point').forEach((el, index) => {
       const rect = el.getBoundingClientRect()
       const center = rect.top + rect.height / 2
@@ -409,7 +429,7 @@ function initStepGlow() {
 
 // ── Scroll-linked opacity on hero elements ────────────────────────────────────
 function initHeroParallax() {
-  if (REDUCED_MOTION || IS_MOBILE) return
+  if (REDUCED_MOTION || IS_SMALL_VIEWPORT) return
   const inner = document.querySelector('.hero-3d-inner')
   if (!inner) return
 
@@ -446,7 +466,7 @@ if (document.readyState === 'loading') {
 
 // ── Chapter disappearance choreography ───────────────────────────────────────
 function initChapterChoreography() {
-  if (REDUCED_MOTION || IS_MOBILE) return
+  if (REDUCED_MOTION || IS_SMALL_VIEWPORT) return
 
   const sections = [...document.querySelectorAll('.home-page section')]
     .filter(section => !section.classList.contains('hero-3d-section'))
