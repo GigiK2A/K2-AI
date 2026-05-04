@@ -16,6 +16,7 @@ function openMenu() {
   hamburger?.classList.add('open');
   overlay?.classList.add('open');
   hamburger?.setAttribute('aria-expanded', 'true');
+  document.documentElement.classList.add('nav-open');
   document.body.classList.add('nav-open');
 }
 
@@ -23,6 +24,7 @@ function closeMenu() {
   hamburger?.classList.remove('open');
   overlay?.classList.remove('open');
   hamburger?.setAttribute('aria-expanded', 'false');
+  document.documentElement.classList.remove('nav-open');
   document.body.classList.remove('nav-open');
 }
 

@@ -1,6 +1,8 @@
 :root {
   --nav-row-height: 64px;
   --nav-safe-height: calc(var(--nav-row-height) + env(safe-area-inset-top));
+  --nav-top-overscan: 0px;
+  --nav-bottom-overscan: 0px;
 }
 
 /* ─── Navbar ─── */
@@ -18,6 +20,21 @@
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   transition: border-color 0.3s;
+  overflow: visible;
+}
+
+#navbar::before {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--nav-top-overscan));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  backdrop-filter: inherit;
+  -webkit-backdrop-filter: inherit;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .nav-inner {
@@ -147,6 +164,20 @@
   opacity: 0;
   transform: translateY(-12px);
   transition: opacity 0.3s var(--ease-cinema), transform 0.3s var(--ease-cinema);
+  overscroll-behavior: none;
+  isolation: isolate;
+}
+
+.nav-overlay::before {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--nav-top-overscan));
+  right: 0;
+  bottom: calc(-1 * var(--nav-bottom-overscan));
+  left: 0;
+  background: var(--bg);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .nav-overlay.open {
@@ -187,11 +218,22 @@
 body.nav-open {
   overflow: hidden;
   touch-action: none;
+  overscroll-behavior: none;
+}
+
+html.nav-open {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* ─── Responsive ─── */
 
 @media (max-width: 768px) {
+  :root {
+    --nav-top-overscan: clamp(22px, 6vh, 56px);
+    --nav-bottom-overscan: clamp(18px, 5vh, 40px);
+  }
+
   .nav-inner {
     gap: 16px;
   }
@@ -213,5 +255,20 @@ body.nav-open {
     width: 40px;
     height: 40px;
     flex-shrink: 0;
+  }
+
+  .nav-overlay {
+    inset: calc(-1 * var(--nav-top-overscan)) 0 calc(-1 * var(--nav-bottom-overscan)) 0;
+    min-height: calc(100dvh + var(--nav-top-overscan) + var(--nav-bottom-overscan));
+    padding-top: calc(var(--nav-safe-height) + var(--nav-top-overscan) + 16px);
+    padding-bottom: calc(env(safe-area-inset-bottom) + var(--nav-bottom-overscan) + 24px);
+  }
+
+  .nav-overlay-close {
+    top: calc(env(safe-area-inset-top) + var(--nav-top-overscan) + 2px);
+  }
+
+  body.nav-open #navbar {
+    border-bottom-color: transparent;
   }
 }

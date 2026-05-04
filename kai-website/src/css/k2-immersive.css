@@ -711,7 +711,7 @@ footer {
   body.analysis-page .page-header,
   body.contact-page .page-header {
     min-height: auto;
-    padding-top: calc(var(--nav-safe-height) + 20px);
+    padding-top: calc(var(--nav-safe-height) + var(--nav-top-overscan) + 12px);
   }
 
   .display-xl {
@@ -785,6 +785,16 @@ body.contact-page .page-title-contact {
   body.contact-page .display-xl {
     font-size: clamp(3.1rem, 15vw, 5.2rem);
     line-height: 0.95;
+  }
+
+  body.contact-page .display-xl {
+    font-size: clamp(2.8rem, 12.5vw, 4.6rem);
+    line-height: 0.98;
+  }
+
+  body.contact-page .page-title-contact {
+    max-width: 100%;
+    margin-bottom: 24px;
   }
 }
 
