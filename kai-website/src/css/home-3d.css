@@ -405,6 +405,8 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  opacity: 0.68;
+  filter: brightness(0.62);
 }
 
 .home-page .statement em {
@@ -412,6 +414,7 @@
   background: linear-gradient(145deg, rgba(180, 210, 255, 0.9) 0%, rgba(130, 180, 255, 0.65) 100%);
   -webkit-background-clip: text;
   background-clip: text;
+  opacity: 0.62;
 }
 
 /* Scenario items as glass panels */
@@ -1380,15 +1383,15 @@ body.home-page[data-home-chapter="cta"] {
 .home-page .context-chapter .statement,
 .home-page .method-architecture .statement,
 .home-page .principles-manifesto .statement {
-  opacity: calc(1 - var(--title-occlusion, 0) * 0.9);
-  filter: blur(calc(var(--title-occlusion, 0) * 1.8px)) brightness(calc(1 - var(--title-occlusion, 0) * 0.62));
+  opacity: calc(0.68 - var(--title-occlusion, 0) * 0.5);
+  filter: blur(calc(var(--title-occlusion, 0) * 2.2px)) brightness(calc(0.62 - var(--title-occlusion, 0) * 0.42));
   transition: opacity 180ms linear, filter 180ms linear;
 }
 
 .home-page .context-chapter .statement em,
 .home-page .method-architecture .statement em,
 .home-page .principles-manifesto .statement em {
-  opacity: calc(1 - var(--title-occlusion, 0) * 0.82);
+  opacity: calc(0.62 - var(--title-occlusion, 0) * 0.48);
   transition: opacity 180ms linear;
 }
 
