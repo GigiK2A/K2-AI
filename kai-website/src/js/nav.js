@@ -15,16 +15,31 @@ const overlay = document.querySelector('.nav-overlay');
 function openMenu() {
   hamburger?.classList.add('open');
   overlay?.classList.add('open');
+  hamburger?.setAttribute('aria-expanded', 'true');
   document.body.classList.add('nav-open');
 }
 
 function closeMenu() {
   hamburger?.classList.remove('open');
   overlay?.classList.remove('open');
+  hamburger?.setAttribute('aria-expanded', 'false');
   document.body.classList.remove('nav-open');
 }
 
+function toggleMenu() {
+  if (!overlay || !hamburger) return;
+  if (overlay.classList.contains('open')) {
+    closeMenu();
+    return;
+  }
+  openMenu();
+}
+
 if (hamburger && overlay) {
+  hamburger.setAttribute('aria-expanded', 'false');
+  hamburger.setAttribute('aria-controls', 'mobile-nav-overlay');
+  overlay.id = 'mobile-nav-overlay';
+
   // Add close button inside overlay
   const closeBtn = document.createElement('button');
   closeBtn.className = 'nav-overlay-close';
@@ -33,7 +48,11 @@ if (hamburger && overlay) {
   overlay.prepend(closeBtn);
   closeBtn.addEventListener('click', closeMenu);
 
-  hamburger.addEventListener('click', openMenu);
+  hamburger.addEventListener('click', toggleMenu);
+
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeMenu();
+  });
 
   overlay.querySelectorAll('a').forEach(link => {
     link.addEventListener('click', closeMenu);
@@ -42,5 +61,9 @@ if (hamburger && overlay) {
   // Close on Escape
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeMenu();
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) closeMenu();
   });
 }

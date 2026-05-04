@@ -12,7 +12,7 @@
   justify-content: center;
   text-align: center;
   overflow: hidden;
-  padding: 120px var(--pad-x, 80px) 96px;
+  padding: 96px var(--pad-x, 80px) 96px;
   margin: 0;
   max-width: 100%;
   background:
@@ -38,10 +38,14 @@
 
 .suite-ai-page section,
 .suite-ai-page nav,
-.suite-ai-page footer,
-.suite-ai-page .nav-overlay {
+.suite-ai-page footer {
   position: relative;
   z-index: 1;
+}
+
+.suite-ai-page .nav-overlay {
+  position: fixed;
+  z-index: 250;
 }
 
 .sas-experience-stage {
@@ -791,7 +795,7 @@
 /* ── Responsive overrides ─────────────────────────────── */
 
 @media (max-width: 768px) {
-  .sas-hero               { min-height: 80vh; padding: 100px 24px 60px; }
+  .sas-hero               { min-height: 80vh; padding: 84px 24px 60px; }
   .sas-hero-eyebrow       { margin-bottom: 36px; padding: 8px 14px; }
   .sas-hero-title         { font-size: clamp(3.3rem, 17vw, 5.2rem); letter-spacing: -0.01em; word-spacing: 0.06em; margin-bottom: 32px; }
   .sas-hero-sub           { font-size: 16px; margin-bottom: 36px; }

@@ -101,14 +101,18 @@ body.method-page > footer,
 body.workshop-page > footer,
 body.cases-page > footer,
 body.analysis-page > footer,
-body.contact-page > footer,
+body.contact-page > footer {
+  position: relative;
+  z-index: 1;
+}
+
 body.method-page > .nav-overlay,
 body.workshop-page > .nav-overlay,
 body.cases-page > .nav-overlay,
 body.analysis-page > .nav-overlay,
 body.contact-page > .nav-overlay {
-  position: relative;
-  z-index: 1;
+  position: fixed;
+  z-index: 250;
 }
 
 body.method-page #navbar,
@@ -169,7 +173,7 @@ body.cases-page .page-header-fit {
   min-height: 92dvh;
   display: grid;
   align-items: center;
-  padding-top: clamp(8rem, 14vw, 13rem);
+  padding-top: calc(var(--nav-safe-height) + clamp(20px, 4vw, 44px));
   padding-bottom: clamp(5rem, 9vw, 9rem);
 }
 
@@ -707,7 +711,7 @@ footer {
   body.analysis-page .page-header,
   body.contact-page .page-header {
     min-height: auto;
-    padding-top: 8rem;
+    padding-top: calc(var(--nav-safe-height) + 20px);
   }
 
   .display-xl {

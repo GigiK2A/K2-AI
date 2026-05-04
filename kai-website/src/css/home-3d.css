@@ -139,10 +139,14 @@
 /* All homepage sections sit above the fixed canvas */
 .home-page section,
 .home-page nav,
-.home-page footer,
-.home-page .nav-overlay {
+.home-page footer {
   position: relative;
   z-index: 1;
+}
+
+.home-page .nav-overlay {
+  position: fixed;
+  z-index: 250;
 }
 
 /* ── Nav glass ───────────────────────────────────────────────────────────── */
@@ -168,7 +172,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 120px var(--pad-x) 100px;
+  padding: 96px var(--pad-x) 100px;
   margin: 0;
   max-width: 100%;
   background: transparent;
@@ -723,7 +727,7 @@ html.js-scroll .home-page .reveal.visible {
 
 @media (max-width: 768px) {
   .hero-3d-section {
-    padding: 100px var(--pad-x) 80px;
+    padding: 84px var(--pad-x) 80px;
     min-height: 100svh;
   }
 
