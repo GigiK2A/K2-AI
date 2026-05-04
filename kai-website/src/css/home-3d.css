@@ -789,11 +789,11 @@ html.js-scroll .home-page .reveal.visible {
 }
 
 .home-page .chapter-choreography {
-  opacity: var(--chapter-opacity, 1);
-  filter: blur(var(--chapter-blur, 0));
-  transform: translate3d(0, var(--chapter-shift, 0), 0);
-  transition: opacity 160ms linear, filter 160ms linear, transform 160ms linear;
-  will-change: opacity, filter, transform;
+  opacity: 1;
+  filter: none;
+  transform: none;
+  transition: none;
+  will-change: auto;
 }
 
 @media (max-width: 767px), (prefers-reduced-motion: reduce) {
@@ -1474,7 +1474,7 @@ body.home-page[data-home-chapter="cta"] {
   background: rgba(10, 16, 24, 0.8);
   backdrop-filter: blur(10px) saturate(1.04);
   -webkit-backdrop-filter: blur(10px) saturate(1.04);
-  transition: border-color 0.24s ease, background 0.24s ease, transform 0.24s ease;
+  transition: border-color 0.24s ease, background 0.24s ease, transform 0.24s ease, box-shadow 0.28s ease;
 }
 
 .home-page .faq-item[open] {
@@ -1482,6 +1482,7 @@ body.home-page[data-home-chapter="cta"] {
     linear-gradient(135deg, rgba(86, 238, 223, 0.1), transparent 34%),
     rgba(10, 16, 24, 0.9);
   border-color: rgba(128, 250, 235, 0.26);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .home-page .faq-item:hover {
@@ -1549,13 +1550,36 @@ body.home-page[data-home-chapter="cta"] {
 }
 
 .home-page .faq-answer {
-  padding: 0 28px 26px 98px;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-page .faq-answer-inner {
+  overflow: hidden;
+  padding: 0 28px 0 98px;
+}
+
+.home-page .faq-item[open] .faq-answer {
+  grid-template-rows: 1fr;
+}
+
+.home-page .faq-item[open] .faq-answer-inner {
+  padding-bottom: 26px;
 }
 
 .home-page .faq-answer p {
   max-width: 760px;
   color: rgba(232, 239, 245, 0.84);
   line-height: 1.72;
+  transform: translateY(-10px);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+
+.home-page .faq-item[open] .faq-answer p {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .home-page .home-final-cta {
@@ -1602,8 +1626,8 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
 }
 
 .home-page .chapter-choreography {
-  scale: var(--chapter-scale, 1);
-  clip-path: inset(var(--chapter-clip-top, 0) 0 var(--chapter-clip-bottom, 0) 0);
+  scale: 1;
+  clip-path: inset(0 0 0 0);
 }
 
 .home-page .reveal,
@@ -1622,11 +1646,11 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
   .home-page .chapter-choreography .faq-item,
   .home-page .chapter-choreography .problema-item,
   .home-page .chapter-choreography .diagnosi-point {
-    opacity: calc(0.88 + var(--focus-proximity) * 0.12);
-    filter: blur(calc((1 - var(--focus-proximity)) * 0.85px)) saturate(calc(0.96 + var(--focus-proximity) * 0.08));
+    opacity: calc(1 - var(--after-midpoint-progress, 0) * 0.16);
+    filter: blur(calc(var(--after-midpoint-progress, 0) * 1.6px)) saturate(calc(1 - var(--after-midpoint-progress, 0) * 0.06));
     transform:
-      translate3d(0, calc((1 - var(--focus-proximity)) * 8px), 0)
-      scale(calc(0.996 + var(--focus-proximity) * 0.004));
+      translate3d(0, calc(var(--after-midpoint-progress, 0) * -8px), 0)
+      scale(calc(1 - var(--after-midpoint-progress, 0) * 0.01));
     transition: opacity 180ms linear, filter 180ms linear, transform 180ms linear;
   }
 
@@ -1802,6 +1826,15 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
   }
 
   .home-page .faq-answer {
+    display: block;
+  }
+
+  .home-page .faq-answer-inner {
     padding: 0 20px 22px;
+  }
+
+  .home-page .faq-answer p {
+    transform: none;
+    opacity: 1;
   }
 }

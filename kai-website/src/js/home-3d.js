@@ -370,9 +370,15 @@ function initHomeChapterState() {
     document.querySelectorAll('.home-page .reveal, .home-page .card, .home-page .step, .home-page .problema-item, .home-page .diagnosi-point').forEach((el, index) => {
       const rect = el.getBoundingClientRect()
       const center = rect.top + rect.height / 2
+      const viewportMid = window.innerHeight * 0.5
+      const hasPassedMidpoint = center < viewportMid
+      const afterMidpointProgress = hasPassedMidpoint
+        ? clamp((viewportMid - center) / (window.innerHeight * 0.42), 0, 1)
+        : 0
       const distance = Math.abs(center - window.innerHeight * 0.52)
       const proximity = clamp(1 - distance / (window.innerHeight * 0.68), 0, 1)
       el.style.setProperty('--focus-proximity', proximity.toFixed(3))
+      el.style.setProperty('--after-midpoint-progress', afterMidpointProgress.toFixed(3))
       el.style.setProperty('--decay-index', String(index % 8))
     })
   }
@@ -460,12 +466,12 @@ function initChapterChoreography() {
       const enter = clamp((vh * 0.94 - rect.top) / (vh * 0.48), 0, 1)
       const exit = clamp((-rect.top - rect.height * 0.3) / (vh * 0.52), 0, 1)
       const presence = clamp(enter - exit, 0, 1)
-      const blur = exit * 3.2 + (1 - enter) * 0.45
-      const shift = (1 - enter) * 34 - exit * 40
-      const opacity = 0.72 + presence * 0.28 - exit * 0.1
-      const scale = 0.992 + presence * 0.008 - exit * 0.004
-      const clipTop = Math.max(0, (1 - enter) * 2.5)
-      const clipBottom = Math.max(0, exit * 5)
+      const blur = 0
+      const shift = 0
+      const opacity = 1
+      const scale = 1
+      const clipTop = 0
+      const clipBottom = 0
 
       section.style.setProperty('--chapter-opacity', opacity.toFixed(3))
       section.style.setProperty('--chapter-blur', `${blur.toFixed(2)}px`)

@@ -25,6 +25,7 @@ const CONTACT_PREFILL_KEY = 'kai-contact-prefill';
 const CONTACT_PREFILL_META_KEY = 'kai-contact-prefill-meta';
 const CONTACT_PREFILL_SOURCE_KEY = 'kai-contact-prefill-source';
 const MAX_STORED_MESSAGES = 24;
+const IS_HOME_WIDGET = document.body.classList.contains('home-page');
 const messages = [];
 let isSending = false;
 let chatBooted = false;
@@ -289,9 +290,19 @@ function initChat() {
 
   if (!container || !input || !sendBtn) return;
   chatBooted = true;
-  getOrCreateSessionId();
 
-  const savedMessages = loadMessages();
+  if (IS_HOME_WIDGET) {
+    refreshSessionId();
+    try {
+      sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch {
+      // ignore storage failures
+    }
+  } else {
+    getOrCreateSessionId();
+  }
+
+  const savedMessages = IS_HOME_WIDGET ? [] : loadMessages();
 
   if (savedMessages.length) {
     messages.push(...savedMessages);
