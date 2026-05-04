@@ -115,7 +115,6 @@
 
 html {
   scroll-behavior: smooth;
-  overflow-x: clip;
 }
 
 html::after {
