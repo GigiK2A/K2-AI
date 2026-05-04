@@ -12,18 +12,35 @@ document.querySelectorAll('.nav-links a, .nav-overlay a').forEach(link => {
 const hamburger = document.querySelector('.nav-hamburger');
 const overlay = document.querySelector('.nav-overlay');
 
+function openMenu() {
+  hamburger?.classList.add('open');
+  overlay?.classList.add('open');
+  document.body.classList.add('nav-open');
+}
+
+function closeMenu() {
+  hamburger?.classList.remove('open');
+  overlay?.classList.remove('open');
+  document.body.classList.remove('nav-open');
+}
+
 if (hamburger && overlay) {
-  hamburger.addEventListener('click', () => {
-    hamburger.classList.toggle('open');
-    overlay.classList.toggle('open');
-    document.body.classList.toggle('nav-open', overlay.classList.contains('open'));
-  });
+  // Add close button inside overlay
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'nav-overlay-close';
+  closeBtn.setAttribute('aria-label', 'Chiudi menu');
+  closeBtn.textContent = '×';
+  overlay.prepend(closeBtn);
+  closeBtn.addEventListener('click', closeMenu);
+
+  hamburger.addEventListener('click', openMenu);
 
   overlay.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => {
-      hamburger.classList.remove('open');
-      overlay.classList.remove('open');
-      document.body.classList.remove('nav-open');
-    });
+    link.addEventListener('click', closeMenu);
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeMenu();
   });
 }

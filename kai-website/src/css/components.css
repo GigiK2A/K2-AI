@@ -891,7 +891,8 @@ footer {
   gap: 14px;
 }
 
-.newsletter-form input[type="email"] {
+.newsletter-form input[type="email"],
+.newsletter-form input[type="text"] {
   width: 100%;
   min-width: 0;
   min-height: 48px;
@@ -905,11 +906,13 @@ footer {
   transition: border-color 0.2s;
 }
 
-.newsletter-form input[type="email"]:focus {
+.newsletter-form input[type="email"]:focus,
+.newsletter-form input[type="text"]:focus {
   border-color: var(--text-primary);
 }
 
-.newsletter-form input[type="email"]::placeholder {
+.newsletter-form input[type="email"]::placeholder,
+.newsletter-form input[type="text"]::placeholder {
   color: var(--text-muted);
 }
 

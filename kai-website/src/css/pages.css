@@ -438,6 +438,8 @@
   margin-bottom: 16px;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .contact-grid {
@@ -1031,6 +1033,14 @@ html.skip-home-intro .home-page #navbar {
 
   .kbot-page .analysis-layout-kbot {
     padding: 20px 16px;
+  }
+
+  .contact-analysis-box {
+    max-width: 100%;
+  }
+
+  .contact-analysis-note {
+    font-size: 12px;
   }
 }
 

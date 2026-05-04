@@ -5,8 +5,9 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
-  height: 64px;
+  z-index: 200;
+  height: calc(64px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
   background: rgba(8, 8, 8, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -17,7 +18,7 @@
 .nav-inner {
   display: flex;
   align-items: center;
-  height: 100%;
+  height: 64px;
   max-width: calc(var(--max-width) + var(--pad-x) * 2);
   margin: 0 auto;
   padding: 0 var(--pad-x);
@@ -125,24 +126,30 @@
 /* ─── Mobile overlay ─── */
 
 .nav-overlay {
-  display: none;
   position: fixed;
-  inset: 64px 0 0 0;
+  inset: 0;
   background: var(--bg);
-  z-index: 99;
+  z-index: 150;
+  display: flex;
   flex-direction: column;
-  padding: 48px var(--pad-x);
-  gap: 32px;
-  border-top: 1px solid var(--border);
+  justify-content: center;
+  padding: calc(env(safe-area-inset-top) + 80px) var(--pad-x) calc(env(safe-area-inset-bottom) + 48px);
+  gap: 28px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 0.3s var(--ease-cinema), transform 0.3s var(--ease-cinema);
 }
 
 .nav-overlay.open {
-  display: flex;
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .nav-overlay a {
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: clamp(28px, 9vw, 40px);
   font-weight: 600;
   letter-spacing: -0.03em;
   color: var(--text-secondary);
@@ -153,6 +160,20 @@
 .nav-overlay a:hover,
 .nav-overlay a.active {
   color: var(--text-primary);
+}
+
+/* close button inside overlay */
+.nav-overlay-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 16px);
+  right: var(--pad-x);
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
 }
 
 body.nav-open {
