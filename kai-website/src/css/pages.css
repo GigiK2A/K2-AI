@@ -8,7 +8,13 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  padding-top: calc(64px + var(--section-py));
+  padding-top: calc(64px + env(safe-area-inset-top) + 48px);
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    padding-top: calc(64px + env(safe-area-inset-top) + 32px);
+  }
 }
 
 .page-header-fit {
