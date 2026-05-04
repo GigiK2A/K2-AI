@@ -32,15 +32,18 @@
 }
 
 .kbot-shell {
-  border: 1px solid #2a2f36;
-  background: #090b0f;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(8, 12, 18, 0.96), rgba(11, 17, 25, 0.94));
   color: #e6e8eb;
-  border-radius: 0;
+  border-radius: 28px;
   display: flex;
   flex-direction: column;
   min-height: 760px;
   height: 100%;
   font-family: var(--font-sans);
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
 }
 
 .kbot-shell.fullscreen {
@@ -59,8 +62,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
-  border-bottom: 1px solid #252a31;
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+    rgba(255, 255, 255, 0.01);
 }
 
 .kbot-header-main {
@@ -78,10 +84,10 @@
 }
 
 .kbot-header-text {
-  font-size: 28px;
+  font-size: 34px;
   line-height: 1;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.05em;
   color: #f3f6fb;
 }
 
@@ -104,19 +110,21 @@
 
 .kbot-top-btn {
   background: transparent;
-  border: 1px solid #343c49;
-  color: #afb7c4;
-  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d7dee8;
+  padding: 11px 14px;
   font-size: 11px;
   letter-spacing: 0.12em;
   font-family: var(--font-mono);
   cursor: pointer;
   text-transform: uppercase;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
 }
 
 .kbot-top-btn:hover {
-  border-color: #5a687e;
-  color: #dae0e8;
+  border-color: rgba(128, 250, 235, 0.34);
+  color: #f4f8fb;
+  background: rgba(128, 250, 235, 0.05);
 }
 
 .kbot-chat-stream {
@@ -192,10 +200,11 @@
 .kbot-bubble {
   max-width: min(82%, 760px);
   padding: 14px 16px;
-  border: 1px solid #2f353f;
-  background: #0e1117;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(13, 18, 26, 0.9);
   color: #ebeff5;
-  border-radius: 8px;
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .kbot-bubble.assistant {
@@ -204,8 +213,8 @@
 }
 
 .kbot-bubble.user {
-  border-color: #4a5a78;
-  background: #131c2f;
+  border-color: rgba(128, 250, 235, 0.22);
+  background: linear-gradient(135deg, rgba(71, 144, 255, 0.14), rgba(14, 21, 32, 0.96));
 }
 
 .kbot-bubble.assistant::after {
@@ -215,9 +224,9 @@
   top: 12px;
   width: 10px;
   height: 10px;
-  background: #0e1117;
-  border-left: 1px solid #2f353f;
-  border-bottom: 1px solid #2f353f;
+  background: rgba(13, 18, 26, 0.9);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   transform: rotate(45deg);
 }
 
@@ -242,9 +251,11 @@
 .kbot-option-panel {
   align-self: flex-start;
   width: min(100%, 860px);
-  border: 1px solid #2f353f;
-  background: #0d1118;
-  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(11, 17, 24, 0.92);
+  padding: 18px;
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .kbot-adaptive-form {
@@ -345,11 +356,11 @@
 }
 
 .kbot-mode-card {
-  border: 1px solid #39414d;
-  background: #0b1018;
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(13, 19, 28, 0.88);
+  border-radius: 16px;
   min-height: 132px;
-  padding: 14px;
+  padding: 18px;
   text-align: left;
   color: #edf1f7;
   cursor: pointer;
@@ -357,12 +368,13 @@
   flex-direction: column;
   gap: 8px;
   font-family: var(--font-body);
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
 }
 
 .kbot-mode-card:hover {
-  border-color: #5f6f89;
-  background: #0f1624;
+  border-color: rgba(128, 250, 235, 0.28);
+  background: rgba(15, 23, 34, 0.96);
+  transform: translateY(-1px);
 }
 
 .kbot-mode-title {
@@ -372,9 +384,9 @@
 }
 
 .kbot-mode-copy {
-  color: #a8b0bd;
+  color: #cdd6e2;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.55;
 }
 
 .kbot-sector-card {
@@ -408,10 +420,10 @@
 .kbot-problem-textarea {
   width: 100%;
   min-height: 112px;
-  border: 1px solid #3a4250;
-  background: #090b0f;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(7, 11, 16, 0.9);
   color: #edf1f7;
-  border-radius: 4px;
+  border-radius: 16px;
   padding: 12px 14px;
   font-size: 16px;
   line-height: 1.35;
@@ -434,13 +446,15 @@
 .kbot-attach-btn,
 .kbot-input-row button,
 .kbot-next-btn {
-  background: #2e3645;
-  color: #e1e7f0;
-  border: 1px solid #4f5b70;
-  border-radius: 4px;
-  padding: 10px 12px;
+  background: rgba(242, 247, 252, 0.94);
+  color: #081018;
+  border: 1px solid rgba(242, 247, 252, 0.94);
+  border-radius: 999px;
+  padding: 11px 16px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .kbot-choice-chip:hover,
@@ -448,7 +462,8 @@
 .kbot-attach-btn:hover,
 .kbot-input-row button:hover,
 .kbot-next-btn:hover {
-  background: #3a4355;
+  transform: translateY(-1px);
+  opacity: 0.94;
 }
 
 .kbot-choice-chip:disabled,

@@ -460,12 +460,12 @@ function initChapterChoreography() {
       const enter = clamp((vh * 0.94 - rect.top) / (vh * 0.48), 0, 1)
       const exit = clamp((-rect.top - rect.height * 0.3) / (vh * 0.52), 0, 1)
       const presence = clamp(enter - exit, 0, 1)
-      const blur = exit * 12 + (1 - enter) * 2
-      const shift = (1 - enter) * 62 - exit * 84
-      const opacity = 0.1 + presence * 0.9 - exit * 0.42
-      const scale = 0.972 + presence * 0.028 - exit * 0.018
-      const clipTop = Math.max(0, (1 - enter) * 8)
-      const clipBottom = Math.max(0, exit * 16)
+      const blur = exit * 3.2 + (1 - enter) * 0.45
+      const shift = (1 - enter) * 34 - exit * 40
+      const opacity = 0.72 + presence * 0.28 - exit * 0.1
+      const scale = 0.992 + presence * 0.008 - exit * 0.004
+      const clipTop = Math.max(0, (1 - enter) * 2.5)
+      const clipBottom = Math.max(0, exit * 5)
 
       section.style.setProperty('--chapter-opacity', opacity.toFixed(3))
       section.style.setProperty('--chapter-blur', `${blur.toFixed(2)}px`)

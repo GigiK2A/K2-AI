@@ -358,15 +358,16 @@
 }
 
 .stat-3d {
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(10, 16, 24, 0.72);
+  backdrop-filter: blur(14px) saturate(1.04);
+  -webkit-backdrop-filter: blur(14px) saturate(1.04);
   padding: 64px 48px;
-  transition: background 0.35s, border-color 0.35s;
+  transition: background 0.35s, border-color 0.35s, box-shadow 0.35s;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .stat-3d:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(14, 22, 32, 0.9);
 }
 
 .stat-3d-value {
@@ -384,7 +385,7 @@
 
 .stat-3d-label {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.38);
+  color: rgba(236, 242, 248, 0.82);
   line-height: 1.6;
   max-width: 260px;
 }
@@ -423,15 +424,16 @@
 }
 
 .home-page .problema-item {
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(10, 16, 24, 0.74);
+  backdrop-filter: blur(12px) saturate(1.04);
+  -webkit-backdrop-filter: blur(12px) saturate(1.04);
   padding: 48px;
-  transition: background 0.3s;
+  transition: background 0.3s, box-shadow 0.3s;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .home-page .problema-item:hover {
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(14, 22, 32, 0.92);
 }
 
 .home-page .problema-item-num {
@@ -446,7 +448,7 @@
 
 .home-page .problema-item p {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(238, 243, 248, 0.86);
   line-height: 1.7;
 }
 
@@ -459,21 +461,22 @@
 }
 
 .home-page .grid-3 > * {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(10, 16, 24, 0.72);
 }
 
 .home-page .card {
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(10, 16, 24, 0.74);
+  backdrop-filter: blur(12px) saturate(1.04);
+  -webkit-backdrop-filter: blur(12px) saturate(1.04);
   border: none;
   padding: 52px 48px;
   transition: background 0.35s, box-shadow 0.35s;
   transform-origin: center center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .home-page .card:hover {
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(14, 22, 32, 0.92);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
@@ -494,7 +497,7 @@
 
 .home-page .card-body {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.42);
+  color: rgba(234, 240, 246, 0.8);
   line-height: 1.7;
 }
 
@@ -530,7 +533,7 @@
 }
 
 .home-page .step:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(12, 20, 29, 0.84);
 }
 
 .home-page .step-num {
@@ -553,7 +556,7 @@
 
 .home-page .step-content p {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(233, 239, 245, 0.8);
   max-width: 580px;
   line-height: 1.72;
 }
@@ -582,7 +585,7 @@
 .home-page .diagnosi-copy-a,
 .home-page .diagnosi-copy-b {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(233, 239, 245, 0.82);
   max-width: 460px;
   line-height: 1.72;
   margin-bottom: 16px;
@@ -610,16 +613,16 @@
 
 .home-page .diagnosi-point-copy {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(234, 240, 246, 0.82);
   line-height: 1.6;
 }
 
 /* Chat widget glass */
 .home-page .chat-widget.diagnosi-chat {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(180deg, rgba(8, 12, 18, 0.94), rgba(11, 17, 25, 0.9));
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 0 80px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
@@ -642,13 +645,13 @@
 
 .home-page .micro-legal-note {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.22);
+  color: rgba(222, 230, 238, 0.62);
   margin-top: 12px;
   line-height: 1.5;
 }
 
 .home-page .micro-legal-note a {
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(245, 249, 252, 0.86);
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -1371,7 +1374,7 @@ body.home-page[data-home-chapter="cta"] {
   border: 1px solid rgba(255, 255, 255, 0.075);
   background:
     radial-gradient(circle at 72% 36%, rgba(93, 242, 226, 0.13), transparent 34%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+    linear-gradient(135deg, rgba(8, 13, 19, 0.94), rgba(12, 18, 26, 0.9));
   box-shadow: 0 44px 120px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
@@ -1462,30 +1465,97 @@ body.home-page[data-home-chapter="cta"] {
 }
 
 .home-page .faq-list {
-  border-color: rgba(255, 255, 255, 0.05);
+  display: grid;
+  gap: 14px;
 }
 
-.home-page .faq-list .step {
-  grid-template-columns: 48px 1fr;
-  padding-top: 28px;
-  padding-bottom: 28px;
-  opacity: 0.72;
+.home-page .faq-item {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 16, 24, 0.8);
+  backdrop-filter: blur(10px) saturate(1.04);
+  -webkit-backdrop-filter: blur(10px) saturate(1.04);
+  transition: border-color 0.24s ease, background 0.24s ease, transform 0.24s ease;
 }
 
-.home-page .faq-list .step:nth-child(n + 5) {
-  opacity: 0.48;
+.home-page .faq-item[open] {
+  background:
+    linear-gradient(135deg, rgba(86, 238, 223, 0.1), transparent 34%),
+    rgba(10, 16, 24, 0.9);
+  border-color: rgba(128, 250, 235, 0.26);
 }
 
-.home-page .faq-list .step:hover {
-  opacity: 1;
+.home-page .faq-item:hover {
+  background: rgba(12, 20, 29, 0.92);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
-.home-page .faq-list .step-content h3 {
-  font-size: clamp(1rem, 1.45vw, 1.35rem);
+.home-page .faq-trigger {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 28px;
+  gap: 18px;
+  align-items: center;
+  padding: 24px 28px;
+  cursor: pointer;
 }
 
-.home-page .faq-list .step-content p {
-  max-width: 800px;
+.home-page .faq-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.home-page .faq-index {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: rgba(127, 255, 236, 0.54);
+}
+
+.home-page .faq-question {
+  font-size: clamp(1.05rem, 1.55vw, 1.4rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: rgba(247, 250, 252, 0.95);
+  line-height: 1.28;
+}
+
+.home-page .faq-toggle {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+.home-page .faq-toggle::before,
+.home-page .faq-toggle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 1px;
+  background: rgba(245, 249, 252, 0.76);
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.home-page .faq-toggle::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.home-page .faq-item[open] .faq-toggle::after {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(90deg) scaleX(0);
+}
+
+.home-page .faq-answer {
+  padding: 0 28px 26px 98px;
+}
+
+.home-page .faq-answer p {
+  max-width: 760px;
+  color: rgba(232, 239, 245, 0.84);
+  line-height: 1.72;
 }
 
 .home-page .home-final-cta {
@@ -1539,6 +1609,7 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
 .home-page .reveal,
 .home-page .card,
 .home-page .step,
+.home-page .faq-item,
 .home-page .problema-item,
 .home-page .diagnosi-point {
   --focus-proximity: 0.5;
@@ -1548,13 +1619,14 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
   .home-page .chapter-choreography .reveal,
   .home-page .chapter-choreography .card,
   .home-page .chapter-choreography .step,
+  .home-page .chapter-choreography .faq-item,
   .home-page .chapter-choreography .problema-item,
   .home-page .chapter-choreography .diagnosi-point {
-    opacity: calc(0.54 + var(--focus-proximity) * 0.46);
-    filter: blur(calc((1 - var(--focus-proximity)) * 2.6px)) saturate(calc(0.82 + var(--focus-proximity) * 0.24));
+    opacity: calc(0.88 + var(--focus-proximity) * 0.12);
+    filter: blur(calc((1 - var(--focus-proximity)) * 0.85px)) saturate(calc(0.96 + var(--focus-proximity) * 0.08));
     transform:
-      translate3d(0, calc((1 - var(--focus-proximity)) * 14px), 0)
-      scale(calc(0.99 + var(--focus-proximity) * 0.01));
+      translate3d(0, calc((1 - var(--focus-proximity)) * 8px), 0)
+      scale(calc(0.996 + var(--focus-proximity) * 0.004));
     transition: opacity 180ms linear, filter 180ms linear, transform 180ms linear;
   }
 
@@ -1720,8 +1792,16 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
     padding-inline: 22px;
   }
 
-  .home-page .faq-list .step {
-    grid-template-columns: 1fr;
-    opacity: 1;
+  .home-page .faq-trigger {
+    grid-template-columns: 1fr 28px;
+    padding: 22px 20px;
+  }
+
+  .home-page .faq-index {
+    display: none;
+  }
+
+  .home-page .faq-answer {
+    padding: 0 20px 22px;
   }
 }
