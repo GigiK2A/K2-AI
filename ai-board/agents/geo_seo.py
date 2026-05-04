@@ -236,6 +236,8 @@ class GeografinoAgent(BoardAgent):
         "Ogni punto guadagnato è prova di valore — visualizzalo sempre con frecce direzionali (↑/↓/→)",
     ]
 
+    skill_names = ["seo-audit", "brand-voice", "output-standards"]
+
     def __init__(self):
         self.tools = [get_search_tool()]
         super().__init__()

@@ -1,4 +1,5 @@
 from agents.base import BoardAgent
+from core.notion_tools import create_board_task, list_clients, list_open_tasks, update_board_task
 from db.models import AgentName, LLMProvider
 
 
@@ -20,3 +21,9 @@ class ProjectOperationsAgent(BoardAgent):
         "Non fare assunzioni sullo stato di un task — chiedi conferma se non hai dati recenti",
         "Output in markdown strutturato con tabelle",
     ]
+
+    skill_names = ["notion-schema", "output-standards"]
+
+    def __init__(self):
+        self.tools = [create_board_task, update_board_task, list_open_tasks, list_clients]
+        super().__init__()

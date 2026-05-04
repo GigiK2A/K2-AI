@@ -1,0 +1,8 @@
+.local-browsers
+node_modules
+dist
+tmp
+.playwright-cli
+.vercel
+*.zip
+._*

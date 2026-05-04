@@ -37,7 +37,8 @@ Capacità principali (da ai-marketing-claude-main + ads-skills):
 Supporta provider Anthropic (primario) e OpenAI (fallback) tramite la classe base BoardAgent.
 """
 
-from agents.base import BoardAgent
+from agents.base import BoardAgent, get_search_tool
+from core.notion_tools import create_board_task, list_open_tasks
 from db.models import AgentName, LLMProvider
 
 
@@ -265,4 +266,19 @@ class GenoveffaAgent(BoardAgent):
         "esplicitamente una richiesta di file ('dammi il PDF', 'genera il report', 'crea la proposta'). "
         "Analisi, pareri, valutazioni di opzioni, consigli strategici → SEMPRE testo, mai un documento.",
     ]
+
+    skill_names = [
+        "brand-voice",
+        "linkedin-post",
+        "ad-copy-platform",
+        "marketing-audit",
+        "email-sequence",
+        "landing-page-cro",
+        "output-standards",
+    ]
+
+    def __init__(self):
+        self.tools = [get_search_tool(), create_board_task, list_open_tasks]
+        super().__init__()
+
 ContentEngineAgent = GenoveffaAgent

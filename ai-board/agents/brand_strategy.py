@@ -1,4 +1,5 @@
-from agents.base import BoardAgent
+from agents.base import BoardAgent, get_search_tool
+from core.notion_tools import save_to_memory
 from db.models import AgentName, LLMProvider
 
 
@@ -19,3 +20,9 @@ class BrandStrategyAgent(BoardAgent):
         "Messaggi da evitare: 'rivoluzione', 'trasformazione digitale', 'futuro dell'AI', qualsiasi hype",
         "Controlla sempre la coerenza tra tono proposto e identità definita nella memoria condivisa",
     ]
+
+    skill_names = ["brand-voice", "output-standards"]
+
+    def __init__(self):
+        self.tools = [get_search_tool(), save_to_memory]
+        super().__init__()

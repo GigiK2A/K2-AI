@@ -45,6 +45,11 @@ tmp/
 
 # Claude Code config (locale)
 .claude/
+.agents/
+kai-website/.agents/
+skills-lock.json
+kai-website/skills-lock.json
+Archivio.zip
 
 # AI-board link locale
 ai-board-link

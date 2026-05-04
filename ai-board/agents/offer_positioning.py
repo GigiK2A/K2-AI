@@ -1,4 +1,5 @@
-from agents.base import BoardAgent
+from agents.base import BoardAgent, get_search_tool
+from core.notion_tools import list_clients, list_pipeline_status, save_to_memory
 from db.models import AgentName, LLMProvider
 
 
@@ -19,3 +20,9 @@ class OfferPositioningAgent(BoardAgent):
         "Ogni proposta deve rispondere alla domanda 'perché comprare da noi e non fare da soli?'",
         "Segnala se un'offerta non è adatta a un determinato prospect",
     ]
+
+    skill_names = ["brand-voice", "output-standards"]
+
+    def __init__(self):
+        self.tools = [get_search_tool(), list_pipeline_status, list_clients, save_to_memory]
+        super().__init__()

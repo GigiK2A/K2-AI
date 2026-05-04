@@ -17,7 +17,8 @@ DISCLAIMER: questo agente NON fornisce consulenza legale e non sostituisce un av
 Tutti gli output sono DRAFT e richiedono approvazione del fondatore prima di qualsiasi uso esterno.
 """
 
-from agents.base import BoardAgent
+from agents.base import BoardAgent, get_search_tool
+from core.notion_tools import save_to_memory
 from db.models import AgentName, LLMProvider
 
 
@@ -100,5 +101,12 @@ class AvvocataPinaAgent(BoardAgent):
         "Usa linguaggio preciso ma accessibile: evita latinismi non necessari, spiega i termini tecnici",
         "Tutti gli output sono DRAFT — richiedono approvazione del fondatore prima di uso esterno",
     ]
+
+    skill_names = ["contract-review", "gdpr-audit", "nda-triage", "output-standards"]
+
+    def __init__(self):
+        self.tools = [get_search_tool(), save_to_memory]
+        super().__init__()
+
 LegalAgent = AvvocataPinaAgent
 AgostinoAgent = AvvocataPinaAgent

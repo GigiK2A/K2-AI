@@ -157,6 +157,8 @@ class PeppePipelineAgent(BoardAgent):
         "Usa i tool Notion disponibili: aggiungi lead alla pipeline, aggiorna lo stato dei prospect e salva decisioni commerciali direttamente nel board senza aspettare l'approvazione per queste operazioni di registrazione.",
     ]
 
+    skill_names = ["prospect-research", "outreach-sequence", "notion-schema", "output-standards"]
+
     def __init__(self):
         self.tools = [
             add_lead_to_pipeline,

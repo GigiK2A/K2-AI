@@ -1,0 +1,67 @@
+[
+  {
+    "id": "KAI-RPT-2026-001",
+    "createdAtLabel": "03/05/2026 09:12",
+    "client": "Alfa Componenti S.r.l.",
+    "service": "Agenti AI Email & CRM",
+    "serviceId": "P01",
+    "tier": "WEB",
+    "status": "ready",
+    "statusLabel": "Pronto",
+    "summary": "Opportunita concreta per automatizzare follow-up commerciali, aggiornamento CRM e sintesi operative post contatto senza togliere controllo al team vendita.",
+    "problem": "I follow-up arrivano in ritardo, il CRM non viene aggiornato con continuita e la pipeline commerciale perde affidabilita.",
+    "currentProcess": "Il team usa email, note manuali e CRM, ma il passaggio da conversazione a prossima azione richiede ancora molto lavoro ripetitivo."
+  },
+  {
+    "id": "KAI-RPT-2026-002",
+    "createdAtLabel": "02/05/2026 16:40",
+    "client": "Studio Rinaldi",
+    "service": "Automazioni Amministrative",
+    "serviceId": "P02",
+    "tier": "HOST",
+    "status": "sent",
+    "statusLabel": "Inviato",
+    "summary": "L area amministrativa puo ridurre errori e tempi di lavorazione automatizzando raccolta documenti, classificazione pratiche e passaggi ripetitivi di back office.",
+    "problem": "Le pratiche vengono smistate e controllate manualmente con rischio di colli di bottiglia e poco tracciamento delle priorita.",
+    "currentProcess": "Documenti, email e task interni vengono gestiti su piu strumenti, con molti passaggi manuali tra ricezione, verifica e lavorazione."
+  },
+  {
+    "id": "KAI-RPT-2026-003",
+    "createdAtLabel": "01/05/2026 11:08",
+    "client": "Nord Est Hospitality",
+    "service": "AI Hospitality & Revenue",
+    "serviceId": "P20",
+    "tier": "HOST",
+    "status": "ready",
+    "statusLabel": "Pronto",
+    "summary": "C e spazio per migliorare tempi di risposta, pricing operativo e coordinamento tra richieste ospiti e attivita di struttura.",
+    "problem": "Le richieste arrivano da canali diversi e la gestione manuale rende difficile mantenere allineati disponibilita, risposte e priorita revenue.",
+    "currentProcess": "Prenotazioni, email e messaggi vengono seguiti dal team con forte dipendenza dalle persone e poca orchestrazione centralizzata."
+  },
+  {
+    "id": "KAI-RPT-2026-004",
+    "createdAtLabel": "30/04/2026 14:25",
+    "client": "Meccanica Umbra",
+    "service": "Integrazione Gestionali & ERP",
+    "serviceId": "P10",
+    "tier": "STUDIO",
+    "status": "draft",
+    "statusLabel": "Bozza",
+    "summary": "Il valore principale sta nell allineare dati e flussi tra gestionale, reparti e attivita ricorrenti oggi replicate a mano.",
+    "problem": "Ordini, avanzamenti e dati operativi passano tra sistemi non integrati, con doppie imputazioni e poca visibilita sullo stato reale.",
+    "currentProcess": "ERP, fogli di lavoro e comunicazioni interne convivono senza un flusso unico, costringendo il team a ricontrolli continui."
+  },
+  {
+    "id": "KAI-RPT-2026-005",
+    "createdAtLabel": "29/04/2026 10:16",
+    "client": "Lex & Partners",
+    "service": "AI Legale & Contratti",
+    "serviceId": "P03",
+    "tier": "WEB",
+    "status": "ready",
+    "statusLabel": "Pronto",
+    "summary": "Le prime automazioni possono aiutare nel pre-screening documentale, nella preparazione bozze e nella sintesi di clausole ricorrenti.",
+    "problem": "L analisi preliminare dei documenti richiede tempo e viene svolta con processi poco standardizzati tra studio, pratiche e clienti.",
+    "currentProcess": "Contratti, allegati e note vengono letti e sintetizzati manualmente, con molto tempo speso su attivita ripetitive di confronto e riepilogo."
+  }
+]

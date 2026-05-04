@@ -5,10 +5,16 @@ export function prefersReducedMotion() {
 }
 
 export function hasFinePointer() {
-  return typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia('(pointer: fine)').matches
-    && window.matchMedia('(hover: hover)').matches
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false
+  }
+
+  const primaryFine = window.matchMedia('(pointer: fine)').matches
+  const primaryHover = window.matchMedia('(hover: hover)').matches
+  const anyFine = window.matchMedia('(any-pointer: fine)').matches
+  const anyHover = window.matchMedia('(any-hover: hover)').matches
+
+  return (primaryFine && primaryHover) || (anyFine && anyHover)
 }
 
 export function isSmallViewport(minWidth = 768) {
@@ -21,7 +27,9 @@ export function isLowEndDevice() {
   const cores = typeof nav?.hardwareConcurrency === 'number' ? nav.hardwareConcurrency : null
   const saveData = Boolean(nav?.connection && nav.connection.saveData)
 
-  return saveData || (memory !== null && memory <= 4) || (cores !== null && cores <= 4)
+  // Keep Save-Data as a hard stop, but avoid classifying mainstream office PCs
+  // as "low end" just because privacy-rounded values look conservative.
+  return saveData || (memory !== null && memory <= 2) || (cores !== null && cores <= 2)
 }
 
 export function supportsIntersectionObserver() {
@@ -42,10 +50,38 @@ export function supportsWebGL() {
   }
 }
 
+export function getGraphicsCapabilityReport(minWidth = 768) {
+  const reducedMotion = prefersReducedMotion()
+  const smallViewport = isSmallViewport(minWidth)
+  const finePointer = hasFinePointer()
+  const lowEndDevice = isLowEndDevice()
+  const webgl = supportsWebGL()
+  const reasons = []
+
+  if (reducedMotion) reasons.push('prefers-reduced-motion')
+  if (smallViewport) reasons.push(`viewport<${minWidth}`)
+  if (!finePointer) reasons.push('no-fine-pointer')
+  if (lowEndDevice) reasons.push('low-end-device')
+  if (!webgl) reasons.push('no-webgl')
+
+  return {
+    allowed: reasons.length === 0,
+    reducedMotion,
+    smallViewport,
+    finePointer,
+    lowEndDevice,
+    webgl,
+    reasons,
+  }
+}
+
 export function canRunHeavyGraphics(minWidth = 768) {
-  return !prefersReducedMotion()
-    && !isSmallViewport(minWidth)
-    && hasFinePointer()
-    && !isLowEndDevice()
-    && supportsWebGL()
+  const report = getGraphicsCapabilityReport(minWidth)
+
+  // On desktop we still allow the ambient 3D layer when reduced motion is
+  // requested, but we keep interaction-heavy flourishes disabled elsewhere.
+  return report.webgl
+    && report.finePointer
+    && !report.smallViewport
+    && !report.lowEndDevice
 }

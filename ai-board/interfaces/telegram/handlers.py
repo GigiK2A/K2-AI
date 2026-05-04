@@ -251,17 +251,17 @@ def _format_plan_for_telegram(output: str) -> str:
 
 
 async def _dispatch_plan_tasks_background(objective_output: str) -> None:
-    """Esegue i task del piano dell'Orchestrator in background, uno per uno."""
+    """Esegue i task del piano dell'Orchestrator in parallelo."""
     try:
         plan = json.loads(objective_output)
-        tasks = plan.get("tasks") or []
+        raw_tasks = plan.get("tasks") or []
     except (json.JSONDecodeError, TypeError):
         return
 
-    from core.orchestrator import resolve_agent_name
-    from interfaces.telegram.notifier import notify_sync, notify_error
+    from core.orchestrator import resolve_agent_name, run_agents_parallel
 
-    for task_item in tasks[:5]:
+    task_tuples: list[tuple[AgentName, str, dict | None]] = []
+    for task_item in raw_tasks[:5]:
         agent_str = str(task_item.get("agent", "")).strip()
         title = str(task_item.get("title", "")).strip()
         description = str(task_item.get("description", "")).strip()
@@ -283,13 +283,16 @@ async def _dispatch_plan_tasks_background(objective_output: str) -> None:
             except Exception:
                 pass
 
-        try:
-            result = await asyncio.to_thread(run_agent, agent_name, task_text)
-            if result.get("status") == "error":
-                logger.warning(f"Agente {agent_str} fallito nel piano: {result.get('error')}")
-        except Exception as exc:
-            logger.error(f"Errore esecuzione task piano ({agent_str}): {exc}")
-            notify_sync(notify_error(agent_str, str(exc)))
+        task_tuples.append((agent_name, task_text, None))
+
+    if not task_tuples:
+        return
+
+    logger.info(f"[parallel] Avvio {len(task_tuples)} agenti in parallelo")
+    results = await run_agents_parallel(task_tuples)
+    for result in results:
+        if result.get("status") == "error":
+            logger.warning(f"[parallel] {result.get('agent', '?')} fallito: {result.get('error')}")
 
 
 def is_authorized(update: Update) -> bool:

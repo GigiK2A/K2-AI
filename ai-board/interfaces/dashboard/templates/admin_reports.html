@@ -64,19 +64,23 @@
             </td>
             <td class="px-6 py-4">
               <div class="flex justify-end gap-2">
-                <a href="#report-{{ report.id }}"
+                <a href="{{ reports_site_url }}/report-preview.html?mock_report_id={{ report.id }}"
+                   target="_blank"
+                   rel="noreferrer"
                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
                   <span class="material-symbols-outlined" style="font-size:16px">visibility</span>
                   Visualizza
                 </a>
-                <a href="#"
-                   onclick="return false"
+                <a href="{{ reports_site_url }}/api/report/pdf?mock_report_id={{ report.id }}"
+                   target="_blank"
+                   rel="noreferrer"
                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
                   <span class="material-symbols-outlined" style="font-size:16px">picture_as_pdf</span>
                   PDF
                 </a>
-                <a href="#"
-                   onclick="return false"
+                <a href="{{ reports_site_url }}/api/report/docx?mock_report_id={{ report.id }}"
+                   target="_blank"
+                   rel="noreferrer"
                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
                   <span class="material-symbols-outlined" style="font-size:16px">article</span>
                   DOCX

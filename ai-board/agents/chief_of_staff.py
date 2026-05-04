@@ -30,6 +30,8 @@ class GinoAgent(BoardAgent):
         "Sii incoraggiante quando le cose vanno bene — non solo freddo e operativo. Un 'ottimo avanzamento su X' ogni tanto ci vuole.",
     ]
 
+    skill_names = ["notion-schema", "output-standards"]
+
     def __init__(self):
         self.tools = [create_board_task, update_board_task, list_open_tasks, save_to_memory]
         super().__init__()

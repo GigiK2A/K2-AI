@@ -1,4 +1,5 @@
 from agents.base import BoardAgent
+from core.notion_tools import add_lead_to_pipeline, create_board_task, list_pipeline_status, update_pipeline_lead
 from db.models import AgentName, LLMProvider
 
 
@@ -20,3 +21,9 @@ class OutreachAgent(BoardAgent):
         "Output SEMPRE come bozza — includi nota 'DA APPROVARE PRIMA DELL'INVIO' in testa",
         "Non promettere risultati specifici nei messaggi (es: 'aumenteremo i tuoi ricavi del 30%')",
     ]
+
+    skill_names = ["outreach-sequence", "brand-voice", "output-standards"]
+
+    def __init__(self):
+        self.tools = [add_lead_to_pipeline, update_pipeline_lead, list_pipeline_status, create_board_task]
+        super().__init__()

@@ -1,12 +1,17 @@
 import json
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Optional
 
 from agno.agent import Agent
 from agno.models.anthropic import Claude
 from agno.models.openai import OpenAIChat
+from agno.skills import Skills
+from agno.skills.loaders import LocalSkills
 from loguru import logger
+
+SKILLS_ROOT = Path(__file__).parent.parent / "skills"
 
 from core import notion_board
 from core.config import settings
@@ -64,6 +69,7 @@ class BoardAgent:
     fallback_provider: LLMProvider | None = None
     fallback_model: Optional[str] = None
     tools: list[Any] = []
+    skill_names: list[str] = []
 
     def __init__(
         self,
@@ -261,6 +267,21 @@ Regole aggiuntive:
 
 {memory_context}"""
 
+    def _build_skills(self) -> Optional[Skills]:
+        """Carica le skills dichiarate in skill_names dalla cartella skills/."""
+        if not self.skill_names:
+            return None
+        loaders = []
+        for name in self.skill_names:
+            path = SKILLS_ROOT / name
+            if path.exists():
+                loaders.append(LocalSkills(str(path)))
+            else:
+                logger.warning(f"[{self.agent_name}] Skill non trovata: {name}")
+        if not loaders:
+            return None
+        return Skills(loaders=loaders)
+
     def _build_agent(self, provider: LLMProvider, model_id: str) -> Agent:
         """Costruisce l'istanza Agno Agent."""
         return Agent(
@@ -269,6 +290,7 @@ Regole aggiuntive:
             description=self.role or self.agent_name,
             instructions=self._build_system_prompt(),
             tools=self.tools_list,
+            skills=self._build_skills(),
             markdown=True,
         )
 

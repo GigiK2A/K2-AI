@@ -1,4 +1,5 @@
 from agents.base import BoardAgent
+from core.notion_tools import list_clients, list_pipeline_status, save_to_memory
 from db.models import AgentName, LLMProvider
 
 
@@ -25,5 +26,12 @@ class RagionierUgoAgent(BoardAgent):
         "Nel report KPI usa emoji come intestazioni: 📊 per pipeline, 🔥 per lead caldi, ⚠️ per alert, 💡 per la raccomandazione finale. Rende il report leggibile in 30 secondi su Telegram.",
         "Quando i numeri sono buoni, dillo — non solo quando c'è un problema. Il fondatore apprezza anche le buone notizie.",
     ]
+
+    skill_names = ["kpi-dashboard", "output-standards"]
+
+    def __init__(self):
+        self.tools = [list_pipeline_status, list_clients, save_to_memory]
+        super().__init__()
+
 FinanceKpiAgent = RagionierUgoAgent
 FiorellaAgent = RagionierUgoAgent

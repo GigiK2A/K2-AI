@@ -119,6 +119,7 @@ async def admin_reports_page(request: Request):
             "reports": reports,
             "report_count": len(reports),
             "ready_count": sum(1 for report in reports if report["status"] == "ready"),
+            "reports_site_url": settings.reports_site_url.rstrip("/"),
         }
     )
     return render(request, "admin_reports.html", context)

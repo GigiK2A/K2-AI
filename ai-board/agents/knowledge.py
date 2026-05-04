@@ -1,4 +1,5 @@
-from agents.base import BoardAgent
+from agents.base import BoardAgent, get_search_tool
+from core.notion_tools import list_clients, save_to_memory
 from db.models import AgentName, LLMProvider
 
 
@@ -20,3 +21,9 @@ class KnowledgeAgent(BoardAgent):
         "La knowledge base è il patrimonio del business — ogni informazione va trattata come risorsa, non nota",
         "Output sempre in formato strutturato markdown con frontmatter YAML per i metadati",
     ]
+
+    skill_names = ["output-standards"]
+
+    def __init__(self):
+        self.tools = [get_search_tool(), list_clients, save_to_memory]
+        super().__init__()

@@ -1,4 +1,5 @@
 from agents.base import BoardAgent
+from core.notion_tools import create_board_task, list_clients, list_open_tasks, save_to_memory, update_board_task
 from db.models import AgentName, LLMProvider
 
 
@@ -23,4 +24,11 @@ class ArchimedeAgent(BoardAgent):
         "Ogni blueprint deve essere comprensibile dal cliente non tecnico",
         "Quando il progetto e gia attivo, rispondi anche come assistente tecnico della commessa: stato, blocchi, prossimi passi, dipendenze",
     ]
+
+    skill_names = ["solution-blueprint", "notion-schema", "output-standards"]
+
+    def __init__(self):
+        self.tools = [create_board_task, update_board_task, list_open_tasks, list_clients, save_to_memory]
+        super().__init__()
+
 SolutionArchitectAgent = ArchimedeAgent

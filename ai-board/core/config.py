@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     board_password: Optional[str] = Field(default=None)
     board_auth_realm: str = Field(default="AI Board")
     board_session_hours: int = Field(default=12)
+    reports_site_url: str = Field(default="http://127.0.0.1:4173")
     board_data_backend: str = Field(default="notion")
     notion_token: Optional[str] = Field(default=None)
     notion_page_id: Optional[str] = Field(default=None)

@@ -103,27 +103,58 @@ function renderGrid(grid, countEl) {
     `
   }).join('')
 
+  const cards = [...grid.querySelectorAll('.sas-card')]
+  if (!cards.length) return
+
+  if (!('IntersectionObserver' in window)) {
+    cards.forEach(card => card.classList.add('sas-visible'))
+    return
+  }
+
   /* Stagger with IntersectionObserver */
   const io = new IntersectionObserver((entries, obs) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) { e.target.classList.add('sas-visible'); obs.unobserve(e.target) }
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return
+      entry.target.classList.add('sas-visible')
+      obs.unobserve(entry.target)
     })
   }, { threshold: 0.04 })
-  grid.querySelectorAll('.sas-card').forEach(c => io.observe(c))
+
+  cards.forEach(card => io.observe(card))
+
+  // Safety net: if the observer does not trigger quickly enough, reveal anyway.
+  window.setTimeout(() => {
+    cards.forEach(card => card.classList.add('sas-visible'))
+  }, 220)
 }
 
 /* ── Steps reveal ────────────────────────────── */
 
 function initStepsReveal() {
+  const steps = [...document.querySelectorAll('.sas-step')]
+  if (!steps.length) return
+
+  if (!('IntersectionObserver' in window)) {
+    steps.forEach(step => step.classList.add('sas-visible'))
+    return
+  }
+
   const io = new IntersectionObserver((entries, obs) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) { e.target.classList.add('sas-visible'); obs.unobserve(e.target) }
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return
+      entry.target.classList.add('sas-visible')
+      obs.unobserve(entry.target)
     })
   }, { threshold: 0.15 })
-  document.querySelectorAll('.sas-step').forEach((el, i) => {
+
+  steps.forEach((el, i) => {
     el.style.transitionDelay = `${i * 90}ms`
     io.observe(el)
   })
+
+  window.setTimeout(() => {
+    steps.forEach(step => step.classList.add('sas-visible'))
+  }, 260)
 }
 
 /* ── Refresh ─────────────────────────────────── */

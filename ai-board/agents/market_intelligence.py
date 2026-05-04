@@ -22,6 +22,8 @@ class MarketIntelligenceAgent(BoardAgent):
         "Quando trovi una vera opportunità commerciale per K-AI, mettila in evidenza con 🎯 — è la parte più importante del report",
     ]
 
+    skill_names = ["prospect-research", "output-standards"]
+
     def __init__(self):
         self.tools = [get_search_tool(), add_lead_to_pipeline, list_pipeline_status, save_to_memory]
         super().__init__()

@@ -71,11 +71,19 @@ async function bootKBot() {
   const rootEl = document.getElementById('kbot-react-root')
   if (!rootEl) return false
 
-  const canUseReactKBot = await isKBotApiReachable()
-  if (canUseReactKBot) {
-    return mountKBot(rootEl)
+  const reactMounted = mountKBot(rootEl)
+  if (reactMounted) {
+    rootEl.dataset.kbotMode = 'react'
+    return true
   }
 
+  const canUseLegacyFallback = await isKBotApiReachable()
+  if (!canUseLegacyFallback) {
+    console.warn('K-BOT React mount unavailable and legacy API probe failed; keeping mount error state.')
+    return false
+  }
+
+  rootEl.dataset.kbotMode = 'legacy'
   renderLegacyFallback(rootEl)
   return true
 }

@@ -21,6 +21,8 @@ class LeadGenerationAgent(BoardAgent):
         "Includi sempre 'next_action' e 'next_action_date' per ogni lead",
     ]
 
+    skill_names = ["prospect-research", "notion-schema", "output-standards"]
+
     def __init__(self):
         self.tools = [
             get_search_tool(),

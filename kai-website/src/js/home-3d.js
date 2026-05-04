@@ -6,6 +6,8 @@ import { hasFinePointer, prefersReducedMotion, supportsIntersectionObserver } fr
 const REDUCED_MOTION = prefersReducedMotion()
 const HAS_FINE_POINTER = hasFinePointer()
 const IS_SMALL_VIEWPORT = window.innerWidth < 768
+const ALLOW_DESKTOP_TIMELINE_MOTION = !IS_SMALL_VIEWPORT
+const ALLOW_INTERACTIVE_POINTER_MOTION = !REDUCED_MOTION && !IS_SMALL_VIEWPORT && HAS_FINE_POINTER
 const CHAPTER_LABELS = {
   hero: '00 / ingresso nel sistema',
   evidence: '01 / proof operativo',
@@ -29,7 +31,7 @@ const STAGE_COPY = {
 
 // ── Magnetic cursor dot ───────────────────────────────────────────────────────
 function initCursorDot() {
-  if (REDUCED_MOTION || IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
+  if (!ALLOW_INTERACTIVE_POINTER_MOTION) return
 
   const dot = document.createElement('div')
   dot.id = 'cursor-dot'
@@ -120,7 +122,7 @@ function initCursorDot() {
 
 // ── 3D card tilt ──────────────────────────────────────────────────────────────
 function initCardTilt() {
-  if (REDUCED_MOTION || IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
+  if (!ALLOW_INTERACTIVE_POINTER_MOTION) return
 
   const cards = document.querySelectorAll('.home-page .card, .home-page .stat-3d, .home-page .problema-item, .home-page .home-final-cta-inner')
 
@@ -181,7 +183,8 @@ function initStatCounters() {
   const animateCounter = el => {
     const parsed = parseVal(el.textContent)
     if (!parsed) return
-    counter(el, 0, parsed.value, parsed.suffix, parsed.isInt, REDUCED_MOTION ? 0 : 1600)
+    const duration = REDUCED_MOTION && ALLOW_DESKTOP_TIMELINE_MOTION ? 950 : REDUCED_MOTION ? 0 : 1600
+    counter(el, 0, parsed.value, parsed.suffix, parsed.isInt, duration)
   }
 
   if (!supportsIntersectionObserver()) {
@@ -203,7 +206,7 @@ function initStatCounters() {
 
 // ── Hero title character split animation ─────────────────────────────────────
 function initHeroTextAnim() {
-  if (REDUCED_MOTION) return
+  if (!ALLOW_DESKTOP_TIMELINE_MOTION) return
   const title = document.querySelector('.hero-3d-title')
   if (!title) return
 
@@ -214,16 +217,22 @@ function initHeroTextAnim() {
   ].join('')
 
   const words = title.querySelectorAll('.hero-word')
+  const baseBlur = REDUCED_MOTION ? 8 : 18
+  const baseOffset = REDUCED_MOTION ? 22 : 70
+  const baseRotate = REDUCED_MOTION ? -8 : -28
+  const duration = REDUCED_MOTION ? 0.58 : 1
+  const blurDuration = REDUCED_MOTION ? 0.7 : 1.15
+  const stagger = REDUCED_MOTION ? 0.045 : 0.105
 
   words.forEach((word, i) => {
     word.style.opacity   = '0'
-    word.style.filter    = 'blur(18px)'
-    word.style.transform = 'translateY(70px) rotateX(-28deg) scale(0.96)'
+    word.style.filter    = `blur(${baseBlur}px)`
+    word.style.transform = `translateY(${baseOffset}px) rotateX(${baseRotate}deg) scale(0.98)`
     word.style.display   = 'inline-block'
     word.style.transition = [
-      `opacity 1s cubic-bezier(0.16,1,0.3,1) ${i * 0.105}s`,
-      `transform 1s cubic-bezier(0.16,1,0.3,1) ${i * 0.105}s`,
-      `filter 1.15s cubic-bezier(0.16,1,0.3,1) ${i * 0.105}s`,
+      `opacity ${duration}s cubic-bezier(0.16,1,0.3,1) ${i * stagger}s`,
+      `transform ${duration}s cubic-bezier(0.16,1,0.3,1) ${i * stagger}s`,
+      `filter ${blurDuration}s cubic-bezier(0.16,1,0.3,1) ${i * stagger}s`,
     ].join(',')
   })
 
@@ -239,7 +248,7 @@ function initHeroTextAnim() {
 
 // ── ReactBits-inspired spotlight surfaces ────────────────────────────────────
 function initSpotlightSurfaces() {
-  if (REDUCED_MOTION || IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
+  if (!ALLOW_INTERACTIVE_POINTER_MOTION) return
 
   document.querySelectorAll('.home-page .spotlight-surface').forEach(surface => {
     let rafId = null
@@ -257,7 +266,7 @@ function initSpotlightSurfaces() {
 
 // ── Gentle magnetic CTA behaviour ────────────────────────────────────────────
 function initMagneticActions() {
-  if (REDUCED_MOTION || IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
+  if (!ALLOW_INTERACTIVE_POINTER_MOTION) return
 
   document.querySelectorAll('.home-page .btn, .home-page .hero-3d-link, .home-page .nav-cta').forEach(el => {
     el.addEventListener('pointermove', e => {
@@ -416,7 +425,7 @@ function initHomeChapterState() {
 
 // ── Step hover glow line ──────────────────────────────────────────────────────
 function initStepGlow() {
-  if (REDUCED_MOTION) return
+  if (IS_SMALL_VIEWPORT || !HAS_FINE_POINTER) return
   document.querySelectorAll('.home-page .step').forEach(step => {
     step.addEventListener('mouseenter', () => {
       step.style.boxShadow = 'inset 2px 0 0 rgba(180,210,255,0.35)'
@@ -429,7 +438,7 @@ function initStepGlow() {
 
 // ── Scroll-linked opacity on hero elements ────────────────────────────────────
 function initHeroParallax() {
-  if (REDUCED_MOTION || IS_SMALL_VIEWPORT) return
+  if (!ALLOW_DESKTOP_TIMELINE_MOTION) return
   const inner = document.querySelector('.hero-3d-inner')
   if (!inner) return
 
@@ -439,7 +448,8 @@ function initHeroParallax() {
     ticking = true
     requestAnimationFrame(() => {
       const s = window.scrollY / window.innerHeight
-      inner.style.opacity   = Math.max(0, 1 - s * 1.5)
+      const fadeStrength = REDUCED_MOTION ? 0.42 : 1.5
+      inner.style.opacity = Math.max(0, 1 - s * fadeStrength)
       ticking = false
     })
   }, { passive: true })
@@ -466,7 +476,7 @@ if (document.readyState === 'loading') {
 
 // ── Chapter disappearance choreography ───────────────────────────────────────
 function initChapterChoreography() {
-  if (REDUCED_MOTION || IS_SMALL_VIEWPORT) return
+  if (!ALLOW_DESKTOP_TIMELINE_MOTION) return
 
   const sections = [...document.querySelectorAll('.home-page section')]
     .filter(section => !section.classList.contains('hero-3d-section'))

@@ -1,4 +1,5 @@
 from agents.base import BoardAgent
+from core.notion_tools import list_open_tasks, list_pipeline_status, save_to_memory
 from db.models import AgentName, LLMProvider
 
 
@@ -19,3 +20,9 @@ class RiskReviewAgent(BoardAgent):
         "Non censurare per eccesso di prudenza — il business deve comunicare in modo assertivo",
         "Ricorda: human-in-the-loop è il prodotto, non un limite — enfatizzalo nei contenuti dove manca",
     ]
+
+    skill_names = ["output-standards"]
+
+    def __init__(self):
+        self.tools = [list_open_tasks, list_pipeline_status, save_to_memory]
+        super().__init__()

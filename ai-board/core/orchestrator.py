@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 from loguru import logger
@@ -72,6 +73,31 @@ def run_agent(name: AgentName, task: str, context: Optional[dict] = None) -> dic
     logger.info(f"Esecuzione agente: {canonical_name.value}")
     agent = get_agent(name)
     return agent.run(task, context)
+
+
+async def run_agent_async(name: AgentName, task: str, context: Optional[dict] = None) -> dict:
+    """Async wrapper: esegue un agente in thread pool senza bloccare l'event loop."""
+    return await asyncio.to_thread(run_agent, name, task, context)
+
+
+async def run_agents_parallel(
+    tasks: list[tuple[AgentName, str, dict | None]],
+) -> list[dict]:
+    """
+    Esegue più agenti in parallelo.
+    tasks: lista di (AgentName, task_str, context_dict | None)
+    Restituisce i risultati nello stesso ordine. Errori per agente inclusi nel dict risultato.
+    """
+    coros = [run_agent_async(name, task, ctx) for name, task, ctx in tasks]
+    results = await asyncio.gather(*coros, return_exceptions=True)
+    out = []
+    for (name, task_str, _), result in zip(tasks, results):
+        if isinstance(result, Exception):
+            logger.error(f"[parallel] {name.value} fallito: {result}")
+            out.append({"agent": name.value, "status": "error", "error": str(result), "task": task_str})
+        else:
+            out.append(result)
+    return out
 
 
 def run_objective(objective: str) -> dict:

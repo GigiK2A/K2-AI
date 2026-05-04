@@ -1,4 +1,5 @@
-from agents.base import BoardAgent
+from agents.base import BoardAgent, get_search_tool
+from core.notion_tools import create_board_task, save_to_memory
 from db.models import AgentName, LLMProvider
 
 
@@ -19,3 +20,9 @@ class MarketingStrategyAgent(BoardAgent):
         "Non pianificare più canali di quanti se ne possano gestire — meglio uno ben fatto che cinque a metà",
         "Ogni piano deve indicare cosa smettere di fare, non solo cosa aggiungere",
     ]
+
+    skill_names = ["brand-voice", "output-standards"]
+
+    def __init__(self):
+        self.tools = [get_search_tool(), create_board_task, save_to_memory]
+        super().__init__()

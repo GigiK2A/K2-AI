@@ -469,15 +469,23 @@
   padding: 22px;
   display: flex;
   flex-direction: column;
-  opacity: 0;
-  filter: blur(5px);
-  transform: translateY(10px);
-  animation: sas-card-in .45s var(--ease-cinema, cubic-bezier(.16,1,.3,1)) forwards;
-  animation-play-state: paused;
+  opacity: 1;
+  filter: none;
+  transform: translateY(0);
   transition: border-color .22s, background .22s, transform .24s;
 }
 
-.sas-card.sas-visible { animation-play-state: running; }
+@media (prefers-reduced-motion: no-preference) {
+  .sas-card {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(10px);
+    animation: sas-card-in .45s var(--ease-cinema, cubic-bezier(.16,1,.3,1)) forwards;
+    animation-play-state: paused;
+  }
+
+  .sas-card.sas-visible { animation-play-state: running; }
+}
 
 .sas-card:hover {
   border-color: rgba(255,255,255,.16);
@@ -671,14 +679,21 @@
 
 .sas-step {
   padding: 0 20px 0 0;
-  opacity: 0;
-  transform: translateY(16px);
+  opacity: 1;
+  transform: translateY(0);
   transition: opacity .5s var(--ease-cinema), transform .5s var(--ease-cinema);
 }
 
-.sas-step.sas-visible {
-  opacity: 1;
-  transform: translateY(0);
+@media (prefers-reduced-motion: no-preference) {
+  .sas-step {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  .sas-step.sas-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sas-step-num {

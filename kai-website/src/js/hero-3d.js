@@ -1,8 +1,10 @@
 import * as THREE from 'three'
-import { canRunHeavyGraphics } from './runtime-guards.js'
+import { getGraphicsCapabilityReport } from './runtime-guards.js'
 
-if (!canRunHeavyGraphics(960)) {
-  throw new Error('Hero 3D disabled on this device profile')
+const capability = getGraphicsCapabilityReport(960)
+
+if (!capability.allowed) {
+  throw new Error(`Hero 3D disabled on this device profile: ${capability.reasons.join(', ')}`)
 }
 
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches

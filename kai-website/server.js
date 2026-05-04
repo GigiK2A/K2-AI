@@ -17,6 +17,7 @@ const KBOT_MODEL = process.env.KBOT_MODEL || 'claude-haiku-4-5-20251001';
 const REPORT_MODEL = process.env.REPORT_MODEL || 'claude-sonnet-4-6';
 const SKILLS_DIR = path.join(__dirname, 'lib', 'skills');
 const SUITE_AI_SERVICES = require('./lib/kbot/services-data.json');
+const BOARD_REPORT_MOCKS = require('./lib/report/board-report-mocks.json');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -62,6 +63,7 @@ const SECTOR_BUNDLES = {
 const VALID_KBOT_SECTORS = new Set(Object.keys(SECTOR_LABELS));
 const VALID_KBOT_MODES = new Set(['report', 'lead']);
 const SUITE_AI_SERVICE_BY_ID = new Map(SUITE_AI_SERVICES.map(service => [service.id, service]));
+const BOARD_REPORT_MOCK_BY_ID = new Map(BOARD_REPORT_MOCKS.map(report => [String(report.id || '').trim().toUpperCase(), report]));
 const skillCache = new Map();
 const SECURITY_HEADERS = {
   'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests",
@@ -1775,12 +1777,66 @@ function reportDocxFileName(reportData) {
   return `${rawCode || 'report-kbot'}.docx`;
 }
 
-async function handleReportPdf(req, res) {
-  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+function normalizeBoardMockReportId(value) {
+  return String(value || '').trim().toUpperCase();
+}
 
-  const body = await readJsonBody(req, 2 * 1024 * 1024);
+function parseBoardMockCreatedAt(label) {
+  const value = String(label || '').trim();
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/);
+  if (!match) return new Date().toISOString();
+  const [, day, month, year, hour = '00', minute = '00'] = match;
+  return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).toISOString();
+}
+
+function buildBoardMockReportData(mockReportId) {
+  const normalizedId = normalizeBoardMockReportId(mockReportId);
+  const mock = BOARD_REPORT_MOCK_BY_ID.get(normalizedId);
+  if (!mock) return null;
+
+  const service = getSuiteAiService(mock.serviceId);
+  const reportData = generateReportData({
+    id: normalizedId,
+    serviceId: mock.serviceId,
+    service_id: mock.serviceId,
+    selectedService: service || {
+      id: mock.serviceId,
+      name: mock.service,
+      shortDescription: mock.summary,
+      recommendedTier: mock.tier,
+    },
+    recommendedTier: mock.tier,
+    recommended_tier: mock.tier,
+    companyName: mock.client,
+    businessType: mock.client,
+    summary: mock.summary,
+    conversationSummary: mock.summary,
+    problem: mock.problem,
+    currentProcess: mock.currentProcess,
+    created_at: parseBoardMockCreatedAt(mock.createdAtLabel),
+    updated_at: parseBoardMockCreatedAt(mock.createdAtLabel),
+  });
+
+  reportData.meta.code = normalizedId;
+  reportData.meta.date = mock.createdAtLabel.split(' ')[0] || reportData.meta.date;
+  reportData.client.name = mock.client;
+  reportData.client.scope = mock.currentProcess || reportData.client.scope;
+  reportData.executiveSummary.text = mock.summary || reportData.executiveSummary.text;
+  reportData.context.currentScenario = mock.currentProcess || reportData.context.currentScenario;
+  reportData.problem.main = mock.problem || reportData.problem.main;
+  reportData.solution.expectedResult = `Output mock ${mock.statusLabel || 'Pronto'} per anteprima board.`;
+  return reportData;
+}
+
+async function handleReportPdf(req, res) {
+  if (req.method !== 'POST' && req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  const body = req.method === 'POST' ? await readJsonBody(req, 2 * 1024 * 1024) : {};
+  const url = new URL(req.url || '/', SITE_URL);
+  const mockReportId = body.mockReportId || body.mock_report_id || url.searchParams.get('mock_report_id');
+  const mockReportData = mockReportId ? buildBoardMockReportData(mockReportId) : null;
   const reportDataInput = body.reportData || body.report_data || body;
-  const reportData = isPlainObject(reportDataInput) ? reportDataInput : generateReportData({});
+  const reportData = mockReportData || (isPlainObject(reportDataInput) ? reportDataInput : generateReportData({}));
   const pdfRuntime = require('./lib/report/pdf-generator.js');
   const generatePdfFn = pdfRuntime.generatePDF || (pdfRuntime.default && pdfRuntime.default.generatePDF);
   if (typeof generatePdfFn !== 'function') return sendJson(res, 500, { error: 'generatePDF non disponibile' });
@@ -1794,11 +1850,14 @@ async function handleReportPdf(req, res) {
 }
 
 async function handleReportDocx(req, res) {
-  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+  if (req.method !== 'POST' && req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
 
-  const body = await readJsonBody(req, 2 * 1024 * 1024);
+  const body = req.method === 'POST' ? await readJsonBody(req, 2 * 1024 * 1024) : {};
+  const url = new URL(req.url || '/', SITE_URL);
+  const mockReportId = body.mockReportId || body.mock_report_id || url.searchParams.get('mock_report_id');
+  const mockReportData = mockReportId ? buildBoardMockReportData(mockReportId) : null;
   const reportDataInput = body.reportData || body.report_data || body;
-  const reportData = isPlainObject(reportDataInput) ? reportDataInput : generateReportData({});
+  const reportData = mockReportData || (isPlainObject(reportDataInput) ? reportDataInput : generateReportData({}));
   const docxRuntime = require('./lib/report/docx-generator.js');
   const generateDocxFn = docxRuntime.generateDocx || (docxRuntime.default && docxRuntime.default.generateDocx);
   if (typeof generateDocxFn !== 'function') return sendJson(res, 500, { error: 'generateDocx non disponibile' });

@@ -297,6 +297,9 @@ async function resolveExecutablePath(chromium) {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH
   if (process.env.CHROME_BIN) return process.env.CHROME_BIN
 
+  const projectBrowserExecutable = findProjectBrowserExecutable()
+  if (projectBrowserExecutable) return projectBrowserExecutable
+
   const localCandidates = process.platform === 'darwin'
     ? [
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -320,24 +323,70 @@ async function resolveExecutablePath(chromium) {
   const localExecutable = localCandidates.find(candidate => fs.existsSync(candidate))
   if (localExecutable) return localExecutable
 
+  if (chromium && typeof chromium.executablePath === 'function') {
+    const bundledExecutable = await chromium.executablePath()
+    if (bundledExecutable) return bundledExecutable
+  }
+
   if (process.platform !== 'linux') {
     throw new Error('Chrome/Chromium locale non trovato. Imposta PUPPETEER_EXECUTABLE_PATH per generare PDF su questa macchina.')
   }
 
-  if (chromium && typeof chromium.executablePath === 'function') return chromium.executablePath()
   return undefined
+}
+
+function findProjectBrowserExecutable() {
+  const browserRoot = path.join(__dirname, '..', '..', '.local-browsers')
+  if (!fs.existsSync(browserRoot)) return null
+
+  const executableNames = process.platform === 'darwin'
+    ? new Set(['Google Chrome for Testing', 'Google Chrome', 'Chromium', 'Brave Browser', 'Microsoft Edge'])
+    : process.platform === 'win32'
+      ? new Set(['chrome.exe', 'msedge.exe'])
+      : new Set(['chrome', 'chromium', 'google-chrome'])
+
+  const stack = [browserRoot]
+  while (stack.length > 0) {
+    const currentDir = stack.pop()
+    if (!currentDir) continue
+
+    let entries = []
+    try {
+      entries = fs.readdirSync(currentDir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+
+    for (const entry of entries) {
+      if (entry.name.startsWith('._')) continue
+      const absolutePath = path.join(currentDir, entry.name)
+      if (entry.isDirectory()) {
+        stack.push(absolutePath)
+        continue
+      }
+      if (entry.isFile() && executableNames.has(entry.name)) {
+        return absolutePath
+      }
+    }
+  }
+
+  return null
 }
 
 async function generatePDF(reportData) {
   const puppeteer = require('puppeteer-core')
   const chromium = require('@sparticuz/chromium')
   const executablePath = await resolveExecutablePath(chromium)
+  const useChromiumLambdaRuntime = process.platform === 'linux' && String(executablePath || '').includes('/tmp/')
+  const launchArgs = useChromiumLambdaRuntime
+    ? (chromium.args || ['--no-sandbox', '--disable-setuid-sandbox'])
+    : ['--no-sandbox', '--disable-setuid-sandbox']
 
   const browser = await puppeteer.launch({
-    args: chromium.args || ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: launchArgs,
     defaultViewport: { width: 1240, height: 1754, deviceScaleFactor: 1 },
     executablePath,
-    headless: chromium.headless !== undefined ? chromium.headless : true,
+    headless: true,
   })
 
   try {

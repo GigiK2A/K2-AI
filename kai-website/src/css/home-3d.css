@@ -777,7 +777,7 @@ html.js-scroll .home-page .reveal.visible {
 }
 
 /* Mobile fallback for the Operational Neural Field: keep the atmosphere, skip WebGL. */
-@media (max-width: 767px), (prefers-reduced-motion: reduce) {
+@media (max-width: 767px) {
   #scene-3d {
     display: none;
   }
@@ -798,7 +798,7 @@ html.js-scroll .home-page .reveal.visible {
   will-change: auto;
 }
 
-@media (max-width: 767px), (prefers-reduced-motion: reduce) {
+@media (max-width: 767px) {
   .home-page .chapter-choreography {
     opacity: 1 !important;
     filter: none !important;
@@ -1792,7 +1792,7 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
   }
 }
 
-@media (max-width: 767px), (prefers-reduced-motion: reduce) {
+@media (max-width: 767px) {
   .home-page .home-experience::before,
   .home-page .home-experience::after,
   .home-page .diagnostic-chamber::after,
@@ -1887,5 +1887,35 @@ body.home-page[data-home-chapter="diagnostic"] .home-experience::after {
   .home-page .faq-answer p {
     transform: none;
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 768px) {
+  #scene-3d,
+  .home-page .experience-stage,
+  .home-page .chapter-handoff,
+  .home-page .chapter-director,
+  .home-page .hero-system-readout {
+    display: block;
+  }
+
+  .home-page .hero-3d-tag::before,
+  .home-page .hero-3d-scroll,
+  .home-page .context-signal-panel i,
+  .home-page .hero-neural-aperture span,
+  .home-page .home-experience::before,
+  .home-page .home-experience::after,
+  .home-page .diagnostic-chamber::after {
+    animation-duration: 12s;
+  }
+
+  .home-page .hero-3d-tag,
+  .home-page #navbar,
+  .home-page .card,
+  .home-page .stat-3d,
+  .home-page .problema-item,
+  .home-page .chat-widget.diagnosi-chat {
+    backdrop-filter: blur(8px) saturate(1.02);
+    -webkit-backdrop-filter: blur(8px) saturate(1.02);
   }
 }

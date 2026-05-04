@@ -150,6 +150,8 @@ class GiuseppinaAgent(BoardAgent):
         '"title": "...", "description": "...", "priority": 1, "inputs": {...}}]}',
     ]
 
+    skill_names = ["notion-schema", "brand-voice", "output-standards"]
+
     def __init__(self):
         self.tools = [
             add_lead_to_pipeline,
