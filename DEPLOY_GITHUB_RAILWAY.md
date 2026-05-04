@@ -26,6 +26,16 @@ Nel progetto Railway crea **2 servizi** dallo stesso repo.
 - Builder: Dockerfile (automatico)
 - Porta: gestita da `PORT`
 - Healthcheck: `/`
+- Auto-deploy: `main`
+
+Nota operativa importante:
+
+- Per `k2-ai-website` usare deploy Git-backed da GitHub.
+- Evitare `railway up` per questo servizio: Railway puo fallire in modo intermittente
+  nella risoluzione di `root directory` e `railway.toml` durante lo snapshot upload,
+  anche con configurazione corretta.
+- Se devi pubblicare dal terminale, usa lo script repo-root
+  `scripts/deploy-website-via-git.sh`.
 
 Variabile ambiente richiesta:
 
@@ -87,6 +97,27 @@ Configura due host:
    - nuovo `Task`
    - sottopagina cliente con messaggio completo.
 4. Verifica Telegram: notifica con formattazione (grassetto/corsivo) corretta.
+
+## 4.1) Publish del sito da terminale
+
+Per il solo sito pubblico:
+
+```bash
+./scripts/deploy-website-via-git.sh
+```
+
+Lo script:
+
+- verifica che il branch corrente sia `main`
+- blocca il deploy se la working tree non e pulita
+- esegue `npm run build` in `kai-website`
+- pubblica con `git push origin main`
+
+Per saltare la build locale:
+
+```bash
+./scripts/deploy-website-via-git.sh --skip-build
+```
 
 ## Opzionale (legacy)
 

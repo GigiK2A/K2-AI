@@ -22,4 +22,5 @@ Contenitore unico per il sito pubblico e il software operativo.
 ## Deploy
 
 - Guida completa GitHub -> Railway: `DEPLOY_GITHUB_RAILWAY.md`
+- Publish sicuro del sito via GitHub: `./scripts/deploy-website-via-git.sh`
 - In modalità Notion-only Supabase non è richiesto per avvio e intake pubblico.
