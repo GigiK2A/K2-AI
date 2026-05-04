@@ -11,6 +11,7 @@ from core.board_auth import VALID_ROLES, hash_password, is_admin
 from core.config import settings
 from db.client import get_service_client
 from interfaces.dashboard.routes import base_context, render, safely
+from services.reports_service import get_mock_reports
 
 router = APIRouter()
 
@@ -101,6 +102,26 @@ async def admin_page(request: Request, deleted: str | None = None, error: str | 
         }
     )
     return render(request, "admin.html", context)
+
+
+@router.get("/admin/reports")
+async def admin_reports_page(request: Request):
+    _require_admin(request)
+    reports = get_mock_reports()
+    context = base_context(
+        request,
+        active_page="reports",
+        page_title="Report generati",
+        page_subtitle="Archivio interno dei report K-BOT",
+    )
+    context.update(
+        {
+            "reports": reports,
+            "report_count": len(reports),
+            "ready_count": sum(1 for report in reports if report["status"] == "ready"),
+        }
+    )
+    return render(request, "admin_reports.html", context)
 
 
 @router.post("/admin/delete-all")

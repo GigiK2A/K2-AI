@@ -151,6 +151,7 @@ function collectSuiteAiHtmlInputs() {
   const entries = {}
   for (const fileName of fs.readdirSync(suiteDir)) {
     if (!fileName.endsWith('.html')) continue
+    if (fileName.startsWith('._')) continue
     const slug = fileName.replace(/\.html$/i, '')
     entries[`suite-ai/${slug}`] = `src/suite-ai/${fileName}`
   }

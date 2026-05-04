@@ -9,6 +9,7 @@ import {
   type V2SummaryData,
 } from '../../api/kbot/_shared'
 import { CONTENT_TYPE_BUNDLES, SECTOR_BUNDLES } from '../skills/sectors.config'
+import { generateReportData } from './report-data'
 import { getSuiteAiServiceById, normalizeServiceId } from './services'
 
 export type KbotRole = 'user' | 'assistant'
@@ -284,23 +285,6 @@ export async function appendKbotMessage(body: Record<string, unknown>) {
   }
 }
 
-function fallbackReport(session: any, serviceName: string) {
-  const collectedData = resolveCollectedData(session)
-  const messages = normalizeMessages(session.messages)
-  const userMessages = messages.filter(message => message.role === 'user').map(message => message.content)
-  const joinedUserMessages = userMessages.join('\n').slice(0, 1600)
-
-  return {
-    title: `Report K-BOT - ${serviceName}`,
-    summary: collectedData.summary || joinedUserMessages || 'Dato non fornito',
-    serviceName,
-    recommendedTier: collectedData.recommendedTier || collectedData.recommended_tier || null,
-    extractedData: collectedData.extractedData || collectedData,
-    conversationTurns: messages.length,
-    nextStep: collectedData.nextStep || 'Valutare il caso con il team K2-AI e definire il perimetro operativo.',
-  }
-}
-
 export async function buildKbotReport(body: Record<string, unknown>) {
   const session = await loadKbotSession(body.sessionId || body.session_id)
   const collectedData = resolveCollectedData(session)
@@ -310,47 +294,26 @@ export async function buildKbotReport(body: Record<string, unknown>) {
 
   const service = getSuiteAiServiceById(serviceId)
   const messages = normalizeMessages(session.messages)
-  const compactConversation = compactMessages(messages, 30, 1800)
-  const fallback = fallbackReport(session, service?.name || serviceId)
-
-  let report: Record<string, unknown> = fallback
-
-  try {
-    const anthropic = createAnthropicClient()
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 1600,
-      system: 'Sei K-BOT di K2-AI. Produci solo JSON valido, senza markdown.',
-      messages: [{
-        role: 'user',
-        content: `Genera un report sintetico in italiano usando TUTTA la conversazione, non solo l'ultimo messaggio.
-
-SERVIZIO: ${service?.name || serviceId}
-TIER CONSIGLIATO SERVIZIO: ${service?.recommendedTier || 'n/d'}
-DATI RACCOLTI: ${JSON.stringify(collectedData, null, 2)}
-CONVERSAZIONE COMPLETA:
-${compactConversation.map(message => `${message.role}: ${message.content}`).join('\n')}
-
-Schema JSON:
-{"title":"...","summary":"...","serviceName":"...","recommendedTier":"HOST|WEB|STUDIO|null","extractedData":{},"priorities":["..."],"risks":["..."],"nextStep":"...","conversationTurns":0}`,
-      }],
-    })
-
-    const raw = response.content[0]?.type === 'text' ? response.content[0].text : ''
-    report = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim())
-  } catch {
-    report = fallback
-  }
+  const recommendedTier = collectedData.recommendedTier || collectedData.recommended_tier || service?.recommendedTier || null
+  const reportData = generateReportData({
+    ...session,
+    messages,
+    selectedService: service || serviceId,
+    serviceId,
+    recommendedTier,
+    conversationSummary: collectedData.conversationSummary || collectedData.summary,
+    extractedData: collectedData.extractedData || collectedData,
+  })
 
   const updatedCollectedData = {
     ...collectedData,
     service_id: serviceId,
-    report,
-    summary: typeof report.summary === 'string' ? report.summary : fallback.summary,
-    recommendedTier: typeof report.recommendedTier === 'string' ? report.recommendedTier : fallback.recommendedTier,
-    extractedData: typeof report.extractedData === 'object' && report.extractedData
-      ? report.extractedData
-      : fallback.extractedData,
+    reportData,
+    report: reportData,
+    summary: reportData.executiveSummary.text,
+    conversationSummary: reportData.executiveSummary.text,
+    recommendedTier,
+    extractedData: collectedData.extractedData || collectedData,
   }
 
   const supabase = createSupabaseAdminClient()
@@ -368,7 +331,8 @@ Schema JSON:
   if (error) throw new Error(error.message)
 
   return {
-    report,
+    reportData,
+    report: reportData,
     session: serializeKbotSession(data),
   }
 }

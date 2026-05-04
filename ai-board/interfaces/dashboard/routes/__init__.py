@@ -23,6 +23,7 @@ NAV_ITEMS = [
     {"key": "inbox",    "label": "Inbox",      "icon": "inbox",        "href": "/inbox"},
     {"key": "pipeline", "label": "Pipeline",   "icon": "account_tree", "href": "/pipeline"},
     {"key": "lavori",   "label": "Lavori",     "icon": "checklist",    "href": "/lavori"},
+    {"key": "reports",  "label": "Report",     "icon": "description",  "href": "/admin/reports"},
     {"key": "workshop_admin", "label": "Workshop", "icon": "deployed_code", "href": "/workshop-admin"},
     {"key": "admin",    "label": "Admin",      "icon": "settings",     "href": "/admin"},
 ]

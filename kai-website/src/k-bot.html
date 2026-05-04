@@ -8,6 +8,9 @@
   <link rel="canonical" href="https://www.k2-ai.it/k-bot.html">
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/favicon.png">
+  <link rel="preload" href="/fonts/clash-display-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/dm-sans-400.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="./logo-nav-compact.png" as="image">
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="K2-AI">
@@ -29,6 +32,7 @@
   <link rel="stylesheet" href="./css/nav.css">
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/pages.css">
+  <link rel="stylesheet" href="./css/k2-immersive.css">
   <link rel="stylesheet" href="./css/kbot-react.css">
   <!-- JSON-LD: Organization + ProfessionalService + WebSite -->
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.k2-ai.it/#organization","name":"K2-AI","legalName":"K2A S.R.L.S.","alternateName":["K2AI","K2 AI"],"url":"https://www.k2-ai.it/","logo":{"@type":"ImageObject","url":"https://www.k2-ai.it/logo-nav.png","width":600,"height":200},"description":"K2-AI progetta e implementa sistemi AI operativi per PMI italiane: agenti, automazioni documentali, microapp e board decisionali integrati nei tool esistenti (CRM, ERP, email, Drive, gestionali).","taxID":"IT03655920548","vatID":"IT03655920548","identifier":[{"@type":"PropertyValue","propertyID":"REA","value":"PG-304896"}],"address":{"@type":"PostalAddress","addressCountry":"IT","addressRegion":"Umbria","addressLocality":"Perugia"},"contactPoint":[{"@type":"ContactPoint","contactType":"customer support","email":"info@k2-ai.it","availableLanguage":["it"]}],"sameAs":["https://www.k2aingegneria.it/","https://www.linkedin.com/company/k2-ai/"],"knowsAbout":["Sistemi AI operativi per PMI","Agenti AI","Automazioni documentali","Microapp aziendali","RAG","LangChain","Claude","OpenAI","n8n","Supabase","Zapier"]},{"@type":"ProfessionalService","@id":"https://www.k2-ai.it/#service","name":"K2-AI — Sistemi AI operativi per PMI","provider":{"@id":"https://www.k2-ai.it/#organization"},"areaServed":{"@type":"Country","name":"Italia"},"serviceType":["AI system engineering","Agent AI","Document automation","Microapp development"],"description":"K2-AI costruisce sistemi AI che tolgono passaggi ripetitivi al team e restano sotto controllo umano. Dal brief al primo prototipo in 14 giorni."},{"@type":"WebSite","@id":"https://www.k2-ai.it/#website","url":"https://www.k2-ai.it/","name":"K2-AI","publisher":{"@id":"https://www.k2-ai.it/#organization"},"inLanguage":"it-IT"}]}</script>
@@ -40,7 +44,7 @@
   <nav id="navbar">
     <div class="nav-inner">
       <a href="/" class="nav-logo" aria-label="K2-AI">
-        <img src="./logo-nav.png?v=20260414" alt="K2-AI">
+        <img src="./logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI">
       </a>
       <ul class="nav-links">
         <li><a href="/">Home</a></li>
@@ -69,7 +73,7 @@
   <section class="page-header">
     <p class="hero-eyebrow reveal">K-BOT — Sistema di diagnosi AI</p>
     <h1 class="display-xl reveal reveal-delay-1 page-title-wide">
-      Descrivi il tuo processo.<br>In 5 minuti sai se l'AI può fare la differenza.
+      Diagnosi AI<br>in 5 minuti.
     </h1>
     <p class="reveal reveal-delay-2 analysis-top-copy">
       Bill Gates diceva che una persona pigra trova spesso il modo più semplice per fare un lavoro difficile. K-BOT fa questo: ti aiuta a capire velocemente se il tuo processo ha un'opportunità AI concreta.
@@ -185,7 +189,7 @@
 
   <footer>
     <div class="footer-inner footer-inner-legal">
-      <span class="footer-logo"><img src="./logo-nav.png?v=20260414" alt="K2-AI"></span>
+      <span class="footer-logo"><img src="./logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI"></span>
       <ul class="footer-links">
         <li><a href="/metodo.html">Metodo</a></li>
         <li><a href="/laboratorio.html">Laboratorio</a></li>
@@ -204,6 +208,7 @@
 
   <script type="module" src="./js/scroll.js"></script>
   <script type="module" src="./js/nav.js"></script>
+  <script type="module" src="./js/k2-immersive.js"></script>
   <script type="module" src="./js/kbot-react-entry.tsx"></script>
 </body>
 </html>

@@ -212,6 +212,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'Marketing manager, founder PMI, agenzie digitali, e-commerce',
     recommendedTier: 'WEB',
     tags: ['marketing', 'contenuti', 'SEO', 'copywriting', 'campagne'],
+    pillarUrl: '/suite-ai/ai-marketing-contenuti.html',
   },
   {
     id: 'P12',
@@ -229,6 +230,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'Imprenditori PMI, CFO, advisor M&A, studi di consulenza strategica',
     recommendedTier: 'STUDIO',
     tags: ['strategia', 'diagnosi', 'bilancio', 'crescita', 'benchmark'],
+    pillarUrl: '/suite-ai/diagnosi-strategica-pmi.html',
   },
   {
     id: 'P13',
@@ -246,6 +248,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'CFO, imprenditori PMI in fase di investimento, consulenti finanza agevolata',
     recommendedTier: 'WEB',
     tags: ['agevolazioni', 'Transizione 5.0', 'Sabatini', 'credito imposta', 'finanza'],
+    pillarUrl: '/suite-ai/agevolazioni-finanza-agevolata.html',
   },
   {
     id: 'P14',
@@ -263,6 +266,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'Imprese edili, studi di ingegneria, coordinatori sicurezza, RUP enti pubblici',
     recommendedTier: 'STUDIO',
     tags: ['edilizia', 'appalti', 'PSC', 'cantiere', 'gare pubbliche'],
+    pillarUrl: '/suite-ai/ai-edilizia-appalti-pubblici.html',
   },
   {
     id: 'P15',
@@ -280,6 +284,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'HR manager, uffici del personale PMI, founder in fase di crescita organica',
     recommendedTier: 'WEB',
     tags: ['HR', 'recruiting', 'onboarding', 'performance', 'persone'],
+    pillarUrl: '/suite-ai/ai-hr-recruiting.html',
   },
   {
     id: 'P16',
@@ -297,6 +302,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'Family office, fondi immobiliari, studi legali RE, developer immobiliari',
     recommendedTier: 'STUDIO',
     tags: ['real estate', 'tokenizzazione', 'immobiliare', 'due diligence', 'investimenti'],
+    pillarUrl: '/suite-ai/ai-real-estate-tokenizzazione.html',
   },
   {
     id: 'P17',
@@ -314,6 +320,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'Data analyst, CFO, marketing manager con dati da analizzare, team operations',
     recommendedTier: 'STUDIO',
     tags: ['analytics', 'BI', 'dashboard', 'SQL', 'machine learning'],
+    pillarUrl: '/suite-ai/ai-data-analytics-bi.html',
   },
   {
     id: 'P18',
@@ -331,6 +338,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'Designer, product manager, team frontend, startup in fase di scaling',
     recommendedTier: 'WEB',
     tags: ['UX', 'design', 'accessibilità', 'design system', 'prodotto'],
+    pillarUrl: '/suite-ai/ai-ux-design-system.html',
   },
   {
     id: 'P19',
@@ -348,6 +356,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'Energy manager, responsabili produzione, PMI manifatturiero, ESCO',
     recommendedTier: 'WEB',
     tags: ['energia', 'efficienza', 'HVAC', 'impianti', 'diagnosi energetica'],
+    pillarUrl: '/suite-ai/ai-efficienza-energetica.html',
   },
   {
     id: 'P20',
@@ -365,6 +374,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     target: 'Hotel indipendenti, B&B, agriturismo, gestori affitti brevi, PMI hospitality',
     recommendedTier: 'HOST',
     tags: ['hospitality', 'hotel', 'revenue', 'OTA', 'pricing'],
+    pillarUrl: '/suite-ai/ai-hospitality-revenue.html',
   },
 ]
 

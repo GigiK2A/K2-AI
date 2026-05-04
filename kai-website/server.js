@@ -63,6 +63,13 @@ const VALID_KBOT_SECTORS = new Set(Object.keys(SECTOR_LABELS));
 const VALID_KBOT_MODES = new Set(['report', 'lead']);
 const SUITE_AI_SERVICE_BY_ID = new Map(SUITE_AI_SERVICES.map(service => [service.id, service]));
 const skillCache = new Map();
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests",
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
+};
 
 function normalizeHost(req) {
   const xfHost = req.headers['x-forwarded-host'];
@@ -72,6 +79,18 @@ function normalizeHost(req) {
 
 function shouldRedirect(host) {
   return host === REDIRECT_HOST || host.startsWith(`${REDIRECT_HOST}:`);
+}
+
+function applySecurityHeaders(res) {
+  Object.entries(SECURITY_HEADERS).forEach(([name, value]) => {
+    if (!res.hasHeader(name)) {
+      res.setHeader(name, value);
+    }
+  });
+
+  if (process.env.NODE_ENV === 'production' && !res.hasHeader('Strict-Transport-Security')) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
 }
 
 function send(res, status, headers, body) {
@@ -403,6 +422,234 @@ function extractJsonFromText(text) {
   } catch {
     return null;
   }
+}
+
+const REPORT_FALLBACK = 'Dato non fornito';
+
+function isPlainObject(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function reportText(value) {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return REPORT_FALLBACK;
+}
+
+function reportArray(value) {
+  return Array.isArray(value)
+    ? value.map(item => reportText(item)).filter(item => item !== REPORT_FALLBACK)
+    : [];
+}
+
+function reportPath(source, pathValue) {
+  return pathValue.split('.').reduce((current, key) => {
+    if (!isPlainObject(current)) return undefined;
+    return current[key];
+  }, source);
+}
+
+function firstReportValue(source, paths) {
+  for (const pathValue of paths) {
+    const value = reportPath(source, pathValue);
+    if (reportText(value) !== REPORT_FALLBACK || isPlainObject(value) || (Array.isArray(value) && value.length > 0)) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function reportPriorityClass(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['high', 'alta', 'alto'].includes(normalized)) return 'high';
+  if (['low', 'bassa', 'basso'].includes(normalized)) return 'low';
+  return 'medium';
+}
+
+function reportPriorityLabel(priorityClass) {
+  if (priorityClass === 'high') return 'Alta';
+  if (priorityClass === 'low') return 'Bassa';
+  return 'Media';
+}
+
+function reportUserConversation(messages) {
+  const userMessages = Array.isArray(messages)
+    ? messages
+        .filter(isPlainObject)
+        .filter(message => message.role === 'user')
+        .map(message => reportText(message.content || message.text))
+        .filter(message => message !== REPORT_FALLBACK)
+    : [];
+  return userMessages.length ? userMessages.join('\n') : REPORT_FALLBACK;
+}
+
+function reportDateLabel(value) {
+  const candidate = reportText(value) !== REPORT_FALLBACK ? new Date(String(value)) : new Date();
+  const date = Number.isNaN(candidate.getTime()) ? new Date() : candidate;
+  return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function generateReportData(sessionData) {
+  const collectedData = isPlainObject(sessionData?.collected_data) ? sessionData.collected_data : {};
+  const extractedData = isPlainObject(sessionData?.extractedData)
+    ? sessionData.extractedData
+    : isPlainObject(collectedData.extractedData)
+      ? collectedData.extractedData
+      : {};
+  const source = {
+    ...(isPlainObject(sessionData) ? sessionData : {}),
+    ...collectedData,
+    extractedData,
+    conversation: reportUserConversation(sessionData?.messages),
+  };
+  const serviceId = normalizeServiceId(firstReportValue(source, ['serviceId', 'service_id', 'extractedData.recommendedServiceId']) || 'P12');
+  const service = isPlainObject(source.selectedService)
+    ? source.selectedService
+    : SUITE_AI_SERVICE_BY_ID.get(serviceId) || SUITE_AI_SERVICE_BY_ID.get('P12') || {};
+  const serviceName = reportText(firstReportValue(source, ['selectedService.name', 'extractedData.recommendedServiceName']) || service.name);
+  const recommendedTier = reportText(firstReportValue(source, ['recommendedTier', 'recommended_tier', 'extractedData.recommendedTier']) || service.recommendedTier);
+  const conversationSummary = reportText(firstReportValue(source, ['conversationSummary', 'summary', 'extractedData.summary', 'conversation']));
+  const problem = reportText(firstReportValue(source, ['problem', 'extractedData.problem']));
+  const goal = reportText(firstReportValue(source, ['goal', 'extractedData.goal']));
+  const currentProcess = reportText(firstReportValue(source, ['currentProcess', 'extractedData.currentProcess']));
+  const businessType = reportText(firstReportValue(source, ['businessType', 'extractedData.businessType', 'client.scope', 'scope']));
+  const tags = [serviceName, recommendedTier, ...reportArray(service.tags)].filter(tag => tag !== REPORT_FALLBACK).slice(0, 6);
+  const metrics = [
+    { value: recommendedTier, label: 'tier consigliato' },
+    { value: reportText(firstReportValue(source, ['urgency', 'extractedData.urgency'])), label: 'urgenza dichiarata' },
+    { value: reportText(firstReportValue(source, ['budget', 'extractedData.budget'])), label: 'budget indicato' },
+  ];
+  const problemRows = [{
+    area: businessType,
+    criticalIssue: problem,
+    effect: reportText(firstReportValue(source, ['urgency', 'extractedData.urgency', 'notes', 'extractedData.notes'])),
+    priority: 'Media',
+    priorityClass: 'medium',
+  }];
+  const priorityClass = reportPriorityClass(firstReportValue(source, ['priority', 'extractedData.priority']));
+
+  return {
+    meta: {
+      title: `Report K-BOT - ${serviceName}`,
+      subtitle: reportText(service.shortDescription || service.description),
+      category: 'Diagnosi operativa K2-AI',
+      code: `K2AI-KBOT-${serviceId}`,
+      date: reportDateLabel(firstReportValue(source, ['updated_at', 'created_at'])),
+      version: '1.0',
+    },
+    client: {
+      name: reportText(firstReportValue(source, ['client.name', 'companyName', 'extractedData.companyName', 'businessType', 'extractedData.businessType'])),
+      scope: businessType,
+    },
+    sections: {
+      cover: true,
+      executiveSummary: true,
+      context: true,
+      problem: true,
+      analysis: true,
+      opportunity: true,
+      solution: true,
+      roadmap: true,
+      priorities: true,
+      impact: true,
+      recommendedPlan: true,
+      nextSteps: true,
+      disclaimer: true,
+    },
+    executiveSummary: {
+      title: 'Executive summary',
+      text: conversationSummary,
+      metrics,
+      operationalTakeaway: reportText(firstReportValue(source, ['nextStep', 'extractedData.nextStep', 'goal', 'extractedData.goal'])),
+    },
+    context: {
+      title: 'Contesto aziendale',
+      currentScenario: currentProcess,
+      reportObjective: goal,
+      tags: tags.length ? tags : [REPORT_FALLBACK],
+    },
+    problem: {
+      title: 'Problema rilevato',
+      main: problem,
+      rows: problemRows,
+    },
+    analysis: {
+      title: 'Analisi operativa',
+      intro: conversationSummary,
+      cards: [
+        { title: 'Processo attuale', description: currentProcess },
+        { title: 'Dati disponibili', description: reportText(firstReportValue(source, ['dataAvailable', 'extractedData.dataAvailable'])) },
+        { title: 'Note operative', description: reportText(firstReportValue(source, ['notes', 'extractedData.notes', 'conversation'])) },
+      ],
+      table: [
+        { parameter: 'Urgenza', detectedStatus: reportText(firstReportValue(source, ['urgency', 'extractedData.urgency'])), evaluation: recommendedTier, note: 'Dato raccolto da K-BOT.' },
+        { parameter: 'Integrazioni', detectedStatus: reportText(firstReportValue(source, ['integrations', 'extractedData.integrations'])), evaluation: REPORT_FALLBACK, note: 'Da validare in fase di scoping.' },
+        { parameter: 'Budget', detectedStatus: reportText(firstReportValue(source, ['budget', 'extractedData.budget'])), evaluation: REPORT_FALLBACK, note: 'Da confermare con il cliente.' },
+      ],
+    },
+    opportunity: {
+      title: 'Opportunita AI',
+      intro: reportText(service.shortDescription || service.description),
+      items: (reportArray(service.useCases).length ? reportArray(service.useCases) : [REPORT_FALLBACK]).slice(0, 4).map(useCase => ({
+        title: useCase,
+        description: goal,
+        impact: 'Da stimare',
+        effort: 'Da stimare',
+      })),
+    },
+    solution: {
+      title: 'Soluzione proposta',
+      description: reportText(service.shortDescription || service.description),
+      components: [reportText(service.target)],
+      expectedResult: goal,
+    },
+    roadmap: {
+      title: 'Roadmap di implementazione',
+      items: [
+        { phaseTitle: 'Fase 1 - Scoping', timeframe: 'Settimana 1', owner: 'Cliente + K2-AI', phaseDescription: 'Confermare processo, dati disponibili, vincoli e risultato atteso.' },
+        { phaseTitle: 'Fase 2 - Prototipo', timeframe: 'Settimane 2-3', owner: 'K2-AI', phaseDescription: 'Preparare un primo flusso operativo sul perimetro selezionato.' },
+        { phaseTitle: 'Fase 3 - Validazione', timeframe: 'Settimana 4', owner: 'Cliente + K2-AI', phaseDescription: 'Testare casi reali, raccogliere feedback e misurare gli indicatori principali.' },
+      ],
+    },
+    priorities: {
+      title: 'Priorita operative',
+      items: [{
+        priorityLevel: reportPriorityLabel(priorityClass),
+        priorityClass,
+        action: goal,
+        reason: problem,
+        impact: reportText(firstReportValue(source, ['urgency', 'extractedData.urgency'])),
+        timing: 'Subito',
+      }],
+    },
+    impact: {
+      title: 'Impatto atteso',
+      metrics,
+      rows: [
+        { dimension: 'Tempo', expectedImpact: goal, indicator: 'Ore risparmiate o tempi ciclo ridotti.' },
+        { dimension: 'Qualita operativa', expectedImpact: problem, indicator: 'Riduzione errori, rilavorazioni o passaggi manuali.' },
+      ],
+    },
+    recommendedPlan: {
+      title: `Piano consigliato - ${recommendedTier}`,
+      summary: reportText(firstReportValue(source, ['nextStep', 'extractedData.nextStep']) || service.target),
+      steps: [
+        { step: '01', activity: 'Validazione dati K-BOT', output: 'Perimetro confermato', owner: 'Cliente + K2-AI' },
+        { step: '02', activity: 'Disegno flusso operativo', output: 'Schema soluzione e requisiti', owner: 'K2-AI' },
+        { step: '03', activity: 'Prototipo e test', output: 'Demo funzionante su casi reali', owner: 'K2-AI' },
+      ],
+    },
+    nextSteps: {
+      title: 'Next step',
+      immediateActions: [reportText(firstReportValue(source, ['nextStep', 'extractedData.nextStep']))],
+      requiredDecisions: ['Confermare perimetro, dati disponibili e responsabile operativo.'],
+      suggestedNextStep: reportText(firstReportValue(source, ['nextStep', 'extractedData.nextStep'])),
+    },
+    disclaimer: {
+      title: 'Disclaimer',
+      text: 'Questo report e generato tramite mapping deterministico dei dati raccolti da K-BOT. Le informazioni mancanti sono indicate come "Dato non fornito" e devono essere validate prima di qualsiasi implementazione.',
+    },
+  };
 }
 
 function renderStructuredReportHtml(report, sectorLabel) {
@@ -1440,62 +1687,30 @@ async function handleKbotStructuredReport(req, res) {
     service_id: serviceValidation.serviceId,
   };
   collectedData.conversationSummary = buildDynamicConversationSummary(messages, collectedData, 'report_request');
-  const compactConversation = compactKbotMessages(messages, 30, 1800);
-  const fallbackSummary = compactConversation
-    .filter(message => message.role === 'user')
-    .map(message => message.content)
-    .join('\n')
-    .slice(0, 1800) || 'Dato non fornito';
-
-  let report = {
-    title: `Report K-BOT - ${service?.name || serviceValidation.serviceId}`,
-    summary: collectedData.conversationSummary || collectedData.summary || fallbackSummary,
-    serviceName: service?.name || serviceValidation.serviceId,
-    recommendedTier: collectedData.recommendedTier || service?.recommendedTier || null,
+  const recommendedTier = collectedData.recommendedTier || collectedData.recommended_tier || service?.recommendedTier || null;
+  const reportData = generateReportData({
+    ...session,
+    messages,
+    selectedService: service || serviceValidation.serviceId,
+    serviceId: serviceValidation.serviceId,
+    recommendedTier,
+    conversationSummary: collectedData.conversationSummary || collectedData.summary,
     extractedData: collectedData.extractedData || collectedData,
-    priorities: [],
-    risks: [],
-    nextStep: collectedData.nextStep || 'Valutare il caso con il team K2-AI e definire il perimetro operativo.',
-    conversationTurns: messages.length,
-  };
-
-  try {
-    const anthropic = createAnthropicClient();
-    const response = await anthropic.messages.create({
-      model: KBOT_MODEL,
-      max_tokens: 1600,
-      system: 'Sei K-BOT di K2-AI. Produci solo JSON valido, senza markdown.',
-      messages: [{
-        role: 'user',
-        content: `Genera un report sintetico in italiano usando TUTTA la conversazione, non solo l'ultimo messaggio.
-
-SERVIZIO: ${service?.name || serviceValidation.serviceId}
-TIER CONSIGLIATO SERVIZIO: ${service?.recommendedTier || 'n/d'}
-DATI RACCOLTI: ${JSON.stringify(collectedData, null, 2)}
-CONVERSAZIONE COMPLETA:
-${compactConversation.map(message => `${message.role}: ${message.content}`).join('\n')}
-
-Schema JSON:
-{"title":"...","summary":"...","serviceName":"...","recommendedTier":"HOST|WEB|STUDIO|null","extractedData":{},"priorities":["..."],"risks":["..."],"nextStep":"...","conversationTurns":0}`,
-      }],
-    });
-    const parsed = extractJsonFromText(response.content?.[0]?.type === 'text' ? response.content[0].text : '');
-    if (parsed) report = { ...report, ...parsed, conversationTurns: messages.length };
-  } catch (reportError) {
-    console.warn('K-BOT structured report fallback:', reportError);
-  }
+  });
 
   const updatedCollectedData = {
     ...collectedData,
-    report,
-    summary: report.summary,
-    recommendedTier: report.recommendedTier,
-    extractedData: report.extractedData || collectedData.extractedData || {},
+    reportData,
+    report: reportData,
+    summary: reportData.executiveSummary.text,
+    conversationSummary: reportData.executiveSummary.text,
+    recommendedTier,
+    extractedData: collectedData.extractedData || collectedData,
     contactPrefillSummary: buildContactPrefillSummary({ ...session, messages }, {
       ...collectedData,
-      summary: report.summary,
-      recommendedTier: report.recommendedTier,
-      extractedData: report.extractedData || collectedData.extractedData || {},
+      summary: reportData.executiveSummary.text,
+      recommendedTier,
+      extractedData: collectedData.extractedData || collectedData,
     }),
   };
 
@@ -1512,7 +1727,7 @@ Schema JSON:
     .single();
 
   if (updateError) return sendJson(res, 500, { error: updateError.message });
-  sendJson(res, 200, { report, session: serializeKbotSession(updatedSession) });
+  sendJson(res, 200, { reportData, report: reportData, session: serializeKbotSession(updatedSession) });
 }
 
 async function handleKbotReport(req, res) {
@@ -1543,6 +1758,58 @@ async function handleKbotStatus(req, res) {
   const { data, error } = await supabase.from('kbot_sessions').select('status, pdf_url').eq('id', id).single();
   if (error || !data) return sendJson(res, 404, { error: 'Session not found' });
   sendJson(res, 200, { status: data.status, pdf_url: data.pdf_url || null });
+}
+
+function reportPdfFileName(reportData) {
+  const rawCode = String(reportData?.meta?.code || 'report-kbot')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${rawCode || 'report-kbot'}.pdf`;
+}
+
+function reportDocxFileName(reportData) {
+  const rawCode = String(reportData?.meta?.code || 'report-kbot')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${rawCode || 'report-kbot'}.docx`;
+}
+
+async function handleReportPdf(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  const body = await readJsonBody(req, 2 * 1024 * 1024);
+  const reportDataInput = body.reportData || body.report_data || body;
+  const reportData = isPlainObject(reportDataInput) ? reportDataInput : generateReportData({});
+  const pdfRuntime = require('./lib/report/pdf-generator.js');
+  const generatePdfFn = pdfRuntime.generatePDF || (pdfRuntime.default && pdfRuntime.default.generatePDF);
+  if (typeof generatePdfFn !== 'function') return sendJson(res, 500, { error: 'generatePDF non disponibile' });
+
+  const pdfBuffer = await generatePdfFn(reportData);
+  send(res, 200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': `attachment; filename="${reportPdfFileName(reportData)}"`,
+    'Cache-Control': 'no-store',
+  }, pdfBuffer);
+}
+
+async function handleReportDocx(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  const body = await readJsonBody(req, 2 * 1024 * 1024);
+  const reportDataInput = body.reportData || body.report_data || body;
+  const reportData = isPlainObject(reportDataInput) ? reportDataInput : generateReportData({});
+  const docxRuntime = require('./lib/report/docx-generator.js');
+  const generateDocxFn = docxRuntime.generateDocx || (docxRuntime.default && docxRuntime.default.generateDocx);
+  if (typeof generateDocxFn !== 'function') return sendJson(res, 500, { error: 'generateDocx non disponibile' });
+
+  const docxBuffer = await generateDocxFn(reportData);
+  send(res, 200, {
+    'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'Content-Disposition': `attachment; filename="${reportDocxFileName(reportData)}"`,
+    'Cache-Control': 'no-store',
+  }, docxBuffer);
 }
 
 async function handleKbotApi(req, res, rawPath) {
@@ -1614,6 +1881,8 @@ function serveFile(req, res, filePath) {
 }
 
 const server = http.createServer((req, res) => {
+  applySecurityHeaders(res);
+
   const host = normalizeHost(req);
   if (shouldRedirect(host)) {
     const location = `https://${CANONICAL_HOST}${req.url || '/'}`;
@@ -1643,6 +1912,22 @@ const server = http.createServer((req, res) => {
     handleNewsletterConfirm(req, res).catch(err => {
       console.error('Newsletter confirm error:', err);
       send(res, 302, { Location: '/newsletter-error' }, '');
+    });
+    return;
+  }
+
+  if (rawPath === '/api/report/pdf') {
+    handleReportPdf(req, res).catch(err => {
+      console.error('Report PDF API error:', err);
+      sendJson(res, 500, { error: 'Errore generazione PDF report' });
+    });
+    return;
+  }
+
+  if (rawPath === '/api/report/docx') {
+    handleReportDocx(req, res).catch(err => {
+      console.error('Report DOCX API error:', err);
+      sendJson(res, 500, { error: 'Errore generazione DOCX report' });
     });
     return;
   }

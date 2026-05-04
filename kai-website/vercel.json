@@ -1,5 +1,7 @@
 {
   "functions": {
+    "api/report/pdf.ts": { "maxDuration": 60 },
+    "api/report/docx.ts": { "maxDuration": 30 },
     "api/kbot/generate-pdf.ts": { "maxDuration": 60 },
     "api/**/*.ts": { "maxDuration": 30 }
   },

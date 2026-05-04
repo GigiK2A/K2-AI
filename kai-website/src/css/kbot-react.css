@@ -1115,3 +1115,100 @@
   padding: 12px 24px;
   letter-spacing: 0.02em;
 }
+
+/* ── K-BOT v2 Summary Card ─────────────────────────────────────────── */
+.kbot-v2-summary {
+  margin: 0 16px 12px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kbot-v2-summary-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.kbot-v2-chip {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  background: rgba(165, 180, 252, 0.1);
+  border: 1px solid rgba(165, 180, 252, 0.2);
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+.kbot-v2-urgency {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+.kbot-v2-urgency-alta   { color: #fca5a5; background: rgba(252, 165, 165, 0.1); border: 1px solid rgba(252, 165, 165, 0.2); }
+.kbot-v2-urgency-media  { color: #fcd34d; background: rgba(252, 211, 77, 0.1); border: 1px solid rgba(252, 211, 77, 0.2); }
+.kbot-v2-urgency-bassa  { color: #86efac; background: rgba(134, 239, 172, 0.1); border: 1px solid rgba(134, 239, 172, 0.2); }
+
+.kbot-v2-tier {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+.kbot-v2-tier-host   { color: #6ee7b7; background: rgba(110, 231, 183, 0.1); border: 1px solid rgba(110, 231, 183, 0.2); }
+.kbot-v2-tier-web    { color: #93c5fd; background: rgba(147, 197, 253, 0.1); border: 1px solid rgba(147, 197, 253, 0.2); }
+.kbot-v2-tier-studio { color: #c4b5fd; background: rgba(196, 181, 253, 0.1); border: 1px solid rgba(196, 181, 253, 0.2); }
+
+.kbot-v2-summary-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d1d5db;
+  margin: 0;
+}
+
+.kbot-v2-service {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.kbot-v2-service-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  font-weight: 600;
+}
+.kbot-v2-service-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a5b4fc;
+}
+
+.kbot-v2-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.kbot-v2-next {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+  font-style: italic;
+  border-top: 1px solid rgba(99, 102, 241, 0.12);
+  padding-top: 8px;
+}

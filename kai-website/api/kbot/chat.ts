@@ -1,24 +1,19 @@
 import {
-  buildSystemPrompt,
+  buildSystemPromptV2,
+  extractV2Summary,
+  stripSummaryBlock,
   compactMessages,
   createAnthropicClient,
   createSupabaseAdminClient,
-  detectPath,
-  determineNextAction,
   ensurePost,
-  extractStructuredData,
   MODEL,
   parseJsonBody,
   resolveSkillNamesForSession,
-  stripClosingQuestion,
   sendJson,
+  type V2SummaryData,
 } from './_shared'
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string; ts?: string }
-
-function hasQuestion(text: string): boolean {
-  return /\?/.test(String(text || ''))
-}
 
 function normalizeAssistantReply(raw: string): string {
   let text = String(raw || '')
@@ -31,20 +26,12 @@ function normalizeAssistantReply(raw: string): string {
     .replace(/^\s*[-=_]{3,}\s*$/gm, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/^\s*[-*]\s+/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
-  const lines = text
-    .split('\n')
-    .map(line => line.trim())
-    .filter(Boolean)
-    .slice(0, 4)
-
-  const compact = lines.join('\n').trim()
-  if (!compact) return 'Ricevuto. Procedo con il prossimo passaggio.'
-  if (compact.length > 680) return `${compact.slice(0, 677).trim()}...`
-  return compact
+  if (!text) return 'Ricevuto. Procedo con il prossimo passaggio.'
+  if (text.length > 1200) return `${text.slice(0, 1197).trim()}...`
+  return text
 }
 
 function buildAttachmentsContext(session: any): string {
@@ -118,47 +105,34 @@ export default async function handler(req: any, res: any) {
       },
     ]
 
-    let path = (session.path || 'unknown') as 'A' | 'B' | 'unknown'
-    if (stepNum === 2 && path === 'unknown') {
-      path = detectPath(userMessage, session.collected_data?.problem_description || '')
-    }
+    // Path determined by mode, not router question
+    const sessionMode: string = session.mode || 'report'
+    const path: 'A' | 'B' = sessionMode === 'lead' ? 'B' : 'A'
 
     const skillNames = resolveSkillNamesForSession(session)
-    const systemPrompt = buildSystemPrompt(skillNames, path, stepNum, session)
+    const systemPrompt = buildSystemPromptV2(skillNames, session)
 
     const modelMessages = compactMessages(modelMessagesInput).map(m => ({ role: m.role, content: m.content }))
 
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 700,
+      max_tokens: 1200,
       system: systemPrompt,
       messages: modelMessages,
     })
 
     const rawAssistantMessage = response.content[0]?.type === 'text' ? response.content[0].text : ''
-    let assistantMessage = normalizeAssistantReply(rawAssistantMessage)
 
-    const updatedData = extractStructuredData(
-      userMessage,
-      stepNum,
-      session.collected_data || {},
-      assistantMessage,
-      path,
-    )
+    // Extract structured summary before stripping block
+    const v2Summary: V2SummaryData | null = extractV2Summary(rawAssistantMessage)
+    const strippedRaw = stripSummaryBlock(rawAssistantMessage)
+    const assistantMessage = normalizeAssistantReply(strippedRaw)
 
-    const hasUploadedFiles = Array.isArray(session?.collected_data?.uploaded_files) &&
-      session.collected_data.uploaded_files.length > 0
-
-    // Anti-stallo PATH A: se dopo upload file il bot non pone alcuna domanda, chiudi verso teaser.
-    if (path === 'A' && stepNum >= 3 && hasUploadedFiles && !hasQuestion(assistantMessage)) {
+    // Persist v2 summary data into collected_data
+    const updatedData: Record<string, any> = { ...(session.collected_data || {}) }
+    if (v2Summary) {
+      Object.assign(updatedData, v2Summary)
       updatedData.analysis_ready = true
-      assistantMessage = 'Ho ricevuto il materiale e ho dati sufficienti. Ti mostro subito i segnali principali.'
-    }
-
-    // Messaggio di chiusura PATH A: niente domande finali
-    if (updatedData.analysis_ready && hasQuestion(assistantMessage)) {
-      assistantMessage = stripClosingQuestion(assistantMessage)
-      if (!assistantMessage) assistantMessage = 'Analisi completata. Procedo con i segnali principali.'
     }
 
     const updatedMessages: ChatMessage[] = [
@@ -177,12 +151,14 @@ export default async function handler(req: any, res: any) {
       })
       .eq('id', session_id)
 
-    const nextAction = determineNextAction(path, stepNum, updatedData)
+    const nextAction = v2Summary ? 'show_summary' : 'continue'
 
     return sendJson(res, 200, {
       message: assistantMessage,
       path,
       next_action: nextAction,
+      v2_summary: v2Summary || undefined,
+      contact_summary: v2Summary?.summary || undefined,
       session: { path, step: stepNum + 1 },
     })
   } catch (error) {

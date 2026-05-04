@@ -8,6 +8,9 @@
   <link rel="canonical" href="https://www.k2-ai.it/">
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/favicon.png">
+  <link rel="preload" href="/fonts/clash-display-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/dm-sans-400.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="./logo-nav-compact.png" as="image">
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="K2-AI">
@@ -29,7 +32,8 @@
   <link rel="stylesheet" href="./css/nav.css">
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/pages.css">
-  <script src="/home-boot.js"></script>
+  <link rel="stylesheet" href="./css/home-3d.css">
+  <script src="/home-boot.js" defer></script>
   <!-- JSON-LD: Organization + ProfessionalService + WebSite -->
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.k2-ai.it/#organization","name":"K2-AI","legalName":"K2A S.R.L.S.","alternateName":["K2AI","K2 AI"],"url":"https://www.k2-ai.it/","logo":{"@type":"ImageObject","url":"https://www.k2-ai.it/logo-nav.png","width":600,"height":200},"description":"K2-AI progetta e implementa sistemi AI operativi per PMI italiane: agenti, automazioni documentali, microapp e board decisionali integrati nei tool esistenti (CRM, ERP, email, Drive, gestionali).","taxID":"IT03655920548","vatID":"IT03655920548","identifier":[{"@type":"PropertyValue","propertyID":"REA","value":"PG-304896"}],"address":{"@type":"PostalAddress","addressCountry":"IT","addressRegion":"Umbria","addressLocality":"Perugia"},"contactPoint":[{"@type":"ContactPoint","contactType":"customer support","email":"info@k2-ai.it","availableLanguage":["it"]}],"sameAs":["https://www.k2aingegneria.it/","https://www.linkedin.com/company/k2-ai/"],"knowsAbout":["Sistemi AI operativi per PMI","Agenti AI","Automazioni documentali","Microapp aziendali","RAG","LangChain","Claude","OpenAI","n8n","Supabase","Zapier"]},{"@type":"ProfessionalService","@id":"https://www.k2-ai.it/#service","name":"K2-AI — Sistemi AI operativi per PMI","provider":{"@id":"https://www.k2-ai.it/#organization"},"areaServed":{"@type":"Country","name":"Italia"},"serviceType":["AI system engineering","Agent AI","Document automation","Microapp development"],"description":"K2-AI costruisce sistemi AI che tolgono passaggi ripetitivi al team e restano sotto controllo umano. Dal brief al primo prototipo in 14 giorni."},{"@type":"WebSite","@id":"https://www.k2-ai.it/#website","url":"https://www.k2-ai.it/","name":"K2-AI","publisher":{"@id":"https://www.k2-ai.it/#organization"},"inLanguage":"it-IT"}]}</script>
   <!-- JSON-LD: FAQPage -->
@@ -37,11 +41,25 @@
 </head>
 <body class="home-page">
 
+  <!-- ═══ THREE.JS CANVAS — fixed full-page background ═══ -->
+  <canvas id="scene-3d" aria-hidden="true"></canvas>
+  <div class="experience-stage" aria-hidden="true">
+    <div class="stage-state">
+      <span class="stage-kicker">state / 00</span>
+      <strong class="stage-title">neural field</strong>
+    </div>
+    <div class="stage-typemark">K2</div>
+    <div class="stage-membrane stage-membrane-a"></div>
+    <div class="stage-membrane stage-membrane-b"></div>
+    <div class="stage-signal stage-signal-a"></div>
+    <div class="stage-signal stage-signal-b"></div>
+  </div>
+
   <!-- NAV -->
   <nav id="navbar">
     <div class="nav-inner">
       <a href="/" class="nav-logo" aria-label="K2-AI">
-        <img src="./logo-nav.png?v=20260414" alt="K2-AI">
+        <img src="./logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI">
       </a>
       <ul class="nav-links">
         <li><a href="/">Home</a></li>
@@ -69,55 +87,79 @@
   </div>
 
   <!-- ═══ HERO ═══ -->
-  <section class="hero hero-video-section">
-    <canvas id="hero-neural-canvas" class="hero-neural-canvas" aria-hidden="true"></canvas>
-    <picture class="hero-static-frame" aria-hidden="true">
-      <img src="/hero-suite-ai.png" alt="">
-    </picture>
-    <!-- Overlay gradiente per leggibilità testo -->
-    <div class="hero-video-overlay"></div>
+  <main class="home-experience" data-home-experience>
 
-    <!-- Contenuto hero -->
-    <div class="hero-content" id="hero-content">
-      <p class="hero-eyebrow">K2-AI / Sistemi AI operativi per PMI</p>
-      <h1 class="display-xl hero-title">
-        "La tecnologia non è nulla. Quello che conta è dare alle persone strumenti con cui possano fare cose straordinarie."
+  <section class="hero-3d-section" data-home-chapter="hero">
+    <div class="hero-neural-aperture" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+    <div class="hero-3d-inner">
+
+      <div class="hero-3d-tag reveal">K2-AI — Sistemi AI operativi per PMI</div>
+
+      <h1 class="hero-3d-title" data-split-hero>
+        Sistemi AI<br>
+        per il lavoro<br>
+        <em>reale.</em>
       </h1>
-      <p class="hero-author">Steve Jobs</p>
-      <p class="hero-subcopy">
-        Costruiamo sistemi AI per il lavoro reale: agenti, automazioni e microapp che tolgono passaggi ripetitivi al team e restano sotto controllo umano. Il metodo è testato su di noi perché lo usiamo ogni giorno per lavorare meglio.
+
+      <p class="hero-3d-subcopy reveal reveal-delay-1">
+        Agenti, automazioni e microapp che tolgono passaggi ripetitivi al team e restano sotto controllo umano. Dal brief al prototipo in 14 giorni.
       </p>
-      <div class="hero-actions">
+
+      <div class="hero-3d-actions reveal reveal-delay-2">
         <a href="#diagnosi" class="btn btn-primary">Scopri se il tuo caso regge →</a>
-        <a href="/contatti" class="hero-link">Parla direttamente con noi ↓</a>
+        <a href="/contatti" class="hero-3d-link">Parla direttamente con noi ↓</a>
       </div>
+
+      <div class="hero-3d-scroll reveal reveal-delay-3" aria-hidden="true">
+        <span class="hero-3d-scroll-line"></span>
+        <span class="hero-3d-scroll-label">scroll</span>
+      </div>
+
+    </div>
+    <div class="hero-system-readout" aria-hidden="true">
+      <span>synthetic cognition architecture</span>
+      <span>human checkpoint enabled</span>
+      <span>prototype window / 14 days</span>
     </div>
   </section>
 
-  <hr class="hr-section">
+  <div class="chapter-handoff chapter-handoff-hero" aria-hidden="true">
+    <span>chaos input</span>
+    <i></i>
+    <span>operational proof</span>
+  </div>
 
   <!-- ═══ NUMERI ═══ -->
-  <section class="home-stats-section">
-    <div class="grid-3">
-      <div class="stat reveal">
-        <div class="stat-value">42h</div>
-        <div class="stat-label">Ore/settimana recuperate: come avere più capacità operativa senza aggiungere passaggi manuali</div>
+  <section class="home-stats-section evidence-wall" data-home-chapter="evidence">
+    <div class="section-label reveal">
+      <span>Proof operativo</span>
+    </div>
+    <div class="stats-3d-grid">
+      <div class="stat-3d stat-3d-featured spotlight-surface reveal">
+        <div class="stat-3d-value">42h</div>
+        <div class="stat-3d-label">Ore/settimana recuperate: come avere più capacità operativa senza aggiungere passaggi manuali</div>
       </div>
-      <div class="stat reveal reveal-delay-1">
-        <div class="stat-value">14gg</div>
-        <div class="stat-label">Dal brief al primo prototipo funzionante, testato con il tuo team e i tuoi dati</div>
+      <div class="stat-3d spotlight-surface reveal reveal-delay-1">
+        <div class="stat-3d-value">14gg</div>
+        <div class="stat-3d-label">Dal brief al primo prototipo funzionante, testato con il tuo team e i tuoi dati</div>
       </div>
-      <div class="stat reveal reveal-delay-2">
-        <div class="stat-value">87%</div>
-        <div class="stat-label">Tempo di revisione documentale ridotto nel primo caso legale misurato</div>
+      <div class="stat-3d spotlight-surface reveal reveal-delay-2">
+        <div class="stat-3d-value">87%</div>
+        <div class="stat-3d-label">Tempo di revisione documentale ridotto nel primo caso legale misurato</div>
       </div>
     </div>
   </section>
 
-  <hr class="hr-section">
+  <div class="chapter-handoff" aria-hidden="true">
+    <span>evidence</span>
+    <i></i>
+    <span>context shift</span>
+  </div>
 
   <!-- ═══ IL PROBLEMA ═══ -->
-  <section>
+  <section class="context-chapter" data-home-chapter="context">
     <div class="section-label reveal">
       <span>Il contesto</span>
     </div>
@@ -132,33 +174,42 @@
         <p class="copy-15">
           Il problema non è che manca l'AI. È che manca un sistema: regole chiare, dati nel posto giusto, passaggi misurabili, checkpoint umani. L'impatto arriva quando l'AI smette di essere una finestra aperta e diventa una parte del flusso di lavoro.
         </p>
+        <div class="context-signal-panel spotlight-surface" aria-hidden="true">
+          <span>tool isolato</span>
+          <i></i>
+          <span>sistema operativo</span>
+        </div>
       </div>
     </div>
 
-    <div class="problema-grid reveal reveal-delay-1">
-      <div class="problema-item">
+    <div class="problema-grid transformation-sequence reveal reveal-delay-1" aria-label="Sequenza di trasformazione operativa">
+      <div class="problema-item spotlight-surface" data-process-state="before">
         <span class="problema-item-num">Scenario comune 01</span>
         <p>Il team passa ore a smistare email, qualificare richieste e aggiornare sistemi a mano.</p>
       </div>
-      <div class="problema-item">
+      <div class="problema-item spotlight-surface" data-process-state="after">
         <span class="problema-item-num">Dopo K2-AI</span>
         <p>Un agente AI legge, classifica, prepara risposte standard e aggiorna il CRM. Il team gestisce solo i casi che richiedono giudizio.</p>
       </div>
-      <div class="problema-item">
+      <div class="problema-item spotlight-surface" data-process-state="before">
         <span class="problema-item-num">Scenario comune 02</span>
         <p>Un ufficio legale rivede contratti standard e perde ore a leggere, confrontare, isolare clausole critiche e verificare precedenti.</p>
       </div>
-      <div class="problema-item">
+      <div class="problema-item spotlight-surface" data-process-state="after">
         <span class="problema-item-num">Dopo K2-AI</span>
         <p>Il sistema analizza il documento, segnala anomalie e confronta con lo storico. L'avvocato riceve un brief operativo invece di ripartire da zero.</p>
       </div>
     </div>
   </section>
 
-  <hr class="hr-section">
+  <div class="chapter-handoff chapter-handoff-wide" aria-hidden="true">
+    <span>fragmented workflow</span>
+    <i></i>
+    <span>orchestrated system</span>
+  </div>
 
   <!-- ═══ COSA COSTRUIAMO ═══ -->
-  <section>
+  <section class="method-architecture" data-home-chapter="method">
     <div class="section-label reveal">
       <span>Il metodo nasce dal nostro lavoro</span>
     </div>
@@ -169,18 +220,18 @@
       </p>
     </div>
 
-    <div class="grid-3">
-      <div class="card reveal">
+    <div class="grid-3 method-grid">
+      <div class="card method-card spotlight-surface reveal" data-method-step="01">
         <div class="card-number">01</div>
         <div class="card-title">Prototipi che arrivano presto al test</div>
         <div class="card-body">In 14 giorni portiamo il caso su qualcosa che il team può provare davvero. Non serve una demo elegante: serve capire se il sistema riduce tempo, errori o passaggi inutili.</div>
       </div>
-      <div class="card reveal reveal-delay-1">
+      <div class="card method-card spotlight-surface reveal reveal-delay-1" data-method-step="02">
         <div class="card-number">02</div>
         <div class="card-title">Automazioni nate dall'uso reale</div>
         <div class="card-body">Raccolta informazioni, analisi documentale, sintesi, organizzazione del contesto, preparazione delivery: sono pezzi del nostro metodo operativo. Da lì capiamo quali pattern possono essere utili anche fuori.</div>
       </div>
-      <div class="card reveal reveal-delay-2">
+      <div class="card method-card spotlight-surface reveal reveal-delay-2" data-method-step="03">
         <div class="card-number">03</div>
         <div class="card-title">Sistemi dentro i tuoi strumenti</div>
         <div class="card-body">Email, CRM, ERP, Drive, gestionali, basi dati: l'AI deve entrare nel punto giusto del processo. Il team resta al comando, con checkpoint chiari e autonomia operativa.</div>
@@ -188,10 +239,14 @@
     </div>
   </section>
 
-  <hr class="hr-section">
+  <div class="chapter-handoff" aria-hidden="true">
+    <span>method pipeline</span>
+    <i></i>
+    <span>operating principles</span>
+  </div>
 
   <!-- ═══ PERCHÉ K2-AI ═══ -->
-  <section>
+  <section class="principles-manifesto" data-home-chapter="principles">
     <div class="section-label reveal">
       <span>Perché K2-AI</span>
     </div>
@@ -202,30 +257,30 @@
       </p>
     </div>
 
-    <div class="home-why-list">
-      <div class="step reveal">
-        <div class="step-num">—</div>
+    <div class="home-why-list manifesto-list">
+      <div class="step spotlight-surface reveal">
+        <div class="step-num">01</div>
         <div class="step-content">
           <h3>Il metodo è testato su di noi</h3>
           <p>Lo usiamo per gestire contesto, documenti, delivery, priorità e follow-up. Non è una promessa astratta: è la disciplina con cui lavoriamo anche internamente.</p>
         </div>
       </div>
-      <div class="step reveal">
-        <div class="step-num">—</div>
+      <div class="step spotlight-surface reveal">
+        <div class="step-num">02</div>
         <div class="step-content">
           <h3>In 14 giorni hai qualcosa da provare</h3>
           <p>Mettiamo in piedi una base concreta con i tuoi dati e il tuo team. Se regge, sappiamo dove investire. Se non regge, lo scopriamo prima di trasformarlo in un progetto lungo.</p>
         </div>
       </div>
-      <div class="step reveal">
-        <div class="step-num">—</div>
+      <div class="step spotlight-surface reveal">
+        <div class="step-num">03</div>
         <div class="step-content">
           <h3>Prima definiamo cosa misurare</h3>
           <p>Ore risparmiate, errori ridotti, velocità, qualità, throughput. Se non troviamo un KPI serio, il problema non è ancora pronto per diventare sistema.</p>
         </div>
       </div>
-      <div class="step reveal">
-        <div class="step-num">—</div>
+      <div class="step spotlight-surface reveal">
+        <div class="step-num">04</div>
         <div class="step-content">
           <h3>Il tuo team resta al comando</h3>
           <p>Ogni sistema ha checkpoint umani e una logica leggibile. L'obiettivo non è sostituire il giudizio: è togliere il lavoro che lo consuma.</p>
@@ -234,17 +289,21 @@
     </div>
   </section>
 
-  <hr class="hr-section">
+  <div class="chapter-handoff chapter-handoff-kbot" aria-hidden="true">
+    <span>principles</span>
+    <i></i>
+    <span>diagnostic chamber</span>
+  </div>
 
   <!-- ═══ BOT / DIAGNOSI ═══ -->
-  <section id="diagnosi" class="diagnosi-section">
+  <section id="diagnosi" class="diagnosi-section diagnostic-chamber" data-home-chapter="diagnostic">
     <div class="diagnosi-grid">
 
       <div>
         <div class="section-label reveal">
           <span>K-BOT</span>
         </div>
-        <h2 class="display-md reveal reveal-delay-1 diagnosi-title">
+        <h2 class="diagnosi-title display-md reveal reveal-delay-1">
           Descrivi il tuo processo.<br>In 5 minuti capisci se l'AI può fare la differenza.
         </h2>
         <p class="reveal reveal-delay-2 diagnosi-copy-a">
@@ -269,8 +328,14 @@
         </div>
       </div>
 
-      <div class="reveal reveal-delay-2">
-        <div class="chat-widget diagnosi-chat">
+      <div class="diagnostic-core reveal reveal-delay-2">
+        <div class="diagnostic-core-label" aria-hidden="true">diagnostic gateway</div>
+        <div class="diagnostic-readout" aria-hidden="true">
+          <span>input / process</span>
+          <span>5 min scan</span>
+          <span>output / next action</span>
+        </div>
+        <div class="chat-widget diagnosi-chat spotlight-surface">
           <div class="chat-header">
             <div class="chat-header-main">
               <div class="chat-status"></div>
@@ -300,12 +365,16 @@
   </section>
 
   <!-- ═══ FAQ ═══ -->
-  <section id="faq">
-    <hr class="hr-section">
+  <section id="faq" class="faq-compact" data-home-chapter="faq">
+    <div class="chapter-handoff chapter-handoff-faq" aria-hidden="true">
+      <span>diagnosis complete</span>
+      <i></i>
+      <span>objection layer</span>
+    </div>
     <div class="section-label reveal">
       <span>Domande frequenti</span>
     </div>
-    <div class="home-why-list">
+    <div class="home-why-list faq-list">
       <div class="step reveal">
         <div class="step-num">—</div>
         <div class="step-content">
@@ -365,10 +434,20 @@
     </div>
   </section>
 
+  <section class="home-final-cta" data-home-chapter="cta">
+    <div class="home-final-cta-inner spotlight-surface reveal">
+      <span class="section-label"><span>Prossimo passo</span></span>
+      <h2>Porta un processo reale. Lo trasformiamo in una diagnosi operativa.</h2>
+      <a href="#diagnosi" class="btn btn-primary">Apri K-BOT →</a>
+    </div>
+  </section>
+
+  </main>
+
   <!-- ═══ FOOTER ═══ -->
   <footer>
     <div class="footer-inner footer-inner-legal">
-      <span class="footer-logo"><img src="./logo-nav.png?v=20260414" alt="K2-AI"></span>
+      <span class="footer-logo"><img src="./logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI"></span>
       <ul class="footer-links">
         <li><a href="/metodo">Metodo</a></li>
         <li><a href="/laboratorio">Laboratorio</a></li>
@@ -387,8 +466,20 @@
 
   <script type="module" src="./js/scroll.js"></script>
   <script type="module" src="./js/nav.js"></script>
-  <script type="module" src="./js/hero-neural-bg.js"></script>
+  <script type="module" src="./js/home-3d.js"></script>
   <script type="module" src="./js/home-intro.js"></script>
   <script type="module" src="./js/chat.js"></script>
+  <script type="module">
+    const canRunHeroField =
+      window.innerWidth >= 768 &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (canRunHeroField) {
+      const load = () => import('./js/hero-3d.js')
+      'requestIdleCallback' in window
+        ? requestIdleCallback(load, { timeout: 1800 })
+        : setTimeout(load, 300)
+    }
+  </script>
 </body>
 </html>

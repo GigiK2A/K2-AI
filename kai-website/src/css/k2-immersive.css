@@ -1,0 +1,824 @@
+/* ========================================================================== */
+/* K2 IMMERSIVE SYSTEM — progressive 3D redesign layer for internal pages.      */
+/* Loaded after base/nav/components/pages so it can be removed safely.          */
+/* ========================================================================== */
+
+:root {
+  --k2-bg-0: #05070a;
+  --k2-bg-1: #080d12;
+  --k2-bg-2: #0d141a;
+  --k2-bg-3: #121a20;
+  --k2-text-1: #edf4f7;
+  --k2-text-2: #a8b7bf;
+  --k2-text-3: #62747d;
+  --k2-teal: #58f0d7;
+  --k2-blue: #8fd8ff;
+  --k2-silver: #c8d2d8;
+  --k2-acid: #b7ff5e;
+  --k2-line: rgba(200, 210, 216, 0.14);
+  --k2-line-strong: rgba(143, 216, 255, 0.34);
+  --k2-glass: rgba(8, 13, 18, 0.62);
+  --k2-glass-strong: rgba(13, 20, 26, 0.82);
+  --k2-shadow: 0 34px 120px rgba(0, 13, 20, 0.52);
+  --k2-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --k2-ease-cinematic: cubic-bezier(0.83, 0, 0.17, 1);
+}
+
+html {
+  background: var(--k2-bg-0);
+}
+
+body.method-page,
+body.workshop-page,
+body.cases-page,
+body.analysis-page,
+body.contact-page {
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(88, 240, 215, 0.12), transparent 28vw),
+    radial-gradient(circle at 80% 4%, rgba(143, 216, 255, 0.10), transparent 34vw),
+    linear-gradient(180deg, #05070a 0%, #081018 48%, #05070a 100%);
+  color: var(--k2-text-1);
+}
+
+body.method-page::before,
+body.workshop-page::before,
+body.cases-page::before,
+body.analysis-page::before,
+body.contact-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(143, 216, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(143, 216, 255, 0.035) 1px, transparent 1px);
+  background-size: 92px 92px;
+  mask-image: radial-gradient(circle at 50% 0%, black 0%, transparent 72%);
+  opacity: 0.45;
+}
+
+body.method-page::after,
+body.workshop-page::after,
+body.cases-page::after,
+body.analysis-page::after,
+body.contact-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 36%, rgba(88, 240, 215, 0.045) 36.2%, transparent 36.8% 100%),
+    radial-gradient(circle at var(--k2-pointer-x, 50%) var(--k2-pointer-y, 24%), rgba(88, 240, 215, 0.10), transparent 24rem);
+  opacity: 0.72;
+}
+
+#k2-immersive-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.72;
+  mix-blend-mode: screen;
+}
+
+body.method-page > nav,
+body.workshop-page > nav,
+body.cases-page > nav,
+body.analysis-page > nav,
+body.contact-page > nav,
+body.method-page > section,
+body.workshop-page > section,
+body.cases-page > section,
+body.analysis-page > section,
+body.contact-page > section,
+body.method-page > footer,
+body.workshop-page > footer,
+body.cases-page > footer,
+body.analysis-page > footer,
+body.contact-page > footer,
+body.method-page > .nav-overlay,
+body.workshop-page > .nav-overlay,
+body.cases-page > .nav-overlay,
+body.analysis-page > .nav-overlay,
+body.contact-page > .nav-overlay {
+  position: relative;
+  z-index: 1;
+}
+
+body.method-page #navbar,
+body.workshop-page #navbar,
+body.cases-page #navbar,
+body.analysis-page #navbar,
+body.contact-page #navbar {
+  background: rgba(5, 7, 10, 0.34);
+  border-bottom: 1px solid rgba(200, 210, 216, 0.08);
+  backdrop-filter: blur(24px) saturate(1.1);
+  -webkit-backdrop-filter: blur(24px) saturate(1.1);
+}
+
+body.method-page #navbar.scrolled,
+body.workshop-page #navbar.scrolled,
+body.cases-page #navbar.scrolled,
+body.analysis-page #navbar.scrolled,
+body.contact-page #navbar.scrolled {
+  background: rgba(5, 7, 10, 0.76);
+  border-bottom-color: rgba(88, 240, 215, 0.18);
+}
+
+body.method-page .nav-links a[aria-current='page'],
+body.workshop-page .nav-links a[aria-current='page'],
+body.cases-page .nav-links a[aria-current='page'],
+body.analysis-page .nav-links a[aria-current='page'],
+body.contact-page .nav-links a[aria-current='page'] {
+  color: #fff;
+}
+
+body.method-page .nav-links a[aria-current='page']::after,
+body.workshop-page .nav-links a[aria-current='page']::after,
+body.cases-page .nav-links a[aria-current='page']::after,
+body.analysis-page .nav-links a[aria-current='page']::after,
+body.contact-page .nav-links a[aria-current='page']::after {
+  transform: scaleX(1);
+  background: var(--k2-teal);
+}
+
+body.method-page section,
+body.workshop-page section,
+body.cases-page section,
+body.analysis-page section,
+body.contact-page section {
+  max-width: min(1500px, calc(100vw - 1px));
+  padding-top: clamp(6rem, 10vw, 12rem);
+  padding-bottom: clamp(6rem, 11vw, 13rem);
+}
+
+body.method-page .page-header,
+body.workshop-page .page-header,
+body.cases-page .page-header,
+body.analysis-page .page-header,
+body.contact-page .page-header,
+body.method-page .page-header-fit,
+body.workshop-page .page-header-fit,
+body.cases-page .page-header-fit {
+  min-height: 92dvh;
+  display: grid;
+  align-items: center;
+  padding-top: clamp(8rem, 14vw, 13rem);
+  padding-bottom: clamp(5rem, 9vw, 9rem);
+}
+
+body.contact-page .page-header {
+  min-height: auto;
+  align-items: start;
+}
+
+.hero-eyebrow,
+.section-label span,
+.mono,
+.card-number,
+.step-num,
+.case-card-sector,
+.form-label {
+  color: rgba(168, 183, 191, 0.76);
+  letter-spacing: 0.14em;
+}
+
+.display-xl,
+.display-lg,
+.display-md {
+  text-wrap: balance;
+  background: linear-gradient(180deg, #fff 0%, #dce8ef 46%, rgba(143, 216, 255, 0.72) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.display-xl {
+  max-width: 1120px;
+  font-size: clamp(3.6rem, 9vw, 9.2rem);
+  line-height: 0.88;
+  letter-spacing: -0.07em;
+}
+
+.page-copy-16,
+.analysis-top-copy,
+.page-copy-contact,
+.copy-15-max-440,
+.copy-15-max-380-mb-32,
+.copy-15-max-380-mb-36,
+.card-body,
+.case-card-desc,
+.step-content p,
+.contact-response-text,
+.contact-submit-note,
+.micro-legal-note,
+.newsletter-block p {
+  color: var(--k2-text-2);
+  text-wrap: pretty;
+}
+
+.page-copy-16,
+.analysis-top-copy,
+.page-copy-contact {
+  max-width: 680px;
+  font-size: clamp(1.05rem, 1.5vw, 1.28rem);
+  line-height: 1.72;
+}
+
+.hr-section {
+  width: min(1360px, calc(100% - var(--pad-x) * 2));
+  height: 1px;
+  margin: 0 auto;
+  border: 0;
+  background: linear-gradient(90deg, transparent, rgba(88, 240, 215, 0.20), rgba(200, 210, 216, 0.10), transparent);
+}
+
+.card,
+.case-card,
+#contact-form,
+.newsletter-block,
+.analysis-note,
+.analysis-chat-widget,
+.offerta-card,
+.offers-choose-card,
+.note-card,
+.contact-analysis-box {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(200, 210, 216, 0.13);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.068), rgba(255,255,255,0.018)),
+    rgba(8, 13, 18, 0.66);
+  box-shadow: var(--k2-shadow), inset 0 1px 0 rgba(255,255,255,0.09);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  border-radius: clamp(1.4rem, 2.2vw, 2.4rem);
+}
+
+.card::before,
+.case-card::before,
+.offerta-card::before,
+#contact-form::before,
+.newsletter-block::before,
+.analysis-chat-widget::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background: radial-gradient(circle at var(--spot-x, 50%) var(--spot-y, 0%), rgba(88, 240, 215, 0.19), transparent 19rem);
+  opacity: 0;
+  transition: opacity 360ms var(--k2-ease-out);
+}
+
+.card:hover::before,
+.case-card:hover::before,
+.offerta-card:hover::before,
+#contact-form:focus-within::before,
+.newsletter-block:hover::before,
+.analysis-chat-widget:hover::before {
+  opacity: 1;
+}
+
+.card:hover,
+.case-card:hover,
+.offerta-card:hover {
+  border-color: rgba(88, 240, 215, 0.25);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.082), rgba(255,255,255,0.026)),
+    rgba(10, 18, 24, 0.78);
+  transform: translateY(-4px);
+}
+
+.card,
+.case-card,
+.offerta-card {
+  transition: transform 520ms var(--k2-ease-out), border-color 420ms var(--k2-ease-out), background 420ms var(--k2-ease-out), box-shadow 420ms var(--k2-ease-out);
+}
+
+.grid-3,
+.grid-2 {
+  background: transparent;
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+.grid-3 > *,
+.grid-2 > * {
+  background: transparent;
+}
+
+.btn,
+.nav-cta,
+button[type='submit'] {
+  border-radius: 999px;
+  transition: transform 220ms var(--k2-ease-out), border-color 220ms var(--k2-ease-out), background 220ms var(--k2-ease-out), color 220ms var(--k2-ease-out), box-shadow 220ms var(--k2-ease-out);
+}
+
+.btn:hover,
+.nav-cta:hover,
+button[type='submit']:hover {
+  transform: translateY(-2px);
+}
+
+.btn-primary,
+button.btn-primary,
+.contact-submit {
+  color: #031014;
+  border-color: rgba(88, 240, 215, 0.72);
+  background: linear-gradient(135deg, #edfffb 0%, #58f0d7 48%, #8fd8ff 100%);
+  box-shadow: 0 0 54px rgba(88, 240, 215, 0.16), 0 14px 34px rgba(0, 0, 0, 0.36);
+}
+
+.tag,
+.offerta-name,
+.case-card-sector {
+  border-color: rgba(88, 240, 215, 0.18);
+}
+
+.tag {
+  background: rgba(88, 240, 215, 0.055);
+  color: rgba(232, 246, 248, 0.86);
+}
+
+.k2-system-hero {
+  position: absolute;
+  right: max(2rem, 7vw);
+  top: 50%;
+  width: min(34vw, 520px);
+  aspect-ratio: 1;
+  transform: translateY(-45%);
+  pointer-events: none;
+  opacity: 0.92;
+}
+
+.k2-orbital-map {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(88, 240, 215, 0.18), transparent 12%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(143, 216, 255, 0.16) 0 1px, transparent 1px 13%),
+    conic-gradient(from 120deg, transparent, rgba(88, 240, 215, 0.24), transparent, rgba(143, 216, 255, 0.18), transparent);
+  mask-image: radial-gradient(circle, black 0 68%, transparent 72%);
+  animation: k2Orbit 24s linear infinite;
+}
+
+.k2-orbital-map::before,
+.k2-orbital-map::after {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 210, 216, 0.16);
+  transform: rotateX(68deg) rotateZ(24deg);
+  box-shadow: 0 0 50px rgba(88, 240, 215, 0.10);
+}
+
+.k2-orbital-map::after {
+  inset: 31%;
+  transform: rotateX(62deg) rotateZ(-36deg);
+  border-color: rgba(88, 240, 215, 0.26);
+}
+
+@keyframes k2Orbit {
+  to { transform: rotate(360deg); }
+}
+
+.method-page .page-header::after,
+.workshop-page .page-header-fit::after,
+.cases-page .page-header-fit::after,
+.analysis-page .page-header::after,
+.contact-page .page-header::after {
+  content: '';
+  position: absolute;
+  right: max(2rem, 8vw);
+  top: 48%;
+  width: min(34vw, 520px);
+  aspect-ratio: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0.65;
+  background:
+    radial-gradient(circle, rgba(88, 240, 215, 0.22) 0 2px, transparent 3px),
+    repeating-radial-gradient(circle, rgba(143, 216, 255, 0.16) 0 1px, transparent 1px 56px),
+    conic-gradient(from 80deg, transparent, rgba(88, 240, 215, 0.20), transparent, rgba(143, 216, 255, 0.14), transparent);
+  border-radius: 50%;
+  mask-image: radial-gradient(circle, black 0 66%, transparent 72%);
+  animation: k2Orbit 34s linear infinite;
+}
+
+.workshop-page .page-header-fit::after {
+  border-radius: 28%;
+  transform: translateY(-50%) rotate(-8deg);
+  background:
+    linear-gradient(135deg, rgba(88, 240, 215, 0.16), transparent 36%),
+    repeating-linear-gradient(90deg, rgba(143, 216, 255, 0.13) 0 1px, transparent 1px 42px),
+    repeating-linear-gradient(0deg, rgba(200, 210, 216, 0.10) 0 1px, transparent 1px 42px);
+  animation: k2FloatPanel 8s var(--k2-ease-out) infinite alternate;
+}
+
+.cases-page .page-header-fit::after {
+  background:
+    radial-gradient(circle at 35% 40%, rgba(183, 255, 94, 0.12), transparent 10%),
+    radial-gradient(circle at 58% 52%, rgba(88, 240, 215, 0.18), transparent 16%),
+    repeating-linear-gradient(115deg, rgba(143, 216, 255, 0.12) 0 1px, transparent 1px 28px);
+  border-radius: 42% 58% 38% 62%;
+}
+
+.analysis-page .page-header::after {
+  opacity: 0.42;
+  width: min(30vw, 420px);
+}
+
+.contact-page .page-header::after {
+  opacity: 0.26;
+  width: min(28vw, 380px);
+}
+
+@keyframes k2FloatPanel {
+  from { translate: 0 -10px; }
+  to { translate: 0 18px; }
+}
+
+.method-page .step,
+.analysis-page .step {
+  position: relative;
+  grid-template-columns: minmax(104px, 180px) 1fr;
+  gap: clamp(1.25rem, 4vw, 4rem);
+  padding: clamp(2rem, 4vw, 4.5rem) 0;
+  border-color: rgba(200, 210, 216, 0.11);
+}
+
+.method-page .step::before,
+.analysis-page .step::before {
+  content: '';
+  position: absolute;
+  left: min(172px, 17vw);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(88, 240, 215, 0.42), transparent);
+  opacity: 0.42;
+}
+
+.method-page .step-content,
+.analysis-page .step-content {
+  position: relative;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border: 1px solid rgba(200, 210, 216, 0.10);
+  border-radius: 2rem;
+  background: rgba(8, 13, 18, 0.42);
+}
+
+.method-page .step-content::before,
+.analysis-page .step-content::before {
+  content: '';
+  position: absolute;
+  left: -0.58rem;
+  top: 2.3rem;
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 50%;
+  background: var(--k2-teal);
+  box-shadow: 0 0 28px rgba(88, 240, 215, 0.6);
+}
+
+.method-page .statement,
+.contact-page .statement {
+  text-wrap: balance;
+}
+
+.method-page .statement em,
+.contact-page .statement em,
+.hero-3d-title em {
+  color: var(--k2-blue);
+}
+
+.workshop-page .offers-grid {
+  align-items: stretch;
+}
+
+.workshop-page .offerta-card {
+  min-height: 100%;
+  padding: clamp(2rem, 4vw, 3rem);
+}
+
+.workshop-page .offerta-card.featured {
+  border-color: rgba(88, 240, 215, 0.34);
+  box-shadow: 0 34px 120px rgba(0, 13, 20, 0.52), 0 0 80px rgba(88, 240, 215, 0.10), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.workshop-page .offerta-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 2.4vw, 2.7rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  margin-bottom: 1.3rem;
+}
+
+.workshop-page .offerta-price {
+  font-family: var(--font-mono);
+  color: var(--k2-teal);
+}
+
+.workshop-page .offers-choose-list {
+  display: grid;
+  gap: 2rem;
+}
+
+.cases-page #case-grid {
+  grid-template-columns: 1.08fr 0.92fr;
+  align-items: stretch;
+}
+
+.cases-page .case-card-featured {
+  min-height: 520px;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+.cases-page .case-card-featured .case-card-header,
+.cases-page .case-card-featured .case-card-metrics {
+  border-bottom: 0;
+}
+
+.cases-page .case-card-metrics {
+  border-top: 1px solid rgba(200, 210, 216, 0.10);
+  background: linear-gradient(180deg, rgba(88, 240, 215, 0.045), rgba(255,255,255,0.012));
+}
+
+.cases-page .case-metric-value {
+  color: #fff;
+  font-family: var(--font-display);
+  letter-spacing: -0.05em;
+}
+
+.analysis-page .analysis-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(380px, 1.18fr);
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: start;
+}
+
+.analysis-page .analysis-chat-widget {
+  position: sticky;
+  top: 112px;
+  padding: clamp(0.7rem, 1.4vw, 1rem);
+}
+
+.analysis-page .analysis-chat-widget::after {
+  content: '';
+  position: absolute;
+  inset: auto 12% -1px 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(88, 240, 215, 0.72), transparent);
+}
+
+.analysis-page .analysis-note {
+  padding: 1.25rem 1.4rem;
+  margin-top: 2rem;
+}
+
+.contact-page .contact-grid {
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: start;
+}
+
+.contact-page #contact-form {
+  padding: clamp(1.5rem, 3.4vw, 3rem);
+}
+
+.form-input,
+.form-select,
+.form-textarea,
+.newsletter-form input {
+  border: 1px solid rgba(200, 210, 216, 0.13);
+  background: rgba(5, 7, 10, 0.58);
+  color: var(--k2-text-1);
+  border-radius: 1rem;
+  transition: border-color 220ms var(--k2-ease-out), box-shadow 220ms var(--k2-ease-out), background 220ms var(--k2-ease-out);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus,
+.newsletter-form input:focus {
+  outline: none;
+  border-color: rgba(88, 240, 215, 0.54);
+  background: rgba(5, 12, 16, 0.82);
+  box-shadow: 0 0 0 4px rgba(88, 240, 215, 0.09);
+}
+
+.contact-page .contact-link {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(88,240,215,0.72), rgba(143,216,255,0.48)) 0 100% / 100% 1px no-repeat;
+}
+
+.newsletter-block {
+  padding: clamp(1.5rem, 3vw, 2.4rem);
+}
+
+footer {
+  border-top-color: rgba(200, 210, 216, 0.10);
+  background: rgba(5, 7, 10, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.k2-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 90;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(88, 240, 215, 0.72);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(-50%, -50%, 0);
+  transition: width 180ms var(--k2-ease-out), height 180ms var(--k2-ease-out), opacity 180ms var(--k2-ease-out), border-color 180ms var(--k2-ease-out), background 180ms var(--k2-ease-out);
+  mix-blend-mode: screen;
+}
+
+.k2-cursor.is-active {
+  width: 42px;
+  height: 42px;
+  background: rgba(88, 240, 215, 0.08);
+  border-color: rgba(143, 216, 255, 0.84);
+}
+
+@media (max-width: 1100px) {
+  .method-page .page-header::after,
+  .workshop-page .page-header-fit::after,
+  .cases-page .page-header-fit::after,
+  .analysis-page .page-header::after,
+  .contact-page .page-header::after {
+    opacity: 0.24;
+    right: -14vw;
+    width: 56vw;
+  }
+
+  .analysis-page .analysis-layout,
+  .contact-page .contact-grid,
+  .cases-page .case-card-featured {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-page .analysis-chat-widget {
+    position: relative;
+    top: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  #k2-immersive-canvas,
+  .k2-cursor {
+    display: none;
+  }
+
+  body.method-page,
+  body.workshop-page,
+  body.cases-page,
+  body.analysis-page,
+  body.contact-page {
+    background:
+      radial-gradient(circle at 50% -12%, rgba(88, 240, 215, 0.11), transparent 70vw),
+      #05070a;
+  }
+
+  body.method-page section,
+  body.workshop-page section,
+  body.cases-page section,
+  body.analysis-page section,
+  body.contact-page section {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+
+  body.method-page .page-header,
+  body.workshop-page .page-header-fit,
+  body.cases-page .page-header-fit,
+  body.analysis-page .page-header,
+  body.contact-page .page-header {
+    min-height: auto;
+    padding-top: 8rem;
+  }
+
+  .display-xl {
+    font-size: clamp(3rem, 16vw, 5.4rem);
+    line-height: 0.94;
+  }
+
+  .method-page .step,
+  .analysis-page .step {
+    grid-template-columns: 1fr;
+  }
+
+  .method-page .step::before,
+  .analysis-page .step::before,
+  .method-page .step-content::before,
+  .analysis-page .step-content::before {
+    display: none;
+  }
+
+  .card,
+  .case-card,
+  #contact-form,
+  .newsletter-block,
+  .analysis-chat-widget,
+  .offerta-card {
+    border-radius: 1.35rem;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  #k2-immersive-canvas,
+  .k2-cursor {
+    display: none !important;
+  }
+}
+
+/* Late optical corrections from browser QA. */
+body.method-page .display-xl,
+body.workshop-page .display-xl,
+body.cases-page .display-xl,
+body.analysis-page .display-xl,
+body.contact-page .display-xl {
+  max-width: 980px;
+  font-size: clamp(3.25rem, 7.6vw, 7.8rem);
+  line-height: 0.92;
+}
+
+body.analysis-page .page-title-wide,
+body.workshop-page .page-title-fit {
+  max-width: 1050px;
+}
+
+body.contact-page .page-title-contact {
+  max-width: 760px;
+}
+
+@media (max-width: 768px) {
+  body.method-page .display-xl,
+  body.workshop-page .display-xl,
+  body.cases-page .display-xl,
+  body.analysis-page .display-xl,
+  body.contact-page .display-xl {
+    font-size: clamp(3.1rem, 15vw, 5.2rem);
+    line-height: 0.95;
+  }
+}
+
+/* Synthetic Cognition correction: remove orbital/cosmic language from internals. */
+.k2-orbital-map,
+.k2-orbital-map::before,
+.k2-orbital-map::after {
+  display: none !important;
+}
+
+.method-page .page-header::after,
+.workshop-page .page-header-fit::after,
+.cases-page .page-header-fit::after,
+.analysis-page .page-header::after,
+.contact-page .page-header::after {
+  width: min(36vw, 540px);
+  height: min(30vw, 440px);
+  aspect-ratio: auto;
+  border-radius: 0;
+  opacity: 0.42;
+  background:
+    linear-gradient(112deg, transparent 0 18%, rgba(88, 240, 215, 0.10) 18.4%, transparent 19.2% 100%),
+    linear-gradient(68deg, transparent 0 42%, rgba(143, 216, 255, 0.08) 42.2%, transparent 43% 100%),
+    repeating-linear-gradient(104deg, rgba(143, 216, 255, 0.12) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(12deg, rgba(200, 210, 216, 0.055) 0 1px, transparent 1px 46px);
+  mask-image: linear-gradient(90deg, transparent, black 18%, black 78%, transparent);
+  animation: k2SynapticDrift 12s var(--k2-ease-out) infinite alternate;
+}
+
+.cases-page .page-header-fit::after,
+.analysis-page .page-header::after {
+  background:
+    linear-gradient(112deg, transparent 0 16%, rgba(88, 240, 215, 0.12) 16.4%, transparent 17.2% 100%),
+    repeating-linear-gradient(96deg, rgba(88, 240, 215, 0.12) 0 1px, transparent 1px 30px),
+    repeating-linear-gradient(17deg, rgba(255, 201, 130, 0.05) 0 1px, transparent 1px 54px);
+}
+
+@keyframes k2SynapticDrift {
+  from { transform: translateY(-50%) translate3d(-8px, -6px, 0) skewY(-2deg); filter: blur(0); }
+  to { transform: translateY(-50%) translate3d(10px, 8px, 0) skewY(2deg); filter: blur(0.4px); }
+}

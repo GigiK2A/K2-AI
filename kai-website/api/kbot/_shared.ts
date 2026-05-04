@@ -285,6 +285,128 @@ export function resolveSkillNamesForSession(session: any): string[] {
   return resolveSkillNames(session?.sector)
 }
 
+/* ── K-BOT 2.0 ───────────────────────────────────────────────────────────── */
+
+export type V2SummaryData = {
+  businessType?: string
+  problem?: string
+  currentProcess?: string
+  goal?: string
+  urgency?: 'alta' | 'media' | 'bassa'
+  dataAvailable?: string
+  integrations?: string
+  budget?: string
+  notes?: string
+  summary?: string
+  recommendedServiceId?: string
+  recommendedServiceName?: string
+  recommendedTier?: 'HOST' | 'WEB' | 'STUDIO'
+  nextStep?: string
+}
+
+const SERVICES_OVERVIEW_COMPACT = `
+SERVIZI K2-AI DISPONIBILI (usa per raccomandare il più adatto):
+P01 · Agenti AI Email & CRM — HOST/WEB · automatizza follow-up, triage email, aggiornamento CRM
+P02 · Automazioni Amministrative — HOST · fatture, riconciliazioni, documenti contabili ripetitivi
+P03 · AI Legale & Contratti — WEB · analisi contratti, ricerca giurisprudenziale, redazione clausole
+P04 · AI Ingegneria & Progettazione — WEB · relazioni tecniche, computi, tavole, documentazione progettuale
+P05 · Microapp Documenti Tecnici — HOST · generazione documenti tecnici da template, perizie, capitolati
+P06 · AI Customer Service & Ticket — HOST/WEB · triage ticket, risposta automatica, escalation intelligente
+P07 · RAG Knowledge Base — WEB/STUDIO · base di conoscenza interrogabile su documenti aziendali
+P08 · AI Compliance & Audit — WEB · verifica conformità, audit trail, checklist normative
+P09 · AI Controllo di Gestione — WEB · reporting automatico, KPI, budget vs consuntivo
+P10 · Integrazione Gestionali & ERP — STUDIO · connettori API, sync dati, automazioni tra gestionali
+P11 · AI Marketing & Contenuti — HOST/WEB · copy, SEO, newsletter, campagne
+P12 · Diagnosi Strategica PMI — WEB · analisi processi, gap operativi, roadmap AI
+P13 · Agevolazioni & Finanza Agevolata — WEB · identificazione bandi, pratiche, documentazione
+P14 · AI Edilizia & Appalti Pubblici — WEB · gare, pratiche, documentazione tecnica appalti
+P15 · AI HR & Recruiting — HOST/WEB · screening CV, job description, onboarding automatico
+P16 · AI Real Estate & Tokenizzazione — STUDIO · dossier immobiliari, due diligence, tokenizzazione
+P17 · AI Data Analytics & BI — STUDIO · dashboard, report automatici, anomaly detection
+P18 · AI UX & Design System — WEB · audit UX, design system, accessibilità
+P19 · AI Efficienza Energetica — WEB · analisi consumi, report energetico, certificazioni
+P20 · AI Hospitality & Revenue — HOST/WEB · revenue management, risposta OTA, upselling automatico
+
+TIER:
+HOST: <1.500€/mese — automazioni singole, microapp, agenti email
+WEB: 1.500–4.000€/mese — sistemi integrati, RAG, customer service AI
+STUDIO: >4.000€/mese — progetti custom, ERP, multi-sistema, analytics avanzato`.trim()
+
+export function buildSystemPromptV2(skillNames: string[], session: any): string {
+  const skillContent = loadSkillBundle(skillNames, {
+    maxTotalChars: CHAT_SYSTEM_MAX_CHARS,
+    maxPerSkillChars: 5500,
+    includeReferences: false,
+  })
+
+  const mode: string = session?.mode || 'report'
+  const serviceId: string | undefined = session?.collected_data?.service_id
+  const serviceContext = serviceId
+    ? `\nSERVIZIO SELEZIONATO DALL'UTENTE: ${serviceId} — orienta la conversazione su questo ambito.\n`
+    : ''
+
+  const uploadedFiles = Array.isArray(session?.collected_data?.uploaded_files)
+    ? session.collected_data.uploaded_files : []
+  const hasFiles = uploadedFiles.length > 0
+  const hasExtractedText = uploadedFiles.some((f: any) => {
+    const text = String(f?.extractedText || f?.extractedSummary || '')
+    return text.trim().length > 80
+  })
+
+  const nextStepHint = mode === 'lead'
+    ? 'Prenota una call di 20 minuti con il team K2-AI per definire il perimetro del progetto'
+    : 'Scarica il report operativo con priorità, tempi e template pronti'
+
+  const basePrompt = `Sei K-BOT, il consulente AI di K2-AI per PMI italiane.
+Il tuo ruolo: capire il problema operativo dell'utente con domande naturali, raccogliere il contesto necessario, poi produrre un riepilogo strutturato.
+${serviceContext}
+COMPORTAMENTO:
+- Fai UNA sola domanda per volta, specifica e contestuale a ciò che l'utente ha già detto
+- Se l'utente ha già risposto a qualcosa, non richiederlo
+- Se l'utente fa una domanda, rispondi prima di fare la tua
+- Accetta risposte vaghe e prosegui senza forzare dettagli
+- Tono: diretto, professionale, da pari a pari — non commerciale
+- Niente elenchi di domande multiple in un singolo messaggio
+- Niente markdown strutturale in chat (no #, tabelle, blocchi code)
+- Risposte brevi in fase raccolta (max 4 righe)
+- Usa sempre caratteri italiani corretti (è, à, ì, ò, ù)
+- Nessuna risposta è obbligatoria: se l'utente non sa, accetta e prosegui
+- STATO ALLEGATI: ${hasFiles ? (hasExtractedText ? 'estratti testuali disponibili — usali, non fare domande già rispondibili dai file' : 'file caricati ma senza testo estraibile') : 'nessun allegato'}
+
+CAMPI DA RACCOGLIERE (naturalmente, non come modulo):
+businessType · problem · currentProcess · goal · urgency (alta/media/bassa)
+dataAvailable · integrations · budget (solo se lo menziona) · notes
+
+QUANDO GENERARE IL RIEPILOGO:
+Dopo 3-5 turni, quando conosci almeno businessType + problem + goal (anche in modo approssimativo), oppure quando l'utente dice di procedere.
+Prima del blocco scrivi 1-2 frasi di chiusura naturale. Poi aggiungi il blocco ESATTO:
+
+CONSULENZA_SUMMARY_START
+{"businessType":"...","problem":"...","currentProcess":"...","goal":"...","urgency":"alta|media|bassa","dataAvailable":"...","integrations":"...","budget":"...","notes":"...","summary":"2-3 frasi specifiche e concrete che descrivono il caso","recommendedServiceId":"PXX","recommendedServiceName":"Nome completo servizio","recommendedTier":"HOST|WEB|STUDIO","nextStep":"${nextStepHint}"}
+CONSULENZA_SUMMARY_END
+
+Il blocco sarà estratto automaticamente e non mostrato all'utente.
+
+${SERVICES_OVERVIEW_COMPACT}
+`
+
+  return `${basePrompt}\n\n${skillContent}`
+}
+
+export function extractV2Summary(text: string): V2SummaryData | null {
+  const match = text.match(/CONSULENZA_SUMMARY_START\s*\n([\s\S]*?)\nCONSULENZA_SUMMARY_END/)
+  if (!match) return null
+  try {
+    return JSON.parse(match[1].trim()) as V2SummaryData
+  } catch {
+    return null
+  }
+}
+
+export function stripSummaryBlock(text: string): string {
+  return text.replace(/\s*CONSULENZA_SUMMARY_START[\s\S]*?CONSULENZA_SUMMARY_END\s*/g, '').trim()
+}
+
 /** Rimuove l'ultima domanda da un messaggio di chiusura */
 export function stripClosingQuestion(text: string): string {
   const cleaned = text.trim()
