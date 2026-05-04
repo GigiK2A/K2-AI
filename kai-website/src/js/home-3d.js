@@ -1,8 +1,11 @@
 // home-3d.js — Interactive effects layered over the Three.js background
 // Card 3D tilt, stat counters, magnetic cursor dot, stagger reveals
 
-const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-const IS_MOBILE = window.innerWidth < 768
+import { hasFinePointer, prefersReducedMotion, supportsIntersectionObserver } from './runtime-guards.js'
+
+const REDUCED_MOTION = prefersReducedMotion()
+const HAS_FINE_POINTER = hasFinePointer()
+const IS_MOBILE = window.innerWidth < 768 || !HAS_FINE_POINTER
 const CHAPTER_LABELS = {
   hero: '00 / ingresso nel sistema',
   evidence: '01 / proof operativo',
@@ -26,7 +29,7 @@ const STAGE_COPY = {
 
 // ── Magnetic cursor dot ───────────────────────────────────────────────────────
 function initCursorDot() {
-  if (REDUCED_MOTION || IS_MOBILE) return
+  if (REDUCED_MOTION || IS_MOBILE || !HAS_FINE_POINTER) return
 
   const dot = document.createElement('div')
   dot.id = 'cursor-dot'
@@ -117,7 +120,7 @@ function initCursorDot() {
 
 // ── 3D card tilt ──────────────────────────────────────────────────────────────
 function initCardTilt() {
-  if (REDUCED_MOTION || IS_MOBILE) return
+  if (REDUCED_MOTION || IS_MOBILE || !HAS_FINE_POINTER) return
 
   const cards = document.querySelectorAll('.home-page .card, .home-page .stat-3d, .home-page .problema-item, .home-page .home-final-cta-inner')
 
@@ -175,15 +178,23 @@ function initStatCounters() {
     })(start)
   }
 
+  const animateCounter = el => {
+    const parsed = parseVal(el.textContent)
+    if (!parsed) return
+    counter(el, 0, parsed.value, parsed.suffix, parsed.isInt, REDUCED_MOTION ? 0 : 1600)
+  }
+
+  if (!supportsIntersectionObserver()) {
+    els.forEach(animateCounter)
+    return
+  }
+
   const seen = new Set()
   const io = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (!entry.isIntersecting || seen.has(entry.target)) return
       seen.add(entry.target)
-      const el = entry.target
-      const parsed = parseVal(el.textContent)
-      if (!parsed) return
-      counter(el, 0, parsed.value, parsed.suffix, parsed.isInt, REDUCED_MOTION ? 0 : 1600)
+      animateCounter(entry.target)
     })
   }, { threshold: 0.5 })
 
@@ -228,7 +239,7 @@ function initHeroTextAnim() {
 
 // ── ReactBits-inspired spotlight surfaces ────────────────────────────────────
 function initSpotlightSurfaces() {
-  if (REDUCED_MOTION || IS_MOBILE) return
+  if (REDUCED_MOTION || IS_MOBILE || !HAS_FINE_POINTER) return
 
   document.querySelectorAll('.home-page .spotlight-surface').forEach(surface => {
     let rafId = null
@@ -246,7 +257,7 @@ function initSpotlightSurfaces() {
 
 // ── Gentle magnetic CTA behaviour ────────────────────────────────────────────
 function initMagneticActions() {
-  if (REDUCED_MOTION || IS_MOBILE) return
+  if (REDUCED_MOTION || IS_MOBILE || !HAS_FINE_POINTER) return
 
   document.querySelectorAll('.home-page .btn, .home-page .hero-3d-link, .home-page .nav-cta').forEach(el => {
     el.addEventListener('pointermove', e => {

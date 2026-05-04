@@ -1,4 +1,9 @@
 import * as THREE from 'three'
+import { canRunHeavyGraphics } from './runtime-guards.js'
+
+if (!canRunHeavyGraphics(960)) {
+  throw new Error('Hero 3D disabled on this device profile')
+}
 
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768
@@ -24,12 +29,17 @@ const COLORS = {
 const canvas = document.getElementById('scene-3d')
 if (!canvas) throw new Error('#scene-3d not found')
 
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  alpha: true,
-  antialias: !IS_MOBILE,
-  powerPreference: 'low-power',
-})
+let renderer
+try {
+  renderer = new THREE.WebGLRenderer({
+    canvas,
+    alpha: true,
+    antialias: !IS_MOBILE,
+    powerPreference: 'low-power',
+  })
+} catch (error) {
+  throw new Error(`WebGL renderer unavailable: ${error instanceof Error ? error.message : String(error)}`)
+}
 renderer.setPixelRatio(Math.min(devicePixelRatio, CFG.dpr))
 renderer.setClearColor(0x000000, 0)
 renderer.setSize(window.innerWidth, window.innerHeight, false)

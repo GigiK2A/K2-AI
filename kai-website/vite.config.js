@@ -100,6 +100,8 @@ export default defineConfig({
     outDir: '../dist',
     emptyOutDir: true,
     sourcemap: false,
+    target: ['chrome87', 'edge88', 'firefox78', 'safari14'],
+    cssTarget: ['chrome87', 'edge88', 'firefox78', 'safari14'],
     rollupOptions: {
       input: {
         main: 'src/index.html',

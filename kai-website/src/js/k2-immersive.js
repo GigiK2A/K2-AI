@@ -1,16 +1,22 @@
-import * as THREE from 'three'
+import { canRunHeavyGraphics, hasFinePointer, prefersReducedMotion } from './runtime-guards.js'
 
 const body = document.body
 const eligible = ['method-page', 'workshop-page', 'cases-page', 'analysis-page', 'contact-page']
 const page = eligible.find(cls => body.classList.contains(cls))
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-const isMobile = window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+const reducedMotion = prefersReducedMotion()
+const hasPointer = hasFinePointer()
+const isMobile = window.innerWidth < 768 || !hasPointer || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+let THREE_NS = null
 
 if (page) {
   enhanceNavigation()
   enhanceSpotlights()
   enhancePointerField()
-  if (!reducedMotion && !isMobile) initAmbientScene(page)
+  if (canRunHeavyGraphics(960)) {
+    initAmbientScene(page).catch(error => {
+      console.warn('K2 immersive scene disabled:', error)
+    })
+  }
 }
 
 function enhanceNavigation() {
@@ -71,7 +77,9 @@ function enhancePointerField() {
   loop()
 }
 
-function initAmbientScene(pageName) {
+async function initAmbientScene(pageName) {
+  const THREE = await import('three')
+  THREE_NS = THREE
   const canvas = document.createElement('canvas')
   canvas.id = 'k2-immersive-canvas'
   canvas.setAttribute('aria-hidden', 'true')
@@ -214,6 +222,7 @@ function getPalette(pageName) {
 }
 
 function getPosition(pageName, i, total) {
+  const THREE = THREE_NS
   if (pageName === 'method-page' && i < 4) {
     return new THREE.Vector3(-54 + i * 36, Math.sin(i * 1.3) * 6, (i - 1.5) * -9)
   }
@@ -239,6 +248,7 @@ function getPosition(pageName, i, total) {
 }
 
 function createOperationalMotifs(root, palette, pageName) {
+  const THREE = THREE_NS
   const motif = new THREE.Group()
   motif.position.set(18, -2, 8)
   root.add(motif)
@@ -319,6 +329,7 @@ function createOperationalMotifs(root, palette, pageName) {
 }
 
 function createHub(color, ringColor, scale = 1) {
+  const THREE = THREE_NS
   const group = new THREE.Group()
   group.scale.setScalar(scale)
 
@@ -350,6 +361,7 @@ function createHub(color, ringColor, scale = 1) {
 }
 
 function createPanel(color, opacity) {
+  const THREE = THREE_NS
   const group = new THREE.Group()
   const panelGeo = new THREE.PlaneGeometry(12, 7)
   const panel = new THREE.Mesh(
@@ -368,6 +380,7 @@ function createPanel(color, opacity) {
 }
 
 function createCurve(root, points, color, opacity) {
+  const THREE = THREE_NS
   const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.32)
   const line = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(curve.getPoints(80)),

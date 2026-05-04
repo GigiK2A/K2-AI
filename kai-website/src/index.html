@@ -467,12 +467,11 @@
   <script type="module" src="./js/scroll.js"></script>
   <script type="module" src="./js/nav.js"></script>
   <script type="module" src="./js/home-3d.js"></script>
-  <script type="module" src="./js/home-intro.js"></script>
   <script type="module" src="./js/chat.js"></script>
   <script type="module">
-    const canRunHeroField =
-      window.innerWidth >= 768 &&
-      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    import { canRunHeavyGraphics } from './js/runtime-guards.js'
+
+    const canRunHeroField = canRunHeavyGraphics(960)
 
     if (canRunHeroField) {
       const load = () => import('./js/hero-3d.js')
