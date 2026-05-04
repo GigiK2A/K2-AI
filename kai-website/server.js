@@ -988,8 +988,7 @@ async function handleNewsletterSubscribe(req, res) {
     return;
   }
 
-  // Il workflow n8n usa "name" come destinatario Outlook, quindi qui salviamo la mail.
-  const recipientName = email;
+  const recipientName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : null;
   const supabase = createSupabaseAdminClient();
 
   const { data: existing, error: existingError } = await supabase
