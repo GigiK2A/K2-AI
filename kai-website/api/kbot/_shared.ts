@@ -255,9 +255,9 @@ export function resolveSkillNamesForSession(session: any): string[] {
     return SERVICE_SKILLS_MAP[serviceId]
   }
 
-  // 1. content_type esplicito salvato in sessione
+  // 1. content_type esplicito salvato in sessione ('generico' = usa sector bundle)
   const contentType = session?.collected_data?.content_type
-  if (contentType && CONTENT_TYPE_BUNDLES[contentType]?.length > 0) {
+  if (contentType && contentType !== 'generico' && CONTENT_TYPE_BUNDLES[contentType]?.length > 0) {
     return CONTENT_TYPE_BUNDLES[contentType]
   }
 

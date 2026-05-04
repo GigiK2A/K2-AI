@@ -240,12 +240,16 @@ Produci SOLO il JSON valido, senza markdown attorno.
 
     const publicUrl = publicData.publicUrl
 
+    // test_mode: store pdf_url but don't mark as paid (preserves real checkout flow)
     await supabase
       .from('kbot_sessions')
-      .update({ status: 'paid', pdf_url: publicUrl, paid_at: new Date().toISOString() })
+      .update(isTestMode
+        ? { pdf_url: publicUrl, updated_at: new Date().toISOString() }
+        : { status: 'paid', pdf_url: publicUrl, paid_at: new Date().toISOString() },
+      )
       .eq('id', session_id)
 
-    if (session.email) {
+    if (!isTestMode && session.email) {
       const resend = resendApiKey ? new Resend(resendApiKey) : null
       if (!resend) return sendJson(res, 200, { pdf_url: publicUrl, warning: 'RESEND_API_KEY mancante: email non inviata' })
 

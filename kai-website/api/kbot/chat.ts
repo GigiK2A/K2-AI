@@ -96,23 +96,21 @@ export default async function handler(req: any, res: any) {
       { role: 'user', content: userMessage, ts: new Date().toISOString() },
     ]
 
-    const modelMessagesInput: ChatMessage[] = [
-      ...persistedMessages.slice(0, -1),
-      {
-        role: 'user',
-        content: `${userMessage}${attachmentsContext}`,
-        ts: persistedMessages[persistedMessages.length - 1]?.ts,
-      },
-    ]
+    // Compact only history; keep current message (with attachment context) at full length
+    const historyMessages = compactMessages(persistedMessages.slice(0, -1))
+    const currentMessage: ChatMessage = {
+      role: 'user',
+      content: `${userMessage}${attachmentsContext}`,
+      ts: persistedMessages[persistedMessages.length - 1]?.ts,
+    }
+    const modelMessages = [...historyMessages, currentMessage].map(m => ({ role: m.role, content: m.content }))
 
     // Path determined by mode, not router question
-    const sessionMode: string = session.mode || 'report'
+    const sessionMode: string = session.mode || session.collected_data?.mode || 'report'
     const path: 'A' | 'B' = sessionMode === 'lead' ? 'B' : 'A'
 
     const skillNames = resolveSkillNamesForSession(session)
     const systemPrompt = buildSystemPromptV2(skillNames, session)
-
-    const modelMessages = compactMessages(modelMessagesInput).map(m => ({ role: m.role, content: m.content }))
 
     const response = await anthropic.messages.create({
       model: MODEL,
