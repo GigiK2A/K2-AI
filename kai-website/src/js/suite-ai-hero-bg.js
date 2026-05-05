@@ -4,6 +4,8 @@ export function initSuiteAiHeroBg(canvasId) {
   if (!canvas) return
 
   const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
   let W, H, nodes, raf, paused = false
 
   const NODE_COUNT = 48

@@ -212,7 +212,7 @@
   <script type="module">
     import { initSuiteAiServices } from './js/suite-ai-services.js'
     import { initSuiteAiHeroBg } from './js/suite-ai-hero-bg.js'
-    initSuiteAiHeroBg('sas-hero-canvas')
+    try { initSuiteAiHeroBg('sas-hero-canvas') } catch (_) {}
     initSuiteAiServices()
   </script>
 
