@@ -27,9 +27,10 @@ export function isLowEndDevice() {
   const cores = typeof nav?.hardwareConcurrency === 'number' ? nav.hardwareConcurrency : null
   const saveData = Boolean(nav?.connection && nav.connection.saveData)
 
-  // Keep Save-Data as a hard stop, but avoid classifying mainstream office PCs
-  // as "low end" just because privacy-rounded values look conservative.
-  return saveData || (memory !== null && memory <= 2) || (cores !== null && cores <= 2)
+  // Save-Data is a hard stop. Memory/cores thresholds are kept loose to avoid
+  // blocking mainstream Windows office PCs (dual-core HT = 4 logical, but some
+  // budget machines still report 2; deviceMemory rounds down, 2 GB is very low).
+  return saveData || (memory !== null && memory <= 1) || (cores !== null && cores <= 1)
 }
 
 export function supportsIntersectionObserver() {

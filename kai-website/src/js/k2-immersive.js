@@ -44,7 +44,16 @@ function enhanceSpotlights() {
 }
 
 function enhancePointerField() {
-  if (isMobile || reducedMotion) return
+  if (isMobile) return
+
+  // Always track pointer position for CSS gradient background — not an a11y animation.
+  window.addEventListener('pointermove', event => {
+    document.documentElement.style.setProperty('--k2-pointer-x', `${event.clientX}px`)
+    document.documentElement.style.setProperty('--k2-pointer-y', `${event.clientY}px`)
+  }, { passive: true })
+
+  // Cursor ball: skip only when reduced motion is on (smooth loop uses rAF).
+  if (reducedMotion) return
 
   const cursor = document.createElement('div')
   cursor.className = 'k2-cursor'
@@ -58,8 +67,6 @@ function enhancePointerField() {
   window.addEventListener('pointermove', event => {
     tx = event.clientX
     ty = event.clientY
-    document.documentElement.style.setProperty('--k2-pointer-x', `${event.clientX}px`)
-    document.documentElement.style.setProperty('--k2-pointer-y', `${event.clientY}px`)
     cursor.style.opacity = '1'
   }, { passive: true })
 
