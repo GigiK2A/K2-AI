@@ -84,7 +84,7 @@ function renderGrid(grid, countEl) {
     const kbotUrl = `/k-bot.html?service=${esc(svc.id)}`
 
     return `
-      <div class="sas-card" style="animation-delay:${(i % 6) * 55}ms" data-id="${esc(svc.id)}">
+      <div class="sas-card" style="transition-delay:${(i % 6) * 55}ms" data-id="${esc(svc.id)}">
         <div class="sas-card-head">
           <span class="sas-cat-badge sas-cat-${catSlug}">${esc(meta.label)}</span>
           <span class="sas-tier-chip">${esc(svc.recommendedTier)}</span>
@@ -117,14 +117,19 @@ function renderGrid(grid, countEl) {
       if (!entry.isIntersecting) return
       entry.target.classList.add('sas-visible')
       obs.unobserve(entry.target)
+      window.setTimeout(() => { entry.target.style.transitionDelay = '' }, 500)
     })
   }, { threshold: 0.04 })
 
   cards.forEach(card => io.observe(card))
 
-  // Safety net: if the observer does not trigger quickly enough, reveal anyway.
+  // Safety net: reveal all cards if observer doesn't fire in time (Windows GPU/IO edge cases).
   window.setTimeout(() => {
-    cards.forEach(card => card.classList.add('sas-visible'))
+    cards.forEach(card => {
+      card.classList.add('sas-visible')
+      // Clear stagger delay after reveal so hover transitions aren't delayed.
+      window.setTimeout(() => { card.style.transitionDelay = '' }, 500)
+    })
   }, 220)
 }
 

@@ -469,32 +469,28 @@
   padding: 22px;
   display: flex;
   flex-direction: column;
-  opacity: 1;
-  filter: none;
-  transform: translateY(0);
-  transition: border-color .22s, background .22s, transform .24s;
+  transition: border-color .22s, background .22s, transform .24s, opacity .45s cubic-bezier(.16,1,.3,1);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .sas-card {
     opacity: 0;
-    filter: blur(5px);
     transform: translateY(10px);
-    animation: sas-card-in .45s var(--ease-cinema, cubic-bezier(.16,1,.3,1)) forwards;
-    animation-play-state: paused;
+    transition: border-color .22s, background .22s,
+                opacity .45s cubic-bezier(.16,1,.3,1),
+                transform .45s cubic-bezier(.16,1,.3,1);
   }
 
-  .sas-card.sas-visible { animation-play-state: running; }
+  .sas-card.sas-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sas-card:hover {
   border-color: rgba(255,255,255,.16);
   background: rgba(255,255,255,.048);
   transform: translateY(-3px);
-}
-
-@keyframes sas-card-in {
-  to { opacity: 1; filter: blur(0); transform: translateY(0); }
 }
 
 /* Card header */

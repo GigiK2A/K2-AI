@@ -39,7 +39,8 @@
 .workshop-page,
 .analysis-page,
 .contact-page,
-.legal-page {
+.legal-page,
+.page-pillar {
   position: relative;
   isolation: isolate;
 }
@@ -51,7 +52,8 @@
 .workshop-page::before,
 .analysis-page::before,
 .contact-page::before,
-.legal-page::before {
+.legal-page::before,
+.page-pillar::before {
   content: '';
   position: fixed;
   inset: -12%;
@@ -86,7 +88,8 @@
 .workshop-page::after,
 .analysis-page::after,
 .contact-page::after,
-.legal-page::after {
+.legal-page::after,
+.page-pillar::after {
   content: '';
   position: fixed;
   inset: -8%;
