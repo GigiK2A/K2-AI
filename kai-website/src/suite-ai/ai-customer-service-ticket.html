@@ -28,11 +28,12 @@
   <link rel="stylesheet" href="../css/nav.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/pages.css">
+  <link rel="stylesheet" href="../css/k2-immersive.css">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.k2-ai.it/#organization","name":"K2-AI","legalName":"K2A S.R.L.S.","url":"https://www.k2-ai.it/","logo":{"@type":"ImageObject","url":"https://www.k2-ai.it/logo-nav.png","width":600,"height":200},"taxID":"IT03655920548","address":{"@type":"PostalAddress","addressCountry":"IT"}},{"@type":"Service","@id":"https://www.k2-ai.it/suite-ai/ai-customer-service-ticket.html#service","name":"AI per customer service e triage ticket PMI","provider":{"@id":"https://www.k2-ai.it/#organization"},"serviceType":"AI per triage e gestione ticket customer service","description":"Sistemi AI che classificano, smistano e rispondono ai ticket di customer service in automatico. Integrabili con Zendesk, Freshdesk, email e piattaforme di ticketing proprietarie.","areaServed":{"@type":"Country","name":"Italia"},"url":"https://www.k2-ai.it/suite-ai/ai-customer-service-ticket.html"}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.k2-ai.it/"},{"@type":"ListItem","position":2,"name":"Suite AI","item":"https://www.k2-ai.it/suite-ai.html"},{"@type":"ListItem","position":3,"name":"AI customer service e ticket","item":"https://www.k2-ai.it/suite-ai/ai-customer-service-ticket.html"}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Il sistema AI può rispondere ai clienti in autonomia o serve sempre un operatore?","acceptedAnswer":{"@type":"Answer","text":"Dipende dalla categoria del ticket. Per richieste standard (stato ordine, istruzioni, FAQ, procedure note) il sistema risponde in autonomia con un tasso di soddisfazione misurabile. Per reclami complessi, richieste tecniche avanzate o situazioni con impatto economico significativo, il sistema prepara una bozza e smista all'operatore giusto con tutto il contesto già caricato."}},{"@type":"Question","name":"Come si integra con il sistema di ticketing che già usiamo?","acceptedAnswer":{"@type":"Answer","text":"Abbiamo integrato Zendesk, Freshdesk, HelpScout, Intercom e sistemi di ticketing via email (casella dedicata). Per piattaforme proprietarie o ERP con modulo service integrato, valutiamo le API disponibili nella fase di diagnosi. L'integrazione fa parte del progetto."}},{"@type":"Question","name":"Cosa succede se il cliente scrive in modo confuso o usa termini tecnici sbagliati?","acceptedAnswer":{"@type":"Answer","text":"I modelli LLM gestiscono bene testi ambigui, errori grammaticali e terminologia non standard. Se la richiesta non è classificabile con confidenza sufficiente (soglia configurabile), il ticket viene smistato a un operatore con un flag 'classificazione incerta' invece di essere gestito automaticamente. Meglio un escalation in più che una risposta sbagliata."}}]}</script>
 </head>
-<body class="page-pillar">
+<body class="cases-page">
   <nav id="navbar">
     <div class="nav-inner">
       <a href="/" class="nav-logo" aria-label="K2-AI"><img src="../logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI"></a>
@@ -195,6 +196,7 @@
     </div>
   </footer>
   <script type="module" src="../js/scroll.js"></script>
+  <script type="module" src="../js/k2-immersive.js"></script>
   <script type="module" src="../js/nav.js"></script>
 </body>
 </html>

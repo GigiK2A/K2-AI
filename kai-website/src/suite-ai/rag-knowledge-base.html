@@ -28,11 +28,12 @@
   <link rel="stylesheet" href="../css/nav.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/pages.css">
+  <link rel="stylesheet" href="../css/k2-immersive.css">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.k2-ai.it/#organization","name":"K2-AI","legalName":"K2A S.R.L.S.","url":"https://www.k2-ai.it/","logo":{"@type":"ImageObject","url":"https://www.k2-ai.it/logo-nav.png","width":600,"height":200},"taxID":"IT03655920548","address":{"@type":"PostalAddress","addressCountry":"IT"}},{"@type":"Service","@id":"https://www.k2-ai.it/suite-ai/rag-knowledge-base.html#service","name":"RAG e knowledge base aziendale con AI","provider":{"@id":"https://www.k2-ai.it/#organization"},"serviceType":"Retrieval-Augmented Generation su documenti aziendali","description":"Sistemi RAG che indicizzano documenti aziendali (procedure, manuali, email, contratti) e li rendono consultabili via chat con risposte accurate e citate. Per PMI che perdono ore ogni settimana a cercare informazioni interne.","areaServed":{"@type":"Country","name":"Italia"},"url":"https://www.k2-ai.it/suite-ai/rag-knowledge-base.html"}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.k2-ai.it/"},{"@type":"ListItem","position":2,"name":"Suite AI","item":"https://www.k2-ai.it/suite-ai.html"},{"@type":"ListItem","position":3,"name":"RAG e knowledge base aziendale","item":"https://www.k2-ai.it/suite-ai/rag-knowledge-base.html"}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Cosa significa RAG e perché è diverso da ChatGPT?","acceptedAnswer":{"@type":"Answer","text":"RAG (Retrieval-Augmented Generation) è una tecnica che combina la ricerca semantica nei vostri documenti con la generazione di testo da parte di un LLM. A differenza di ChatGPT che risponde dalla sua conoscenza generale, un sistema RAG risponde citando esattamente il documento aziendale pertinente. Se la risposta non è nei vostri documenti, il sistema lo dice invece di inventare."}},{"@type":"Question","name":"Quali tipi di documenti si possono indicizzare?","acceptedAnswer":{"@type":"Answer","text":"PDF, Word, Excel, PowerPoint, email (con connettore Gmail/Outlook), pagine Notion, Confluence, SharePoint, Google Drive. Anche testi da database e sistemi gestionali tramite API. Il sistema gestisce documenti in italiano e inglese, e può gestire documenti tecnici con terminologia specialistica."}},{"@type":"Question","name":"Come si garantisce che le risposte siano accurate e non inventate?","acceptedAnswer":{"@type":"Answer","text":"Ogni risposta del sistema RAG include la citazione del documento sorgente e il passaggio esatto da cui è tratta. Se la confidenza della risposta è bassa, il sistema lo segnala esplicitamente invece di rispondere con tono assertivo. Questo approccio — risposta + fonte + indicatore di confidenza — riduce drasticamente le allucinazioni rispetto a un LLM non vincolato."}}]}</script>
 </head>
-<body class="page-pillar">
+<body class="cases-page">
   <nav id="navbar">
     <div class="nav-inner">
       <a href="/" class="nav-logo" aria-label="K2-AI"><img src="../logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI"></a>
@@ -195,6 +196,7 @@
     </div>
   </footer>
   <script type="module" src="../js/scroll.js"></script>
+  <script type="module" src="../js/k2-immersive.js"></script>
   <script type="module" src="../js/nav.js"></script>
 </body>
 </html>
