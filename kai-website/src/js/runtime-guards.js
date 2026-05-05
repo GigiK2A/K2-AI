@@ -14,7 +14,18 @@ export function hasFinePointer() {
   const anyFine = window.matchMedia('(any-pointer: fine)').matches
   const anyHover = window.matchMedia('(any-hover: hover)').matches
 
-  return (primaryFine && primaryHover) || (anyFine && anyHover)
+  if ((primaryFine && primaryHover) || (anyFine && anyHover)) {
+    return true
+  }
+
+  // Windows hybrid devices can expose coarse primary pointers even when a
+  // hardware mouse is connected. Keep desktop effects enabled in that case.
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const isWindowsDesktop = /\bWindows\b/i.test(ua) && !/\b(Android|iPhone|iPad|iPod)\b/i.test(ua)
+  const notSmallViewport = typeof window.innerWidth === 'number' ? window.innerWidth >= 960 : false
+  const hasCoarseOnly = window.matchMedia('(any-pointer: coarse)').matches
+
+  return isWindowsDesktop && notSmallViewport && hasCoarseOnly
 }
 
 export function isSmallViewport(minWidth = 768) {
@@ -65,8 +76,12 @@ export function getGraphicsCapabilityReport(minWidth = 768) {
   if (lowEndDevice) reasons.push('low-end-device')
   if (!webgl) reasons.push('no-webgl')
 
+  const blockingReasons = reasons.filter(reason =>
+    reason !== 'prefers-reduced-motion' && reason !== 'no-fine-pointer'
+  )
+
   return {
-    allowed: reasons.length === 0,
+    allowed: blockingReasons.length === 0,
     reducedMotion,
     smallViewport,
     finePointer,

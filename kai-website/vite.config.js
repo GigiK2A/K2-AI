@@ -100,9 +100,21 @@ export default defineConfig({
     outDir: '../dist',
     emptyOutDir: true,
     sourcemap: false,
+    chunkSizeWarningLimit: 900,
     target: ['chrome87', 'edge88', 'firefox78', 'safari14'],
     cssTarget: ['chrome87', 'edge88', 'firefox78', 'safari14'],
     rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('/three/')) return 'vendor-three'
+          if (id.includes('/react/') || id.includes('/react-dom/')) return 'vendor-react'
+          if (id.includes('/@supabase/')) return 'vendor-supabase'
+          if (id.includes('/@anthropic-ai/')) return 'vendor-anthropic'
+          if (id.includes('/stripe/')) return 'vendor-stripe'
+          return undefined
+        },
+      },
       input: {
         main: 'src/index.html',
         metodo: 'src/metodo.html',

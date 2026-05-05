@@ -22,14 +22,14 @@ export default async function handler(req: any, res: any) {
     if (!stripeSecret || !webhookSecret) {
       return sendJson(res, 500, { error: 'Missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET' })
     }
-    const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
+    const stripe = new Stripe(stripeSecret, { apiVersion: '2026-03-25.dahlia' })
 
     const signature = (req.headers['stripe-signature'] || req.headers['Stripe-Signature']) as string | undefined
     if (!signature) return sendJson(res, 400, { error: 'Missing stripe-signature header' })
 
     const body = await readRawBody(req)
 
-    let event: Stripe.Event
+    let event: ReturnType<typeof stripe.webhooks.constructEvent>
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch {
@@ -37,7 +37,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session
+      const session = event.data.object as any
       const kbotSessionId = session.client_reference_id || session.metadata?.kbot_session_id
 
       if (!kbotSessionId) {

@@ -1,5 +1,5 @@
 import { createAnthropicClient, createSupabaseAdminClient, ensurePost, parseJsonBody, sendJson } from './_shared'
-import pdfParse from 'pdf-parse'
+import * as pdfParseModule from 'pdf-parse'
 import { getSystemEnvVar } from '../../lib/env/system'
 
 type UploadFileInput = {
@@ -56,6 +56,7 @@ function normalizeExtractedText(text: string, maxChars: number): string {
 
 async function extractPdfText(fileBuffer: Buffer): Promise<string | undefined> {
   try {
+    const pdfParse = ((pdfParseModule as any).default ?? pdfParseModule) as (input: Buffer) => Promise<{ text?: string }>
     const parsed = await pdfParse(fileBuffer)
     const normalized = normalizeExtractedText(String(parsed?.text || ''), 30000)
     return normalized.length > 120 ? normalized : undefined

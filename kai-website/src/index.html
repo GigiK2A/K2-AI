@@ -506,22 +506,7 @@
   <script type="module" src="./js/scroll.js"></script>
   <script type="module" src="./js/nav.js"></script>
   <script type="module" src="./js/home-3d.js"></script>
+  <script type="module" src="./js/home-hero-loader.js"></script>
   <script type="module" src="./js/chat.js"></script>
-  <script type="module">
-    import { getGraphicsCapabilityReport } from './js/runtime-guards.js'
-
-    const heroGraphics = getGraphicsCapabilityReport(960)
-    const canRunHeroField = heroGraphics.allowed
-
-    if (canRunHeroField) {
-      const load = () => import('./js/hero-3d.js')
-      'requestIdleCallback' in window
-        ? requestIdleCallback(load, { timeout: 1800 })
-        : setTimeout(load, 300)
-    } else {
-      document.documentElement.dataset.hero3dFallback = heroGraphics.reasons.join(',')
-      console.info('[K2 hero 3D] fallback active', heroGraphics)
-    }
-  </script>
 </body>
 </html>

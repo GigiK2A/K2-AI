@@ -34,7 +34,7 @@ export default async function handler(req: any, res: any) {
       await supabase.from('kbot_sessions').update({ email: resolvedEmail }).eq('id', session_id)
     }
 
-    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' })
+    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2026-03-25.dahlia' })
     const siteUrl = (getSystemEnvVar('NEXT_PUBLIC_SITE_URL') || 'https://www.k2-ai.it').replace(/\/$/, '')
     const sectorLabel = resolveSectorLabel(session.sector)
 
