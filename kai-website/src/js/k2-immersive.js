@@ -46,14 +46,12 @@ function enhanceSpotlights() {
 function enhancePointerField() {
   if (isMobile) return
 
-  // Always track pointer position for CSS gradient background — not an a11y animation.
+  // Pointer tracking and cursor ball are interactive, not autonomous animations —
+  // do not gate them on prefers-reduced-motion.
   window.addEventListener('pointermove', event => {
     document.documentElement.style.setProperty('--k2-pointer-x', `${event.clientX}px`)
     document.documentElement.style.setProperty('--k2-pointer-y', `${event.clientY}px`)
   }, { passive: true })
-
-  // Cursor ball: skip only when reduced motion is on (smooth loop uses rAF).
-  if (reducedMotion) return
 
   const cursor = document.createElement('div')
   cursor.className = 'k2-cursor'
