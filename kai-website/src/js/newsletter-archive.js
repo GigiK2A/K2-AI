@@ -9,15 +9,25 @@ function formatDate(value) {
 
 function renderItem(item, index) {
   const article = document.createElement('article')
-  article.className = 'card'
-  article.style.padding = '24px'
-  article.style.border = '1px solid var(--border-soft)'
+  article.className = `case-card reveal${index % 2 ? ' reveal-delay-1' : ''}`
 
   article.innerHTML = `
-    <p class="mono" style="margin-bottom:8px">Newsletter #${String(index + 1).padStart(3, '0')} · ${formatDate(item.published_at)}</p>
-    <h2 style="font-size:24px;line-height:1.2;margin-bottom:12px">${item.subject || 'Newsletter K2-AI'}</h2>
-    <p style="color:var(--text-secondary);margin-bottom:16px">${item.preview_text || 'Apri la versione completa della newsletter in HTML.'}</p>
-    <a href="/newsletter-entry?slug=${encodeURIComponent(item.slug)}" class="btn">Apri versione HTML →</a>
+    <div class="case-card-header">
+      <div class="case-card-sector">K2-AI Gazette · ${formatDate(item.published_at)}</div>
+      <h3 class="case-card-title">${item.subject || 'Newsletter K2-AI'}</h3>
+      <p class="case-card-desc">${item.preview_text || 'Apri la versione completa della newsletter in HTML.'}</p>
+      <a href="/newsletter-entry?slug=${encodeURIComponent(item.slug)}" class="case-card-cta">Apri versione HTML →</a>
+    </div>
+    <div class="case-card-metrics">
+      <div class="case-metric">
+        <div class="case-metric-value">#${String(index + 1).padStart(3, '0')}</div>
+        <div class="case-metric-label">Edizione archiviata</div>
+      </div>
+      <div class="case-metric">
+        <div class="case-metric-value">HTML</div>
+        <div class="case-metric-label">Versione leggibile dal sito</div>
+      </div>
+    </div>
   `
 
   return article

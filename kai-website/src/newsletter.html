@@ -18,8 +18,9 @@
   <link rel="stylesheet" href="./css/nav.css">
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/pages.css">
+  <link rel="stylesheet" href="./css/k2-immersive.css">
 </head>
-<body class="legal-page">
+<body class="cases-page">
 
   <nav id="navbar">
     <div class="nav-inner">
@@ -53,21 +54,33 @@
   </div>
 
   <main>
-    <section class="page-header">
-      <div style="max-width:860px">
-        <p class="hero-eyebrow">Newsletter</p>
-        <h1 class="display-xl page-title-contact" style="margin-bottom:20px">Archivio newsletter</h1>
-        <p style="font-size:17px;color:var(--text-secondary);line-height:1.7;max-width:760px">
-          Tutte le newsletter K2-AI in un unico archivio HTML.
+    <section class="page-header-fit">
+      <p class="hero-eyebrow reveal">Archivio K2-AI</p>
+      <h1 class="display-xl reveal reveal-delay-1 page-title-fit">
+        Newsletter AI,<br>senza rumore.
+      </h1>
+      <p class="reveal reveal-delay-2 page-copy-16">
+        Le edizioni pubblicate della K2-AI Gazette: notizie, strumenti e segnali utili dal mondo AI, raccolti in formato HTML per tornare a consultarli quando serve.
+      </p>
+      <p class="mono reveal reveal-delay-3 center-cta-label" data-newsletter-status>Caricamento archivio...</p>
+    </section>
+
+    <hr class="hr-section">
+
+    <section class="section-compact">
+      <div class="card reveal">
+        <div class="card-number">Briefing operativo</div>
+        <div class="card-title card-title-24">Ogni newsletter è un punto di lettura, non un flusso da inseguire.</div>
+        <p class="card-body card-body-max-760">
+          Archiviamo le uscite in ordine cronologico: puoi leggere la versione completa, recuperare le fonti e usarla come memoria editoriale del lavoro K2-AI.
         </p>
-        <p class="mono" data-newsletter-status style="margin-top:14px;color:var(--text-secondary)">Caricamento archivio...</p>
       </div>
     </section>
 
-    <section class="page-header" style="padding-top:0">
-      <div style="width:100%;max-width:980px">
-        <div class="grid-2" data-newsletter-grid style="gap:24px"></div>
-      </div>
+    <hr class="hr-section">
+
+    <section>
+      <div class="grid-2" data-newsletter-grid></div>
     </section>
   </main>
 
@@ -92,5 +105,7 @@
 
   <script type="module" src="./js/nav.js"></script>
   <script type="module" src="./js/newsletter-archive.js"></script>
+  <script type="module" src="./js/scroll.js"></script>
+  <script type="module" src="./js/k2-immersive.js"></script>
 </body>
 </html>

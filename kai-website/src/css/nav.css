@@ -113,6 +113,22 @@
   width: 100%;
 }
 
+@media (max-width: 1180px) {
+  .nav-inner {
+    gap: 28px;
+  }
+
+  .nav-links {
+    gap: 22px;
+  }
+}
+
+@media (max-width: 1040px) {
+  .nav-cta {
+    display: none;
+  }
+}
+
 /* ─── Hamburger ─── */
 
 .nav-hamburger {

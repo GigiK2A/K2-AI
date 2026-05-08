@@ -10,8 +10,9 @@
   <link rel="stylesheet" href="./css/nav.css">
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/pages.css">
+  <link rel="stylesheet" href="./css/k2-immersive.css">
 </head>
-<body class="legal-page">
+<body class="cases-page">
   <nav id="navbar">
     <div class="nav-inner">
       <a href="/" class="nav-logo" aria-label="K2-AI">
@@ -44,17 +45,22 @@
   </div>
 
   <main>
-    <section class="page-header">
-      <div style="max-width:980px;width:100%">
-        <p class="hero-eyebrow">Newsletter</p>
-        <h1 id="newsletter-title" class="display-xl page-title-contact" style="margin-bottom:10px">Caricamento...</h1>
-        <p id="newsletter-meta" class="mono" style="color:var(--text-secondary)"></p>
-        <div id="newsletter-html" style="margin-top:20px;background:#fff;border:1px solid var(--border-soft);padding:0;overflow:hidden"></div>
-      </div>
+    <section class="page-header-fit">
+      <p class="hero-eyebrow reveal">Newsletter</p>
+      <h1 id="newsletter-title" class="display-xl reveal reveal-delay-1 page-title-fit">Caricamento...</h1>
+      <p id="newsletter-meta" class="mono reveal reveal-delay-2 center-cta-label"></p>
+    </section>
+
+    <hr class="hr-section">
+
+    <section class="section-compact">
+      <div id="newsletter-html" class="reveal" style="background:#fff;border:1px solid var(--border-soft);overflow:hidden"></div>
     </section>
   </main>
 
   <script type="module" src="./js/nav.js"></script>
   <script type="module" src="./js/newsletter-entry.js"></script>
+  <script type="module" src="./js/scroll.js"></script>
+  <script type="module" src="./js/k2-immersive.js"></script>
 </body>
 </html>
