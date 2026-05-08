@@ -3,10 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Link non valido | K2-AI</title>
-  <meta name="robots" content="noindex">
-  <link rel="canonical" href="https://www.k2-ai.it/newsletter-error">
+  <title>Archivio Newsletter | K2-AI</title>
+  <meta name="description" content="Archivio Newsletter K2-AI: tutte le newsletter pubblicate, consultabili in formato HTML.">
+  <link rel="canonical" href="https://www.k2-ai.it/newsletter">
+  <meta name="robots" content="index,follow">
+
   <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <link rel="preload" href="/fonts/clash-display-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/dm-sans-400.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="./logo-nav-compact.png" as="image">
+
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/nav.css">
   <link rel="stylesheet" href="./css/components.css">
@@ -45,19 +52,24 @@
     <a href="/contatti">Contatti</a>
   </div>
 
-  <section class="page-header" style="min-height:60vh;display:flex;align-items:center">
-    <div style="max-width:560px">
-      <p class="hero-eyebrow">Newsletter</p>
-      <h1 class="display-xl page-title-contact" style="margin-bottom:24px">
-        Link non valido o scaduto.
-      </h1>
-      <p style="font-size:17px;color:var(--text-secondary);line-height:1.7;margin-bottom:32px">
-        Il link di conferma è già stato usato oppure è scaduto (validità 48 ore).<br/>
-        Se non riesci a iscriverti, scrivici direttamente.
-      </p>
-      <a href="/contatti" class="btn btn-primary">Scrivici →</a>
-    </div>
-  </section>
+  <main>
+    <section class="page-header">
+      <div style="max-width:860px">
+        <p class="hero-eyebrow">Newsletter</p>
+        <h1 class="display-xl page-title-contact" style="margin-bottom:20px">Archivio newsletter</h1>
+        <p style="font-size:17px;color:var(--text-secondary);line-height:1.7;max-width:760px">
+          Tutte le newsletter K2-AI in un unico archivio HTML.
+        </p>
+        <p class="mono" data-newsletter-status style="margin-top:14px;color:var(--text-secondary)">Caricamento archivio...</p>
+      </div>
+    </section>
+
+    <section class="page-header" style="padding-top:0">
+      <div style="width:100%;max-width:980px">
+        <div class="grid-2" data-newsletter-grid style="gap:24px"></div>
+      </div>
+    </section>
+  </main>
 
   <footer>
     <div class="footer-inner">
@@ -79,5 +91,6 @@
   </footer>
 
   <script type="module" src="./js/nav.js"></script>
+  <script type="module" src="./js/newsletter-archive.js"></script>
 </body>
 </html>
