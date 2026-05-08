@@ -117,6 +117,34 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function normalizeText(value, maxLen) {
+  return String(value || '').trim().slice(0, maxLen);
+}
+
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80);
+}
+
+function datePrefix(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function formatItalianIssueTitle(date) {
+  return `Newsletter del ${date.toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })}`;
+}
+
 function getEnvVar(name, fallbacks = []) {
   for (const key of [name, ...fallbacks]) {
     if (process.env[key]) return process.env[key];
@@ -1097,6 +1125,138 @@ async function handleNewsletterConfirm(req, res) {
   send(res, 302, { Location: '/newsletter-ok' }, '');
 }
 
+async function handleNewsletterPublish(req, res) {
+  if (req.method === 'OPTIONS') {
+    send(res, 204, {
+      'Access-Control-Allow-Origin': SITE_URL,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, x-internal-key',
+    }, '');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    sendJson(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  const expectedKey = getEnvVar('INTERNAL_API_KEY');
+  const providedKey = String(req.headers['x-internal-key'] || '');
+  if (!expectedKey || providedKey !== expectedKey) {
+    sendJson(res, 401, { error: 'Unauthorized' });
+    return;
+  }
+
+  let body;
+  try {
+    body = await readJsonBody(req, 4 * 1024 * 1024);
+  } catch {
+    sendJson(res, 400, { error: 'Invalid JSON' });
+    return;
+  }
+
+  const originalSubject = normalizeText(body.subject, 220);
+  const previewText = normalizeText(body.preview_text, 500);
+  const html = String(body.html || '').trim();
+
+  if (!originalSubject) {
+    sendJson(res, 400, { error: 'Missing subject' });
+    return;
+  }
+  if (!html) {
+    sendJson(res, 400, { error: 'Missing html' });
+    return;
+  }
+
+  const publishedAt = new Date();
+  const displaySubject = formatItalianIssueTitle(publishedAt);
+  const customSlug = normalizeText(body.slug, 120);
+  const safeBase = slugify(customSlug || originalSubject) || 'newsletter';
+  const finalSlug = `${datePrefix(publishedAt)}-${safeBase}`.slice(0, 120);
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('newsletter_issues')
+    .upsert({
+      slug: finalSlug,
+      subject: displaySubject,
+      preview_text: previewText,
+      html,
+      source: normalizeText(body.source, 120) || 'n8n',
+      published_at: publishedAt.toISOString(),
+      updated_at: publishedAt.toISOString(),
+    }, { onConflict: 'slug' })
+    .select('slug, subject, published_at')
+    .single();
+
+  if (error || !data) {
+    console.error('Newsletter publish error:', error);
+    sendJson(res, 500, { error: 'Publish failed' });
+    return;
+  }
+
+  sendJson(res, 200, {
+    ok: true,
+    slug: data.slug,
+    url: `${SITE_URL}/newsletter-entry?slug=${encodeURIComponent(data.slug)}`,
+    published_at: data.published_at,
+  });
+}
+
+async function handleNewsletterIssues(req, res) {
+  if (req.method !== 'GET') {
+    sendJson(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  const url = new URL(req.url || '', SITE_URL);
+  const limitRaw = Number(url.searchParams.get('limit') || 100);
+  const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 100;
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from('newsletter_issues')
+    .select('slug,subject,preview_text,published_at')
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Newsletter list error:', error);
+    sendJson(res, 500, { error: 'List failed' });
+    return;
+  }
+
+  sendJson(res, 200, { ok: true, items: data || [] });
+}
+
+async function handleNewsletterIssue(req, res) {
+  if (req.method !== 'GET') {
+    sendJson(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  const url = new URL(req.url || '', SITE_URL);
+  const slug = String(url.searchParams.get('slug') || '').trim();
+  if (!slug) {
+    sendJson(res, 400, { error: 'Missing slug' });
+    return;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('newsletter_issues')
+    .select('slug,subject,preview_text,html,published_at')
+    .eq('slug', slug)
+    .single();
+
+  if (error || !data) {
+    sendJson(res, 404, { error: 'Not found' });
+    return;
+  }
+
+  sendJson(res, 200, { ok: true, item: data });
+}
+
 function serializeKbotSession(session) {
   const collectedData = session?.collected_data && typeof session.collected_data === 'object'
     ? session.collected_data
@@ -1970,6 +2130,30 @@ const server = http.createServer((req, res) => {
     handleNewsletterConfirm(req, res).catch(err => {
       console.error('Newsletter confirm error:', err);
       send(res, 302, { Location: '/newsletter-error' }, '');
+    });
+    return;
+  }
+
+  if (rawPath === '/api/newsletter/publish') {
+    handleNewsletterPublish(req, res).catch(err => {
+      console.error('Newsletter publish error:', err);
+      sendJson(res, 500, { error: 'Errore pubblicazione newsletter' });
+    });
+    return;
+  }
+
+  if (rawPath === '/api/newsletter/issues') {
+    handleNewsletterIssues(req, res).catch(err => {
+      console.error('Newsletter issues error:', err);
+      sendJson(res, 500, { error: 'Errore archivio newsletter' });
+    });
+    return;
+  }
+
+  if (rawPath === '/api/newsletter/issue') {
+    handleNewsletterIssue(req, res).catch(err => {
+      console.error('Newsletter issue error:', err);
+      sendJson(res, 500, { error: 'Errore newsletter' });
     });
     return;
   }
