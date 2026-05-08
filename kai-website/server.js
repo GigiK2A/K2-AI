@@ -145,7 +145,7 @@ function formatItalianIssueTitle(date) {
   })}`;
 }
 
-function extractInternalApiKey(req, body = {}) {
+function extractInternalApiKeyCandidates(req, body = {}) {
   const auth = String(req.headers.authorization || '');
   const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7) : '';
   const url = new URL(req.url || '', SITE_URL);
@@ -159,7 +159,7 @@ function extractInternalApiKey(req, body = {}) {
     body.internalApiKey,
   ]
     .map(value => String(value || '').trim())
-    .find(Boolean) || '';
+    .filter(Boolean);
 }
 
 function getEnvVar(name, fallbacks = []) {
@@ -1166,8 +1166,8 @@ async function handleNewsletterPublish(req, res) {
   }
 
   const expectedKey = getEnvVar('INTERNAL_API_KEY');
-  const providedKey = extractInternalApiKey(req, body);
-  if (!expectedKey || providedKey !== expectedKey) {
+  const providedKeys = extractInternalApiKeyCandidates(req, body);
+  if (!expectedKey || !providedKeys.includes(expectedKey)) {
     sendJson(res, 401, { error: 'Unauthorized' });
     return;
   }
