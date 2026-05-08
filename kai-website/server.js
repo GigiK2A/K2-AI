@@ -1276,6 +1276,32 @@ async function handleNewsletterIssue(req, res) {
   sendJson(res, 200, { ok: true, item: data });
 }
 
+async function handleNewsletterCleanupTests(req, res, options = {}) {
+  if (req.method !== 'POST') {
+    sendJson(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  if (options.pathToken !== NEWSLETTER_PUBLISH_PATH_TOKEN) {
+    sendJson(res, 401, { error: 'Unauthorized' });
+    return;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from('newsletter_issues')
+    .delete()
+    .like('slug', '2026-05-08-test-auth-%');
+
+  if (error) {
+    console.error('Newsletter cleanup error:', error);
+    sendJson(res, 500, { error: 'Cleanup failed' });
+    return;
+  }
+
+  sendJson(res, 200, { ok: true });
+}
+
 function serializeKbotSession(session) {
   const collectedData = session?.collected_data && typeof session.collected_data === 'object'
     ? session.collected_data
@@ -2176,6 +2202,15 @@ const server = http.createServer((req, res) => {
     handleNewsletterIssue(req, res).catch(err => {
       console.error('Newsletter issue error:', err);
       sendJson(res, 500, { error: 'Errore newsletter' });
+    });
+    return;
+  }
+
+  if (rawPath.startsWith('/api/newsletter/admin/cleanup-tests/')) {
+    const pathToken = rawPath.slice('/api/newsletter/admin/cleanup-tests/'.length);
+    handleNewsletterCleanupTests(req, res, { pathToken }).catch(err => {
+      console.error('Newsletter cleanup tests error:', err);
+      sendJson(res, 500, { error: 'Errore cleanup newsletter' });
     });
     return;
   }
