@@ -241,6 +241,13 @@ html.js-scroll .reveal.visible {
 .reveal-delay-3 { transition-delay: 0.3s; }
 .reveal-delay-4 { transition-delay: 0.4s; }
 
+.page-header h1.reveal,
+.page-header-fit h1.reveal,
+.legal-header h1.reveal {
+  transition-duration: 0.85s;
+  transition-timing-function: var(--ease-cinema);
+}
+
 /* ─── Buttons ─── */
 
 .btn {

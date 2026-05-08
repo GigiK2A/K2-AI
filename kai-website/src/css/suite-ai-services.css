@@ -196,7 +196,7 @@
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   opacity: 0;
-  animation: sas-fade-up .6s var(--ease-cinema, cubic-bezier(.16,1,.3,1)) .1s forwards;
+  animation: sas-fade-up .85s var(--ease-cinema, cubic-bezier(.16,1,.3,1)) .1s forwards;
 }
 
 .sas-hero-eyebrow::before {
@@ -226,7 +226,7 @@
   background-clip: text;
   margin-bottom: 48px;
   opacity: 0;
-  animation: sas-fade-up .7s var(--ease-cinema) .22s forwards;
+  animation: sas-fade-up .85s var(--ease-cinema) .2s forwards;
 }
 
 .sas-title-line {
@@ -248,7 +248,7 @@
   max-width: 560px;
   margin-bottom: 56px;
   opacity: 0;
-  animation: sas-fade-up .7s var(--ease-cinema) .36s forwards;
+  animation: sas-fade-up .85s var(--ease-cinema) .3s forwards;
 }
 
 .sas-hero-actions {
@@ -259,7 +259,7 @@
   flex-wrap: wrap;
   margin-bottom: 72px;
   opacity: 0;
-  animation: sas-fade-up .7s var(--ease-cinema) .48s forwards;
+  animation: sas-fade-up .85s var(--ease-cinema) .4s forwards;
 }
 
 .suite-ai-page .btn-primary {
