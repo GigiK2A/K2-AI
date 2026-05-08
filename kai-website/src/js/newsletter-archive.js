@@ -9,7 +9,7 @@ function formatDate(value) {
 
 function renderItem(item, index) {
   const article = document.createElement('article')
-  article.className = `case-card reveal${index % 2 ? ' reveal-delay-1' : ''}`
+  article.className = 'case-card'
 
   article.innerHTML = `
     <div class="case-card-header">
