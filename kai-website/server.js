@@ -145,6 +145,23 @@ function formatItalianIssueTitle(date) {
   })}`;
 }
 
+function extractInternalApiKey(req, body = {}) {
+  const auth = String(req.headers.authorization || '');
+  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7) : '';
+  const url = new URL(req.url || '', SITE_URL);
+  return [
+    req.headers['x-internal-key'],
+    req.headers['x-api-key'],
+    bearer,
+    url.searchParams.get('internal_api_key'),
+    url.searchParams.get('key'),
+    body.internal_api_key,
+    body.internalApiKey,
+  ]
+    .map(value => String(value || '').trim())
+    .find(Boolean) || '';
+}
+
 function getEnvVar(name, fallbacks = []) {
   for (const key of [name, ...fallbacks]) {
     if (process.env[key]) return process.env[key];
@@ -1140,18 +1157,18 @@ async function handleNewsletterPublish(req, res) {
     return;
   }
 
-  const expectedKey = getEnvVar('INTERNAL_API_KEY');
-  const providedKey = String(req.headers['x-internal-key'] || '');
-  if (!expectedKey || providedKey !== expectedKey) {
-    sendJson(res, 401, { error: 'Unauthorized' });
-    return;
-  }
-
   let body;
   try {
     body = await readJsonBody(req, 4 * 1024 * 1024);
   } catch {
     sendJson(res, 400, { error: 'Invalid JSON' });
+    return;
+  }
+
+  const expectedKey = getEnvVar('INTERNAL_API_KEY');
+  const providedKey = extractInternalApiKey(req, body);
+  if (!expectedKey || providedKey !== expectedKey) {
+    sendJson(res, 401, { error: 'Unauthorized' });
     return;
   }
 
