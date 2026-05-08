@@ -4,6 +4,14 @@ function normalizeText(value: unknown, maxLen: number): string {
   return String(value || '').trim().slice(0, maxLen)
 }
 
+function formatItalianIssueTitle(date: Date): string {
+  return `Newsletter del ${date.toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })}`
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', 'https://www.k2-ai.it')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
@@ -37,6 +45,8 @@ export default async function handler(req: any, res: any) {
   if (!subject) return sendJson(res, 400, { error: 'Missing subject' })
   if (!html) return sendJson(res, 400, { error: 'Missing html' })
 
+  const publishedAt = new Date()
+  const displaySubject = formatItalianIssueTitle(publishedAt)
   const customSlug = normalizeText(body.slug, 120)
   const safeBase = slugify(customSlug || subject) || 'newsletter'
   const finalSlug = `${datePrefix()}-${safeBase}`.slice(0, 120)
@@ -45,12 +55,12 @@ export default async function handler(req: any, res: any) {
 
   const payload = {
     slug: finalSlug,
-    subject,
+    subject: displaySubject,
     preview_text: previewText,
     html,
     source: normalizeText(body.source, 120) || 'n8n',
-    published_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    published_at: publishedAt.toISOString(),
+    updated_at: publishedAt.toISOString(),
   }
 
   const { data, error } = await supabase
