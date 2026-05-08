@@ -1174,6 +1174,23 @@ async function handleNewsletterPublish(req, res, options = {}) {
     return;
   }
 
+  if (body.cleanup_tests === true) {
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase
+      .from('newsletter_issues')
+      .delete()
+      .like('slug', '2026-05-08-test-%');
+
+    if (error) {
+      console.error('Newsletter cleanup error:', error);
+      sendJson(res, 500, { error: 'Cleanup failed' });
+      return;
+    }
+
+    sendJson(res, 200, { ok: true, cleanup: 'tests' });
+    return;
+  }
+
   const originalSubject = normalizeText(body.subject, 220);
   const previewText = normalizeText(body.preview_text, 500);
   const html = String(body.html || '').trim();
