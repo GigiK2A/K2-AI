@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth, UserButton } from "@clerk/clerk-react";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, BarChart3, CheckCircle2, Clock, Download, ExternalLink, FileText, Plus, XCircle } from "lucide-react";

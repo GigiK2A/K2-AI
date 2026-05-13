@@ -1,5 +1,5 @@
 import { Menu, Sparkles } from "lucide-react";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { AIStatusIndicator } from "@/components/ui/AIStatusIndicator";
 import { SkillBadge } from "@/components/chat/SkillBadge";
@@ -10,7 +10,6 @@ export function ChatLayoutHeader({
   activeSkills,
   loading,
   onOpenSidebar,
-  isReportMode,
   isSignedIn,
 }: {
   mode: "lead" | "report";
@@ -18,7 +17,6 @@ export function ChatLayoutHeader({
   activeSkills: string[];
   loading: boolean;
   onOpenSidebar: () => void;
-  isReportMode?: boolean;
   isSignedIn?: boolean | null;
 }) {
   return (
