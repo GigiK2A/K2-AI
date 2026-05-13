@@ -13,7 +13,7 @@ import { ChatMessage, Conversation, Mode, SkillSummary, UploadedFile } from "@/t
 import { uid } from "@/lib/utils";
 import { MessageCircle, UserCircle2 } from "lucide-react";
 import { useEffect } from "react";
-import { useAuth, useUser, UserButton } from "@clerk/nextjs";
+import { useAuth, useUser, UserButton } from "@clerk/clerk-react";
 import Link from "next/link";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { startCheckout, submitFeedback } from "@/lib/api";

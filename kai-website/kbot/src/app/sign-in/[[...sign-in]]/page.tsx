@@ -1,4 +1,4 @@
-import { SignIn } from "@clerk/nextjs";
+import { SignIn } from "@clerk/clerk-react";
 import Image from "next/image";
 
 const BULLETS = [
