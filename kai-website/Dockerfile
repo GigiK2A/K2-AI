@@ -8,7 +8,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Build kbot (Next.js static export) — sequential to avoid OOM
+# Build kbot (Next.js standalone) — sequential to avoid OOM
 WORKDIR /app/kbot
 RUN npm ci
 RUN npm run build
@@ -32,7 +32,9 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/kbot/out ./dist/app
+COPY --from=build /app/kbot/.next/standalone ./kbot-standalone
+COPY --from=build /app/kbot/.next/static ./kbot-standalone/.next/static
+COPY --from=build /app/kbot/public ./kbot-standalone/public
 COPY server.js ./server.js
 COPY lib ./lib
 

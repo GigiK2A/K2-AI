@@ -3,12 +3,15 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const PORT = process.env.PORT || 4173;
 const DIST_DIR = path.join(__dirname, 'dist');
+const KBOT_STANDALONE_DIR = process.env.KBOT_STANDALONE_DIR || path.join(__dirname, 'kbot-standalone');
+const KBOT_PORT = Number(process.env.KBOT_PORT || 4174);
 const REDIRECT_HOST = 'k2-ai.it';
 const CANONICAL_HOST = 'www.k2-ai.it';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.k2-ai.it';
@@ -73,6 +76,59 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'SAMEORIGIN',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
 };
+
+let kbotProcess = null;
+let kbotStandaloneAvailable = false;
+
+function startKbotStandalone() {
+  const serverPath = path.join(KBOT_STANDALONE_DIR, 'server.js');
+  if (!fs.existsSync(serverPath)) return;
+
+  kbotStandaloneAvailable = true;
+  kbotProcess = spawn(process.execPath, [serverPath], {
+    cwd: KBOT_STANDALONE_DIR,
+    env: {
+      ...process.env,
+      NODE_ENV: 'production',
+      HOSTNAME: '0.0.0.0',
+      PORT: String(KBOT_PORT),
+    },
+    stdio: ['ignore', 'inherit', 'inherit'],
+  });
+
+  kbotProcess.on('exit', (code, signal) => {
+    kbotProcess = null;
+    console.error(`K-BOT standalone exited with code ${code ?? 'null'} signal ${signal ?? 'null'}`);
+  });
+}
+
+function proxyKbotStandalone(req, res) {
+  const target = new URL(req.url || '/', `http://127.0.0.1:${KBOT_PORT}`);
+  const proxyReq = http.request({
+    hostname: '127.0.0.1',
+    port: KBOT_PORT,
+    method: req.method,
+    path: `${target.pathname}${target.search}`,
+    headers: {
+      ...req.headers,
+      host: `127.0.0.1:${KBOT_PORT}`,
+    },
+  }, proxyRes => {
+    res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', err => {
+    console.error('K-BOT standalone proxy error:', err);
+    if (!res.headersSent) {
+      send(res, 502, { 'Content-Type': 'text/plain; charset=utf-8' }, 'K-BOT temporarily unavailable');
+    } else {
+      res.destroy(err);
+    }
+  });
+
+  req.pipe(proxyReq);
+}
 
 function normalizeHost(req) {
   const xfHost = req.headers['x-forwarded-host'];
@@ -2287,6 +2343,11 @@ const server = http.createServer((req, res) => {
   }
 
   if (rawPath === '/app' || rawPath.startsWith('/app/')) {
+    if (kbotStandaloneAvailable) {
+      proxyKbotStandalone(req, res);
+      return;
+    }
+
     const appRelPath = rawPath === '/app' ? '/app/index.html' : rawPath;
     const safePath = path.normalize(appRelPath).replace(/^(\.\.[/\\])+/, '');
     let filePath = path.join(DIST_DIR, safePath);
@@ -2319,6 +2380,8 @@ const server = http.createServer((req, res) => {
   }
   serveFile(req, res, filePath);
 });
+
+startKbotStandalone();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`K2-AI website listening on ${PORT}`);

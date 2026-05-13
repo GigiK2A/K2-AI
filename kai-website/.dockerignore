@@ -1,6 +1,8 @@
 node_modules
 npm-debug.log
 dist
+.next
+**/.next
 .DS_Store
 ._*
 .git
