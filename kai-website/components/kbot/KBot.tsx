@@ -450,7 +450,7 @@ export function KBot() {
       data?.session?.extractedData?.summary ||
       data?.v2_summary?.summary ||
       ''
-    if (nextContactSummary && (data?.next_action === 'show_contact_form' || mode === 'lead')) {
+    if (nextContactSummary && data?.next_action === 'show_contact_form') {
       setContactSummary(String(nextContactSummary))
     }
 
