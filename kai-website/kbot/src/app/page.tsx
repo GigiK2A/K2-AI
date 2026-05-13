@@ -13,8 +13,7 @@ import { ChatMessage, Conversation, Mode, SkillSummary, UploadedFile } from "@/t
 import { uid } from "@/lib/utils";
 import { MessageCircle, UserCircle2 } from "lucide-react";
 import { useEffect } from "react";
-import { useAuth, useUser, UserButton } from "@clerk/nextjs";
-import Link from "next/link";
+import { SignInButton, useAuth, useUser, UserButton } from "@clerk/nextjs";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { startCheckout, submitFeedback } from "@/lib/api";
 
@@ -42,8 +41,9 @@ export default function HomePage() {
   const [contextFilesByConversation, setContextFilesByConversation] = useState<Record<string, UploadedFile[]>>({});
 
   const { getToken, isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { isLoaded: isUserLoaded, user } = useUser();
   const hasPaid = Boolean((user?.publicMetadata as { has_paid?: boolean })?.has_paid);
+  const reportLocked = mode === "report" && isUserLoaded && !isSignedIn;
 
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -113,6 +113,7 @@ export default function HomePage() {
 
   async function handleSubmit() {
     if (!composer.trim() || loading) return;
+    if (mode === "report" && !isSignedIn) return;
 
     setError("");
     setLoading(true);
@@ -220,19 +221,21 @@ export default function HomePage() {
           </div>
         </main>
 
-        <div className="px-4 lg:px-8">
-          <div className="mx-auto w-full max-w-4xl">
-            <Composer
-              value={composer}
-              onChange={setComposer}
-              onSubmit={handleSubmit}
-              disabled={loading}
-              suggestions={suggestions}
-              onPickFiles={handleFilePick}
-              files={pendingFiles}
-            />
+        {!reportLocked && (
+          <div className="px-4 lg:px-8">
+            <div className="mx-auto w-full max-w-4xl">
+              <Composer
+                value={composer}
+                onChange={setComposer}
+                onSubmit={handleSubmit}
+                disabled={loading}
+                suggestions={suggestions}
+                onPickFiles={handleFilePick}
+                files={pendingFiles}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[rgba(5,5,5,0.95)] px-4 py-2 xl:hidden">
           <div className="mx-auto flex max-w-xl items-center justify-around text-xs text-[var(--text-soft)]">
@@ -243,9 +246,11 @@ export default function HomePage() {
                 <span>Account</span>
               </div>
             ) : (
-              <Link href="/sign-in" className="flex flex-col items-center gap-1">
-                <UserCircle2 size={16} />Account
-              </Link>
+              <SignInButton mode="modal">
+                <button className="flex flex-col items-center gap-1">
+                  <UserCircle2 size={16} />Account
+                </button>
+              </SignInButton>
             )}
           </div>
         </nav>
