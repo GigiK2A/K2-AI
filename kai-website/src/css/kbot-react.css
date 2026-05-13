@@ -46,6 +46,10 @@
   overflow: hidden;
 }
 
+.kbot-shell.lead-router {
+  min-height: 720px;
+}
+
 .kbot-shell.fullscreen {
   position: fixed;
   inset: 16px;
@@ -1116,6 +1120,57 @@
   flex-direction: column;
   gap: 10px;
   border-top: 1px solid #1e2530;
+}
+
+.kbot-route-card {
+  width: min(100%, 720px);
+  margin: 0 auto 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(128, 250, 235, 0.22);
+  background:
+    radial-gradient(circle at top left, rgba(128, 250, 235, 0.12), transparent 42%),
+    rgba(10, 16, 24, 0.92);
+  text-align: left;
+}
+
+.kbot-route-label {
+  display: block;
+  margin-bottom: 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(128, 250, 235, 0.78);
+}
+
+.kbot-route-card strong {
+  display: block;
+  color: #f6f9fd;
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.kbot-route-card p {
+  color: #aeb8c7;
+  font-size: 13.5px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+
+.kbot-route-link {
+  display: inline-flex;
+  color: #dffef8;
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.kbot-route-link:hover {
+  color: #ffffff;
 }
 
 .kbot-contact-cta-hint {

@@ -28,34 +28,43 @@ const ROUTER_TEXT =
 const TYPING_FRAMES = ['K-BOT sta scrivendo...', 'K-BOT sta elaborando...', 'K-BOT sta ragionando...']
 const ADAPTIVE_OTHER_LABEL = 'Altro da aggiungere (opzionale)'
 
-type ServicePreset = { name: string; sector: string; contentType: string }
+type ServicePreset = { name: string; sector: string; contentType: string; url: string }
 const SERVICE_MAP: Record<string, ServicePreset> = {
-  P01: { name: 'Agenti AI Email & CRM',            sector: 'servizi-b2b',      contentType: 'processo-operativo' },
-  P02: { name: 'Automazioni Amministrative',        sector: 'commercialista',   contentType: 'bilancio' },
-  P03: { name: 'AI Legale & Contratti',             sector: 'studio-legale',    contentType: 'contratto-legale' },
-  P04: { name: 'AI Ingegneria & Progettazione',     sector: 'studio-ingegneria',contentType: 'documento-tecnico' },
-  P05: { name: 'Microapp Documenti Tecnici',        sector: 'servizi-b2b',      contentType: 'documento-tecnico' },
-  P06: { name: 'AI Customer Service & Ticket',      sector: 'servizi-b2b',      contentType: 'processo-operativo' },
-  P07: { name: 'RAG Knowledge Base',                sector: 'servizi-b2b',      contentType: 'generico' },
-  P08: { name: 'AI Compliance & Audit',             sector: 'commercialista',   contentType: 'contratto-legale' },
-  P09: { name: 'AI Controllo di Gestione',          sector: 'commercialista',   contentType: 'bilancio' },
-  P10: { name: 'Integrazione Gestionali & ERP',     sector: 'studio-ingegneria',contentType: 'documento-tecnico' },
-  P11: { name: 'AI Marketing & Contenuti',          sector: 'servizi-b2b',      contentType: 'marketing-seo' },
-  P12: { name: 'Diagnosi Strategica PMI',           sector: 'servizi-b2b',      contentType: 'generico' },
-  P13: { name: 'Agevolazioni & Finanza Agevolata',  sector: 'commercialista',   contentType: 'bilancio' },
-  P14: { name: 'AI Edilizia & Appalti Pubblici',    sector: 'studio-ingegneria',contentType: 'documento-tecnico' },
-  P15: { name: 'AI HR & Recruiting',                sector: 'servizi-b2b',      contentType: 'processo-operativo' },
-  P16: { name: 'AI Real Estate & Tokenizzazione',   sector: 'servizi-b2b',      contentType: 'generico' },
-  P17: { name: 'AI Data Analytics & BI',            sector: 'servizi-b2b',      contentType: 'generico' },
-  P18: { name: 'AI UX & Design System',             sector: 'servizi-b2b',      contentType: 'processo-operativo' },
-  P19: { name: 'AI Efficienza Energetica',          sector: 'studio-ingegneria',contentType: 'documento-tecnico' },
-  P20: { name: 'AI Hospitality & Revenue',          sector: 'hospitality',      contentType: 'processo-operativo' },
+  P01: { name: 'Agenti AI Email & CRM',            sector: 'servizi-b2b',      contentType: 'processo-operativo', url: '/suite-ai/agenti-email-crm.html' },
+  P02: { name: 'Automazioni Amministrative',        sector: 'commercialista',   contentType: 'bilancio', url: '/suite-ai/automazioni-amministrative.html' },
+  P03: { name: 'AI Legale & Contratti',             sector: 'studio-legale',    contentType: 'contratto-legale', url: '/suite-ai/ai-legale-contratti.html' },
+  P04: { name: 'AI Ingegneria & Progettazione',     sector: 'studio-ingegneria',contentType: 'documento-tecnico', url: '/suite-ai/ai-ingegneria-progettazione.html' },
+  P05: { name: 'Microapp Documenti Tecnici',        sector: 'servizi-b2b',      contentType: 'documento-tecnico', url: '/suite-ai/microapp-documenti-tecnici.html' },
+  P06: { name: 'AI Customer Service & Ticket',      sector: 'servizi-b2b',      contentType: 'processo-operativo', url: '/suite-ai/ai-customer-service-ticket.html' },
+  P07: { name: 'RAG Knowledge Base',                sector: 'servizi-b2b',      contentType: 'generico', url: '/suite-ai/rag-knowledge-base.html' },
+  P08: { name: 'AI Compliance & Audit',             sector: 'commercialista',   contentType: 'contratto-legale', url: '/suite-ai/ai-compliance-audit.html' },
+  P09: { name: 'AI Controllo di Gestione',          sector: 'commercialista',   contentType: 'bilancio', url: '/suite-ai/ai-controllo-gestione-reporting.html' },
+  P10: { name: 'Integrazione Gestionali & ERP',     sector: 'studio-ingegneria',contentType: 'documento-tecnico', url: '/suite-ai/integrazione-gestionali-erp.html' },
+  P11: { name: 'AI Marketing & Contenuti',          sector: 'servizi-b2b',      contentType: 'marketing-seo', url: '/suite-ai/ai-marketing-contenuti.html' },
+  P12: { name: 'Diagnosi Strategica PMI',           sector: 'servizi-b2b',      contentType: 'generico', url: '/suite-ai/diagnosi-strategica-pmi.html' },
+  P13: { name: 'Agevolazioni & Finanza Agevolata',  sector: 'commercialista',   contentType: 'bilancio', url: '/suite-ai/agevolazioni-finanza-agevolata.html' },
+  P14: { name: 'AI Edilizia & Appalti Pubblici',    sector: 'studio-ingegneria',contentType: 'documento-tecnico', url: '/suite-ai/ai-edilizia-appalti-pubblici.html' },
+  P15: { name: 'AI HR & Recruiting',                sector: 'servizi-b2b',      contentType: 'processo-operativo', url: '/suite-ai/ai-hr-recruiting.html' },
+  P16: { name: 'AI Real Estate & Tokenizzazione',   sector: 'servizi-b2b',      contentType: 'generico', url: '/suite-ai/ai-real-estate-tokenizzazione.html' },
+  P17: { name: 'AI Data Analytics & BI',            sector: 'servizi-b2b',      contentType: 'generico', url: '/suite-ai/ai-data-analytics-bi.html' },
+  P18: { name: 'AI UX & Design System',             sector: 'servizi-b2b',      contentType: 'processo-operativo', url: '/suite-ai/ai-ux-design-system.html' },
+  P19: { name: 'AI Efficienza Energetica',          sector: 'studio-ingegneria',contentType: 'documento-tecnico', url: '/suite-ai/ai-efficienza-energetica.html' },
+  P20: { name: 'AI Hospitality & Revenue',          sector: 'hospitality',      contentType: 'processo-operativo', url: '/suite-ai/ai-hospitality-revenue.html' },
 }
 
 function getServiceParam(): string | null {
   if (typeof window === 'undefined') return null
   const id = new URLSearchParams(window.location.search).get('service')
   return (id && SERVICE_MAP[id]) ? id : null
+}
+
+function getInitialService(): string | null {
+  if (typeof window === 'undefined') return null
+  const fromUrl = getServiceParam()
+  if (fromUrl) return fromUrl
+  const root = document.getElementById('kbot-react-root')
+  const fromDataset = root?.dataset.service?.trim().toUpperCase()
+  return fromDataset && SERVICE_MAP[fromDataset] ? fromDataset : null
 }
 
 const SECTORS = [
@@ -305,26 +314,26 @@ const SECTOR_TO_CONTACT_SETTORE: Record<string, string> = {
 }
 
 export function KBot() {
-  const [selectedService, setSelectedService] = useState<string | null>(getServiceParam)
-  const [stage, setStage] = useState<Stage>(() => getServiceParam() ? 'problem' : 'mode')
-  const [mode, setMode] = useState<KBotMode>(() => getServiceParam() ? 'report' : '')
+  const [selectedService, setSelectedService] = useState<string | null>(getInitialService)
+  const [stage, setStage] = useState<Stage>('problem')
+  const [mode, setMode] = useState<KBotMode>('lead')
   const [selectedSector, setSelectedSector] = useState<string>(() => {
-    const id = getServiceParam(); return id ? SERVICE_MAP[id].sector : ''
+    const id = getInitialService(); return id ? SERVICE_MAP[id].sector : 'servizi-b2b'
   })
   const [contentType, setContentType] = useState<string>(() => {
-    const id = getServiceParam(); return id ? SERVICE_MAP[id].contentType : ''
+    const id = getInitialService(); return id ? SERVICE_MAP[id].contentType : 'generico'
   })
   const [problem, setProblem] = useState('')
   const [sessionId, setSessionId] = useState('')
-  const [path, setPath] = useState<PathType>(() => getServiceParam() ? 'A' : 'unknown')
+  const [path, setPath] = useState<PathType>('B')
   const [step, setStep] = useState(1)
   const [messages, setMessages] = useState<ChatMsg[]>(() => {
-    const id = getServiceParam()
-    if (!id) return [{ role: 'assistant', text: 'Ciao, sono K-BOT. Vuoi analizzare un documento/caso e ottenere un report, oppure vuoi capire se ha senso parlarne con il team K2-AI?' }]
+    const id = getInitialService()
+    if (!id) return [{ role: 'assistant', text: 'Ciao, sono Lead K-BOT. Raccontami cosa vuoi automatizzare o migliorare: capisco se esiste già un prodotto nella Suite AI o preparo un brief per il team K2-AI.' }]
     const svc = SERVICE_MAP[id]
     return [
-      { role: 'assistant', text: `Ciao, sono K-BOT. Sei arrivato dal servizio ${svc.name}.` },
-      { role: 'assistant', text: 'Descrivimi il tuo caso oppure carica direttamente un documento. Lo analizzo con le skill specifiche per questo servizio e produco la diagnosi operativa.' },
+      { role: 'assistant', text: `Ciao, sono Lead K-BOT. Sei arrivato dal servizio ${svc.name}.` },
+      { role: 'assistant', text: 'Descrivimi il tuo caso: verifico se questo prodotto è adatto, se c’è un servizio Suite migliore oppure se conviene passare al form contatti già precompilato.' },
     ]
   })
   const [inputValue, setInputValue] = useState('')
@@ -352,7 +361,7 @@ export function KBot() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   const canReply = (inputValue.trim().length > 0 || queuedFiles.length > 0) && !isLoading
-  const canStart = mode.length > 0 && !isLoading
+  const canStart = !isLoading
   const teaserSignals = useMemo(() => teaser?.segnali || [], [teaser])
   const hasAdaptiveForm = adaptiveQuestions.length > 0
   const canSendAdaptive = !isLoading
@@ -488,15 +497,15 @@ export function KBot() {
 
   function resetChat() {
     setSelectedService(null)
-    setStage('mode')
-    setMode('')
-    setSelectedSector('')
-    setContentType('')
+    setStage('problem')
+    setMode('lead')
+    setSelectedSector('servizi-b2b')
+    setContentType('generico')
     setProblem('')
     setSessionId('')
-    setPath('unknown')
+    setPath('B')
     setStep(1)
-    setMessages([{ role: 'assistant', text: 'Ciao, sono K-BOT. Vuoi analizzare un documento/caso e ottenere un report, oppure vuoi capire se ha senso parlarne con il team K2-AI?' }])
+    setMessages([{ role: 'assistant', text: 'Ciao, sono Lead K-BOT. Raccontami cosa vuoi automatizzare o migliorare: capisco se esiste già un prodotto nella Suite AI o preparo un brief per il team K2-AI.' }])
     setInputValue('')
     setIsLoading(false)
     setIsTyping(false)
@@ -760,6 +769,8 @@ export function KBot() {
     const text = buildContactPrefill(summary)
     const settore = SECTOR_TO_CONTACT_SETTORE[selectedSector] || ''
     const sectorLabel = SECTORS.find(s => s.slug === selectedSector)?.label || ''
+    const recommendedId = String(v2Summary?.recommendedServiceId || selectedService || '').toUpperCase()
+    const recommendedService = SERVICE_MAP[recommendedId]
     try {
       sessionStorage.setItem('kai-contact-prefill', text)
       sessionStorage.setItem('kai-contact-prefill-meta', `Lead da K-BOT — settore: ${sectorLabel}, sessione: ${sessionId}`)
@@ -773,6 +784,10 @@ export function KBot() {
     } catch {}
     const params = new URLSearchParams()
     if (settore) params.set('settore', settore)
+    if (recommendedService) {
+      params.set('pkg', recommendedId)
+      params.set('pkg_title', recommendedService.name)
+    }
     capture('kbot_contact_clicked', { sector: selectedSector, session_id: sessionId })
     window.location.href = `/contatti.html${params.toString() ? `?${params.toString()}` : ''}`
   }
@@ -813,7 +828,7 @@ export function KBot() {
   return (
     <>
       <div className={`kbot-overlay ${isFullscreen ? 'on' : ''}`} onClick={toggleFullscreen} />
-      <div ref={rootRef} className={`kbot-shell ${isFullscreen ? 'fullscreen' : ''}`}>
+      <div ref={rootRef} className={`kbot-shell lead-router ${isFullscreen ? 'fullscreen' : ''}`}>
 
       {cancelledReturn && (
         <div className="kbot-cancelled-banner">
@@ -847,7 +862,7 @@ export function KBot() {
           <span className="kbot-status-dot" />
           <div>
             <div className="kbot-header-text">K-BOT</div>
-            <div className="kbot-header-sub">Attiva ora</div>
+            <div className="kbot-header-sub">Lead router · Suite AI</div>
           </div>
         </div>
         <div className="kbot-header-actions">
@@ -915,32 +930,6 @@ export function KBot() {
           </div>
         )}
 
-        {stage === 'mode' && (
-          <div className="kbot-option-panel msg-in">
-            <p className="kbot-stage-label">Scegli cosa vuoi fare</p>
-            <div className="kbot-mode-grid">
-              <button
-                type="button"
-                className="kbot-mode-card"
-                onClick={() => onSelectMode('report')}
-                disabled={isLoading}
-              >
-                <span className="kbot-mode-title">Analisi e report</span>
-                <span className="kbot-mode-copy">Carichi o descrivi un caso. K-BOT produce un report di lettura usando le skill interne.</span>
-              </button>
-              <button
-                type="button"
-                className="kbot-mode-card"
-                onClick={() => onSelectMode('lead')}
-                disabled={isLoading}
-              >
-                <span className="kbot-mode-title">Parlare con K2-AI</span>
-                <span className="kbot-mode-copy">K-BOT capisce contesto, urgenza e fit, poi ti manda su contatti con un brief ordinato.</span>
-              </button>
-            </div>
-          </div>
-        )}
-
         {stage === 'problem' && (
           <div className="kbot-option-panel msg-in">
             {selectedService && SERVICE_MAP[selectedService] && (
@@ -959,7 +948,7 @@ export function KBot() {
             />
             <div className="kbot-choice-row">
               <button type="button" className="kbot-choice-chip" onClick={startFromProblem} disabled={!canStart}>
-                Avanti →
+                Fai la scrematura →
               </button>
             </div>
           </div>
@@ -1102,9 +1091,22 @@ export function KBot() {
 
       {contactSummary && contactSummary !== '__pending__' && (
         <div className="kbot-contact-cta">
-          <p className="kbot-contact-cta-hint">Ho preparato un riepilogo del tuo caso per il team K2-AI.</p>
+          {(() => {
+            const serviceId = String(v2Summary?.recommendedServiceId || '').toUpperCase()
+            const service = SERVICE_MAP[serviceId]
+            if (!service) return null
+            return (
+              <div className="kbot-route-card">
+                <span className="kbot-route-label">Servizio Suite più vicino</span>
+                <strong>{service.name}</strong>
+                {v2Summary?.summary && <p>{v2Summary.summary}</p>}
+                <a href={service.url} className="kbot-route-link">Apri scheda prodotto →</a>
+              </div>
+            )
+          })()}
+          <p className="kbot-contact-cta-hint">Ho preparato un riepilogo del tuo caso. Se serve un perimetro custom, il form contatti sarà già compilato.</p>
           <button type="button" className="kbot-btn-primary kbot-contact-btn" onClick={() => goToContacts()}>
-            Contattaci →
+            Vai al form precompilato →
           </button>
         </div>
       )}

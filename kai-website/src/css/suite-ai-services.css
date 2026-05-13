@@ -633,6 +633,90 @@
 
 /* ── 4. COME FUNZIONA ─────────────────────────────────── */
 
+.sas-lead-router-section {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(320px, 1.2fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: start;
+  padding: 96px var(--pad-x, 80px);
+  border-top: 1px solid rgba(255,255,255,.06);
+  position: relative;
+}
+
+.sas-lead-router-section::before {
+  content: '';
+  position: absolute;
+  inset: 8% 8% auto auto;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(128,250,235,.08), transparent 68%);
+  pointer-events: none;
+}
+
+.sas-lead-router-copy {
+  position: sticky;
+  top: 104px;
+  z-index: 1;
+}
+
+.sas-lead-router-copy h2 {
+  font-family: var(--font-display, 'Clash Display', sans-serif);
+  font-size: clamp(2rem, 4vw, 4.4rem);
+  line-height: .95;
+  letter-spacing: -0.055em;
+  color: #fff;
+  margin: 18px 0 22px;
+}
+
+.sas-lead-router-copy p {
+  max-width: 480px;
+  color: rgba(255,255,255,.66);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.sas-lead-router-points {
+  display: grid;
+  gap: 10px;
+  margin-top: 28px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.42);
+}
+
+.sas-lead-router-points span {
+  border-left: 1px solid rgba(128,250,235,.26);
+  padding-left: 12px;
+}
+
+.sas-lead-router-widget {
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.sas-lead-router-widget #kbot-react-root {
+  min-height: 720px;
+}
+
+.sas-lead-router-widget .kbot-shell {
+  min-height: 720px;
+}
+
+@media (max-width: 980px) {
+  .sas-lead-router-section {
+    grid-template-columns: 1fr;
+    padding: 72px 24px;
+  }
+
+  .sas-lead-router-copy {
+    position: relative;
+    top: auto;
+  }
+}
+
 .sas-steps-section {
   padding: 100px var(--pad-x, 80px);
   border-top: 1px solid rgba(255,255,255,.06);

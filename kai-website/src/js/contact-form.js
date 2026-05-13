@@ -1,12 +1,35 @@
 const API_BASE_URL = import.meta.env.VITE_KAI_API_BASE_URL || '';
 
+const SUITE_PACKAGE_TITLES = {
+  P01: 'Agenti AI Email & CRM',
+  P02: 'Automazioni Amministrative',
+  P03: 'AI Legale & Contratti',
+  P04: 'AI Ingegneria & Progettazione',
+  P05: 'Microapp Documenti Tecnici',
+  P06: 'AI Customer Service & Ticket',
+  P07: 'RAG Knowledge Base',
+  P08: 'AI Compliance & Audit',
+  P09: 'AI Controllo di Gestione',
+  P10: 'Integrazione Gestionali & ERP',
+  P11: 'AI Marketing & Contenuti',
+  P12: 'Diagnosi Strategica PMI',
+  P13: 'Agevolazioni & Finanza Agevolata',
+  P14: 'AI Edilizia & Appalti Pubblici',
+  P15: 'AI HR & Recruiting',
+  P16: 'AI Real Estate & Tokenizzazione',
+  P17: 'AI Data Analytics & BI',
+  P18: 'AI UX & Design System',
+  P19: 'AI Efficienza Energetica',
+  P20: 'AI Hospitality & Revenue'
+};
+
 // Contesto pacchetto dalla URL (?pkg=ID&pkg_title=TITLE)
 const PKG_CTX = (() => {
   try {
     const p = new URLSearchParams(window.location.search);
-    const id = (p.get('pkg') || '').trim().slice(0, 120);
+    const id = (p.get('pkg') || '').trim().toUpperCase().slice(0, 120);
     if (!id) return null;
-    const title = (p.get('pkg_title') || id).trim().slice(0, 160);
+    const title = (p.get('pkg_title') || SUITE_PACKAGE_TITLES[id] || id).trim().slice(0, 160);
     return { id, title };
   } catch { return null; }
 })();

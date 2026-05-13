@@ -81,7 +81,7 @@ function renderGrid(grid, countEl) {
          </a>`
       : ''
 
-    const kbotUrl = `/k-bot.html?service=${esc(svc.id)}`
+    const kbotUrl = `/suite-ai.html?service=${esc(svc.id)}#suite-lead-router`
 
     return `
       <div class="sas-card" style="transition-delay:${(i % 6) * 55}ms" data-id="${esc(svc.id)}">
@@ -95,7 +95,7 @@ function renderGrid(grid, countEl) {
         <div class="sas-card-actions">
           <a href="${kbotUrl}" class="sas-btn-kbot">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
-            Avvia con K-BOT
+            Fai scrematura
           </a>
           ${btnScopri}
         </div>

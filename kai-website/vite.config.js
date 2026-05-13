@@ -121,6 +121,7 @@ export default defineConfig({
         'casi-studio': 'src/casi-studio.html',
         laboratorio: 'src/laboratorio.html',
         analisi: 'src/analisi.html',
+        app: 'src/app.html',
         'k-bot': 'src/k-bot.html',
         'report-preview': 'src/report-preview.html',
         contatti: 'src/contatti.html',

@@ -144,6 +144,7 @@ export async function createKbotSession(body: Record<string, unknown>): Promise<
   const collectedData: Record<string, unknown> = {
     service_id: serviceId,
     extractedData: {},
+    mode,
   }
   if (contentType) collectedData.content_type = contentType
 
@@ -157,7 +158,6 @@ export async function createKbotSession(body: Record<string, unknown>): Promise<
       path: 'unknown',
       step: 1,
       collected_data: collectedData,
-      mode,
     })
     .select('*')
     .single()
