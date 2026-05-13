@@ -430,7 +430,7 @@ function detectKbotNextAction(mode, step, collectedData, assistantMessage) {
   if (mode === 'report' && (text.includes('report_ready: true') || step >= 4 || collectedData.report_ready)) {
     return 'show_report';
   }
-  if (mode === 'lead' && (text.includes('lead_ready: true') || step >= 5 || collectedData.lead_ready)) {
+  if (mode === 'lead' && (text.includes('lead_ready: true') || step >= 8 || collectedData.lead_ready)) {
     return 'show_contact_form';
   }
   return 'continue';
@@ -1586,7 +1586,7 @@ async function handleKbotChat(req, res) {
     conversation_summary: collectedData.conversationSummary,
     contact_summary: nextAction === 'show_contact_form'
       ? (collectedData.contactPrefillSummary || leadBrief || assistantMessage)
-      : collectedData.contactPrefillSummary,
+      : undefined,
     intent: currentIntent,
     ...(summaryBlock ? { v2_summary: summaryBlock, summary: summaryBlock } : {}),
   });
