@@ -1,0 +1,509 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "local-seo-boost-output",
+  "title": "Local SEO Boost — Output Report",
+  "description": "Schema di output per il report Local SEO di attivita con clientela geografica in Italia",
+  "type": "object",
+  "required": ["meta", "gbp_audit", "nap_consistency", "citazioni", "recensioni", "onpage_locale", "piano_azione", "executive_summary", "files"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadati dell'analisi",
+      "required": ["nome_attivita", "url_sito", "indirizzo", "categoria", "keyword_locali", "data_analisi"],
+      "properties": {
+        "nome_attivita": {
+          "type": "string",
+          "description": "Nome commerciale dell'attivita"
+        },
+        "url_sito": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL del sito web dell'attivita"
+        },
+        "indirizzo": {
+          "type": "object",
+          "required": ["via", "cap", "citta", "provincia"],
+          "properties": {
+            "via": { "type": "string", "description": "Via e numero civico" },
+            "cap": { "type": "string", "pattern": "^[0-9]{5}$", "description": "Codice Avviamento Postale" },
+            "citta": { "type": "string", "description": "Citta" },
+            "provincia": { "type": "string", "pattern": "^[A-Z]{2}$", "description": "Sigla provincia (2 lettere)" }
+          }
+        },
+        "categoria": {
+          "type": "string",
+          "description": "Categoria merceologica dell'attivita"
+        },
+        "keyword_locali": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 2,
+          "maxItems": 3,
+          "description": "Keyword locali target (2-3)"
+        },
+        "data_analisi": {
+          "type": "string",
+          "format": "date",
+          "description": "Data di esecuzione dell'analisi (YYYY-MM-DD)"
+        }
+      }
+    },
+    "gbp_audit": {
+      "type": "object",
+      "description": "Risultati audit Google Business Profile",
+      "required": ["completezza_pct", "problemi", "azioni"],
+      "properties": {
+        "completezza_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentuale di completezza del profilo GBP"
+        },
+        "voto": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Voto sintetico 1-10"
+        },
+        "sezioni": {
+          "type": "object",
+          "description": "Dettaglio completezza per sezione",
+          "properties": {
+            "informazioni_base": {
+              "type": "object",
+              "properties": {
+                "compilati": { "type": "integer" },
+                "totali": { "type": "integer" },
+                "dettaglio": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "campo": { "type": "string" },
+                      "stato": { "type": "string", "enum": ["ok", "mancante", "da_correggere"] },
+                      "nota": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            },
+            "categorie": {
+              "type": "object",
+              "properties": {
+                "primaria": { "type": "string" },
+                "secondarie": { "type": "array", "items": { "type": "string" } },
+                "suggerite": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "foto": {
+              "type": "object",
+              "properties": {
+                "totali": { "type": "integer" },
+                "per_tipo": {
+                  "type": "object",
+                  "properties": {
+                    "logo": { "type": "integer" },
+                    "cover": { "type": "integer" },
+                    "esterni": { "type": "integer" },
+                    "interni": { "type": "integer" },
+                    "team": { "type": "integer" },
+                    "prodotti": { "type": "integer" }
+                  }
+                }
+              }
+            },
+            "post": {
+              "type": "object",
+              "properties": {
+                "ultimo_post_data": { "type": ["string", "null"], "format": "date" },
+                "frequenza_mensile": { "type": "number" }
+              }
+            },
+            "qa_presidiate": { "type": "boolean" },
+            "attributi_compilati": { "type": "boolean" },
+            "prodotti_servizi_compilati": { "type": "boolean" }
+          }
+        },
+        "problemi": {
+          "type": "array",
+          "description": "Lista problemi identificati nel profilo GBP",
+          "items": {
+            "type": "object",
+            "required": ["descrizione", "severita", "impatto"],
+            "properties": {
+              "descrizione": { "type": "string" },
+              "severita": { "type": "string", "enum": ["critico", "alto", "medio", "basso"] },
+              "impatto": { "type": "string", "description": "Impatto stimato sulla visibilita locale" }
+            }
+          }
+        },
+        "azioni": {
+          "type": "array",
+          "description": "Azioni correttive per il profilo GBP",
+          "items": {
+            "type": "object",
+            "required": ["azione", "priorita", "difficolta"],
+            "properties": {
+              "azione": { "type": "string" },
+              "priorita": { "type": "string", "enum": ["alta", "media", "bassa"] },
+              "difficolta": { "type": "string", "enum": ["facile", "media", "difficile"] },
+              "istruzioni": { "type": "string", "description": "Istruzioni passo-passo per eseguire l'azione" }
+            }
+          }
+        }
+      }
+    },
+    "nap_consistency": {
+      "type": "object",
+      "description": "Risultati verifica coerenza NAP",
+      "required": ["fonti", "coerenza_pct"],
+      "properties": {
+        "coerenza_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentuale fonti con NAP coerente"
+        },
+        "voto": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "nap_di_riferimento": {
+          "type": "object",
+          "description": "NAP corretto di riferimento",
+          "properties": {
+            "nome": { "type": "string" },
+            "indirizzo": { "type": "string" },
+            "telefono": { "type": "string" }
+          }
+        },
+        "fonti": {
+          "type": "array",
+          "description": "Dettaglio NAP per ogni fonte verificata",
+          "items": {
+            "type": "object",
+            "required": ["fonte", "nome", "indirizzo", "telefono", "coerente"],
+            "properties": {
+              "fonte": { "type": "string", "description": "Nome della fonte (es. 'Sito web - header', 'Google Business Profile', 'PagineGialle')" },
+              "nome": { "type": ["string", "null"], "description": "Nome attivita trovato su questa fonte" },
+              "indirizzo": { "type": ["string", "null"], "description": "Indirizzo trovato su questa fonte" },
+              "telefono": { "type": ["string", "null"], "description": "Telefono trovato su questa fonte" },
+              "coerente": { "type": "boolean", "description": "true se tutti i campi corrispondono al NAP di riferimento" },
+              "discrepanze": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Lista discrepanze trovate (es. 'Indirizzo abbreviato: V. Roma invece di Via Roma')"
+              }
+            }
+          }
+        }
+      }
+    },
+    "citazioni": {
+      "type": "object",
+      "description": "Stato citazioni locali su directory",
+      "required": ["presenti", "mancanti", "da_correggere"],
+      "properties": {
+        "voto": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "riepilogo": {
+          "type": "object",
+          "properties": {
+            "totali_verificate": { "type": "integer" },
+            "presenti_corrette": { "type": "integer" },
+            "presenti_errate": { "type": "integer" },
+            "assenti": { "type": "integer" }
+          }
+        },
+        "presenti": {
+          "type": "array",
+          "description": "Citazioni presenti e corrette",
+          "items": {
+            "type": "object",
+            "required": ["directory", "url_listing"],
+            "properties": {
+              "directory": { "type": "string" },
+              "tipo": { "type": "string", "enum": ["generalista", "settore", "mappe", "social"] },
+              "url_listing": { "type": ["string", "null"], "format": "uri" },
+              "nap_corretto": { "type": "boolean" }
+            }
+          }
+        },
+        "mancanti": {
+          "type": "array",
+          "description": "Directory dove l'attivita non e presente",
+          "items": {
+            "type": "object",
+            "required": ["directory", "priorita"],
+            "properties": {
+              "directory": { "type": "string" },
+              "tipo": { "type": "string", "enum": ["generalista", "settore", "mappe", "social"] },
+              "url_registrazione": { "type": "string", "format": "uri" },
+              "priorita": { "type": "string", "enum": ["alta", "media", "bassa"] },
+              "istruzioni": { "type": "string" }
+            }
+          }
+        },
+        "da_correggere": {
+          "type": "array",
+          "description": "Citazioni presenti ma con dati errati",
+          "items": {
+            "type": "object",
+            "required": ["directory", "errori"],
+            "properties": {
+              "directory": { "type": "string" },
+              "tipo": { "type": "string", "enum": ["generalista", "settore", "mappe", "social"] },
+              "url_listing": { "type": ["string", "null"], "format": "uri" },
+              "errori": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Lista errori trovati"
+              },
+              "istruzioni_correzione": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "recensioni": {
+      "type": "object",
+      "description": "Analisi e strategia recensioni",
+      "required": ["rating_medio", "volume", "strategia"],
+      "properties": {
+        "voto": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "rating_medio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Rating medio su Google (0-5 stelle)"
+        },
+        "volume": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Numero totale recensioni Google"
+        },
+        "dettaglio_piattaforme": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "piattaforma": { "type": "string" },
+              "rating": { "type": ["number", "null"] },
+              "volume": { "type": ["integer", "null"] },
+              "pct_risposte": { "type": ["number", "null"] }
+            }
+          }
+        },
+        "competitor": {
+          "type": "array",
+          "description": "Benchmark competitor locali",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nome": { "type": "string" },
+              "rating_google": { "type": "number" },
+              "volume_google": { "type": "integer" }
+            }
+          }
+        },
+        "strategia": {
+          "type": "object",
+          "description": "Piano per migliorare volume e qualita recensioni",
+          "required": ["tattiche", "obiettivo_90_giorni"],
+          "properties": {
+            "tattiche": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tattica": { "type": "string" },
+                  "descrizione": { "type": "string" },
+                  "impatto_atteso": { "type": "string", "enum": ["alto", "medio", "basso"] }
+                }
+              }
+            },
+            "protocollo_risposta_negative": { "type": "string" },
+            "obiettivo_90_giorni": {
+              "type": "object",
+              "properties": {
+                "rating_target": { "type": "number" },
+                "volume_target": { "type": "integer" },
+                "pct_risposte_target": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "onpage_locale": {
+      "type": "object",
+      "description": "Analisi ottimizzazione on-page per ricerche locali",
+      "properties": {
+        "voto": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "schema_markup": {
+          "type": "object",
+          "properties": {
+            "presente": { "type": "boolean" },
+            "tipo": { "type": ["string", "null"] },
+            "errori": { "type": "array", "items": { "type": "string" } },
+            "codice_suggerito": { "type": "string", "description": "JSON-LD completo da inserire" }
+          }
+        },
+        "pagine_geografiche": {
+          "type": "object",
+          "properties": {
+            "presenti": { "type": "boolean" },
+            "pagine_esistenti": { "type": "array", "items": { "type": "string" } },
+            "pagine_suggerite": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "contenuti_locali": {
+          "type": "object",
+          "properties": {
+            "menzioni_territorio": { "type": "boolean" },
+            "pagina_contatti_completa": { "type": "boolean" },
+            "mappa_embedded": { "type": "boolean" },
+            "click_to_call": { "type": "boolean" },
+            "mobile_friendly": { "type": "boolean" }
+          }
+        },
+        "azioni": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "azione": { "type": "string" },
+              "priorita": { "type": "string", "enum": ["alta", "media", "bassa"] },
+              "difficolta": { "type": "string", "enum": ["facile", "media", "difficile"] }
+            }
+          }
+        }
+      }
+    },
+    "piano_azione": {
+      "type": "object",
+      "description": "Piano d'azione prioritizzato 30-60-90 giorni",
+      "required": ["stasera", "primi_30_giorni", "giorni_31_60", "giorni_61_90"],
+      "properties": {
+        "stasera": {
+          "type": "array",
+          "description": "Le 3 azioni da fare subito stasera (15 minuti)",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["azione", "tempo_stimato"],
+            "properties": {
+              "azione": { "type": "string" },
+              "tempo_stimato": { "type": "string", "description": "Tempo stimato (es. '5 minuti')" },
+              "istruzioni": { "type": "string" }
+            }
+          }
+        },
+        "primi_30_giorni": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["azione", "area", "impatto", "difficolta"],
+            "properties": {
+              "azione": { "type": "string" },
+              "area": { "type": "string", "enum": ["gbp", "nap", "citazioni", "recensioni", "onpage"] },
+              "impatto": { "type": "string", "enum": ["alto", "medio", "basso"] },
+              "difficolta": { "type": "string", "enum": ["facile", "media", "difficile"] },
+              "responsabile": { "type": "string" }
+            }
+          }
+        },
+        "giorni_31_60": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["azione", "area", "impatto", "difficolta"],
+            "properties": {
+              "azione": { "type": "string" },
+              "area": { "type": "string", "enum": ["gbp", "nap", "citazioni", "recensioni", "onpage"] },
+              "impatto": { "type": "string", "enum": ["alto", "medio", "basso"] },
+              "difficolta": { "type": "string", "enum": ["facile", "media", "difficile"] },
+              "responsabile": { "type": "string" }
+            }
+          }
+        },
+        "giorni_61_90": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["azione", "area", "impatto", "difficolta"],
+            "properties": {
+              "azione": { "type": "string" },
+              "area": { "type": "string", "enum": ["gbp", "nap", "citazioni", "recensioni", "onpage"] },
+              "impatto": { "type": "string", "enum": ["alto", "medio", "basso"] },
+              "difficolta": { "type": "string", "enum": ["facile", "media", "difficile"] },
+              "responsabile": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "executive_summary": {
+      "type": "object",
+      "description": "Riepilogo esecutivo per il titolare",
+      "required": ["voto_complessivo", "voti_area", "top_3_azioni", "sintesi"],
+      "properties": {
+        "voto_complessivo": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Voto sintetico complessivo della presenza locale"
+        },
+        "voti_area": {
+          "type": "object",
+          "properties": {
+            "gbp": { "type": "number", "minimum": 1, "maximum": 10 },
+            "nap": { "type": "number", "minimum": 1, "maximum": 10 },
+            "citazioni": { "type": "number", "minimum": 1, "maximum": 10 },
+            "recensioni": { "type": "number", "minimum": 1, "maximum": 10 },
+            "onpage": { "type": "number", "minimum": 1, "maximum": 10 }
+          }
+        },
+        "top_3_azioni": {
+          "type": "array",
+          "description": "Le 3 azioni piu importanti da fare subito",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "string" }
+        },
+        "sintesi": {
+          "type": "string",
+          "description": "Testo di sintesi 2-3 paragrafi per il titolare"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "description": "File generati",
+      "required": ["report_docx"],
+      "properties": {
+        "report_docx": {
+          "type": "string",
+          "description": "Percorso o nome del file DOCX generato"
+        },
+        "checklist_pdf": {
+          "type": ["string", "null"],
+          "description": "Percorso o nome della checklist operativa PDF (se generata)"
+        }
+      }
+    }
+  }
+}

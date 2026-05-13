@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "keyword-strategy-output",
+  "title": "Keyword Strategy Output",
+  "description": "Output strutturato della skill keyword-strategy per PMI italiane",
+  "type": "object",
+  "required": [
+    "meta",
+    "keyword_totali_analizzate",
+    "keyword_map",
+    "cluster",
+    "competitor_gap",
+    "piano_assegnazione",
+    "executive_summary",
+    "files"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadati dell'analisi",
+      "required": ["sito", "settore", "target_geografico", "data_analisi", "keyword_seed"],
+      "properties": {
+        "sito": {
+          "type": "string",
+          "description": "URL del sito analizzato"
+        },
+        "settore": {
+          "type": "string",
+          "description": "Settore di attivita del cliente"
+        },
+        "target_geografico": {
+          "type": "string",
+          "description": "Area geografica target (citta, provincia, regione o nazionale)"
+        },
+        "data_analisi": {
+          "type": "string",
+          "format": "date",
+          "description": "Data di esecuzione dell'analisi (YYYY-MM-DD)"
+        },
+        "keyword_seed": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 5,
+          "description": "Keyword seed fornite dal cliente"
+        },
+        "competitor": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 3,
+          "description": "Siti competitor analizzati (opzionale)"
+        }
+      }
+    },
+    "keyword_totali_analizzate": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Numero totale di keyword analizzate durante la ricerca"
+    },
+    "keyword_map": {
+      "type": "array",
+      "description": "Elenco completo delle keyword selezionate con metriche e assegnazioni",
+      "items": {
+        "type": "object",
+        "required": ["keyword", "volume", "difficulty", "intent", "cluster", "pagina_target", "priorita"],
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "description": "La keyword esatta"
+          },
+          "volume": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Volume di ricerca mensile stimato (Italia)"
+          },
+          "difficulty": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Difficolta di posizionamento (0-100)"
+          },
+          "intent": {
+            "type": "string",
+            "enum": ["informazionale", "navigazionale", "commerciale", "transazionale"],
+            "description": "Tipo di intent della keyword"
+          },
+          "cluster": {
+            "type": "string",
+            "description": "Nome del cluster tematico di appartenenza"
+          },
+          "pagina_target": {
+            "type": "string",
+            "description": "URL pagina esistente o descrizione pagina da creare"
+          },
+          "priorita": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Priorita di intervento (1=massima, 5=minima)"
+          },
+          "note": {
+            "type": "string",
+            "description": "Note operative aggiuntive"
+          }
+        }
+      }
+    },
+    "cluster": {
+      "type": "array",
+      "description": "Raggruppamento tematico delle keyword in cluster pillar/cluster",
+      "items": {
+        "type": "object",
+        "required": ["nome", "pillar_keyword", "cluster_keywords", "volume_totale"],
+        "properties": {
+          "nome": {
+            "type": "string",
+            "description": "Nome identificativo del cluster"
+          },
+          "pillar_keyword": {
+            "type": "string",
+            "description": "Keyword pillar principale del cluster"
+          },
+          "cluster_keywords": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Lista delle keyword appartenenti al cluster"
+          },
+          "volume_totale": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Somma dei volumi mensili di tutte le keyword del cluster"
+          },
+          "pagina_pillar": {
+            "type": "string",
+            "description": "URL o titolo della pagina pillar"
+          },
+          "pagine_cluster": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "URL o titoli delle pagine cluster correlate"
+          }
+        }
+      }
+    },
+    "competitor_gap": {
+      "type": "array",
+      "description": "Analisi gap: keyword dove i competitor si posizionano e il cliente no",
+      "items": {
+        "type": "object",
+        "required": ["keyword", "posizioni"],
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "description": "La keyword analizzata"
+          },
+          "volume": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Volume di ricerca mensile"
+          },
+          "intent": {
+            "type": "string",
+            "enum": ["informazionale", "navigazionale", "commerciale", "transazionale"],
+            "description": "Tipo di intent"
+          },
+          "posizioni": {
+            "type": "object",
+            "description": "Mappa sito -> posizione SERP. Chiave = dominio, valore = posizione (numero) o null se assente",
+            "additionalProperties": {
+              "type": ["integer", "null"],
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "opportunita": {
+            "type": "boolean",
+            "description": "true se rappresenta un'opportunita (competitor presente, cliente assente o peggio posizionato)"
+          },
+          "livello_gap": {
+            "type": "string",
+            "enum": ["critico", "importante", "minore"],
+            "description": "Gravita del gap competitivo"
+          }
+        }
+      }
+    },
+    "piano_assegnazione": {
+      "type": "array",
+      "description": "Piano operativo: assegnazione keyword a pagine con stato e priorita",
+      "items": {
+        "type": "object",
+        "required": ["pagina", "keyword_primaria", "stato"],
+        "properties": {
+          "pagina": {
+            "type": "string",
+            "description": "URL della pagina esistente o titolo/descrizione della pagina da creare"
+          },
+          "keyword_primaria": {
+            "type": "string",
+            "description": "Keyword primaria assegnata alla pagina"
+          },
+          "keyword_secondarie": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Keyword secondarie assegnate alla pagina (2-5)"
+          },
+          "intent": {
+            "type": "string",
+            "enum": ["informazionale", "navigazionale", "commerciale", "transazionale"],
+            "description": "Intent delle keyword assegnate"
+          },
+          "stato": {
+            "type": "string",
+            "enum": ["esistente", "da creare", "da ottimizzare"],
+            "description": "Stato della pagina: esistente (ok), da creare (nuova), da ottimizzare (esiste ma va migliorata)"
+          },
+          "priorita": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Priorita di intervento (1=massima, 5=minima)"
+          },
+          "tipo_pagina": {
+            "type": "string",
+            "description": "Tipo di pagina suggerito (landing page, blog post, pagina servizio, pagina categoria, FAQ)"
+          }
+        }
+      }
+    },
+    "executive_summary": {
+      "type": "object",
+      "description": "Riepilogo esecutivo per il titolare PMI",
+      "required": [
+        "keyword_analizzate",
+        "keyword_selezionate",
+        "cluster_principali",
+        "top_keyword_priorita_1",
+        "pagine_da_creare",
+        "pagine_da_ottimizzare",
+        "traffico_potenziale_mensile"
+      ],
+      "properties": {
+        "keyword_analizzate": {
+          "type": "integer",
+          "description": "Quante keyword sono state analizzate in totale"
+        },
+        "keyword_selezionate": {
+          "type": "integer",
+          "description": "Quante keyword sono state selezionate per il piano"
+        },
+        "cluster_principali": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nome": { "type": "string" },
+              "descrizione": { "type": "string" },
+              "volume_totale": { "type": "integer" }
+            }
+          },
+          "description": "I 3-5 cluster tematici piu importanti"
+        },
+        "top_keyword_priorita_1": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "keyword": { "type": "string" },
+              "volume": { "type": "integer" },
+              "motivo": { "type": "string" }
+            }
+          },
+          "description": "Le 10 keyword a massima priorita (quick win)"
+        },
+        "pagine_da_creare": {
+          "type": "integer",
+          "description": "Numero di nuove pagine da creare"
+        },
+        "pagine_da_ottimizzare": {
+          "type": "integer",
+          "description": "Numero di pagine esistenti da ottimizzare"
+        },
+        "traffico_potenziale_mensile": {
+          "type": "integer",
+          "description": "Stima del traffico organico mensile aggiuntivo ottenibile"
+        },
+        "raccomandazioni": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "3-5 raccomandazioni strategiche in linguaggio semplice"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "description": "Riferimenti ai file generati",
+      "properties": {
+        "xlsx": {
+          "type": "string",
+          "description": "Path o nome del file XLSX della keyword map"
+        },
+        "json": {
+          "type": "string",
+          "description": "Path o nome del file JSON con output strutturato"
+        }
+      }
+    }
+  }
+}
