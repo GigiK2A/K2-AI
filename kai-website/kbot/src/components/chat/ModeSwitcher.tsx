@@ -1,7 +1,7 @@
 import { BarChart3 } from "lucide-react";
 import { Mode } from "@/types/chat";
 
-export function ModeSwitcher({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+export function ModeSwitcher({ onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
   return (
     <div>
       <button

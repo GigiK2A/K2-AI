@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Star } from "lucide-react";
 
 export function FeedbackWidget({
-  reportId,
   onSubmit,
 }: {
   reportId: string;
