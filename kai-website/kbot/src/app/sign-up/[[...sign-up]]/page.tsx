@@ -40,6 +40,10 @@ const clerkAppearance = {
   },
 };
 
+export function generateStaticParams() {
+  return [{ 'sign-up': [] as string[] }];
+}
+
 export default function SignUpPage() {
   return (
     <div className="flex min-h-screen bg-[#050505]">
