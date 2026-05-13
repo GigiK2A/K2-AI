@@ -1,7 +1,7 @@
 import { canRunHeavyGraphics, hasFinePointer, prefersReducedMotion } from './runtime-guards.js'
 
 const body = document.body
-const eligible = ['method-page', 'workshop-page', 'cases-page', 'analysis-page', 'contact-page']
+const eligible = ['method-page', 'workshop-page', 'cases-page', 'analysis-page', 'contact-page', 'legal-page', 'suite-ai-page']
 const page = eligible.find(cls => body.classList.contains(cls))
 const reducedMotion = prefersReducedMotion()
 const hasPointer = hasFinePointer()
