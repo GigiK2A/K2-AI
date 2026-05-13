@@ -1,5 +1,5 @@
 import { Menu, Sparkles } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@clerk/clerk-react";
 import Link from "next/link";
 import { AIStatusIndicator } from "@/components/ui/AIStatusIndicator";
 import { SkillBadge } from "@/components/chat/SkillBadge";
