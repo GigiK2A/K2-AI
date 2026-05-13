@@ -13,11 +13,34 @@ import { ChatMessage, Conversation, Mode, SkillSummary, UploadedFile } from "@/t
 import { uid } from "@/lib/utils";
 import { MessageCircle, UserCircle2 } from "lucide-react";
 import { useEffect } from "react";
-import { SignInButton, useAuth, useUser, UserButton } from "@clerk/nextjs";
+import { SignIn, SignInButton, useAuth, useUser, UserButton } from "@clerk/nextjs";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { startCheckout, submitFeedback } from "@/lib/api";
 
 const REPORT_SUGGESTIONS = ["Executive summary", "Piano operativo", "KPI", "Rischi"];
+
+const clerkAppearance = {
+  variables: {
+    colorPrimary: "#14b8a6",
+    colorBackground: "#0a0a0a",
+    colorInputBackground: "#111111",
+    colorInputText: "#e5e7eb",
+    colorText: "#e5e7eb",
+    colorTextSecondary: "#6b7280",
+    borderRadius: "8px",
+  },
+  elements: {
+    card: { boxShadow: "none", border: "1px solid #1f1f1f", background: "#050505" },
+    formButtonPrimary: { background: "#14b8a6", color: "#000", fontWeight: "700" },
+    socialButtonsBlockButton: { border: "1px solid #1f1f1f", background: "#111111", color: "#ffffff" },
+    socialButtonsBlockButtonText: { color: "#ffffff" },
+    dividerLine: { background: "#1f1f1f" },
+    dividerText: { color: "#4b5563" },
+    footerActionLink: { color: "#14b8a6" },
+    headerTitle: { display: "none" },
+    headerSubtitle: { display: "none" },
+  },
+};
 
 function streamAppend(setter: (value: string) => void, text: string) {
   let idx = 0;
@@ -26,6 +49,45 @@ function streamAppend(setter: (value: string) => void, text: string) {
     setter(text.slice(0, idx));
     if (idx >= text.length) clearInterval(timer);
   }, 22);
+}
+
+function LoginFirstScreen() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#050505] px-6 py-10 text-white">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[#111] bg-[#0a0a0a] md:grid-cols-[0.95fr_1fr]">
+        <section
+          className="hidden min-h-[640px] flex-col justify-between p-10 md:flex"
+          style={{ background: "linear-gradient(160deg,#071f1d 0%,#050d0c 60%,#050505 100%)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#14b8a6] font-black text-black">K</div>
+            <span className="text-sm font-extrabold tracking-wide">K2-AI</span>
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold leading-tight">Accedi per generare report premium</h1>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-[#9ca3af]">
+              La chat report si apre dopo il login, così download, dashboard e stato Premium restano collegati al tuo account.
+            </p>
+          </div>
+          <p className="text-xs text-[#4b5563]">K2-AI - report professionali e analisi strategica.</p>
+        </section>
+
+        <section className="flex min-h-[640px] flex-col items-center justify-center px-6 py-10">
+          <div className="mb-8 text-center md:hidden">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#14b8a6] font-black text-black">K</div>
+            <p className="text-lg font-bold">K2-AI Report Premium</p>
+          </div>
+          <div className="w-full max-w-sm">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold">Accedi al tuo account</h2>
+              <p className="mt-1 text-sm text-[#6b7280]">Dopo l&apos;accesso si apre la chat K-BOT.</p>
+            </div>
+            <SignIn appearance={clerkAppearance} />
+          </div>
+        </section>
+      </div>
+    </main>
+  );
 }
 
 export default function HomePage() {
@@ -43,7 +105,6 @@ export default function HomePage() {
   const { getToken, isSignedIn } = useAuth();
   const { isLoaded: isUserLoaded, user } = useUser();
   const hasPaid = Boolean((user?.publicMetadata as { has_paid?: boolean })?.has_paid);
-  const reportLocked = mode === "report" && isUserLoaded && !isSignedIn;
 
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -166,6 +227,18 @@ export default function HomePage() {
     }
   }
 
+  if (!isUserLoaded) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#050505] text-sm text-[var(--text-muted)]">
+        Caricamento...
+      </main>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <LoginFirstScreen />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-0)] text-[var(--text-main)]">
       <Sidebar
@@ -221,21 +294,19 @@ export default function HomePage() {
           </div>
         </main>
 
-        {!reportLocked && (
-          <div className="px-4 lg:px-8">
-            <div className="mx-auto w-full max-w-4xl">
-              <Composer
-                value={composer}
-                onChange={setComposer}
-                onSubmit={handleSubmit}
-                disabled={loading}
-                suggestions={suggestions}
-                onPickFiles={handleFilePick}
-                files={pendingFiles}
-              />
-            </div>
+        <div className="px-4 lg:px-8">
+          <div className="mx-auto w-full max-w-4xl">
+            <Composer
+              value={composer}
+              onChange={setComposer}
+              onSubmit={handleSubmit}
+              disabled={loading}
+              suggestions={suggestions}
+              onPickFiles={handleFilePick}
+              files={pendingFiles}
+            />
           </div>
-        )}
+        </div>
 
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[rgba(5,5,5,0.95)] px-4 py-2 xl:hidden">
           <div className="mx-auto flex max-w-xl items-center justify-around text-xs text-[var(--text-soft)]">
