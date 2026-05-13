@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgevolazioniBoost Output Schema",
+  "description": "Schema dell'output JSON strutturato del piano agevolativo PMI",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "skill_version": { "type": "string" },
+        "data_elaborazione": { "type": "string", "format": "date" },
+        "data_verifica_bandi": { "type": "string", "format": "date" },
+        "nome_azienda": { "type": "string" }
+      }
+    },
+    "profilo_aziendale": {
+      "type": "object",
+      "properties": {
+        "classificazione_dimensionale": { "type": "string", "enum": ["micro", "piccola", "media", "grande"] },
+        "settore_ateco": { "type": "string" },
+        "regione": { "type": "string" },
+        "province": { "type": "string" },
+        "zone_speciali": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "es. ZES, area interna, cratere sisma"
+        },
+        "de_minimis_residuo_eur": { "type": "number" },
+        "in_difficolta_finanziaria": { "type": "boolean" },
+        "startup_innovativa": { "type": "boolean" },
+        "pmi_innovativa": { "type": "boolean" }
+      }
+    },
+    "shortlist_strumenti": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "nome": { "type": "string" },
+          "tipo": { "type": "string", "enum": ["tax_credit", "fondo_perduto", "finanziamento_agevolato", "garanzia", "bonus_assunzioni", "esenzione_fiscale"] },
+          "riferimento_normativo": { "type": "string" },
+          "stato": { "type": "string", "enum": ["aperto", "chiuso", "in_attesa_riapertura"] },
+          "requisiti_soddisfatti": { "type": "boolean" },
+          "score_priorita": { "type": "number", "minimum": 1, "maximum": 5 },
+          "score_valore": { "type": "number", "minimum": 1, "maximum": 5 },
+          "score_accessibilita": { "type": "number", "minimum": 1, "maximum": 5 },
+          "score_urgenza": { "type": "number", "minimum": 1, "maximum": 5 }
+        }
+      }
+    },
+    "benefici_stimati": {
+      "type": "object",
+      "properties": {
+        "scenario_base_eur": { "type": "number" },
+        "scenario_ottimistico_eur": { "type": "number" },
+        "scenario_massimo_eur": { "type": "number" },
+        "dettaglio_per_strumento": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "strumento_id": { "type": "string" },
+              "spesa_agevolabile_eur": { "type": "number" },
+              "aliquota_pct": { "type": "number" },
+              "beneficio_lordo_eur": { "type": "number" },
+              "beneficio_netto_eur": { "type": "number" },
+              "timing_utilizzo_mesi": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "piano_agevolativo": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "strumento_id": { "type": "string" },
+          "azione_immediata": { "type": "string" },
+          "scadenza": { "type": "string" },
+          "urgenza": { "type": "string", "enum": ["alta", "media", "bassa"] },
+          "documenti_necessari": { "type": "array", "items": { "type": "string" } },
+          "soggetti_coinvolti": { "type": "array", "items": { "type": "string" } },
+          "rischi_principali": { "type": "array", "items": { "type": "string" } },
+          "cumulabile_con": { "type": "array", "items": { "type": "string" } },
+          "incompatibile_con": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

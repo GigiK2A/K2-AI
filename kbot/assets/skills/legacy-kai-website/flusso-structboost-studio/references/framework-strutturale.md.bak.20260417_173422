@@ -1,0 +1,66 @@
+# Framework Diagnostica Strutturale
+
+## Livelli di Conoscenza (NTC 2018 cap. 8 e Circolare 2019 C8)
+
+| Livello | Geometria | Dettagli costruttivi | Proprieta materiali | FC |
+|---------|-----------|---------------------|---------------------|-----|
+| LC1 - Limitato | Rilievo completo | Progetto originale o rilievo limitato | Valori da normativa epoca | 1.35 |
+| LC2 - Adeguato | Rilievo completo | Rilievo esteso o progetto + verifica | Prove limitate in situ | 1.20 |
+| LC3 - Accurato | Rilievo completo | Rilievo esaustivo | Prove estese in situ | 1.00 |
+
+## Proprieta materiali per epoca (c.a.)
+
+| Epoca | Classe calcestruzzo presunta | fcm (MPa) | fym acciaio (MPa) |
+|-------|----------------------------|-----------|--------------------|
+| < 1950 | Rck 15-20 | 12-16 | 220-320 (liscio) |
+| 1950-1970 | Rck 20-25 | 16-21 | 320-380 (FeB32k) |
+| 1971-1990 | Rck 25-30 | 21-25 | 380-430 (FeB38k/44k) |
+| > 1990 | C25/30 - C30/37 | 25-33 | 430-540 (B450C) |
+
+## Indice di Sicurezza Sismica
+
+IS-V = PGA_capacita / PGA_domanda (ag * S * ST)
+
+| IS-V | Classificazione | Azione |
+|------|----------------|--------|
+| > 1.0 | Adeguato | Nessun intervento obbligatorio |
+| 0.8-1.0 | Quasi adeguato | Miglioramento consigliato |
+| 0.6-0.8 | Moderatamente vulnerabile | Miglioramento sismico raccomandato |
+| 0.3-0.6 | Vulnerabile | Miglioramento sismico urgente |
+| < 0.3 | Molto vulnerabile | Adeguamento/demolizione da valutare |
+
+## Classi di Rischio Sismico (DM 58/2017 e s.m.i.)
+
+| Classe | PAM (%) | IS-V indicativo |
+|--------|---------|-----------------|
+| A+ | < 0.50 | > 1.2 |
+| A | 0.50-1.0 | 1.0-1.2 |
+| B | 1.0-1.5 | 0.8-1.0 |
+| C | 1.5-2.5 | 0.6-0.8 |
+| D | 2.5-3.5 | 0.4-0.6 |
+| E | 3.5-4.5 | 0.2-0.4 |
+| F | 4.5-7.5 | 0.1-0.2 |
+| G | > 7.5 | < 0.1 |
+
+## Verifiche SLU principali
+
+### Flessione semplice c.a.
+MRd = As * fyd * (d - 0.4x)  con x = As * fyd / (0.8 * b * fcd)
+Verifica: MRd >= MEd → D/C = MEd/MRd
+
+### Taglio c.a.
+VRd = min(VRd,c ; VRd,s) con VRd,c per elementi senza armatura a taglio
+VRd,s = Asw/s * 0.9d * fyd * (cotθ + cotα) * sinα
+Verifica: VRd >= VEd
+
+### Pressoflessione c.a.
+Diagramma di interazione N-M: calcolo per punti con fibra compressa/tesa
+Verifica: punto (NEd, MEd) interno al dominio di resistenza
+
+### Muratura - Pressoflessione nel piano
+MRd = (l^2 * t * σ0 / 2) * (1 - σ0 / (0.85 * fd))
+Dove l = lunghezza parete, t = spessore, σ0 = tensione verticale media
+
+### Muratura - Taglio per fessurazione diagonale
+VRd = l * t * (1.5 * τ0d / b) * sqrt(1 + σ0 / (1.5 * τ0d))
+Dove τ0d = resistenza a taglio di riferimento della muratura / FC

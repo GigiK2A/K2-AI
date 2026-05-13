@@ -13,6 +13,7 @@ const REDIRECT_HOST = 'k2-ai.it';
 const CANONICAL_HOST = 'www.k2-ai.it';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.k2-ai.it';
 const API_PROXY_BASE = process.env.API_PROXY_BASE || 'https://api.k2-ai.it';
+const KBOT_FRONTEND_URL = process.env.KBOT_FRONTEND_URL || '';
 const KBOT_MODEL = process.env.KBOT_MODEL || 'claude-haiku-4-5-20251001';
 const REPORT_MODEL = process.env.REPORT_MODEL || 'claude-sonnet-4-6';
 const SKILLS_DIR = path.join(__dirname, 'lib', 'skills');
@@ -944,6 +945,53 @@ async function proxyApiRequest(req, res, rawPath, rawQuery) {
   if (bodyBuffer && bodyBuffer.length > 0) {
     upstreamReq.write(bodyBuffer);
   }
+  upstreamReq.end();
+}
+
+async function proxyKbotFrontend(req, res, rawPath, rawQuery) {
+  if (!KBOT_FRONTEND_URL) {
+    res.writeHead(503, { 'Content-Type': 'text/plain' });
+    res.end('K-BOT frontend non configurato (KBOT_FRONTEND_URL mancante)');
+    return;
+  }
+  const upstreamUrl = `${KBOT_FRONTEND_URL}${rawPath}${rawQuery}`;
+  const method = (req.method || 'GET').toUpperCase();
+
+  const forwardedHeaders = {};
+  Object.entries(req.headers || {}).forEach(([name, value]) => {
+    if (!shouldForwardRequestHeader(name) || value == null) return;
+    forwardedHeaders[name] = value;
+  });
+  forwardedHeaders['x-forwarded-host'] = CANONICAL_HOST;
+  forwardedHeaders['x-forwarded-proto'] = 'https';
+
+  let bodyBuffer = null;
+  if (!['GET', 'HEAD'].includes(method)) {
+    bodyBuffer = await readRawBody(req);
+    if (bodyBuffer.length > 0) forwardedHeaders['content-length'] = String(bodyBuffer.length);
+  }
+
+  const parsedUrl = new URL(upstreamUrl);
+  const isHttps = parsedUrl.protocol === 'https:';
+  const transport = isHttps ? https : http;
+
+  const upstreamReq = transport.request(upstreamUrl, { method, headers: forwardedHeaders }, upstreamRes => {
+    const responseHeaders = {};
+    Object.entries(upstreamRes.headers || {}).forEach(([name, value]) => {
+      if (!shouldForwardResponseHeader(name) || value == null) return;
+      responseHeaders[name] = value;
+    });
+    res.writeHead(upstreamRes.statusCode || 502, responseHeaders);
+    upstreamRes.pipe(res);
+  });
+
+  upstreamReq.on('error', err => {
+    console.error('K-BOT frontend proxy error:', err);
+    res.writeHead(502, { 'Content-Type': 'text/plain' });
+    res.end('K-BOT frontend non raggiungibile');
+  });
+
+  if (bodyBuffer && bodyBuffer.length > 0) upstreamReq.write(bodyBuffer);
   upstreamReq.end();
 }
 
@@ -2281,6 +2329,15 @@ const server = http.createServer((req, res) => {
     proxyApiRequest(req, res, rawPath, rawQuery).catch(err => {
       console.error('API proxy failure:', err);
       sendJson(res, 502, { error: 'Errore proxy API' });
+    });
+    return;
+  }
+
+  if (rawPath === '/app' || rawPath.startsWith('/app/')) {
+    proxyKbotFrontend(req, res, rawPath, rawQuery).catch(err => {
+      console.error('K-BOT frontend proxy failure:', err);
+      res.writeHead(502, { 'Content-Type': 'text/plain' });
+      res.end('K-BOT frontend non raggiungibile');
     });
     return;
   }

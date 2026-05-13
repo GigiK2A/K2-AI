@@ -1,0 +1,302 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "audit-seo-tecnico-output",
+  "title": "Output Audit SEO Tecnico",
+  "description": "Schema per l'output strutturato dell'audit SEO tecnico per PMI italiane",
+  "type": "object",
+  "required": ["meta", "score_globale", "diagnosi", "piano_azione", "kpi_monitoraggio", "executive_summary", "files"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadati dell'audit",
+      "required": ["url_sito", "data_audit", "numero_pagine_analizzate"],
+      "properties": {
+        "url_sito": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL del sito analizzato"
+        },
+        "nome_cliente": {
+          "type": "string",
+          "description": "Nome del cliente o azienda"
+        },
+        "settore": {
+          "type": "string",
+          "description": "Settore merceologico del cliente"
+        },
+        "data_audit": {
+          "type": "string",
+          "format": "date",
+          "description": "Data di esecuzione dell'audit (YYYY-MM-DD)"
+        },
+        "numero_pagine_analizzate": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Numero di pagine del sito analizzate"
+        },
+        "cms_rilevato": {
+          "type": "string",
+          "description": "CMS rilevato (WordPress, Shopify, Joomla, PrestaShop, Wix, custom, ecc.)"
+        },
+        "note_cliente": {
+          "type": "string",
+          "description": "Note specifiche fornite dal cliente"
+        }
+      }
+    },
+    "score_globale": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Punteggio SEO globale del sito (0-100)"
+    },
+    "diagnosi": {
+      "type": "object",
+      "description": "Diagnosi dettagliata per area SEO",
+      "required": ["crawlability", "performance", "mobile", "sicurezza", "on_page", "immagini", "struttura", "schema_markup"],
+      "properties": {
+        "crawlability": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "Crawlability e indicizzazione"
+        },
+        "performance": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "Velocita e performance (Core Web Vitals)"
+        },
+        "mobile": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "Compatibilita mobile"
+        },
+        "sicurezza": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "Sicurezza HTTPS e header"
+        },
+        "on_page": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "SEO on-page (title, meta, heading, contenuto)"
+        },
+        "immagini": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "Ottimizzazione immagini"
+        },
+        "struttura": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "Struttura sito e linking interno"
+        },
+        "schema_markup": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "Dati strutturati Schema.org"
+        },
+        "internazionalizzazione": {
+          "$ref": "#/$defs/area_diagnosi",
+          "description": "Hreflang e struttura multilingua (se applicabile)"
+        }
+      }
+    },
+    "piano_azione": {
+      "type": "array",
+      "description": "Lista di azioni ordinate per priorita",
+      "items": {
+        "type": "object",
+        "required": ["priorita", "azione", "severita", "area", "istruzione", "tempo_stimato"],
+        "properties": {
+          "priorita": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Ordine di priorita (1 = piu urgente)"
+          },
+          "azione": {
+            "type": "string",
+            "description": "Descrizione sintetica dell'azione da compiere"
+          },
+          "severita": {
+            "type": "string",
+            "enum": ["critico", "importante", "minore"],
+            "description": "Livello di severita del problema"
+          },
+          "area": {
+            "type": "string",
+            "enum": ["crawlability", "performance", "mobile", "sicurezza", "on_page", "immagini", "struttura", "schema_markup", "internazionalizzazione"],
+            "description": "Area SEO di appartenenza"
+          },
+          "istruzione": {
+            "type": "string",
+            "description": "Istruzione operativa concreta e dettagliata per il webmaster"
+          },
+          "tempo_stimato": {
+            "type": "string",
+            "description": "Tempo stimato per l'implementazione (es. '15 min', '1-2 ore', '4+ ore', 'progetto')"
+          },
+          "impatto_traffico": {
+            "type": "string",
+            "description": "Stima dell'impatto sul traffico organico (es. '+5-10%')"
+          },
+          "quadrante": {
+            "type": "string",
+            "enum": ["quick_win", "progetto_importante", "miglioramento_facile", "deprioritizzare"],
+            "description": "Posizione nella matrice impatto x sforzo"
+          },
+          "pagine_coinvolte": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Lista URL delle pagine coinvolte dal problema"
+          }
+        }
+      }
+    },
+    "kpi_monitoraggio": {
+      "type": "array",
+      "description": "KPI da monitorare dopo l'implementazione delle correzioni",
+      "items": {
+        "type": "object",
+        "required": ["kpi", "valore_attuale", "obiettivo_30gg", "obiettivo_90gg", "strumento"],
+        "properties": {
+          "kpi": {
+            "type": "string",
+            "description": "Nome del KPI"
+          },
+          "valore_attuale": {
+            "type": "string",
+            "description": "Valore misurato durante l'audit"
+          },
+          "obiettivo_30gg": {
+            "type": "string",
+            "description": "Obiettivo a 30 giorni"
+          },
+          "obiettivo_90gg": {
+            "type": "string",
+            "description": "Obiettivo a 90 giorni"
+          },
+          "strumento": {
+            "type": "string",
+            "description": "Strumento per misurare il KPI (es. PageSpeed Insights, Google Search Console)"
+          }
+        }
+      }
+    },
+    "executive_summary": {
+      "type": "object",
+      "description": "Riepilogo esecutivo per il titolare (linguaggio semplice)",
+      "required": ["giudizio_sintetico", "top_5_problemi", "raccomandazione_prioritaria"],
+      "properties": {
+        "giudizio_sintetico": {
+          "type": "string",
+          "description": "Giudizio complessivo in linguaggio accessibile"
+        },
+        "top_5_problemi": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["titolo", "impatto"],
+            "properties": {
+              "titolo": {
+                "type": "string",
+                "description": "Titolo del problema in linguaggio semplice"
+              },
+              "impatto": {
+                "type": "string",
+                "description": "Descrizione dell'impatto in linguaggio semplice per il titolare"
+              }
+            }
+          },
+          "description": "I 5 problemi piu urgenti spiegati in modo semplice"
+        },
+        "raccomandazione_prioritaria": {
+          "type": "string",
+          "description": "Raccomandazione principale in linguaggio semplice"
+        },
+        "stima_traffico_recuperabile": {
+          "type": "string",
+          "description": "Stima del traffico organico recuperabile risolvendo i problemi critici"
+        },
+        "stima_visite_mensili_aggiuntive": {
+          "type": "string",
+          "description": "Stima delle visite mensili aggiuntive ottenibili"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "description": "Riferimenti ai file generati",
+      "required": ["report_docx"],
+      "properties": {
+        "report_docx": {
+          "type": "string",
+          "description": "Path o nome del file DOCX del report"
+        },
+        "json_output": {
+          "type": "string",
+          "description": "Path o nome del file JSON con i dati strutturati"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "area_diagnosi": {
+      "type": "object",
+      "required": ["score", "problemi"],
+      "properties": {
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Punteggio dell'area (0-100)"
+        },
+        "stato": {
+          "type": "string",
+          "enum": ["critico", "insufficiente", "sufficiente", "buono", "eccellente"],
+          "description": "Stato complessivo dell'area"
+        },
+        "problemi": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/problema"
+          },
+          "description": "Lista dei problemi trovati in quest'area"
+        },
+        "note": {
+          "type": "string",
+          "description": "Note aggiuntive sull'area"
+        }
+      }
+    },
+    "problema": {
+      "type": "object",
+      "required": ["titolo", "severita", "descrizione", "istruzione_operativa"],
+      "properties": {
+        "titolo": {
+          "type": "string",
+          "description": "Titolo sintetico del problema"
+        },
+        "severita": {
+          "type": "string",
+          "enum": ["critico", "importante", "minore"],
+          "description": "Livello di severita"
+        },
+        "descrizione": {
+          "type": "string",
+          "description": "Descrizione tecnica del problema"
+        },
+        "impatto_traffico": {
+          "type": "string",
+          "description": "Stima dell'impatto sul traffico organico"
+        },
+        "pagine_coinvolte": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "URL delle pagine con questo problema"
+        },
+        "istruzione_operativa": {
+          "type": "string",
+          "description": "Istruzione concreta passo-passo per il webmaster per risolvere il problema"
+        },
+        "verifica": {
+          "type": "string",
+          "description": "Come verificare che il problema sia stato risolto"
+        }
+      }
+    }
+  }
+}

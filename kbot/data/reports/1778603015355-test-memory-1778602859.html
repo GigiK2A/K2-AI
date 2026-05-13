@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HostBoost Report - Agriturismo Toscana</title>
+    <style>
+        :root {
+            --primary: #0F2544;
+            --primary-light: #1A3A6B;
+            --primary-ultra-light: #EEF2F8;
+            --accent: #E8A020;
+            --accent-light: #FDF3E3;
+            --accent-dark: #C07800;
+            --green: #1A7A4A;
+            --green-bg: #E8F5EE;
+            --green-border: #A8D5BC;
+            --yellow: #C07A00;
+            --yellow-bg: #FFF8E8;
+            --yellow-border: #F0C060;
+            --red: #B02020;
+            --red-bg: #FDF0F0;
+            --red-border: #F0A0A0;
+            --bg: #F0F2F5;
+            --surface: #FFFFFF;
+            --surface-2: #F8FAFC;
+            --border: #E2E8F0;
+            --text: #1A1A2E;
+            --text-secondary: #4A5568;
+            --text-muted: #8090A8;
+            --shadow: 0 2px 12px rgba(15,37,68,0.08);
+            --shadow-lg: 0 8px 32px rgba(15,37,68,0.13);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.65;
+        }
+        .page-wrapper {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px 60px;
+        }
+        .section {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 10px;
+            margin-bottom: 24px;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .kpi-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+        .kpi-card.green { border-top: 3px solid var(--green); }
+        .kpi-card.yellow { border-top: 3px solid var(--yellow); }
+        .kpi-card.red { border-top: 3px solid var(--red); }
+        .kpi-label {
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .kpi-value {
+            font-size: 44px;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1;
+        }
+        .kpi-benchmark {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+        .kpi-comment {
+            margin-top: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .badge.green {
+            background: var(--green-bg);
+            color: var(--green);
+            border: 1px solid var(--green-border);
+        }
+        .badge.yellow {
+            background: var(--yellow-bg);
+            color: var(--yellow);
+            border: 1px solid var(--yellow-border);
+        }
+        .badge.red {
+            background: var(--red-bg);
+            color: var(--red);
+            border: 1px solid var(--red-border);
+        }
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+        thead tr {
+            background: var(--primary);
+            color: white;
+        }
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 11px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        tbody tr:nth-child(even) {
+            background: #FAFBFC;
+        }
+        .action-accordion {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+        .action-summary {
+            padding: 16px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface);
+            list-style: none;
+            font-weight: 600;
+        }
+        .action-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .action-impact {
+            margin-left: auto;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .action-content {
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            background: var(--surface-2);
+        }
+
+        @media print {
+            body { background: white; font-size: 13px; }
+            .section { box-shadow: none; border: 1px solid #E2E8F0; page-break-inside: avoid; }
+            details { display: block; }
+            details > div { display: block !important; }
+            header, footer { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <header style="background: linear-gradient(135deg, #0F2544 0%, #1A3A6B 100%); color: white; padding: 28px 40px; margin-bottom: 0;">
+        <div style="max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:16px;">
+                <div style="width:48px; height:48px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:18px;">K2</div>
+                <div>
+                    <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; opacity:0.7;">HostBoost Report</div>
+                    <div style="font-size:22px; font-weight:700;">Diagnosi Revenue Management</div>
+                </div>
+            </div>
+            <div style="text-align:right; opacity:0.85;">
+                <div style="font-size:13px;">Agriturismo Toscana - 8 camere</div>
+                <div style="font-size:12px; margin-top:4px;">Generato il 28 Gennaio 2025</div>
+                <div style="font-size:11px; margin-top:2px; opacity:0.7;">Codice: HB-TOS-2025-001</div>
+            </div>
+        </div>
+    </header>
+    <div style="height:4px; background: linear-gradient(90deg, #E8A020, #F0C060);"></div>
+
+    <div class="page-wrapper">
+        <!-- Executive Summary -->
+        <div class="section">
+            <h2 class="section-title">Executive Summary</h2>
+            
+            <div class="gauge-container">
+                <svg viewBox="0 0 200 120" width="180" height="108">
+                    <defs>
+                        <linearGradient id="gGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#B02020"/>
+                            <stop offset="50%" stop-color="#C07A00"/>
+                            <stop offset="100%" stop-color="#1A7A4A"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#E2E8F0" stroke-width="16" stroke-linecap="round"/>
+                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gGrad)" stroke-width="16"
+                          stroke-linecap="round" stroke-dasharray="150.7 251.2"/>
+                    <text x="100" y="82" text-anchor="middle" font-size="38" font-weight="700" fill="#0F2544">60</text>
+                    <text x="100" y="100" text-anchor="middle" font-size="12" fill="#8090A8">/ 100</text>
+                </svg>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 24px;">
+                <span class="badge yellow">⚠ Performance Migliorabile</span>
+            </div>
+
+            <p>Il tuo agriturismo presenta un <strong>RevPAR di €21,9</strong> contro una mediana di zona di <strong>€74</strong> per agriturismi toscani, posizionandosi al <strong>30% del benchmark</strong>. L'analisi evidenzia tre aree critiche di miglioramento che, se ottimizzate, potrebbero generare un incremento di ricavi stimato di <strong>€35.000-45.000 annui</strong>.</p>
+
+            <p>La struttura opera con un'occupancy del <strong>9,4%</strong> sui giorni aperti (180 notti vendute su 1.920 disponibili), significativamente sotto la mediana del 58% per agriturismi del Centro Italia. L'ADR di €233 è invece superiore alla mediana di €128, indicando un posizionamento premium che non si traduce in volumi adeguati.</p>
+        </div>
+
+        <!-- KPI Dashboard -->
+        <div class="section">
+            <h2 class="section-title">Dashboard KPI Revenue</h2>
+            
+            <div class="kpi-grid">
+                <div class="kpi-card red">
+                    <div class="kpi-label">RevPAR Annuale</div>
+                    <div class="kpi-value">€21,9</div>
+                    <div class="kpi-benchmark">Mediana zona: €74 (-70%)</div>
+                    <div class="kpi-comment">Critico: performance molto sotto benchmark</div>
+                </div>
+
+                <div class="kpi-card red">
+                    <div class="kpi-label">Occupancy Rate</div>
+                    <div class="kpi-value">9,4%</div>
+                    <div class="kpi-benchmark">Mediana zona: 58% (-84%)</div>
+                    <div class="kpi-comment">Critico: camere vuote per l'84% del tempo</div>
+                </div>
+
+                <div class="kpi-card green">
+                    <div class="kpi-label">ADR Medio</div>
+                    <div class="kpi-value">€233</div>
+                    <div class="kpi-benchmark">Mediana zona: €128 (+82%)</div>
+                    <div class="kpi-comment">Ottimo: posizionamento premium confermato</div>
+                </div>
+
+                <div class="kpi-card yellow">
+                    <div class="kpi-label">Ricavi Totali Camera</div>
+                    <div class="kpi-value">€42.000</div>
+                    <div class="kpi-benchmark">Potenziale zona: €85.000 (stima)</div>
+                    <div class="kpi-comment">Gap di €43.000 vs potenziale mercato</div>
+                </div>
+
+                <div class="kpi-card red">
+                    <div class="kpi-label">Utilizzo Capacità</div>
+                    <div class="kpi-value">9,4%</div>
+                    <div class="kpi-benchmark">Target minimo: 35%</div>
+                    <div class="kpi-comment">Sottoutilizzo critico dell'asset</div>
+                </div>
+
+                <div class="kpi-card yellow">
+                    <div class="kpi-label">Revenue per Camera</div>
+                    <div class="kpi-value">€5.250</div>
+                    <div class="kpi-benchmark">Potenziale: €10.625 (stima)</div>
+                    <div class="kpi-comment">Ogni camera rende la metà del potenziale</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analisi Benchmark Competitivo -->
+        <div class="section">
+            <h2 class="section-title">Benchmark Competitivo Toscana</h2>
+            
+            <p>Il mercato degli agriturismi toscani presenta performance eterogenee, con i top performer che raggiungono RevPAR superiori a €120 nelle zone premium (Chianti, Val d'Orcia, costa). La tua struttura si posiziona nel <strong>quartile inferiore</strong> per occupancy ma nel <strong>quartile superiore</strong> per ADR.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metrica</th>
+                        <th>Tua Performance</th>
+                        <th>Mediana Toscana</th>
+                        <th>Top Quartile</th>
+                        <th>Gap vs Mediana</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>RevPAR Annuale</td>
+                        <td>€21,9</td>
+                        <td>€74</td>
+                        <td>€120+</td>
+                        <td><span class="badge red">-70%</span></td>
+                    </tr>
+                    <tr>
+                        <td>Occupancy Rate</td>
+                        <td>9,4%</td>
+                        <td>58%</td>
+                        <td>75%+</td>
+                        <td><span class="badge red">-84%</span></td>
+                    </tr>
+                    <tr>
+                        <td>ADR Medio</td>
+                        <td>€233</td>
+                        <td>€128</td>
+                        <td>€180+</td>
+                        <td><span class="badge green">+82%</span></td>
+                    </tr>
+                    <tr>
+                        <td>Notti Vendute (8 camere)</td>
+                        <td>180</td>
+                        <td>1.113 (stima)</td>
+                        <td>1.440+</td>
+                        <td><span class="badge red">-84%</span></td>
+                    </tr>
+                    <tr>
+                        <td>Revenue per Camera</td>
+                        <td>€5.250</td>
+                        <td>€9.250 (stima)</td>
+                        <td>€15.000+</td>
+                        <td><span class="badge red">-43%</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p style="margin-top: 20px;"><strong>Insight strategico:</strong> Il tuo ADR premium indica che il prodotto è percepito come di alta qualità dal mercato. Il problema è la <strong>visibilità e distribuzione</strong>: stai vendendo poco ma bene. L'opportunità è mantenere il posizionamento premium aumentando drasticamente i volumi.</p>
+        </div>
+
+        <!-- Analisi Stagionalità e Pricing -->
+        <div class="section">
+            <h2 class="section-title">Analisi Stagionalità e Opportunità Pricing</h2>
+            
+            <p>Con 240 giorni di apertura (marzo-ottobre), la tua struttura opera in un periodo che copre sia alta stagione (giugno-settembre) che spalle (marzo-maggio, ottobre). L'analisi del mercato toscano evidenzia opportunità di pricing dinamico non sfruttate.</p>
+
+            <h3 style="font-size: 16px; font-weight: 600; margin: 24px 0 16px;">Calendario Pricing Ottimale Stimato</h3>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Periodo</th>
+                        <th>ADR Attuale</th>
+                        <th>ADR Suggerito</th>
+                        <th>Occupancy Target</th>
+                        <th>RevPAR Potenziale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Marzo-Aprile (Spalla)</td>
+                        <td>€233 (fisso)</td>
+                        <td>€180-200</td>
+                        <td>35-45%</td>
+                        <td>€63-90</td>
+                    </tr>
+                    <tr>
+                        <td>Maggio (Pre-alta)</td>
+                        <td>€233 (fisso)</td>
+                        <td>€220-250</td>
+                        <td>50-60%</td>
+                        <td>€110-150</td>
+                    </tr>
+                    <tr>
+                        <td>Giugno-Agosto (Alta)</td>
+                        <td>€233 (fisso)</td>
+                        <td>€280-320</td>
+                        <td>70-85%</td>
+                        <td>€196-272</td>
+                    </tr>
+                    <tr>
+                        <td>Settembre (Alta)</td>
+                        <td>€233 (fisso)</td>
+                        <td>€260-290</td>
+                        <td>65-75%</td>
+                        <td>€169-218</td>
+                    </tr>
+                    <tr>
+                        <td>Ottobre (Spalla)</td>
+                        <td>€233 (fisso)</td>
+                        <td>€190-220</td>
+                        <td>40-50%</td>
+                        <td>€76-110</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p><strong>Opportunità identificate:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 12px;">
+                <li>Pricing dinamico per aumentare occupancy nei periodi spalla (-15% ADR, +300% occupancy)</li>
+                <li>Premium pricing in alta stagione (+20% ADR mantenendo volumi)</li>
+                <li>Pacchetti esperienziali per giustificare ADR premium</li>
+                <li>Last-minute pricing per riempire camere vuote</li>
+            </ul>
+        </div>
+
+        <!-- Piano di Azione Prioritario -->
+        <div class="section">
+            <h2 class="section-title">Piano di Azione Prioritario</h2>
+            
+            <p>Basato sull'analisi dei dati, ecco le 5 azioni prioritarie per incrementare il RevPAR del 150-200% nei prossimi 12 mesi:</p>
+
+            <details class="action-accordion">
+                <summary class="action-summary">
+                    <span class="action-number">1</span>
+                    <span>Distribuzione Online e Visibilità OTA</span>
+                    <span class="action-impact">+€25.000/anno</span>
+                </summary>
+                <div class="action-content">
+                    <p><strong>Problema:</strong> Con solo 180 notti vendute, è probabile che la struttura non sia presente sui principali canali OTA o abbia visibilità limitata.</p>
+                    
+                    <p><strong>Azioni immediate:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Attivazione Booking.com con pricing competitivo per spalle stagionali</li>
+                        <li>Presenza su Airbnb con foto professionali e descrizione ottimizzata</li>
+                        <li>Listing su Expedia, Agoda e piattaforme specializzate agriturismi</li>
+                        <li>Ottimizzazione SEO del sito web per "agriturismo Toscana"</li>
+                    </ul>
+                    
+                    <p><strong>Investimento:</strong> €2.000-3.000 setup + 15-18% commissioni OTA</p>
+                    <p><strong>ROI atteso:</strong> +400 notti vendute = +€25.000 ricavi netti</p>
+                </div>
+            </details>
+
+            <details class="action-accordion">
+                <summary class="action-summary">
+                    <span class="action-number">2</span>
+                    <span>Pricing Dinamico Stagionale</span>
+                    <span class="action-impact">+€15.000/anno</span>
+                </summary>
+                <div class="action-content">
+                    <p><strong>Problema:</strong> ADR fisso a €233 non ottimizza la domanda stagionale. Prezzi troppo alti per spalle, troppo bassi per alta stagione.</p>
+                    
+                    <p><strong>Strategia pricing:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Marzo-Aprile: €180-200 (-15% per stimolare domanda)</li>
+                        <li>Maggio: €220-250 (mantenimento con leggero premium)</li>
+                        <li>Giugno-Agosto: €280-320 (+20-35% per alta stagione)</li>
+                        <li>Settembre: €260-290 (+15-25% vendemmia/foliage)</li>
+                        <li>Ottobre: €190-220 (-10% per chiusura stagione)</li>
+                    </ul>
+                    
+                    <p><strong>Tool consigliati:</strong> PriceLabs, Beyond Pricing o gestione manuale con calendario Excel</p>
+                    <p><strong>Risultato atteso:</strong> +200 notti vendute mantenendo ADR medio €240</p>
+                </div>
+            </details>
+
+            <details class="action-accordion">
+                <summary class="action-summary">
+                    <span class="action-number">3</span>
+                    <span>Pacchetti Esperienziali Premium</span>
+                    <span class="action-impact">+€12.000/anno</span>
+                </summary>
+                <div class="action-content">
+                    <p><strong>Opportunità:</strong> Il tuo ADR premium indica clientela disposta a pagare per esperienze autentiche. Monetizzare oltre il pernottamento.</p>
+                    
+                    <p><strong>Pacchetti da sviluppare:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>"Vendemmia Experience" (settembre): +€80/persona degustazione e raccolta</li>
+                        <li>"Cooking Class Toscana": +€120/coppia corso cucina con cena</li>
+                        <li>"Wellness & Wine": +€150/coppia spa + degustazione</li>
+                        <li>"Truffle Hunting" (ottobre-novembre): +€200/coppia esperienza tartufaio</li>
+                    </ul>
+                    
+                    <p><strong>Implementazione:</strong> Partnership con produttori locali, chef, guide specializzate</p>
+                    <p><strong>Marginalità:</strong> 60-70% sui pacchetti esperienziali vs 40% solo pernottamento</p>
+                </div>
+            </details>
+
+            <details class="action-accordion">
+                <summary class="action-summary">
+                    <span class="action-number">4</span>
+                    <span>Ottimizzazione Foto e Storytelling</span>
+                    <span class="action-impact">+€8.000/anno</span>
+                </summary>
+                <div class="action-content">
+                    <p><strong>Diagnosi:</strong> Con occupancy così bassa, è probabile che la presentazione online non comunichi efficacemente il valore premium della struttura.</p>
+                    
+                    <p><strong>Interventi necessari:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Servizio fotografico professionale (camere, esterni, dettagli)</li>
+                        <li>Video storytelling 60-90 secondi per social e sito</li>
+                        <li>Riscrittura descrizioni con focus su esperienze vs caratteristiche</li>
+                        <li>Testimonianze clienti e user-generated content</li>
+                    </ul>
+                    
+                    <p><strong>Investimento:</strong> €3.000-4.000 per foto/video professionali</p>
+                    <p><strong>Impatto:</strong> +15-25% conversion rate su visite → prenotazioni</p>
+                </div>
+            </details>
+
+            <details class="action-accordion">
+                <summary class="action-summary">
+                    <span class="action-number">5</span>
+                    <span>Strategia Last-Minute e Yield Management</span>
+                    <span class="action-impact">+€6.000/anno</span>
+                </summary>
+                <div class="action-content">
+                    <p><strong>Tattica:</strong> Recuperare camere vuote con pricing aggressivo 7-15 giorni prima dell'arrivo.</p>
+                    
+                    <p><strong>Meccanismi da attivare:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Sconti 30-40% per prenotazioni last-minute (7 giorni)</li>
+                        <li>Offerte flash su social media e newsletter</li>
+                        <li>Partnership con agenzie locali per riempimento</li>
+                        <li>Upgrade gratuiti per incentivare prenotazioni dirette</li>
+                    </ul>
+                    
+                    <p><strong>Regola aurea:</strong> Meglio vendere a €140 che tenere vuoto a €233</p>
+                    <p><strong>Target:</strong> +100 notti last-minute/anno a ADR ridotto ma margine positivo</p>
+                </div>
+            </details>
+        </div>
+
+        <!-- Proiezioni Finanziarie -->
+        <div class="section">
+            <h2 class="section-title">Proiezioni Finanziarie 12 Mesi</h2>
+            
+            <p>Implementando il piano di azione prioritario, le proiezioni conservative indicano un incremento significativo delle performance:</p>
+
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Scenario Attuale</div>
+                    <div class="kpi-value">€42.000</div>
+                    <div class="kpi-benchmark">180 notti × €233 ADR</div>
+                    <div class="kpi-comment">RevPAR: €21,9 - Occupancy: 9,4%</div>
+                </div>
+
+                <div class="kpi-card green">
+                    <div class="kpi-label">Scenario Target 12M</div>
+                    <div class="kpi-value">€108.000</div>
+                    <div class="kpi-benchmark">450 notti × €240 ADR medio</div>
+                    <div class="kpi-comment">RevPAR: €56,3 - Occupancy: 23,4%</div>
+                </div>
+
+                <div class="kpi-card yellow">
+                    <div class="kpi-label">Incremento Ricavi</div>
+                    <div class="kpi-value">+€66.000</div>
+                    <div class="kpi-benchmark">+157% vs anno precedente</div>
+                    <div class="kpi-comment">ROI investimenti: 1.100%</div>
+                </div>
+            </div>
+
+            <h3 style="font-size: 16px; font-weight: 600; margin: 24px 0 16px;">Breakdown Incremento Ricavi</h3>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fonte Incremento</th>
+                        <th>Notti Aggiuntive</th>
+                        <th>ADR Medio</th>
+                        <th>Ricavi Extra</th>
+                        <th>% su Totale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Distribuzione OTA</td>
+                        <td>+180</td>
+                        <td>€220</td>
+                        <td>€39.600</td>
+                        <td>60%</td>
+                    </tr>
+                    <tr>
+                        <td>Pricing dinamico alta stagione</td>
+                        <td>+50</td>
+                        <td>€300</td>
+                        <td>€15.000</td>
+                        <td>23%</td>
+                    </tr>
+                    <tr>
+                        <td>Last-minute e yield</td>
+                        <td>+40</td>
+                        <td>€160</td>
+                        <td>€6.400</td>
+                        <td>10%</td>
+                    </tr>
+                    <tr>
+                        <td>Pacchetti esperienziali</td>
+                        <td>-</td>
+                        <td>+€30 extra/notte</td>
+                        <td>€5.000</td>
+                        <td>7%</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p style="margin-top: 20px;"><strong>Note conservative:</strong> Le proiezioni assumono un ramp-up graduale di 6 mesi per raggiungere il target. Il mercato toscano supporta questi volumi, come dimostrato dai benchmark di zona. L'investimento totale stimato è di €6.000-8.000 con payback in 2-3 mesi.</p>
+        </div>
+
+        <!-- Raccomandazioni Operative -->
+        <div class="section">
+            <h2 class="section-title">Raccomandazioni Operative Immediate</h2>
+            
+            <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 16px;">Prossimi 30 giorni</h3>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li><strong>Settimana 1:</strong> Audit fotografico esistente e brief per servizio professionale</li>
+                <li><strong>Settimana 2:</strong> Registrazione su Booking.com e Airbnb con pricing spalle aggressive</li>
+                <li><strong>Settimana 3:</strong> Implementazione calendario pricing dinamico marzo-ottobre</li>
+                <li><strong>Settimana 4:</strong> Lancio prima campagna last-minute per marzo-aprile</li>
+            </ul>
+
+            <h3 style="font-size: 16px; font-weight: 600; margin: 24px 0 16px;">Prossimi 90 giorni</h3>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>Completamento setup distributivo su 5-6 OTA principali</li>
+                <li>Sviluppo primi 2 pacchetti esperienziali (cooking + wine tasting)</li>
+                <li>Ottimizzazione SEO sito web per traffico organico</li>
+                <li>Sistema di raccolta recensioni e gestione reputation</li>
+            </ul>
+
+            <h3 style="font-size: 16px; font-weight: 600; margin: 24px 0 16px;">Metriche di Controllo Mensili</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>KPI</th>
+                        <th>Target Mese 3</th>
+                        <th>Target Mese 6</th>
+                        <th>Target Mese 12</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Notti vendute/mese</td>
+                        <td>25</td>
+                        <td>35</td>
+                        <td>45</td>
+                    </tr>
+                    <tr>
+                        <td>ADR medio</td>
+                        <td>€220</td>
+                        <td>€235</td>
+                        <td>€240</td>
+                    </tr>
+                    <tr>
+                        <td>RevPAR mensile</td>
+                        <td>€28</td>
+                        <td>€42</td>
+                        <td>€56</td>
+                    </tr>
+                    <tr>
+                        <td>% prenotazioni OTA</td>
+                        <td>60%</td>
+                        <td>70%</td>
+                        <td>65%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Analisi Competitiva Locale -->
+        <div class="section">
+            <h2 class="section-title">Analisi Competitiva e Posizionamento</h2>
+            
+            <p>Il mercato degli agriturismi toscani è altamente competitivo ma segmentato. La tua struttura, con un ADR di €233, si posiziona nel segmento premium-luxury, competendo con:</p>
+
+            <h3 style="font-size: 16px; font-weight: 600; margin: 24px 0 16px;">Competitor Set Stimato</h3>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li><strong>Agriturismi boutique Chianti:</strong> ADR €200-280, occupancy 65-75%</li>
+                <li><strong>Ville storiche Val d'Orcia:</strong> ADR €250-350, occupancy 60-70%</li>
+                <li><strong>Resort agrituristici Maremma:</strong> ADR €180-240, occupancy 70-80%</li>
+                <li><strong>Relais di charme collina senese:</strong> ADR €220-300, occupancy 55-65%</li>
+            </ul>
+
+            <p><strong>Vantaggio competitivo da sviluppare:</strong> Il tuo ADR premium indica un prodotto di qualità. L'opportunità è nella distribuzione e visibilità, non nel prodotto stesso. I competitor con performance migliori hanno principalmente:</p>
+            <ul style="margin-left: 20px; margin-top: 12px; line-height: 1.8;">
+                <li>Presenza consolidata su OTA con recensioni 8.5+</li>
+                <li>Pricing dinamico stagionale ben calibrato</li>
+                <li>Pacchetti esperienziali integrati nell'offerta</li>
+                <li>Strategia social media e content marketing attiva</li>
+            </ul>
+
+            <p><strong>Differenziazione consigliata:</strong> Puntare su autenticità toscana + servizio personalizzato + esperienze enogastronomiche esclusive. Il mercato premia chi riesce a combinare tradizione e innovazione nell'ospitalità.</p>
+        </div>
+    </div>
+
+    <footer style="background:var(--primary); color:rgba(255,255,255,0.85); padding:24px 40px; margin-top:40px;">
+        <div style="max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+                <div style="width:28px; height:28px; background:var(--accent); border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;">K2</div>
+            </div>
+            <div style="font-size:12px; text-align:center;">
+                Report generato il 28 Gennaio 2025 · Dati forniti dall'utente · Stime basate su benchmark di mercato STR, AirDNA e osservatori settoriali
+            </div>
+            <div style="font-size:12px; text-align:right;">
+                k2-ai.it · info@k2-ai.it
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

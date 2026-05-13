@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "check-seo-express-output",
+  "title": "Output check-seo-express",
+  "description": "Schema di output per la pagella SEO rapida generata dalla skill check-seo-express",
+  "type": "object",
+  "required": ["meta", "score_globale", "fascia", "fattori", "top_5_criticita", "cta_upsell", "files"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["skill_name", "version", "generated_at", "url_analyzed"],
+      "properties": {
+        "skill_name": {
+          "type": "string",
+          "const": "check-seo-express"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Versione semantica della skill"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp ISO 8601 di generazione del report"
+        },
+        "url_analyzed": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL del sito analizzato"
+        }
+      },
+      "additionalProperties": false
+    },
+    "score_globale": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Punteggio SEO complessivo da 0 a 100"
+    },
+    "fascia": {
+      "type": "string",
+      "enum": ["Critico", "Insufficiente", "Sufficiente", "Buono", "Eccellente"],
+      "description": "Fascia di giudizio basata sullo score globale"
+    },
+    "fattori": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "description": "I 10 fattori analizzati con il relativo punteggio",
+      "items": {
+        "type": "object",
+        "required": ["nome", "peso", "score", "semaforo", "descrizione_cliente"],
+        "properties": {
+          "nome": {
+            "type": "string",
+            "description": "Nome del fattore analizzato"
+          },
+          "peso": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Peso del fattore nel calcolo dello score globale"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Punteggio assegnato al fattore (0-10)"
+          },
+          "semaforo": {
+            "type": "string",
+            "enum": ["verde", "giallo", "rosso"],
+            "description": "Indicatore visivo: verde (8-10), giallo (5-7), rosso (0-4)"
+          },
+          "descrizione_cliente": {
+            "type": "string",
+            "description": "Spiegazione del risultato in italiano semplice, senza gergo tecnico"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "top_5_criticita": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "description": "Le 5 criticita piu urgenti ordinate per priorita",
+      "items": {
+        "type": "object",
+        "required": ["fattore", "impatto_stimato", "azione_suggerita"],
+        "properties": {
+          "fattore": {
+            "type": "string",
+            "description": "Nome del fattore critico"
+          },
+          "impatto_stimato": {
+            "type": "string",
+            "description": "Stima qualitativa dell'impatto, es. 'Stai probabilmente perdendo il 30% di clienti potenziali'"
+          },
+          "azione_suggerita": {
+            "type": "string",
+            "description": "Azione concreta suggerita al cliente in linguaggio semplice"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cta_upsell": {
+      "type": "object",
+      "required": ["servizio", "messaggio"],
+      "properties": {
+        "servizio": {
+          "type": "string",
+          "description": "Nome del servizio successivo proposto",
+          "examples": ["Audit SEO Tecnico"]
+        },
+        "messaggio": {
+          "type": "string",
+          "description": "Messaggio CTA personalizzato in base alla fascia di punteggio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "object",
+      "required": ["html_report", "json_report"],
+      "properties": {
+        "html_report": {
+          "type": "string",
+          "description": "Percorso o nome del file HTML della pagella visiva generata"
+        },
+        "json_report": {
+          "type": "string",
+          "description": "Percorso o nome del file JSON strutturato generato"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

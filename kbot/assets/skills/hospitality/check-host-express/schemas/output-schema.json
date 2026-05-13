@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/schemas/check-host-express-output.json",
+  "title": "Check Host Express — Output Schema",
+  "description": "Schema strutturato output del pagellino ricettivo rapido per PMI italiane dell'ospitalita.",
+  "type": "object",
+  "required": ["meta", "struttura", "input", "kpi", "score", "priorita"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["versione", "data_generazione", "slug", "skill"],
+      "properties": {
+        "versione": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "data_generazione": {"type": "string", "format": "date"},
+        "slug": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "skill": {"type": "string", "const": "check-host-express"},
+        "modalita": {"type": "string", "enum": ["gratuito", "pagamento_49"]}
+      }
+    },
+    "struttura": {
+      "type": "object",
+      "required": ["nome", "tipologia", "regione", "camere"],
+      "properties": {
+        "nome": {"type": "string"},
+        "tipologia": {
+          "type": "string",
+          "enum": ["agriturismo", "b&b", "hotel_3_stelle", "boutique_4_stelle", "casa_vacanza", "affittacamere", "glamping", "lodge"]
+        },
+        "regione": {
+          "type": "string",
+          "enum": ["abruzzo", "basilicata", "calabria", "campania", "emilia_romagna", "friuli_venezia_giulia", "lazio", "liguria", "lombardia", "marche", "molise", "piemonte", "puglia", "sardegna", "sicilia", "toscana", "trentino_alto_adige", "umbria", "valle_d_aosta", "veneto"]
+        },
+        "area": {"type": "string", "enum": ["nord_ovest", "nord_est", "centro", "sud", "isole"]},
+        "camere": {"type": "integer", "minimum": 1, "maximum": 50},
+        "giorni_apertura_annui": {"type": "integer", "minimum": 30, "maximum": 365},
+        "aperto_tutto_anno": {"type": "boolean"}
+      }
+    },
+    "input": {
+      "type": "object",
+      "required": ["notti_vendute_anno", "ricavi_camera_anno"],
+      "properties": {
+        "notti_vendute_anno": {"type": "integer", "minimum": 0},
+        "ricavi_camera_anno": {"type": "number", "minimum": 0},
+        "rating_booking": {"type": ["number", "null"], "minimum": 0, "maximum": 10},
+        "quota_booking_percent": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "quota_diretto_percent": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "dati_stimati": {
+          "type": "array",
+          "description": "Elenco campi per cui si e usato un default perche mancante in input",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "kpi": {
+      "type": "object",
+      "required": ["revpar", "occupancy", "adr", "dipendenza_ota", "rating", "quota_diretto"],
+      "properties": {
+        "revpar": {
+          "$ref": "#/$defs/kpi_con_semaforo",
+          "description": "Ricavi camera / notti disponibili — confronto con mediana zona"
+        },
+        "occupancy": {
+          "$ref": "#/$defs/kpi_con_semaforo",
+          "description": "Notti vendute / notti disponibili, valore %"
+        },
+        "adr": {
+          "$ref": "#/$defs/kpi_con_semaforo",
+          "description": "Ricavi camera / notti vendute — prezzo medio effettivo"
+        },
+        "dipendenza_ota": {
+          "$ref": "#/$defs/kpi_con_semaforo",
+          "description": "Quota Booking.com + Expedia sui ricavi, valore %"
+        },
+        "rating": {
+          "$ref": "#/$defs/kpi_con_semaforo",
+          "description": "Rating Booking.com scala 1-10"
+        },
+        "quota_diretto": {
+          "$ref": "#/$defs/kpi_con_semaforo",
+          "description": "Ricavi da canale diretto / totale ricavi, valore %"
+        }
+      }
+    },
+    "score": {
+      "type": "object",
+      "required": ["globale", "giudizio", "percentile_zona"],
+      "properties": {
+        "globale": {"type": "number", "minimum": 0, "maximum": 100},
+        "giudizio": {
+          "type": "string",
+          "enum": ["eccellente", "buono", "sufficiente", "preoccupante", "critico"]
+        },
+        "percentile_zona": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentile stimato rispetto alle strutture confrontabili della zona"
+        },
+        "breakdown_pesi": {
+          "type": "object",
+          "description": "Contributo di ogni KPI al punteggio finale",
+          "properties": {
+            "revpar": {"type": "number"},
+            "occupancy": {"type": "number"},
+            "adr": {"type": "number"},
+            "dipendenza_ota": {"type": "number"},
+            "rating": {"type": "number"},
+            "quota_diretto": {"type": "number"}
+          }
+        }
+      }
+    },
+    "priorita": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "description": "Top 3 azioni prioritarie, selezionate dai KPI peggiori",
+      "items": {
+        "type": "object",
+        "required": ["rank", "titolo", "sintesi", "azione_30_giorni", "kpi_collegato"],
+        "properties": {
+          "rank": {"type": "integer", "minimum": 1, "maximum": 3},
+          "titolo": {"type": "string", "description": "Verbo imperativo + oggetto breve"},
+          "sintesi": {"type": "string", "description": "1 riga con numeri di contesto"},
+          "spiegazione": {"type": "string", "description": "2-3 righe italiano semplice"},
+          "azione_30_giorni": {"type": "string", "description": "Cosa fare concretamente entro 30 giorni"},
+          "kpi_collegato": {
+            "type": "string",
+            "enum": ["revpar", "occupancy", "adr", "dipendenza_ota", "rating", "quota_diretto"]
+          }
+        }
+      }
+    },
+    "cta": {
+      "type": "object",
+      "properties": {
+        "messaggio": {"type": "string"},
+        "destinazione": {"type": "string", "const": "flusso-hostboost-ricettive"},
+        "prezzo_indicativo": {"type": "string"},
+        "contatto": {"type": "string", "format": "email"}
+      }
+    },
+    "file_generati": {
+      "type": "object",
+      "properties": {
+        "pagella_html": {"type": "string", "description": "Path HTML in /mnt/outputs/"},
+        "json_strutturato": {"type": "string", "description": "Path JSON output in /mnt/outputs/"}
+      }
+    }
+  },
+  "$defs": {
+    "kpi_con_semaforo": {
+      "type": "object",
+      "required": ["valore", "benchmark_zona", "semaforo"],
+      "properties": {
+        "valore": {"type": "number"},
+        "benchmark_zona": {
+          "type": "object",
+          "required": ["mediana"],
+          "properties": {
+            "mediana": {"type": "number"},
+            "top_quartile": {"type": "number"},
+            "bottom_quartile": {"type": "number"},
+            "fonte": {"type": "string", "description": "Fonte benchmark (es: 'scoring-model-host.md 2025-Q4')"}
+          }
+        },
+        "semaforo": {"type": "string", "enum": ["verde", "giallo", "rosso"]},
+        "commento": {"type": "string", "description": "1 riga italiano semplice con contesto zona"},
+        "rapporto_con_mediana": {
+          "type": "number",
+          "description": "Rapporto valore / mediana (es: 0.85 = 15% sotto)"
+        },
+        "stimato": {
+          "type": "boolean",
+          "description": "True se il valore e stato stimato per mancanza dato input"
+        }
+      }
+    }
+  }
+}
