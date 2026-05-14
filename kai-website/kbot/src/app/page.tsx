@@ -103,7 +103,7 @@ export default function HomePage() {
   const [contextFilesByConversation, setContextFilesByConversation] = useState<Record<string, UploadedFile[]>>({});
 
   const { getToken, isSignedIn } = useAuth();
-  const { isLoaded: isUserLoaded, user } = useUser();
+  const { user } = useUser();
   const hasPaid = Boolean((user?.publicMetadata as { has_paid?: boolean })?.has_paid);
 
   const [conversations, setConversations] = useState<Conversation[]>([
@@ -226,14 +226,6 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  if (!isUserLoaded) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050505] text-sm text-[var(--text-muted)]">
-        Caricamento...
-      </main>
-    );
   }
 
   if (!isSignedIn) {
