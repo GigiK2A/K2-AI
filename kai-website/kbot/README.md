@@ -24,6 +24,27 @@ npm install
 npm run dev
 ```
 
+Variabili minime frontend per login/registrazione:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+Se mancano, la pagina auth mostra l'errore "Supabase non è configurato".
+
+## 3) Backend env
+
+Nel backend:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+Variabili minime backend per Supabase:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
 ## Endpoint backend (Python)
 
 - `POST /api/chat` `{ input, mode: "lead"|"report", paid }`
