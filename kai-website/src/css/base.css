@@ -120,6 +120,22 @@ html {
   background: var(--bg);
 }
 
+/* Dedicated safe-area cover. The fixed navbar tries to span the notch
+   via padding-top: env(...) but iOS Safari sometimes computes that
+   differently across pages/states. A dedicated fixed strip with the
+   highest z-index guarantees the status-bar zone is always opaque. */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0);
+  background: #080808;
+  z-index: 999;
+  pointer-events: none;
+}
+
 html::after {
   content: '';
   position: fixed;
