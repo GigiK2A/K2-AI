@@ -737,17 +737,24 @@ footer {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.001ms !important;
-  }
+/* Reduced-motion: be conservative — Windows ships with "show animations"
+   OFF by default on many setups, which forces every visitor into this
+   branch. Keep UI transitions (button hover, dropdowns, reveal fades)
+   and only neutralise truly motion-heavy decorative effects.
 
-  #k2-immersive-canvas,
-  .k2-cursor {
-    display: none !important;
+   - .k2-cursor: hide (custom mouse follower, disorienting if reduced)
+   - #k2-immersive-canvas: keep visible but stop its loop via JS
+   - Infinite/looping keyframes: slow them down to a near-static 30s loop
+     so the page does not look broken.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .k2-cursor { display: none !important; }
+
+  /* Slow looping ambient effects instead of nuking everything. */
+  body:not(.home-page) .k2-orbital-map,
+  body:not(.home-page) .k2-cosmic-veil,
+  body:not(.home-page) .k2-mesh-pulse {
+    animation-duration: 30s !important;
   }
 }
 
