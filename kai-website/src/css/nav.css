@@ -287,4 +287,14 @@ html.nav-open {
   body.nav-open #navbar {
     border-bottom-color: transparent;
   }
+
+  /* Mobile: prevent content bleed under the status-bar area. iOS Safari
+     can fail backdrop-filter on fixed translucent elements when there is
+     content behind on initial scroll, so fall back to a near-opaque bg. */
+  #navbar {
+    background: rgba(8, 8, 8, 0.96);
+  }
+  #navbar::before {
+    background: rgba(8, 8, 8, 0.96);
+  }
 }

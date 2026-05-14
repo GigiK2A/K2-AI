@@ -723,6 +723,22 @@ html.js-scroll .home-page .reveal.visible {
   .home-page .problema-grid {
     grid-template-columns: 1fr;
   }
+
+  /* Mobile: clear the desktop "facing pair" translateX offsets so the
+     stacked before/after cards line up without visual overlap. */
+  .home-page .problema-item[data-process-state="before"],
+  .home-page .problema-item[data-process-state="after"] {
+    transform: none !important;
+  }
+
+  /* Slight gap on the stacked sequence — 1px gap with bg bleed reads
+     as overlap on small screens. */
+  .home-page .transformation-sequence {
+    gap: 12px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
 }
 
 @media (max-width: 768px) {
