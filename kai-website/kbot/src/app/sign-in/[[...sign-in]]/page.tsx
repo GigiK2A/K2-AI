@@ -148,7 +148,14 @@ export default function SignInPage() {
               Accedi al tuo account
             </h2>
           </div>
-          <SignIn appearance={clerkAppearance} />
+          <SignIn
+            routing="hash"
+            appearance={clerkAppearance}
+            fallbackRedirectUrl="/app/"
+            forceRedirectUrl="/app/"
+            signUpUrl="/app/sign-up"
+            fallback={<p style={{ color: "#6b7280", fontSize: "14px" }}>Caricamento login...</p>}
+          />
         </div>
       </div>
     </div>

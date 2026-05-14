@@ -82,7 +82,14 @@ function LoginFirstScreen() {
               <h2 className="text-xl font-bold">Accedi al tuo account</h2>
               <p className="mt-1 text-sm text-[#6b7280]">Dopo l&apos;accesso si apre la chat K-BOT.</p>
             </div>
-            <SignIn appearance={clerkAppearance} />
+            <SignIn
+              routing="hash"
+              appearance={clerkAppearance}
+              fallbackRedirectUrl="/app/"
+              forceRedirectUrl="/app/"
+              signUpUrl="/app/sign-up"
+              fallback={<p className="text-sm text-[#6b7280]">Caricamento login...</p>}
+            />
           </div>
         </section>
       </div>

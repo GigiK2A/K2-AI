@@ -142,7 +142,14 @@ export default function SignUpPage() {
               Crea il tuo account
             </h2>
           </div>
-          <SignUp appearance={clerkAppearance} />
+          <SignUp
+            routing="hash"
+            appearance={clerkAppearance}
+            fallbackRedirectUrl="/app/"
+            forceRedirectUrl="/app/"
+            signInUrl="/app/sign-in"
+            fallback={<p style={{ color: "#6b7280", fontSize: "14px" }}>Caricamento registrazione...</p>}
+          />
         </div>
       </div>
     </div>
