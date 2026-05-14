@@ -43,7 +43,7 @@ export function ChatLayoutHeader({
           {isSignedIn ? (
             <AccountButton />
           ) : (
-            <Link href="/app/sign-in" className="rounded-lg bg-[var(--teal)] px-3 py-1.5 text-xs font-semibold text-black">
+            <Link href="/sign-in" className="rounded-lg bg-[var(--teal)] px-3 py-1.5 text-xs font-semibold text-black">
               Accedi
             </Link>
           )}

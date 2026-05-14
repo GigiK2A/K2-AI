@@ -22,10 +22,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           Accedi per usare il report premium. La chat è gratuita, i download richiedono un pagamento one-time.
         </p>
         <div className="flex flex-col gap-2">
-          <Link href="/app/sign-in" className="w-full rounded-xl bg-[var(--teal)] py-3 text-center text-sm font-semibold text-black">
+          <Link href="/sign-in" className="w-full rounded-xl bg-[var(--teal)] py-3 text-center text-sm font-semibold text-black">
             Accedi
           </Link>
-          <Link href="/app/sign-up" className="w-full rounded-xl border border-[var(--line)] py-3 text-center text-sm font-semibold text-[var(--text-main)]">
+          <Link href="/sign-up" className="w-full rounded-xl border border-[var(--line)] py-3 text-center text-sm font-semibold text-[var(--text-main)]">
             Crea account
           </Link>
         </div>
