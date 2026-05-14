@@ -5,9 +5,7 @@ import { useAuth, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, BarChart3, CheckCircle2, Clock, Download, ExternalLink, FileText, Plus, XCircle } from "lucide-react";
-import { fetchDashboard, DashboardData, DashboardReport } from "@/lib/api";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+import { API_BASE, fetchDashboard, DashboardData, DashboardReport } from "@/lib/api";
 
 function formatDate(iso: string) {
   if (!iso) return "—";

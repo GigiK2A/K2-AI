@@ -1,6 +1,18 @@
 import { ChatApiResponse, Mode, SkillSummary, UploadedFile } from "@/types/chat";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+function resolveApiBase() {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(configured)
+  ) {
+    return "";
+  }
+  return configured;
+}
+
+export const API_BASE = resolveApiBase();
 
 export async function fetchSkills(): Promise<SkillSummary[]> {
   const res = await fetch(`${API_BASE}/api/skills`, { cache: "no-store" });

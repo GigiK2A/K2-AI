@@ -5,8 +5,7 @@ import { Bot } from "lucide-react";
 import { ChatMessage } from "@/types/chat";
 import { prettyTime } from "@/lib/utils";
 import { FeedbackWidget } from "@/components/report/FeedbackWidget";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+import { API_BASE } from "@/lib/api";
 
 export function MessageBubble({
   message,

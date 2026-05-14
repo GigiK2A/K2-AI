@@ -125,8 +125,9 @@ export default function HomePage() {
   const [activeId, setActiveId] = useState(conversations[0].id);
 
   useEffect(() => {
+    if (!isSignedIn) return;
     void fetchSkills().then(setSkills).catch(() => setSkills([]));
-  }, []);
+  }, [isSignedIn]);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? conversations[0],
