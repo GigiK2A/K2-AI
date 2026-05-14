@@ -142,7 +142,12 @@ document.addEventListener('DOMContentLoaded', () => {
     companyField.value = String(prefill.fields.company_role || '').trim();
   }
 
-  if (messageField && !messageField.value.trim() && prefill.message) {
+  // URL param ?messaggio= for prefilling from external CTAs (per-te, etc.)
+  const messaggioParam = urlParams.get('messaggio');
+  if (messageField && !messageField.value.trim() && messaggioParam) {
+    messageField.value = messaggioParam;
+    form.dataset.sourcePage = (urlParams.get('source') || 'per-te_to_contatti').trim();
+  } else if (messageField && !messageField.value.trim() && prefill.message) {
     messageField.value = prefill.message;
     form.dataset.sourcePage = prefill.source || 'k-bot_to_contatti';
   } else if (messageField && !messageField.value.trim() && PKG_CTX) {

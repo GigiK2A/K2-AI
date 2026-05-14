@@ -1328,6 +1328,65 @@
         })
       } catch (_) { /* ignore */ }
     })()
+
+    // /contatti pre-fill: rewrite every <a href="/contatti"> inside a
+    // profile panel to carry settore + messaggio query params so the
+    // contact form opens already compiled with the user's context.
+    (function () {
+      const PROFILE_TO_SECTOR = {
+        hospitality: 'ops',
+        commercialista: 'finance',
+        avvocato: 'legale',
+        ingegnere: 'tech',
+        artigiano: 'ops',
+        pmi: 'altro',
+      }
+      const PROFILE_LABEL = {
+        hospitality: 'hospitality (hotel / agriturismo / B&B / affitti brevi)',
+        commercialista: 'studio commercialista',
+        avvocato: 'studio legale',
+        ingegnere: 'studio di ingegneria / architettura',
+        artigiano: 'artigiano / piccola impresa',
+        pmi: 'PMI manifatturiera',
+      }
+
+      document.querySelectorAll('.pt-panel').forEach(function (panel) {
+        const profile = (panel.id || '').replace(/^pt-panel-/, '')
+        if (!profile) return
+        const sector = PROFILE_TO_SECTOR[profile] || 'altro'
+        const profileLabel = PROFILE_LABEL[profile] || profile
+
+        panel.querySelectorAll('a[href="/contatti"], a[href="/contatti/"]').forEach(function (a) {
+          // Identify which rung this CTA belongs to (Pro / Pattern / Custom).
+          const rung = a.closest('.pt-rung')
+          const rungName = rung ? (rung.querySelector('.pt-rung-name')?.textContent || '').trim() : ''
+          const ctaLabel = (a.textContent || '').trim()
+
+          const lines = [
+            `Buongiorno, scrivo dalla pagina "Per te" — profilo ${profileLabel}.`,
+            '',
+            rungName
+              ? `Mi interessa il livello "${rungName}" (CTA cliccato: "${ctaLabel}").`
+              : `Vorrei capire come K2-AI può aiutare la mia attività (CTA cliccato: "${ctaLabel}").`,
+            '',
+            'La mia situazione attuale (descrivi in 2-3 righe):',
+            '• cosa fai oggi:',
+            '• dove perdi tempo:',
+            '• strumenti già in uso (Excel, CRM, gestionale, ecc.):',
+            '',
+            'Quando posso parlare con qualcuno?',
+          ]
+          const messaggio = lines.join('\n')
+
+          const params = new URLSearchParams({
+            settore: sector,
+            messaggio: messaggio,
+            source: 'per-te_' + profile + (rungName ? '_' + rungName.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 32) : ''),
+          })
+          a.setAttribute('href', '/contatti?' + params.toString())
+        })
+      })
+    })()
   </script>
 
 </body>

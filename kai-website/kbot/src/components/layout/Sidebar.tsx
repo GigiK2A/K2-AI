@@ -13,6 +13,7 @@ export function Sidebar({
   activeId,
   onSelect,
   onNew,
+  onDelete,
   onClose,
 }: {
   open: boolean;
@@ -22,6 +23,7 @@ export function Sidebar({
   activeId: string;
   onSelect: (id: string) => void;
   onNew: () => void;
+  onDelete?: (id: string) => void;
   onClose: () => void;
 }) {
   return (
@@ -57,7 +59,7 @@ export function Sidebar({
 
             <div>
               <p className="mb-2 text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Cronologia</p>
-              <ConversationList conversations={conversations} activeId={activeId} onSelect={onSelect} />
+              <ConversationList conversations={conversations} activeId={activeId} onSelect={onSelect} onDelete={onDelete} />
             </div>
           </div>
 

@@ -24,7 +24,7 @@ const REPORT_SUGGESTIONS = [
 ];
 
 const WELCOME_MESSAGE =
-  "Ciao, sono K-BOT di K2-AI. Dimmi qual è la tua situazione e ti aiuto a costruire un report operativo professionale.";
+  "Benvenuto. Sono K-BOT, l'analista K2-AI. Costruiamo insieme un report operativo concreto — valutazione di un investimento, strategia di marketing, audit SEO, diagnosi di bilancio, studio di fattibilità tecnica. Raccontami il tuo caso: settore, obiettivo, dato di partenza. Quante più informazioni mi dai, più il report è preciso.";
 
 function LoginFirstScreen() {
   return (
@@ -126,6 +126,30 @@ export default function HomePage() {
     setConversations((prev) =>
       prev.map((c) => (c.id === activeConversation.id ? { ...c, messages: next } : c)),
     );
+  }
+
+  function handleDeleteConversation(convId: string) {
+    setConversations((prev) => {
+      const filtered = prev.filter((c) => c.id !== convId);
+      // If we deleted the active one, switch to the first remaining (or create empty)
+      if (convId === activeId) {
+        if (filtered.length > 0) {
+          setActiveId(filtered[0].id);
+        } else {
+          const fresh: Conversation = {
+            id: uid("conv"),
+            title: "Nuova chat",
+            mode,
+            messages: [{ id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 }],
+          };
+          setActiveId(fresh.id);
+          return [fresh];
+        }
+      }
+      return filtered;
+    });
+    // Drop the kbot session id from localStorage so the next message starts fresh
+    resetSession();
   }
 
   function handleNewConversation() {
@@ -246,6 +270,7 @@ export default function HomePage() {
         activeId={activeId}
         onSelect={setActiveId}
         onNew={handleNewConversation}
+        onDelete={handleDeleteConversation}
         onClose={() => setSidebarOpen(false)}
       />
 
