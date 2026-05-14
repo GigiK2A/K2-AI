@@ -147,7 +147,7 @@ export interface DashboardReport {
 export interface DashboardData {
   reports: DashboardReport[];
   stats: { total_reports: number; last_report_at: string | null };
-  account: { has_paid: boolean; clerk_user_id: string };
+  account: { has_paid: boolean; user_id?: string; clerk_user_id?: string };
 }
 
 export async function fetchDashboard(authToken: string): Promise<DashboardData> {

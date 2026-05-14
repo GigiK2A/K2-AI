@@ -13,34 +13,12 @@ import { ChatMessage, Conversation, Mode, SkillSummary, UploadedFile } from "@/t
 import { uid } from "@/lib/utils";
 import { MessageCircle, UserCircle2 } from "lucide-react";
 import { useEffect } from "react";
-import { SignIn, SignInButton, useAuth, useUser, UserButton } from "@clerk/nextjs";
-import { AuthGate } from "@/components/auth/AuthGate";
+import { AuthForm } from "@/components/auth/AuthForm";
+import { AccountButton } from "@/components/auth/AccountButton";
+import { useKbotAuth } from "@/app/providers";
 import { startCheckout, submitFeedback } from "@/lib/api";
 
 const REPORT_SUGGESTIONS = ["Executive summary", "Piano operativo", "KPI", "Rischi"];
-
-const clerkAppearance = {
-  variables: {
-    colorPrimary: "#14b8a6",
-    colorBackground: "#0a0a0a",
-    colorInputBackground: "#111111",
-    colorInputText: "#e5e7eb",
-    colorText: "#e5e7eb",
-    colorTextSecondary: "#6b7280",
-    borderRadius: "8px",
-  },
-  elements: {
-    card: { boxShadow: "none", border: "1px solid #1f1f1f", background: "#050505" },
-    formButtonPrimary: { background: "#14b8a6", color: "#000", fontWeight: "700" },
-    socialButtonsBlockButton: { border: "1px solid #1f1f1f", background: "#111111", color: "#ffffff" },
-    socialButtonsBlockButtonText: { color: "#ffffff" },
-    dividerLine: { background: "#1f1f1f" },
-    dividerText: { color: "#4b5563" },
-    footerActionLink: { color: "#14b8a6" },
-    headerTitle: { display: "none" },
-    headerSubtitle: { display: "none" },
-  },
-};
 
 function streamAppend(setter: (value: string) => void, text: string) {
   let idx = 0;
@@ -82,14 +60,7 @@ function LoginFirstScreen() {
               <h2 className="text-xl font-bold">Accedi al tuo account</h2>
               <p className="mt-1 text-sm text-[#6b7280]">Dopo l&apos;accesso si apre la chat K-BOT.</p>
             </div>
-            <SignIn
-              routing="hash"
-              appearance={clerkAppearance}
-              fallbackRedirectUrl="/app/"
-              forceRedirectUrl="/app/"
-              signUpUrl="/app/sign-up"
-              fallback={<p className="text-sm text-[#6b7280]">Caricamento login...</p>}
-            />
+            <AuthForm mode="login" />
           </div>
         </section>
       </div>
@@ -109,9 +80,7 @@ export default function HomePage() {
   const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
   const [contextFilesByConversation, setContextFilesByConversation] = useState<Record<string, UploadedFile[]>>({});
 
-  const { getToken, isSignedIn } = useAuth();
-  const { user } = useUser();
-  const hasPaid = Boolean((user?.publicMetadata as { has_paid?: boolean })?.has_paid);
+  const { loading: authLoading, getToken, isSignedIn, hasPaid } = useKbotAuth();
 
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -235,6 +204,14 @@ export default function HomePage() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#050505] text-sm text-[#6b7280]">
+        Caricamento...
+      </main>
+    );
+  }
+
   if (!isSignedIn) {
     return <LoginFirstScreen />;
   }
@@ -266,25 +243,23 @@ export default function HomePage() {
 
         <main className="scroll-premium flex-1 overflow-y-auto px-4 pb-24 pt-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-            <AuthGate>
-              <AnimatePresence>
-                {activeConversation.messages.map((m) => (
-                  <MessageBubble
-                    key={m.id}
-                    message={{ ...m, hasPaid }}
-                    onCheckout={async () => {
-                      const token = await getToken();
-                      if (token) { const url = await startCheckout(token); window.location.href = url; }
-                    }}
-                    onFeedback={async (reportId, rating, comment) => {
-                      const token = await getToken();
-                      if (token) await submitFeedback(reportId, rating, comment, token);
-                    }}
-                  />
-                ))}
-              </AnimatePresence>
-              {loading && <LoadingState />}
-            </AuthGate>
+            <AnimatePresence>
+              {activeConversation.messages.map((m) => (
+                <MessageBubble
+                  key={m.id}
+                  message={{ ...m, hasPaid }}
+                  onCheckout={async () => {
+                    const token = await getToken();
+                    if (token) { const url = await startCheckout(token); window.location.href = url; }
+                  }}
+                  onFeedback={async (reportId, rating, comment) => {
+                    const token = await getToken();
+                    if (token) await submitFeedback(reportId, rating, comment, token);
+                  }}
+                />
+              ))}
+            </AnimatePresence>
+            {loading && <LoadingState />}
             {activeConversation.messages.length <= 2 && (
               <p className="px-4 text-center text-xs text-[var(--text-muted)]">
                 Le tue conversazioni vengono salvate per continuare da dove hai lasciato. I documenti generati non vengono conservati sui nostri server.
@@ -311,18 +286,7 @@ export default function HomePage() {
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[rgba(5,5,5,0.95)] px-4 py-2 xl:hidden">
           <div className="mx-auto flex max-w-xl items-center justify-around text-xs text-[var(--text-soft)]">
             <button className="flex flex-col items-center gap-1 text-[var(--teal)]"><MessageCircle size={16} />Chat</button>
-            {isSignedIn ? (
-              <div className="flex flex-col items-center gap-1">
-                <UserButton />
-                <span>Account</span>
-              </div>
-            ) : (
-              <SignInButton mode="modal">
-                <button className="flex flex-col items-center gap-1">
-                  <UserCircle2 size={16} />Account
-                </button>
-              </SignInButton>
-            )}
+            {isSignedIn ? <AccountButton compact /> : <button className="flex flex-col items-center gap-1"><UserCircle2 size={16} />Account</button>}
           </div>
         </nav>
       </div>

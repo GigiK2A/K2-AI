@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, BarChart3, CheckCircle2, Clock, Download, ExternalLink, FileText, Plus, XCircle } from "lucide-react";
 import { API_BASE, fetchDashboard, DashboardData, DashboardReport } from "@/lib/api";
+import { useKbotAuth } from "@/app/providers";
+import { AccountButton } from "@/components/auth/AccountButton";
 
 function formatDate(iso: string) {
   if (!iso) return "—";
@@ -66,13 +67,13 @@ function ReportRow({ report, hasPaid, token }: { report: DashboardReport; hasPai
 }
 
 export default function DashboardPage() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { getToken, loading: authLoading, isSignedIn } = useKbotAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState("");
   const [token, setToken] = useState("");
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (authLoading || !isSignedIn) return;
     getToken().then(async (t) => {
       if (!t) return;
       setToken(t);
@@ -83,9 +84,9 @@ export default function DashboardPage() {
         setError(e instanceof Error ? e.message : "Errore caricamento dashboard");
       }
     });
-  }, [isLoaded, isSignedIn, getToken]);
+  }, [authLoading, isSignedIn, getToken]);
 
-  if (!isLoaded) return null;
+  if (authLoading) return null;
 
   if (!isSignedIn) {
     return (
@@ -118,7 +119,7 @@ export default function DashboardPage() {
               <span className="text-sm font-semibold">Dashboard</span>
             </div>
           </div>
-          <UserButton />
+          <AccountButton />
         </div>
       </header>
 

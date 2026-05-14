@@ -1,11 +1,12 @@
 "use client";
 
-import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
+import Link from "next/link";
+import { useKbotAuth } from "@/app/providers";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn } = useUser();
+  const { loading, isSignedIn } = useKbotAuth();
 
-  if (!isLoaded) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-[var(--text-muted)] text-sm">
         Caricamento...
@@ -21,16 +22,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           Accedi per usare il report premium. La chat è gratuita, i download richiedono un pagamento one-time.
         </p>
         <div className="flex flex-col gap-2">
-          <SignInButton mode="modal">
-            <button className="w-full rounded-xl bg-[var(--teal)] py-3 text-center text-sm font-semibold text-black">
-              Accedi
-            </button>
-          </SignInButton>
-          <SignUpButton mode="modal">
-            <button className="w-full rounded-xl border border-[var(--line)] py-3 text-center text-sm font-semibold text-[var(--text-main)]">
-              Crea account
-            </button>
-          </SignUpButton>
+          <Link href="/app/sign-in" className="w-full rounded-xl bg-[var(--teal)] py-3 text-center text-sm font-semibold text-black">
+            Accedi
+          </Link>
+          <Link href="/app/sign-up" className="w-full rounded-xl border border-[var(--line)] py-3 text-center text-sm font-semibold text-[var(--text-main)]">
+            Crea account
+          </Link>
         </div>
       </div>
     );

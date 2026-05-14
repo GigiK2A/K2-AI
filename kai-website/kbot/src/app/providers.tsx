@@ -1,21 +1,99 @@
 "use client";
 
-import { ClerkProvider } from "@clerk/nextjs";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { isSupabaseAuthConfigured, supabase } from "@/lib/supabase";
 
-const PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
-  process.env.CLERK_PUBLISHABLE_KEY ??
-  "";
+type AuthContextValue = {
+  configured: boolean;
+  loading: boolean;
+  user: User | null;
+  session: Session | null;
+  isSignedIn: boolean;
+  hasPaid: boolean;
+  getToken: () => Promise<string | null>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function readHasPaid(user: User | null) {
+  if (!user) return false;
+  const metadata = {
+    ...(user.app_metadata ?? {}),
+    ...(user.user_metadata ?? {}),
+  } as { has_paid?: unknown; premium?: unknown };
+  return metadata.has_paid === true || metadata.has_paid === "true" || metadata.premium === true || metadata.premium === "true";
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return (
-    <ClerkProvider
-      publishableKey={PUBLISHABLE_KEY}
-      signInUrl="/app/sign-in"
-      signUpUrl="/app/sign-up"
-      afterSignOutUrl="/app/"
-    >
-      {children}
-    </ClerkProvider>
-  );
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(isSupabaseAuthConfigured);
+
+  useEffect(() => {
+    if (!isSupabaseAuthConfigured) return;
+
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session ?? null);
+      setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const getToken = useCallback(async () => {
+    if (!isSupabaseAuthConfigured) return null;
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  }, []);
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }, []);
+
+  const signUp = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+  }, []);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+  }, []);
+
+  const value = useMemo<AuthContextValue>(() => {
+    const user = session?.user ?? null;
+    return {
+      configured: isSupabaseAuthConfigured,
+      loading,
+      user,
+      session,
+      isSignedIn: Boolean(user),
+      hasPaid: readHasPaid(user),
+      getToken,
+      signIn,
+      signUp,
+      signOut,
+    };
+  }, [getToken, loading, session, signIn, signOut, signUp]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useKbotAuth() {
+  const value = useContext(AuthContext);
+  if (!value) throw new Error("useKbotAuth must be used inside Providers");
+  return value;
 }
