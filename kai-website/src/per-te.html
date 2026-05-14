@@ -505,6 +505,10 @@
       margin-bottom: 28px;
     }
     .pt-final-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+    @media (max-width: 480px) {
+      .pt-final-ctas { flex-direction: column; }
+      .pt-fcta-btn { width: 100%; justify-content: center; text-align: center; }
+    }
     /* Final CTA buttons — site .btn style */
     .pt-fcta-btn {
       display: inline-flex;
@@ -537,17 +541,25 @@
       text-align: center;
       margin-top: 28px;
     }
-    .pt-reset-link a {
+    .pt-reset-link a,
+    .pt-reset-link button {
       font-family: var(--font-mono);
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--text-muted);
       text-decoration: none;
+      border: 0;
       border-bottom: 1px solid var(--border);
+      background: transparent;
       cursor: pointer;
+      padding: 12px 16px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
     }
-    .pt-reset-link a:hover { color: var(--pt-accent); border-color: var(--pt-accent); }
+    .pt-reset-link a:hover,
+    .pt-reset-link button:hover { color: var(--pt-accent); border-color: var(--pt-accent); }
 
   </style>
 </head>
@@ -1235,7 +1247,7 @@
       </div><!-- /pt-result-zone -->
 
       <div class="pt-reset-link">
-        <a onclick="ptReset()">↺ Cambia profilo</a>
+        <button type="button" onclick="ptReset()">↺ Cambia profilo</button>
       </div>
 
     </div><!-- /pt-container -->

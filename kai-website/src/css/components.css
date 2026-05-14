@@ -1178,3 +1178,86 @@ footer {
     text-align: center;
   }
 }
+
+/* ============================================================
+   Mobile audit fixes (2026-05) — viewport ≤768px
+   - Prevent iOS Safari auto-zoom on inputs (<16px font triggers it)
+   - Make footer-links wrap cleanly
+   - Reduce .card padding on small screens
+   - Ensure tap targets ≥44px on filter chips and buttons
+   - Allow display-xl titles to break on tiny screens
+   ============================================================ */
+
+/* iOS auto-zoom fix: any text input must be ≥16px on mobile */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select,
+  .form-input,
+  .form-textarea,
+  .form-select,
+  .newsletter-form input,
+  .sas-search-input,
+  #chat-input {
+    font-size: 16px !important;
+  }
+}
+
+/* Tap target compliance ≥44px high on commonly-tapped pills/chips/filters */
+@media (max-width: 768px) {
+  .filter-btn,
+  .sas-filter-btn,
+  .chip,
+  .chat-cta-btn,
+  .case-card-cta {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Footer: stack columns, wrap link list, less aggressive gap */
+@media (max-width: 768px) {
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 28px;
+  }
+  .footer-links {
+    flex-wrap: wrap;
+    gap: 10px 18px;
+  }
+  .footer-legal-links {
+    gap: 10px 14px;
+  }
+}
+
+/* Reduce oversized card paddings on small screens */
+@media (max-width: 600px) {
+  .card { padding: 28px 22px; }
+  .case-card-featured .case-card-header { padding: 32px 24px 24px; }
+  .case-card-header { padding: 28px 22px 22px; }
+  .offerta-card { padding: 36px 24px; }
+  .newsletter-block { padding: 32px 24px; }
+}
+
+/* Case-card metrics: 2-col grid → 1-col on <480px */
+@media (max-width: 480px) {
+  .case-card-metrics { grid-template-columns: 1fr; }
+}
+
+/* Allow oversized display titles to break cleanly on tiny screens */
+@media (max-width: 480px) {
+  .display-xl,
+  .sas-hero-title,
+  .hero-3d-title,
+  .pt-h1 {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+  }
+}
