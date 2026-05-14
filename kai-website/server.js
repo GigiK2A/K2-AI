@@ -79,6 +79,58 @@ const SECURITY_HEADERS = {
 
 let kbotProcess = null;
 let kbotStandaloneAvailable = false;
+let kbotPythonProcess = null;
+
+const KBOT_PYTHON_PORT = Number(process.env.KBOT_PYTHON_PORT || 8000);
+const KBOT_PYTHON_DIR = process.env.KBOT_PYTHON_DIR || path.join(__dirname, 'kbot-backend');
+const KBOT_PYTHON_BIN = process.env.KBOT_PYTHON_BIN || '/usr/bin/python3';
+
+function startKbotPythonBackend() {
+  if (!fs.existsSync(path.join(KBOT_PYTHON_DIR, 'app', 'main.py'))) {
+    console.warn(`Python backend not found at ${KBOT_PYTHON_DIR}; skipping spawn.`);
+    return;
+  }
+  kbotPythonProcess = spawn(
+    KBOT_PYTHON_BIN,
+    ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', String(KBOT_PYTHON_PORT)],
+    {
+      cwd: KBOT_PYTHON_DIR,
+      env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      stdio: ['ignore', 'inherit', 'inherit'],
+    },
+  );
+  kbotPythonProcess.on('exit', (code, signal) => {
+    kbotPythonProcess = null;
+    console.error(`K-BOT Python backend exited code=${code ?? 'null'} signal=${signal ?? 'null'}`);
+  });
+  console.log(`K-BOT Python backend spawning on 127.0.0.1:${KBOT_PYTHON_PORT}`);
+}
+
+function proxyKbotPython(req, res, rawPath, rawQuery) {
+  const search = rawQuery ? `?${rawQuery}` : '';
+  const proxyReq = http.request(
+    {
+      hostname: '127.0.0.1',
+      port: KBOT_PYTHON_PORT,
+      method: req.method,
+      path: `${rawPath}${search}`,
+      headers: { ...req.headers, host: `127.0.0.1:${KBOT_PYTHON_PORT}` },
+    },
+    proxyRes => {
+      res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+      proxyRes.pipe(res);
+    },
+  );
+  proxyReq.on('error', err => {
+    console.error('K-BOT Python proxy error:', err.message);
+    if (!res.headersSent) {
+      sendJson(res, 502, { error: 'Backend K-BOT temporaneamente non disponibile' });
+    } else {
+      res.destroy(err);
+    }
+  });
+  req.pipe(proxyReq);
+}
 
 function startKbotStandalone() {
   const serverPath = path.join(KBOT_STANDALONE_DIR, 'server.js');
@@ -2305,11 +2357,9 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (rawPath.startsWith('/api/kbot/')) {
-    handleKbotApi(req, res, rawPath).catch(err => {
-      console.error('K-BOT API error:', err);
-      sendJson(res, 500, { error: 'Errore temporaneo K-BOT' });
-    });
+  if (rawPath.startsWith('/api/kbot/') || rawPath === '/api/stripe/webhook') {
+    // Proxy to the FastAPI Python backend (session-based, Sonnet + Playwright PDF).
+    proxyKbotPython(req, res, rawPath, rawQuery);
     return;
   }
 
@@ -2323,14 +2373,11 @@ const server = http.createServer((req, res) => {
 
   const cleanKbotApiPath = {
     '/kbot/session': '/api/kbot/session',
-    '/kbot/message': '/api/kbot/chat',
+    '/kbot/message': '/api/kbot/message',
     '/kbot/report': '/api/kbot/report',
   }[rawPath];
   if (cleanKbotApiPath) {
-    handleKbotApi(req, res, cleanKbotApiPath).catch(err => {
-      console.error('K-BOT clean API error:', err);
-      sendJson(res, 500, { error: 'Errore temporaneo K-BOT' });
-    });
+    proxyKbotPython(req, res, cleanKbotApiPath, rawQuery);
     return;
   }
 
@@ -2382,6 +2429,7 @@ const server = http.createServer((req, res) => {
 });
 
 startKbotStandalone();
+startKbotPythonBackend();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`K2-AI website listening on ${PORT}`);
