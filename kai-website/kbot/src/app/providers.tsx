@@ -32,7 +32,7 @@ type AppContextValue = {
   /* kbot session */
   kbotSessionId: string | null;
   kbotSession: KbotSession | null;
-  ensureSession: (opts?: { mode?: Mode; serviceId?: string }) => Promise<KbotSession>;
+  ensureSession: (opts?: { mode?: Mode; serviceId?: string; adopt?: string }) => Promise<KbotSession>;
   resetSession: () => void;
 };
 
@@ -126,10 +126,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   const ensureSession = useCallback(
-    async (opts?: { mode?: Mode; serviceId?: string }) => {
+    async (opts?: { mode?: Mode; serviceId?: string; adopt?: string }) => {
       if (kbotSession) return kbotSession;
       const token = await getToken();
-      const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
+      // Priority: explicit adopt (cross-bot bridge from suite-ai) > localStorage > fresh.
+      const adopted = opts?.adopt?.trim();
+      const stored =
+        adopted ||
+        (typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null);
       if (stored) {
         // Trust the stored id; we'll refresh on first /message round-trip if stale.
         const placeholder: KbotSession = {

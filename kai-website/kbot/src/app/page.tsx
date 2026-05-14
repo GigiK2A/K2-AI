@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { ChatLayoutHeader } from "@/components/layout/ChatLayout";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -102,6 +102,20 @@ export default function HomePage() {
     },
   ]);
   const [activeId, setActiveId] = useState(conversations[0].id);
+
+  /* Cross-bot bridge: when arriving from suite-ai widget with ?continue=<id>,
+     adopt that session id instead of creating a new one. Stripped after read
+     so a refresh doesn't keep forcing the bridge. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const carry = url.searchParams.get("continue") || url.searchParams.get("kbot_session");
+    if (!carry) return;
+    void ensureSession({ mode: "report", adopt: carry });
+    url.searchParams.delete("continue");
+    url.searchParams.delete("kbot_session");
+    window.history.replaceState({}, "", url.toString());
+  }, [ensureSession]);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? conversations[0],

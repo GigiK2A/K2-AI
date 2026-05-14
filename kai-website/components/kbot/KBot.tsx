@@ -503,6 +503,7 @@ export function KBot() {
     setContentType('generico')
     setProblem('')
     setSessionId('')
+    try { sessionStorage.removeItem('kbot.site_session_id') } catch {}
     setPath('B')
     setStep(1)
     setMessages([{ role: 'assistant', text: 'Ciao, sono Lead K-BOT. Raccontami cosa vuoi automatizzare o migliorare: capisco se esiste già un prodotto nella Suite AI o preparo un brief per il team K2-AI.' }])
@@ -559,6 +560,8 @@ export function KBot() {
       })
       const sid = session.session_id
       setSessionId(sid)
+      // Expose for cross-bot bridge (site widget → kbot standalone /app/?continue=<sid>)
+      try { sessionStorage.setItem('kbot.site_session_id', sid) } catch {}
       capture('kbot_started', { sector: selectedSector, mode })
 
       const initialProblem = problem.trim() || 'Non ho dettagli aggiuntivi al momento.'

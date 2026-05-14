@@ -1,350 +1,135 @@
-# K2-AI Kbot — Guida completa per l'agente AI integratore
+# K2-AI K-BOT — Guida tecnica (storica + corrente)
 
-> **A chi serve questo file:** Agente AI (o sviluppatore) incaricato di integrare il kbot nel sito k2-ai.it come pagina dedicata e separata. Leggi tutto prima di toccare il codice.
-
----
-
-## 1. Cos'è il kbot
-
-K2-AI Kbot è un'applicazione web standalone che permette a utenti autenticati di generare **report professionali in PDF e HTML** usando l'AI (Claude di Anthropic). Non è un chatbot generico: è un motore di reportistica premium con workflow verticali per settori specifici (hospitality, PMI, legale, edilizia, ecc.).
-
-**Stack:**
-- **Frontend:** Next.js 16 App Router, TypeScript, Tailwind CSS, Clerk (auth), Framer Motion
-- **Backend:** FastAPI (Python), Anthropic API, Playwright (PDF via Chromium), Supabase, Stripe
-- **Auth:** Clerk — gestisce login, sessioni, `publicMetadata.has_paid` per il gate premium
-- **Pagamento:** Stripe checkout → webhook → Clerk metadata update
-
-**Deployment attuale (sviluppo):**
-- Frontend: `http://localhost:3000` (o `http://192.168.1.169:3000` in LAN)
-- Backend: `http://localhost:8000` (o `http://192.168.1.169:8000` in LAN)
+> **Per agenti AI**: leggi prima `kbot/AGENTS.md` per il quadro corrente.
+> Questo file aggiunge dettagli architetturali utili a chi modifica il kbot a fondo.
 
 ---
 
-## 2. Architettura del frontend
+## 1. Filosofia del prodotto
 
-```
-/src
-  /app
-    page.tsx              ← Chat principale (unica pagina operativa)
-    layout.tsx            ← Root layout con ClerkProvider
-    /sign-in/[[...sign-in]]/page.tsx   ← Login split screen
-    /sign-up/[[...sign-up]]/page.tsx   ← Registrazione split screen
-    /dashboard/page.tsx   ← Dashboard utente (report, account, stats)
-  /components
-    /layout
-      Sidebar.tsx         ← Barra sinistra: navigazione, lista conversazioni
-      ChatLayout.tsx      ← Header con badge Premium e link Dashboard
-      ConversationList.tsx
-    /chat
-      Composer.tsx        ← Input composizione messaggio + upload file
-      MessageBubble.tsx   ← Bolla messaggio con link download report
-      ModeSwitcher.tsx    ← Switcher modalità (ora solo Report Premium)
-      SkillBadge.tsx
-    /insights
-      InsightPanel.tsx    ← Pannello destro: modalità attiva, skill usate
-    /auth
-      AuthGate.tsx        ← Wrappa contenuto premium: se non loggato mostra gate
-    /report
-      ReportCard.tsx
-    /ui
-      AIStatusIndicator.tsx
-  /lib
-    api.ts               ← Tutte le chiamate al backend
-    utils.ts
-  /types
-    chat.ts              ← Tipi: Mode, ChatMessage, Conversation, SkillSummary, ecc.
-  middleware.ts          ← Clerk middleware: protegge tutto tranne route pubbliche
-```
+Il K-BOT Premium è un **generatore di report operativi PDF** alimentato da Claude. Non è un chatbot generico, è un motore di reportistica premium con tre caratteristiche distintive:
+
+1. **Skill verticali**: 274 skill caricate da `kai-website/lib/skills/` (markdown) coprono i 20 servizi della Suite AI K2-AI, dal marketing all'edilizia alla finanza.
+2. **Skill master `report-premium-design`**: documenta lo schema JSON dei blocchi e le regole di composizione. Sempre caricata nel prompt di Sonnet.
+3. **PDF deterministico**: Sonnet genera **solo i contenuti** (titoli, dati, narrativa); il layout è renderizzato da Jinja2 + Playwright in formato A4. Il design è uguale per ogni report.
 
 ---
 
-## 3. Cosa è stato implementato (cronologia sessioni)
+## 2. Tipi di blocchi nel PDF
 
-### 3.1 Autenticazione Clerk (sessione precedente)
+Il modello Sonnet sceglie caso per caso quali blocchi inserire. Tutti sono renderizzati da partial Jinja2 in `kbot/backend/app/templates/blocks/`.
 
-**Problema di partenza:** L'app non aveva login. C'era solo una schermata statica "K2-AI / Accedi per continuare".
+| Tipo | Quando |
+|---|---|
+| `executive_summary` | Primo blocco, sempre. Supporta gauge SVG + badges. |
+| `kpi_grid` | 2-6 metriche numeriche chiave con variant ok/warning/alert. |
+| `two_column` | Analisi laterali: narrativa+tabella vs badges+callout. |
+| `narrative_split` | Strategia con sidebar operativa (concept, naming, piano canali). |
+| `data_table` | Proiezioni, benchmark, scenari numerici. |
+| `action_list` | Roadmap numerata con impatto stimato. |
+| `risk_mitigation` | Rischi (severity badge) ↔ mitigations (cards). |
+| `conclusions` | Ultimo blocco. Raccomandazione + milestone KPI laterali. |
+| `narrative` | Testo full-width, uso parco. |
 
-**Soluzione implementata:**
-- Installato `@clerk/nextjs` e configurato `ClerkProvider` in `layout.tsx`
-- Creato `src/middleware.ts` con route protection: tutto è protetto tranne `/sign-in`, `/sign-up` e le API pubbliche
-- Pagine dedicata `/sign-in/[[...sign-in]]/page.tsx` e `/sign-up/[[...sign-up]]/page.tsx` con layout **split screen** (sinistra branding K2-AI, destra form Clerk con tema scuro)
-- `AuthGate` componente: blocca l'area chat report se utente non loggato, mostra CTA login
-- Header aggiornato: mostra `UserButton` (avatar Clerk) se loggato, altrimenti link "Accedi"
-
-**Variabili d'ambiente Clerk richieste (`.env.local`):**
-```
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/
-NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
-```
-
-**Variabili Clerk nel backend (`backend/.env`):**
-```
-CLERK_JWKS_URL=https://<instance>.clerk.accounts.dev/.well-known/jwks.json
-CLERK_ISSUER=https://<instance>.clerk.accounts.dev
-CLERK_SECRET_KEY=sk_test_...
-```
-
-**Attenzione:** Le chiavi frontend e backend DEVONO appartenere alla stessa istanza Clerk (`distinct-mite-64`). Istanze diverse causano loop di redirect infiniti.
-
-**LAN:** Per accedere dal LAN (`192.168.1.169`), l'IP deve essere aggiunto nelle Clerk Dashboard → Configure → Domains. Senza questo il form Clerk non si carica.
-
-### 3.2 Rimozione Lead Generation
-
-**Cambio:** La modalità "Lead Generation" è stata rimossa completamente.
-- `ModeSwitcher.tsx`: ora mostra solo "Report Premium" (fisso, non switcher)
-- `page.tsx`: modalità default cambiata da `"lead"` a `"report"`
-- Rimossi: `LEAD_SUGGESTIONS`, `EMAIL_RE`, `CONTACT_BASE_URL`, `ctaUrl`, `handleLeadSave`, `saveLead` import
-- Il rendering non ha più il branch condizionale lead/report — sempre report
-- `InsightPanel`: rimosso `LeadCaptureCard`, rimossi i placeholder vuoti (Timeline elaborazione, Analytics conversazione, Fonti e reasoning contestuale)
-- Il tipo `Mode = "lead" | "report"` esiste ancora nel codebase per retrocompatibilità con il backend
-
-### 3.3 Fix sidebar scomparsa su Report Premium
-
-**Problema:** Quando l'utente cliccava "Report Premium" nella sidebar, la sidebar spariva anche su desktop.
-
-**Root cause:** L'`onMode` callback in `page.tsx` chiamava `setSidebarOpen(false)`, che rimuoveva la sidebar dall'AnimatePresence anche su `lg:` (desktop statico).
-
-**Fix:** Rimosso `setSidebarOpen(false)` dall'handler `onMode`. La sidebar su desktop rimane sempre aperta; su mobile il close avviene solo con il bottone `PanelLeftClose`.
-
-### 3.4 Dashboard utente (`/dashboard`)
-
-**Implementato da zero:**
-
-**Backend — `GET /api/dashboard`** (in `backend/app/main.py`):
-- Richiede autenticazione Clerk (Bearer token)
-- Legge tutti i file `*.json` in `data/reports/`
-- Filtra per `user_id` (solo report dell'utente autenticato)
-- Report vecchi senza `user_id` vengono inclusi (retrocompatibilità)
-- Restituisce: lista report (max 20), stats (totale, data ultimo), account info
-
-**Backend — `user_id` nei report:**
-- `generate_report_pdf()` e `save_html_and_pdf()` ora accettano `user_id: str = ""`
-- Il `clerk_user_id` viene passato durante la generazione in `POST /api/chat`
-- Il `user_id` viene salvato nel meta JSON del report (`data/reports/<id>.json`)
-
-**Frontend — `src/app/dashboard/page.tsx`:**
-- Route protetta da Clerk middleware (non è route pubblica)
-- Mostra 4 sezioni:
-  1. **Stato account**: Piano Premium / Gratuito (da `has_paid`)
-  2. **Statistiche**: numero report totali, data ultimo report
-  3. **Azioni rapide**: bottone Nuovo Report (→ `/`), Apri ultimo report
-  4. **Storico report**: lista con bottone Apri HTML e PDF (PDF solo se `hasPaid`)
-- Download PDF: fetch autenticata → blob → anchor download (non link diretto, serve Bearer token)
-
-**Frontend — `src/lib/api.ts`:**
-- Aggiunta funzione `fetchDashboard(authToken)` e interfacce `DashboardData`, `DashboardReport`
-
-**Navigazione:** Bottone "Dashboard" appare nell'header solo se `isSignedIn === true`.
-
-### 3.5 Fix Apple button login
-
-**Problema:** Logo Apple e testo nel bottone social di Clerk erano neri su sfondo `#111111` — illeggibili.
-
-**Fix in entrambe le pagine sign-in e sign-up:**
-```js
-socialButtonsBlockButton: { ..., color: "#ffffff" },
-socialButtonsBlockButtonText: { color: "#ffffff" },
-socialButtonsProviderIcon: { filter: "invert(1)" },
-```
+Schema completo: `kai-website/lib/skills/report-premium-design/SKILL.md`.
 
 ---
 
-## 4. Logica report (come funziona il motore)
+## 3. Pipeline di generazione PDF
 
-### 4.1 Skill system
-
-Le skill sono cartelle in `assets/skills/` con file `SKILL.md` o `skills.md`. Il backend le carica tutte all'avvio e le matcha per rilevanza keyword con la query dell'utente.
-
-Directory skill:
 ```
-assets/skills/skills sito k2-ai 2/   ← skill generiche (PMI, legale, ecc.)
-assets/skills/hospitality/            ← skill hospitality (29 pack)
-assets/skills/legacy-kai-website/     ← skill migrate dal vecchio K-BOT del sito
+session.collected_data + messages + skills
+        ↓
+analysis.generate_analysis_json()           ← Claude Sonnet 4.5, max_tokens=8192
+        ↓
+pdf_renderer.render_html()                   ← Jinja2 + report.html.j2 + blocks/*
+        ↓
+pdf_renderer._html_to_pdf_bytes()            ← Playwright headless Chromium
+   ↳ force-open: details, [aria-expanded], hidden, .collapse
+   ↳ wait_until="networkidle"
+   ↳ page.pdf(format="A4", print_background=True, prefer_css_page_size=True)
+        ↓
+storage.upload_pdf()                         ← Supabase Storage bucket "kbot-reports"
+        ↓
+email.send_report_ready_email()              ← Resend, dominio k2-ai.it verificato
 ```
 
-Il backend carica tutte e tre le root, deduplica per `id` normalizzato e mantiene priorità alle skill già presenti nel kbot rispetto alle omonime legacy. In modalità report il catalogo completo viene passato all'orchestratore ordinato per rilevanza; il modello deve selezionare caso per caso le skill migliori, anche combinando domini diversi.
-
-### 4.2 Workflow report hospitality
-
-Rilevato automaticamente se le skill matchate includono `orchestratore-hospitality`, `check-host-express`, ecc.
-
-Flusso:
-1. L'AI raccoglie i dati mancanti (max 6 campi obbligatori: tipologia, regione, camere, giorni apertura, notti vendute, ricavi)
-2. Quando i dati sono completi (o l'utente chiede esplicitamente il report), genera un report HTML completo con design system K2-AI
-3. Playwright converte l'HTML in PDF
-4. Il link al report appare nella bolla del messaggio
-
-### 4.3 Workflow report generico
-
-Per settori non-hospitality: l'utente fornisce dati, il backend genera testo strutturato, lo valida, lo converte in PDF con fpdf2. Se il testo non supera la validazione (troppo breve, placeholder visibili, ecc.) ritorna un messaggio di errore.
-
-### 4.4 Gate premium
-
-Il download del PDF è protetto da `has_paid` in Clerk `publicMetadata`. Stripe webhook aggiorna questo flag via Clerk API. Senza pagamento, l'utente può vedere il report HTML ma non scaricare il PDF.
+Tempo medio: ~130s LLM + ~10s rendering = ~2-3 minuti end-to-end.
 
 ---
 
-## 5. Variabili d'ambiente complete
+## 4. Schema database (Supabase)
 
-### Frontend (`.env.local`)
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/
-NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
-```
+### Tabella `kbot_sessions` (in `supabase/migrations/001_kbot_sessions.sql` + 004)
 
-### Backend (`backend/.env`)
-```env
-ANTHROPIC_API_KEY=sk-ant-api03-...
-CLAUDE_MODEL=claude-sonnet-4-20250514
-CLERK_JWKS_URL=https://distinct-mite-64.clerk.accounts.dev/.well-known/jwks.json
-CLERK_ISSUER=https://distinct-mite-64.clerk.accounts.dev
-CLERK_SECRET_KEY=sk_test_...
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PRICE_ID=price_...
-SUPABASE_URL=https://...supabase.co
-SUPABASE_SERVICE_ROLE_KEY=...
-FRONTEND_URL=http://localhost:3000
-RESEND_API_KEY=re_...
-REPORT_FROM_EMAIL=report@k2-ai.it
-REPORT_PAYMENT_LINK=http://localhost:3000/checkout
-```
+| Colonna | Tipo | Note |
+|---|---|---|
+| `id` | UUID PK | |
+| `created_at` / `updated_at` | TIMESTAMPTZ | |
+| `user_id` | UUID FK auth.users | NULL = sessione anonima (rara, gestita via link-user) |
+| `sector` / `path` / `step` | — | legacy v1, può restare valorizzato |
+| `status` | TEXT | `active`, `report_ready`, `paid`, `teaser_shown`, `contacted` |
+| `messages` | JSONB | `[{role, content, ts}]` |
+| `collected_data` | JSONB | `{service_id, mode, extractedData, uploaded_files, summary, recommendedServiceId, recommendedTier, reportData, ...}` |
+| `email` / `nome` / `disponibilita` | TEXT | usati al checkout e post-pagamento |
+| `stripe_session_id` | TEXT | |
+| `pdf_url` | TEXT | URL pubblico Supabase Storage |
+| `paid_at` | TIMESTAMPTZ | |
+
+### Tabella `kbot_conversions`
+
+Log delle conversioni Stripe. Vedi migration 001.
+
+### Storage buckets
+
+- `kbot-uploads` (pubblico): file caricati dall'utente
+- `kbot-reports` (pubblico): PDF generati
 
 ---
 
-## 6. Come avviare il sistema
+## 5. Auth flow Supabase (corrente)
 
-```bash
-# Backend (dalla root del progetto)
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Frontend (dalla root del progetto)
-npm install
-npm run dev -- --hostname 0.0.0.0
-```
-
-Per LAN: usare `--hostname 0.0.0.0` su entrambi e impostare `NEXT_PUBLIC_API_BASE_URL=http://<IP_LAN>:8000`.
+- Il **frontend Next.js** usa `@supabase/supabase-js` standard. Login `signInWithPassword`, registrazione con metadata GDPR (privacy, terms, marketing consent).
+- Il **backend FastAPI** valida il JWT in `Authorization: Bearer ...` tramite **JWKS endpoint**:
+  ```
+  https://<project>.supabase.co/auth/v1/.well-known/jwks.json
+  ```
+  Supporta ECC P-256 (ES256, chiavi attuali di Supabase) e RSA (RS256). Per progetti legacy esiste un fallback HS256 (`SUPABASE_JWT_SECRET`).
+- Lo Stripe webhook scrive `app_metadata.has_paid = true` via `client.auth.admin.update_user_by_id` quando il pagamento va a buon fine.
 
 ---
 
-## 7. Integrazione nel sito k2-ai.it — istruzioni per l'agente
+## 6. Deploy Railway (target)
 
-### 7.1 Requisito chiave: pagina separata
+Due servizi separati su Railway, stesso progetto monorepo:
 
-Il kbot NON deve essere un widget o iframe embedded nella homepage del sito. Deve essere una **pagina dedicata e separata**, ad esempio:
+| Servizio | Source dir | Build | Start | Dominio |
+|---|---|---|---|---|
+| `kbot-backend` | `kbot/backend/` | Nixpacks Python + `chromium` apt deps | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` | `api.k2-ai.it` |
+| `kbot-frontend` | `kbot/` | `npm run build` + `output: 'standalone'` | `node .next/standalone/server.js` (port `$PORT`) | `app.k2-ai.it` |
+| `kai-website` (esistente) | `src/` | Vite | (statico) | `www.k2-ai.it` |
 
-```
-https://app.k2-ai.it         ← subdomain dedicato (consigliato)
-oppure
-https://k2-ai.it/app         ← sottopercorso
-```
-
-Motivo: il kbot è una SPA React con autenticazione Clerk, routing App Router e stato globale. Embedderla nel sito principale crea conflitti di routing, autenticazione e bundle.
-
-### 7.2 Cosa collegare dal sito principale
-
-Dal sito k2-ai.it (presumibilmente statico o CMS), collegare al kbot con semplici link:
-
-```html
-<!-- CTA principale homepage -->
-<a href="https://app.k2-ai.it">Prova K2-AI →</a>
-
-<!-- CTA specifica report -->
-<a href="https://app.k2-ai.it/sign-up">Inizia gratis</a>
-```
-
-### 7.3 Clerk: domini autorizzati
-
-Nella Clerk Dashboard → Configure → Domains, aggiungere:
-- Il dominio di produzione del kbot (es. `app.k2-ai.it`)
-- Il dominio del sito principale se serve SSO (es. `k2-ai.it`)
-
-### 7.4 Stripe: webhook
-
-Il webhook Stripe deve puntare a `https://app.k2-ai.it/api/stripe/webhook` (o al backend FastAPI se il backend è separato dal frontend).
-
-### 7.5 CORS
-
-Il backend FastAPI ha `allow_origins=["*"]` per sviluppo. In produzione, restringere a:
-```python
-allow_origins=["https://app.k2-ai.it", "https://k2-ai.it"]
-```
-
-### 7.6 Variabili d'ambiente produzione
-
-Cambiare:
-```env
-NEXT_PUBLIC_API_BASE_URL=https://api.k2-ai.it   # o URL produzione backend
-FRONTEND_URL=https://app.k2-ai.it
-REPORT_PAYMENT_LINK=https://app.k2-ai.it/checkout
-```
-
-### 7.7 Deploy consigliato
-
-| Componente | Servizio consigliato |
-|------------|---------------------|
-| Frontend Next.js | Vercel (supporta App Router nativo) |
-| Backend FastAPI | Railway, Fly.io, o VPS con Docker |
-| Storage report | Migrare da file system a Supabase Storage per deploy scalabile |
-| Database memoria conversazioni | Supabase (già integrato parzialmente) |
-
-### 7.8 Nota su Playwright in produzione
-
-Il backend usa Playwright + Chromium per la conversione HTML→PDF. In Docker/VPS serve installare le dipendenze:
-```dockerfile
-RUN playwright install --with-deps chromium
-```
-Alternativa: usare WeasyPrint (già in `requirements.txt`) per i report non-hospitality e mantenere Playwright solo per HTML hospitality.
+Auto-deploy su push a `main`. Env variables vanno configurate nel dashboard Railway di ciascun servizio (`.env.local` non viene committato).
 
 ---
 
-## 8. Struttura file dati
+## 7. Cose da NON fare
 
-```
-data/
-  reports/
-    <timestamp>-<conv_id>.pdf    ← PDF report
-    <timestamp>-<conv_id>.html   ← HTML report (solo hospitality)
-    <timestamp>-<conv_id>.json   ← Meta: id, title, user_id, created_at, has_html
-  uploads/
-    <id>.bin                     ← File caricati dall'utente
-    <id>.json                    ← Meta file: name, mimeType, preview, readable
-  leads.jsonl                    ← Lead (deprecato, non più in uso attivo)
-  chat_memory.json               ← Memoria conversazioni (locale, retrocompatibilità)
-```
-
-**Importante:** In produzione su server multi-istanza, la memoria chat e i report su file system non funzionano. Completare la migrazione a Supabase (già parzialmente implementata per la memoria conversazioni in `backend/app/supabase_client.py`).
+1. **Non re-introdurre Clerk** o vecchi endpoint v1 (`/api/chat`, `/api/leads`, `/api/dashboard` legacy).
+2. **Non hardcodare URL backend nel frontend**: usa `NEXT_PUBLIC_API_BASE_URL`.
+3. **Non bypassare il gate `paid`** in `generate-pdf` se non con `INTERNAL_API_KEY` esplicito.
+4. **Non aggiungere streaming SSE finto** sul frontend: Claude restituisce risposta unica.
+5. **Non committare** `.env.local`, `.venv/`, file di test, file `._*` macOS.
+6. **Non modificare** `lib/skills/report-premium-design/SKILL.md` senza aggiornare anche i partial Jinja2 corrispondenti.
 
 ---
 
-## 9. Cosa non è ancora implementato
+## 8. Riferimenti
 
-| Feature | Stato | Note |
-|---------|-------|-------|
-| Storico report su Supabase | Parziale | Solo file locale, `user_id` ora salvato ma non su DB |
-| Pagamento Stripe reale | Configurato ma non testato | `STRIPE_PRICE_ID` placeholder |
-| Email report via Resend | Implementato ma non testato | `RESEND_API_KEY` placeholder |
-| Report multi-lingua | Non implementato | Solo italiano |
-| Cancellazione account | Non implementato | Solo tramite Clerk dashboard |
-| Quota report per utente | Non implementato | Solo rate limiting globale |
-
----
-
-## 10. Contatti e riferimenti
-
-- Istanza Clerk: `distinct-mite-64.clerk.accounts.dev`
-- Modello AI: `claude-sonnet-4-20250514` (configurabile via `CLAUDE_MODEL`)
-- Design system report: `assets/report-design-system.md`
-- Logo: `LOGOK2-AI.png` (root), `public/logo-k2ai.png` (frontend)
+- `kbot/AGENTS.md` — sintesi operativa per agenti
+- `kbot/CLAUDE.md` — `@AGENTS.md` (import per Claude Code)
+- `kbot/backend/app/lib/analysis.py` — prompt builder + Sonnet call
+- `kbot/backend/app/templates/report.css` — design A4 print-ready
+- `lib/skills/report-premium-design/SKILL.md` — schema blocchi
+- `supabase/migrations/001_kbot_sessions.sql` + `004_kbot_user_link.sql` — schema DB
+- `vercel.json` (root del sito kai-website) — rewrite/redirect del sito principale

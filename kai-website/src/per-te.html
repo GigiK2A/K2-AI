@@ -1314,6 +1314,21 @@
   </script>
   <script type="module" src="./js/nav.js"></script>
   <script type="module" src="./js/k2-immersive.js"></script>
+  <script>
+    // Cross-bot bridge: if the visitor has an active site-widget session,
+    // carry it forward into the kbot standalone CTAs so the conversation
+    // resumes without restarting from scratch.
+    (function () {
+      try {
+        const sid = sessionStorage.getItem('kbot.site_session_id')
+        if (!sid || sid.length < 8) return
+        const carry = '?continue=' + encodeURIComponent(sid)
+        document.querySelectorAll('a[href="/app"], a[href="/app/"]').forEach(function (a) {
+          a.setAttribute('href', '/app/' + carry)
+        })
+      } catch (_) { /* ignore */ }
+    })()
+  </script>
 
 </body>
 </html>
