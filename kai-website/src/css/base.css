@@ -115,6 +115,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Solid dark base so iOS Safari paints the notch/status-bar area
+     in brand color even before body content renders. */
+  background: var(--bg);
 }
 
 html::after {
