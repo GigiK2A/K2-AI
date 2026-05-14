@@ -13,7 +13,11 @@
   left: 0;
   right: 0;
   z-index: 200;
-  height: var(--nav-safe-height);
+  /* Use min-height instead of height so the navbar always covers the
+     full notch + status-bar zone. env() inside a CSS custom property
+     evaluates to 0 in some iOS Safari contexts, so don't rely on
+     --nav-safe-height here — go through min-height + padding directly. */
+  min-height: calc(64px + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
   background: rgba(8, 8, 8, 0.85);
   backdrop-filter: blur(12px);
@@ -288,13 +292,18 @@ html.nav-open {
     border-bottom-color: transparent;
   }
 
-  /* Mobile: prevent content bleed under the status-bar area. iOS Safari
-     can fail backdrop-filter on fixed translucent elements when there is
-     content behind on initial scroll, so fall back to a near-opaque bg. */
+  /* Mobile: navbar must be FULLY opaque so the status-bar safe-area is
+     painted brand-black and section content cannot bleed through behind
+     it. backdrop-filter blur on iOS Safari fails to keep content masked
+     under the notch when scrolling — solid fill is the only safe option. */
   #navbar {
-    background: rgba(8, 8, 8, 0.96);
+    background: #080808;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   #navbar::before {
-    background: rgba(8, 8, 8, 0.96);
+    background: #080808;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
