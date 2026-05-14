@@ -92,10 +92,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, profile: SignUpProfile) => {
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/app/`
+        : undefined;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: redirectTo,
         data: {
           first_name: profile.firstName,
           last_name: profile.lastName,
