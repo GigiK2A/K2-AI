@@ -1,0 +1,548 @@
+/* ============================================================
+   K2-AI Report Premium — Print-optimized CSS
+   A4 portrait, full-width navy header/footer, light-gray body,
+   white cards with rounded corners and subtle shadow.
+   Renders identically every time. No JavaScript dependencies.
+   ============================================================ */
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+/* Content area: 210mm wide × 297mm tall (A4).
+   Banner/footer are full-bleed; .report-body has its own inner padding. */
+:root { --content-width: 190mm; }
+
+:root {
+  --primary: #0F2544;
+  --primary-light: #1A3A6B;
+  --primary-ultra-light: #EEF2F8;
+  --accent: #C2410C;
+  --accent-light: #FED7AA;
+  --accent-warm: #D97706;
+  --green: #15803D;
+  --green-bg: #DCFCE7;
+  --green-border: #86EFAC;
+  --green-strong: #16A34A;
+  --yellow: #A16207;
+  --yellow-bg: #FEF9C3;
+  --yellow-border: #FDE68A;
+  --yellow-strong: #CA8A04;
+  --red: #B91C1C;
+  --red-bg: #FEE2E2;
+  --red-border: #FCA5A5;
+  --red-strong: #DC2626;
+  --info: #1D4ED8;
+  --info-bg: #DBEAFE;
+  --info-border: #BFDBFE;
+  --bg-page: #F0F2F5;
+  --surface: #FFFFFF;
+  --surface-2: #F8FAFC;
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --text: #1A1A2E;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --shadow: 0 1px 3px rgba(15, 37, 68, 0.06), 0 4px 12px rgba(15, 37, 68, 0.04);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+html, body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "kern", "ss01";
+}
+
+/* Browser-only preview (Vite serve): center the document at ~A4 width
+   so it looks like the printed PDF when you open the .html. Print
+   media wins on Playwright. */
+@media screen {
+  body {
+    background: #E2E8F0;
+    padding: 6mm 0;
+  }
+  .page-shell {
+    width: 210mm;
+    margin: 0 auto;
+    background: var(--bg-page);
+    box-shadow: 0 4px 24px rgba(15, 37, 68, 0.12);
+  }
+}
+
+p { margin-bottom: 6pt; }
+p:last-child { margin-bottom: 0; }
+ul, ol { margin: 4pt 0 6pt 16pt; }
+li { margin-bottom: 2.5pt; line-height: 1.55; }
+strong { color: var(--text); font-weight: 600; }
+em { font-style: italic; color: var(--text-secondary); }
+h4 { font-size: 10.5pt; font-weight: 600; color: var(--text); margin: 8pt 0 4pt; }
+h5 { font-size: 9.5pt; font-weight: 600; color: var(--text); margin: 6pt 0 3pt; }
+
+/* ============================================================
+   PAGE STRUCTURE
+   ============================================================ */
+.page-shell { min-height: 297mm; }
+
+/* Top banner — navy full width with logo + title + client meta */
+.report-banner {
+  background: linear-gradient(135deg, #0F2544 0%, #1A3A6B 100%);
+  color: #FFFFFF;
+  padding: 14mm 12mm 14mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8mm;
+}
+.banner-left { display: flex; align-items: center; gap: 6mm; }
+.banner-logo {
+  width: 18mm; height: 18mm; border-radius: 3mm;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 17pt; letter-spacing: -0.05em;
+  color: #FFFFFF;
+}
+.banner-logo-img {
+  width: 22mm; height: 16mm; object-fit: contain;
+  filter: brightness(1.1);
+  flex-shrink: 0;
+}
+.banner-title-block { line-height: 1.25; }
+.banner-kicker {
+  font-size: 8pt; letter-spacing: 1.6px; text-transform: uppercase;
+  opacity: 0.75; margin-bottom: 1.5mm;
+}
+.banner-title {
+  font-size: 16pt; font-weight: 700; color: #FFFFFF;
+  letter-spacing: -0.02em; line-height: 1.2; max-width: 110mm;
+}
+.banner-meta {
+  text-align: right; font-size: 9pt; line-height: 1.5; opacity: 0.85;
+}
+.banner-meta div + div { margin-top: 0.5mm; }
+
+/* Accent stripe under banner */
+.banner-stripe {
+  height: 3pt;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-warm) 50%, var(--accent) 100%);
+}
+
+/* Body section — light gray background, white cards inside */
+.report-body { padding: 8mm 10mm 0; }
+
+/* Each block is a white card. Compact margins so 2-3 cards fit per A4 page. */
+.block-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 7mm 9mm;
+  margin-bottom: 5mm;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  /* Hard ceiling so an oversized block can still split into the next page */
+  max-height: 252mm; /* A4 height − banner ≈ 32mm − safety 13mm */
+  overflow: hidden;
+}
+
+/* Tall blocks (long tables, narrative_split with lots of bullets) get a relaxed
+   ceiling and may break across pages cleanly. */
+.block-card.tall, .block-card:has(.data-table tbody tr:nth-child(8)),
+.block-card:has(.narrative-body) {
+  max-height: none;
+  page-break-inside: auto;
+  break-inside: auto;
+}
+.block-card:has(.data-table tbody tr:nth-child(8)) .block-title { break-after: avoid; }
+.block-card:has(.data-table tbody tr:nth-child(8)) tr { break-inside: avoid; }
+
+.block-title {
+  font-size: 13pt; font-weight: 600; color: var(--text);
+  letter-spacing: -0.01em;
+  padding-bottom: 3mm; margin-bottom: 5mm;
+  border-bottom: 1.5pt solid var(--accent);
+}
+.block-intro {
+  font-size: 10pt; color: var(--text-secondary); margin-bottom: 4mm;
+}
+
+/* ============================================================
+   BLOCK: executive_summary
+   ============================================================ */
+.exec-grid { display: grid; grid-template-columns: 1fr auto; gap: 8mm; align-items: center; }
+.exec-grid.no-gauge { grid-template-columns: 1fr; }
+.exec-narrative p { font-size: 10pt; line-height: 1.65; margin-bottom: 4pt; }
+.exec-narrative p:last-child { margin-bottom: 0; }
+
+.exec-gauge {
+  width: 40mm; height: 24mm; position: relative;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.exec-gauge svg { width: 100%; height: 100%; }
+.exec-gauge .gauge-value {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  text-align: center;
+}
+.exec-gauge .gauge-value .num {
+  font-size: 22pt; font-weight: 700; color: var(--primary); line-height: 1;
+}
+.exec-gauge .gauge-value .lbl {
+  font-size: 8pt; color: var(--text-muted); margin-top: 0.5mm;
+}
+
+.exec-badges { display: flex; flex-wrap: wrap; gap: 3mm; margin-top: 5mm; }
+
+/* ============================================================
+   Generic pills / badges
+   ============================================================ */
+.pill {
+  display: inline-flex; align-items: center; gap: 1.5mm;
+  font-size: 9pt; font-weight: 600;
+  padding: 1.2mm 3mm; border-radius: 9999px;
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+.pill::before { content: "●"; font-size: 7pt; }
+.pill.variant-ok      { background: var(--green-bg);  color: var(--green-strong);  border-color: var(--green-border); }
+.pill.variant-warning { background: var(--yellow-bg); color: var(--yellow-strong); border-color: var(--yellow-border); }
+.pill.variant-alert   { background: var(--red-bg);    color: var(--red-strong);    border-color: var(--red-border); }
+.pill.variant-info    { background: var(--info-bg);   color: var(--info);          border-color: var(--info-border); }
+.pill.variant-neutral { background: var(--surface-2); color: var(--text-secondary); border-color: var(--border); }
+.pill.icon-warn::before { content: "⚠"; }
+.pill.icon-alert::before { content: "✕"; }
+
+/* ============================================================
+   BLOCK: kpi_grid
+   ============================================================ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5mm;
+}
+.kpi-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+.kpi-card {
+  border: 1px solid var(--border);
+  border-top-width: 2pt;
+  border-radius: var(--radius-sm);
+  padding: 5mm;
+  page-break-inside: avoid;
+}
+.kpi-card.variant-ok      { border-top-color: var(--green-strong); }
+.kpi-card.variant-warning { border-top-color: var(--accent-warm); }
+.kpi-card.variant-alert   { border-top-color: var(--red-strong); }
+.kpi-card.variant-neutral { border-top-color: var(--primary); }
+.kpi-label {
+  font-size: 8pt; text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--text-muted); margin-bottom: 2.5mm; font-weight: 500;
+}
+.kpi-value {
+  font-size: 22pt; font-weight: 800; color: var(--primary);
+  line-height: 1; margin-bottom: 2.5mm; letter-spacing: -0.02em;
+}
+.kpi-subtitle {
+  font-size: 9pt; color: var(--text-secondary); line-height: 1.5; margin-bottom: 2mm;
+}
+.kpi-hint {
+  font-size: 8.5pt; color: var(--text-muted); line-height: 1.5;
+}
+
+/* ============================================================
+   BLOCK: two_column / narrative_split
+   ============================================================ */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8mm;
+}
+.col-heading {
+  font-size: 11pt; font-weight: 600; color: var(--text); margin-bottom: 3mm;
+}
+.col-body { font-size: 10pt; line-height: 1.6; color: var(--text-secondary); }
+.col-body p { margin-bottom: 3pt; }
+
+.col-table { margin-top: 3mm; }
+.col-badges { display: flex; flex-direction: column; gap: 2.5mm; margin-top: 1mm; }
+.col-badge-row {
+  display: flex; align-items: center; gap: 3mm;
+}
+.col-badge-row .pill { flex-shrink: 0; min-width: 14mm; justify-content: center; }
+.col-badge-row .desc {
+  font-size: 9.5pt; color: var(--text-secondary); line-height: 1.45;
+}
+
+.inset-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4mm 5mm;
+  margin: 4mm 0;
+}
+.inset-card-heading {
+  font-size: 9.5pt; font-weight: 600; color: var(--text); margin-bottom: 2mm;
+}
+.inset-card p { font-size: 9.5pt; line-height: 1.55; margin-bottom: 2pt; }
+
+.col-footnote {
+  font-size: 9pt; color: var(--text-muted); line-height: 1.5; margin-top: 3mm; font-style: italic;
+}
+
+/* Callout boxes */
+.callout {
+  border-radius: var(--radius-sm);
+  padding: 3.5mm 4.5mm;
+  margin: 3mm 0 0;
+  font-size: 9.5pt;
+  line-height: 1.55;
+}
+.callout-label { font-weight: 600; color: var(--text); }
+.callout.tone-info    { background: var(--info-bg);   border-left: 3pt solid var(--info); color: var(--text); }
+.callout.tone-warning { background: #FEF3C7;          border-left: 3pt solid var(--yellow-strong); color: var(--text); }
+.callout.tone-ok      { background: var(--green-bg);  border-left: 3pt solid var(--green-strong); color: var(--text); }
+.callout.tone-alert   { background: var(--red-bg);    border-left: 3pt solid var(--red-strong); color: var(--text); }
+
+/* ============================================================
+   BLOCK: data_table
+   ============================================================ */
+table.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 9.5pt;
+  margin-top: 1mm;
+}
+table.data-table thead th {
+  background: var(--primary);
+  color: #FFFFFF;
+  font-weight: 600;
+  text-align: left;
+  padding: 3mm 3.5mm;
+  font-size: 8.5pt;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  vertical-align: top;
+}
+table.data-table thead th:first-child { border-top-left-radius: var(--radius-sm); }
+table.data-table thead th:last-child  { border-top-right-radius: var(--radius-sm); }
+table.data-table tbody td {
+  padding: 3mm 3.5mm;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text-secondary);
+  font-size: 9.5pt;
+}
+table.data-table tbody td:first-child { font-weight: 600; color: var(--text); }
+table.data-table tbody tr:nth-child(even) td { background: var(--surface-2); }
+table.data-table tbody tr:last-child td { border-bottom: 0; }
+
+/* Compact inline table used inside two_column.left */
+table.inline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+  margin-top: 2mm;
+}
+table.inline-table thead th {
+  background: var(--primary);
+  color: #FFFFFF;
+  text-align: left;
+  padding: 2mm 3mm;
+  font-size: 8pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+table.inline-table tbody td {
+  padding: 2.2mm 3mm;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+table.inline-table tbody td:first-child { font-weight: 500; color: var(--text); }
+table.inline-table tbody tr:last-child td { border-bottom: 0; }
+
+/* ============================================================
+   BLOCK: action_list
+   ============================================================ */
+.action-grid { display: flex; flex-direction: column; gap: 3mm; }
+.action-row {
+  display: flex; align-items: center; gap: 4mm;
+  padding: 4mm 5mm;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.action-num {
+  flex-shrink: 0;
+  width: 9mm; height: 9mm; border-radius: 50%;
+  background: var(--primary); color: #FFFFFF;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 11pt;
+}
+.action-title {
+  flex: 1; font-size: 10.5pt; font-weight: 600; color: var(--text);
+}
+.action-meta {
+  flex-shrink: 0; font-size: 9pt; color: var(--text-muted);
+}
+
+/* ============================================================
+   BLOCK: risk_mitigation
+   ============================================================ */
+.risk-mitigation-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8mm;
+}
+.risk-list { display: flex; flex-direction: column; gap: 3mm; }
+.risk-row {
+  display: flex; gap: 3mm; align-items: flex-start;
+}
+.risk-row .pill { flex-shrink: 0; min-width: 13mm; justify-content: center; }
+.risk-content .risk-title {
+  font-size: 10pt; font-weight: 600; color: var(--text); line-height: 1.3;
+}
+.risk-content .risk-body {
+  font-size: 9pt; color: var(--text-secondary); line-height: 1.5; margin-top: 1mm;
+}
+
+.mitigation-list { display: flex; flex-direction: column; gap: 3mm; }
+.mitigation-card {
+  border-left: 3pt solid var(--accent-warm);
+  padding: 2mm 0 2mm 4mm;
+}
+.mitigation-card .mit-heading {
+  font-size: 10pt; font-weight: 600; color: var(--text); margin-bottom: 1mm;
+}
+.mitigation-card .mit-body {
+  font-size: 9pt; color: var(--text-secondary); line-height: 1.55;
+}
+
+/* ============================================================
+   BLOCK: conclusions
+   ============================================================ */
+.conclusions-grid {
+  display: grid; grid-template-columns: 1.4fr 1fr; gap: 8mm;
+}
+.concl-heading {
+  font-size: 11.5pt; font-weight: 600; color: var(--primary); margin-bottom: 3mm;
+}
+.concl-heading.variant-ok { color: var(--green-strong); }
+.concl-body { font-size: 10pt; line-height: 1.6; color: var(--text-secondary); }
+.concl-body h4 { color: var(--text); margin-top: 4mm; }
+
+.milestone-stack { display: flex; flex-direction: column; gap: 3mm; }
+.milestone {
+  padding: 4mm 4.5mm;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.milestone.tone-ok { background: var(--green-bg); border-color: var(--green-border); }
+.milestone.tone-info { background: var(--info-bg); border-color: var(--info-border); }
+.milestone.tone-warning { background: var(--yellow-bg); border-color: var(--yellow-border); }
+.milestone-label {
+  font-size: 9.5pt; font-weight: 700; color: var(--text); margin-bottom: 2mm;
+}
+.milestone ul {
+  margin: 0 0 0 4mm; padding: 0;
+}
+.milestone li {
+  font-size: 9pt; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1mm;
+}
+
+/* ============================================================
+   FOOTER (last page, full width navy)
+   ============================================================ */
+.report-footer {
+  background: linear-gradient(135deg, #0F2544 0%, #1A3A6B 100%);
+  color: #FFFFFF;
+  padding: 8mm 12mm 9mm;
+  margin-top: 6mm;
+  display: flex; align-items: center; gap: 6mm;
+}
+.report-footer .footer-logo {
+  width: 12mm; height: 12mm; border-radius: 2.5mm;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 11pt; letter-spacing: -0.04em;
+}
+.report-footer .footer-logo-img {
+  width: 16mm; height: 11mm; object-fit: contain;
+  filter: brightness(1.1);
+  flex-shrink: 0;
+}
+.report-footer .footer-meta {
+  font-size: 9pt; line-height: 1.55; opacity: 0.9;
+}
+.report-footer .footer-meta a { color: #FFFFFF; text-decoration: none; }
+.report-footer .footer-meta .footer-row { display: flex; gap: 4mm; }
+
+/* Block standalone narrative */
+.narrative-body { font-size: 10pt; line-height: 1.65; color: var(--text-secondary); }
+.narrative-body h4 { color: var(--text); margin-top: 4mm; }
+.narrative-body ul { margin-left: 16pt; }
+
+/* ============================================================
+   PRINT SAFETY — force any collapsible widget to be always open
+   in PDF, regardless of `open` attribute or class state.
+   ============================================================ */
+details { display: block !important; }
+details > summary {
+  list-style: none;
+  cursor: default;
+  font-weight: 600;
+  margin-bottom: 2mm;
+}
+details > summary::-webkit-details-marker,
+details > summary::marker { display: none; content: ''; }
+details > *:not(summary) { display: revert !important; }
+
+.collapse, .accordion, .accordion-collapse, .accordion-content,
+.collapsible, .collapsible-content, .panel-collapse {
+  display: block !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+[aria-hidden="true"][data-print-show], [hidden][data-print-show] { display: block !important; }
+[aria-expanded="false"] + [aria-hidden="true"],
+[aria-expanded] + * { display: block !important; }
+
+/* ============================================================
+   PRINT-ONLY refinements — applied by Playwright via @media print.
+   Hide screen-only chrome (page-shell shadow, body padding).
+   ============================================================ */
+@media print {
+  body {
+    background: var(--bg-page);
+    padding: 0;
+  }
+  .page-shell {
+    box-shadow: none;
+    margin: 0;
+    width: auto;
+  }
+  .report-body { padding: 6mm 10mm 0; }
+  .block-card { box-shadow: 0 0 0 1px var(--border); }
+  /* Avoid widow/orphan single lines */
+  p, li { orphans: 3; widows: 3; }
+  /* Tables: header repeats on each page when a table breaks */
+  table thead { display: table-header-group; }
+  table tfoot { display: table-footer-group; }
+  /* Banner repeats only on first page */
+  .report-banner, .banner-stripe { page-break-after: avoid; }
+  .report-footer { page-break-before: avoid; }
+}

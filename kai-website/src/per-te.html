@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>K2-AI · Trova il servizio per te</title>
+  <meta name="description" content="Diagnostico in 30 secondi: scopri il percorso K2-AI per il tuo settore. Hospitality, studi professionali, artigiani, PMI.">
+  <link rel="canonical" href="https://www.k2-ai.it/per-te">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="K2-AI">
+  <meta property="og:locale" content="it_IT">
+  <meta property="og:title" content="K2-AI · Trova il servizio per te">
+  <meta property="og:description" content="Diagnostico in 30 secondi: scopri il percorso K2-AI per il tuo settore. Hospitality, studi professionali, artigiani, PMI.">
+  <meta property="og:url" content="https://www.k2-ai.it/per-te">
+  <meta property="og:image" content="https://www.k2-ai.it/assets/og-home.png">
+
+  <!-- Site CSS for nav/footer -->
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/nav.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/pages.css">
+  <link rel="stylesheet" href="./css/k2-immersive.css">
+
+
+  <style>
+    /* Per-te page — aligned to site design system */
+    :root {
+      --pt-accent: var(--bridge-accent);
+      --pt-highlight: var(--bridge-highlight);
+      --pt-muted: var(--text-muted);
+    }
+
+    .per-te-wrapper {
+      /* inherits body: 17px / 1.7 / DM Sans from base.css */
+    }
+
+    .pt-container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: calc(var(--nav-safe-height) + clamp(20px, 4vw, 44px)) 40px 100px;
+    }
+    @media (max-width: 720px) {
+      .pt-container { padding: calc(var(--nav-safe-height) + 20px) 20px 80px; }
+    }
+
+    /* Intro — site display weights */
+    .pt-h1 {
+      margin-bottom: 24px;
+    }
+    .pt-h1 em {
+      font-style: italic;
+      color: var(--pt-accent);
+    }
+    .pt-lede {
+      font-family: var(--font-body);
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--text-secondary);
+      max-width: 640px;
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+    .pt-lede strong { color: var(--text-primary); font-weight: 600; }
+    .pt-micro {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 48px;
+    }
+    .pt-micro::before {
+      content: "→ ";
+      color: var(--pt-accent);
+    }
+
+    /* Step labels — site badge style */
+    .pt-step-label {
+      display: inline-block;
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+    .pt-h2 {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 32px;
+      max-width: 720px;
+      color: var(--text-primary);
+    }
+    .pt-h2 em { font-style: italic; color: var(--pt-accent); }
+
+    /* Profile grid */
+    .pt-profile-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 56px;
+    }
+    @media (max-width: 880px) {
+      .pt-profile-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 560px) {
+      .pt-profile-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Profile cards — site glass card style */
+    .pt-profile-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 20px 24px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+      position: relative;
+      text-align: left;
+      font-family: inherit;
+      color: var(--text-primary);
+      width: 100%;
+    }
+    .pt-profile-card:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-elevated);
+      transform: translateY(-2px);
+    }
+    .pt-profile-card.active {
+      border-color: var(--pt-accent);
+      background: var(--bg-elevated);
+      box-shadow: 0 0 0 1px var(--pt-accent);
+    }
+    .pt-profile-card.active .pc-num { color: var(--pt-accent); }
+
+    .pc-icon {
+      font-size: 22px;
+      margin-bottom: 12px;
+      color: var(--pt-accent);
+      display: block;
+    }
+    .pc-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .pc-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.2;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+    }
+    .pc-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Result zone */
+    .pt-result-zone {
+      min-height: 200px;
+    }
+    .pt-empty-state {
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 60px 30px;
+      text-align: center;
+      background: var(--bg-surface);
+    }
+    .pt-empty-state-text {
+      font-size: 18px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .pt-empty-state-sub {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .pt-empty-state-arrow {
+      font-size: 28px;
+      color: var(--pt-accent);
+      margin-top: 14px;
+      animation: pt-bob 2s ease-in-out infinite;
+    }
+    @keyframes pt-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    /* Panels */
+    .pt-panel { display: none; animation: pt-fadeIn 0.45s ease; }
+    .pt-panel.active { display: block; }
+    @keyframes pt-fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .pt-panel-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--pt-accent);
+      margin-bottom: 16px;
+    }
+    .pt-panel-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: clamp(2rem, 4.5vw, 3.8rem);
+      line-height: 1.0;
+      letter-spacing: -0.04em;
+      margin-bottom: 24px;
+      max-width: 760px;
+      color: var(--text-primary);
+    }
+    .pt-panel-title em { font-style: italic; color: var(--pt-accent); }
+    .pt-panel-intro {
+      font-size: 17px;
+      line-height: 1.7;
+      max-width: 720px;
+      margin-bottom: 36px;
+      color: var(--text-secondary);
+    }
+    .pt-panel-intro strong { color: var(--text-primary); font-weight: 600; }
+
+    /* Pain points — site card style */
+    .pt-pains {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin: 24px 0 36px;
+    }
+    .pt-pains-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--pt-accent);
+      margin-bottom: 16px;
+    }
+    .pt-pain {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 16px;
+      font-style: italic;
+      line-height: 1.55;
+      color: var(--text-secondary);
+    }
+    .pt-pain:last-child { border-bottom: none; padding-bottom: 0; }
+    .pt-pain::before {
+      content: "\"";
+      color: var(--pt-accent);
+      font-size: 20px;
+      vertical-align: -2px;
+      margin-right: 3px;
+    }
+    .pt-pain::after {
+      content: "\"";
+      color: var(--pt-accent);
+      font-size: 20px;
+      vertical-align: -2px;
+      margin-left: 2px;
+    }
+
+    /* Service ladder — site card grid */
+    .pt-ladder-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.4rem, 2.5vw, 1.9rem);
+      font-weight: 600;
+      margin-bottom: 8px;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+    }
+    .pt-ladder-sub {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      max-width: 640px;
+      line-height: 1.6;
+    }
+    .pt-ladder {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 38px;
+    }
+    @media (max-width: 780px) { .pt-ladder { grid-template-columns: 1fr; } }
+
+    /* Pricing cards — site glass card style */
+    .pt-rung {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 22px 26px;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .pt-rung.featured {
+      border-color: var(--border-hover);
+      background: var(--bg-elevated);
+      box-shadow: 0 0 0 1px var(--border-hover);
+    }
+    .pt-rung.featured .pt-rung-num { color: var(--pt-highlight); }
+    .pt-rung.featured ul li { border-bottom-color: var(--border); }
+    .pt-rung.featured ul li::before { color: var(--pt-highlight); }
+
+    .pt-rung-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .pt-rung-name {
+      font-family: var(--font-display);
+      font-size: clamp(1.2rem, 2vw, 1.5rem);
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+    .pt-rung-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 18px;
+    }
+    .pt-rung-price { margin-bottom: 16px; }
+    .pt-rung-price-amount {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 3vw, 2.4rem);
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--pt-accent);
+    }
+    .pt-rung-price-amount .small {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-style: normal;
+      font-weight: 400;
+    }
+    .pt-rung-price-unit {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 4px;
+    }
+    .pt-rung ul {
+      list-style: none;
+      font-size: 14px;
+      line-height: 1.6;
+      flex-grow: 1;
+    }
+    .pt-rung ul li {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .pt-rung ul li:last-child { border-bottom: none; }
+    .pt-rung ul li::before {
+      content: "→ ";
+      color: var(--pt-accent);
+    }
+    /* CTA inside pricing card — site btn style */
+    .pt-rung-cta {
+      margin-top: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--text-primary);
+      color: var(--bg);
+      border: 1px solid var(--text-primary);
+      border-radius: 4px;
+      padding: 12px 20px;
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pt-rung-cta:hover {
+      background: rgba(245,245,245,0.92);
+    }
+    .pt-rung.featured .pt-rung-cta {
+      background: var(--pt-highlight);
+      color: #0e0e0c;
+      border-color: var(--pt-highlight);
+    }
+
+    /* Reality numbers — site card grid */
+    .pt-reality {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 38px 0;
+    }
+    @media (max-width: 720px) { .pt-reality { grid-template-columns: 1fr; } }
+    .pt-rl-cell {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 20px;
+      text-align: center;
+    }
+    .pt-rl-num {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 600;
+      color: var(--pt-accent);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      margin-bottom: 8px;
+    }
+    .pt-rl-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Decision helper — site card */
+    .pt-helper {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 30px;
+      margin: 36px 0;
+    }
+    .pt-helper h4 {
+      font-family: var(--font-display);
+      font-size: clamp(1.2rem, 2vw, 1.5rem);
+      font-weight: 600;
+      margin-bottom: 18px;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+    .pt-helper-q {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--pt-accent);
+      margin-bottom: 4px;
+      margin-top: 16px;
+    }
+    .pt-helper-q:first-of-type { margin-top: 0; }
+    .pt-helper-a {
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+    .pt-helper-a strong { color: var(--text-primary); }
+
+    /* Final CTA — site inverted block */
+    .pt-final-cta {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hover);
+      border-radius: 16px;
+      padding: 40px 36px;
+      margin-top: 40px;
+    }
+    .pt-final-cta h3 {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      font-weight: 600;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+    }
+    .pt-final-cta h3 em { color: var(--pt-highlight); font-style: italic; }
+    .pt-final-cta p {
+      color: var(--text-secondary);
+      font-size: 16px;
+      line-height: 1.65;
+      max-width: 600px;
+      margin-bottom: 28px;
+    }
+    .pt-final-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+    /* Final CTA buttons — site .btn style */
+    .pt-fcta-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 14px 28px;
+      border: 1px solid var(--text-primary);
+      background: var(--text-primary);
+      color: var(--bg);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pt-fcta-btn:hover { background: rgba(245,245,245,0.92); }
+    .pt-fcta-btn.ghost {
+      background: transparent;
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+    .pt-fcta-btn.ghost:hover {
+      border-color: var(--border-hover);
+      background: rgba(255,255,255,0.04);
+    }
+
+    /* Reset link */
+    .pt-reset-link {
+      text-align: center;
+      margin-top: 28px;
+    }
+    .pt-reset-link a {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .pt-reset-link a:hover { color: var(--pt-accent); border-color: var(--pt-accent); }
+
+  </style>
+</head>
+<body class="per-te-page">
+
+  <nav id="navbar">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo" aria-label="K2-AI">
+        <img src="./logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI">
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/metodo">Metodo</a></li>
+        <li><a href="/laboratorio">Laboratorio</a></li>
+        <li><a href="/k-bot">K-BOT</a></li>
+        <li><a href="/per-te" class="active">Per te</a></li>
+        <li><a href="/suite-ai">Suite AI</a></li>
+        <li><a href="/newsletter">Newsletter</a></li>
+        <li><a href="/contatti">Contatti</a></li>
+      </ul>
+      <a href="/app" class="nav-cta">Apri K-BOT →</a>
+      <button class="nav-hamburger" aria-label="Menu">
+        <span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="nav-overlay">
+    <a href="/">Home</a>
+    <a href="/metodo">Metodo</a>
+    <a href="/laboratorio">Laboratorio</a>
+    <a href="/k-bot">K-BOT</a>
+    <a href="/per-te">Per te</a>
+    <a href="/suite-ai">Suite AI</a>
+    <a href="/newsletter">Newsletter</a>
+    <a href="/contatti">Contatti</a>
+  </div>
+
+  <div class="per-te-wrapper">
+    <div class="pt-container">
+
+      <p class="hero-eyebrow">Per te · Trova il tuo percorso</p>
+      <h1 class="display-xl pt-h1">Tu <em>cosa fai</em><br>per vivere?</h1>
+      <p class="pt-lede"><strong>Domanda seria.</strong> Perché un agriturismo, uno studio legale e un'officina meccanica hanno tre AI diverse — anche se la porta d'ingresso è la stessa.</p>
+      <p class="pt-micro">Scegli il profilo che ti somiglia di più. Ti mostro cosa puoi fare con K2-AI, quanto costa e da dove iniziare.</p>
+
+      <!-- STEP 1: scelta profilo -->
+      <span class="pt-step-label">Step 1 · Scegli il tuo profilo</span>
+      <h2 class="pt-h2">Sei un <em>imprenditore</em> di che tipo?</h2>
+
+      <div class="pt-profile-grid">
+
+        <button class="pt-profile-card" data-profile="hospitality" onclick="ptSelectProfile('hospitality', this)">
+          <span class="pc-icon">⌂</span>
+          <span class="pc-num">Profilo 01</span>
+          <div class="pc-title">Hospitality</div>
+          <div class="pc-meta">Hotel · Agriturismo · B&amp;B · Affitti brevi</div>
+        </button>
+
+        <button class="pt-profile-card" data-profile="commercialista" onclick="ptSelectProfile('commercialista', this)">
+          <span class="pc-icon">§</span>
+          <span class="pc-num">Profilo 02</span>
+          <div class="pc-title">Studio commercialista</div>
+          <div class="pc-meta">Contabilità · Fiscale · Consulenza</div>
+        </button>
+
+        <button class="pt-profile-card" data-profile="avvocato" onclick="ptSelectProfile('avvocato', this)">
+          <span class="pc-icon">¶</span>
+          <span class="pc-num">Profilo 03</span>
+          <div class="pc-title">Studio legale</div>
+          <div class="pc-meta">Avvocati · Notai · Diritto</div>
+        </button>
+
+        <button class="pt-profile-card" data-profile="ingegnere" onclick="ptSelectProfile('ingegnere', this)">
+          <span class="pc-icon">⌖</span>
+          <span class="pc-num">Profilo 04</span>
+          <div class="pc-title">Studio ingegneria / architettura</div>
+          <div class="pc-meta">Progettazione · DL · Sicurezza · TLC</div>
+        </button>
+
+        <button class="pt-profile-card" data-profile="artigiano" onclick="ptSelectProfile('artigiano', this)">
+          <span class="pc-icon">⚒</span>
+          <span class="pc-num">Profilo 05</span>
+          <div class="pc-title">Artigiano / piccola impresa</div>
+          <div class="pc-meta">Edilizia · Manifattura · Servizi locali</div>
+        </button>
+
+        <button class="pt-profile-card" data-profile="pmi" onclick="ptSelectProfile('pmi', this)">
+          <span class="pc-icon">▣</span>
+          <span class="pc-num">Profilo 06</span>
+          <div class="pc-title">PMI manifatturiera</div>
+          <div class="pc-meta">10-50 dipendenti · B2B · Industria</div>
+        </button>
+
+      </div>
+
+      <!-- STEP 2: zona risultati -->
+      <span class="pt-step-label">Step 2 · Il tuo percorso</span>
+      <h2 class="pt-h2">Quello che K2-AI <em>può</em> fare per te.</h2>
+
+      <div class="pt-result-zone" id="pt-result-zone">
+
+        <div class="pt-empty-state" id="pt-empty-state">
+          <div class="pt-empty-state-text">Scegli sopra il tuo profilo</div>
+          <div class="pt-empty-state-sub">e ti mostro il percorso</div>
+          <div class="pt-empty-state-arrow">↑</div>
+        </div>
+
+        <!-- PROFILO HOSPITALITY -->
+        <div class="pt-panel" id="pt-panel-hospitality">
+          <div class="pt-panel-eyebrow">Profilo 01 · Hospitality</div>
+          <h2 class="pt-panel-title">L'agriturismo gira pieno a luglio.<br>Il <em>resto dell'anno</em> paga le OTA.</h2>
+          <p class="pt-panel-intro">Lavori con margini schiacciati da Booking e Airbnb, prezzi che fai a sensazione, recensioni che ti tolgono il sonno, e un revenue manager non te lo puoi permettere. <strong>K-BOT ti dà la dashboard del revenue manager senza il revenue manager.</strong></p>
+
+          <div class="pt-pains">
+            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pain">Non so se ad agosto sto guadagnando bene o sto solo lavorando tanto.</div>
+            <div class="pt-pain">Booking si prende il 18%. Vorrei più diretto ma non so come.</div>
+            <div class="pt-pain">Bassa stagione vuota. Alta stagione che ho chi rifiuto. Niente in mezzo.</div>
+          </div>
+
+          <div class="pt-ladder-title">Il tuo percorso in 3 livelli</div>
+          <p class="pt-ladder-sub">Parti dal primo. Sali quando il caso lo giustifica. Niente ti obbliga a fare tutto subito.</p>
+
+          <div class="pt-ladder">
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 01 · Inizia qui</div>
+              <div class="pt-rung-name">K-BOT Pro</div>
+              <div class="pt-rung-meta">App di reportistica · 1 utente</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">49 €<span class="small">/mese</span></div>
+                <div class="pt-rung-price-unit">o 490 €/anno · 2 mesi gratis</div>
+              </div>
+              <ul>
+                <li>Pagella RevPAR mensile della tua struttura</li>
+                <li>Confronto con la mediana della tua zona</li>
+                <li>3 azioni operative ogni mese con impatto €</li>
+                <li>Heatmap stagionale + forecast 3 scenari</li>
+                <li>Report PDF da portare al commercialista</li>
+              </ul>
+              <a href="/app" class="pt-rung-cta">→ Prova gratis subito</a>
+            </div>
+            <div class="pt-rung featured">
+              <div class="pt-rung-num">Livello 02 · Più potente</div>
+              <div class="pt-rung-name">Pattern Hospitality</div>
+              <div class="pt-rung-meta">Sistema su misura · 1 progetto</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">5.900 €<span class="small"> una tantum</span></div>
+                <div class="pt-rung-price-unit">+ retainer 299 €/mese</div>
+              </div>
+              <ul>
+                <li>Pricing dinamico automatico per stagionalità</li>
+                <li>Analisi recensioni in tempo reale (tutte le OTA)</li>
+                <li>Email ricorrenti agli ospiti (preventiva e post)</li>
+                <li>Dashboard live RevPAR-ADR-OCC aggiornata ogni giorno</li>
+                <li>Integrazione con il tuo PMS attuale</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Vediamo se ha senso</a>
+            </div>
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 03 · Per chi cresce</div>
+              <div class="pt-rung-name">Custom Hospitality</div>
+              <div class="pt-rung-meta">Ecosistema completo</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">da 14k €</div>
+                <div class="pt-rung-price-unit">+ retainer da 600 €/mese</div>
+              </div>
+              <ul>
+                <li>Channel manager AI multi-OTA con bidding intelligente</li>
+                <li>Marketing automation cross-canale</li>
+                <li>CRM ospiti con segmentazione e LTV predittivo</li>
+                <li>Più strutture · multi-proprietà</li>
+                <li>KPI direzionali definiti pre go-live</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Parliamone</a>
+            </div>
+          </div>
+
+          <div class="pt-reality">
+            <div class="pt-rl-cell"><div class="pt-rl-num">+18%</div><div class="pt-rl-label">RevPAR in stagione bassa</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">−6h</div><div class="pt-rl-label">A settimana sul lavoro OTA</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">3 min</div><div class="pt-rl-label">Per generare la pagella mensile</div></div>
+          </div>
+
+          <div class="pt-helper">
+            <h4>Come capire quale livello fa per te</h4>
+            <div class="pt-helper-q">Hai meno di 8 camere e gestisci da solo?</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Pro</strong>. Ti basta per capire dove stai perdendo soldi e correggere prima della prossima stagione.</div>
+            <div class="pt-helper-q">Hai 8-25 camere, dipendi troppo dalle OTA e vuoi farlo come business serio?</div>
+            <div class="pt-helper-a">→ Vai a <strong>Pattern Hospitality</strong>. Recuperi il costo del progetto in 4-6 mesi con il margine in più.</div>
+            <div class="pt-helper-q">Hai più strutture o stai aprendo nuova location?</div>
+            <div class="pt-helper-a">→ Servirà <strong>Custom</strong>. Ma cominciamo con K-BOT per validare i dati prima di investire.</div>
+          </div>
+
+          <div class="pt-final-cta">
+            <h3>Il primo passo costa <em>zero euro</em>.</h3>
+            <p>Aprigli K-BOT, descrivi la tua struttura in due righe, ti genera la prima pagella RevPAR. Se vedi valore, paghi 49 € il mese successivo. Altrimenti hai imparato una cosa gratis sulla tua azienda.</p>
+            <div class="pt-final-ctas">
+              <a href="/app" class="pt-fcta-btn">Apri K-BOT gratis →</a>
+              <a href="/k-bot" class="pt-fcta-btn ghost">Scopri K-BOT</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFILO COMMERCIALISTA -->
+        <div class="pt-panel" id="pt-panel-commercialista">
+          <div class="pt-panel-eyebrow">Profilo 02 · Studio commercialista</div>
+          <h2 class="pt-panel-title">I clienti pagano lo studio per la <em>consulenza</em>.<br>Lo studio fa fatturazione.</h2>
+          <p class="pt-panel-intro">Hai 6 collaboratori che passano l'80% del tempo su LIPE, F24, bilanci, dichiarazioni — tutto lavoro a margine basso. Il poco tempo che resta per la consulenza è quello che paga davvero, ma non riesci a darlo. <strong>K2-AI sposta il bilanciamento dall'altra parte: meno minuti per pratica, più tempo per il cliente.</strong></p>
+
+          <div class="pt-pains">
+            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pain">I clienti chiedono consulenza, noi facciamo data entry.</div>
+            <div class="pt-pain">Non riesco a crescere: assumo, ma le marginalità non migliorano.</div>
+            <div class="pt-pain">Vorrei vendere check-up annuali ai clienti, ma non ho tempo di farli.</div>
+          </div>
+
+          <div class="pt-ladder-title">Il tuo percorso in 3 livelli</div>
+          <p class="pt-ladder-sub">Pensato per studi 3-15 persone che vogliono salire di posizionamento, non solo automatizzare.</p>
+
+          <div class="pt-ladder">
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 01 · Inizia qui</div>
+              <div class="pt-rung-name">K-BOT Studio</div>
+              <div class="pt-rung-meta">Team app · 5 utenti inclusi</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">199 €<span class="small">/mese</span></div>
+                <div class="pt-rung-price-unit">o 1.990 €/anno · 2 mesi gratis</div>
+              </div>
+              <ul>
+                <li>Pagella PMI da consegnare al cliente</li>
+                <li>Analisi bilancio con benchmark di settore</li>
+                <li>Check Transizione 5.0 + bandi PMI</li>
+                <li>100 report al mese condivisi tra collaboratori</li>
+                <li>Skill custom per il tuo studio (1/anno inclusa)</li>
+              </ul>
+              <a href="/app" class="pt-rung-cta">→ Prova gratis 14 giorni</a>
+            </div>
+            <div class="pt-rung featured">
+              <div class="pt-rung-num">Livello 02 · Più potente</div>
+              <div class="pt-rung-name">Pattern Studio Pro</div>
+              <div class="pt-rung-meta">Sistema integrato · 1 progetto</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">11.900 €<span class="small"> una tantum</span></div>
+                <div class="pt-rung-price-unit">+ retainer 599 €/mese</div>
+              </div>
+              <ul>
+                <li>Agente smistamento email clienti + classificazione</li>
+                <li>Estrazione automatica dati da fatture fornitori</li>
+                <li>RAG sui tuoi documenti normativi (TUIR, OIC, casi)</li>
+                <li>Dashboard direzionale studio (KPI clienti e collaboratori)</li>
+                <li>Integrazione con il tuo gestionale</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Diagnosi gratuita 30 min</a>
+            </div>
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 03 · Per chi scala</div>
+              <div class="pt-rung-name">Skillizzazione archivio</div>
+              <div class="pt-rung-meta">Trasforma lo studio in asset AI</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">da 18k €</div>
+                <div class="pt-rung-price-unit">+ retainer da 800 €/mese</div>
+              </div>
+              <ul>
+                <li>Codifica del know-how dello studio in 40-60 skill</li>
+                <li>Asset patrimoniale per passaggio generazionale</li>
+                <li>Studio interrogabile da tutti i collaboratori</li>
+                <li>Indipendenza da vendor AI (skill in formato standard)</li>
+                <li>Conforme AI Act + GDPR studi professionali</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Parliamone in call</a>
+            </div>
+          </div>
+
+          <div class="pt-reality">
+            <div class="pt-rl-cell"><div class="pt-rl-num">−40%</div><div class="pt-rl-label">Tempo data entry e fatturazione</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">+2,3h</div><div class="pt-rl-label">Per cliente al mese per consulenza</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">×3</div><div class="pt-rl-label">Pagelle annuali consegnate ai clienti</div></div>
+          </div>
+
+          <div class="pt-helper">
+            <h4>Come capire quale livello fa per te</h4>
+            <div class="pt-helper-q">Vuoi prima provare se la mia AI funziona per il tuo studio?</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. 199 € il mese, 14 giorni gratis. In 2 settimane hai consegnato 5 pagelle PMI ai tuoi clienti e capisci se il ritorno c'è.</div>
+            <div class="pt-helper-q">Hai un processo specifico che ti uccide (es. classificazione email, fatture)?</div>
+            <div class="pt-helper-a">→ <strong>Pattern Studio Pro</strong> ti risolve quel processo. Recuperi il costo in 5-7 mesi con le ore liberate.</div>
+            <div class="pt-helper-q">Stai pensando al passaggio generazionale o a vendere lo studio?</div>
+            <div class="pt-helper-a">→ <strong>Skillizzazione</strong>. Trasforma 30 anni di know-how in un asset valutabile.</div>
+          </div>
+
+          <div class="pt-final-cta">
+            <h3>Il primo cliente al quale dare la <em>pagella</em> lo decidi tu.</h3>
+            <p>Apri K-BOT Studio gratis per 14 giorni. Genera 5 pagelle PMI per i tuoi clienti migliori. Glielo invii a fine settimana con il tuo logo. Vedi che reazione hai.</p>
+            <div class="pt-final-ctas">
+              <a href="/app" class="pt-fcta-btn">Apri K-BOT gratis 14 giorni →</a>
+              <a href="/contatti" class="pt-fcta-btn ghost">Prenota call diagnosi 30 min</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFILO AVVOCATO -->
+        <div class="pt-panel" id="pt-panel-avvocato">
+          <div class="pt-panel-eyebrow">Profilo 03 · Studio legale</div>
+          <h2 class="pt-panel-title">Il tuo studio paga di più <em>chi rivede contratti</em><br>di chi vince cause.</h2>
+          <p class="pt-panel-intro">Le ore fatturate ai clienti sono sempre meno. Il tempo per cause complesse non è un'opzione: paghi ore che non puoi recuperare. Intanto i contratti M&amp;A standard, le diffide, i decreti ingiuntivi, le memorie di routine mangiano l'80% del tempo dello studio. <strong>L'AI italiana che capisce il diritto italiano cambia questa equazione.</strong></p>
+
+          <div class="pt-pains">
+            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pain">Una memoria difensiva ben fatta richiede 12 ore. Posso fatturarne 6.</div>
+            <div class="pt-pain">Ho 200 contratti standard da revisionare. Non posso assegnarli all'AI: rischio deontologico.</div>
+            <div class="pt-pain">I clienti vogliono pareri AI Act, NIS2, GDPR. Io non ne so abbastanza per fatturarli bene.</div>
+          </div>
+
+          <div class="pt-ladder-title">Il tuo percorso in 3 livelli</div>
+          <p class="pt-ladder-sub">Pensato per studi 2-12 avvocati con sensibilità deontologica. <strong>Tier 3 privacy</strong> di default: nessun dato cliente lascia mai l'ambiente protetto.</p>
+
+          <div class="pt-ladder">
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 01 · Inizia qui</div>
+              <div class="pt-rung-name">K-BOT Studio</div>
+              <div class="pt-rung-meta">Team app · 5 utenti</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">199 €<span class="small">/mese</span></div>
+                <div class="pt-rung-price-unit">o 1.990 €/anno · 2 mesi gratis</div>
+              </div>
+              <ul>
+                <li>Analisi clausole contrattuali con segnalazione anomalie</li>
+                <li>Ricerca giurisprudenziale assistita</li>
+                <li>Pareri preliminari diritto societario / IT law / privacy</li>
+                <li>Brief operativi per call clienti</li>
+                <li>Conforme AI Act + Codice Deontologico forense</li>
+              </ul>
+              <a href="/app" class="pt-rung-cta">→ Prova gratis 14 giorni</a>
+            </div>
+            <div class="pt-rung featured">
+              <div class="pt-rung-num">Livello 02 · Più potente</div>
+              <div class="pt-rung-name">Pattern Legal Pro</div>
+              <div class="pt-rung-meta">Sistema verticale · 1 progetto</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">11.900 €<span class="small"> una tantum</span></div>
+                <div class="pt-rung-price-unit">+ retainer 599 €/mese</div>
+              </div>
+              <ul>
+                <li>RAG sui tuoi precedenti e atti dello studio</li>
+                <li>Template automatici diffide, ingiuntivi, memorie</li>
+                <li>Architettura privacy on-premise / private cloud</li>
+                <li>Workflow di revisione con checkpoint umani</li>
+                <li>Integrazione con il tuo gestionale (Cliens, Giuffrè, ecc.)</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Diagnosi gratuita 30 min</a>
+            </div>
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 03 · Per chi scala</div>
+              <div class="pt-rung-name">Skillizzazione studio</div>
+              <div class="pt-rung-meta">Studio AI-ready</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">da 25k €</div>
+                <div class="pt-rung-price-unit">+ retainer da 1.200 €/mese</div>
+              </div>
+              <ul>
+                <li>Codifica del know-how legale in 60-100 skill</li>
+                <li>Asset valorizzabile in sede di cessione studio</li>
+                <li>Architettura tiered privacy per dati art. 9 GDPR</li>
+                <li>Modello locale Llama per casi sensibili</li>
+                <li>Conforme AI Act, GDPR, codice deontologico</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Parliamone in call</a>
+            </div>
+          </div>
+
+          <div class="pt-reality">
+            <div class="pt-rl-cell"><div class="pt-rl-num">−87%</div><div class="pt-rl-label">Tempo revisione contratti standard</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">×4</div><div class="pt-rl-label">Pareri AI Act / GDPR fatturabili</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">100%</div><div class="pt-rl-label">Dati cliente in ambiente controllato</div></div>
+          </div>
+
+          <div class="pt-helper">
+            <h4>Come capire quale livello fa per te</h4>
+            <div class="pt-helper-q">Vuoi prima testare la qualità dell'output legale italiano?</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. Provalo su 3 contratti M&amp;A standard, 2 pareri societari, 1 ricerca giurisprudenziale. In 14 giorni hai la risposta sulla qualità.</div>
+            <div class="pt-helper-q">Hai un workflow ricorrente che dovrebbe essere semi-automatico (template, memorie, diffide)?</div>
+            <div class="pt-helper-a">→ <strong>Pattern Legal Pro</strong> con architettura privacy on-premise.</div>
+            <div class="pt-helper-q">Tratti dati sensibili (art. 9 GDPR) o casi penali?</div>
+            <div class="pt-helper-a">→ Allora serve <strong>Skillizzazione</strong> con tier 3 privacy completo. È l'unica strada compatibile con il codice deontologico.</div>
+          </div>
+
+          <div class="pt-final-cta">
+            <h3>Le tre cose da chiarire <em>prima</em> di firmare.</h3>
+            <p>Riservatezza del dato cliente, conformità deontologica, qualità tecnica dell'output. Le affrontiamo nella diagnosi gratuita, prima ancora di parlare di prezzo. Se non vai d'accordo su questi tre punti, il progetto non parte.</p>
+            <div class="pt-final-ctas">
+              <a href="/app" class="pt-fcta-btn">Apri K-BOT gratis 14 giorni →</a>
+              <a href="/contatti" class="pt-fcta-btn ghost">Prenota diagnosi 30 min</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFILO INGEGNERE -->
+        <div class="pt-panel" id="pt-panel-ingegnere">
+          <div class="pt-panel-eyebrow">Profilo 04 · Studio ingegneria/architettura</div>
+          <h2 class="pt-panel-title">Il progetto vincente è già fatto.<br>Il problema è la <em>relazione</em> di 80 pagine.</h2>
+          <p class="pt-panel-intro">PSC, computi metrici, relazioni paesaggistiche, verifiche strutturali NTC, dossier per Genio Civile, pratiche edilizie: l'80% del lavoro che ti dà la firma è il documento, non il calcolo. Il calcolo lo fai in mezza giornata. Il documento ti porta via tre settimane. <strong>Qui K2-AI è già fortissima — perché l'abbiamo costruita per studi come il tuo.</strong></p>
+
+          <div class="pt-pains">
+            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pain">Calcolo strutturale in 1 giorno. Relazione di calcolo in 2 settimane.</div>
+            <div class="pt-pain">Pratiche edilizie diverse per ogni comune. Non posso fare un template.</div>
+            <div class="pt-pain">Le commesse TLC iliad sono ripetitive ma costano la stessa fatica di nuove.</div>
+          </div>
+
+          <div class="pt-ladder-title">Il tuo percorso in 3 livelli</div>
+          <p class="pt-ladder-sub">Skill verticali tecniche K2-AI già pronte: progettazione strutturale, MEP, PSC, TLC, beni monumentali, paesaggistico. Non parti da zero.</p>
+
+          <div class="pt-ladder">
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 01 · Inizia qui</div>
+              <div class="pt-rung-name">K-BOT Pro o Studio</div>
+              <div class="pt-rung-meta">App reportistica · 1-5 utenti</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">49-199 €<span class="small">/mese</span></div>
+                <div class="pt-rung-price-unit">in base a quanti siete</div>
+              </div>
+              <ul>
+                <li>Check edilizia express per ogni pratica</li>
+                <li>Check strutturale per edifici esistenti</li>
+                <li>Verifica PE iliad / Cellnex (qualità formale)</li>
+                <li>Analisi vincoli paesaggistici / monumentali</li>
+                <li>Capitolati e computi metrici automatizzati</li>
+              </ul>
+              <a href="/app" class="pt-rung-cta">→ Prova gratis 14 giorni</a>
+            </div>
+            <div class="pt-rung featured">
+              <div class="pt-rung-num">Livello 02 · Più potente</div>
+              <div class="pt-rung-name">Pattern Engineering</div>
+              <div class="pt-rung-meta">Sistema verticale · 1 progetto</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">5.900-11.900 €<span class="small"> una tantum</span></div>
+                <div class="pt-rung-price-unit">+ retainer da 299 €/mese</div>
+              </div>
+              <ul>
+                <li>BuildBoost: dalla pratica al cantiere</li>
+                <li>TLCBoost: PE iliad/Cellnex in 14 giorni</li>
+                <li>StructBoost: verifica statica + vulnerabilità sismica</li>
+                <li>SafetyBoost: PSC + DVR + formazione</li>
+                <li>Integrazione con i tuoi tool CAD/BIM</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Diagnosi gratuita 30 min</a>
+            </div>
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 03 · Per chi cresce</div>
+              <div class="pt-rung-name">Custom Engineering</div>
+              <div class="pt-rung-meta">Ecosistema studio</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">da 18k €</div>
+                <div class="pt-rung-price-unit">+ retainer da 800 €/mese</div>
+              </div>
+              <ul>
+                <li>Skillizzazione archivio progetti dello studio</li>
+                <li>Sistema multi-utente con ruoli (capo progetto, DL, CSE)</li>
+                <li>Integrazione gestionale + protocollazione PA</li>
+                <li>Verifiche normative automatiche per ogni comune</li>
+                <li>Conforme NTC 2018, CEI, DPR 380, D.Lgs. 42/2004</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Parliamone in call</a>
+            </div>
+          </div>
+
+          <div class="pt-reality">
+            <div class="pt-rl-cell"><div class="pt-rl-num">−70%</div><div class="pt-rl-label">Tempo redazione relazioni</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">14gg</div><div class="pt-rl-label">PE iliad completo (vs 6 settimane)</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">42h</div><div class="pt-rl-label">A settimana recuperate per studio tipo</div></div>
+          </div>
+
+          <div class="pt-helper">
+            <h4>Come capire quale livello fa per te</h4>
+            <div class="pt-helper-q">Studio piccolo (1-3 persone), commesse varie?</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Pro</strong>. Lo usi sulle pratiche più ripetitive, vedi dove fa più differenza.</div>
+            <div class="pt-helper-q">Hai una specializzazione (TLC, strutturale, paesaggistico) e vuoi industrializzarla?</div>
+            <div class="pt-helper-a">→ <strong>Pattern Engineering</strong> verticale per il tuo dominio. Recupero in 3-4 commesse.</div>
+            <div class="pt-helper-q">Studio 5+ persone con archivio importante e voglia di scalare?</div>
+            <div class="pt-helper-a">→ <strong>Custom Engineering</strong>. Lo studio diventa una macchina che produce 3x con lo stesso organico.</div>
+          </div>
+
+          <div class="pt-final-cta">
+            <h3>Sappiamo cosa significa <em>far passare la firma</em>.</h3>
+            <p>K2-AI nasce da un ingegnere che lavora in TLC, strutturale e progettazione. Non è una agenzia di marketing che ha sentito parlare di NTC. La diagnosi gratuita la fai con qualcuno che ha già consegnato il dossier che vuoi consegnare tu.</p>
+            <div class="pt-final-ctas">
+              <a href="/app" class="pt-fcta-btn">Apri K-BOT gratis →</a>
+              <a href="/contatti" class="pt-fcta-btn ghost">Prenota diagnosi tecnica 30 min</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFILO ARTIGIANO -->
+        <div class="pt-panel" id="pt-panel-artigiano">
+          <div class="pt-panel-eyebrow">Profilo 05 · Artigiano / piccola impresa</div>
+          <h2 class="pt-panel-title">Hai imparato il mestiere in 20 anni.<br>Adesso passi 12 ore a fare <em>preventivi</em>.</h2>
+          <p class="pt-panel-intro">Falegname, idraulico, elettricista, piccola impresa edile, officina, lavoreria meccanica. Sei bravo nel tuo lavoro. Il problema non è il lavoro: è tutto quello che ci sta intorno — preventivi, ordini, fatture, follow-up clienti, gestione fornitori, MEPA. <strong>K2-AI ti toglie quei pesi senza chiederti di imparare niente di AI.</strong></p>
+
+          <div class="pt-pains">
+            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pain">I clienti vogliono il preventivo entro stasera. Io ho il cantiere fino alle 18.</div>
+            <div class="pt-pain">Ho perso 3 lavori il mese scorso perché non ho risposto in tempo.</div>
+            <div class="pt-pain">Mia moglie fa la fatturazione la domenica. Non può continuare così.</div>
+          </div>
+
+          <div class="pt-ladder-title">Il tuo percorso · semplificato</div>
+          <p class="pt-ladder-sub">Per te niente progetti complicati. Una cosa alla volta, che funziona da subito. Niente di tecnico da imparare: tu parli, K-BOT scrive.</p>
+
+          <div class="pt-ladder">
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 01 · Provalo</div>
+              <div class="pt-rung-name">K-BOT Pro</div>
+              <div class="pt-rung-meta">App semplice · 1 utente</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">49 €<span class="small">/mese</span></div>
+                <div class="pt-rung-price-unit">14 giorni gratis · niente carta di credito</div>
+              </div>
+              <ul>
+                <li>Detti il preventivo, lui te lo scrive in PDF</li>
+                <li>Risposta automatica alle email dei clienti</li>
+                <li>Promemoria scadenze e fatturazione</li>
+                <li>Trovi i bandi e i crediti d'imposta per la tua attività</li>
+                <li>Niente da installare: si usa dal telefono</li>
+              </ul>
+              <a href="/app" class="pt-rung-cta">→ Prova adesso</a>
+            </div>
+            <div class="pt-rung featured">
+              <div class="pt-rung-num">Livello 02 · Quando ti serve di più</div>
+              <div class="pt-rung-name">Pattern Artigiano</div>
+              <div class="pt-rung-meta">Sistema su misura</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">2.900 €<span class="small"> una tantum</span></div>
+                <div class="pt-rung-price-unit">+ retainer 149 €/mese</div>
+              </div>
+              <ul>
+                <li>Agente che risponde ai clienti su WhatsApp 24/7</li>
+                <li>Listino prezzi dinamico (materiali, tempi, manodopera)</li>
+                <li>Fatturazione automatica con il tuo gestionale</li>
+                <li>Follow-up automatico dei preventivi inviati</li>
+                <li>Setup completo: te lo installiamo noi</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Parla con noi 20 min</a>
+            </div>
+            <div class="pt-rung">
+              <div class="pt-rung-num">Bonus · Sconto agevolazioni</div>
+              <div class="pt-rung-name">Transizione 5.0</div>
+              <div class="pt-rung-meta">Recuperi fino al 45%</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">−45%</div>
+                <div class="pt-rung-price-unit">credito d'imposta MIMIT</div>
+              </div>
+              <ul>
+                <li>Il Pattern Artigiano da 2.900 € → 1.595 € reali</li>
+                <li>Tramite credito d'imposta automatico</li>
+                <li>Pratica preparata dal tuo commercialista</li>
+                <li>O dal nostro partner se vuoi</li>
+                <li>Domanda al MIMIT, conferma in 30-60 giorni</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Verifica se ne hai diritto</a>
+            </div>
+          </div>
+
+          <div class="pt-reality">
+            <div class="pt-rl-cell"><div class="pt-rl-num">12h</div><div class="pt-rl-label">A settimana liberate in media</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">+28%</div><div class="pt-rl-label">Preventivi vinti (perché rispondi prima)</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">4 mesi</div><div class="pt-rl-label">Per recuperare l'investimento</div></div>
+          </div>
+
+          <div class="pt-helper">
+            <h4>Come capire se fa per te</h4>
+            <div class="pt-helper-q">Lavori da solo o con 1-2 collaboratori?</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Pro</strong>. Lo usi dal telefono. Niente computer, niente corsi.</div>
+            <div class="pt-helper-q">Sei piccola impresa con 3-10 dipendenti e perdi preventivi?</div>
+            <div class="pt-helper-a">→ <strong>Pattern Artigiano</strong>. In 4 mesi recuperi il costo solo con i preventivi che oggi perdi.</div>
+            <div class="pt-helper-q">Vuoi sapere se hai diritto al credito d'imposta Transizione 5.0?</div>
+            <div class="pt-helper-a">→ Te lo verifichiamo gratis in <strong>15 minuti</strong>. Se sì, paghi meno della metà.</div>
+          </div>
+
+          <div class="pt-final-cta">
+            <h3>Non serve sapere niente di <em>AI</em>.</h3>
+            <p>Tu dici "fammi il preventivo per la signora Bianchi: rifacimento bagno, due settimane, materiale incluso". Lui te lo scrive. Tu controlli, firmi, mandi. Punto. Se sai usare WhatsApp sai usare K-BOT.</p>
+            <div class="pt-final-ctas">
+              <a href="/app" class="pt-fcta-btn">Prova gratis 14 giorni →</a>
+              <a href="/contatti" class="pt-fcta-btn ghost">Chiamaci 20 min</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFILO PMI -->
+        <div class="pt-panel" id="pt-panel-pmi">
+          <div class="pt-panel-eyebrow">Profilo 06 · PMI manifatturiera</div>
+          <h2 class="pt-panel-title">Hai 35 dipendenti. <em>15 di loro</em><br>fanno lavoro ripetitivo digitale.</h2>
+          <p class="pt-panel-intro">Ufficio acquisti, amministrazione, customer service, preventivi commerciali, qualità, logistica. Il prodotto lo fai bene da 20 anni. La macchina amministrativa intorno è cresciuta più del prodotto. Non puoi più assumere — i margini non lo permettono e trovare gente brava è un incubo. <strong>K2-AI è il modo strutturato per crescere senza assumere.</strong></p>
+
+          <div class="pt-pains">
+            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pain">Il fatturato cresce del 12%. I margini calano del 3. Stiamo lavorando per assumere.</div>
+            <div class="pt-pain">La direzione opera senza dati. Decidiamo "a sensazione". Nel 2026.</div>
+            <div class="pt-pain">Il gestionale è del 2009. Non posso cambiarlo, ci ho dentro 15 anni di dati.</div>
+          </div>
+
+          <div class="pt-ladder-title">Il tuo percorso · serio</div>
+          <p class="pt-ladder-sub">Pensato per PMI 10-50 dipendenti dove il decisore è il titolare/CdA. Tempi più lunghi, KPI definiti pre go-live, ROI 4-12 mesi.</p>
+
+          <div class="pt-ladder">
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 01 · Esplora</div>
+              <div class="pt-rung-name">K-BOT Studio</div>
+              <div class="pt-rung-meta">Team · 5 utenti</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">199 €<span class="small">/mese</span></div>
+                <div class="pt-rung-price-unit">o 1.990 €/anno · 2 mesi gratis</div>
+              </div>
+              <ul>
+                <li>Cruscotto direzionale mensile con KPI</li>
+                <li>Analisi bilancio + benchmark settore</li>
+                <li>Check agevolazioni e bandi PMI 2026</li>
+                <li>Analisi mercato e competitor</li>
+                <li>Strumento di esplorazione dei casi d'uso AI</li>
+              </ul>
+              <a href="/app" class="pt-rung-cta">→ Prova 14 giorni gratis</a>
+            </div>
+            <div class="pt-rung featured">
+              <div class="pt-rung-num">Livello 02 · Industrializza</div>
+              <div class="pt-rung-name">Pattern Industrial</div>
+              <div class="pt-rung-meta">Sistema su misura · 1 processo</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">11.900 €<span class="small"> una tantum</span></div>
+                <div class="pt-rung-price-unit">+ retainer 599 €/mese</div>
+              </div>
+              <ul>
+                <li>Automation di 1 processo ad alto volume</li>
+                <li>Esempi: preventivi, fatture fornitori, customer service, qualità</li>
+                <li>Integrazione con il gestionale esistente</li>
+                <li>KPI di successo definiti pre go-live</li>
+                <li>Formazione del team direttamente coinvolto</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Diagnosi gratuita 30 min</a>
+            </div>
+            <div class="pt-rung">
+              <div class="pt-rung-num">Livello 03 · Scala</div>
+              <div class="pt-rung-name">Custom Industrial</div>
+              <div class="pt-rung-meta">Ecosistema multi-processo</div>
+              <div class="pt-rung-price">
+                <div class="pt-rung-price-amount">da 25k €</div>
+                <div class="pt-rung-price-unit">+ retainer da 1.200 €/mese</div>
+              </div>
+              <ul>
+                <li>Ecosistema multi-processo (3-5 aree integrate)</li>
+                <li>Agenti AI per ufficio acquisti, vendite, qualità</li>
+                <li>Dashboard direzionale real-time</li>
+                <li>Skillizzazione del know-how aziendale</li>
+                <li>Compatibile Transizione 5.0 (sconto 35-45%)</li>
+              </ul>
+              <a href="/contatti" class="pt-rung-cta">→ Parliamone in call</a>
+            </div>
+          </div>
+
+          <div class="pt-reality">
+            <div class="pt-rl-cell"><div class="pt-rl-num">−40%</div><div class="pt-rl-label">Tempo processo amministrativo</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">+28%</div><div class="pt-rl-label">Conversione preventivi commerciali</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">3-7</div><div class="pt-rl-label">Mesi di payback medio</div></div>
+          </div>
+
+          <div class="pt-helper">
+            <h4>Come capire quale livello fa per te</h4>
+            <div class="pt-helper-q">Non sei sicuro se l'AI ti serva, vuoi vedere prima cosa succede?</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. Lo usi 60 giorni, ti porta KPI direzionali, capisci dove ha senso investire.</div>
+            <div class="pt-helper-q">Hai un processo ripetitivo che assorbe 1-2 persone full-time?</div>
+            <div class="pt-helper-a">→ <strong>Pattern Industrial</strong> su quel processo. Recuperi in 5-7 mesi se la persona costa ≥ 35k €/anno.</div>
+            <div class="pt-helper-q">Vuoi trasformare l'azienda in un anno e crescere senza assumere?</div>
+            <div class="pt-helper-a">→ <strong>Custom Industrial</strong>. Definiamo KPI a 12 mesi prima di partire, con sconto Transizione 5.0.</div>
+          </div>
+
+          <div class="pt-final-cta">
+            <h3>I numeri prima del progetto, sempre.</h3>
+            <p>Quanto costa la persona che oggi fa quel lavoro. Quante ore al mese. Cosa potrebbe fare invece se non lo facesse. Si definisce questo prima del preventivo. Se non torna come business case, te lo diciamo prima — non a metà progetto.</p>
+            <div class="pt-final-ctas">
+              <a href="/contatti" class="pt-fcta-btn">Prenota call diagnosi 30 min →</a>
+              <a href="/app" class="pt-fcta-btn ghost">Prova K-BOT 14 giorni</a>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /pt-result-zone -->
+
+      <div class="pt-reset-link">
+        <a onclick="ptReset()">↺ Cambia profilo</a>
+      </div>
+
+    </div><!-- /pt-container -->
+
+    <footer>
+      <div class="footer-inner footer-inner-legal">
+        <span class="footer-logo"><img src="./logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI"></span>
+        <ul class="footer-links">
+          <li><a href="/metodo">Metodo</a></li>
+          <li><a href="/laboratorio">Laboratorio</a></li>
+          <li><a href="/k-bot">K-BOT</a></li>
+          <li><a href="/per-te">Per te</a></li>
+          <li><a href="/suite-ai">Suite AI</a></li>
+          <li><a href="/newsletter">Newsletter</a></li>
+          <li><a href="/contatti">Contatti</a></li>
+        </ul>
+        <ul class="footer-legal-links">
+          <li><a href="/privacy">Privacy</a></li>
+          <li><a href="/cookie">Cookie</a></li>
+          <li><a href="/note-legali">Note legali</a></li>
+        </ul>
+        <span class="footer-copy">© 2025 K2-AI</span>
+      </div>
+    </footer>
+  </div><!-- /per-te-wrapper -->
+
+  <script type="module" src="./js/nav.js"></script>
+
+  <script>
+    let ptCurrentProfile = null;
+
+    function ptSelectProfile(profile, button) {
+      document.querySelectorAll('.pt-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('pt-empty-state').style.display = 'none';
+      document.querySelectorAll('.pt-profile-card').forEach(c => c.classList.remove('active'));
+      button.classList.add('active');
+      const panel = document.getElementById('pt-panel-' + profile);
+      if (panel) {
+        panel.classList.add('active');
+        ptCurrentProfile = profile;
+        setTimeout(() => {
+          panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+      /* PostHog tracking */
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('profile_selected', {
+          profile_type: profile,
+          page_source: document.referrer || 'direct'
+        });
+      }
+    }
+
+    function ptReset() {
+      document.querySelectorAll('.pt-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.pt-profile-card').forEach(c => c.classList.remove('active'));
+      document.getElementById('pt-empty-state').style.display = 'block';
+      ptCurrentProfile = null;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+
+  <!-- Deep-link via query string -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const preselect = params.get('profilo');
+      if (preselect) {
+        const validProfiles = ['hospitality', 'commercialista', 'avvocato', 'ingegnere', 'artigiano', 'pmi'];
+        if (validProfiles.includes(preselect)) {
+          const btn = document.querySelector(`[data-profile="${preselect}"]`);
+          if (btn) btn.click();
+        }
+      }
+    });
+  </script>
+  <script type="module" src="./js/nav.js"></script>
+  <script type="module" src="./js/k2-immersive.js"></script>
+
+</body>
+</html>

@@ -45,7 +45,7 @@ export function Composer({
         {files.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2 px-1">
             {files.map((f) => (
-              <span key={f.fileId} className="rounded-full border border-[var(--line)] px-2 py-1 text-xs text-[var(--text-soft)]">
+              <span key={f.path} className="rounded-full border border-[var(--line)] px-2 py-1 text-xs text-[var(--text-soft)]">
                 {f.name}
               </span>
             ))}

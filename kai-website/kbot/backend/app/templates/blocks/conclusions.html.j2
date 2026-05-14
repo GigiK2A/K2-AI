@@ -1,0 +1,25 @@
+<section class="block-card">
+  <div class="block-title">{{ block.title or 'Conclusioni e Raccomandazioni' }}</div>
+  <div class="conclusions-grid">
+    <div>
+      {% if block.left.heading %}<div class="concl-heading variant-{{ block.left.heading_variant or 'neutral' }}">{{ block.left.heading }}</div>{% endif %}
+      <div class="concl-body">{{ block.left.body_html | safe }}</div>
+      {% if block.left.callout %}
+      <div class="callout tone-{{ block.left.callout.tone or 'warning' }}" style="margin-top: 4mm;">
+        {% if block.left.callout.label %}<span class="callout-label">{{ block.left.callout.label }}:</span> {% endif %}{{ block.left.callout.body }}
+      </div>
+      {% endif %}
+    </div>
+    <div>
+      {% if block.right.heading %}<div class="col-heading">{{ block.right.heading }}</div>{% endif %}
+      <div class="milestone-stack">
+        {% for m in block.right.milestones %}
+        <div class="milestone tone-{{ m.tone or 'neutral' }}">
+          <div class="milestone-label">{{ m.label }}</div>
+          <ul>{% for it in m['items'] %}<li>{{ it }}</li>{% endfor %}</ul>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>

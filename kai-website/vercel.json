@@ -32,20 +32,9 @@
       "source": "/workshop.html",
       "destination": "/suite-ai.html",
       "permanent": true
-    },
-    {
-      "source": "/k-bot",
-      "destination": "/app",
-      "permanent": true
-    },
-    {
-      "source": "/k-bot.html",
-      "destination": "/app",
-      "permanent": true
     }
   ],
   "rewrites": [
-    { "source": "/app", "destination": "/app.html" },
     { "source": "/suite-ai/services", "destination": "/api/suite-ai/services" },
     { "source": "/suite-ai/services/:id", "destination": "/api/suite-ai/services/:id" },
     { "source": "/kbot/session", "destination": "/api/kbot/session" },

@@ -1,23 +1,11 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseAuthConfigured, supabase } from "@/lib/supabase";
+import { createSession, linkSessionToUser, type KbotSession, type Mode } from "@/lib/api";
 
-type AuthContextValue = {
-  configured: boolean;
-  loading: boolean;
-  user: User | null;
-  session: Session | null;
-  isSignedIn: boolean;
-  hasPaid: boolean;
-  getToken: () => Promise<string | null>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, profile: SignUpProfile) => Promise<void>;
-  signOut: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+const STORAGE_KEY = "kbot.session_id";
 
 export type SignUpProfile = {
   firstName: string;
@@ -29,19 +17,48 @@ export type SignUpProfile = {
   marketingAccepted: boolean;
 };
 
-function readHasPaid(user: User | null) {
+type AppContextValue = {
+  /* auth */
+  configured: boolean;
+  loading: boolean;
+  user: User | null;
+  session: Session | null;
+  isSignedIn: boolean;
+  hasPaid: boolean;
+  getToken: () => Promise<string | null>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, profile: SignUpProfile) => Promise<void>;
+  signOut: () => Promise<void>;
+  /* kbot session */
+  kbotSessionId: string | null;
+  kbotSession: KbotSession | null;
+  ensureSession: (opts?: { mode?: Mode; serviceId?: string }) => Promise<KbotSession>;
+  resetSession: () => void;
+};
+
+const AppContext = createContext<AppContextValue | null>(null);
+
+function readHasPaid(user: User | null): boolean {
   if (!user) return false;
   const metadata = {
     ...(user.app_metadata ?? {}),
     ...(user.user_metadata ?? {}),
   } as { has_paid?: unknown; premium?: unknown };
-  return metadata.has_paid === true || metadata.has_paid === "true" || metadata.premium === true || metadata.premium === "true";
+  return (
+    metadata.has_paid === true ||
+    metadata.has_paid === "true" ||
+    metadata.premium === true ||
+    metadata.premium === "true"
+  );
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(isSupabaseAuthConfigured);
+  const [kbotSession, setKbotSession] = useState<KbotSession | null>(null);
+  const linkingRef = useRef<string | null>(null);
 
+  /* ---------- Supabase auth bootstrap ---------- */
   useEffect(() => {
     if (!isSupabaseAuthConfigured) return;
 
@@ -101,7 +118,80 @@ export function Providers({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
-  const value = useMemo<AuthContextValue>(() => {
+  /* ---------- Kbot session lifecycle ---------- */
+  const persistSessionId = useCallback((id: string | null) => {
+    if (typeof window === "undefined") return;
+    if (id) window.localStorage.setItem(STORAGE_KEY, id);
+    else window.localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
+  const ensureSession = useCallback(
+    async (opts?: { mode?: Mode; serviceId?: string }) => {
+      if (kbotSession) return kbotSession;
+      const token = await getToken();
+      const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
+      if (stored) {
+        // Trust the stored id; we'll refresh on first /message round-trip if stale.
+        const placeholder: KbotSession = {
+          id: stored,
+          serviceId: opts?.serviceId ?? null,
+          mode: opts?.mode ?? "report",
+          messages: [],
+          extractedData: {},
+          summary: null,
+          recommendedServiceId: null,
+          recommendedServiceName: null,
+          recommendedTier: null,
+          status: "active",
+          pdfUrl: null,
+          hasUser: false,
+          timestamps: { createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        };
+        setKbotSession(placeholder);
+        return placeholder;
+      }
+      const fresh = await createSession({
+        mode: opts?.mode ?? "report",
+        serviceId: opts?.serviceId,
+        authToken: token,
+      });
+      setKbotSession(fresh);
+      persistSessionId(fresh.id);
+      return fresh;
+    },
+    [getToken, kbotSession, persistSessionId],
+  );
+
+  const resetSession = useCallback(() => {
+    setKbotSession(null);
+    persistSessionId(null);
+  }, [persistSessionId]);
+
+  /* When the user signs in and there's an unlinked anon session, link it. */
+  useEffect(() => {
+    const user = session?.user;
+    if (!user || !kbotSession || kbotSession.hasUser) return;
+    if (linkingRef.current === kbotSession.id) return;
+    linkingRef.current = kbotSession.id;
+    (async () => {
+      const token = await getToken();
+      if (!token) return;
+      try {
+        const linked = await linkSessionToUser(kbotSession.id, token);
+        setKbotSession(linked);
+      } catch (err) {
+        // 409 = already linked to a different user; drop our stale id so a fresh anon session can start.
+        console.warn("link session failed:", err);
+        if (String(err).includes("409") || String(err).toLowerCase().includes("already linked")) {
+          resetSession();
+        }
+      } finally {
+        linkingRef.current = null;
+      }
+    })();
+  }, [getToken, kbotSession, resetSession, session]);
+
+  const value = useMemo<AppContextValue>(() => {
     const user = session?.user ?? null;
     return {
       configured: isSupabaseAuthConfigured,
@@ -114,14 +204,28 @@ export function Providers({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
+      kbotSessionId: kbotSession?.id ?? null,
+      kbotSession,
+      ensureSession,
+      resetSession,
     };
-  }, [getToken, loading, session, signIn, signOut, signUp]);
+  }, [
+    ensureSession,
+    getToken,
+    kbotSession,
+    loading,
+    resetSession,
+    session,
+    signIn,
+    signOut,
+    signUp,
+  ]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
 export function useKbotAuth() {
-  const value = useContext(AuthContext);
+  const value = useContext(AppContext);
   if (!value) throw new Error("useKbotAuth must be used inside Providers");
   return value;
 }

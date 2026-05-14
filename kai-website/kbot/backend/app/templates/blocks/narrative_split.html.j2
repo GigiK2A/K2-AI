@@ -1,0 +1,20 @@
+<section class="block-card">
+  <div class="block-title">{{ block.title }}</div>
+  <div class="two-col">
+    <div>
+      {% if block.left.heading %}<div class="col-heading">{{ block.left.heading }}</div>{% endif %}
+      {% if block.left.body_html %}<div class="col-body">{{ block.left.body_html | safe }}</div>{% endif %}
+      {% if block.left.card %}
+      <div class="inset-card">
+        {% if block.left.card.heading %}<div class="inset-card-heading">{{ block.left.card.heading }}</div>{% endif %}
+        {{ block.left.card.body_html | safe }}
+      </div>
+      {% endif %}
+      {% if block.left.footnote %}<div class="col-footnote">{{ block.left.footnote }}</div>{% endif %}
+    </div>
+    <div>
+      {% if block.right.heading %}<div class="col-heading">{{ block.right.heading }}</div>{% endif %}
+      {% if block.right.body_html %}<div class="col-body">{{ block.right.body_html | safe }}</div>{% endif %}
+    </div>
+  </div>
+</section>

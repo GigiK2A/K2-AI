@@ -1,0 +1,13 @@
+<section class="block-card">
+  <div class="block-title">{{ block.title }}</div>
+  {% if block.intro %}<div class="block-intro">{{ block.intro }}</div>{% endif %}
+  <div class="action-grid">
+    {% for item in block['items'] %}
+    <div class="action-row">
+      <div class="action-num">{{ item.index or loop.index }}</div>
+      <div class="action-title">{{ item.title }}</div>
+      {% if item.meta %}<div class="action-meta">{{ item.meta }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>

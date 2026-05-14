@@ -7,3 +7,17 @@ dist/
 *.local
 .vercel
 *.zip
+
+# Backend archive (kept locally for reference, not deployed)
+kbot/backend.old/
+
+# Python venv inside backend
+kbot/backend/.venv/
+
+# Test PDFs / HTML outputs
+src/public/k2ai-report-test.*
+src/public/k2ai-live-*
+
+# Python cache
+__pycache__/
+*.pyc

@@ -1,3 +1,5 @@
+import type { UploadedFile as ApiUploadedFile } from "@/lib/api";
+
 export type Mode = "lead" | "report";
 
 export type SkillSummary = {
@@ -5,26 +7,22 @@ export type SkillSummary = {
   name: string;
 };
 
+/** Re-export for legacy components that imported UploadedFile from "@/types/chat". */
+export type UploadedFile = ApiUploadedFile;
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   ts: number;
-  attachments?: UploadedFile[];
+  attachments?: ApiUploadedFile[];
+  /** Set true when the assistant emitted the V2 summary block — UI shows the "Scarica PDF" CTA. */
+  reportReady?: boolean;
+  /** Server-side kbot_sessions.id, attached to assistant messages once known. */
+  sessionId?: string;
+  /** Pre-generated PDF URL (if backend returned it inline). Usually null until checkout. */
   reportPdfUrl?: string | null;
-  reportPdfDownloadUrl?: string | null;
-  reportPdfFilename?: string | null;
-  reportHtmlUrl?: string | null;
-  reportHtmlDownloadUrl?: string | null;
   hasPaid?: boolean;
-};
-
-export type UploadedFile = {
-  fileId: string;
-  name: string;
-  mimeType: string;
-  size: number;
-  preview: string;
 };
 
 export type Conversation = {
@@ -32,21 +30,4 @@ export type Conversation = {
   title: string;
   mode: Mode;
   messages: ChatMessage[];
-};
-
-export type ChatApiResponse = {
-  answer?: string;
-  usedSkills?: string[];
-  reportPdfUrl?: string | null;
-  reportPdfDownloadUrl?: string | null;
-  reportPdfFilename?: string | null;
-  reportHtmlUrl?: string | null;
-  reportHtmlDownloadUrl?: string | null;
-  detail?: string;
-};
-
-export type FeedbackPayload = {
-  reportId: string;
-  rating: number;
-  comment: string;
 };

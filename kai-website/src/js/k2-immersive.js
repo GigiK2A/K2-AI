@@ -1,7 +1,7 @@
 import { canRunHeavyGraphics, hasFinePointer, prefersReducedMotion } from './runtime-guards.js'
 
 const body = document.body
-const eligible = ['method-page', 'workshop-page', 'cases-page', 'analysis-page', 'contact-page', 'legal-page', 'suite-ai-page']
+const eligible = ['method-page', 'workshop-page', 'cases-page', 'analysis-page', 'contact-page', 'legal-page', 'suite-ai-page', 'per-te-page']
 const page = eligible.find(cls => body.classList.contains(cls))
 const reducedMotion = prefersReducedMotion()
 const hasPointer = hasFinePointer()
@@ -107,7 +107,7 @@ async function initAmbientScene(pageName) {
   const root = new THREE.Group()
   scene.add(root)
 
-  const palette = getPalette(pageName)
+  const palette = getPalette()
   const nodeCount = pageName === 'analysis-page' || pageName === 'contact-page' ? 62 : 96
   const positions = []
   const nodeGeo = new THREE.TetrahedronGeometry(0.42, 0)
@@ -215,15 +215,8 @@ async function initAmbientScene(pageName) {
   }
 }
 
-function getPalette(pageName) {
-  const palettes = {
-    'method-page': { hub: 0x58f0d7, accent: 0x8fd8ff, node: 0xc8d2d8, line: 0x8fd8ff, ring: 0x58f0d7 },
-    'workshop-page': { hub: 0x8fd8ff, accent: 0x58f0d7, node: 0xd8e6ea, line: 0x58f0d7, ring: 0x8fd8ff },
-    'cases-page': { hub: 0xb7ff5e, accent: 0x58f0d7, node: 0xc8d2d8, line: 0x58f0d7, ring: 0xb7ff5e },
-    'analysis-page': { hub: 0x58f0d7, accent: 0x8fd8ff, node: 0xe4eef2, line: 0x58f0d7, ring: 0x58f0d7 },
-    'contact-page': { hub: 0x8fd8ff, accent: 0x58f0d7, node: 0xc8d2d8, line: 0x8fd8ff, ring: 0x8fd8ff },
-  }
-  return palettes[pageName] || palettes['method-page']
+function getPalette() {
+  return { hub: 0x8fa2aa, accent: 0xc8b49a, node: 0x2e3e48, line: 0x1e2e38, ring: 0x8fa2aa }
 }
 
 function getPosition(pageName, i, total) {
