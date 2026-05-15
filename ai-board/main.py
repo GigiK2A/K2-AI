@@ -9,7 +9,7 @@ from rich.panel import Panel
 
 from core.config import settings, supabase_configured
 from core.memory import load_memory
-from db.client import get_client
+from db.client import get_service_client
 
 console = Console()
 
@@ -25,7 +25,9 @@ async def startup_checks() -> None:
     if supabase_configured():
         logger.info("Verifica connessione Supabase...")
         try:
-            client = get_client()
+            # Use service-role client (bypasses RLS). Anon key is RLS-denied by design
+            # since migration 005_enable_rls.sql (deny-all-anon policies).
+            client = get_service_client()
             client.table("shared_memory").select("key").limit(1).execute()
             logger.success("Supabase: connesso")
         except Exception as exc:
