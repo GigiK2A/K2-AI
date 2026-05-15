@@ -28,7 +28,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    INTERNAL_API_URL=http://127.0.0.1:8000 \
+    INTERNAL_API_URL=http://127.0.0.1:8765 \
+    INTERNAL_API_PORT=8765 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # System deps: ca-certs (TLS), curl (healthcheck), Node 20 (for Next.js server.js)

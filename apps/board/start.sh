@@ -5,10 +5,12 @@
 set -e
 
 : "${PORT:=3000}"
+: "${INTERNAL_API_PORT:=8765}"
 
 # Start FastAPI in background, bound to loopback only.
+# Port 8765 chosen to avoid collision with whatever $PORT Railway/user pick (often 8000 or 3000).
 cd /app/backend
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --log-level warning &
+uvicorn app.main:app --host 127.0.0.1 --port "$INTERNAL_API_PORT" --log-level warning &
 API_PID=$!
 
 # Give uvicorn a moment to bind before Next.js starts proxying to it.
