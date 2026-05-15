@@ -67,6 +67,17 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
         else "nessun allegato"
     )
 
+    analyzed_urls = collected.get("analyzed_urls") or []
+    url_context = ""
+    if analyzed_urls:
+        url_lines = []
+        for u in analyzed_urls[-3:]:  # last 3 only
+            summary = str(u.get("summary") or u.get("url") or "").strip()
+            if summary:
+                url_lines.append(f"- {summary[:600]}")
+        if url_lines:
+            url_context = "\nURL ANALIZZATI DALL'UTENTE:\n" + "\n".join(url_lines) + "\n"
+
     next_step_hint = (
         "Apri il servizio Suite consigliato se il caso combacia; altrimenti compila il form contatti precompilato per definire il perimetro custom"
         if mode == "lead"
@@ -75,7 +86,7 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
 
     base_prompt = f"""Sei K-BOT, il consulente AI di K2-AI per PMI italiane.
 Il tuo ruolo: capire il problema operativo dell'utente con domande naturali, raccogliere il contesto necessario, poi produrre un riepilogo strutturato.
-{service_context}
+{service_context}{url_context}
 COMPORTAMENTO:
 - Fai UNA sola domanda per volta, specifica e contestuale a ciò che l'utente ha già detto
 - Se l'utente ha già risposto a qualcosa, non richiederlo
