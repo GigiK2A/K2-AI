@@ -263,37 +263,9 @@
 
   <script type="module" src="./js/nav.js"></script>
   <script type="module" src="./js/k2-immersive.js"></script>
-  <script type="module">
-    import { initSuiteAiServices } from './js/suite-ai-services.js'
-    import { initSuiteAiHeroBg } from './js/suite-ai-hero-bg.js'
-    try { initSuiteAiHeroBg('sas-hero-canvas') } catch (_) {}
-    initSuiteAiServices()
-  </script>
+  <script type="module" src="./js/suite-ai-init.js"></script>
   <script type="module" src="./js/kbot-react-entry.tsx"></script>
-  <script>
-    // Cross-bot bridge: reveal "Continua su K-BOT Premium" once the site
-    // widget has created a session (key written by components/kbot/KBot.tsx).
-    (function () {
-      const bridge = document.getElementById('kbot-premium-bridge')
-      const cta = document.getElementById('kbot-premium-bridge-cta')
-      if (!bridge || !cta) return
-      function refresh() {
-        try {
-          const sid = sessionStorage.getItem('kbot.site_session_id')
-          if (sid && sid.length > 8) {
-            cta.setAttribute('href', '/app/?continue=' + encodeURIComponent(sid))
-            bridge.hidden = false
-          } else {
-            bridge.hidden = true
-          }
-        } catch (_) { /* ignore */ }
-      }
-      refresh()
-      window.addEventListener('storage', refresh)
-      // sessionStorage doesn't fire 'storage' in the same tab — poll lightly.
-      setInterval(refresh, 1500)
-    })()
-  </script>
+  <script type="module" src="./js/kbot-premium-bridge.js"></script>
 
 </body>
 </html>

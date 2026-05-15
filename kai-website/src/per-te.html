@@ -613,42 +613,42 @@
 
       <div class="pt-profile-grid">
 
-        <button class="pt-profile-card" data-profile="hospitality" onclick="ptSelectProfile('hospitality', this)">
+        <button class="pt-profile-card" data-profile="hospitality" data-pt-action="select">
           <span class="pc-icon">⌂</span>
           <span class="pc-num">Profilo 01</span>
           <div class="pc-title">Hospitality</div>
           <div class="pc-meta">Hotel · Agriturismo · B&amp;B · Affitti brevi</div>
         </button>
 
-        <button class="pt-profile-card" data-profile="commercialista" onclick="ptSelectProfile('commercialista', this)">
+        <button class="pt-profile-card" data-profile="commercialista" data-pt-action="select">
           <span class="pc-icon">§</span>
           <span class="pc-num">Profilo 02</span>
           <div class="pc-title">Studio commercialista</div>
           <div class="pc-meta">Contabilità · Fiscale · Consulenza</div>
         </button>
 
-        <button class="pt-profile-card" data-profile="avvocato" onclick="ptSelectProfile('avvocato', this)">
+        <button class="pt-profile-card" data-profile="avvocato" data-pt-action="select">
           <span class="pc-icon">¶</span>
           <span class="pc-num">Profilo 03</span>
           <div class="pc-title">Studio legale</div>
           <div class="pc-meta">Avvocati · Notai · Diritto</div>
         </button>
 
-        <button class="pt-profile-card" data-profile="ingegnere" onclick="ptSelectProfile('ingegnere', this)">
+        <button class="pt-profile-card" data-profile="ingegnere" data-pt-action="select">
           <span class="pc-icon">⌖</span>
           <span class="pc-num">Profilo 04</span>
           <div class="pc-title">Studio ingegneria / architettura</div>
           <div class="pc-meta">Progettazione · DL · Sicurezza · TLC</div>
         </button>
 
-        <button class="pt-profile-card" data-profile="artigiano" onclick="ptSelectProfile('artigiano', this)">
+        <button class="pt-profile-card" data-profile="artigiano" data-pt-action="select">
           <span class="pc-icon">⚒</span>
           <span class="pc-num">Profilo 05</span>
           <div class="pc-title">Artigiano / piccola impresa</div>
           <div class="pc-meta">Edilizia · Manifattura · Servizi locali</div>
         </button>
 
-        <button class="pt-profile-card" data-profile="pmi" onclick="ptSelectProfile('pmi', this)">
+        <button class="pt-profile-card" data-profile="pmi" data-pt-action="select">
           <span class="pc-icon">▣</span>
           <span class="pc-num">Profilo 06</span>
           <div class="pc-title">PMI manifatturiera</div>
@@ -1248,7 +1248,7 @@
       </div><!-- /pt-result-zone -->
 
       <div class="pt-reset-link">
-        <button type="button" onclick="ptReset()">↺ Cambia profilo</button>
+        <button type="button" data-pt-action="reset">↺ Cambia profilo</button>
       </div>
 
     </div><!-- /pt-container -->
@@ -1276,131 +1276,8 @@
   </div><!-- /per-te-wrapper -->
 
   <script type="module" src="./js/nav.js"></script>
-
-  <script>
-    let ptCurrentProfile = null;
-
-    function ptSelectProfile(profile, button) {
-      document.querySelectorAll('.pt-panel').forEach(p => p.classList.remove('active'));
-      document.getElementById('pt-empty-state').style.display = 'none';
-      document.querySelectorAll('.pt-profile-card').forEach(c => c.classList.remove('active'));
-      button.classList.add('active');
-      const panel = document.getElementById('pt-panel-' + profile);
-      if (panel) {
-        panel.classList.add('active');
-        ptCurrentProfile = profile;
-        setTimeout(() => {
-          panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
-      /* PostHog tracking */
-      if (typeof posthog !== 'undefined') {
-        posthog.capture('profile_selected', {
-          profile_type: profile,
-          page_source: document.referrer || 'direct'
-        });
-      }
-    }
-
-    function ptReset() {
-      document.querySelectorAll('.pt-panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.pt-profile-card').forEach(c => c.classList.remove('active'));
-      document.getElementById('pt-empty-state').style.display = 'block';
-      ptCurrentProfile = null;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  </script>
-
-  <!-- Deep-link via query string -->
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      const params = new URLSearchParams(window.location.search);
-      const preselect = params.get('profilo');
-      if (preselect) {
-        const validProfiles = ['hospitality', 'commercialista', 'avvocato', 'ingegnere', 'artigiano', 'pmi'];
-        if (validProfiles.includes(preselect)) {
-          const btn = document.querySelector(`[data-profile="${preselect}"]`);
-          if (btn) btn.click();
-        }
-      }
-    });
-  </script>
-  <script type="module" src="./js/nav.js"></script>
   <script type="module" src="./js/k2-immersive.js"></script>
-  <script>
-    // Cross-bot bridge: if the visitor has an active site-widget session,
-    // carry it forward into the kbot standalone CTAs so the conversation
-    // resumes without restarting from scratch.
-    (function () {
-      try {
-        const sid = sessionStorage.getItem('kbot.site_session_id')
-        if (!sid || sid.length < 8) return
-        const carry = '?continue=' + encodeURIComponent(sid)
-        document.querySelectorAll('a[href="/app"], a[href="/app/"]').forEach(function (a) {
-          a.setAttribute('href', '/app/' + carry)
-        })
-      } catch (_) { /* ignore */ }
-    })()
-
-    // /contatti pre-fill: rewrite every <a href="/contatti"> inside a
-    // profile panel to carry settore + messaggio query params so the
-    // contact form opens already compiled with the user's context.
-    (function () {
-      const PROFILE_TO_SECTOR = {
-        hospitality: 'ops',
-        commercialista: 'finance',
-        avvocato: 'legale',
-        ingegnere: 'tech',
-        artigiano: 'ops',
-        pmi: 'altro',
-      }
-      const PROFILE_LABEL = {
-        hospitality: 'hospitality (hotel / agriturismo / B&B / affitti brevi)',
-        commercialista: 'studio commercialista',
-        avvocato: 'studio legale',
-        ingegnere: 'studio di ingegneria / architettura',
-        artigiano: 'artigiano / piccola impresa',
-        pmi: 'PMI manifatturiera',
-      }
-
-      document.querySelectorAll('.pt-panel').forEach(function (panel) {
-        const profile = (panel.id || '').replace(/^pt-panel-/, '')
-        if (!profile) return
-        const sector = PROFILE_TO_SECTOR[profile] || 'altro'
-        const profileLabel = PROFILE_LABEL[profile] || profile
-
-        panel.querySelectorAll('a[href="/contatti"], a[href="/contatti/"]').forEach(function (a) {
-          // Identify which rung this CTA belongs to (Pro / Pattern / Custom).
-          const rung = a.closest('.pt-rung')
-          const rungName = rung ? (rung.querySelector('.pt-rung-name')?.textContent || '').trim() : ''
-          const ctaLabel = (a.textContent || '').trim()
-
-          const lines = [
-            `Buongiorno, scrivo dalla pagina "Per te" — profilo ${profileLabel}.`,
-            '',
-            rungName
-              ? `Mi interessa il livello "${rungName}" (CTA cliccato: "${ctaLabel}").`
-              : `Vorrei capire come K2-AI può aiutare la mia attività (CTA cliccato: "${ctaLabel}").`,
-            '',
-            'La mia situazione attuale (descrivi in 2-3 righe):',
-            '• cosa fai oggi:',
-            '• dove perdi tempo:',
-            '• strumenti già in uso (Excel, CRM, gestionale, ecc.):',
-            '',
-            'Quando posso parlare con qualcuno?',
-          ]
-          const messaggio = lines.join('\n')
-
-          const params = new URLSearchParams({
-            settore: sector,
-            messaggio: messaggio,
-            source: 'per-te_' + profile + (rungName ? '_' + rungName.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 32) : ''),
-          })
-          a.setAttribute('href', '/contatti?' + params.toString())
-        })
-      })
-    })()
-  </script>
+  <script type="module" src="./js/per-te.js"></script>
 
 </body>
 </html>

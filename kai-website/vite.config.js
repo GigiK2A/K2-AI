@@ -6,7 +6,10 @@ import path from 'path'
 const securityHeaders = {
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    // Strict: no 'unsafe-inline'. All previously inline scripts have been
+    // extracted to external files under src/js/. JSON-LD <script> blocks
+    // are data, not executable, and are unaffected.
+    "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https://*.stripe.com",
     "media-src 'self'",

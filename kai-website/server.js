@@ -95,7 +95,13 @@ const SUITE_AI_SERVICE_BY_ID = new Map(SUITE_AI_SERVICES.map(service => [service
 const BOARD_REPORT_MOCK_BY_ID = new Map(BOARD_REPORT_MOCKS.map(report => [String(report.id || '').trim().toUpperCase(), report]));
 const skillCache = new Map();
 const SECURITY_HEADERS = {
-  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://frontend-cdn.perplexity.ai; connect-src 'self' https: wss:; frame-src 'self'; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests",
+  // script-src is intentionally strict: no 'unsafe-inline'. All previously
+  // inline scripts have been extracted to external files under src/js/.
+  // <script type="application/ld+json"> JSON-LD blocks are data, not
+  // executable, and are not blocked by script-src.
+  // style-src keeps 'unsafe-inline' for now: Vite + many components emit
+  // inline style attributes. Tightening this requires a separate pass.
+  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://frontend-cdn.perplexity.ai; connect-src 'self' https://api.k2-ai.it https://*.stripe.com https://checkout.stripe.com https://us.i.posthog.com wss://api.k2-ai.it; frame-src 'self' https://*.stripe.com https://checkout.stripe.com; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests",
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
