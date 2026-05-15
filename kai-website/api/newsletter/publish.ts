@@ -1,4 +1,16 @@
+import DOMPurify from 'isomorphic-dompurify'
 import { createSupabaseAdminClient, datePrefix, getEnvVar, parseBody, sendJson, slugify } from './_shared'
+
+const NEWSLETTER_SANITIZE_OPTS = {
+  USE_PROFILES: { html: true },
+  FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'style', 'link', 'meta'],
+  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit', 'formaction', 'srcdoc'],
+  ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:|#|\/[^/])/i,
+} as const
+
+function sanitizeNewsletterHtml(raw: string): string {
+  return DOMPurify.sanitize(String(raw || ''), NEWSLETTER_SANITIZE_OPTS as any) as string
+}
 
 function normalizeText(value: unknown, maxLen: number): string {
   return String(value || '').trim().slice(0, maxLen)
@@ -40,7 +52,10 @@ export default async function handler(req: any, res: any) {
 
   const subject = normalizeText(body.subject, 220)
   const previewText = normalizeText(body.preview_text, 500)
-  const html = String(body.html || '').trim()
+  // Sanitize publisher-supplied HTML before storing. The newsletter is later
+  // rendered via innerHTML on the public archive page; anything that survives
+  // here is what visitors execute.
+  const html = sanitizeNewsletterHtml(String(body.html || '').trim())
 
   if (!subject) return sendJson(res, 400, { error: 'Missing subject' })
   if (!html) return sendJson(res, 400, { error: 'Missing html' })

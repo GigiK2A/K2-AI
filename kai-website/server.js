@@ -7,6 +7,22 @@ const { spawn } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const Anthropic = require('@anthropic-ai/sdk');
+const DOMPurify = require('isomorphic-dompurify');
+
+// Allow-list for newsletter HTML stored from the publish endpoint. The
+// content is rendered as innerHTML in the browser at /newsletter-entry, so
+// any tag/attribute we forward becomes a potential XSS sink. Block scripts,
+// event handlers, and embedded frames.
+const NEWSLETTER_SANITIZE_OPTS = {
+  USE_PROFILES: { html: true },
+  FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'style', 'link', 'meta'],
+  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit', 'formaction', 'srcdoc'],
+  ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:|#|\/[^/])/i,
+};
+
+function sanitizeNewsletterHtml(rawHtml) {
+  return DOMPurify.sanitize(String(rawHtml || ''), NEWSLETTER_SANITIZE_OPTS);
+}
 
 const PORT = process.env.PORT || 4173;
 const DIST_DIR = path.join(__dirname, 'dist');
@@ -1320,7 +1336,10 @@ async function handleNewsletterPublish(req, res, options = {}) {
 
   const originalSubject = normalizeText(body.subject, 220);
   const previewText = normalizeText(body.preview_text, 500);
-  const html = String(body.html || '').trim();
+  // Sanitize the publisher-supplied HTML before persisting it. Newsletter
+  // content is later rendered via innerHTML, so anything that survives this
+  // step is what visitors will see (and execute) — keep the allow-list tight.
+  const html = sanitizeNewsletterHtml(String(body.html || '').trim());
 
   if (!originalSubject) {
     sendJson(res, 400, { error: 'Missing subject' });
