@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from controllers import agents_router, home_router
 from core.board_auth import SESSION_COOKIE_NAME, get_user_from_session
 from core.config import get_allowed_origins, settings
+from core.csrf import is_csrf_exempt, validate_csrf
 from interfaces.dashboard.routes import admin, approvals, auth, board_chat, inbox, lavori, logs, memory, pipeline, public_intake, workshop
 
 PUBLIC_INTAKE_PATHS = {"/api/intake/contact", "/api/intake/kbot-chat"}
@@ -139,6 +140,31 @@ def create_dashboard_app() -> FastAPI:
                     Response("Account in sola lettura.", status_code=403),
                 )
 
+            # CSRF validation for authenticated state-changing requests (audit H-2).
+            # We accept either an X-CSRF-Token header (HTMX/JSON) or a csrf_token
+            # form field. Reading request.form() caches the body so downstream
+            # FastAPI handlers can still parse it.
+            if (
+                user
+                and request.method not in {"GET", "HEAD", "OPTIONS"}
+                and not is_csrf_exempt(request.url.path)
+            ):
+                session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
+                submitted = request.headers.get("X-CSRF-Token", "")
+                if not submitted:
+                    content_type = (request.headers.get("content-type") or "").lower()
+                    if content_type.startswith(("application/x-www-form-urlencoded", "multipart/form-data")):
+                        try:
+                            form = await request.form()
+                            submitted = str(form.get("csrf_token") or "")
+                        except Exception:
+                            submitted = ""
+                if not validate_csrf(session_cookie, submitted):
+                    return _apply_security_headers(
+                        request,
+                        JSONResponse({"detail": "CSRF token mancante o non valido"}, status_code=403),
+                    )
+
         if request.url.path in PUBLIC_INTAKE_PATHS:
             origin = request.headers.get("origin")
             if origin and origin not in allowed_origins:
@@ -212,6 +238,15 @@ def create_dashboard_app() -> FastAPI:
 
         @app.post("/webhook")
         async def telegram_webhook(request: Request) -> JSONResponse:
+            # audit H-1: validate Telegram-provided secret token to prevent
+            # spoofed updates. Constant-time compare against env-configured value.
+            expected = settings.telegram_webhook_secret or ""
+            provided = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+            if not expected or not secrets.compare_digest(expected, provided):
+                return _apply_security_headers(
+                    request,
+                    JSONResponse({"detail": "Unauthorized"}, status_code=401),
+                )
             payload = await request.json()
             await process_webhook_payload(payload)
             return JSONResponse({"ok": True})

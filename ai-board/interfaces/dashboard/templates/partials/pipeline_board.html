@@ -44,6 +44,7 @@
                   hx-post="/pipeline/lead/{{ lead.id }}/status"
                   hx-target="#pipeline-board"
                   hx-swap="innerHTML">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
               <input type="hidden" name="new_status" value="{{ lead.next_status }}" />
               <button type="submit"
                       class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100"
@@ -59,6 +60,7 @@
                   hx-target="#pipeline-board"
                   hx-swap="innerHTML"
                   hx-confirm="Eliminare questo lead?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
               <button type="submit"
                       class="inline-flex items-center justify-center rounded-lg px-2 py-1 text-rose-500 hover:bg-rose-50"
                       title="Elimina lead">

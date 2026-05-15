@@ -95,14 +95,23 @@ async def start_polling() -> Application:
 async def start_webhook(url: str) -> Application:
     """Avvia il bot in modalità webhook (produzione)."""
     logger.info(f"Bot Telegram: avvio webhook su {url}")
+    if not settings.telegram_webhook_secret:
+        raise RuntimeError(
+            "TELEGRAM_WEBHOOK_SECRET non impostato. Obbligatorio in modalità webhook "
+            "per validare l'header X-Telegram-Bot-Api-Secret-Token (audit H-1)."
+        )
     global _current_app
     app = build_application()
     await app.initialize()
     await app.start()
     webhook_url = f"{url.rstrip('/')}/webhook"
-    await app.bot.set_webhook(url=webhook_url, drop_pending_updates=True)
+    await app.bot.set_webhook(
+        url=webhook_url,
+        drop_pending_updates=True,
+        secret_token=settings.telegram_webhook_secret,
+    )
     _current_app = app
-    logger.success("Bot Telegram attivo — webhook configurato")
+    logger.success("Bot Telegram attivo — webhook configurato (secret_token attivo)")
     return app
 
 

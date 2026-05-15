@@ -23,6 +23,7 @@ dependencies = [
     "pytz>=2024.1",
     "rich>=13.0.0",
     "markdown>=3.7",
+    "bleach>=6.1.0",
 ]
 
 [build-system]

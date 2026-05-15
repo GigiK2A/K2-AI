@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     telegram_chat_id: Optional[str] = Field(default=None, description="Chat ID del fondatore")
     telegram_mode: str = Field(default="polling")
     telegram_webhook_url: Optional[str] = Field(default=None)
+    telegram_webhook_secret: Optional[str] = Field(
+        default=None,
+        description="Token segreto passato a setWebhook e validato nell'header X-Telegram-Bot-Api-Secret-Token. Obbligatorio quando telegram_mode='webhook'.",
+    )
 
     # App
     app_env: str = Field(default="development")

@@ -5,13 +5,40 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
+import bleach
 import markdown
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 from loguru import logger
 from markupsafe import Markup
 
+# Allowlist of HTML tags/attrs produced by markdown rendering. Anything outside
+# this set (e.g. <script>, <iframe>, on* event handlers, javascript: URLs) is
+# stripped by bleach before we wrap in Markup() — see audit fix for markupsafe
+# Markup() on potentially-untrusted markdown output.
+_MD_ALLOWED_TAGS = frozenset({
+    "a", "abbr", "b", "blockquote", "br", "canvas", "code", "div", "em", "h1",
+    "h2", "h3", "h4", "h5", "h6", "hr", "i", "img", "li", "ol", "p", "pre",
+    "span", "strong", "sub", "sup", "table", "tbody", "td", "th", "thead",
+    "tr", "ul",
+})
+_MD_ALLOWED_ATTRS = {
+    "a": ["href", "title", "rel"],
+    "img": ["src", "alt", "title"],
+    "canvas": ["data-ai-chart-config"],
+    "div": ["class"],
+    "p": ["class"],
+    "span": ["class"],
+    "code": ["class"],
+    "pre": ["class"],
+    "table": ["class"],
+    "th": ["align"],
+    "td": ["align"],
+}
+_MD_ALLOWED_PROTOCOLS = frozenset({"http", "https", "mailto"})
+
 from core import notion_board
+from core.csrf import SESSION_COOKIE_NAME, generate_csrf_token
 from db.client import get_service_client
 from core.text import markdown_to_plain_text, truncate_text
 
@@ -130,7 +157,18 @@ def render_markdown(value: Any) -> Markup:
         ],
         output_format="html5",
     )
-    return Markup(html)
+    # Sanitize before wrapping in Markup(): markdown output can include raw
+    # HTML from the source string (user messages, agent outputs, lead notes),
+    # so we strip anything not in the allowlist. Without this, a lead message
+    # containing `<script>` becomes stored XSS against the admin viewing it.
+    sanitized = bleach.clean(
+        html,
+        tags=_MD_ALLOWED_TAGS,
+        attributes=_MD_ALLOWED_ATTRS,
+        protocols=_MD_ALLOWED_PROTOCOLS,
+        strip=True,
+    )
+    return Markup(sanitized)  # noqa: S704 — sanitized via bleach.clean above
 
 
 def truncate(value: Any, length: int = 80) -> str:
@@ -163,6 +201,12 @@ def parse_datetime(value: Any) -> datetime | None:
 
 
 def render(request: Request, template_name: str, context: dict[str, Any]):
+    # Inject CSRF token (audit H-2). Templates embed it as a hidden field on
+    # every <form method="post">. Generated from the active session cookie.
+    context.setdefault(
+        "csrf_token",
+        generate_csrf_token(request.cookies.get(SESSION_COOKIE_NAME)),
+    )
     return templates.TemplateResponse(
         request=request,
         name=template_name,
