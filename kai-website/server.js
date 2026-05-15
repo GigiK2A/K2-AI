@@ -219,6 +219,102 @@ function normalizeHost(req) {
   return host.toLowerCase();
 }
 
+// -----------------------------------------------------------------------------
+// In-memory rate limiter
+//
+// Scoped per-(bucket, key) where the key is typically an IP, an email, or a
+// composite. Storage is a Map with periodic cleanup. This is single-instance
+// only — Railway runs one container today; if the deployment ever scales out
+// horizontally, swap this for a Redis or Supabase-backed counter.
+// -----------------------------------------------------------------------------
+const rateLimitMap = new Map();
+
+function checkRateLimit(bucket, key, maxPerWindow, windowMs) {
+  const composite = `${bucket}|${key}`;
+  const now = Date.now();
+  const entry = rateLimitMap.get(composite);
+  if (!entry || entry.resetAt <= now) {
+    rateLimitMap.set(composite, { count: 1, resetAt: now + windowMs });
+    return { ok: true, remaining: maxPerWindow - 1, resetAt: now + windowMs };
+  }
+  if (entry.count >= maxPerWindow) {
+    return { ok: false, remaining: 0, resetAt: entry.resetAt };
+  }
+  entry.count++;
+  return { ok: true, remaining: maxPerWindow - entry.count, resetAt: entry.resetAt };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap) {
+    if (entry.resetAt <= now) rateLimitMap.delete(key);
+  }
+}, 60_000).unref?.();
+
+function clientIp(req) {
+  const xff = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  if (xff) return xff;
+  const real = String(req.headers['x-real-ip'] || '').trim();
+  if (real) return real;
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+function sendRateLimited(res, endpoint, info) {
+  console.warn(`[abuse] rate-limit ${endpoint} key=${info.key} bucket=${info.bucket}`);
+  const retryAfterSec = Math.max(1, Math.ceil((info.resetAt - Date.now()) / 1000));
+  res.setHeader('Retry-After', String(retryAfterSec));
+  sendJson(res, 429, { error: 'Troppi tentativi, riprova più tardi.' });
+}
+
+// Peek the JSON body for `email`, apply per-email rate limiting, then replay
+// the body to the upstream proxy. Used by /api/intake/contact on Railway.
+async function handleContactWithEmailLimit(req, res, rawPath, rawQuery) {
+  let rawBody = Buffer.alloc(0);
+  try {
+    rawBody = await new Promise((resolve, reject) => {
+      const chunks = [];
+      let size = 0;
+      const MAX = 64 * 1024; // contact body is tiny
+      req.on('data', chunk => {
+        size += chunk.length;
+        if (size > MAX) {
+          req.destroy();
+          reject(new Error('body too large'));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('end', () => resolve(Buffer.concat(chunks)));
+      req.on('error', reject);
+    });
+  } catch (err) {
+    return sendJson(res, 413, { error: 'Body troppo grande' });
+  }
+
+  let email = '';
+  if (rawBody.length > 0) {
+    try {
+      const parsed = JSON.parse(rawBody.toString('utf8'));
+      if (parsed && typeof parsed.email === 'string') {
+        email = parsed.email.trim().toLowerCase();
+      }
+    } catch (_) { /* not JSON — let upstream return 400 */ }
+  }
+
+  if (email) {
+    const emailCheck = checkRateLimit('contact:email', email, 1, 60 * 60_000);
+    if (!emailCheck.ok) {
+      // Return the success shape (Vercel handler returns `{ ok: true }`)
+      // to avoid exposing whether an email was previously submitted.
+      return sendJson(res, 200, { ok: true });
+    }
+  }
+
+  // Replay body to proxyApiRequest by stashing it on the request object.
+  req._consumedBody = rawBody;
+  return proxyApiRequest(req, res, rawPath, rawQuery);
+}
+
 function shouldRedirect(host) {
   return host === REDIRECT_HOST || host.startsWith(`${REDIRECT_HOST}:`);
 }
@@ -1043,7 +1139,7 @@ async function proxyApiRequest(req, res, rawPath, rawQuery) {
 
   let bodyBuffer = null;
   if (!['GET', 'HEAD'].includes(method)) {
-    bodyBuffer = await readRawBody(req);
+    bodyBuffer = req._consumedBody || await readRawBody(req);
     if (bodyBuffer.length > 0) {
       forwardedHeaders['content-length'] = String(bodyBuffer.length);
     }
@@ -1174,6 +1270,18 @@ async function handleNewsletterSubscribe(req, res) {
   if (!email || !isValidEmail(email)) {
     sendJson(res, 400, { error: 'Email non valida' });
     return;
+  }
+
+  // Rate limit: 3 subscriptions per IP per 5 minutes, 1 per email per hour.
+  const ip = clientIp(req);
+  const ipCheck = checkRateLimit('newsletter:ip', ip, 3, 5 * 60_000);
+  if (!ipCheck.ok) {
+    return sendRateLimited(res, 'newsletter/subscribe', { key: ip, bucket: 'ip', resetAt: ipCheck.resetAt });
+  }
+  const emailCheck = checkRateLimit('newsletter:email', email, 1, 60 * 60_000);
+  if (!emailCheck.ok) {
+    // Unify shape with the success path so we don't reveal subscription state.
+    return sendJson(res, 200, { ok: true });
   }
 
   const recipientName = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : null;
@@ -2392,25 +2500,56 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (rawPath === '/api/report/pdf') {
-    handleReportPdf(req, res).catch(err => {
-      console.error('Report PDF API error:', err);
-      sendJson(res, 500, { error: 'Errore generazione PDF report' });
-    });
-    return;
-  }
-
-  if (rawPath === '/api/report/docx') {
-    handleReportDocx(req, res).catch(err => {
-      console.error('Report DOCX API error:', err);
-      sendJson(res, 500, { error: 'Errore generazione DOCX report' });
+  if (rawPath === '/api/report/pdf' || rawPath === '/api/report/docx') {
+    // Cost-amplification gate: heavy Puppeteer / DOCX rendering. Cap to
+    // 5 generations per IP per minute. Stripe webhook path is unaffected.
+    const ip = clientIp(req);
+    const check = checkRateLimit('report:ip', ip, 5, 60_000);
+    if (!check.ok) {
+      sendRateLimited(res, rawPath, { key: ip, bucket: 'ip', resetAt: check.resetAt });
+      return;
+    }
+    const handler = rawPath === '/api/report/pdf' ? handleReportPdf : handleReportDocx;
+    handler(req, res).catch(err => {
+      console.error('Report API error:', err);
+      sendJson(res, 500, { error: 'Errore generazione report' });
     });
     return;
   }
 
   if (rawPath.startsWith('/api/kbot/') || rawPath === '/api/stripe/webhook') {
+    // Stripe webhook MUST NOT be rate-limited (the webhook signature is the
+    // auth; Stripe retries on 429 will hammer the endpoint). Everything else
+    // under /api/kbot/* is anonymous LLM/PDF work — cap at 20 req/min/IP.
+    if (rawPath !== '/api/stripe/webhook') {
+      const ip = clientIp(req);
+      const check = checkRateLimit('kbot:ip', ip, 20, 60_000);
+      if (!check.ok) {
+        sendRateLimited(res, rawPath, { key: ip, bucket: 'ip', resetAt: check.resetAt });
+        return;
+      }
+    }
     // Proxy to the FastAPI Python backend (session-based, Sonnet + Playwright PDF).
     proxyKbotPython(req, res, rawPath, rawQuery);
+    return;
+  }
+
+  if (rawPath === '/api/intake/contact') {
+    // The Vercel handler at api/intake/contact.ts is exposed via this proxy
+    // path on Railway. Add edge rate limiting before forwarding to the
+    // upstream that calls Resend.
+    const ip = clientIp(req);
+    const ipCheck = checkRateLimit('contact:ip', ip, 3, 5 * 60_000);
+    if (!ipCheck.ok) {
+      sendRateLimited(res, '/api/intake/contact', { key: ip, bucket: 'ip', resetAt: ipCheck.resetAt });
+      return;
+    }
+    // Best-effort per-email limit: peek at the JSON body to extract `email`,
+    // then re-emit the parsed body to the upstream proxy.
+    handleContactWithEmailLimit(req, res, rawPath, rawQuery).catch(err => {
+      console.error('Contact proxy error:', err);
+      sendJson(res, 502, { error: 'Errore proxy API' });
+    });
     return;
   }
 
