@@ -31,6 +31,54 @@ def test_validate_url_rejects_non_http():
         validate_url("ftp://example.com/file.txt")
 
 
+def test_validate_url_rejects_ipv6_loopback():
+    with pytest.raises(UrlFetchError, match="non consentito"):
+        validate_url("http://[::1]/admin")
+
+
+def test_validate_url_rejects_ipv6_link_local():
+    with pytest.raises(UrlFetchError, match="non consentito"):
+        validate_url("http://[fe80::1]/")
+
+
+def test_validate_url_rejects_ipv6_unique_local():
+    with pytest.raises(UrlFetchError, match="non consentito"):
+        validate_url("http://[fd00::1]/")
+
+
+def test_validate_url_rejects_aws_imds_ipv4():
+    with pytest.raises(UrlFetchError, match="non consentito"):
+        validate_url("http://169.254.169.254/latest/meta-data/")
+
+
+def test_validate_url_rejects_ssh_port():
+    with pytest.raises(UrlFetchError, match="Porta non consentita"):
+        validate_url("http://example.com:22/")
+
+
+def test_validate_url_rejects_postgres_port():
+    with pytest.raises(UrlFetchError, match="Porta non consentita"):
+        validate_url("http://example.com:5432/")
+
+
+def test_validate_url_rejects_redis_port():
+    with pytest.raises(UrlFetchError, match="Porta non consentita"):
+        validate_url("http://example.com:6379/")
+
+
+def test_validate_url_accepts_standard_http_port():
+    assert validate_url("http://example.com:80/") is None
+
+
+def test_validate_url_accepts_standard_https_port():
+    assert validate_url("https://example.com:443/") is None
+
+
+def test_validate_url_accepts_custom_high_port():
+    # Custom app ports (e.g. 8080) should still be allowed.
+    assert validate_url("http://example.com:8080/") is None
+
+
 def test_extract_metadata_only():
     html = """<html><head>
     <title>Esempio Sito</title>

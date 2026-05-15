@@ -15,11 +15,24 @@ MAX_RESPONSE_BYTES = 500_000
 MAX_MAIN_CONTENT_CHARS = 6_000
 FULL_CONTENT_HTML_THRESHOLD = 20_000
 MAX_SUMMARY_CHARS = 1_500
+MAX_REDIRECTS = 5
+
+# Ports we allow (in addition to None/default per scheme).
+# Block well-known service ports (SSH, SMTP, Redis, ES, Mongo, PG, MySQL...).
+_BLOCKED_PORTS = {
+    22, 23, 25, 110, 143, 465, 587, 993, 995,  # SSH/Telnet/SMTP/IMAP/POP3
+    3306, 5432, 6379, 9200, 9300, 27017, 27018, 27019,  # DBs
+    11211,  # memcached
+    2375, 2376,  # docker
+    5984, 6443,  # couchdb / k8s
+}
 
 _BLOCKED_HOSTS = re.compile(
-    r"^(localhost|127\.\d+\.\d+\.\d+|0\.0\.0\.0|::1|"
+    r"^(localhost|127\.\d+\.\d+\.\d+|0\.0\.0\.0|"
     r"10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|"
-    r"192\.168\.\d+\.\d+|169\.254\.\d+\.\d+)$",
+    r"192\.168\.\d+\.\d+|169\.254\.\d+\.\d+|"
+    # IPv6 literals (bracket-stripped by hostname): ::1, ::, fe80::*, fc00::*, fd00::*
+    r"::1?|fe[89ab][0-9a-f]:.*|f[cd][0-9a-f]{2}:.*)$",
     re.IGNORECASE,
 )
 
@@ -34,21 +47,63 @@ class UrlFetchError(ValueError):
     pass
 
 
+def _ip_is_disallowed(ip_str: str) -> bool:
+    """Return True if the IP (v4 or v6) is private/loopback/link-local/reserved/multicast."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
 def validate_url(url: str) -> None:
-    """Raise UrlFetchError if the URL is not safe to fetch."""
+    """Raise UrlFetchError if the URL is not safe to fetch.
+
+    Blocks non-http(s) schemes, internal hostnames, IPv4/IPv6 private
+    ranges, link-local and loopback addresses, and well-known
+    non-HTTP service ports (SSH, SMTP, Redis, Postgres, ...).
+    """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise UrlFetchError("L'URL deve iniziare con http:// o https://")
     host = parsed.hostname or ""
+    if not host:
+        raise UrlFetchError("URL senza host")
     if _BLOCKED_HOSTS.match(host):
         raise UrlFetchError(f"Host non consentito: {host}")
-    # Resolve and check IP
+
+    # Port check — block known non-HTTP service ports.
     try:
-        ip = ipaddress.ip_address(socket.gethostbyname(host))
-        if ip.is_private or ip.is_loopback or ip.is_link_local:
-            raise UrlFetchError(f"Host non consentito: {host}")
-    except (socket.gaierror, ValueError):
-        pass  # Can't resolve — allow, let httpx fail naturally
+        port = parsed.port
+    except ValueError as exc:
+        raise UrlFetchError(f"Porta non valida: {exc}") from exc
+    if port is not None and port in _BLOCKED_PORTS:
+        raise UrlFetchError(f"Porta non consentita: {port}")
+
+    # If the host is already an IP literal, validate it directly.
+    if _ip_is_disallowed(host):
+        raise UrlFetchError(f"Host non consentito: {host}")
+
+    # Resolve via getaddrinfo (covers IPv4 + IPv6) and reject any disallowed address.
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return  # let httpx fail naturally on a real fetch
+    for info in infos:
+        sockaddr = info[4]
+        ip_str = sockaddr[0]
+        # Strip zone id if present (e.g. "fe80::1%eth0")
+        if "%" in ip_str:
+            ip_str = ip_str.split("%", 1)[0]
+        if _ip_is_disallowed(ip_str):
+            raise UrlFetchError(f"Host non consentito (IP {ip_str}): {host}")
 
 
 def _strip_noise(html: str) -> str:
@@ -179,35 +234,54 @@ def build_url_summary(data: Dict[str, Any]) -> str:
 
 
 async def fetch_url_content(url: str) -> Dict[str, Any]:
-    """Fetch URL and extract content. Returns data dict with 'summary' key added."""
-    validate_url(url)
+    """Fetch URL and extract content. Returns data dict with 'summary' key added.
+
+    Manually follows redirects, re-validating the destination at every hop
+    to prevent SSRF via a public URL that 30x's to a private/internal address.
+    """
     headers = {
         "User-Agent": "Mozilla/5.0 (compatible; K2-AI-Bot/1.0)",
         "Accept": "text/html,application/xhtml+xml",
         "Accept-Language": "it,en;q=0.9",
     }
+    current_url = url
     async with httpx.AsyncClient(
-        follow_redirects=True,
+        follow_redirects=False,
         timeout=FETCH_TIMEOUT,
         headers=headers,
     ) as client:
-        async with client.stream("GET", url) as resp:
-            try:
-                resp.raise_for_status()
-            except httpx.HTTPStatusError as e:
-                raise UrlFetchError(f"HTTP {e.response.status_code}: {url}") from e
-            content_type = resp.headers.get("content-type", "")
-            if "text/html" not in content_type:
-                raise UrlFetchError(f"Il server ha risposto con {content_type}, non HTML")
-            chunks = []
-            size = 0
-            async for chunk in resp.aiter_bytes(4096):
-                chunks.append(chunk)
-                size += len(chunk)
-                if size >= MAX_RESPONSE_BYTES:
-                    break
-            html = (b"".join(chunks))[:MAX_RESPONSE_BYTES].decode("utf-8", errors="replace")
+        for _hop in range(MAX_REDIRECTS + 1):
+            validate_url(current_url)  # re-validate at every hop
+            async with client.stream("GET", current_url) as resp:
+                # Redirect? Pull Location and continue the loop.
+                if resp.is_redirect:
+                    location = resp.headers.get("location")
+                    if not location:
+                        raise UrlFetchError(f"Redirect senza Location: {current_url}")
+                    # Resolve relative redirects against the current URL.
+                    next_url = str(resp.url.join(location))
+                    current_url = next_url
+                    continue
 
-    data = extract_html_content(html, url, content_type)
+                try:
+                    resp.raise_for_status()
+                except httpx.HTTPStatusError as e:
+                    raise UrlFetchError(f"HTTP {e.response.status_code}: {current_url}") from e
+                content_type = resp.headers.get("content-type", "")
+                if "text/html" not in content_type:
+                    raise UrlFetchError(f"Il server ha risposto con {content_type}, non HTML")
+                chunks = []
+                size = 0
+                async for chunk in resp.aiter_bytes(4096):
+                    chunks.append(chunk)
+                    size += len(chunk)
+                    if size >= MAX_RESPONSE_BYTES:
+                        break
+                html = (b"".join(chunks))[:MAX_RESPONSE_BYTES].decode("utf-8", errors="replace")
+                break
+        else:
+            raise UrlFetchError(f"Troppi redirect (>{MAX_REDIRECTS}): {url}")
+
+    data = extract_html_content(html, current_url, content_type)
     data["summary"] = build_url_summary(data)
     return data
