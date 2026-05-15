@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import session, message, upload, report, checkout, generate_pdf, status, webhook
+from .api import session, message, upload, report, checkout, generate_pdf, status, webhook, fetch_url
 from .settings import CORS_ORIGINS
 
 app = FastAPI(title="K2-AI K-BOT backend", version="2.0.0")
@@ -30,4 +30,5 @@ app.include_router(report.router, prefix="/api/kbot", tags=["report"])
 app.include_router(checkout.router, prefix="/api/kbot", tags=["checkout"])
 app.include_router(generate_pdf.router, prefix="/api/kbot", tags=["pdf"])
 app.include_router(status.router, prefix="/api/kbot", tags=["status"])
+app.include_router(fetch_url.router, prefix="/api/kbot", tags=["fetch-url"])
 app.include_router(webhook.router, prefix="/api", tags=["webhook"])
