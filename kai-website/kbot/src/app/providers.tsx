@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseAuthConfigured, supabase } from "@/lib/supabase";
 import { createSession, linkSessionToUser, type KbotSession, type Mode } from "@/lib/api";
+import { initAnalytics } from "@/lib/analytics";
 
 const STORAGE_KEY = "kbot.session_id";
 
@@ -57,6 +58,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(isSupabaseAuthConfigured);
   const [kbotSession, setKbotSession] = useState<KbotSession | null>(null);
   const linkingRef = useRef<string | null>(null);
+
+  /* ---------- Analytics bootstrap (anonymous, no cookies) ---------- */
+  useEffect(() => {
+    void initAnalytics();
+  }, []);
 
   /* ---------- Supabase auth bootstrap ---------- */
   useEffect(() => {

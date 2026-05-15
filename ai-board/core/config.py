@@ -60,6 +60,13 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = Field(default=None)
     smtp_tls: bool = Field(default=True)
 
+    # PostHog (Cloud EU) — read-only ingestion via Personal API key.
+    # Empty → ingest job is a no-op.
+    posthog_personal_api_key: Optional[str] = Field(default=None)
+    posthog_project_id: Optional[str] = Field(default=None)
+    posthog_host: str = Field(default="https://eu.i.posthog.com")
+    scheduler_posthog_sync_cron: str = Field(default="0 * * * *")  # every hour
+
     # Scheduler
     scheduler_weekly_plan_cron: str = Field(default="0 8 * * 1")
     scheduler_daily_brief_cron: str = Field(default="0 8 * * *")

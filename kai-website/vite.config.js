@@ -14,7 +14,7 @@ const securityHeaders = {
     "img-src 'self' data: https://*.stripe.com",
     "media-src 'self'",
     "font-src 'self' https://api.fontshare.com https://fonts.gstatic.com",
-    "connect-src 'self' http://localhost:3000 http://localhost:8000 http://127.0.0.1:8000 http://192.168.0.62:8000 http://192.168.1.169:8000 https://*.stripe.com https://checkout.stripe.com ws://localhost:3000 ws://127.0.0.1:3000",
+    "connect-src 'self' http://localhost:3000 http://localhost:8000 http://127.0.0.1:8000 http://192.168.0.62:8000 http://192.168.1.169:8000 https://*.stripe.com https://checkout.stripe.com https://eu.i.posthog.com https://eu-assets.i.posthog.com ws://localhost:3000 ws://127.0.0.1:3000",
     "frame-src https://*.stripe.com https://checkout.stripe.com",
     "form-action 'self'",
     "frame-ancestors 'none'",

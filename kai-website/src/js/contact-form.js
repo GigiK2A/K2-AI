@@ -231,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
       form.dataset.sourcePage = 'contatti';
       clearContactPrefill();
       setFeedback(success, error, 'success', form);
+      try { window.posthog && window.posthog.capture('contact_submit', {}); } catch { /* ignore */ }
     } catch (requestError) {
       console.error('Contact form error:', requestError);
       const status = Number(requestError?.status || 0);

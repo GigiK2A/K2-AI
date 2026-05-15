@@ -294,6 +294,7 @@ function initChat() {
 
   if (!container || !input || !sendBtn) return;
   chatBooted = true;
+  _trackKbot('kbot_open', { surface: IS_HOME_WIDGET ? 'home_widget' : 'k-bot_page' });
 
   if (IS_HOME_WIDGET) {
     refreshSessionId();
@@ -356,6 +357,10 @@ async function sendMessage() {
 
   isSending = true;
   input.value = '';
+  _trackKbot('kbot_message_sent', {
+    length: text.length,
+    surface: IS_HOME_WIDGET ? 'home_widget' : 'k-bot_page',
+  });
   const userMsg = { role: 'user', content: text };
   messages.push(userMsg);
   persistMessages();

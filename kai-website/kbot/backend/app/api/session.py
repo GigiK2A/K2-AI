@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
+from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..lib.limiter import limiter
 
@@ -36,6 +37,15 @@ def create_session(
         service_id=body.serviceId,
         mode=body.mode,
         user_id=user.id if user else None,
+    )
+    track_server(
+        distinct_id=row["id"],
+        event="session_created",
+        properties={
+            "service_id": body.serviceId,
+            "mode": body.mode,
+            "authed": bool(user),
+        },
     )
     payload: dict = {"session_id": row["id"], "session": sessions.public_session(row)}
     # Anonymous sessions get a one-time link_token; the browser must hold it

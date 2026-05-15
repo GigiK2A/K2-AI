@@ -30,6 +30,9 @@ function initNewsletterForm(form) {
       const data = await res.json()
 
       if (res.ok && data.ok) {
+        try {
+          window.posthog && window.posthog.capture('newsletter_signup', { source, already: !!data.already })
+        } catch { /* ignore */ }
         if (msg) {
           msg.textContent = data.already
             ? 'Sei già iscritto alla newsletter.'

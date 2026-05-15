@@ -9,6 +9,7 @@ import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
 import { InsightPanel } from "@/components/insights/InsightPanel";
 import { sendMessage, uploadFiles, startCheckout, fetchUrl, type UploadedFile, type AnalyzedUrl } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { ChatMessage, Conversation, Mode } from "@/types/chat";
 import { uid } from "@/lib/utils";
 import { MessageCircle } from "lucide-react";
@@ -92,6 +93,13 @@ export default function HomePage() {
   >({});
   const [fetchingUrl, setFetchingUrl] = useState(false);
   const [analyzedUrls, setAnalyzedUrls] = useState<AnalyzedUrl[]>([]);
+
+  // Track kbot_open once the chat surface mounts for an authenticated user.
+  useEffect(() => {
+    if (!authLoading && isSignedIn) {
+      track("kbot_open", { surface: "kbot_app" });
+    }
+  }, [authLoading, isSignedIn]);
 
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -246,6 +254,7 @@ export default function HomePage() {
     updateMessages(currentMessages);
 
     const prompt = composer;
+    track("kbot_message_sent", { length: prompt.length, mode });
     setComposer("");
     setPendingFiles([]);
 
@@ -278,6 +287,7 @@ export default function HomePage() {
 
   async function startCheckoutFromUI() {
     const session = await ensureSession({ mode });
+    track("kbot_report_requested", { mode });
     const token = await getToken();
     if (!token) return;
     const url = await startCheckout(session.id, token);

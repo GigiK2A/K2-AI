@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
+from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.limiter import limiter
 from ..lib.supabase_admin import get_admin_client
@@ -182,6 +183,15 @@ def upload(
                 "extractedSummary": extracted_summary,
                 "extractionMethod": method,
             }
+        )
+        track_server(
+            distinct_id=body.sessionId,
+            event="file_uploaded",
+            properties={
+                "extraction_method": method,
+                "mime": f.type or "",
+                "size_bytes": len(data),
+            },
         )
 
     collected = dict(session.get("collected_data") or {})

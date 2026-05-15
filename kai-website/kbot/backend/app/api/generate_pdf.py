@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from ..lib import sessions
 from ..lib.analysis import generate_analysis_json
+from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.email import send_report_ready_email
 from ..lib.pdf_renderer import render_pdf
@@ -111,6 +112,15 @@ def generate_pdf(
         )
         if not sent:
             log.warning("Report email not sent for session %s", session["id"])
+
+    track_server(
+        distinct_id=session["id"],
+        event="report_generated",
+        properties={
+            "tier": "paid" if not body.testMode else "test",
+            "test_mode": body.testMode,
+        },
+    )
 
     return {
         "pdf_url": public_url,

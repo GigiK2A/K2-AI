@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
+from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
@@ -142,6 +143,17 @@ async def post_message(
 
     raw_text = "".join(
         block.text for block in result.content if getattr(block, "type", "") == "text"
+    )
+    usage = getattr(result, "usage", None)
+    track_server(
+        distinct_id=body.sessionId,
+        event="message_processed",
+        properties={
+            "role": "assistant",
+            "tokens_in": getattr(usage, "input_tokens", None) if usage else None,
+            "tokens_out": getattr(usage, "output_tokens", None) if usage else None,
+            "model": ANTHROPIC_MODEL,
+        },
     )
     summary = extract_summary(raw_text)
     user_visible = normalize_assistant_reply(strip_summary_block(raw_text))

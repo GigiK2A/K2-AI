@@ -520,6 +520,21 @@ def setup_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=3600,
     )
 
+    # PostHog → Supabase analytics snapshot (every hour by default).
+    try:
+        from agents.scheduler_tasks.posthog_sync import job_posthog_sync
+
+        scheduler.add_job(
+            job_posthog_sync,
+            CronTrigger.from_crontab(settings.scheduler_posthog_sync_cron, timezone=ROME),
+            id="posthog_sync",
+            name="Sync PostHog → Supabase analytics",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+    except Exception as exc:
+        logger.warning(f"Scheduler: posthog_sync non registrato — {exc}")
+
     logger.info(f"Scheduler configurato: {len(scheduler.get_jobs())} job attivi")
     return scheduler
 

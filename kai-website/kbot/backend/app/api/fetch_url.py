@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
+from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
@@ -71,6 +73,16 @@ async def post_fetch_url(
     existing_urls.append(data)
     collected["analyzed_urls"] = existing_urls
     sessions.update_session(body.sessionId, {"collected_data": collected})
+
+    try:
+        domain = urlparse(body.url).hostname or ""
+    except Exception:
+        domain = ""
+    track_server(
+        distinct_id=body.sessionId,
+        event="url_fetched",
+        properties={"domain": domain},
+    )
 
     return {
         "ok": True,

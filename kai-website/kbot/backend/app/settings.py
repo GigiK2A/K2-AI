@@ -79,3 +79,7 @@ CHAT_SYSTEM_MAX_CHARS = int(_env("CHAT_SYSTEM_MAX_CHARS", default="26000") or "2
 PDF_SYSTEM_MAX_CHARS = int(_env("PDF_SYSTEM_MAX_CHARS", default="140000") or "140000")
 MAX_HISTORY_MESSAGES = int(_env("MAX_HISTORY_MESSAGES", default="12") or "12")
 MAX_MESSAGE_CHARS = int(_env("MAX_MESSAGE_CHARS", default="900") or "900")
+
+# PostHog Cloud EU (server-side). Empty → analytics disabled (no-op).
+POSTHOG_API_KEY = _env("POSTHOG_API_KEY")
+POSTHOG_HOST = _env("POSTHOG_HOST", default="https://eu.i.posthog.com")
