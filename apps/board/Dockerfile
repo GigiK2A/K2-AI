@@ -28,7 +28,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    INTERNAL_API_URL=http://127.0.0.1:8000
+    INTERNAL_API_URL=http://127.0.0.1:8000 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # System deps: ca-certs (TLS), curl (healthcheck), Node 20 (for Next.js server.js)
 RUN apt-get update \
@@ -43,6 +44,15 @@ WORKDIR /app
 # --- Python / FastAPI ---
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install -r /app/backend/requirements.txt
+
+# --- Playwright Chromium for /screenshot endpoint ---
+# Installs Chromium + all system deps needed for headless rendering.
+# PLAYWRIGHT_BROWSERS_PATH set above ensures the non-root `app` user can read browsers.
+# This adds ~300 MB to the image but bundles everything in one container.
+RUN playwright install --with-deps chromium \
+    && chmod -R a+rx /ms-playwright \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY backend/app /app/backend/app
 
 # --- Next.js standalone build ---

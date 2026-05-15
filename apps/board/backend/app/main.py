@@ -16,6 +16,7 @@ from app.api import (
     memos as memos_api,
     overview as overview_api,
     revenue as revenue_api,
+    screenshot as screenshot_api,
     tasks as tasks_api,
     webhooks as webhooks_api,
 )
@@ -81,6 +82,7 @@ def create_app() -> FastAPI:
     app.include_router(overview_api.router)
     # Public — no auth (third-party signed callbacks).
     app.include_router(webhooks_api.router)
+    app.include_router(screenshot_api.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict:

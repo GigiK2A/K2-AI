@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # Stripe — webhook signature verification (Sprint 7).
     stripe_webhook_secret: str = Field(default="", alias="STRIPE_WEBHOOK_SECRET")
 
+    # Screenshot service — Playwright headless Chromium endpoint.
+    # If empty, /screenshot returns 503. Set to enable.
+    screenshot_api_key: str = Field(default="", alias="SCREENSHOT_API_KEY")
+
     # Google Calendar — stubs for future sync (Sprint 9+).
     google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID")
     google_client_secret: str = Field(default="", alias="GOOGLE_CLIENT_SECRET")
