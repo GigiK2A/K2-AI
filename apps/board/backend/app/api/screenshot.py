@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 
 from app.settings import get_settings
 
-router = APIRouter(prefix="/screenshot", tags=["screenshot"])
+router = APIRouter(prefix="/api/screenshot", tags=["screenshot"])
 log = logging.getLogger(__name__)
 
 # Bounds — keep memory/time predictable.
