@@ -1,27 +1,32 @@
-"""POST /screenshot — render HTML to PNG via Playwright headless Chromium.
+"""POST /api/screenshot — render HTML to PNG via Playwright, upload to Supabase Storage.
 
 Auth: `X-API-Key` header must equal SCREENSHOT_API_KEY env. If env is empty,
 endpoint returns 503 (disabled).
 
 Body:
   {
-    "html": "<html>...</html>",
+    "html":   "<html>...</html>",
     "width":  1080,  // optional, default 1080
     "height": 1350   // optional, default 1350
   }
 
-Response: image/png binary.
+Response:
+  { "url": "https://<project>.supabase.co/storage/v1/object/public/instagram-slides/slides/..." }
+
+Files stored at: slides/{timestamp}_{uuid4()}.png in bucket `instagram-slides` (public).
 """
 from __future__ import annotations
 
 import logging
 import secrets
+import time
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, status
-from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from app.db.client import get_supabase
 from app.settings import get_settings
 
 router = APIRouter(prefix="/api/screenshot", tags=["screenshot"])
@@ -33,11 +38,18 @@ MAX_DIM = 4096
 MAX_HTML_BYTES = 1_000_000  # 1 MB
 NAVIGATION_TIMEOUT_MS = 15_000
 
+STORAGE_BUCKET = "instagram-slides"
+STORAGE_PREFIX = "slides"
+
 
 class ScreenshotRequest(BaseModel):
     html: str = Field(..., min_length=1)
     width: int = Field(default=1080, ge=MIN_DIM, le=MAX_DIM)
     height: int = Field(default=1350, ge=MIN_DIM, le=MAX_DIM)
+
+
+class ScreenshotResponse(BaseModel):
+    url: str
 
 
 def _check_auth(x_api_key: Optional[str]) -> None:
@@ -52,32 +64,58 @@ def _check_auth(x_api_key: Optional[str]) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
 
+def _ensure_bucket_exists() -> None:
+    """Create the storage bucket if missing. Idempotent."""
+    client = get_supabase()
+    try:
+        existing = client.storage.list_buckets()
+        names = {b.name if hasattr(b, "name") else b.get("name") for b in existing}
+        if STORAGE_BUCKET in names:
+            return
+        client.storage.create_bucket(STORAGE_BUCKET, options={"public": True})
+        log.info("created supabase storage bucket %s", STORAGE_BUCKET)
+    except Exception as exc:
+        # If the bucket already exists, create_bucket raises — that's fine.
+        msg = str(exc).lower()
+        if "already exists" in msg or "duplicate" in msg or "23505" in msg:
+            return
+        raise
+
+
 @router.get("/health")
 async def screenshot_health(x_api_key: Optional[str] = Header(default=None, alias="X-API-Key")) -> dict:
-    """Readiness probe — verifies Playwright + Chromium are usable.
-
-    Returns 200 only if API key valid AND Chromium can be launched.
-    """
+    """Readiness probe — verifies Chromium boots AND Supabase storage reachable."""
     _check_auth(x_api_key)
     try:
         from playwright.async_api import async_playwright
+
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             await browser.close()
-        return {"status": "ok"}
     except Exception as exc:
-        log.exception("screenshot health check failed")
+        log.exception("chromium probe failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Chromium not available: {exc}",
         )
 
+    try:
+        _ensure_bucket_exists()
+    except Exception as exc:
+        log.exception("supabase bucket probe failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Supabase storage unreachable: {exc}",
+        )
 
-@router.post("")
+    return {"status": "ok", "storage_bucket": STORAGE_BUCKET}
+
+
+@router.post("", response_model=ScreenshotResponse)
 async def screenshot(
     body: ScreenshotRequest,
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
-) -> Response:
+) -> ScreenshotResponse:
     _check_auth(x_api_key)
 
     if len(body.html.encode("utf-8")) > MAX_HTML_BYTES:
@@ -94,11 +132,12 @@ async def screenshot(
             detail=f"playwright not installed: {exc}",
         )
 
+    # 1) Render PNG with Playwright
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(
                 headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
             )
             try:
                 context = await browser.new_context(
@@ -126,12 +165,24 @@ async def screenshot(
             detail=f"Render failed: {exc}",
         )
 
-    return Response(
-        content=png_bytes,
-        media_type="image/png",
-        headers={
-            "Cache-Control": "no-store",
-            "X-Image-Width": str(body.width),
-            "X-Image-Height": str(body.height),
-        },
-    )
+    # 2) Upload to Supabase Storage
+    try:
+        _ensure_bucket_exists()
+        client = get_supabase()
+        filename = f"{STORAGE_PREFIX}/{int(time.time() * 1000)}_{uuid.uuid4().hex}.png"
+        client.storage.from_(STORAGE_BUCKET).upload(
+            path=filename,
+            file=png_bytes,
+            file_options={"content-type": "image/png", "upsert": "false"},
+        )
+        public = client.storage.from_(STORAGE_BUCKET).get_public_url(filename)
+        # get_public_url returns URL; strip trailing '?' if SDK appends it.
+        public_url = public.rstrip("?")
+    except Exception as exc:
+        log.exception("supabase upload failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Supabase upload failed: {exc}",
+        )
+
+    return ScreenshotResponse(url=public_url)
