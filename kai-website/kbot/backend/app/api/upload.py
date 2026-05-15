@@ -1,6 +1,7 @@
 """POST /api/kbot/upload — base64 file payloads → Supabase Storage + text extraction."""
 from __future__ import annotations
 
+import anthropic as _anthropic
 import base64
 import logging
 import re
@@ -39,10 +40,47 @@ class UploadBody(BaseModel):
 
 
 _CLEAN_RE = re.compile(r"[^A-Za-z0-9._-]+")
+_VISION_MIMES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
 def _clean_filename(name: str) -> str:
     return _CLEAN_RE.sub("_", name).strip("._") or "file"
+
+
+def _analyze_image_vision(data: bytes, mime: str, name: str) -> str:
+    """Call Claude Vision to describe the image. Returns description string."""
+    from ..settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+
+    b64 = base64.b64encode(data).decode("utf-8")
+    client = _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    response = client.messages.create(
+        model=ANTHROPIC_MODEL,
+        max_tokens=800,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime,
+                            "data": b64,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            f'Analizza questa immagine "{name}" e descrivi in dettaglio: '
+                            "testo visibile, struttura e layout, elementi chiave (titoli, CTA, grafici, form, tabelle). "
+                            "Sii preciso e completo. Rispondi in italiano."
+                        ),
+                    },
+                ],
+            }
+        ],
+    )
+    return response.content[0].text.strip() if response.content else ""
 
 
 def _decode_b64(payload: str) -> bytes:
@@ -82,6 +120,14 @@ def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str]:
                     return text, "", "pdf-parse"
         except Exception as exc:
             log.warning("pdf-parse failed for %s: %s", name, exc)
+
+    if mime in _VISION_MIMES or any(name.lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp")):
+        try:
+            description = _analyze_image_vision(content, mime or "image/jpeg", name)
+            if description:
+                return "", description, "claude-vision"
+        except Exception as exc:
+            log.warning("vision analysis failed for %s: %s", name, exc)
 
     return "", "Nessun testo estraibile dal file.", "none"
 
