@@ -75,7 +75,7 @@ function renderGrid(grid, countEl) {
     ).join('')
 
     const btnScopri = svc.pillarUrl
-      ? `<a href="${esc(svc.pillarUrl)}" class="sas-btn-scopri">
+      ? `<a href="${esc(svc.pillarUrl)}" class="sas-btn-scopri" data-track-profile="${esc(svc.id)}">
            Scopri
            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 6h8M6 2l4 4-4 4"/></svg>
          </a>`

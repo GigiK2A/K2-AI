@@ -279,6 +279,10 @@ function persistContactPrefill() {
   }
 }
 
+function _trackKbot(event, props) {
+  try { window.posthog && window.posthog.capture(event, props || {}); } catch { /* ignore */ }
+}
+
 function initChat() {
   if (chatBooted) return;
 
