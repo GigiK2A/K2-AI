@@ -102,7 +102,7 @@ const SECURITY_HEADERS = {
   // executable, and are not blocked by script-src.
   // style-src keeps 'unsafe-inline' for now: Vite + many components emit
   // inline style attributes. Tightening this requires a separate pass.
-  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://frontend-cdn.perplexity.ai; connect-src 'self' https://api.k2-ai.it https://*.stripe.com https://checkout.stripe.com https://eu.i.posthog.com https://eu-assets.i.posthog.com wss://api.k2-ai.it; frame-src 'self' https://*.stripe.com https://checkout.stripe.com; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests",
+  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://frontend-cdn.perplexity.ai; connect-src 'self' https://api.k2-ai.it https://*.supabase.co wss://*.supabase.co https://*.stripe.com https://checkout.stripe.com https://eu.i.posthog.com https://eu-assets.i.posthog.com wss://api.k2-ai.it; frame-src 'self' https://*.stripe.com https://checkout.stripe.com; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests",
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
