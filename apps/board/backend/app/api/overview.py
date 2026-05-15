@@ -44,7 +44,7 @@ def overview() -> Dict[str, Any]:
     stale_cutoff = now - timedelta(days=STALE_DAYS)
 
     # ── Leads ────────────────────────────────────────────────────────────────
-    leads_res = sb.table("leads").select(
+    leads_res = sb.table("board_leads").select(
         "id, title, status, value_eur, updated_at"
     ).execute()
     leads = leads_res.data or []
@@ -78,7 +78,7 @@ def overview() -> Dict[str, Any]:
     high_value = sorted(active_leads, key=_value, reverse=True)[:5]
 
     # ── Tasks ────────────────────────────────────────────────────────────────
-    tasks_res = sb.table("tasks").select(
+    tasks_res = sb.table("board_tasks").select(
         "id, title, due_at, status"
     ).in_("status", ["todo", "doing"]).execute()
     tasks = tasks_res.data or []
@@ -103,13 +103,13 @@ def overview() -> Dict[str, Any]:
 
     # ── Approvals pending ────────────────────────────────────────────────────
     appr_res = (
-        sb.table("approvals").select("id", count="exact").eq("status", "pending").execute()
+        sb.table("board_approvals").select("id", count="exact").eq("status", "pending").execute()
     )
     approvals_pending = appr_res.count or 0
 
     # ── Revenue MTD ──────────────────────────────────────────────────────────
     rev_res = (
-        sb.table("revenue_events")
+        sb.table("board_revenue_events")
         .select("amount_cents, status, occurred_at")
         .eq("status", "succeeded")
         .gte("occurred_at", month_start.isoformat())
@@ -119,7 +119,7 @@ def overview() -> Dict[str, Any]:
 
     # ── Next meeting ─────────────────────────────────────────────────────────
     next_mtg_res = (
-        sb.table("meetings")
+        sb.table("board_meetings")
         .select("*")
         .gte("starts_at", now.isoformat())
         .order("starts_at", desc=False)

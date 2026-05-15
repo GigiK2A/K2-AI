@@ -13,7 +13,7 @@ from app.models.revenue import RevenueEventCreate, RevenueEventRead, RevenueEven
 
 router = APIRouter(prefix="/api/revenue", tags=["revenue"], dependencies=[Depends(require_auth)])
 
-TABLE = "revenue_events"
+TABLE = "board_revenue_events"
 
 
 @router.get("/", response_model=List[RevenueEventRead])

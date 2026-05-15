@@ -13,7 +13,7 @@ from app.models.memo import MemoCreate, MemoRead, MemoUpdate
 
 router = APIRouter(prefix="/api/memos", tags=["memos"], dependencies=[Depends(require_auth)])
 
-TABLE = "memos"
+TABLE = "board_memos"
 
 
 @router.get("/", response_model=List[MemoRead])

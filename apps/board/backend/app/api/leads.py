@@ -13,7 +13,7 @@ from app.models.lead import LeadCreate, LeadRead, LeadStatus, LeadUpdate
 
 router = APIRouter(prefix="/api/leads", tags=["leads"], dependencies=[Depends(require_auth)])
 
-TABLE = "leads"
+TABLE = "board_leads"
 
 
 @router.get("/", response_model=List[LeadRead])

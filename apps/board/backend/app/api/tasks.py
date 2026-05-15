@@ -13,7 +13,7 @@ from app.models.task import TaskCreate, TaskRead, TaskStatus, TaskUpdate
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"], dependencies=[Depends(require_auth)])
 
-TABLE = "tasks"
+TABLE = "board_tasks"
 
 
 @router.get("/", response_model=List[TaskRead])

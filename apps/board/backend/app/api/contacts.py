@@ -13,7 +13,7 @@ from app.models.contact import ContactCreate, ContactRead, ContactUpdate
 
 router = APIRouter(prefix="/api/contacts", tags=["contacts"], dependencies=[Depends(require_auth)])
 
-TABLE = "contacts"
+TABLE = "board_contacts"
 
 
 @router.get("/", response_model=List[ContactRead])

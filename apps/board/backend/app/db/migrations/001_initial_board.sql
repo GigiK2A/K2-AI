@@ -8,7 +8,7 @@
 --
 -- Verification:
 --   select tablename, rowsecurity from pg_tables where schemaname='public'
---     and tablename in ('contacts','leads','tasks','approvals','memos','meetings','revenue_events');
+--     and tablename in ('board_contacts','board_leads','board_tasks','board_approvals','board_memos','board_meetings','board_revenue_events');
 --   → rowsecurity must be `t` for every row.
 --
 --   select tablename, policyname from pg_policies where schemaname='public';
@@ -50,7 +50,7 @@ exception when duplicate_object then null; end $$;
 -- ── Tables ─────────────────────────────────────────────────────────────────
 
 -- contacts: anagrafica persone/aziende
-create table if not exists contacts (
+create table if not exists board_contacts (
     id uuid primary key default gen_random_uuid(),
     company text,
     person_name text,
@@ -62,12 +62,12 @@ create table if not exists contacts (
     updated_at timestamptz not null default now()
 );
 create unique index if not exists ix_contacts_email_lower
-    on contacts (lower(email)) where email is not null;
+    on board_contacts (lower(email)) where email is not null;
 
 -- leads: pipeline commerciale
-create table if not exists leads (
+create table if not exists board_leads (
     id uuid primary key default gen_random_uuid(),
-    contact_id uuid references contacts(id) on delete set null,
+    contact_id uuid references board_contacts(id) on delete set null,
     title text not null,
     description text,
     status lead_status not null default 'nuovo',
@@ -81,15 +81,15 @@ create table if not exists leads (
     updated_at timestamptz not null default now(),
     closed_at timestamptz
 );
-create index if not exists ix_leads_status on leads (status);
+create index if not exists ix_leads_status on board_leads (status);
 create index if not exists ix_leads_next_action
-    on leads (next_action_at)
+    on board_leads (next_action_at)
     where next_action_at is not null and status not in ('chiuso_vinto', 'chiuso_perso');
 
 -- tasks: todo Luigi (collegabili a lead o standalone)
-create table if not exists tasks (
+create table if not exists board_tasks (
     id uuid primary key default gen_random_uuid(),
-    lead_id uuid references leads(id) on delete set null,
+    lead_id uuid references board_leads(id) on delete set null,
     title text not null,
     notes text,
     priority task_priority not null default 'media',
@@ -100,40 +100,40 @@ create table if not exists tasks (
     updated_at timestamptz not null default now(),
     position int not null default 0
 );
-create index if not exists ix_tasks_status_due on tasks (status, due_at);
+create index if not exists ix_tasks_status_due on board_tasks (status, due_at);
 
 -- approvals: draft generati da AI che Luigi approva
-create table if not exists approvals (
+create table if not exists board_approvals (
     id uuid primary key default gen_random_uuid(),
     kind approval_kind not null,
     title text not null,
     body text not null,
     rationale text,
-    lead_id uuid references leads(id) on delete set null,
-    contact_id uuid references contacts(id) on delete set null,
+    lead_id uuid references board_leads(id) on delete set null,
+    contact_id uuid references board_contacts(id) on delete set null,
     status approval_status not null default 'pending',
     decision_note text,
     created_at timestamptz not null default now(),
     decided_at timestamptz
 );
-create index if not exists ix_approvals_status on approvals (status, created_at desc);
+create index if not exists ix_approvals_status on board_approvals (status, created_at desc);
 
 -- memos: memoria persistente fact-based
-create table if not exists memos (
+create table if not exists board_memos (
     id uuid primary key default gen_random_uuid(),
     subject text not null,
     body text not null,
     tags text[] not null default array[]::text[],
-    contact_id uuid references contacts(id) on delete set null,
-    lead_id uuid references leads(id) on delete set null,
+    contact_id uuid references board_contacts(id) on delete set null,
+    lead_id uuid references board_leads(id) on delete set null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
-create index if not exists ix_memos_subject_trgm on memos using gin (subject gin_trgm_ops);
-create index if not exists ix_memos_tags on memos using gin (tags);
+create index if not exists ix_memos_subject_trgm on board_memos using gin (subject gin_trgm_ops);
+create index if not exists ix_memos_tags on board_memos using gin (tags);
 
 -- meetings: sync Google Calendar (read-mostly)
-create table if not exists meetings (
+create table if not exists board_meetings (
     id uuid primary key default gen_random_uuid(),
     external_id text unique,
     title text not null,
@@ -143,15 +143,15 @@ create table if not exists meetings (
     location text,
     meet_link text,
     attendees jsonb not null default '[]'::jsonb,
-    contact_id uuid references contacts(id) on delete set null,
-    lead_id uuid references leads(id) on delete set null,
+    contact_id uuid references board_contacts(id) on delete set null,
+    lead_id uuid references board_leads(id) on delete set null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
-create index if not exists ix_meetings_starts on meetings (starts_at);
+create index if not exists ix_meetings_starts on board_meetings (starts_at);
 
 -- revenue_events: sync Stripe (read-mostly)
-create table if not exists revenue_events (
+create table if not exists board_revenue_events (
     id uuid primary key default gen_random_uuid(),
     external_id text unique not null,
     customer_email text,
@@ -161,36 +161,36 @@ create table if not exists revenue_events (
     description text,
     status text not null,
     occurred_at timestamptz not null,
-    lead_id uuid references leads(id) on delete set null,
+    lead_id uuid references board_leads(id) on delete set null,
     raw jsonb,
     created_at timestamptz not null default now()
 );
-create index if not exists ix_revenue_status_date on revenue_events (status, occurred_at desc);
+create index if not exists ix_revenue_status_date on board_revenue_events (status, occurred_at desc);
 
 -- ── RLS: enable + force + deny-all-anon (pattern from old 005_enable_rls.sql) ──
 
-alter table contacts        enable row level security;
-alter table leads           enable row level security;
-alter table tasks           enable row level security;
-alter table approvals       enable row level security;
-alter table memos           enable row level security;
-alter table meetings        enable row level security;
-alter table revenue_events  enable row level security;
+alter table board_contacts        enable row level security;
+alter table board_leads           enable row level security;
+alter table board_tasks           enable row level security;
+alter table board_approvals       enable row level security;
+alter table board_memos           enable row level security;
+alter table board_meetings        enable row level security;
+alter table board_revenue_events  enable row level security;
 
-alter table contacts        force row level security;
-alter table leads           force row level security;
-alter table tasks           force row level security;
-alter table approvals       force row level security;
-alter table memos           force row level security;
-alter table meetings        force row level security;
-alter table revenue_events  force row level security;
+alter table board_contacts        force row level security;
+alter table board_leads           force row level security;
+alter table board_tasks           force row level security;
+alter table board_approvals       force row level security;
+alter table board_memos           force row level security;
+alter table board_meetings        force row level security;
+alter table board_revenue_events  force row level security;
 
 do $$
 declare
     tbl text;
     tables text[] := array[
-        'contacts', 'leads', 'tasks', 'approvals',
-        'memos', 'meetings', 'revenue_events'
+        'board_contacts', 'board_leads', 'board_tasks', 'board_approvals',
+        'board_memos', 'board_meetings', 'board_revenue_events'
     ];
 begin
     foreach tbl in array tables loop
@@ -205,13 +205,13 @@ begin
     end loop;
 end$$;
 
-revoke all on public.contacts       from anon;
-revoke all on public.leads          from anon;
-revoke all on public.tasks          from anon;
-revoke all on public.approvals      from anon;
-revoke all on public.memos          from anon;
-revoke all on public.meetings       from anon;
-revoke all on public.revenue_events from anon;
+revoke all on public.board_contacts       from anon;
+revoke all on public.board_leads          from anon;
+revoke all on public.board_tasks          from anon;
+revoke all on public.board_approvals      from anon;
+revoke all on public.board_memos          from anon;
+revoke all on public.board_meetings       from anon;
+revoke all on public.board_revenue_events from anon;
 
 -- ── updated_at auto-bump trigger ───────────────────────────────────────────
 
@@ -226,7 +226,7 @@ $$ language plpgsql;
 do $$
 declare
     tbl text;
-    tables text[] := array['contacts', 'leads', 'tasks', 'memos', 'meetings'];
+    tables text[] := array['board_contacts', 'board_leads', 'board_tasks', 'board_memos', 'board_meetings'];
 begin
     foreach tbl in array tables loop
         execute format('drop trigger if exists set_updated_at on public.%I', tbl);

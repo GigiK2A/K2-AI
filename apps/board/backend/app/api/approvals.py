@@ -15,7 +15,7 @@ from app.models.approval import (
 
 router = APIRouter(prefix="/api/approvals", tags=["approvals"], dependencies=[Depends(require_auth)])
 
-TABLE = "approvals"
+TABLE = "board_approvals"
 
 
 @router.get("/", response_model=List[ApprovalRead])

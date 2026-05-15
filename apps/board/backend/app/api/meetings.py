@@ -13,7 +13,7 @@ from app.models.meeting import MeetingCreate, MeetingRead, MeetingUpdate
 
 router = APIRouter(prefix="/api/meetings", tags=["meetings"], dependencies=[Depends(require_auth)])
 
-TABLE = "meetings"
+TABLE = "board_meetings"
 
 
 @router.get("/", response_model=List[MeetingRead])
