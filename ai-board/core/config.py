@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     app_port: int = Field(default=8000)
     log_level: str = Field(default="DEBUG")
     app_allowed_origins: str = Field(
-        default="http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://192.168.0.62:4173,http://192.168.1.169:4173",
-        description="Origini abilitate per le richieste dal sito pubblico, separate da virgole",
+        default="http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173",
+        description="Origini abilitate per le richieste dal sito pubblico, separate da virgole. NON includere IP LAN in default; estendere via env in deploy.",
     )
     board_auth_enabled: bool = Field(default=False)
     board_username: str = Field(default="admin")

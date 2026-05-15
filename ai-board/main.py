@@ -91,10 +91,13 @@ async def main():
     logger.success(f"Scheduler avviato: {len(sched.get_jobs())} job attivi")
 
     port = int(os.getenv("PORT") or settings.app_port)
+    # Bind: default localhost-only. Set APP_BIND_HOST=0.0.0.0 explicitly to expose.
+    # Railway/Render/etc. require 0.0.0.0 to receive traffic from their proxy.
+    bind_host = os.getenv("APP_BIND_HOST", "127.0.0.1")
     dashboard = create_dashboard_app()
     config = uvicorn.Config(
         dashboard,
-        host="0.0.0.0",
+        host=bind_host,
         port=port,
         log_level="warning",
         server_header=False,
