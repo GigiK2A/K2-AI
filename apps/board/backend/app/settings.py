@@ -27,13 +27,21 @@ class Settings(BaseSettings):
 
     # CORS — comma-separated origin list in env.
     board_cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:3001",
+        default="https://board.k2-ai.it,http://localhost:3000,http://localhost:3001",
         alias="BOARD_CORS_ORIGINS",
     )
 
     # Optional integrations
     sentry_dsn: str = Field(default="", alias="SENTRY_DSN")
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
+
+    # Stripe — webhook signature verification (Sprint 7).
+    stripe_webhook_secret: str = Field(default="", alias="STRIPE_WEBHOOK_SECRET")
+
+    # Google Calendar — stubs for future sync (Sprint 9+).
+    google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(default="", alias="GOOGLE_CLIENT_SECRET")
+    google_refresh_token: str = Field(default="", alias="GOOGLE_REFRESH_TOKEN")
 
     # Observability
     log_format: str = Field(default="json", alias="LOG_FORMAT")  # "json" | "plain"

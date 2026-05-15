@@ -17,6 +17,7 @@ from app.api import (
     overview as overview_api,
     revenue as revenue_api,
     tasks as tasks_api,
+    webhooks as webhooks_api,
 )
 from app.lib.logger import configure_logging, get_logger
 from app.settings import get_settings
@@ -78,6 +79,8 @@ def create_app() -> FastAPI:
     app.include_router(meetings_api.router)
     app.include_router(revenue_api.router)
     app.include_router(overview_api.router)
+    # Public — no auth (third-party signed callbacks).
+    app.include_router(webhooks_api.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict:
