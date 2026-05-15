@@ -5,7 +5,7 @@ import ipaddress
 import json
 import re
 import socket
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 import httpx
@@ -13,7 +13,7 @@ import httpx
 FETCH_TIMEOUT = 10.0
 MAX_RESPONSE_BYTES = 500_000
 MAX_MAIN_CONTENT_CHARS = 6_000
-FULL_CONTENT_HTML_THRESHOLD = 2_000
+FULL_CONTENT_HTML_THRESHOLD = 20_000
 MAX_SUMMARY_CHARS = 1_500
 
 _BLOCKED_HOSTS = re.compile(
@@ -29,8 +29,6 @@ _SCRIPT_STYLE = re.compile(
     r"<(script|style|nav|footer|header|aside)[^>]*>[\s\S]*?</\1>",
     re.IGNORECASE,
 )
-_TAG_ATTR = re.compile(r'[\w-]+="[^"]*"', re.IGNORECASE)
-
 
 class UrlFetchError(ValueError):
     pass
@@ -193,11 +191,22 @@ async def fetch_url_content(url: str) -> Dict[str, Any]:
         timeout=FETCH_TIMEOUT,
         headers=headers,
     ) as client:
-        resp = await client.get(url)
-        content_type = resp.headers.get("content-type", "")
-        if "text/html" not in content_type:
-            raise UrlFetchError(f"Il server ha risposto con {content_type}, non HTML")
-        html = resp.text[:MAX_RESPONSE_BYTES]
+        async with client.stream("GET", url) as resp:
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise UrlFetchError(f"HTTP {e.response.status_code}: {url}") from e
+            content_type = resp.headers.get("content-type", "")
+            if "text/html" not in content_type:
+                raise UrlFetchError(f"Il server ha risposto con {content_type}, non HTML")
+            chunks = []
+            size = 0
+            async for chunk in resp.aiter_bytes(4096):
+                chunks.append(chunk)
+                size += len(chunk)
+                if size >= MAX_RESPONSE_BYTES:
+                    break
+            html = (b"".join(chunks))[:MAX_RESPONSE_BYTES].decode("utf-8", errors="replace")
 
     data = extract_html_content(html, url, content_type)
     data["summary"] = build_url_summary(data)

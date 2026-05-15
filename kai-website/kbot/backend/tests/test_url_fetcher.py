@@ -47,7 +47,7 @@ def test_extract_metadata_only():
 
 
 def test_extract_full_content_for_long_page():
-    body_text = "Paragrafo. " * 300
+    body_text = "Paragrafo. " * 2000
     html = f"""<html><head><title>Articolo</title></head>
     <body><main><p>{body_text}</p></main></body></html>"""
     result = extract_html_content(html, "https://blog.it/post", content_type="text/html")
@@ -77,5 +77,5 @@ def test_build_url_summary_truncates():
         "extraction_type": "full-content",
     }
     summary = build_url_summary(data)
-    assert len(summary) <= 1600
+    assert len(summary) <= 1500
     assert "Example" in summary
