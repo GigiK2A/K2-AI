@@ -16,6 +16,13 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
 RUN uv sync --frozen --no-dev
 
+# Run as non-root for defense-in-depth (Semgrep dockerfile.security.missing-user).
+# `uploads/` must be writable by the app; chown after deps are installed.
+RUN groupadd --system app && useradd --system --gid app --home /app --shell /sbin/nologin app \
+    && mkdir -p /app/uploads \
+    && chown -R app:app /app /opt/venv
+USER app
+
 EXPOSE 8000
 
 CMD ["python", "main.py"]
