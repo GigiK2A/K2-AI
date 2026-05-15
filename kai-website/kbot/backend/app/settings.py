@@ -50,10 +50,19 @@ FRONTEND_URL = _env("FRONTEND_URL", default="http://localhost:3000")
 SITE_URL = _env("NEXT_PUBLIC_SITE_URL", "SITE_URL", default="https://www.k2-ai.it")
 INTERNAL_API_KEY = _env("INTERNAL_API_KEY")
 
+# Default to k2-ai.it production origins. Never default to "*" with credentials.
+# Override via KBOT_CORS_ORIGINS env var (comma-separated) for dev/staging.
+_DEFAULT_CORS = ",".join([
+    "https://www.k2-ai.it",
+    "https://k2-ai.it",
+    "https://k-ai.it",
+    "https://www.k-ai.it",
+    FRONTEND_URL,  # dev only — usually http://localhost:3000
+])
 CORS_ORIGINS = [
     o.strip()
-    for o in (_env("KBOT_CORS_ORIGINS", default="*") or "*").split(",")
-    if o.strip()
+    for o in (_env("KBOT_CORS_ORIGINS", default=_DEFAULT_CORS) or _DEFAULT_CORS).split(",")
+    if o.strip() and o.strip() != "*"  # explicit guard: never allow wildcard
 ]
 
 # Skill loader looks here first (consolidated repo), then falls back to local copy.
