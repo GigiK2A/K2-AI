@@ -52,6 +52,13 @@ export interface UploadedFile {
   extractionMethod: "text-decode" | "pdf-parse" | "claude-summary" | "none" | string;
 }
 
+export interface AnalyzedUrl {
+  url: string;
+  title: string;
+  summary: string;
+  cached: boolean;
+}
+
 export interface SendMessageResult {
   message: string;
   summary: Record<string, unknown> | null;
@@ -213,6 +220,27 @@ export async function uploadFiles(
   if (!res.ok) await parseErr(res, "Errore upload");
   const data = await res.json();
   return (data.files as UploadedFile[]) ?? [];
+}
+
+/* -----------------------------------------------------------------
+ * URL fetching and analysis
+ * ----------------------------------------------------------------- */
+
+export async function fetchUrl(
+  sessionId: string,
+  url: string,
+  token?: string | null,
+): Promise<AnalyzedUrl> {
+  const res = await fetch(`${API_BASE}/api/kbot/fetch-url`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify({ session_id: sessionId, url }),
+  });
+  if (!res.ok) await parseErr(res, "Errore analisi URL");
+  return res.json();
 }
 
 /* -----------------------------------------------------------------
