@@ -6,6 +6,7 @@ Table: kbot_sessions (extended with user_id, see supabase migration).
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -48,12 +49,39 @@ def create_session(*, service_id: Optional[str], mode: Optional[str], user_id: O
     }
     if user_id:
         row["user_id"] = user_id
+    else:
+        # Anonymous session: issue a single-use link token so only the browser
+        # that originally created the session can later claim it (H-6).
+        row["link_token"] = secrets.token_urlsafe(32)
 
     client = get_admin_client()
     res = client.table(TABLE).insert(row).execute()
     if not res.data:
         raise RuntimeError("failed to create session")
     return res.data[0]
+
+
+def claim_session_with_token(
+    session_id: str, user_id: str, link_token: str
+) -> Optional[dict]:
+    """Atomically claim an anonymous session, verifying the link token.
+
+    Returns the updated row on success, None if the session doesn't exist,
+    is already owned, or the token doesn't match.
+    """
+    row = get_session(session_id)
+    if not row:
+        return None
+    if row.get("user_id"):
+        # Already linked — caller must check ownership separately.
+        return row if row.get("user_id") == user_id else None
+    stored = row.get("link_token") or ""
+    if not stored or not link_token:
+        return None
+    if not secrets.compare_digest(str(stored), str(link_token)):
+        return None
+    # Burn the token on use so it can't be replayed.
+    return update_session(session_id, {"user_id": user_id, "link_token": None})
 
 
 def get_session(session_id: str) -> Optional[dict]:
