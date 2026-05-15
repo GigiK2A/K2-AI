@@ -4,11 +4,12 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
 from ..lib.auth import AuthUser, optional_user
+from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 
 router = APIRouter()
@@ -26,8 +27,11 @@ class FetchUrlBody(BaseModel):
 
 
 @router.post("/fetch-url")
+@limiter.limit("10/minute")
 async def post_fetch_url(
-    body: FetchUrlBody, user: Optional[AuthUser] = Depends(optional_user)
+    request: Request,
+    body: FetchUrlBody,
+    user: Optional[AuthUser] = Depends(optional_user),
 ):
     session = sessions.get_session(body.sessionId)
     if not session:

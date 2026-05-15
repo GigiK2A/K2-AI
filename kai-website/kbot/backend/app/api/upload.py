@@ -8,11 +8,12 @@ import re
 import time
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
 from ..lib.auth import AuthUser, optional_user
+from ..lib.limiter import limiter
 from ..lib.supabase_admin import get_admin_client
 from ..settings import STORAGE_UPLOADS_BUCKET
 
@@ -133,7 +134,12 @@ def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str]:
 
 
 @router.post("/upload")
-def upload(body: UploadBody, user: Optional[AuthUser] = Depends(optional_user)):
+@limiter.limit("10/minute")
+def upload(
+    request: Request,
+    body: UploadBody,
+    user: Optional[AuthUser] = Depends(optional_user),
+):
     session = sessions.get_session(body.sessionId)
     if not session:
         raise HTTPException(status_code=404, detail="session not found")

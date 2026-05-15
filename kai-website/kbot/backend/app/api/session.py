@@ -7,11 +7,12 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
 from ..lib.auth import AuthUser, optional_user, require_user
+from ..lib.limiter import limiter
 
 router = APIRouter()
 
@@ -25,7 +26,12 @@ class CreateSessionBody(BaseModel):
 
 
 @router.post("/session")
-def create_session(body: CreateSessionBody, user: Optional[AuthUser] = Depends(optional_user)):
+@limiter.limit("20/minute")
+def create_session(
+    request: Request,
+    body: CreateSessionBody,
+    user: Optional[AuthUser] = Depends(optional_user),
+):
     row = sessions.create_session(
         service_id=body.serviceId,
         mode=body.mode,

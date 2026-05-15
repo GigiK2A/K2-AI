@@ -9,11 +9,12 @@ import re as _re
 from typing import List, Optional
 
 import anthropic
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
 from ..lib.auth import AuthUser, optional_user
+from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
     build_system_prompt_v2,
@@ -93,7 +94,12 @@ def _new_user_messages(body: MessageBody) -> List[dict]:
 
 
 @router.post("/message")
-async def post_message(body: MessageBody, user: Optional[AuthUser] = Depends(optional_user)):
+@limiter.limit("30/minute")
+async def post_message(
+    request: Request,
+    body: MessageBody,
+    user: Optional[AuthUser] = Depends(optional_user),
+):
     session = sessions.get_session(body.sessionId)
     if not session:
         raise HTTPException(status_code=404, detail="session not found")

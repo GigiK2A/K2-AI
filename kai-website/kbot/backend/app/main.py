@@ -3,11 +3,16 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from .api import session, message, upload, report, checkout, generate_pdf, status, webhook, fetch_url
+from .lib.limiter import limiter
 from .settings import CORS_ORIGINS
 
 app = FastAPI(title="K2-AI K-BOT backend", version="2.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
