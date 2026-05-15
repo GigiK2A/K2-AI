@@ -1,8 +1,16 @@
 // Server-side fetch helper. Forwards request cookies to the K2-Board backend.
+//
+// In production (single Railway container) the FastAPI backend listens on
+// 127.0.0.1:8000 inside the same container, so server components hit it
+// directly via INTERNAL_API_URL — no extra hop through the Next.js rewrite.
+// In local dev the backend is a separate uvicorn process, same address.
 
 import { cookies } from "next/headers";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE =
+  process.env.INTERNAL_API_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "http://127.0.0.1:8000";
 
 type FetchOptions = RequestInit & { signal?: AbortSignal };
 
