@@ -6,6 +6,7 @@ so that the rest of the system stays usable during development.
 from __future__ import annotations
 
 import logging
+import secrets
 from typing import Optional
 
 import stripe
@@ -64,8 +65,15 @@ def checkout(body: CheckoutBody, user: Optional[AuthUser] = Depends(optional_use
         sessions.update_session(body.sessionId, {"email": email})
 
     return_base = FRONTEND_URL or SITE_URL
-    success_url = f"{return_base}/?kbot_paid=1&session={body.sessionId}&cs={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{return_base}/?kbot_cancelled=1&session={body.sessionId}"
+    # H-7: do NOT embed the kbot session UUID in success/cancel URLs — query
+    # params leak to referrers, analytics pixels, browser history. Use Stripe's
+    # built-in {CHECKOUT_SESSION_ID} placeholder and a short-lived opaque
+    # success_token stored on the session, which the frontend exchanges for
+    # the real session id server-side after redirect.
+    success_token = secrets.token_urlsafe(24)
+    sessions.update_session(body.sessionId, {"success_token": success_token})
+    success_url = f"{return_base}/?kbot_paid=1&t={success_token}&cs={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{return_base}/?kbot_cancelled=1&t={success_token}"
 
     try:
         checkout_session = sclient.checkout.Session.create(

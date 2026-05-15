@@ -8,3 +8,8 @@ ALTER TABLE kbot_sessions
 
 -- Tokens are random 32-byte URL-safe strings; no index needed (lookups go
 -- through id first, then compare token in app code with constant-time compare).
+
+-- H-7: short-lived opaque token for Stripe success_url, so the kbot session
+-- UUID never leaks to referrers via query params.
+ALTER TABLE kbot_sessions
+  ADD COLUMN IF NOT EXISTS success_token TEXT;
