@@ -8,7 +8,7 @@ import { Composer } from "@/components/chat/Composer";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
 import { InsightPanel } from "@/components/insights/InsightPanel";
-import { sendMessage, uploadFiles, startCheckout, type UploadedFile } from "@/lib/api";
+import { sendMessage, uploadFiles, startCheckout, fetchUrl, type UploadedFile, type AnalyzedUrl } from "@/lib/api";
 import { ChatMessage, Conversation, Mode } from "@/types/chat";
 import { uid } from "@/lib/utils";
 import { MessageCircle } from "lucide-react";
@@ -90,6 +90,8 @@ export default function HomePage() {
   const [contextFilesByConversation, setContextFilesByConversation] = useState<
     Record<string, UploadedFile[]>
   >({});
+  const [fetchingUrl, setFetchingUrl] = useState(false);
+  const [analyzedUrls, setAnalyzedUrls] = useState<AnalyzedUrl[]>([]);
 
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -186,6 +188,40 @@ export default function HomePage() {
       }
     },
     [activeConversation.id, ensureSession, getToken, mode],
+  );
+
+  const handleFetchUrl = useCallback(
+    async (url: string) => {
+      if (fetchingUrl) return;
+      setFetchingUrl(true);
+      try {
+        const session = await ensureSession({ mode });
+        const token = await getToken();
+        const result = await fetchUrl(session.id, url, token ?? null);
+        setAnalyzedUrls((prev) => {
+          const exists = prev.some((u) => u.url === url);
+          return exists ? prev : [...prev, result];
+        });
+        const confirmMsg: ChatMessage = {
+          id: uid("msg"),
+          role: "assistant",
+          content: `Ho analizzato **${result.title || url}** — il contenuto è disponibile per la nostra conversazione. Cosa vuoi sapere?`,
+          ts: Date.now(),
+        };
+        updateMessages([...activeConversation.messages, confirmMsg]);
+      } catch (err: unknown) {
+        const errMsg: ChatMessage = {
+          id: uid("msg"),
+          role: "assistant",
+          content: `Non riesco ad analizzare l'URL: ${err instanceof Error ? err.message : "errore sconosciuto"}.`,
+          ts: Date.now(),
+        };
+        updateMessages([...activeConversation.messages, errMsg]);
+      } finally {
+        setFetchingUrl(false);
+      }
+    },
+    [activeConversation.messages, ensureSession, fetchingUrl, getToken, mode],
   );
 
   async function handleSubmit() {
@@ -312,10 +348,12 @@ export default function HomePage() {
               value={composer}
               onChange={setComposer}
               onSubmit={handleSubmit}
-              disabled={loading}
+              disabled={loading || fetchingUrl}
               suggestions={REPORT_SUGGESTIONS}
               onPickFiles={handleFilePick}
               files={pendingFiles}
+              onFetchUrl={handleFetchUrl}
+              fetchingUrl={fetchingUrl}
             />
           </div>
         </div>
