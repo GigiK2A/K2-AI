@@ -322,11 +322,21 @@ function shouldRedirect(host) {
   return host === REDIRECT_HOST || host.startsWith(`${REDIRECT_HOST}:`);
 }
 
-function applySecurityHeaders(res) {
+// CSP relaxed for the K-BOT Next.js standalone served at /app/*.
+// Next.js generates inline bootstrap/hydration <script> blocks that require
+// 'unsafe-inline' (or nonces, which Next standalone doesn't auto-inject).
+// We trade tighter script-src on the marketing pages for working /app/.
+const KBOT_APP_CSP = "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://api.fontshare.com https://frontend-cdn.perplexity.ai; connect-src 'self' https://api.k2-ai.it https://*.supabase.co wss://*.supabase.co https://*.stripe.com https://checkout.stripe.com https://eu.i.posthog.com https://eu-assets.i.posthog.com wss://api.k2-ai.it; frame-src 'self' https://*.stripe.com https://checkout.stripe.com; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests";
+
+function applySecurityHeaders(res, pathname) {
+  const isKbotApp = typeof pathname === 'string' && (pathname === '/app' || pathname.startsWith('/app/'));
   Object.entries(SECURITY_HEADERS).forEach(([name, value]) => {
-    if (!res.hasHeader(name)) {
-      res.setHeader(name, value);
+    if (res.hasHeader(name)) return;
+    if (name === 'Content-Security-Policy' && isKbotApp) {
+      res.setHeader(name, KBOT_APP_CSP);
+      return;
     }
+    res.setHeader(name, value);
   });
 
   if (process.env.NODE_ENV === 'production' && !res.hasHeader('Strict-Transport-Security')) {
@@ -2536,7 +2546,11 @@ function serveFile(req, res, filePath) {
 
 // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- HTTPS terminated at edge proxy (Railway/Vercel); this server listens on internal Node port behind TLS
 const server = http.createServer((req, res) => {
-  applySecurityHeaders(res);
+  const earlyPath = (() => {
+    try { return new URL(req.url || '/', 'http://localhost').pathname; }
+    catch { return req.url || '/'; }
+  })();
+  applySecurityHeaders(res, earlyPath);
 
   const host = normalizeHost(req);
   if (shouldRedirect(host)) {
