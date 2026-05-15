@@ -53,8 +53,10 @@ export function loadSkill(skillName: string, options: LoadSkillOptions = {}): st
     throw new Error(`Skill non trovata: ${skillName}`)
   }
 
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- skillDir derived from assertSafeSkillName-validated value, fixed filename 'SKILL.md'
   const skillMd = readFileSync(path.join(skillDir, 'SKILL.md'), 'utf-8')
 
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- skillDir validated above, fixed segment 'references'
   const refDir = path.join(skillDir, 'references')
   let references = ''
 
@@ -65,6 +67,7 @@ export function loadSkill(skillName: string, options: LoadSkillOptions = {}): st
 
     references = refFiles
       .map(f => {
+        // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- f from readdirSync filtered to *.md within validated refDir
         const content = readFileSync(path.join(refDir, f), 'utf-8')
         return `\n\n---\n## ${f.replace('.md', '')}\n\n${content}`
       })

@@ -79,6 +79,7 @@ def render_html(analysis: Dict[str, Any], *, session_id: str) -> str:
         "line1": f"Report generato il {today} · Dati forniti dall'utente · Stime basate su skill verticali K2-AI",
         "code": code_default,
     }
+    # nosemgrep: python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2 -- autoescape enabled in _env (select_autoescape html/xml); all variables are server-controlled
     return template.render(
         css=_load_css(),
         meta=meta,

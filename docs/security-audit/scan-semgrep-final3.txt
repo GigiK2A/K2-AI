@@ -1,0 +1,532 @@
+                    
+                    
+┌──────────────────┐
+│ 43 Code Findings │
+└──────────────────┘
+                                                     
+    ai-board/interfaces/dashboard/templates/base.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+            ⋮┆----------------------------------------
+            8┆ <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+                                                              
+    ai-board/interfaces/dashboard/templates/lavori_detail.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+            ⋮┆----------------------------------------
+            8┆ <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+            ⋮┆----------------------------------------
+            9┆ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                                                      
+    ai-board/interfaces/dashboard/templates/login.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+                                                    
+    ai-board/stitch/stitch/agenti_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                            
+    ai-board/stitch/stitch/agenti_ai_board_updated/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                          
+    ai-board/stitch/stitch/approvazioni_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                
+    ai-board/stitch/stitch/dettaglio_progetto_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                    
+    ai-board/stitch/stitch/lavori_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                         
+    ai-board/stitch/stitch/log_attivit_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                               
+    ai-board/stitch/stitch/memoria_condivisa_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                        
+    ai-board/stitch/stitch/panoramica_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                         
+    ai-board/stitch/stitch/panoramica_ai_board_con_icone_agenti/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                
+    ai-board/stitch/stitch/panoramica_ai_board_updated/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                           
+    ai-board/stitch/stitch/pipeline_lead_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                           
+    ai-board/stitch_step4b/stitch/agenti_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                   
+    ai-board/stitch_step4b/stitch/agenti_ai_board_updated/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                 
+    ai-board/stitch_step4b/stitch/agenti_brand_strategy/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                 
+    ai-board/stitch_step4b/stitch/agenti_chief_of_staff/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                 
+    ai-board/stitch_step4b/stitch/agenti_content_engine/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                              
+    ai-board/stitch_step4b/stitch/agenti_finance_kpi/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                            
+    ai-board/stitch_step4b/stitch/agenti_knowledge/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                  
+    ai-board/stitch_step4b/stitch/agenti_lead_generation/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                      
+    ai-board/stitch_step4b/stitch/agenti_market_intelligence/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                     
+    ai-board/stitch_step4b/stitch/agenti_marketing_strategy/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                    
+    ai-board/stitch_step4b/stitch/agenti_offer_positioning/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                               
+    ai-board/stitch_step4b/stitch/agenti_orchestrator/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                           
+    ai-board/stitch_step4b/stitch/agenti_outreach/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                     
+    ai-board/stitch_step4b/stitch/agenti_project_operations/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                    
+    ai-board/stitch_step4b/stitch/agenti_risk_human_review/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                   
+    ai-board/stitch_step4b/stitch/agenti_sales_enablement/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                     
+    ai-board/stitch_step4b/stitch/agenti_solution_architect/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                 
+    ai-board/stitch_step4b/stitch/approvazioni_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                       
+    ai-board/stitch_step4b/stitch/dettaglio_progetto_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                           
+    ai-board/stitch_step4b/stitch/lavori_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                
+    ai-board/stitch_step4b/stitch/log_attivit_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                      
+    ai-board/stitch_step4b/stitch/memoria_condivisa_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            6┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                               
+    ai-board/stitch_step4b/stitch/panoramica_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                                
+    ai-board/stitch_step4b/stitch/panoramica_ai_board_con_icone_agenti/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                       
+    ai-board/stitch_step4b/stitch/panoramica_ai_board_updated/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+                                                                  
+    ai-board/stitch_step4b/stitch/pipeline_lead_ai_board/code.html
+    ❯❱ html.security.audit.missing-integrity.missing-integrity
+          ❰❰ Blocking ❱❱
+          This tag is missing an 'integrity' subresource integrity attribute. The 'integrity' attribute allows
+          for the browser to verify that externally hosted files (for example from a CDN) are delivered       
+          without unexpected manipulation. Without this attribute, if an attacker can modify the externally   
+          hosted resource, this could lead to XSS and other types of attacks. To prevent this, include the    
+          base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch in the 
+          'integrity' attribute for all externally hosted files.                                              
+          Details: https://sg.run/krXA                                                                        
+                                                                                                              
+            7┆ <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+

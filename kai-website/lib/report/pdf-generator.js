@@ -107,6 +107,7 @@ function readReportCss() {
   try {
     return fs.readdirSync(assetsDir)
       .filter(file => file.endsWith('.css') && (file.startsWith('report-preview') || file.startsWith('base')))
+      // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- file from readdirSync filtered by extension+prefix, no user input
       .map(file => readIfExists(path.join(assetsDir, file)))
       .join('\n')
   } catch {
