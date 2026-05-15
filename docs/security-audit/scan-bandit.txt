@@ -1,0 +1,352 @@
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	running on Python 3.14.4
+Working... ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:13
+Run started:2026-05-15 09:17:33.079843+00:00
+
+Test results:
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: ai-board/core/action_guard.py:126:4
+125	            return None
+126	    except Exception:
+127	        pass  # Created_at malformato — procedi comunque
+128	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: ai-board/core/email.py:232:16
+231	                    )
+232	                except Exception:
+233	                    pass
+234	            else:
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: ai-board/core/notion_tools.py:199:12
+198	                    lead = page
+199	            except Exception:
+200	                pass
+201	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: ai-board/core/notion_tools.py:410:16
+409	                        )
+410	                except Exception:
+411	                    pass  # Pre-state capture non bloccante
+412	
+
+--------------------------------------------------
+>> Issue: [B704:markupsafe_markup_xss] Potential XSS with ``markupsafe.Markup`` detected. Do not use ``Markup`` on untrusted data.
+   Severity: Medium   Confidence: High
+   CWE: CWE-79 (https://cwe.mitre.org/data/definitions/79.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b704_markupsafe_markup_xss.html
+   Location: ai-board/interfaces/dashboard/routes/__init__.py:133:11
+132	    )
+133	    return Markup(html)
+134	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: ai-board/interfaces/dashboard/routes/workshop.py:166:4
+165	            full.unlink(missing_ok=True)
+166	    except Exception:
+167	        pass
+168	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: ai-board/interfaces/telegram/assistant.py:790:4
+789	        return _canonical_agent(AgentName(text))
+790	    except Exception:
+791	        pass
+792	    return _resolve_agent_from_text(_normalize(text))
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: ai-board/interfaces/telegram/handlers.py:283:12
+282	                task_text += f"\n\n## Input\n{json.dumps(inputs, ensure_ascii=False, indent=2)}"
+283	            except Exception:
+284	                pass
+285	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: ai-board/interfaces/telegram/handlers.py:577:8
+576	                age_str = f" ({age_h}h fa)"
+577	        except Exception:
+578	            pass
+579	        text = (
+
+--------------------------------------------------
+>> Issue: [B104:hardcoded_bind_all_interfaces] Possible binding to all interfaces.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-605 (https://cwe.mitre.org/data/definitions/605.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b104_hardcoded_bind_all_interfaces.html
+   Location: ai-board/main.py:97:13
+96	        dashboard,
+97	        host="0.0.0.0",
+98	        port=port,
+
+--------------------------------------------------
+>> Issue: [B404:blacklist] Consider possible security implications associated with the subprocess module.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_imports.html#b404-import-subprocess
+   Location: ai-board/main.py:148:8
+147	    try:
+148	        import subprocess
+149	        result = subprocess.run(
+
+--------------------------------------------------
+>> Issue: [B607:start_process_with_partial_path] Starting a process with a partial executable path
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b607_start_process_with_partial_path.html
+   Location: ai-board/main.py:149:17
+148	        import subprocess
+149	        result = subprocess.run(
+150	            ["lsof", "-ti", f":{port}"],
+151	            capture_output=True, text=True
+152	        )
+153	        pids = result.stdout.strip().split()
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: ai-board/main.py:149:17
+148	        import subprocess
+149	        result = subprocess.run(
+150	            ["lsof", "-ti", f":{port}"],
+151	            capture_output=True, text=True
+152	        )
+153	        pids = result.stdout.strip().split()
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'non deve arrivare all'agente'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: ai-board/tests/test_pipeline_final_fixes.py:288:31
+287	                "description": "PROMPT LUNGO CON DATI SENSIBILI " * 100,
+288	                "input_data": {"secret": "non deve arrivare all'agente"},
+289	            }
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: kai-website/kbot/backend/app/api/upload.py:103:8
+102	            return text, "", "text-decode"
+103	        except Exception:
+104	            pass
+105	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: kai-website/kbot/backend/app/lib/url_fetcher.py:105:8
+104	                types.extend(t)
+105	        except Exception:
+106	            pass
+107	    return list(set(types))
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 17236
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 14
+		Medium: 2
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 2
+		High: 14
+Files skipped (149):
+	ai-board/._._main.py (syntax error while parsing AST from file)
+	ai-board/._main.py (syntax error while parsing AST from file)
+	ai-board/agents/._._base.py (syntax error while parsing AST from file)
+	ai-board/agents/._._chief_of_staff.py (syntax error while parsing AST from file)
+	ai-board/agents/._._content_engine.py (syntax error while parsing AST from file)
+	ai-board/agents/._._finance_kpi.py (syntax error while parsing AST from file)
+	ai-board/agents/._._geo_seo.py (syntax error while parsing AST from file)
+	ai-board/agents/._._legal.py (syntax error while parsing AST from file)
+	ai-board/agents/._._orchestrator.py (syntax error while parsing AST from file)
+	ai-board/agents/._._sales_enablement.py (syntax error while parsing AST from file)
+	ai-board/agents/._._solution_architect.py (syntax error while parsing AST from file)
+	ai-board/agents/.___init__.py (syntax error while parsing AST from file)
+	ai-board/agents/._base.py (syntax error while parsing AST from file)
+	ai-board/agents/._brand_strategy.py (syntax error while parsing AST from file)
+	ai-board/agents/._chief_of_staff.py (syntax error while parsing AST from file)
+	ai-board/agents/._content_engine.py (syntax error while parsing AST from file)
+	ai-board/agents/._finance_kpi.py (syntax error while parsing AST from file)
+	ai-board/agents/._geo_seo.py (syntax error while parsing AST from file)
+	ai-board/agents/._knowledge.py (syntax error while parsing AST from file)
+	ai-board/agents/._lead_generation.py (syntax error while parsing AST from file)
+	ai-board/agents/._legal.py (syntax error while parsing AST from file)
+	ai-board/agents/._market_intelligence.py (syntax error while parsing AST from file)
+	ai-board/agents/._marketing_strategy.py (syntax error while parsing AST from file)
+	ai-board/agents/._offer_positioning.py (syntax error while parsing AST from file)
+	ai-board/agents/._orchestrator.py (syntax error while parsing AST from file)
+	ai-board/agents/._outreach.py (syntax error while parsing AST from file)
+	ai-board/agents/._project_operations.py (syntax error while parsing AST from file)
+	ai-board/agents/._risk_review.py (syntax error while parsing AST from file)
+	ai-board/agents/._sales_enablement.py (syntax error while parsing AST from file)
+	ai-board/agents/._solution_architect.py (syntax error while parsing AST from file)
+	ai-board/controllers/.___init__.py (syntax error while parsing AST from file)
+	ai-board/controllers/._agents_controller.py (syntax error while parsing AST from file)
+	ai-board/controllers/._home_controller.py (syntax error while parsing AST from file)
+	ai-board/core/._._approval.py (syntax error while parsing AST from file)
+	ai-board/core/._._config.py (syntax error while parsing AST from file)
+	ai-board/core/._._conversation.py (syntax error while parsing AST from file)
+	ai-board/core/._._orchestrator.py (syntax error while parsing AST from file)
+	ai-board/core/._._scheduler.py (syntax error while parsing AST from file)
+	ai-board/core/._._text.py (syntax error while parsing AST from file)
+	ai-board/core/.___init__.py (syntax error while parsing AST from file)
+	ai-board/core/._action_guard.py (syntax error while parsing AST from file)
+	ai-board/core/._approval.py (syntax error while parsing AST from file)
+	ai-board/core/._board_auth.py (syntax error while parsing AST from file)
+	ai-board/core/._business_audit.py (syntax error while parsing AST from file)
+	ai-board/core/._config.py (syntax error while parsing AST from file)
+	ai-board/core/._conversation.py (syntax error while parsing AST from file)
+	ai-board/core/._email.py (syntax error while parsing AST from file)
+	ai-board/core/._memory.py (syntax error while parsing AST from file)
+	ai-board/core/._notion_board.py (syntax error while parsing AST from file)
+	ai-board/core/._notion_tools.py (syntax error while parsing AST from file)
+	ai-board/core/._orchestrator.py (syntax error while parsing AST from file)
+	ai-board/core/._rate_limit.py (syntax error while parsing AST from file)
+	ai-board/core/._scheduler.py (syntax error while parsing AST from file)
+	ai-board/core/._session_state.py (syntax error while parsing AST from file)
+	ai-board/core/._text.py (syntax error while parsing AST from file)
+	ai-board/core/._undo.py (syntax error while parsing AST from file)
+	ai-board/db/._._models.py (syntax error while parsing AST from file)
+	ai-board/db/.___init__.py (syntax error while parsing AST from file)
+	ai-board/db/._base.py (syntax error while parsing AST from file)
+	ai-board/db/._client.py (syntax error while parsing AST from file)
+	ai-board/db/._models.py (syntax error while parsing AST from file)
+	ai-board/interfaces/.___init__.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/._._app.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/.___init__.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/._app.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._.___init__.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._agents.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._approvals.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._board_chat.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._home.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._inbox.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._lavori.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._logs.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._memory.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._pipeline.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._._public_intake.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/.___init__.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._admin.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._agents.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._approvals.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._auth.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._board_chat.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._home.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._inbox.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._lavori.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._logs.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._memory.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._pipeline.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._public_intake.py (syntax error while parsing AST from file)
+	ai-board/interfaces/dashboard/routes/._workshop.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._._assistant.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._._bot.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._._handlers.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._._keyboards.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._._notifier.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/.___init__.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._assistant.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._bot.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._handlers.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._keyboards.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._notifier.py (syntax error while parsing AST from file)
+	ai-board/interfaces/telegram/._presentation.py (syntax error while parsing AST from file)
+	ai-board/repositories/.___init__.py (syntax error while parsing AST from file)
+	ai-board/repositories/.__common.py (syntax error while parsing AST from file)
+	ai-board/repositories/._agent_logs.py (syntax error while parsing AST from file)
+	ai-board/repositories/._approvals.py (syntax error while parsing AST from file)
+	ai-board/repositories/._pipeline.py (syntax error while parsing AST from file)
+	ai-board/repositories/._tasks.py (syntax error while parsing AST from file)
+	ai-board/services/.___init__.py (syntax error while parsing AST from file)
+	ai-board/services/.__time.py (syntax error while parsing AST from file)
+	ai-board/services/._agents_service.py (syntax error while parsing AST from file)
+	ai-board/services/._dto.py (syntax error while parsing AST from file)
+	ai-board/services/._home_service.py (syntax error while parsing AST from file)
+	ai-board/services/._reports_service.py (syntax error while parsing AST from file)
+	ai-board/tests/._._test_scheduler.py (syntax error while parsing AST from file)
+	ai-board/tests/._test_eval_scenarios.py (syntax error while parsing AST from file)
+	ai-board/tests/._test_mvc_layering.py (syntax error while parsing AST from file)
+	ai-board/tests/._test_pipeline_final_fixes.py (syntax error while parsing AST from file)
+	ai-board/tests/._test_scheduler.py (syntax error while parsing AST from file)
+	ai-board/tools/._._runner.py (syntax error while parsing AST from file)
+	ai-board/tools/.___init__.py (syntax error while parsing AST from file)
+	ai-board/tools/._fix_notion_intake.py (syntax error while parsing AST from file)
+	ai-board/tools/._runner.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/.___init__.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/._main.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/._settings.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/.___init__.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._checkout.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._fetch_url.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._generate_pdf.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._message.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._report.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._session.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._status.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._upload.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/api/._webhook.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/.___init__.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._analysis.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._auth.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._email.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._pdf_renderer.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._prompts.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._services.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._sessions.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._skills.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._storage.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._supabase_admin.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/lib/._url_fetcher.py (syntax error while parsing AST from file)
+	kai-website/kbot/backend/app/services/.___init__.py (syntax error while parsing AST from file)

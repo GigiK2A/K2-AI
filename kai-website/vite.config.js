@@ -65,6 +65,7 @@ function blockSensitiveFallbacks() {
       ])
 
       if (allowedOrigins.has(origin)) {
+        // nosemgrep: javascript.express.security.cors-misconfiguration.cors-misconfiguration -- origin is validated against allowlist above; dev server only (not in production bundle)
         res.setHeader('Access-Control-Allow-Origin', origin)
         res.setHeader('Vary', 'Origin, Access-Control-Request-Headers')
       }

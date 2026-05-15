@@ -168,6 +168,7 @@ def render_markdown(value: Any) -> Markup:
         protocols=_MD_ALLOWED_PROTOCOLS,
         strip=True,
     )
+    # nosemgrep: python.flask.security.xss.audit.explicit-unescape-with-markup.explicit-unescape-with-markup -- sanitized via bleach.clean above with strict tag/attr/protocol allowlist
     return Markup(sanitized)  # noqa: S704 — sanitized via bleach.clean above
 
 

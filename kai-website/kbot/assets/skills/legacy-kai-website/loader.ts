@@ -5,6 +5,15 @@ const SKILLS_DIR = path.join(process.cwd(), 'lib', 'skills')
 const SKILL_CACHE = new Map<string, string>()
 const BUNDLE_CACHE = new Map<string, string>()
 
+// Allowlist pattern: skill names must be simple slugs to prevent path traversal.
+const SAFE_SKILL_NAME = /^[a-z0-9][a-z0-9_-]{0,80}$/i
+
+function assertSafeSkillName(name: string): void {
+  if (typeof name !== 'string' || !SAFE_SKILL_NAME.test(name)) {
+    throw new Error(`Skill name non valido: ${name}`)
+  }
+}
+
 export type LoadSkillOptions = {
   includeReferences?: boolean
   maxChars?: number
@@ -36,6 +45,8 @@ export function loadSkill(skillName: string, options: LoadSkillOptions = {}): st
   const cached = SKILL_CACHE.get(cacheKey)
   if (cached) return cached
 
+  assertSafeSkillName(skillName)
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- validated by assertSafeSkillName above
   const skillDir = path.join(SKILLS_DIR, skillName)
 
   if (!existsSync(skillDir)) {

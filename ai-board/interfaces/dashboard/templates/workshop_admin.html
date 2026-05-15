@@ -146,6 +146,7 @@
                   Apri file →
                 </a>
                 <!-- Sostituisci file -->
+                <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
                 <form method="post" action="/workshop-admin/{{ item.id }}/upload-html"
                       enctype="multipart/form-data" class="flex items-center gap-2">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -157,6 +158,7 @@
                   </button>
                 </form>
                 <!-- Rimuovi file -->
+                <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
                 <form method="post" action="/workshop-admin/{{ item.id }}/remove-html">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                   <button type="submit"
@@ -169,6 +171,7 @@
               {% else %}
               <div class="flex items-center gap-3">
                 <span class="text-xs text-gray-400">Nessun file HTML caricato</span>
+                <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
                 <form method="post" action="/workshop-admin/{{ item.id }}/upload-html"
                       enctype="multipart/form-data" class="flex items-center gap-2">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -199,6 +202,7 @@
               <!-- Lista immagini (caricata lazy) -->
               <div id="img-list-{{ item.id }}" class="hidden mb-3 space-y-1"></div>
               <!-- Form upload immagine -->
+              <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
               <form method="post" action="/workshop-admin/{{ item.id }}/upload-image"
                     enctype="multipart/form-data" class="flex items-center gap-2 flex-wrap">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -213,6 +217,7 @@
           </div>
 
           <!-- Rimuovi pacchetto -->
+          <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
           <form method="post" action="/workshop-admin/{{ item.id }}/delete" class="shrink-0">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
             <button type="submit"

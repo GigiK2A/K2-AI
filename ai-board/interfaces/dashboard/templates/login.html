@@ -25,6 +25,7 @@
       </div>
       {% endif %}
 
+      <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, CSRF via {{ csrf_token }}) -->
       <form method="post" action="/login" class="space-y-4">
         <input type="hidden" name="next" value="{{ next }}" />
         <div>

@@ -115,6 +115,7 @@
         <p class="truncate text-[11px] font-medium text-gray-400">{{ current_user.display_name }}</p>
         <p class="text-[10px] uppercase tracking-widest text-gray-600">{{ current_user.role }}</p>
       </div>
+      <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
       <form method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <button type="submit"

@@ -70,6 +70,7 @@
 
       <!-- Azioni rapide (visibili on hover) -->
       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
         <form method="post" action="/lavori/{{ task.id }}/to-pipeline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
           <button type="submit"
@@ -79,6 +80,7 @@
           </button>
         </form>
         {% if task.status not in ["done", "approved", "rejected"] %}
+        <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
         <form method="post" action="/lavori/{{ task.id }}/status">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
           <input type="hidden" name="new_status" value="done" />
@@ -90,6 +92,7 @@
         </form>
         {% endif %}
         {% if task.status == "pending" %}
+        <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
         <form method="post" action="/lavori/{{ task.id }}/status">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
           <input type="hidden" name="new_status" value="running" />
@@ -100,6 +103,7 @@
           </button>
         </form>
         {% endif %}
+        <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
         <form method="post" action="/lavori/{{ task.id }}/delete">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
           <button type="submit"
@@ -133,6 +137,7 @@
         <span class="material-symbols-outlined" style="font-size:20px">close</span>
       </button>
     </div>
+    <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token (FastAPI/Jinja2, not Django; CSRF token injected via {{ csrf_token }} hidden field below or via global htmx:configRequest handler) -->
     <form method="post" action="/lavori" class="px-6 py-5 space-y-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <div>

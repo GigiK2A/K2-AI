@@ -94,6 +94,7 @@ function readIfExists(filePath) {
 }
 
 function readReportCss() {
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- __dirname is build-time constant, all path components are literals
   const root = path.resolve(__dirname, '..', '..')
   const sourceCss = [
     path.join(root, 'src', 'css', 'base.css'),
@@ -336,6 +337,7 @@ async function resolveExecutablePath(chromium) {
 }
 
 function findProjectBrowserExecutable() {
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- __dirname is build-time constant, no user input
   const browserRoot = path.join(__dirname, '..', '..', '.local-browsers')
   if (!fs.existsSync(browserRoot)) return null
 
