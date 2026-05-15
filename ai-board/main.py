@@ -15,8 +15,10 @@ console = Console()
 
 
 async def startup_checks() -> None:
-    logger.remove()
-    logger.add(sys.stderr, level=settings.log_level.upper())
+    from core.logger import configure_logging, init_sentry
+
+    configure_logging(settings.log_level)
+    init_sentry()
 
     console.print(Panel.fit("[bold]AI Board[/bold] — avvio sistema", border_style="dim"))
 

@@ -8,6 +8,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const Anthropic = require('@anthropic-ai/sdk');
 const DOMPurify = require('isomorphic-dompurify');
+const log = require('./lib/logger');
 
 // Allow-list for newsletter HTML stored from the publish endpoint. The
 // content is rendered as innerHTML in the browser at /newsletter-entry, so
@@ -101,7 +102,7 @@ const SECURITY_HEADERS = {
   // executable, and are not blocked by script-src.
   // style-src keeps 'unsafe-inline' for now: Vite + many components emit
   // inline style attributes. Tightening this requires a separate pass.
-  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://frontend-cdn.perplexity.ai; connect-src 'self' https://api.k2-ai.it https://*.stripe.com https://checkout.stripe.com https://us.i.posthog.com wss://api.k2-ai.it; frame-src 'self' https://*.stripe.com https://checkout.stripe.com; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests",
+  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://frontend-cdn.perplexity.ai; connect-src 'self' https://api.k2-ai.it https://*.stripe.com https://checkout.stripe.com https://eu.i.posthog.com https://eu-assets.i.posthog.com wss://api.k2-ai.it; frame-src 'self' https://*.stripe.com https://checkout.stripe.com; media-src 'self' data: https:; worker-src 'self' blob:; upgrade-insecure-requests",
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
@@ -2363,6 +2364,108 @@ async function handleReportDocx(req, res) {
   }, docxBuffer);
 }
 
+// Forward an alert payload to Slack + Telegram if configured. Returns the
+// list of delivery channels that succeeded.
+async function fanOutAlert(payload) {
+  const delivered = [];
+  const slack = (process.env.SLACK_ALERTS_WEBHOOK || '').trim();
+  const tgToken = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
+  const tgChat = (process.env.TELEGRAM_CHAT_ID || '').trim();
+
+  const text = `[${payload.severity}] ${payload.event}\n${
+    payload.details ? JSON.stringify(payload.details).slice(0, 1500) : ''
+  }`;
+
+  if (slack) {
+    try {
+      await postJson(slack, { text });
+      delivered.push('slack');
+    } catch (err) {
+      log.warn('alert.slack_failed', { err: String(err && err.message || err) });
+    }
+  }
+  if (tgToken && tgChat) {
+    try {
+      const url = `https://api.telegram.org/bot${tgToken}/sendMessage`;
+      await postJson(url, { chat_id: tgChat, text, parse_mode: 'HTML', disable_web_page_preview: true });
+      delivered.push('telegram');
+    } catch (err) {
+      log.warn('alert.telegram_failed', { err: String(err && err.message || err) });
+    }
+  }
+  return delivered;
+}
+
+function postJson(urlString, body) {
+  return new Promise((resolve, reject) => {
+    let u;
+    try { u = new URL(urlString); } catch (err) { reject(err); return; }
+    const lib = u.protocol === 'https:' ? https : http;
+    const data = Buffer.from(JSON.stringify(body));
+    const reqHttp = lib.request({
+      method: 'POST',
+      hostname: u.hostname,
+      port: u.port || (u.protocol === 'https:' ? 443 : 80),
+      path: `${u.pathname}${u.search}`,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': data.length },
+      timeout: 5000,
+    }, response => {
+      const chunks = [];
+      response.on('data', c => chunks.push(c));
+      response.on('end', () => {
+        if (response.statusCode && response.statusCode >= 200 && response.statusCode < 300) {
+          resolve(Buffer.concat(chunks).toString('utf8'));
+        } else {
+          reject(new Error(`HTTP ${response.statusCode}`));
+        }
+      });
+    });
+    reqHttp.on('timeout', () => { reqHttp.destroy(new Error('timeout')); });
+    reqHttp.on('error', reject);
+    reqHttp.write(data);
+    reqHttp.end();
+  });
+}
+
+async function handleAdminAlert(req, res) {
+  // Auth: INTERNAL_API_KEY header, constant-time compare.
+  const expected = (process.env.INTERNAL_API_KEY || '').trim();
+  const provided = (req.headers['x-internal-api-key'] || '').toString().trim();
+  if (!expected || provided.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+    sendJson(res, 401, { error: 'unauthorized' });
+    return;
+  }
+  // Rate limit: 30 alerts/min per source IP to prevent a runaway loop
+  // from a misbehaving caller hammering Slack/Telegram.
+  const ip = clientIp(req);
+  const rl = checkRateLimit('alert:ip', ip, 30, 60_000);
+  if (!rl.ok) {
+    sendRateLimited(res, '/api/admin/alert', { key: ip, bucket: 'ip', resetAt: rl.resetAt });
+    return;
+  }
+
+  let body;
+  try {
+    body = await readJsonBody(req, 8 * 1024);
+  } catch (err) {
+    sendJson(res, 400, { error: 'invalid body' });
+    return;
+  }
+  const severity = String(body.severity || 'P3').toUpperCase();
+  const event = String(body.event || 'unspecified').slice(0, 200);
+  const details = (body.details && typeof body.details === 'object') ? body.details : {};
+
+  if (!['P0','P1','P2','P3'].includes(severity)) {
+    sendJson(res, 400, { error: 'severity must be one of P0/P1/P2/P3' });
+    return;
+  }
+
+  log.warn('admin.alert', { severity, event, source_ip: ip, details });
+  const delivered = await fanOutAlert({ severity, event, details });
+  sendJson(res, 200, { ok: true, delivered });
+}
+
 async function handleKbotApi(req, res, rawPath) {
   if (rawPath === '/api/kbot/session') return handleKbotSession(req, res);
   if (rawPath === '/api/kbot/chat') return handleKbotChat(req, res);
@@ -2451,6 +2554,33 @@ const server = http.createServer((req, res) => {
   };
   const rawPath = (req.url || '/').split('?')[0];
   const rawQuery = (req.url || '').includes('?') ? `?${(req.url || '').split('?').slice(1).join('?')}` : '';
+
+  // Health check — unauthenticated, cheap, used by Railway / uptime monitors.
+  if (rawPath === '/api/health' || rawPath === '/healthz') {
+    sendJson(res, 200, {
+      ok: true,
+      service: 'kai-website',
+      ts: new Date().toISOString(),
+      uptime_s: Math.round(process.uptime()),
+      sentry: Boolean((process.env.SENTRY_DSN || '').trim()),
+    });
+    return;
+  }
+
+  // Internal alert webhook — receives { severity, event, details } from any
+  // K2-AI service (kbot, ai-board, internal scripts) and fans out to Slack /
+  // Telegram if configured. Auth via INTERNAL_API_KEY header. Rate-limited.
+  if (rawPath === '/api/admin/alert') {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, { error: 'method not allowed' });
+      return;
+    }
+    handleAdminAlert(req, res).catch(err => {
+      log.captureException(err, { route: '/api/admin/alert' });
+      sendJson(res, 500, { error: 'alert relay failed' });
+    });
+    return;
+  }
 
   if (rawPath === '/api/newsletter/subscribe') {
     handleNewsletterSubscribe(req, res).catch(err => {

@@ -8,7 +8,11 @@ from slowapi.errors import RateLimitExceeded
 
 from .api import session, message, upload, report, checkout, generate_pdf, status, webhook, fetch_url
 from .lib.limiter import limiter
+from .lib.logger import configure_logging, init_sentry
 from .settings import CORS_ORIGINS
+
+configure_logging()
+_SENTRY_ON = init_sentry()
 
 app = FastAPI(title="K2-AI K-BOT backend", version="2.0.0")
 app.state.limiter = limiter
@@ -25,7 +29,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True}
+    return {"ok": True, "service": "kbot", "sentry": _SENTRY_ON}
 
 
 app.include_router(session.router, prefix="/api/kbot", tags=["session"])

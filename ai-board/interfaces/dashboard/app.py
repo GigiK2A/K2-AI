@@ -12,10 +12,10 @@ from controllers import agents_router, home_router
 from core.board_auth import SESSION_COOKIE_NAME, get_user_from_session
 from core.config import get_allowed_origins, settings
 from core.csrf import is_csrf_exempt, validate_csrf
-from interfaces.dashboard.routes import admin, approvals, auth, board_chat, inbox, lavori, logs, memory, pipeline, public_intake, workshop
+from interfaces.dashboard.routes import admin, analytics, approvals, auth, board_chat, inbox, lavori, logs, memory, pipeline, public_intake, workshop
 
 PUBLIC_INTAKE_PATHS = {"/api/intake/contact", "/api/intake/kbot-chat"}
-AUTH_EXEMPT_PATHS = {"/healthz", "/webhook", "/login"}
+AUTH_EXEMPT_PATHS = {"/healthz", "/health", "/webhook", "/login"}
 AUTH_EXEMPT_PREFIXES = ("/api/intake", "/api/workshop")
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
@@ -96,6 +96,13 @@ def _is_valid_basic_auth(request: Request) -> bool:
 
 
 def create_dashboard_app() -> FastAPI:
+    # Initialize structured logging + optional Sentry as soon as the app is
+    # constructed. Idempotent — safe to call repeatedly if create_dashboard_app
+    # is invoked more than once (e.g. tests).
+    from core.logger import configure_logging, init_sentry
+    configure_logging()
+    init_sentry()
+
     app = FastAPI(title="AI Board Dashboard", docs_url=None, redoc_url=None)
     allowed_origins = set(get_allowed_origins())
     request_log: dict[tuple[str, str], list[float]] = {}
@@ -223,10 +230,17 @@ def create_dashboard_app() -> FastAPI:
     app.include_router(workshop.router)
     app.include_router(inbox.router)
     app.include_router(admin.router)
+    app.include_router(analytics.router)
     app.include_router(public_intake.router)
 
     @app.get("/healthz")
     async def healthz() -> JSONResponse:
+        return JSONResponse({"ok": True, "service": "ai-board"})
+
+    # Alias for consistency across the three K2-AI services (kbot, kai-website,
+    # ai-board) so a single uptime check can hit /health on any of them.
+    @app.get("/health")
+    async def health() -> JSONResponse:
         return JSONResponse({"ok": True, "service": "ai-board"})
 
     uploads_dir = Path(__file__).resolve().parents[2] / "uploads"

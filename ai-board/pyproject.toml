@@ -24,6 +24,8 @@ dependencies = [
     "rich>=13.0.0",
     "markdown>=3.7",
     "bleach>=6.1.0",
+    # Optional — only used when SENTRY_DSN env var is set at runtime.
+    "sentry-sdk>=2.0.0",
 ]
 
 [build-system]

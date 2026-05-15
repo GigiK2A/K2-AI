@@ -14,3 +14,7 @@ Jinja2>=3.1
 pytest>=8.0
 pytest-mock>=3.14
 slowapi>=0.1.9
+# Optional — initialized only if SENTRY_DSN is set at runtime.
+sentry-sdk[fastapi]>=2.0
+# Optional — analytics; no-op if POSTHOG_API_KEY is not set.
+posthog>=3.7
