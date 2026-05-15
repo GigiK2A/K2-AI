@@ -21,7 +21,16 @@ const REPORT_MODEL = process.env.REPORT_MODEL || 'claude-sonnet-4-6';
 const SKILLS_DIR = path.join(__dirname, 'lib', 'skills');
 const SUITE_AI_SERVICES = require('./lib/kbot/services-data.json');
 const BOARD_REPORT_MOCKS = require('./lib/report/board-report-mocks.json');
-const NEWSLETTER_PUBLISH_PATH_TOKEN = 'c7f1b5cb492f8d744b041ce9507f246c8339367313de315a';
+// Optional path-token bypass for the n8n publishing workflow which cannot
+// easily set headers. Sourced from env only — never hardcode. If unset the
+// path-token route is disabled and INTERNAL_API_KEY (header) is the only
+// accepted credential.
+//
+// SECURITY: a previously-hardcoded value
+// (c7f1b5cb492f8d744b041ce9507f246c8339367313de315a, commit 1347095e) MUST be
+// treated as compromised. Rotate via Railway / Vercel env vars and never
+// reuse it.
+const NEWSLETTER_PUBLISH_PATH_TOKEN = (process.env.NEWSLETTER_PUBLISH_PATH_TOKEN || '').trim();
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -1277,7 +1286,16 @@ async function handleNewsletterPublish(req, res, options = {}) {
 
   const expectedKey = getEnvVar('INTERNAL_API_KEY');
   const providedKeys = extractInternalApiKeyCandidates(req, body);
-  const hasValidPathToken = options.pathToken === NEWSLETTER_PUBLISH_PATH_TOKEN;
+  // Path-token bypass is only honoured when an env-configured token is set
+  // AND it timing-safely matches the supplied path segment. Fall-closed
+  // behaviour: empty env => no bypass possible.
+  const hasValidPathToken = NEWSLETTER_PUBLISH_PATH_TOKEN
+    && typeof options.pathToken === 'string'
+    && options.pathToken.length === NEWSLETTER_PUBLISH_PATH_TOKEN.length
+    && crypto.timingSafeEqual(
+      Buffer.from(options.pathToken),
+      Buffer.from(NEWSLETTER_PUBLISH_PATH_TOKEN),
+    );
   if (!hasValidPathToken && (!expectedKey || !providedKeys.includes(expectedKey))) {
     sendJson(res, 401, { error: 'Unauthorized' });
     return;
@@ -1408,7 +1426,15 @@ async function handleNewsletterCleanupTests(req, res, options = {}) {
     return;
   }
 
-  if (options.pathToken !== NEWSLETTER_PUBLISH_PATH_TOKEN) {
+  if (
+    !NEWSLETTER_PUBLISH_PATH_TOKEN
+    || typeof options.pathToken !== 'string'
+    || options.pathToken.length !== NEWSLETTER_PUBLISH_PATH_TOKEN.length
+    || !crypto.timingSafeEqual(
+      Buffer.from(options.pathToken),
+      Buffer.from(NEWSLETTER_PUBLISH_PATH_TOKEN),
+    )
+  ) {
     sendJson(res, 401, { error: 'Unauthorized' });
     return;
   }

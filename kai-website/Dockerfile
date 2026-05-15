@@ -90,6 +90,13 @@ ENV KBOT_SKILLS_DIR=/app/lib/skills \
     KBOT_PYTHON_PORT=8000 \
     KBOT_PYTHON_BIN=/usr/bin/python3
 
+# Run as a non-root user (node:20-slim ships with the "node" user, uid 1000).
+# Chromium / Playwright also need read access to /ms-playwright; everything
+# under /app is read-only at runtime (no writes are expected back into the
+# image — uploads go to Supabase storage and /tmp).
+RUN chown -R node:node /app /ms-playwright 2>/dev/null || true
+USER node
+
 EXPOSE 4173
 
 CMD ["node", "server.js"]
