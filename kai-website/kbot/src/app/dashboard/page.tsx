@@ -14,6 +14,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!isSignedIn) return;
     let mounted = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: show spinner while async fetch runs; mounted-guarded cleanup prevents stale updates
     setLoading(true);
     (async () => {
       try {
