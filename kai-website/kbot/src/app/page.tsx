@@ -36,10 +36,14 @@ function LoginFirstScreen() {
           style={{ background: "linear-gradient(160deg,#071f1d 0%,#050d0c 60%,#050505 100%)" }}
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#14b8a6] font-black text-black">
-              K
-            </div>
-            <span className="text-sm font-extrabold tracking-wide">K2-AI</span>
+            {/* eslint-disable-next-line @next/next/no-img-element -- need explicit basePath, next/image overhead unnecessary */}
+            <img
+              src="/app/logo-k2ai.png"
+              alt="K2-AI"
+              width={120}
+              height={48}
+              className="h-12 w-auto"
+            />
           </div>
           <div>
             <h1 className="text-3xl font-extrabold leading-tight">
@@ -57,10 +61,15 @@ function LoginFirstScreen() {
 
         <section className="flex min-h-[640px] flex-col items-center justify-center px-6 py-10">
           <div className="mb-8 text-center md:hidden">
-            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#14b8a6] font-black text-black">
-              K
-            </div>
-            <p className="text-lg font-bold">K2-AI Report Premium</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/app/logo-k2ai.png"
+              alt="K2-AI"
+              width={140}
+              height={56}
+              className="mx-auto mb-3 h-14 w-auto"
+            />
+            <p className="text-lg font-bold">Report Premium</p>
           </div>
           <div className="w-full max-w-sm">
             <div className="mb-6">
