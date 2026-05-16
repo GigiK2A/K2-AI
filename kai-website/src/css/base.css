@@ -118,6 +118,30 @@ html {
   /* Solid dark base so iOS Safari paints the notch/status-bar area
      in brand color even before body content renders. */
   background: var(--bg);
+  /* iOS Safari overflow guard — prevent any element with 100vw or long
+     unbreakable text from forcing horizontal scroll past the viewport. */
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+html, body {
+  /* Lock width to the actual viewport (NOT 100vw which on iOS includes
+     scrollbar). Combined with overflow-x:hidden this stops content from
+     escaping the navbar / running off-screen on iOS Safari. */
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Defensive: long words / URLs / inline code can blow past containers
+   on narrow mobile screens. Force them to break instead of overflow. */
+h1, h2, h3, h4, p, li, a, span, div {
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+}
+
+img, video, iframe, svg, canvas {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Dedicated safe-area cover. The fixed navbar tries to span the notch
