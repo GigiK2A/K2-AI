@@ -57,7 +57,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           termsAccepted,
           marketingAccepted,
         });
-        setMessage("Account creato. Se Supabase richiede conferma email, controlla la posta; altrimenti puoi entrare subito.");
+        setMessage("Account creato. Effettua il login con le credenziali appena impostate.");
       } else {
         await signIn(email, password);
         router.push("/");

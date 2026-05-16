@@ -38,16 +38,22 @@ function resolveApiBaseUrl() {
   return '';
 }
 
-const CHAT_ENDPOINT = `${resolveApiBaseUrl()}/api/intake/kbot-chat`;
+const CHAT_SESSION_ENDPOINT = `${resolveApiBaseUrl()}/api/kbot/session`;
+const CHAT_MESSAGE_ENDPOINT = `${resolveApiBaseUrl()}/api/kbot/message`;
+
+// Nota privacy: la chat viene processata da Claude (Anthropic, US). I contenuti
+// possono essere usati per generare un report e analizzare la conversazione.
+// Vedi /privacy per dettagli.
+const PRIVACY_NOTE = "\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il report. Dettagli su /privacy._";
 
 const FIRST_MESSAGE = PKG_CTX
   ? {
       role: 'assistant',
-      content: `Ciao! Stai guardando il pacchetto **${PKG_CTX.title}**.\n\nRaccontami il processo che vorresti ottimizzare: cosa succede oggi, dove si perde tempo e quali strumenti usi già. Così vediamo subito se questo pacchetto è adatto al tuo caso.`
+      content: `Ciao! Stai guardando il pacchetto **${PKG_CTX.title}**.\n\nRaccontami il processo che vorresti ottimizzare: cosa succede oggi, dove si perde tempo e quali strumenti usi già. Così vediamo subito se questo pacchetto è adatto al tuo caso.${PRIVACY_NOTE}`
     }
   : {
       role: 'assistant',
-      content: "Ciao. Raccontami in 2-3 righe il processo che ti costa più tempo: cosa succede oggi, dove si blocca e quali strumenti usi già. Da lì capiamo se l'AI può fare la differenza."
+      content: `Ciao. Raccontami in 2-3 righe il processo che ti costa più tempo: cosa succede oggi, dove si blocca e quali strumenti usi già. Da lì capiamo se l'AI può fare la differenza.${PRIVACY_NOTE}`
     };
 
 function generateSessionId() {
@@ -86,6 +92,40 @@ function getOrCreateSessionId() {
     return nextId;
   } catch {
     return generateSessionId();
+  }
+}
+
+// Cache backend-issued session id separately — the FastAPI `/api/kbot/session`
+// endpoint owns the canonical UUID for chat turns; widget uses it for /message.
+const BACKEND_SESSION_KEY = `${CHAT_SESSION_KEY}-backend`;
+let backendSessionPromise = null;
+
+async function ensureBackendSession() {
+  try {
+    const cached = sessionStorage.getItem(BACKEND_SESSION_KEY);
+    if (cached) return cached;
+  } catch { /* ignore */ }
+
+  if (backendSessionPromise) return backendSessionPromise;
+
+  backendSessionPromise = (async () => {
+    const res = await fetch(CHAT_SESSION_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ mode: 'report' }),
+    });
+    if (!res.ok) throw new Error(`session create HTTP ${res.status}`);
+    const data = await res.json();
+    const id = data.session_id;
+    if (!id) throw new Error('no session_id in response');
+    try { sessionStorage.setItem(BACKEND_SESSION_KEY, id); } catch { /* ignore */ }
+    return id;
+  })();
+
+  try {
+    return await backendSessionPromise;
+  } finally {
+    backendSessionPromise = null;
   }
 }
 
@@ -370,14 +410,13 @@ async function sendMessage() {
   sendBtn.disabled = true;
 
   try {
+    const backendSessionId = await ensureBackendSession();
     const chatPayload = {
-      session_id: getOrCreateSessionId(),
-      source_page: PKG_CTX ? `k-bot_pkg_${PKG_CTX.id}` : 'k-bot',
-      messages,
+      session_id: backendSessionId,
+      message: text,
     };
-    if (PKG_CTX) chatPayload.package_context = PKG_CTX;
 
-    const res = await fetch(CHAT_ENDPOINT, {
+    const res = await fetch(CHAT_MESSAGE_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -393,6 +432,15 @@ async function sendMessage() {
       return;
     }
 
+    if (res.status === 504) {
+      typing.remove();
+      renderMessage({ role: 'assistant', content: 'K-BOT è temporaneamente lento. Riprova tra qualche secondo.', retry: true });
+      // restore input so user can resubmit easily
+      const ipt = document.getElementById('chat-input');
+      if (ipt) ipt.value = text;
+      return;
+    }
+
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
@@ -403,7 +451,10 @@ async function sendMessage() {
     renderMessage(assistantMsg);
   } catch {
     typing.remove();
-    renderMessage({ role: 'assistant', content: 'Errore di connessione. Riprova.' });
+    renderMessage({ role: 'assistant', content: 'Errore di connessione con K-BOT. Riprova tra qualche secondo.', retry: true });
+    // restore input so user can resubmit
+    const ipt = document.getElementById('chat-input');
+    if (ipt && !ipt.value) ipt.value = text;
   } finally {
     isSending = false;
     sendBtn.disabled = false;
@@ -411,12 +462,24 @@ async function sendMessage() {
   }
 }
 
-function renderMessage({ role, content }) {
+function renderMessage({ role, content, retry }) {
   const container = document.getElementById('chat-messages');
   const div = document.createElement('div');
   div.className = `chat-message chat-${role}`;
   if (role === 'assistant') {
     div.append(_renderAssistantContent(content));
+    if (retry) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chat-retry-btn';
+      btn.textContent = 'Riprova';
+      btn.style.cssText = 'margin-top:8px;padding:6px 12px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;border-radius:6px;font-size:13px;';
+      btn.addEventListener('click', () => {
+        btn.disabled = true;
+        sendMessage();
+      });
+      div.appendChild(btn);
+    }
   } else {
     div.textContent = content;
   }

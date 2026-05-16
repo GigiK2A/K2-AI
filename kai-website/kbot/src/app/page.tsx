@@ -18,14 +18,14 @@ import { AccountButton } from "@/components/auth/AccountButton";
 import { useKbotAuth } from "@/app/providers";
 
 const REPORT_SUGGESTIONS = [
-  "Voglio un report di analisi investimento",
-  "Audit SEO per il mio e-commerce",
-  "Strategia marketing per la mia PMI",
-  "Diagnosi finanziaria del mio bilancio",
+  "Voglio un audit operativo per la mia PMI",
+  "Analisi strategia marketing per il mio settore",
+  "Audit SEO del mio sito",
+  "Valutazione tecnica di un nuovo progetto",
 ];
 
 const WELCOME_MESSAGE =
-  "Benvenuto. Sono K-BOT, l'analista K2-AI. Costruiamo insieme un report operativo concreto — valutazione di un investimento, strategia di marketing, audit SEO, diagnosi di bilancio, studio di fattibilità tecnica. Raccontami il tuo caso: settore, obiettivo, dato di partenza. Quante più informazioni mi dai, più il report è preciso.";
+  "Benvenuto. Sono K-BOT, l'analista K2-AI. Insieme produciamo un report operativo concreto sul tuo caso. Per partire, dimmi che tipo di analisi vuoi: operativa, marketing, SEO, bilancio, fattibilità tecnica, oppure descrivi liberamente il tuo problema.\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il report. Dettagli su /privacy._";
 
 function LoginFirstScreen() {
   return (

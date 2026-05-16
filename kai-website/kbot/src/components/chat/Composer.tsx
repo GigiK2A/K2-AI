@@ -102,7 +102,11 @@ export function Composer({
               >
                 Analizza
               </button>
-              <button onClick={() => { setUrlMode(false); setUrlInput(""); }}>
+              <button
+                type="button"
+                aria-label="Annulla analisi URL"
+                onClick={() => { setUrlMode(false); setUrlInput(""); }}
+              >
                 <X size={14} className="text-[var(--text-soft)]" />
               </button>
             </>
@@ -148,16 +152,21 @@ export function Composer({
               }}
             />
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
               title="Allega file"
+              aria-label="Allega file"
               className="rounded-lg border border-[var(--line)] p-2 text-[var(--text-soft)] hover:border-[var(--line-strong)]"
             >
               <Paperclip size={15} />
             </button>
             {onFetchUrl && (
               <button
+                type="button"
                 onClick={() => setUrlMode((v) => !v)}
                 title="Analizza un URL"
+                aria-label="Analizza un URL"
+                aria-pressed={urlMode}
                 className={`rounded-lg border p-2 text-[var(--text-soft)] hover:border-[var(--line-strong)] ${
                   urlMode ? "border-[var(--teal)] text-[var(--teal)]" : "border-[var(--line)]"
                 }`}
@@ -167,8 +176,10 @@ export function Composer({
             )}
           </div>
           <button
+            type="button"
             onClick={onSubmit}
             disabled={disabled || !value.trim()}
+            aria-label="Invia messaggio"
             className="rounded-xl bg-[var(--teal)] p-2 text-black disabled:opacity-50"
           >
             <ArrowUp size={16} />
