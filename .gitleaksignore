@@ -1,0 +1,29 @@
+# Gitleaks ignore — secrets intentionally referenced in audit/documentation files.
+#
+# Each entry: <commit-sha>:<file>:<rule-id>:<line>
+# Or pattern: file path globs to skip entirely.
+
+# All security audit reports + scan dumps reference the historical
+# newsletter publish token (already documented as compromised in
+# SECRET-ROTATION-PROCEDURE.md). They MUST cite the exact value.
+docs/security-audit/scan-gitleaks.json
+docs/security-audit/scan-gitleaks-post-fix.json
+docs/security-audit/scan-semgrep.json
+docs/security-audit/scan-semgrep-final.json
+
+# Audit reports + production audit reports embed the same compromised
+# value as a finding citation.
+docs/security-audit/kai-website-security-report.md
+docs/security-audit/EXECUTIVE-SUMMARY.md
+docs/security-audit/FINAL-STATUS.md
+docs/security-audit/DEPLOY-CHECKLIST.md
+docs/security-audit/SECRET-ROTATION-PROCEDURE.md
+
+# Supabase publishable key (`sb_publishable_*`) is **public-by-design**;
+# gitleaks heuristics flag it, but it's the equivalent of an anon key.
+kai-website/kbot/src/lib/supabase.ts
+
+# Clerk publishable key (`pk_test_*`) is **public-by-design** for the
+# test environment; safe to commit.
+kai-website/src/app.html
+kbot/docs/superpowers/plans/2026-05-13-auth-pages.md
