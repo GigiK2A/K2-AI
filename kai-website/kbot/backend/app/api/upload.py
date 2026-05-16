@@ -44,6 +44,32 @@ class UploadBody(BaseModel):
 _CLEAN_RE = re.compile(r"[^A-Za-z0-9._-]+")
 _VISION_MIMES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
+_BUCKET_READY = False
+
+
+def _ensure_bucket(client) -> None:
+    """Create the uploads bucket on first call. Idempotent, cached after success."""
+    global _BUCKET_READY
+    if _BUCKET_READY:
+        return
+    try:
+        existing = client.storage.list_buckets()
+        names = {b.name if hasattr(b, "name") else b.get("name") for b in existing}
+        if STORAGE_UPLOADS_BUCKET not in names:
+            client.storage.create_bucket(
+                STORAGE_UPLOADS_BUCKET,
+                options={"public": True},
+            )
+            log.info("created supabase storage bucket %s", STORAGE_UPLOADS_BUCKET)
+        _BUCKET_READY = True
+    except Exception as exc:
+        msg = str(exc).lower()
+        if "already exists" in msg or "duplicate" in msg or "23505" in msg:
+            _BUCKET_READY = True
+            return
+        log.exception("ensure_bucket failed for %s", STORAGE_UPLOADS_BUCKET)
+        # Don't raise — let the actual upload attempt surface a clearer error.
+
 
 def _clean_filename(name: str) -> str:
     return _CLEAN_RE.sub("_", name).strip("._") or "file"
@@ -149,6 +175,7 @@ def upload(
         raise HTTPException(status_code=403, detail="not your session")
 
     client = get_admin_client()
+    _ensure_bucket(client)
     storage = client.storage.from_(STORAGE_UPLOADS_BUCKET)
 
     saved = []
