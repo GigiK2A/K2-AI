@@ -18,14 +18,14 @@ import { AccountButton } from "@/components/auth/AccountButton";
 import { useKbotAuth } from "@/app/providers";
 
 const REPORT_SUGGESTIONS = [
-  "Automatizzare il triage delle email in arrivo",
-  "Un agente AI che risponde ai ticket di assistenza",
-  "Una microapp interna per pratiche tecniche",
-  "Un assistente che cerca nei nostri documenti",
+  "Voglio un report di analisi investimento",
+  "Audit SEO per il mio e-commerce",
+  "Strategia marketing per la mia PMI",
+  "Diagnosi finanziaria del mio bilancio",
 ];
 
 const WELCOME_MESSAGE =
-  "Ciao, sono K-BOT di K2-AI. Raccontami in 2-3 righe il processo che ti costa più tempo: cosa succede oggi, dove si blocca, quali strumenti usi già. Da lì capiamo se l'AI può togliere lavoro ripetitivo al tuo team e che intervento ha senso.";
+  "Benvenuto. Sono K-BOT, l'analista K2-AI. Costruiamo insieme un report operativo concreto — valutazione di un investimento, strategia di marketing, audit SEO, diagnosi di bilancio, studio di fattibilità tecnica. Raccontami il tuo caso: settore, obiettivo, dato di partenza. Quante più informazioni mi dai, più il report è preciso.";
 
 function LoginFirstScreen() {
   return (
@@ -43,15 +43,15 @@ function LoginFirstScreen() {
           </div>
           <div>
             <h1 className="text-3xl font-extrabold leading-tight">
-              Accedi a K-BOT
+              Accedi per generare report premium
             </h1>
             <p className="mt-3 max-w-sm text-sm leading-6 text-[#9ca3af]">
-              Descrivi il processo che vuoi automatizzare. K-BOT capisce il caso,
-              propone un intervento concreto e tiene tutto collegato al tuo account.
+              La chat K-BOT si apre dopo il login: download, dashboard e stato Premium
+              restano collegati al tuo account.
             </p>
           </div>
           <p className="text-xs text-[#4b5563]">
-            K2-AI · sistemi AI operativi per PMI italiane.
+            K2-AI · report professionali e analisi strategica.
           </p>
         </section>
 

@@ -31,21 +31,26 @@ def _coerce_mode(value: Optional[str]) -> str:
 
 
 def create_session(*, service_id: Optional[str], mode: Optional[str], user_id: Optional[str]) -> dict:
-    sid = normalize_service_id(service_id) or DEFAULT_SERVICE_ID
-    if sid not in VALID_SERVICE_IDS:
-        sid = DEFAULT_SERVICE_ID
+    # Service-id NOT defaulted: prevents biasing the LLM toward one specific
+    # analysis type (was: P12 'AI Consulenza Strategica' → made K-BOT start
+    # every cold conversation as a strategic/financial diagnosis even when
+    # user wanted SEO/marketing/feasibility). User picks explicitly OR
+    # K-BOT asks first what kind of report.
+    sid = normalize_service_id(service_id)
+    if sid is not None and sid not in VALID_SERVICE_IDS:
+        sid = None
     resolved_mode = _coerce_mode(mode)
+
+    collected_data: dict = {"mode": resolved_mode, "extractedData": {}}
+    if sid:
+        collected_data["service_id"] = sid
 
     row = {
         "step": 1,
         "status": "active",
         "path": "unknown",
         "messages": [],
-        "collected_data": {
-            "service_id": sid,
-            "mode": resolved_mode,
-            "extractedData": {},
-        },
+        "collected_data": collected_data,
     }
     if user_id:
         row["user_id"] = user_id

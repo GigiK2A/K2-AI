@@ -47,10 +47,21 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
     collected = session.get("collected_data") or {}
     mode = collected.get("mode") or session.get("mode") or "report"
     service_id = collected.get("service_id")
-    service_context = (
-        f"\nSERVIZIO SELEZIONATO DALL'UTENTE: {service_id} — orienta la conversazione su questo ambito.\n"
-        if service_id else ""
-    )
+    if service_id:
+        service_context = (
+            f"\nSERVIZIO SELEZIONATO DALL'UTENTE: {service_id} — orienta la conversazione su questo ambito.\n"
+        )
+    else:
+        # Cold start: no service picked. Don't assume the type of analysis.
+        # Ask the user FIRST what kind of report/analysis they need.
+        service_context = (
+            "\nSERVIZIO NON ANCORA SELEZIONATO. NON assumere che l'utente voglia una specifica\n"
+            "diagnosi (strategica, di bilancio, SEO, marketing, fattibilità tecnica, ecc.).\n"
+            "PRIMA di applicare framework o porre domande dettagliate, scopri che TIPO di analisi\n"
+            "o report serve all'utente. Esempio prima domanda neutra: 'Che tipo di analisi o report\n"
+            "vuoi che produciamo insieme? Investimento, marketing, SEO, bilancio, fattibilità\n"
+            "tecnica, altro?' — poi adatta il resto della conversazione alla scelta.\n"
+        )
 
     uploaded_files = collected.get("uploaded_files") or []
     has_files = len(uploaded_files) > 0
