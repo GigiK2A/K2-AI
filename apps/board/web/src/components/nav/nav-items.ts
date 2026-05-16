@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileCheck, ListTodo, Wallet, Calendar, Brain, Bot } from "lucide-react";
+import { LayoutDashboard, Users, FileCheck, ListTodo, Wallet, Calendar, Brain, Bot, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItem {
@@ -12,6 +12,7 @@ export const navItems: NavItem[] = [
   { href: "/pipeline", label: "Pipeline", icon: Users },
   { href: "/approvazioni", label: "Approvazioni", icon: FileCheck },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
+  { href: "/agente", label: "Giuseppina", icon: Sparkles },
   { href: "/revenue", label: "Revenue", icon: Wallet },
   { href: "/calendario", label: "Calendario", icon: Calendar },
   { href: "/memos", label: "Memos", icon: Brain },

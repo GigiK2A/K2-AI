@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.auth import router as auth_router
 from app.api import (
+    agent as agent_api,
     approvals as approvals_api,
     contacts as contacts_api,
     leads as leads_api,
@@ -80,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(meetings_api.router)
     app.include_router(revenue_api.router)
     app.include_router(overview_api.router)
+    app.include_router(agent_api.router)
     # Public — no auth (third-party signed callbacks).
     app.include_router(webhooks_api.router)
     app.include_router(screenshot_api.router)
