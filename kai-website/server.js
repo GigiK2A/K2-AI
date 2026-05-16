@@ -140,6 +140,16 @@ function startKbotPythonBackend() {
 
 function proxyKbotPython(req, res, rawPath, rawQuery) {
   const search = rawQuery ? `?${rawQuery}` : '';
+  // FastAPI's SlowAPI limiter keys on X-Forwarded-For (it sits on loopback so
+  // remote_addr is always 127.0.0.1). Forward the real client IP so the
+  // limiter does not collapse all traffic onto a single bucket.
+  const realIp = clientIp(req);
+  const upstreamHeaders = {
+    ...req.headers,
+    host: `127.0.0.1:${KBOT_PYTHON_PORT}`,
+    'x-forwarded-for': realIp,
+    'x-real-ip': realIp,
+  };
   // nosemgrep: problem-based-packs.insecure-transport.js-node.http-request.http-request,problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- localhost loopback to internal FastAPI; TLS terminated at edge proxy (Railway)
   const proxyReq = http.request(
     {
@@ -147,7 +157,7 @@ function proxyKbotPython(req, res, rawPath, rawQuery) {
       port: KBOT_PYTHON_PORT,
       method: req.method,
       path: `${rawPath}${search}`,
-      headers: { ...req.headers, host: `127.0.0.1:${KBOT_PYTHON_PORT}` },
+      headers: upstreamHeaders,
     },
     proxyRes => {
       res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
@@ -436,7 +446,10 @@ function createAnthropicClient() {
   if (!apiKey) {
     throw new Error('Missing ANTHROPIC_API_KEY');
   }
-  return new Anthropic({ apiKey });
+  // Default per-request timeout 60s — prevents requests hanging if Anthropic
+  // upstream is slow. Override per-call via `timeout` if a long-running task
+  // (e.g. report PDF generation) needs more headroom.
+  return new Anthropic({ apiKey, timeout: 60_000 });
 }
 
 function resolveKbotSectorLabel(sector) {
@@ -1811,7 +1824,12 @@ async function handleKbotChat(req, res) {
     rawAssistant = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
   } catch (aiErr) {
     console.error('Anthropic API error in handleKbotChat:', aiErr);
-    return sendJson(res, 500, { error: `Errore AI: ${aiErr instanceof Error ? aiErr.message : String(aiErr)}` });
+    const isTimeout = aiErr && (aiErr.name === 'APITimeoutError' || /timeout/i.test(String(aiErr.message || '')));
+    return sendJson(res, isTimeout ? 504 : 502, {
+      error: isTimeout
+        ? 'K-BOT è temporaneamente lento, riprova tra qualche secondo.'
+        : 'Errore upstream temporaneo. Riprova.'
+    });
   }
 
   const isReportReady = /report_ready\s*:\s*true/i.test(rawAssistant);
@@ -2148,7 +2166,8 @@ async function handleKbotGenerateReport(req, res) {
     uploadError = retry.error;
   }
   if (uploadError) {
-    return sendJson(res, 500, { error: `Upload PDF fallito: ${uploadError.message}` });
+    console.error('Upload PDF fallito:', uploadError);
+    return sendJson(res, 500, { error: 'Generazione PDF non riuscita. Riprova.' });
   }
 
   const { data: publicData } = supabase.storage.from(REPORTS_BUCKET).getPublicUrl(fileName);
@@ -2715,6 +2734,14 @@ const server = http.createServer((req, res) => {
     '/kbot/report': '/api/kbot/report',
   }[rawPath];
   if (cleanKbotApiPath) {
+    // C2-backend: rate-limit clean-path aliases the same as /api/kbot/* —
+    // these are deprecated shorthand routes that were bypassing the gate.
+    const ip = clientIp(req);
+    const check = checkRateLimit('kbot:ip', ip, 20, 60_000);
+    if (!check.ok) {
+      sendRateLimited(res, rawPath, { key: ip, bucket: 'ip', resetAt: check.resetAt });
+      return;
+    }
     proxyKbotPython(req, res, cleanKbotApiPath, rawQuery);
     return;
   }

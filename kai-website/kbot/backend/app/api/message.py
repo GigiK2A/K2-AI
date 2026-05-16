@@ -136,10 +136,14 @@ async def post_message(
             max_tokens=1200,
             system=system_prompt,
             messages=history,
+            timeout=60.0,
         )
-    except anthropic.APIError as exc:
+    except anthropic.APITimeoutError:
+        log.exception("Anthropic API timeout")
+        raise HTTPException(status_code=504, detail="K-BOT è temporaneamente lento, riprova tra qualche secondo.")
+    except anthropic.APIError:
         log.exception("Anthropic API error")
-        raise HTTPException(status_code=502, detail=f"upstream error: {exc}")
+        raise HTTPException(status_code=502, detail="Errore upstream temporaneo. Riprova.")
 
     raw_text = "".join(
         block.text for block in result.content if getattr(block, "type", "") == "text"

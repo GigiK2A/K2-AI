@@ -174,6 +174,7 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         max_tokens=8192,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
+        timeout=180.0,
     )
     raw = "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
     return _extract_json(raw)

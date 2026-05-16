@@ -107,6 +107,7 @@ def _analyze_image_vision(data: bytes, mime: str, name: str) -> str:
                 ],
             }
         ],
+        timeout=60.0,
     )
     return response.content[0].text.strip() if response.content else ""
 
@@ -192,9 +193,9 @@ def upload(
                 data,
                 {"content-type": f.type or "application/octet-stream", "upsert": "true"},
             )
-        except Exception as exc:
+        except Exception:
             log.exception("storage upload failed")
-            raise HTTPException(status_code=500, detail=f"upload failed: {exc}")
+            raise HTTPException(status_code=500, detail="Upload non riuscito. Riprova.")
 
         public_url = storage.get_public_url(path)
         extracted_text, extracted_summary, method = _extract_text(data, f.name, f.type or "")

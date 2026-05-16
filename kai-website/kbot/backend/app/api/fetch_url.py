@@ -66,9 +66,9 @@ async def post_fetch_url(
         data = await fetch_url_content(body.url)
     except UrlFetchError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
-    except Exception as exc:
-        log.warning("fetch_url failed for %s: %s", body.url, exc)
-        raise HTTPException(status_code=502, detail=f"Impossibile raggiungere l'URL: {exc}")
+    except Exception:
+        log.exception("fetch_url failed for %s", body.url)
+        raise HTTPException(status_code=502, detail="Impossibile raggiungere l'URL. Riprova.")
 
     existing_urls.append(data)
     collected["analyzed_urls"] = existing_urls
