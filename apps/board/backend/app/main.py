@@ -22,6 +22,7 @@ from app.api import (
     webhooks as webhooks_api,
 )
 from app.lib.logger import configure_logging, get_logger
+from app.scheduler import shutdown_scheduler, start_scheduler
 from app.settings import get_settings
 
 
@@ -85,6 +86,17 @@ def create_app() -> FastAPI:
     # Public — no auth (third-party signed callbacks).
     app.include_router(webhooks_api.router)
     app.include_router(screenshot_api.router)
+
+    @app.on_event("startup")
+    async def _on_startup() -> None:
+        try:
+            start_scheduler()
+        except Exception:  # pragma: no cover — never block boot on cron
+            log.exception("scheduler.startup_failed")
+
+    @app.on_event("shutdown")
+    async def _on_shutdown() -> None:
+        shutdown_scheduler()
 
     @app.get("/health", tags=["meta"])
     def health() -> dict:

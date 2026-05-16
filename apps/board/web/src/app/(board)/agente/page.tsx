@@ -6,8 +6,29 @@ import type {
   AgentContentBlock,
   ChatItem,
 } from "@/types/agent";
+import { BriefCard } from "@/components/agente/brief-card";
 import { ChatShell } from "@/components/agente/chat-shell";
 import { ConversationsSidebar } from "@/components/agente/conversations-sidebar";
+
+interface BriefMemo {
+  id: string;
+  subject: string;
+  body: string;
+  tags: string[] | null;
+  created_at: string;
+}
+
+async function safeLatestBrief(): Promise<BriefMemo | null> {
+  try {
+    const resp = await apiFetch<{ memo: BriefMemo | null }>("/api/agent/brief/latest");
+    return resp.memo ?? null;
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) {
+      return null;
+    }
+    return null;
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +128,10 @@ export default async function AgentePage({ searchParams }: AgentePageProps) {
   await requireUser();
   const { c } = await searchParams;
 
-  const listResp = await safeList();
+  const [listResp, latestBrief] = await Promise.all([
+    safeList(),
+    safeLatestBrief(),
+  ]);
   const conversations = listResp.conversations.slice(0, 10);
 
   let initialItems: ChatItem[] = [];
@@ -131,11 +155,14 @@ export default async function AgentePage({ searchParams }: AgentePageProps) {
       </header>
       <div className="flex flex-1 min-h-0 gap-4">
         <ConversationsSidebar conversations={conversations} activeId={initialConversationId} />
-        <div className="flex-1 min-w-0 mx-auto w-full max-w-3xl">
-          <ChatShell
-            initialConversationId={initialConversationId}
-            initialItems={initialItems}
-          />
+        <div className="flex-1 min-w-0 mx-auto w-full max-w-3xl flex flex-col">
+          <BriefCard memo={latestBrief} />
+          <div className="flex-1 min-h-0">
+            <ChatShell
+              initialConversationId={initialConversationId}
+              initialItems={initialItems}
+            />
+          </div>
         </div>
       </div>
     </div>

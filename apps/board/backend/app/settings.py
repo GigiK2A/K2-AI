@@ -47,6 +47,22 @@ class Settings(BaseSettings):
     google_client_secret: str = Field(default="", alias="GOOGLE_CLIENT_SECRET")
     google_refresh_token: str = Field(default="", alias="GOOGLE_REFRESH_TOKEN")
 
+    # Sprint 9B/9C/9D — email delivery, daily brief, email triage.
+    resend_api_key: str = Field(default="", alias="RESEND_API_KEY")
+    board_owner_email: str = Field(
+        default="rluigiluca@gmail.com", alias="BOARD_OWNER_EMAIL"
+    )
+    board_email_from: str = Field(
+        default="noreply@k2-ai.it", alias="BOARD_EMAIL_FROM"
+    )
+    daily_brief_enabled: bool = Field(default=True, alias="DAILY_BRIEF_ENABLED")
+    daily_brief_cron: str = Field(default="0 7 * * *", alias="DAILY_BRIEF_CRON")
+    daily_brief_tz: str = Field(default="Europe/Rome", alias="DAILY_BRIEF_TZ")
+    email_triage_enabled: bool = Field(default=False, alias="EMAIL_TRIAGE_ENABLED")
+    email_triage_cron: str = Field(
+        default="0 */2 * * *", alias="EMAIL_TRIAGE_CRON"
+    )
+
     # Observability
     log_format: str = Field(default="json", alias="LOG_FORMAT")  # "json" | "plain"
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

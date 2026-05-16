@@ -17,9 +17,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from app.agent.daily_brief import deliver_daily_brief
+from app.agent.email_triage import (
+    GmailOAuthProvider,
+    StubProvider,
+    build_default_provider,
+    list_providers,
+    triage_inbox,
+)
 from app.agent.loop import run_agent
 from app.db.client import get_supabase
 from app.deps import require_auth
+from app.settings import get_settings
 
 router = APIRouter(prefix="/api/agent", tags=["agent"], dependencies=[Depends(require_auth)])
 log = logging.getLogger(__name__)
@@ -138,3 +147,59 @@ async def chat(body: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ── Sprint 9B — Daily brief ─────────────────────────────────────────────────
+
+@router.post("/brief/run-now")
+async def run_brief_now() -> Dict[str, Any]:
+    """Manually trigger the daily brief. Returns delivery report."""
+    settings = get_settings()
+    if not settings.anthropic_api_key:
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY non configurato")
+    return await deliver_daily_brief()
+
+
+@router.get("/brief/latest")
+def get_latest_brief() -> Dict[str, Any]:
+    """Return the most recent brief-mattutino memo (today or older)."""
+    sb = get_supabase()
+    res = (
+        sb.table("board_memos")
+        .select("id, subject, body, tags, created_at")
+        .contains("tags", ["brief-mattutino"])
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = res.data or []
+    return {"memo": rows[0] if rows else None}
+
+
+# ── Sprint 9C — Email triage ────────────────────────────────────────────────
+
+class TriageRequest(BaseModel):
+    provider: Optional[str] = None  # "gmail" | "stub" | None (auto)
+    hours: int = 24
+
+
+@router.get("/email/providers")
+def email_providers() -> Dict[str, Any]:
+    return list_providers()
+
+
+@router.post("/email/triage-now")
+async def triage_now(body: TriageRequest) -> Dict[str, Any]:
+    if body.provider == "gmail":
+        gp = GmailOAuthProvider()
+        if not gp.available:
+            raise HTTPException(
+                status_code=503,
+                detail="Provider Gmail non configurato. Set GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN.",
+            )
+        provider = gp
+    elif body.provider == "stub":
+        provider = StubProvider()
+    else:
+        provider, _ = build_default_provider()
+    return await triage_inbox(provider, hours=body.hours)

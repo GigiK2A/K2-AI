@@ -43,6 +43,7 @@ export function ApprovalCard({
 }: Props) {
   const preview = truncateBody(approval.body, 5);
   const isPending = approval.status === "pending";
+  const fromGiuseppina = /\[meta\]\s*tool=/.test(approval.body);
 
   return (
     <article
@@ -77,6 +78,14 @@ export function ApprovalCard({
               {!isPending && (
                 <span className="rounded-md border border-[color:var(--color-line-strong)] px-2 py-0.5 text-[11px] text-[color:var(--color-text-soft)]">
                   {APPROVAL_STATUS_LABELS[approval.status]}
+                </span>
+              )}
+              {fromGiuseppina && (
+                <span
+                  title="Proposta da Giuseppina"
+                  className="rounded-md border border-[color:var(--color-teal)]/40 bg-[color:var(--color-teal)]/10 px-2 py-0.5 text-[11px] text-[color:var(--color-teal)]"
+                >
+                  Da Giuseppina
                 </span>
               )}
               <span className="text-[11px] text-[color:var(--color-text-muted)]">
@@ -152,8 +161,9 @@ export function ApprovalCard({
       )}
 
       {!isPending && approval.decision_note && (
-        <p className="text-xs text-[color:var(--color-text-muted)]">
-          Nota: {approval.decision_note}
+        <p className="rounded-md border border-[color:var(--color-success)]/30 bg-[color:var(--color-success)]/5 px-3 py-2 text-xs text-[color:var(--color-text-soft)]">
+          <span className="font-semibold text-[color:var(--color-success)]">Eseguita: </span>
+          {approval.decision_note}
         </p>
       )}
     </article>
