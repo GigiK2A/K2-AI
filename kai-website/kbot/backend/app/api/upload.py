@@ -21,7 +21,7 @@ from ..settings import STORAGE_UPLOADS_BUCKET
 router = APIRouter()
 log = logging.getLogger(__name__)
 
-MAX_BYTES = 3 * 1024 * 1024  # 3 MB per file, mirroring site limit
+MAX_BYTES = 20 * 1024 * 1024  # 20 MB per file (bilanci/relazioni finanziarie PDF arrivano spesso a 10-15 MB)
 TEXT_LIMIT = 12_000
 PDF_LIMIT = 30_000
 
