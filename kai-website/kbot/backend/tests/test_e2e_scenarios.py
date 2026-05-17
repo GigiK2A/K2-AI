@@ -287,7 +287,13 @@ def test_system_prompt_includes_file_text_and_no_service_catalog():
             "service_id": "P12",
             "uploaded_files": [
                 {"name": "bilancio.pdf",
-                 "extractedText": "Ricavi netti euro 1.234.567 — UNIQUE_FILE_MARKER_42"}
+                 "extractedText": (
+                     "Bilancio consolidato al 31 dicembre 2025. Ricavi netti euro 1.234.567. "
+                     "EBITDA margin 18.4 percento. Posizione finanziaria netta negativa "
+                     "per 450.000 euro. Indice di solidita 0.62. UNIQUE_FILE_MARKER_42. "
+                     "Rendiconto finanziario in pareggio. CCN positivo per 320k. "
+                     "ROE 11.2 percento. ROI 9.8 percento."
+                 )}
             ],
         }
     }
