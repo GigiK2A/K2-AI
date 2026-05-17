@@ -85,7 +85,11 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
             text = str(f.get("extractedText") or f.get("extractedSummary") or "").strip()
             if not text:
                 continue
-            file_lines.append(f"--- {name} ---\n{text[:18000]}")
+            # Neutralizza tag di chiusura iniettati nel contenuto del file
+            # (prompt injection: PDF malevolo che inserisce "</UNTRUSTED_FILE_CONTENT>"
+            # per uscire dal sandbox testuale).
+            safe_text = text[:18000].replace("</UNTRUSTED_FILE_CONTENT>", "<_/UNTRUSTED_FILE_CONTENT>")
+            file_lines.append(f"--- {name} ---\n{safe_text}")
         if file_lines:
             file_summaries = "\n\n".join(file_lines)
             attachments_section = (
@@ -107,7 +111,8 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
         for u in analyzed_urls[-3:]:  # last 3 only
             summary = str(u.get("summary") or u.get("url") or "").strip()
             if summary:
-                url_lines.append(f"- {summary[:600]}")
+                safe = summary[:600].replace("</UNTRUSTED_URL_CONTENT>", "<_/UNTRUSTED_URL_CONTENT>")
+                url_lines.append(f"- {safe}")
         if url_lines:
             url_context = (
                 "\nDATI ESTERNI NON FIDATI — URL analizzati dall'utente.\n"

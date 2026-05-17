@@ -53,8 +53,12 @@ async def stripe_webhook(
     if event["type"] != "checkout.session.completed":
         return {"ok": True, "ignored": event["type"]}
 
-    obj = event["data"]["object"]
-    kbot_session_id = obj.get("client_reference_id") or (obj.get("metadata") or {}).get("kbot_session_id")
+    # Stripe SDK >=10 restituisce StripeObject che NON è dict subclass: .get()
+    # solleva AttributeError. Usiamo .to_dict() per ottenere un vero dict.
+    raw_obj = event["data"]["object"]
+    obj = raw_obj.to_dict() if hasattr(raw_obj, "to_dict") else dict(raw_obj)
+    metadata = obj.get("metadata") or {}
+    kbot_session_id = obj.get("client_reference_id") or metadata.get("kbot_session_id")
     if not kbot_session_id:
         log.warning("Webhook missing kbot_session_id")
         return {"ok": True, "skipped": "no session id"}

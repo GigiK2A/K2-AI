@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import anthropic as _anthropic
 import base64
+import binascii
 import logging
 import re
 import time
@@ -114,9 +115,17 @@ def _analyze_image_vision(data: bytes, mime: str, name: str) -> str:
 
 def _decode_b64(payload: str) -> bytes:
     # Accept "data:...;base64,..." prefix.
-    if "," in payload and payload.lstrip().startswith("data:"):
-        payload = payload.split(",", 1)[1]
-    return base64.b64decode(payload, validate=False)
+    stripped = payload.lstrip()
+    if stripped.startswith("data:"):
+        if "," in stripped:
+            payload = stripped.split(",", 1)[1]
+        else:
+            # data: prefix senza virgola: payload malformato, NON tentare decode
+            raise HTTPException(status_code=400, detail="invalid data-URI payload")
+    try:
+        return base64.b64decode(payload, validate=False)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"invalid base64: {exc}") from exc
 
 
 def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str]:
