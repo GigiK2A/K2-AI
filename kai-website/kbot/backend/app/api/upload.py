@@ -23,8 +23,8 @@ router = APIRouter()
 log = logging.getLogger(__name__)
 
 MAX_BYTES = 20 * 1024 * 1024  # 20 MB per file (bilanci/relazioni finanziarie PDF arrivano spesso a 10-15 MB)
-TEXT_LIMIT = 40_000
-PDF_LIMIT = 120_000  # bilanci/relazioni 50-200 pagine: serve testo abbondante
+TEXT_LIMIT = 60_000
+PDF_LIMIT = 200_000  # bilanci/relazioni 50-200 pagine: serve testo abbondante
 
 
 class FilePayload(BaseModel):
