@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Globe, Paperclip, X } from "lucide-react";
+import { ArrowUp, Globe, Loader2, Paperclip, X } from "lucide-react";
 import { UploadedFile } from "@/types/chat";
 
 const URL_RE = /https?:\/\/[^\s<>"']{6,}/i;
@@ -14,6 +14,7 @@ export function Composer({
   suggestions,
   onPickFiles,
   files,
+  uploadingFiles = [],
   onFetchUrl,
   fetchingUrl,
 }: {
@@ -24,6 +25,7 @@ export function Composer({
   suggestions: string[];
   onPickFiles: (files: File[]) => void;
   files: UploadedFile[];
+  uploadingFiles?: { name: string; size: number; type: string }[];
   onFetchUrl?: (url: string) => void;
   fetchingUrl?: boolean;
 }) {
@@ -115,14 +117,25 @@ export function Composer({
       )}
 
       <div className="k2-panel rounded-2xl p-2">
-        {files.length > 0 && (
+        {(files.length > 0 || uploadingFiles.length > 0) && (
           <div className="mb-2 flex flex-wrap gap-2 px-1">
             {files.map((f) => (
               <span
                 key={f.path}
-                className="rounded-full border border-[var(--line)] px-2 py-1 text-xs text-[var(--text-soft)]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-2 py-1 text-xs text-[var(--text-soft)]"
               >
+                <Paperclip size={11} className="text-[var(--teal)]" />
                 {f.name}
+              </span>
+            ))}
+            {uploadingFiles.map((f, i) => (
+              <span
+                key={`up-${i}-${f.name}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--teal)]/50 bg-[var(--teal)]/10 px-2 py-1 text-xs text-[var(--text-soft)] animate-pulse"
+              >
+                <Loader2 size={11} className="animate-spin text-[var(--teal)]" />
+                <span className="truncate max-w-[180px]">{f.name}</span>
+                <span className="text-[var(--text-muted)]">caricamento…</span>
               </span>
             ))}
           </div>

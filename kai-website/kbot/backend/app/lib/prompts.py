@@ -8,32 +8,25 @@ from typing import List, Optional
 from ..settings import CHAT_SYSTEM_MAX_CHARS
 from .skills import load_skill_bundle
 
-SERVICES_OVERVIEW_COMPACT = """SERVIZI K2-AI DISPONIBILI (usa per raccomandare il più adatto):
-P01 · Agenti AI Email & CRM — HOST/WEB · automatizza follow-up, triage email, aggiornamento CRM
-P02 · Automazioni Amministrative — HOST · fatture, riconciliazioni, documenti contabili ripetitivi
-P03 · AI Legale & Contratti — WEB · analisi contratti, ricerca giurisprudenziale, redazione clausole
-P04 · AI Ingegneria & Progettazione — WEB · relazioni tecniche, computi, tavole, documentazione progettuale
-P05 · Microapp Documenti Tecnici — HOST · generazione documenti tecnici da template, perizie, capitolati
-P06 · AI Customer Service & Ticket — HOST/WEB · triage ticket, risposta automatica, escalation intelligente
-P07 · RAG Knowledge Base — WEB/STUDIO · base di conoscenza interrogabile su documenti aziendali
-P08 · AI Compliance & Audit — WEB · verifica conformità, audit trail, checklist normative
-P09 · AI Controllo di Gestione — WEB · reporting automatico, KPI, budget vs consuntivo
-P10 · Integrazione Gestionali & ERP — STUDIO · connettori API, sync dati, automazioni tra gestionali
-P11 · AI Marketing & Contenuti — HOST/WEB · copy, SEO, newsletter, campagne
-P12 · Diagnosi Strategica PMI — WEB · analisi processi, gap operativi, roadmap AI
-P13 · Agevolazioni & Finanza Agevolata — WEB · identificazione bandi, pratiche, documentazione
-P14 · AI Edilizia & Appalti Pubblici — WEB · gare, pratiche, documentazione tecnica appalti
-P15 · AI HR & Recruiting — HOST/WEB · screening CV, job description, onboarding automatico
-P16 · AI Real Estate & Tokenizzazione — STUDIO · dossier immobiliari, due diligence, tokenizzazione
-P17 · AI Data Analytics & BI — STUDIO · dashboard, report automatici, anomaly detection
-P18 · AI UX & Design System — WEB · audit UX, design system, accessibilità
-P19 · AI Efficienza Energetica — WEB · analisi consumi, report energetico, certificazioni
-P20 · AI Hospitality & Revenue — HOST/WEB · revenue management, risposta OTA, upselling automatico
+REPORT_TYPES_OVERVIEW = """TIPI DI ANALISI / REPORT che puoi produrre (K-BOT PREMIUM = SOLO analisi e report, NON proporre automazioni o implementazioni software):
+- Analisi di bilancio / salute finanziaria (flussi di cassa, margini, indici, solvibilità)
+- Analisi marketing (posizionamento, target, canali, funnel, customer journey)
+- Audit SEO (parole chiave, struttura sito, technical SEO, backlink, competitor)
+- Analisi competitiva / benchmark di settore
+- Analisi di fattibilità (progetti, prodotti, investimenti, espansioni)
+- Business plan / piano industriale
+- Analisi investimenti (ROI, payback, scenari)
+- Analisi processi (mappatura AS-IS, colli di bottiglia, proposte TO-BE — descrittive, non implementative)
+- Due diligence (commerciale, operativa, documentale)
+- Analisi dati / report custom su dataset caricati dall'utente
+- Studio di mercato / ricerca settoriale
+- Analisi reputazione online / sentiment
 
-TIER:
-HOST: <1.500€/mese — automazioni singole, microapp, agenti email
-WEB: 1.500–4.000€/mese — sistemi integrati, RAG, customer service AI
-STUDIO: >4.000€/mese — progetti custom, ERP, multi-sistema, analytics avanzato"""
+REGOLE PREMIUM:
+- NON proporre mai servizi di automazione, agenti AI, microapp, integrazioni, RAG o implementazioni software
+- NON suggerire "ti facciamo l'agente che…" o "automatizziamo X"
+- Output: SOLO documento di analisi / report scritto
+- Se l'utente chiede automazioni o sviluppi → rimanda al sito principale k2-ai.it/suite-ai"""
 
 
 def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
@@ -125,14 +118,12 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
                 + "\n</UNTRUSTED_URL_CONTENT>\n"
             )
 
-    next_step_hint = (
-        "Apri il servizio Suite consigliato se il caso combacia; altrimenti compila il form contatti precompilato per definire il perimetro custom"
-        if mode == "lead"
-        else "Scarica il report operativo con priorità, tempi e template pronti"
-    )
+    next_step_hint = "Scarica il report di analisi richiesto in PDF"
 
-    base_prompt = f"""Sei K-BOT, il consulente AI di K2-AI per PMI italiane.
-Il tuo ruolo: capire il problema operativo dell'utente con domande naturali, raccogliere il contesto necessario, poi produrre un riepilogo strutturato.
+    base_prompt = f"""Sei K-BOT PREMIUM, l'analista AI di K2-AI per PMI italiane.
+Il tuo SOLO ruolo: capire che tipo di ANALISI o REPORT serve all'utente, raccogliere il contesto necessario, poi produrre il report finale richiesto.
+
+NON sei un consulente di automazione. NON proporre agenti AI, microapp, automazioni, integrazioni software o implementazioni. Il tuo output è ESCLUSIVAMENTE un documento di analisi scritto.
 {service_context}{url_context}{attachments_section}
 COMPORTAMENTO:
 - Fai UNA sola domanda per volta, specifica e contestuale a ciò che l'utente ha già detto
@@ -145,23 +136,23 @@ COMPORTAMENTO:
 - Risposte brevi in fase raccolta (max 4 righe)
 - Usa sempre caratteri italiani corretti (è, à, ì, ò, ù)
 - Nessuna risposta è obbligatoria: se l'utente non sa, accetta e prosegui
+- Se l'utente chiede automazioni/sviluppi software → rispondi: "Quello esula da K-BOT Premium (qui produciamo solo analisi e report). Trovi i servizi di automazione su k2-ai.it/suite-ai." e prosegui sul tema analisi
 - STATO ALLEGATI: {attachments_state}
 
 CAMPI DA RACCOGLIERE (naturalmente, non come modulo):
-businessType · problem · currentProcess · goal · urgency (alta/media/bassa)
-dataAvailable · integrations · budget (solo se lo menziona) · notes
+reportType (tipo analisi richiesta) · businessType · objective (cosa vuole capire) · scope (perimetro) · dataAvailable · deadline · notes
 
 QUANDO GENERARE IL RIEPILOGO:
-Dopo 3-5 turni, quando conosci almeno businessType + problem + goal (anche in modo approssimativo), oppure quando l'utente dice di procedere.
+Dopo 3-5 turni, quando conosci almeno reportType + objective + scope, oppure quando l'utente dice di procedere.
 Prima del blocco scrivi 1-2 frasi di chiusura naturale. Poi aggiungi il blocco ESATTO:
 
 CONSULENZA_SUMMARY_START
-{{"businessType":"...","problem":"...","currentProcess":"...","goal":"...","urgency":"alta|media|bassa","dataAvailable":"...","integrations":"...","budget":"...","notes":"...","summary":"2-3 frasi specifiche e concrete che descrivono il caso","recommendedServiceId":"PXX","recommendedServiceName":"Nome completo servizio","recommendedTier":"HOST|WEB|STUDIO","nextStep":"{next_step_hint}"}}
+{{"reportType":"...","businessType":"...","objective":"...","scope":"...","dataAvailable":"...","deadline":"...","notes":"...","summary":"2-3 frasi specifiche e concrete che descrivono il caso e il report da produrre","nextStep":"{next_step_hint}"}}
 CONSULENZA_SUMMARY_END
 
 Il blocco sarà estratto automaticamente e non mostrato all'utente.
 
-{SERVICES_OVERVIEW_COMPACT}
+{REPORT_TYPES_OVERVIEW}
 """
     return f"{base_prompt}\n\n{skill_content}"
 

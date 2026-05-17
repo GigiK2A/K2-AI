@@ -97,6 +97,9 @@ export default function HomePage() {
   const [usedSkills, setUsedSkills] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<
+    { name: string; size: number; type: string }[]
+  >([]);
   const [contextFilesByConversation, setContextFilesByConversation] = useState<
     Record<string, UploadedFile[]>
   >({});
@@ -191,6 +194,13 @@ export default function HomePage() {
   const handleFilePick = useCallback(
     async (files: File[]) => {
       setError("");
+      // Show uploading placeholders immediately (animated chip in Composer).
+      const placeholders = files.map((f) => ({
+        name: f.name,
+        size: f.size,
+        type: f.type,
+      }));
+      setUploadingFiles((prev) => [...prev, ...placeholders]);
       try {
         const session = await ensureSession({ mode });
         const token = await getToken();
@@ -202,6 +212,14 @@ export default function HomePage() {
         }));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Errore upload file");
+      } finally {
+        // Drop the placeholders we added (match by name+size).
+        setUploadingFiles((prev) =>
+          prev.filter(
+            (p) =>
+              !placeholders.some((q) => q.name === p.name && q.size === p.size),
+          ),
+        );
       }
     },
     [activeConversation.id, ensureSession, getToken, mode],
@@ -371,6 +389,7 @@ export default function HomePage() {
               suggestions={REPORT_SUGGESTIONS}
               onPickFiles={handleFilePick}
               files={pendingFiles}
+              uploadingFiles={uploadingFiles}
               onFetchUrl={handleFetchUrl}
               fetchingUrl={fetchingUrl}
             />
