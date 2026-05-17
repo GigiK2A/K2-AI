@@ -183,7 +183,7 @@ def upload(
     for f in body.files:
         data = _decode_b64(f.base64)
         if len(data) > MAX_BYTES:
-            raise HTTPException(status_code=413, detail=f"{f.name}: exceeds 3 MB")
+            raise HTTPException(status_code=413, detail=f"{f.name}: exceeds 20 MB")
 
         clean = _clean_filename(f.name)
         path = f"{body.sessionId}/{int(time.time() * 1000)}-{clean}"
