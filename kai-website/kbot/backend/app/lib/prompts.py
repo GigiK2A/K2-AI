@@ -77,12 +77,15 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
     attachments_section = ""
     if has_extracted_text:
         file_lines = []
+        # Allocate a generous budget per-file so financial reports / bilanci
+        # actually reach the model with their numerical content (era 1500 chars,
+        # bastava solo per la cover page — bug critico fix).
         for f in uploaded_files[-5:]:
             name = str(f.get("name") or "file").strip()
             text = str(f.get("extractedText") or f.get("extractedSummary") or "").strip()
             if not text:
                 continue
-            file_lines.append(f"--- {name} ---\n{text[:1500]}")
+            file_lines.append(f"--- {name} ---\n{text[:18000]}")
         if file_lines:
             file_summaries = "\n\n".join(file_lines)
             attachments_section = (

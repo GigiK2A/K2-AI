@@ -22,8 +22,8 @@ router = APIRouter()
 log = logging.getLogger(__name__)
 
 MAX_BYTES = 20 * 1024 * 1024  # 20 MB per file (bilanci/relazioni finanziarie PDF arrivano spesso a 10-15 MB)
-TEXT_LIMIT = 12_000
-PDF_LIMIT = 30_000
+TEXT_LIMIT = 40_000
+PDF_LIMIT = 120_000  # bilanci/relazioni 50-200 pagine: serve testo abbondante
 
 
 class FilePayload(BaseModel):
@@ -140,7 +140,7 @@ def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str]:
 
             with pdfplumber.open(BytesIO(content)) as pdf:
                 pages = []
-                for page in pdf.pages[:30]:
+                for page in pdf.pages[:120]:
                     txt = page.extract_text() or ""
                     if txt.strip():
                         pages.append(txt)
