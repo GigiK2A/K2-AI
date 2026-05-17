@@ -133,10 +133,12 @@ async def post_message(
     try:
         result = client.messages.create(
             model=ANTHROPIC_MODEL,
-            max_tokens=1200,
+            # max_tokens generoso: serve per i report finali. 1200 era ok per
+            # chat brevi ma segava i report a metà.
+            max_tokens=8000,
             system=system_prompt,
             messages=history,
-            timeout=60.0,
+            timeout=120.0,
         )
     except anthropic.APITimeoutError:
         log.exception("Anthropic API timeout")

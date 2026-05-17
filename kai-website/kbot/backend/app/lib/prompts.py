@@ -136,6 +136,8 @@ COMPORTAMENTO:
 - Tono: diretto, professionale, da pari a pari — non commerciale
 - Niente elenchi di domande multiple in un singolo messaggio
 - Niente markdown strutturale in chat (no #, tabelle, blocchi code)
+- MAI output in JSON, mai ```json o ```code blocks, mai oggetti strutturati. SOLO prosa italiana leggibile.
+- Quando produci il report finale: testo discorsivo strutturato (sezioni con titoli in maiuscolo, paragrafi). Niente JSON, niente schemi, niente chiavi-valore tipo "meta": { "settore": ... }
 - Risposte brevi in fase raccolta (max 4 righe)
 - Usa sempre caratteri italiani corretti (è, à, ì, ò, ù)
 - Nessuna risposta è obbligatoria: se l'utente non sa, accetta e prosegui
@@ -182,7 +184,11 @@ def normalize_assistant_reply(raw: str) -> str:
     if not text:
         return "Ricevuto. Procedo con il prossimo passaggio."
     # Strip markdown noise (mirror normalizeAssistantReply in chat.ts).
+    # Closed fenced code blocks.
     text = re.sub(r"```[\s\S]*?```", "", text)
+    # Unclosed fenced code blocks (model emette ```json {...} senza chiusura
+    # quando finisce per max_tokens o output troncato — capitava col report).
+    text = re.sub(r"```\w*\s*\n[\s\S]*$", "", text)
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
     text = re.sub(r"^\s*\|.*\|\s*$", "", text, flags=re.MULTILINE)
     text = re.sub(r"^\s*[-=_]{3,}\s*$", "", text, flags=re.MULTILINE)
@@ -191,8 +197,8 @@ def normalize_assistant_reply(raw: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
     if not text:
         return "Ricevuto. Procedo con il prossimo passaggio."
-    if len(text) > 1200:
-        return text[:1197].rstrip() + "..."
+    # NO hard truncation: K-BOT premium produce report da migliaia di caratteri.
+    # Il tetto 1200 char era pensato per chat brevi e segava i report a metà.
     return text
 
 
