@@ -1,12 +1,13 @@
 """URL fetching and HTML content extraction for K-BOT sessions."""
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import json
 import re
 import socket
 from typing import Any, Dict, List
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -16,6 +17,11 @@ MAX_MAIN_CONTENT_CHARS = 6_000
 FULL_CONTENT_HTML_THRESHOLD = 20_000
 MAX_SUMMARY_CHARS = 1_500
 MAX_REDIRECTS = 5
+
+# Multi-page crawl limits (audit SEO needs more than just the homepage).
+MAX_ADDITIONAL_PAGES = 6
+ADDITIONAL_PAGE_TIMEOUT = 6.0
+ADDITIONAL_PAGE_BYTES = 300_000
 
 # Ports we allow (in addition to None/default per scheme).
 # Block well-known service ports (SSH, SMTP, Redis, ES, Mongo, PG, MySQL...).
@@ -229,8 +235,129 @@ def build_url_summary(data: Dict[str, Any]) -> str:
         parts.append(f"OG image: {data['og']['image']}")
     if data.get("main_content"):
         parts.append(f"Contenuto ({data.get('word_count', 0)} parole):\n{data['main_content'][:800]}")
+    additional = data.get("additional_pages") or []
+    if additional:
+        pages_line = "; ".join(
+            f"{p.get('url', '')} (title=«{p.get('title', '')[:60]}», H1=«{p.get('h1', '')[:60]}»)"
+            for p in additional[:6]
+        )
+        parts.append(f"Pagine interne crawlate ({len(additional)}): {pages_line}")
     summary = "\n".join(parts)
     return summary[:MAX_SUMMARY_CHARS]
+
+
+async def _discover_internal_links(html: str, base_url: str) -> List[str]:
+    """Extract distinct internal links from the homepage HTML, in order of appearance."""
+    base_host = urlparse(base_url).hostname or ""
+    if not base_host:
+        return []
+    seen: set = set()
+    out: List[str] = []
+    for m in re.finditer(r'<a[^>]+href=["\']([^"\'#]+)["\']', html, re.IGNORECASE):
+        raw = m.group(1).strip()
+        if not raw or raw.startswith(("mailto:", "tel:", "javascript:", "data:")):
+            continue
+        full = urljoin(base_url, raw)
+        parsed = urlparse(full)
+        if parsed.scheme not in ("http", "https"):
+            continue
+        if parsed.hostname != base_host:
+            continue
+        # Drop the homepage itself + fragment-only links.
+        norm = f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/'}"
+        if norm.rstrip("/") == base_url.rstrip("/"):
+            continue
+        # Skip common asset paths.
+        if re.search(r"\.(png|jpe?g|gif|webp|svg|ico|css|js|pdf|zip|mp4|mp3)(\?|$)", parsed.path, re.IGNORECASE):
+            continue
+        if norm not in seen:
+            seen.add(norm)
+            out.append(norm)
+        if len(out) >= MAX_ADDITIONAL_PAGES * 2:  # over-collect, will trim after fetch
+            break
+    return out
+
+
+async def _try_sitemap(base_url: str, client: httpx.AsyncClient) -> List[str]:
+    """If /sitemap.xml is present, return up to MAX_ADDITIONAL_PAGES * 2 URLs from it."""
+    parsed = urlparse(base_url)
+    sitemap_url = f"{parsed.scheme}://{parsed.netloc}/sitemap.xml"
+    try:
+        validate_url(sitemap_url)
+        resp = await client.get(sitemap_url, timeout=ADDITIONAL_PAGE_TIMEOUT)
+        if resp.status_code != 200 or "xml" not in resp.headers.get("content-type", "").lower():
+            return []
+        body = resp.text[:200_000]
+    except Exception:
+        return []
+    urls: List[str] = []
+    base_host = parsed.hostname or ""
+    for m in re.finditer(r"<loc>\s*([^<\s]+)\s*</loc>", body, re.IGNORECASE):
+        u = m.group(1).strip()
+        try:
+            ph = urlparse(u)
+            if ph.hostname == base_host and ph.scheme in ("http", "https") and u.rstrip("/") != base_url.rstrip("/"):
+                urls.append(u)
+        except Exception:
+            continue
+        if len(urls) >= MAX_ADDITIONAL_PAGES * 2:
+            break
+    return urls
+
+
+async def _fetch_page_compact(url: str, client: httpx.AsyncClient) -> Dict[str, Any] | None:
+    """Fetch one internal page and return only structural SEO fields."""
+    try:
+        validate_url(url)
+        resp = await client.get(url, timeout=ADDITIONAL_PAGE_TIMEOUT)
+        if resp.status_code != 200:
+            return None
+        if "text/html" not in resp.headers.get("content-type", "").lower():
+            return None
+        html = resp.text[:ADDITIONAL_PAGE_BYTES]
+    except Exception:
+        return None
+    clean = _strip_noise(html)
+    h1_match = re.search(r"<h1[^>]*>([\s\S]*?)</h1>", clean, re.IGNORECASE)
+    h1 = _STRIP_TAGS.sub("", h1_match.group(1)).strip() if h1_match else ""
+    word_count = len(_STRIP_TAGS.sub(" ", clean).split())
+    return {
+        "url": url,
+        "title": _get_tag_content(clean, "title"),
+        "meta_description": _get_meta(clean, "description"),
+        "canonical": _get_canonical(clean),
+        "h1": h1[:200],
+        "word_count": word_count,
+    }
+
+
+async def _crawl_additional_pages(html: str, base_url: str) -> List[Dict[str, Any]]:
+    """Discover internal links (sitemap > homepage anchors) and fetch them in parallel."""
+    async with httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=ADDITIONAL_PAGE_TIMEOUT,
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; K2-AI-Bot/1.0)",
+            "Accept": "text/html,application/xhtml+xml,application/xml",
+        },
+    ) as client:
+        candidates = await _try_sitemap(base_url, client)
+        if not candidates:
+            candidates = await _discover_internal_links(html, base_url)
+        if not candidates:
+            return []
+        candidates = candidates[: MAX_ADDITIONAL_PAGES * 2]
+        results = await asyncio.gather(
+            *[_fetch_page_compact(u, client) for u in candidates],
+            return_exceptions=True,
+        )
+    pages: List[Dict[str, Any]] = []
+    for r in results:
+        if isinstance(r, dict) and r.get("url"):
+            pages.append(r)
+        if len(pages) >= MAX_ADDITIONAL_PAGES:
+            break
+    return pages
 
 
 async def fetch_url_content(url: str) -> Dict[str, Any]:
@@ -283,5 +410,10 @@ async def fetch_url_content(url: str) -> Dict[str, Any]:
             raise UrlFetchError(f"Troppi redirect (>{MAX_REDIRECTS}): {url}")
 
     data = extract_html_content(html, current_url, content_type)
+    # Multi-page crawl: best-effort, swallow errors — non bloccare il caller.
+    try:
+        data["additional_pages"] = await _crawl_additional_pages(html, current_url)
+    except Exception:
+        data["additional_pages"] = []
     data["summary"] = build_url_summary(data)
     return data

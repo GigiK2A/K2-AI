@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import anthropic
@@ -81,6 +82,45 @@ def _build_context_block(session: dict) -> str:
                 lines.append(f"- {name} (estrazione: {method})\n  {excerpt[:600]}{'…' if len(excerpt) > 600 else ''}")
             else:
                 lines.append(f"- {name}: nessun testo estraibile")
+
+    # URL analizzati: titoli, meta, H1-H3, schema, pagine interne crawlate.
+    # PRIMA il contesto NON includeva questi dati e Sonnet inventava
+    # title/H1/architettura. Ora i dati reali del sito arrivano al modello.
+    urls = collected.get("analyzed_urls") or []
+    if urls:
+        lines.append("\nURL ANALIZZATI (dati reali estratti dal crawl):")
+        for u in urls[-3:]:
+            lines.append(f"\n• {u.get('url', '')}")
+            if u.get("title"):
+                lines.append(f"  <title>: {u['title']}")
+            if u.get("meta_description"):
+                lines.append(f"  meta description: {u['meta_description']}")
+            if u.get("canonical"):
+                lines.append(f"  canonical: {u['canonical']}")
+            headings = u.get("headings") or []
+            if headings:
+                hs = "; ".join(f"{h['level'].upper()} «{h['text']}»" for h in headings[:10])
+                lines.append(f"  intestazioni rilevate: {hs}")
+            schema_types = u.get("schema_types") or []
+            if schema_types:
+                lines.append(f"  schema.org: {', '.join(schema_types)}")
+            main = (u.get("main_content") or "").strip()
+            if main:
+                lines.append(f"  estratto contenuto ({u.get('word_count', 0)} parole): {main[:800]}{'…' if len(main) > 800 else ''}")
+            # Pagine interne aggiuntive (fix crawl multipagina)
+            extra = u.get("additional_pages") or []
+            if extra:
+                lines.append(f"  ALTRE PAGINE CRAWLATE ({len(extra)}):")
+                for p in extra[:8]:
+                    bits = [p.get("url", "")]
+                    if p.get("title"):
+                        bits.append(f"title=«{p['title']}»")
+                    if p.get("h1"):
+                        bits.append(f"H1=«{p['h1']}»")
+                    if p.get("meta_description"):
+                        bits.append(f"meta=«{p['meta_description'][:120]}»")
+                    lines.append("    - " + " | ".join(bits))
+
     return "\n".join(lines) if lines else "Nessun dato strutturato disponibile."
 
 
@@ -142,10 +182,28 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         f"[{m['role'].upper()}] {m['content']}" for m in history
     ) or "(nessuna cronologia)"
 
+    today = datetime.now()
+    today_human = today.strftime("%d/%m/%Y")
+    italian_months = [
+        "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
+        "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
+    ]
+    today_long = f"{today.day} {italian_months[today.month - 1]} {today.year}"
+    plus3_month = italian_months[(today.month + 2) % 12].capitalize()
+    plus6_month = italian_months[(today.month + 5) % 12].capitalize()
+    plus12_month = italian_months[(today.month - 1) % 12].capitalize()
+    plus3_year = today.year + (1 if today.month + 3 > 12 else 0)
+    plus6_year = today.year + (1 if today.month + 6 > 12 else 0)
+    plus12_year = today.year + 1
+
     system_prompt = (
         "Sei l'analista K2-AI che produce report premium per PMI italiane. "
         "Output: SOLO un oggetto JSON valido `{meta, blocks}` secondo lo schema "
         "definito nella MASTER SKILL allegata. Niente testo prima/dopo, niente code fence.\n\n"
+        f"DATA CORRENTE: oggi è {today_long} ({today_human}). "
+        f"Roadmap, KPI e milestone DEVONO partire da oggi e proiettarsi nel futuro "
+        f"(es. 'Mese 3: {plus3_month} {plus3_year}', 'Mese 6: {plus6_month} {plus6_year}', "
+        f"'Mese 12: {plus12_month} {plus12_year}'). MAI usare date passate o anni del training.\n\n"
         "REGOLE FERREE:\n"
         "- Italiano corretto (è, à, ù, ò, ì). Numeri italiani: €31.500 non $31,500.\n"
         "- Tono pragmatico, mai marketing, mai 'rivoluzionario'/'all'avanguardia'.\n"
@@ -154,7 +212,14 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "- Coerenza interna: stesso numero in blocchi diversi senza contraddizioni.\n"
         "- Adatta i titoli e le sezioni AL CASO SPECIFICO dell'utente (investimento, marketing, "
         "legale, finanziario, tecnico…). Non c'è una struttura fissa.\n"
-        "- Usa SOLO i tipi di blocco documentati nella master skill.\n\n"
+        "- Usa SOLO i tipi di blocco documentati nella master skill.\n"
+        "- VINCOLO DATI: se nel contesto trovi 'URL ANALIZZATI', usa ESATTAMENTE i title/H1/meta "
+        "elencati. NON inventare title o H1 alternativi. Se un campo manca, scrivi 'non rilevato' "
+        "invece di inventarlo. Se architettura sito ha più pagine crawlate, NON descriverla come "
+        "'monopage'.\n"
+        "- VINCOLO COMPETITOR: se non hai competitor reali nei dati di sessione, NON inventare "
+        "'Competitor A/B/C' con DA fittizi. Dichiara esplicitamente che sono benchmark di mercato "
+        "generici. Mai DA, posizioni o keyword rankate inventate per competitor specifici.\n\n"
         "SKILL E DESIGN SYSTEM:\n"
         f"{skills_payload}"
     )
