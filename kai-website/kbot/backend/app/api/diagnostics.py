@@ -72,14 +72,11 @@ def _check_pdfplumber() -> Dict[str, Any]:
         return {"status": "error", "error": exc.__class__.__name__, "msg": str(exc)[:200]}
 
 
-def _check_playwright() -> Dict[str, Any]:
+def _check_weasyprint() -> Dict[str, Any]:
     try:
-        import playwright  # noqa: F401
-        from playwright.sync_api import sync_playwright
+        import weasyprint  # noqa: F401
 
-        # Don't actually launch; just verify the package + browser binary
-        # are importable. Launching adds ~500ms and racy bootstrap.
-        return {"status": "ok", "version": getattr(playwright, "__version__", "unknown")}
+        return {"status": "ok", "version": getattr(weasyprint, "__version__", "unknown")}
     except ImportError:
         return {"status": "missing"}
     except Exception as exc:
@@ -99,7 +96,7 @@ def _aggregate_status(checks: Dict[str, Dict[str, Any]]) -> str:
     statuses = [v.get("status") for v in checks.values()]
     if all(s == "ok" for s in statuses):
         return "ok"
-    # supabase or anthropic broken = error; only playwright/pdfplumber = degraded
+    # supabase or anthropic broken = error; only weasyprint/pdfplumber = degraded
     critical = {"supabase", "anthropic"}
     if any(checks.get(k, {}).get("status") == "error" for k in critical):
         return "error"
@@ -122,7 +119,7 @@ def diagnostics(
         "supabase": _check_supabase(),
         "anthropic": _check_anthropic(),
         "pdfplumber": _check_pdfplumber(),
-        "playwright": _check_playwright(),
+        "weasyprint": _check_weasyprint(),
     }
 
     packages = {

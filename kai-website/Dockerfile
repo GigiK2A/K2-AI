@@ -1,6 +1,6 @@
 # =============================================================================
 # K2-AI — Unified container (Vite site + Next.js kbot standalone + Python kbot
-# backend + Playwright Chromium).
+# backend + WeasyPrint PDF rendering).
 # Single Node entrypoint (server.js) supervises:
 #   - the Next.js kbot standalone (child Node process on :4174)
 #   - the FastAPI Python kbot backend (child uvicorn process on :8000)
@@ -47,25 +47,20 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PIP_NO_CACHE_DIR=1
 
-# Install Python 3 + Chromium runtime libs for Playwright.
-# `playwright install-deps chromium` would normally pull these, but doing it
-# explicitly via apt keeps the image deterministic and avoids the host check.
+# Python 3 + WeasyPrint native deps (libpango/cairo/harfbuzz/gdk-pixbuf).
+# Era chromium per Playwright; ora WeasyPrint sync, niente headless browser.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-venv \
-    ca-certificates fonts-liberation \
-    libasound2 libatk-bridge2.0-0 libatk1.0-0 libcairo2 libcups2 \
-    libdbus-1-3 libdrm2 libexpat1 libgbm1 libglib2.0-0 libnspr4 libnss3 \
-    libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 \
-    libxfixes3 libxkbcommon0 libxrandr2 wget xdg-utils \
+    ca-certificates fonts-liberation fonts-inter \
+    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b \
+    libcairo2 libgdk-pixbuf-2.0-0 shared-mime-info \
   && rm -rf /var/lib/apt/lists/*
 
 # -------- Install Python dependencies for kbot backend --------
 COPY kbot/backend/requirements.txt /tmp/kbot-requirements.txt
-RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/kbot-requirements.txt \
-  && playwright install chromium
+RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/kbot-requirements.txt
 
 # -------- Copy Python backend source --------
 COPY kbot/backend/app ./kbot-backend/app
@@ -91,10 +86,8 @@ ENV KBOT_SKILLS_DIR=/app/lib/skills \
     KBOT_PYTHON_BIN=/usr/bin/python3
 
 # Run as a non-root user (node:20-slim ships with the "node" user, uid 1000).
-# Chromium / Playwright also need read access to /ms-playwright; everything
-# under /app is read-only at runtime (no writes are expected back into the
-# image — uploads go to Supabase storage and /tmp).
-RUN chown -R node:node /app /ms-playwright 2>/dev/null || true
+# Tutto sotto /app è read-only a runtime (upload → Supabase storage + /tmp).
+RUN chown -R node:node /app 2>/dev/null || true
 USER node
 
 EXPOSE 4173
