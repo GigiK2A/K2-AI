@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -143,20 +144,24 @@ def _extract_json(text: str) -> Dict[str, Any]:
 
 
 def _build_skill_payload(session: dict) -> str:
-    """Always-on master skill + vertical skills bundle."""
-    master = load_skill(MASTER_SKILL_NAME, include_references=True) or ""
+    """Always-on master skill + vertical skills bundle.
+
+    Caps aggressivi per rispettare rate limit Anthropic (Sonnet 30k TPM su
+    questa org). Total target: <50k chars (~12.5k tokens).
+    """
+    master = load_skill(MASTER_SKILL_NAME, include_references=False) or ""
     vertical_names = resolve_skills_for_session(session)
-    # Reserve ~12k chars for master skill, give the rest to verticals.
-    master_chars = min(len(master), 14_000)
-    vertical_budget = max(PDF_SYSTEM_MAX_CHARS - master_chars - 2_000, 30_000)
+    master_chars = min(len(master), 8_000)
+    # Vertical budget = PDF_SYSTEM_MAX_CHARS (55k default) - master (~8k) - boilerplate (~2k) ≈ 45k
+    vertical_budget = max(PDF_SYSTEM_MAX_CHARS - master_chars - 2_000, 15_000)
     vertical_bundle = load_skill_bundle(
         vertical_names,
         max_total_chars=vertical_budget,
-        max_per_skill_chars=20_000,
-        include_references=True,
+        max_per_skill_chars=6_000,
+        include_references=False,
     )
     master_section = (
-        f"\n{'=' * 60}\n# MASTER SKILL: {MASTER_SKILL_NAME} (sempre applicata)\n{'=' * 60}\n\n"
+        f"\n{'=' * 60}\n# MASTER SKILL: {MASTER_SKILL_NAME}\n{'=' * 60}\n\n"
         + master[:master_chars]
     )
     return master_section + "\n\n" + vertical_bundle
@@ -260,17 +265,38 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
     # con testo finale (il JSON). max_uses limita il costo (~$10/1000 search).
     tools = [{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}]
 
+    # Prompt caching: skills payload è stabile tra chiamate → 90% sconto su cache hit.
+    # cache_control sul system prompt finale (ultimo blocco testuale).
+    system_blocks = [
+        {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}},
+    ]
+
+    def _create_with_backoff(messages: List[Dict[str, Any]]):
+        """Retry su 429 con backoff esponenziale (rate limit Anthropic per minuto)."""
+        delays = [12, 25, 45]  # finestra rate-limit Anthropic = 60s, backoff sotto 1 min
+        last_exc: Optional[Exception] = None
+        for attempt, delay in enumerate([0] + delays):
+            if delay:
+                log.warning("Rate-limited, retry %d/%d after %ds", attempt, len(delays), delay)
+                time.sleep(delay)
+            try:
+                return client.messages.create(
+                    model=ANTHROPIC_PDF_MODEL,
+                    max_tokens=8192,
+                    system=system_blocks,
+                    tools=tools,
+                    messages=messages,
+                    timeout=240.0,
+                )
+            except anthropic.RateLimitError as exc:
+                last_exc = exc
+                continue
+        raise last_exc if last_exc else RuntimeError("rate-limit retry loop exhausted")
+
     conversation: List[Dict[str, Any]] = [{"role": "user", "content": user_message}]
     raw = ""
     for _hop in range(8):  # safety cap: max 8 round-trip se il modello tool-spamma
-        result = client.messages.create(
-            model=ANTHROPIC_PDF_MODEL,
-            max_tokens=8192,
-            system=system_prompt,
-            tools=tools,
-            messages=conversation,
-            timeout=240.0,
-        )
+        result = _create_with_backoff(conversation)
         stop = getattr(result, "stop_reason", None)
         # Server-side web_search: server_tool_use + web_search_tool_result blocks
         # vengono già rinviati al modello automaticamente — non serve gestirli.

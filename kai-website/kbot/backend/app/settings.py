@@ -76,7 +76,7 @@ STORAGE_REPORTS_BUCKET = _env("STORAGE_REPORTS_BUCKET", default="kbot-reports")
 
 # Prompt size limits, mirroring api/kbot/_shared.ts.
 CHAT_SYSTEM_MAX_CHARS = int(_env("CHAT_SYSTEM_MAX_CHARS", default="26000") or "26000")
-PDF_SYSTEM_MAX_CHARS = int(_env("PDF_SYSTEM_MAX_CHARS", default="140000") or "140000")
+PDF_SYSTEM_MAX_CHARS = int(_env("PDF_SYSTEM_MAX_CHARS", default="55000") or "55000")
 MAX_HISTORY_MESSAGES = int(_env("MAX_HISTORY_MESSAGES", default="12") or "12")
 MAX_MESSAGE_CHARS = int(_env("MAX_MESSAGE_CHARS", default="900") or "900")
 
