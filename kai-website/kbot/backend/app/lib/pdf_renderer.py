@@ -60,6 +60,34 @@ def _today_it() -> str:
     return f"{d.day} {months[d.month - 1]} {d.year}"
 
 
+_TWO_SIDE_TYPES = {"two_column", "narrative_split", "conclusions"}
+
+
+def _normalize_blocks(blocks: list) -> list:
+    """Difensiva: garantisce shape stabile prima del render Jinja.
+
+    Sonnet talvolta omette le chiavi `left`/`right` sui blocchi a 2 colonne
+    o passa primitivi al posto di dict — la template crasha con
+    "'dict object' has no attribute 'left'". Qui forziamo dict vuoti
+    e gettiamo via blocchi non renderizzabili.
+    """
+    safe: list = []
+    for b in blocks or []:
+        if not isinstance(b, dict):
+            continue
+        btype = b.get("type")
+        if btype in _TWO_SIDE_TYPES:
+            for side in ("left", "right"):
+                val = b.get(side)
+                if not isinstance(val, dict):
+                    b[side] = {}
+            # conclusions richiede body_html nel lato sinistro — fallback string vuota
+            if btype == "conclusions" and not b["left"].get("body_html"):
+                b["left"]["body_html"] = b["left"].get("body") or ""
+        safe.append(b)
+    return safe
+
+
 def render_html(analysis: Dict[str, Any], *, session_id: str) -> str:
     """Render the Jinja2 template with the LLM analysis payload (block-based)."""
     template = _env.get_template("report.html.j2")
@@ -74,7 +102,7 @@ def render_html(analysis: Dict[str, Any], *, session_id: str) -> str:
             f"Codice: {code_default}",
         ]
 
-    blocks = analysis.get("blocks") or []
+    blocks = _normalize_blocks(analysis.get("blocks") or [])
     footer = analysis.get("footer") or {
         "line1": f"Report generato il {today} · Dati forniti dall'utente · Stime basate su skill verticali K2-AI",
         "code": code_default,
