@@ -532,6 +532,55 @@ export async function generatePdf(
   return { pdfUrl: data.pdf_url as string, session: data.session };
 }
 
+/** Streaming SSE: emette stage+progress real-time, restituisce pdf_url finale. */
+export async function generatePdfStream(
+  sessionId: string,
+  opts: {
+    authToken?: string | null;
+    testMode?: boolean;
+    onProgress?: (e: { stage: string; progress: number }) => void;
+  } = {},
+): Promise<{ pdfUrl: string; session?: KbotSession }> {
+  const res = await fetch(`${API_BASE}/api/kbot/generate-pdf/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(opts.authToken) },
+    body: JSON.stringify({ session_id: sessionId, test_mode: opts.testMode ?? false }),
+  });
+  if (!res.ok || !res.body) await parseErr(res, "Errore generazione PDF");
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let pdfUrl: string | null = null;
+  let session: KbotSession | undefined;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let sep: number;
+    while ((sep = buffer.indexOf("\n\n")) >= 0) {
+      const raw = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      const data = raw.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n");
+      if (!data) continue;
+      try {
+        const evt = JSON.parse(data) as { stage?: string; progress?: number; pdf_url?: string; session?: KbotSession; error?: string };
+        if (evt.error) throw new Error(evt.error);
+        if (typeof evt.stage === "string" && typeof evt.progress === "number") {
+          opts.onProgress?.({ stage: evt.stage, progress: evt.progress });
+        }
+        if (evt.pdf_url) {
+          pdfUrl = evt.pdf_url;
+          session = evt.session;
+        }
+      } catch (err) {
+        if (err instanceof Error) throw err;
+      }
+    }
+  }
+  if (!pdfUrl) throw new Error("Stream chiuso senza pdf_url");
+  return { pdfUrl, session };
+}
+
 /* -----------------------------------------------------------------
  * Conversations history (persisted server-side for authed users)
  * ----------------------------------------------------------------- */

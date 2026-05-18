@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 
 interface LoadingStateProps {
   text?: string;
+  /** Quando passato, sostituisce l'animazione fake con i valori reali ricevuti via SSE. */
+  reportProgress?: { stage: string; progress: number } | null;
 }
 
 const REPORT_STEPS = [
@@ -22,20 +24,30 @@ const REPORT_STEPS = [
 // After REPORT_THRESHOLD ms with no response, assume a report is being generated
 const REPORT_THRESHOLD = 8000;
 
-export function LoadingState({ text = "K2-AI sta elaborando..." }: LoadingStateProps) {
-  const [isReport, setIsReport] = useState(false);
-  const [progress, setProgress] = useState(0);
+export function LoadingState({ text = "K2-AI sta elaborando...", reportProgress = null }: LoadingStateProps) {
+  const [isReport, setIsReport] = useState(!!reportProgress);
+  const [progress, setProgress] = useState(reportProgress?.progress ?? 0);
   const [stepIndex, setStepIndex] = useState(0);
+  const live = !!reportProgress;
 
-  // Switch to report mode after 8 seconds of waiting
+  // Real progress: aggiorna stato dai dati SSE
   useEffect(() => {
+    if (reportProgress) {
+      setIsReport(true);
+      setProgress(reportProgress.progress);
+    }
+  }, [reportProgress]);
+
+  // Switch to report mode after 8 seconds of waiting (solo se non guidato da SSE)
+  useEffect(() => {
+    if (live) return;
     const timer = setTimeout(() => setIsReport(true), REPORT_THRESHOLD);
     return () => clearTimeout(timer);
-  }, []);
+  }, [live]);
 
-  // Progress bar animation — only when in report mode
+  // Progress bar animation fake — solo se non c'è SSE attivo
   useEffect(() => {
-    if (!isReport) return;
+    if (!isReport || live) return;
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 92) return prev;
@@ -50,7 +62,9 @@ export function LoadingState({ text = "K2-AI sta elaborando..." }: LoadingStateP
       clearInterval(interval);
       clearInterval(stepInterval);
     };
-  }, [isReport]);
+  }, [isReport, live]);
+
+  const liveStageLabel = reportProgress?.stage;
 
   return (
     <AnimatePresence mode="wait">
@@ -104,13 +118,13 @@ export function LoadingState({ text = "K2-AI sta elaborando..." }: LoadingStateP
           </div>
 
           <motion.p
-            key={stepIndex}
+            key={liveStageLabel ?? stepIndex}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
             className="mt-3 text-xs text-[var(--text-soft)]"
           >
-            {REPORT_STEPS[stepIndex]}
+            {liveStageLabel ?? REPORT_STEPS[stepIndex]}
           </motion.p>
         </motion.div>
       )}

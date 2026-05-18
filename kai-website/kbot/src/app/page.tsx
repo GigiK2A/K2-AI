@@ -13,7 +13,7 @@ import {
   streamMessage,
   uploadFiles,
   startCheckout,
-  generatePdf,
+  generatePdfStream,
   fetchUrl,
   listConversations,
   createRemoteConversation,
@@ -124,6 +124,7 @@ export default function HomePage() {
   const [analyzedUrls, setAnalyzedUrls] = useState<AnalyzedUrl[]>([]);
   const [forcedSkills, setForcedSkills] = useState<string[]>([]);
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
+  const [pdfProgress, setPdfProgress] = useState<{ stage: string; progress: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Track kbot_open once the chat surface mounts for an authenticated user.
@@ -598,15 +599,20 @@ export default function HomePage() {
     window.location.href = url;
   }
 
-  /** Fase free: genera il PDF direttamente (test_mode), poi attacca l'url al messaggio. */
+  /** Fase free: genera il PDF in streaming SSE, progress real-time + url al messaggio. */
   async function generateReportPdfFromUI(messageId: string) {
     const session = await ensureSession({ mode });
     track("kbot_pdf_generation_requested", { mode });
     const token = await getToken();
     setLoading(true);
     setError("");
+    setPdfProgress({ stage: "Avvio generazione...", progress: 2 });
     try {
-      const { pdfUrl } = await generatePdf(session.id, token, true);
+      const { pdfUrl } = await generatePdfStream(session.id, {
+        authToken: token,
+        testMode: true,
+        onProgress: (e) => setPdfProgress(e),
+      });
       setConversations((prev) =>
         prev.map((c) =>
           c.id === activeConversation.id
@@ -623,6 +629,7 @@ export default function HomePage() {
       setError(e instanceof Error ? e.message : "Errore generazione PDF");
     } finally {
       setLoading(false);
+      setPdfProgress(null);
     }
   }
 
@@ -678,7 +685,7 @@ export default function HomePage() {
                 />
               ))}
             </AnimatePresence>
-            {loading && <LoadingState />}
+            {loading && <LoadingState reportProgress={pdfProgress} />}
             {rateLimitUntil && rateLimitUntil > Date.now() && (
               <RateLimitBanner
                 retryAt={rateLimitUntil}

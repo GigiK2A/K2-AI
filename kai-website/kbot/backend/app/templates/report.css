@@ -486,6 +486,12 @@ table.inline-table tbody tr:last-child td { border-bottom: 0; }
 }
 .report-footer .footer-meta a { color: #FFFFFF; text-decoration: none; }
 .report-footer .footer-meta .footer-row { display: flex; gap: 4mm; }
+.report-footer .footer-disclaimer {
+  margin-top: 3mm; padding-top: 2.5mm;
+  border-top: 0.3pt solid rgba(255,255,255,0.18);
+  font-size: 7.5pt; line-height: 1.45; opacity: 0.72;
+  font-style: italic; max-width: 165mm;
+}
 
 /* Block standalone narrative */
 .narrative-body { font-size: 10pt; line-height: 1.65; color: var(--text-secondary); }

@@ -62,14 +62,45 @@ def _today_it() -> str:
 
 _TWO_SIDE_TYPES = {"two_column", "narrative_split", "conclusions"}
 
+_CONCLUSIONS_FALLBACK_HTML = (
+    "<p>I dati raccolti in sessione non sono stati sufficienti a generare conclusioni "
+    "specifiche. Prossimi passi consigliati:</p>"
+    "<ol>"
+    "<li>Fornire dati di baseline (Google Search Console, Analytics) per ancorare proiezioni reali.</li>"
+    "<li>Identificare 2-3 priorità operative tra le criticità descritte nei blocchi precedenti.</li>"
+    "<li>Pianificare verifica KPI a 30/60/90 giorni con strumenti dedicati.</li>"
+    "</ol>"
+)
+
+
+def _block_has_content(block: dict) -> bool:
+    """True se il blocco ha contenuto sostanziale (non solo titolo vuoto)."""
+    btype = block.get("type")
+    # Conta tutti i valori "ricchi" del blocco escludendo type/title.
+    for key, val in block.items():
+        if key in ("type", "title"):
+            continue
+        if isinstance(val, str) and val.strip():
+            return True
+        if isinstance(val, (list, dict)) and val:
+            if isinstance(val, dict):
+                # left/right: ricorsione leggera
+                for sub_val in val.values():
+                    if isinstance(sub_val, str) and sub_val.strip():
+                        return True
+                    if isinstance(sub_val, (list, dict)) and sub_val:
+                        return True
+            else:
+                return True
+    return False
+
 
 def _normalize_blocks(blocks: list) -> list:
     """Difensiva: garantisce shape stabile prima del render Jinja.
 
-    Sonnet talvolta omette le chiavi `left`/`right` sui blocchi a 2 colonne
-    o passa primitivi al posto di dict — la template crasha con
-    "'dict object' has no attribute 'left'". Qui forziamo dict vuoti
-    e gettiamo via blocchi non renderizzabili.
+    1. Forza left/right come dict (vuoti se mancanti) sui blocchi a 2 colonne.
+    2. Garantisce che conclusions abbia body_html non vuoto.
+    3. Scarta blocchi non-dict o completamente vuoti (solo titolo).
     """
     safe: list = []
     for b in blocks or []:
@@ -81,10 +112,24 @@ def _normalize_blocks(blocks: list) -> list:
                 val = b.get(side)
                 if not isinstance(val, dict):
                     b[side] = {}
-            # conclusions richiede body_html nel lato sinistro — fallback string vuota
-            if btype == "conclusions" and not b["left"].get("body_html"):
-                b["left"]["body_html"] = b["left"].get("body") or ""
+            # conclusions: body_html OBBLIGATORIO. Fallback testuale onesto.
+            if btype == "conclusions":
+                if not b["left"].get("body_html"):
+                    body = b["left"].get("body") or b.get("body_html") or b.get("body")
+                    b["left"]["body_html"] = body or _CONCLUSIONS_FALLBACK_HTML
+        # Skip blocchi vuoti (solo titolo, niente contenuto).
+        if not _block_has_content(b):
+            log.warning("Block %r skipped: no content beyond title", btype)
+            continue
         safe.append(b)
+    # Garanzia: l'ultimo blocco è sempre conclusions con contenuto.
+    if not safe or safe[-1].get("type") != "conclusions":
+        safe.append({
+            "type": "conclusions",
+            "title": "Conclusioni e Prossimi Passi",
+            "left": {"body_html": _CONCLUSIONS_FALLBACK_HTML},
+            "right": {},
+        })
     return safe
 
 
@@ -107,6 +152,11 @@ def render_html(analysis: Dict[str, Any], *, session_id: str) -> str:
         "line1": f"Report generato il {today} · Dati forniti dall'utente · Stime basate su skill verticali K2-AI",
         "code": code_default,
     }
+    # Disclaimer obbligatorio: trasparenza sulle stime di mercato.
+    footer["disclaimer"] = (
+        "Le stime di traffico, volume keyword e proiezioni sono basate su benchmark di mercato. "
+        "I dati reali possono variare. Verificare con Google Search Console e strumenti di analisi dedicati."
+    )
     # nosemgrep: python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2 -- autoescape enabled in _env (select_autoescape html/xml); all variables are server-controlled
     return template.render(
         css=_load_css(),
