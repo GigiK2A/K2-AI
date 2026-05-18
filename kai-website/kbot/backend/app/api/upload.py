@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
+from ..lib import rag
+from ..lib import extraction_cache
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.limiter import limiter
@@ -25,6 +27,13 @@ log = logging.getLogger(__name__)
 MAX_BYTES = 20 * 1024 * 1024  # 20 MB per file (bilanci/relazioni finanziarie PDF arrivano spesso a 10-15 MB)
 TEXT_LIMIT = 60_000
 PDF_LIMIT = 200_000  # bilanci/relazioni 50-200 pagine: serve testo abbondante
+
+# OCR fallback caps. We rasterize each page and ship the PNG to Claude Vision;
+# at ~30-60k tokens/page this becomes expensive fast. We cap pages to keep the
+# cost predictable on a 200-page scanned report.
+OCR_MIN_TEXT_CHARS = 120        # below this, pdf-parse considered "empty"
+OCR_MAX_PAGES = 30              # hard cap on pages we send to Vision
+OCR_IMAGE_RESOLUTION = 150      # DPI; 150 is enough for legible OCR
 
 
 class FilePayload(BaseModel):
@@ -113,6 +122,74 @@ def _analyze_image_vision(data: bytes, mime: str, name: str) -> str:
     return response.content[0].text.strip() if response.content else ""
 
 
+def _ocr_pdf_with_vision(content: bytes, name: str) -> tuple[str, list[dict]]:
+    """Rasterize each PDF page → Claude Vision → extracted text.
+
+    Returns (concatenated_text, pages). Pages capped at OCR_MAX_PAGES.
+    Raises on irrecoverable error (caller decides whether to swallow).
+    """
+    from io import BytesIO
+
+    import pdfplumber  # lazy
+
+    from ..settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+
+    client = _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    page_entries: list[dict] = []
+    joined: list[str] = []
+
+    with pdfplumber.open(BytesIO(content)) as pdf:
+        for page in pdf.pages[:OCR_MAX_PAGES]:
+            try:
+                img = page.to_image(resolution=OCR_IMAGE_RESOLUTION)
+                buf = BytesIO()
+                img.save(buf, format="PNG")
+                png_bytes = buf.getvalue()
+            except Exception as exc:
+                log.warning("ocr render failed page=%s file=%s: %s", page.page_number, name, exc)
+                continue
+
+            b64 = base64.b64encode(png_bytes).decode("utf-8")
+            try:
+                response = client.messages.create(
+                    model=ANTHROPIC_MODEL,
+                    max_tokens=2000,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": "image/png",
+                                        "data": b64,
+                                    },
+                                },
+                                {
+                                    "type": "text",
+                                    "text": (
+                                        "Estrai TUTTO il testo visibile in questa pagina, "
+                                        "mantieni layout e ordine. Solo testo, niente commenti."
+                                    ),
+                                },
+                            ],
+                        }
+                    ],
+                    timeout=90.0,
+                )
+                txt = response.content[0].text.strip() if response.content else ""
+            except Exception as exc:
+                log.warning("ocr vision call failed page=%s file=%s: %s", page.page_number, name, exc)
+                continue
+
+            if txt:
+                page_entries.append({"n": int(page.page_number), "text": txt})
+                joined.append(txt)
+
+    return "\n\n".join(joined)[:PDF_LIMIT], page_entries
+
+
 def _decode_b64(payload: str) -> bytes:
     # Accept "data:...;base64,..." prefix.
     stripped = payload.lstrip()
@@ -128,8 +205,13 @@ def _decode_b64(payload: str) -> bytes:
         raise HTTPException(status_code=400, detail=f"invalid base64: {exc}") from exc
 
 
-def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str]:
-    """Return (extracted_text, extracted_summary, method)."""
+def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str, list[dict]]:
+    """Return (extracted_text, extracted_summary, method, pages).
+
+    `pages` is a list of {n, text} per page (for PDFs) or a single
+    pseudo-page for text/vision content. Used downstream for citation
+    markers and BM25 chunking.
+    """
     lower = name.lower()
     is_pdf = mime == "application/pdf" or lower.endswith(".pdf")
     is_text = mime.startswith("text/") or lower.endswith((".txt", ".md", ".csv", ".json", ".xml"))
@@ -137,7 +219,7 @@ def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str]:
     if is_text:
         try:
             text = content.decode("utf-8", errors="replace")[:TEXT_LIMIT]
-            return text, "", "text-decode"
+            return text, "", "text-decode", [{"n": 1, "text": text}]
         except Exception:
             pass
 
@@ -148,26 +230,39 @@ def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str]:
             from io import BytesIO
 
             with pdfplumber.open(BytesIO(content)) as pdf:
-                pages = []
+                page_entries: list[dict] = []
+                joined: list[str] = []
+                total = 0
                 for page in pdf.pages[:120]:
                     txt = page.extract_text() or ""
-                    if txt.strip():
-                        pages.append(txt)
-                text = "\n\n".join(pages)[:PDF_LIMIT]
-                if len(text.strip()) >= 120:
-                    return text, "", "pdf-parse"
+                    if not txt.strip():
+                        continue
+                    page_entries.append({"n": int(page.page_number), "text": txt})
+                    joined.append(txt)
+                    total += len(txt)
+                text = "\n\n".join(joined)[:PDF_LIMIT]
+                if len(text.strip()) >= OCR_MIN_TEXT_CHARS:
+                    return text, "", "pdf-parse", page_entries
         except Exception as exc:
             log.warning("pdf-parse failed for %s: %s", name, exc)
+
+        # Text layer absent or too thin → OCR via Claude Vision page-by-page.
+        try:
+            ocr_text, ocr_pages = _ocr_pdf_with_vision(content, name)
+            if len(ocr_text.strip()) >= OCR_MIN_TEXT_CHARS:
+                return ocr_text, "", "claude-vision-ocr", ocr_pages
+        except Exception as exc:
+            log.warning("ocr fallback failed for %s: %s", name, exc)
 
     if mime in _VISION_MIMES or any(name.lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp")):
         try:
             description = _analyze_image_vision(content, mime or "image/jpeg", name)
             if description:
-                return "", description, "claude-vision"
+                return "", description, "claude-vision", [{"n": 1, "text": description}]
         except Exception as exc:
             log.warning("vision analysis failed for %s: %s", name, exc)
 
-    return "", "Nessun testo estraibile dal file.", "none"
+    return "", "Nessun testo estraibile dal file.", "none", []
 
 
 @router.post("/upload")
@@ -207,7 +302,38 @@ def upload(
             raise HTTPException(status_code=500, detail="Upload non riuscito. Riprova.")
 
         public_url = storage.get_public_url(path)
-        extracted_text, extracted_summary, method = _extract_text(data, f.name, f.type or "")
+
+        # Cache lookup by sha256 of bytes — same document across sessions
+        # reuses extraction (saves 20-60s for big PDFs, or a Vision call
+        # storm for OCR fallback).
+        file_hash = extraction_cache.sha256_bytes(data)
+        cache_hit = False
+        cached = extraction_cache.lookup(file_hash)
+        if cached:
+            extracted_text, extracted_summary, method, pages = extraction_cache.unpack(cached)
+            cache_hit = True
+        else:
+            extracted_text, extracted_summary, method, pages = _extract_text(data, f.name, f.type or "")
+            # Only cache "real" extractions, not the empty fallback. The empty
+            # case is cheap to recompute and we don't want to pollute the
+            # cache with negative results that might mask a future fix.
+            if method != "none":
+                extraction_cache.store(
+                    file_hash,
+                    extracted_text=extracted_text,
+                    extracted_summary=extracted_summary,
+                    extraction_method=method,
+                    pages=pages,
+                    bytes_size=len(data),
+                    mime=f.type or "",
+                )
+
+        # Persist chunks for RAG retrieval + citations (best-effort).
+        try:
+            chunk_rows = rag.build_chunks_from_pages(body.sessionId, f.name, pages)
+            rag.persist_chunks(chunk_rows)
+        except Exception:
+            log.exception("rag chunking failed for %s", f.name)
 
         saved.append(
             {
@@ -228,6 +354,7 @@ def upload(
                 "extraction_method": method,
                 "mime": f.type or "",
                 "size_bytes": len(data),
+                "cache_hit": cache_hit,
             },
         )
 

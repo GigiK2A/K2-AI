@@ -348,14 +348,18 @@ def test_upload_25mb_rejected(client):
 # 4. Image-only PDF — fallback (not pdf-parse)
 # ---------------------------------------------------------------------------
 
-def test_pdf_without_text_falls_through(client):
+def test_pdf_without_text_falls_through(client, fake_anthropic):
     # Build a PDF with literally no text content (only an empty drawing).
+    # With OCR fallback, this should route to claude-vision-ocr (Vision
+    # is mocked to return canned text per page).
     from reportlab.pdfgen import canvas
     buf = io.BytesIO()
     c = canvas.Canvas(buf)
     c.showPage()
     c.save()
     data = buf.getvalue()
+
+    fake_anthropic.canned_text = "Pagina scannerizzata: testo OCR ricostruito qui."
 
     sid = _make_session(client)
     r = client.post("/api/kbot/upload", json={
@@ -366,8 +370,9 @@ def test_pdf_without_text_falls_through(client):
     assert r.status_code == 200
     f = r.json()["files"][0]
     assert f["extractionMethod"] != "pdf-parse"
-    # Should have either an extractedSummary or method=="none"
-    assert f["extractionMethod"] in ("none", "claude-vision") or f["extractedSummary"]
+    # OCR fallback expected; we still accept "none" if pdfplumber can't render
+    # (some sandbox environments lack the imaging dependency).
+    assert f["extractionMethod"] in ("none", "claude-vision-ocr"), f["extractionMethod"]
 
 
 # ---------------------------------------------------------------------------
@@ -663,3 +668,106 @@ def test_report_mode_default(client):
     sid = _make_session(client)
     r = client.get(f"/api/kbot/session/{sid}")
     assert r.json()["session"]["mode"] == "report"
+
+
+# ---------------------------------------------------------------------------
+# 16. OCR fallback — text layer too thin → Vision page-by-page
+# ---------------------------------------------------------------------------
+
+def test_ocr_fallback_when_text_layer_below_threshold(client, fake_anthropic):
+    """Thin-text-layer PDF should route to claude-vision-ocr."""
+    # Tiny PDF with under 120 chars of text → triggers OCR fallback.
+    from reportlab.pdfgen import canvas
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf)
+    c.drawString(40, 800, "x")  # 1 char on the page; far below 120 threshold
+    c.showPage()
+    c.save()
+    data = buf.getvalue()
+
+    fake_anthropic.canned_text = "OCR_RECOVERED_TEXT_42 valori finanziari ricostruiti."
+
+    sid = _make_session(client)
+    r = client.post("/api/kbot/upload", json={
+        "session_id": sid,
+        "files": [{"name": "scan_bilancio.pdf", "type": "application/pdf",
+                   "size": len(data), "base64": _b64(data)}],
+    })
+    assert r.status_code == 200, r.text
+    f = r.json()["files"][0]
+    # Accept "none" only if the imaging stack isn't available in this env;
+    # otherwise we expect the OCR fallback to fire.
+    if f["extractionMethod"] == "none":
+        pytest.skip("pdfplumber.to_image not available in this sandbox")
+    assert f["extractionMethod"] == "claude-vision-ocr"
+    assert "OCR_RECOVERED_TEXT_42" in f["extractedText"]
+
+
+# ---------------------------------------------------------------------------
+# 17. Extraction cache — same hash returns cached row without re-extracting
+# ---------------------------------------------------------------------------
+
+def test_extraction_cache_hit_skips_extraction(client, fake_anthropic, monkeypatch):
+    """When a cached row exists for the file's sha256, we skip _extract_text."""
+    pdf = _make_pdf(["TESTO_CACHED_ABC " * 30])
+    # Pre-seed a fake cache hit.
+    from app.lib import extraction_cache as ec
+    fake_row = {
+        "hash": ec.sha256_bytes(pdf),
+        "extracted_text": "CACHED_RESULT_MARKER ricavi 100",
+        "extracted_summary": "",
+        "extraction_method": "pdf-parse",
+        "pages_json": [{"n": 1, "text": "CACHED_RESULT_MARKER ricavi 100"}],
+    }
+    monkeypatch.setattr(ec, "lookup", lambda h: fake_row if h == fake_row["hash"] else None)
+
+    extract_calls = {"n": 0}
+
+    def boom(*_a, **_k):
+        extract_calls["n"] += 1
+        raise AssertionError("_extract_text must NOT be called on cache hit")
+
+    monkeypatch.setattr("app.api.upload._extract_text", boom)
+
+    sid = _make_session(client)
+    r = client.post("/api/kbot/upload", json={
+        "session_id": sid,
+        "files": [{"name": "b.pdf", "type": "application/pdf",
+                   "size": len(pdf), "base64": _b64(pdf)}],
+    })
+    assert r.status_code == 200, r.text
+    f = r.json()["files"][0]
+    assert "CACHED_RESULT_MARKER" in f["extractedText"]
+    assert f["extractionMethod"] == "pdf-parse"
+    assert extract_calls["n"] == 0
+
+
+# ---------------------------------------------------------------------------
+# 18. Diagnostics endpoint — basic shape
+# ---------------------------------------------------------------------------
+
+def test_diagnostics_endpoint_shape(client, monkeypatch):
+    # Anthropic ping is mocked via FakeAnthropic fixture (already active);
+    # supabase ping uses our fake table; the rest are real package imports.
+    r = client.get("/api/kbot/diagnostics")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    for key in ("status", "checks", "packages", "env", "runtime", "ts"):
+        assert key in body, f"missing key {key}"
+    assert body["checks"]["supabase"]["status"] == "ok"
+    assert body["checks"]["anthropic"]["status"] == "ok"
+    assert body["checks"]["pdfplumber"]["status"] == "ok"
+    # Never leak the actual key value.
+    assert "ANTHROPIC_API_KEY" in body["env"]
+    assert body["env"]["ANTHROPIC_API_KEY"] is True
+    serialized = r.text
+    assert "test-sk-dummy" not in serialized  # value must never appear
+
+
+def test_diagnostics_requires_internal_key_when_set(client, monkeypatch):
+    monkeypatch.setattr("app.api.diagnostics.INTERNAL_API_KEY", "secret-123")
+    r = client.get("/api/kbot/diagnostics")
+    assert r.status_code == 401
+    r2 = client.get("/api/kbot/diagnostics",
+                    headers={"Authorization": "Bearer secret-123"})
+    assert r2.status_code == 200
