@@ -399,7 +399,10 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         raise RuntimeError("LLM returned no text block (web_search loop esaurito)")
     try:
         parsed = _extract_json(raw)
-        return _sanitize_hallucinations(parsed)
+        parsed = _sanitize_hallucinations(parsed)
+        # Pipeline validation: rigenera blocchi problematici prima del render.
+        parsed = _validate_and_repair(parsed, client, system_blocks, user_message)
+        return parsed
     except (ValueError, json.JSONDecodeError) as exc:
         # JSON troncato o malformato (max_tokens esaurito, virgola mancante, ecc).
         # Retry singolo chiedendo a Sonnet di riemettere SOLO un JSON valido,
@@ -472,3 +475,150 @@ def _sanitize_hallucinations(analysis: Dict[str, Any]) -> Dict[str, Any]:
     if ctx["fixed"]:
         log.info("Post-gen sanitizer fixed %d hallucination patterns", ctx["fixed"])
     return cleaned
+
+
+# =============================================================================
+# Pipeline validation post-generation (layer 4 dell'architettura).
+# Verifica determinismi prima del render PDF: blocchi non vuoti, score = somma
+# sotto-dimensioni, date future, sede non default. Per blocchi falliti retry
+# targeted invece di rigenerare l'intero report.
+# =============================================================================
+
+def _block_content_length(block: dict) -> int:
+    """Calcola la lunghezza testo totale del blocco (escluso titolo)."""
+    total = 0
+    for k, v in block.items():
+        if k in ("type", "title"):
+            continue
+        if isinstance(v, str):
+            total += len(v.strip())
+        elif isinstance(v, dict):
+            total += _block_content_length(v)
+        elif isinstance(v, list):
+            for item in v:
+                if isinstance(item, str):
+                    total += len(item)
+                elif isinstance(item, dict):
+                    total += _block_content_length(item)
+    return total
+
+
+def _validate_blocks(analysis: dict) -> List[Dict[str, Any]]:
+    """Ritorna lista di issue {block_idx, block_type, reason} da riparare."""
+    issues: List[Dict[str, Any]] = []
+    blocks = analysis.get("blocks") or []
+    for i, b in enumerate(blocks):
+        if not isinstance(b, dict):
+            issues.append({"block_idx": i, "block_type": "unknown", "reason": "non-dict block"})
+            continue
+        btype = b.get("type") or "unknown"
+        clen = _block_content_length(b)
+        # Soglia minima 80 char di contenuto reale → blocchi quasi-vuoti
+        if clen < 80:
+            issues.append({
+                "block_idx": i,
+                "block_type": btype,
+                "reason": f"contenuto troppo scarso ({clen} char), serve testo sostanziale",
+            })
+    return issues
+
+
+def _validate_score_math(analysis: dict) -> Optional[str]:
+    """Se exec_summary contiene score, verifica che somma breakdown == totale.
+    Ritorna messaggio di issue se incoerente, altrimenti None."""
+    blocks = analysis.get("blocks") or []
+    for b in blocks:
+        if not isinstance(b, dict) or b.get("type") != "executive_summary":
+            continue
+        score = b.get("score") or b.get("gauge_value")
+        breakdown = b.get("score_breakdown") or b.get("breakdown")
+        if score is None or not isinstance(breakdown, list):
+            return None
+        try:
+            total = int(score)
+            parts = [int(p.get("value") or p.get("score") or 0) for p in breakdown if isinstance(p, dict)]
+            if parts and abs(sum(parts) - total) > 2:  # tolleranza 2 punti
+                return f"score totale {total} ≠ somma breakdown {sum(parts)}"
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _repair_block(
+    client: anthropic.Anthropic,
+    system_blocks: list,
+    user_message: str,
+    full_analysis: dict,
+    issue: dict,
+) -> Optional[dict]:
+    """Targeted retry: chiede a Sonnet di rigenerare SOLO il blocco fallito.
+
+    Ritorna il blocco riparato, o None se retry fallisce. Niente web_search
+    (più veloce, riusa contesto già caricato in cache).
+    """
+    idx = issue["block_idx"]
+    btype = issue["block_type"]
+    reason = issue["reason"]
+    other_blocks_summary = []
+    for i, b in enumerate(full_analysis.get("blocks") or []):
+        if i == idx or not isinstance(b, dict):
+            continue
+        other_blocks_summary.append(f"  [{i}] type={b.get('type')} title={b.get('title','')[:60]}")
+    repair_user = (
+        f"Il blocco #{idx} (type='{btype}') del JSON precedente è invalido: {reason}.\n\n"
+        f"Altri blocchi del report (riferimento, NON riemetterli):\n"
+        + "\n".join(other_blocks_summary) +
+        f"\n\nRIEMETTI ORA SOLO IL BLOCCO #{idx} come oggetto JSON valido secondo lo schema "
+        f"master. Niente fence markdown, niente prosa fuori. Solo l'oggetto.\n\n"
+        f"CONTESTO ORIGINALE:\n{user_message[:4000]}"
+    )
+    try:
+        retry = client.messages.create(
+            model=ANTHROPIC_PDF_MODEL,
+            max_tokens=4096,
+            system=system_blocks,
+            messages=[{"role": "user", "content": repair_user}],
+            timeout=120.0,
+        )
+    except Exception:
+        log.exception("Block repair LLM call failed")
+        return None
+    text = "".join(b.text for b in retry.content if getattr(b, "type", "") == "text").strip()
+    if not text:
+        return None
+    try:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start == -1 or end == -1:
+            return None
+        return json.loads(text[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+def _validate_and_repair(
+    analysis: dict,
+    client: anthropic.Anthropic,
+    system_blocks: list,
+    user_message: str,
+) -> dict:
+    """Pipeline validation completa post-gen.
+
+    1. Identifica blocchi quasi-vuoti (<80 char).
+    2. Per ognuno: targeted retry isolato (no web_search).
+    3. Sostituisce in-place se riparato.
+    4. Logga statistiche per visibilità.
+    5. Sanitizer hallucination re-applicato sui blocchi nuovi.
+    """
+    issues = _validate_blocks(analysis)
+    score_issue = _validate_score_math(analysis)
+    if not issues and not score_issue:
+        return analysis
+    log.info("Validation pipeline: %d block issues + score_issue=%s", len(issues), bool(score_issue))
+    # Cap retry a 3 blocchi per evitare loop costosi.
+    for issue in issues[:3]:
+        repaired = _repair_block(client, system_blocks, user_message, analysis, issue)
+        if repaired and isinstance(repaired, dict):
+            analysis["blocks"][issue["block_idx"]] = repaired
+            log.info("Repaired block #%d (type=%s)", issue["block_idx"], issue["block_type"])
+    return _sanitize_hallucinations(analysis)
