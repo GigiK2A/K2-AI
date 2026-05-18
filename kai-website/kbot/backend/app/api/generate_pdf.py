@@ -20,6 +20,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+import re
+
 from ..lib import sessions
 from ..lib.analysis import generate_analysis_json
 from ..lib.analytics import track_server
@@ -28,6 +30,20 @@ from ..lib.email import send_report_ready_email
 from ..lib.pdf_renderer import render_pdf
 from ..lib.storage import upload_pdf
 from ..settings import INTERNAL_API_KEY, STORAGE_REPORTS_BUCKET
+
+
+def _make_friendly_filename(analysis: dict, session: dict) -> str:
+    """Genera filename leggibile dal titolo report invece di UUID.
+
+    Es: "Audit SEO Tecnico — K2-AI" → "audit-seo-tecnico-k2-ai-20260518.pdf"
+    Fallback su 'report-{date}' se titolo mancante.
+    """
+    title = (analysis.get("meta", {}) or {}).get("title") or "report"
+    slug = re.sub(r"[^a-zA-Z0-9\s-]", "", title.lower())
+    slug = re.sub(r"\s+", "-", slug.strip())
+    slug = re.sub(r"-+", "-", slug)[:60].strip("-") or "report"
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return f"{slug}-{date_str}.pdf"
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -85,7 +101,7 @@ def generate_pdf(
         raise HTTPException(status_code=500, detail=f"pdf rendering failed: {exc}")
 
     # 3. Upload to Supabase Storage.
-    storage_path = f"kbot-{session['id']}-{int(time.time() * 1000)}.pdf"
+    storage_path = _make_friendly_filename(analysis, session)
     try:
         public_url = upload_pdf(
             bucket=STORAGE_REPORTS_BUCKET,
@@ -111,7 +127,7 @@ def generate_pdf(
             report_url=public_url,
             report_title=analysis.get("meta", {}).get("title") or "Report operativo",
             pdf_bytes=pdf_bytes,
-            pdf_filename=f"k2ai-report-{session['id'][:8]}.pdf",
+            pdf_filename=storage_path,
         )
         if not sent:
             log.warning("Report email not sent for session %s", session["id"])
@@ -220,7 +236,7 @@ async def generate_pdf_stream(
             return
 
         yield _sse({"stage": "Caricamento su storage...", "progress": 88})
-        storage_path = f"kbot-{session['id']}-{int(time.time() * 1000)}.pdf"
+        storage_path = _make_friendly_filename(analysis, session)
         try:
             public_url = await asyncio.to_thread(
                 upload_pdf,
@@ -248,7 +264,7 @@ async def generate_pdf_stream(
                     report_url=public_url,
                     report_title=analysis.get("meta", {}).get("title") or "Report operativo",
                     pdf_bytes=pdf_bytes,
-                    pdf_filename=f"k2ai-report-{session['id'][:8]}.pdf",
+                    pdf_filename=storage_path,
                 )
             except Exception:
                 log.warning("Email send failed")

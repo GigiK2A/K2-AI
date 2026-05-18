@@ -32,6 +32,8 @@
   {# ============= BODY (blocks loop) ============= #}
   <main class="report-body">
     {% for block in blocks %}
+      {% set is_last = loop.last %}
+      {% if is_last %}<div class="last-block-group">{% endif %}
       {% set tp = block.type %}
       {% if tp == 'executive_summary' %}
         {% include 'blocks/executive_summary.html.j2' %}
@@ -52,11 +54,9 @@
       {% elif tp == 'narrative' %}
         {% include 'blocks/narrative.html.j2' %}
       {% endif %}
-    {% endfor %}
-  </main>
-
-  {# ============= FOOTER ============= #}
-  <footer class="report-footer">
+      {% if is_last %}
+  {# ============= FOOTER inline con ultimo blocco — wedge anti-isolated-page ============= #}
+  <footer class="report-footer report-footer-inline">
     {% if logo %}
     <img src="{{ logo }}" alt="K2-AI" class="footer-logo-img">
     {% else %}
@@ -75,6 +75,10 @@
       {% endif %}
     </div>
   </footer>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </main>
 
 </div>
 </body>

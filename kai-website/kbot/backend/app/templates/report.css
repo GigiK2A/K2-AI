@@ -571,16 +571,20 @@ details > *:not(summary) { display: revert !important; }
   table tfoot { display: table-footer-group; }
   /* Banner repeats only on first page */
   .report-banner, .banner-stripe { page-break-after: avoid; }
-  /* Footer deve restare attaccato al blocco precedente — evita pagina finale
-     quasi vuota con solo banner footer + spazio bianco. */
-  .report-footer {
+  /* Footer + ultimo blocco wrap: ENTRAMBI dentro <div class="last-block-group">
+     che ha break-inside:avoid → forzano stessa pagina o vanno insieme alla
+     successiva. Elimina pagina vuota finale con solo banner footer. */
+  .last-block-group {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .report-footer-inline {
     page-break-before: avoid !important;
     break-before: avoid !important;
-    break-inside: avoid;
-    page-break-inside: avoid;
     margin-top: 4mm;
     padding: 6mm 12mm 6mm;
+    /* full-bleed: estende fino ai bordi della @page area */
+    margin-left: -12mm;
+    margin-right: -12mm;
   }
-  /* Penultimo blocco: niente avoid se costringe footer a pagina nuova vuota. */
-  .block-card:last-of-type { page-break-after: avoid; break-after: avoid; }
 }

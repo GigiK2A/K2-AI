@@ -95,10 +95,13 @@ def _build_context_block(session: dict) -> str:
         for u in urls:
             total_pages += 1  # homepage stessa
             total_pages += len(u.get("additional_pages") or [])
-        lines.append(f"\nTOTALE PAGINE CRAWLATE (homepage + interne): {total_pages}")
-        lines.append("→ Questo è il conteggio AUTORITATIVO delle pagine del sito. "
-                     "Usalo nei blocchi 'pagine indicizzabili', 'architettura', 'metriche'. "
-                     "NON usare conteggi parziali (es. solo menu) come totali.")
+        lines.append(f"\n⚠️ PAGINE INDICIZZABILI = {total_pages} ⚠️")
+        lines.append(f"Conteggio AUTORITATIVO da crawl reale: {total_pages} pagine.")
+        lines.append(f"OBBLIGATORIO usare {total_pages} (non altri numeri) nei blocchi 'pagine "
+                     f"indicizzabili', 'metriche SEO', 'architettura', 'punti forza'. "
+                     f"VIETATO scrivere '7 pagine' o '6 sezioni' o altri conteggi parziali. "
+                     f"Il numero {total_pages} include homepage + tutte le pagine secondarie "
+                     f"(privacy, cookie, note-legali, ecc) reperite da sitemap.xml o anchor del sito.")
         lines.append("\nURL ANALIZZATI (dati reali estratti dal crawl):")
         for u in urls[-3:]:
             lines.append(f"\n• {u.get('url', '')}")
