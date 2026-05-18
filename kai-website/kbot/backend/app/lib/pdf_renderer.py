@@ -336,7 +336,7 @@ class GaugeArc(Flowable):
 
 def _render_block_title(title: str, s: Dict[str, ParagraphStyle]) -> Flowable:
     """Titolo blocco con barra orange accent sotto."""
-    t = Table([[Paragraph(title, s["h2"])]], colWidths=[CONTENT_W - 18 * mm])
+    t = Table([[Paragraph(title, s["h2"])]], colWidths=[CONTENT_W])
     t.setStyle(TableStyle([
         ("LINEBELOW", (0, 0), (-1, -1), 1.2, ACCENT),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -437,7 +437,7 @@ def _render_kpi_grid(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable
         cells.append(row)
     if not cells:
         return []
-    col_w = (CONTENT_W - 18 * mm) / cols
+    col_w = (CONTENT_W) / cols
     tbl_data = [[c[:-1] if c else "" for c in r] for r in cells]
     tbl = Table(tbl_data, colWidths=[col_w] * cols)
     style_cmds = [
@@ -490,7 +490,7 @@ def _render_data_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
             body_row.append(Paragraph("", s["table_td"]))
         body_rows.append(body_row)
     n_cols = len(cols)
-    col_w = (CONTENT_W - 18 * mm) / n_cols
+    col_w = (CONTENT_W) / n_cols
     tbl = Table([header_row] + body_rows, colWidths=[col_w] * n_cols, repeatRows=1)
     style_cmds: List[Any] = [
         ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
@@ -581,7 +581,7 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
 
     left_flows = render_side(left)
     right_flows = render_side(right)
-    inner_w = (CONTENT_W - 18 * mm - 6 * mm) / 2
+    inner_w = (CONTENT_W - 6 * mm) / 2
     tbl = Table([[left_flows, right_flows]], colWidths=[inner_w, inner_w])
     tbl.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -650,7 +650,7 @@ def _render_risk_mitigation(block: dict, s: Dict[str, ParagraphStyle]) -> List[F
             Paragraph(_clean_inline(level), s["table_td"]),
             Paragraph(_clean_inline(mit), s["table_td"]),
         ])
-    col_w = (CONTENT_W - 18 * mm) / 3
+    col_w = (CONTENT_W) / 3
     tbl = Table(rows, colWidths=[col_w, col_w * 0.5, col_w * 1.5], repeatRows=1)
     tbl.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
@@ -706,7 +706,7 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
         right_flows.append(Spacer(1, 2 * mm))
     if not right_flows:
         right_flows = [Paragraph("Nessuna azione specifica disponibile.", s["body_soft"])]
-    inner_w = (CONTENT_W - 18 * mm - 6 * mm) / 2
+    inner_w = (CONTENT_W - 6 * mm) / 2
     tbl = Table([[left_flows, right_flows]], colWidths=[inner_w, inner_w])
     tbl.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -734,20 +734,35 @@ def _render_narrative_split(block: dict, s: Dict[str, ParagraphStyle]) -> List[F
 # ---------------------------------------------------------------------------
 
 def _wrap_in_card(flows: List[Flowable]) -> List[Flowable]:
+    """Sezione con sfondo bianco visuale: applica un thin top-line accent
+    sotto il titolo (gestito da _render_block_title) + spacer fra blocchi.
+
+    Storia: il vecchio wrapper Table+KeepTogether causava 'row too large'
+    quando il contenuto della card superava l'altezza pagina (ReportLab
+    non sa spezzare una Table cell con flowables nidificati). Ora flowables
+    flat → spezzano normalmente fra pagine.
+    """
     if not flows:
         return []
-    inner = Table([[flows]], colWidths=[CONTENT_W - 4 * mm])
-    inner.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), SURFACE),
-        ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
-        ("LEFTPADDING", (0, 0), (-1, -1), 7 * mm),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 7 * mm),
-        ("TOPPADDING", (0, 0), (-1, -1), 5 * mm),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5 * mm),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ]))
-    inner._card_wrap = True  # type: ignore[attr-defined]
-    return [KeepTogether(inner), Spacer(1, 4 * mm)]
+    return flows + [Spacer(1, 6 * mm), _SectionDivider()]
+
+
+class _SectionDivider(Flowable):
+    """Linea sottile orizzontale come separatore tra sezioni."""
+    def __init__(self, width: float = CONTENT_W, color=BORDER):
+        super().__init__()
+        self.width = width
+        self.color = color
+        self.height = 0.8 * mm
+
+    def wrap(self, avail_w, avail_h):
+        return self.width, self.height
+
+    def draw(self):
+        c = self.canv
+        c.setStrokeColor(self.color)
+        c.setLineWidth(0.4)
+        c.line(0, 0, self.width, 0)
 
 
 # ---------------------------------------------------------------------------
