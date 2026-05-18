@@ -238,6 +238,19 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "- Coerenza interna: stesso numero in blocchi diversi senza contraddizioni.\n"
         "- Adatta i titoli e le sezioni AL CASO SPECIFICO dell'utente.\n"
         "- Usa SOLO i tipi di blocco documentati nella master skill.\n\n"
+        "RUBRIC SCORE DETERMINISTICO (eseguilo sempre per ogni audit):\n"
+        "Lo score 0-100 deve essere calcolato sommando 4 sotto-dimensioni di 25 punti ciascuna\n"
+        "(mostrate nel breakdown del blocco executive_summary o kpi_grid):\n"
+        "  1. Technical SEO (0-25): HTTPS, mobile-friendly, sitemap.xml, robots.txt, "
+        "canonical, schema.org. Conta i presenti, parti da 0.\n"
+        "  2. Content & On-page (0-25): title unici, meta description, H1 coerenti, "
+        "alt-text, internal linking. Conta presenti su totale pagine.\n"
+        "  3. Architecture (0-25): n. pagine indicizzabili (≥10 → 25, 5-9 → 15, <5 → 5), "
+        "presenza blog, struttura cluster.\n"
+        "  4. Off-page & Authority (0-25): backlink rilevati (se misurati), DA reale, "
+        "menzioni brand. Se non misurabile → 12 (stima neutrale, dichiarare 'non misurato').\n"
+        "Lo score finale = somma 4 dimensioni. STESSO INPUT → STESSO SCORE. Esponi sempre "
+        "il breakdown nel report. NIENTE score oscillanti tra run sullo stesso sito.\n\n"
         "CATEGORIA 1 — ERRORI DI DATI (vietati assoluti):\n"
         "  • DATI INVENTATI: VIETATO affermare metriche non estratte da fonte reale in questa "
         "sessione. Niente 'keyword in top X: N attuali' senza GSC. Niente 'Domain Authority: N' "
@@ -385,7 +398,8 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
     if not raw:
         raise RuntimeError("LLM returned no text block (web_search loop esaurito)")
     try:
-        return _extract_json(raw)
+        parsed = _extract_json(raw)
+        return _sanitize_hallucinations(parsed)
     except (ValueError, json.JSONDecodeError) as exc:
         # JSON troncato o malformato (max_tokens esaurito, virgola mancante, ecc).
         # Retry singolo chiedendo a Sonnet di riemettere SOLO un JSON valido,
@@ -405,4 +419,56 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
             timeout=180.0,
         )
         repaired = "".join(b.text for b in retry.content if getattr(b, "type", "") == "text")
-        return _extract_json(repaired)
+        return _sanitize_hallucinations(_extract_json(repaired))
+
+
+# Pattern di hallucination tipici da bonificare post-generation.
+# Sonnet ignora le regole prompt ~10% delle volte → catch-all deterministico.
+_TRAFFIC_RE = re.compile(
+    r"(~?\s*\d+(?:[.,]\d+)?\s*(?:visit[ei]|sessioni|impression(?:i|s)?|click)\s*/\s*mese)",
+    re.IGNORECASE,
+)
+_KEYWORD_POS_RE = re.compile(
+    r"(~?\s*\d+\s+keyword\s+(?:posizionat[ei]|in\s+top[-\s]?\d+))",
+    re.IGNORECASE,
+)
+_PERUGIA_HINT = re.compile(r"(Perugia|03655920548)", re.IGNORECASE)
+_FORBIDDEN_CITIES = re.compile(r"\b(Milano|Roma|Torino|Napoli|Bologna)\b\s*(?:/Italia|,?\s*Italia)?", re.IGNORECASE)
+_UNSOURCED_PCT_RE = re.compile(r"(\d+\s*%)\s+(?:di|delle|degli)\s+(?:PMI|aziende|imprese)\b(?!.{0,80}(?:fonte|http|istat|anitec|polimi|politecnico))", re.IGNORECASE)
+
+
+def _sanitize_recursive(value: Any, ctx: dict) -> Any:
+    if isinstance(value, dict):
+        return {k: _sanitize_recursive(v, ctx) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_recursive(v, ctx) for v in value]
+    if isinstance(value, str):
+        s = value
+        # Traffico/visite con numero secco senza disclaimer → tag stima
+        if _TRAFFIC_RE.search(s) and "stima" not in s.lower() and "non disponibile" not in s.lower():
+            s = _TRAFFIC_RE.sub(r"\1 [non verificato — richiede GSC/Analytics]", s)
+            ctx["fixed"] += 1
+        # Keyword posizionate dichiarate come fatto
+        if _KEYWORD_POS_RE.search(s) and "stima" not in s.lower():
+            s = _KEYWORD_POS_RE.sub(r"\1 [non verificato — richiede GSC]", s)
+            ctx["fixed"] += 1
+        # Sede inventata: se contesto cita Perugia/P.IVA K2-AI, sostituisci Milano/Roma con Perugia
+        if ctx.get("force_perugia") and _FORBIDDEN_CITIES.search(s):
+            s = _FORBIDDEN_CITIES.sub("Perugia", s)
+            ctx["fixed"] += 1
+        return s
+    return value
+
+
+def _sanitize_hallucinations(analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Catch-all regex per pattern di hallucination che Sonnet emette nonostante
+    il prompt. Sostituisce numeri secchi con tag "[non verificato]" e applica
+    correzioni context-aware (es. sede K2-AI = Perugia)."""
+    ctx: dict = {"fixed": 0}
+    # Detection sede K2-AI dal flatten dell'intero JSON (cerca P.IVA o "Perugia").
+    flat = json.dumps(analysis, ensure_ascii=False)
+    ctx["force_perugia"] = bool(_PERUGIA_HINT.search(flat))
+    cleaned = _sanitize_recursive(analysis, ctx)
+    if ctx["fixed"]:
+        log.info("Post-gen sanitizer fixed %d hallucination patterns", ctx["fixed"])
+    return cleaned

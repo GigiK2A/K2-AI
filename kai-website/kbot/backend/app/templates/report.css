@@ -161,23 +161,30 @@ h5 { font-size: 9.5pt; font-weight: 600; color: var(--text); margin: 6pt 0 3pt; 
   box-shadow: var(--shadow);
   padding: 7mm 9mm;
   margin-bottom: 5mm;
-  /* Preferiamo mantenere il blocco intero su una pagina, ma se non sta
-     lasciamo che si spezzi invece di nascondere contenuto. */
-  page-break-inside: auto;
-  break-inside: auto;
-}
-
-/* Blocchi compatti (executive_summary, kpi_grid, action_list corti) stanno
-   sempre su 1 pagina sola: mai spezzarli. Distinti dai blocchi "tall". */
-.block-card.compact,
-.block-card:not(:has(.data-table)):not(:has(.narrative-body)):not(:has(.conclusions-grid)) {
+  /* Default: tieni il blocco intero su una pagina. Browser ignora avoid se
+     il blocco è > pagina, in quel caso si spezza naturalmente. */
   page-break-inside: avoid;
   break-inside: avoid;
 }
 
-/* Titoli e righe tabella non si spezzano mai a metà */
-.block-title { break-after: avoid; page-break-after: avoid; }
-.data-table tr, .kpi-card, .milestone, .col-badge-row { break-inside: avoid; page-break-inside: avoid; }
+/* Solo blocchi VERAMENTE alti (data-table con 8+ righe o narrative lunghi)
+   possono spezzarsi, gestendo l'intestazione tabella ripetuta. */
+.block-card:has(.data-table tbody tr:nth-child(8)),
+.block-card:has(.narrative-body) {
+  page-break-inside: auto;
+  break-inside: auto;
+}
+
+/* Title + primo child sempre insieme — niente più pagine con solo il titolo */
+.block-title {
+  break-after: avoid !important;
+  page-break-after: avoid !important;
+}
+.block-title + * { break-before: avoid; page-break-before: avoid; }
+
+/* Righe tabella, kpi, milestone non si spezzano mai a metà */
+.data-table tr, .kpi-card, .milestone, .col-badge-row,
+.conclusions-grid > div { break-inside: avoid; page-break-inside: avoid; }
 
 .block-title {
   font-size: 13pt; font-weight: 600; color: var(--text);
