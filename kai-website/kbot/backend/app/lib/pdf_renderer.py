@@ -1,14 +1,12 @@
-"""HTML rendering (Jinja2) + PDF rendering (Playwright/Chromium).
+"""HTML rendering (Jinja2) + PDF rendering (WeasyPrint).
 
-Synchronous wrapper that spawns a headless Chromium instance per call.
-For low traffic this is acceptable; for high volume consider a long-lived browser.
+Sync entrypoint, niente headless browser. WeasyPrint rispetta print CSS
+(@page, page-break, named pages, running elements) — affidabile su Linux/Railway.
 """
 from __future__ import annotations
 
-import asyncio
 import base64
 import logging
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -246,64 +244,25 @@ def render_html(analysis: Dict[str, Any], *, session_id: str) -> str:
     )
 
 
-async def _html_to_pdf_bytes(html: str) -> bytes:
-    """Use Playwright headless Chromium to render HTML → A4 PDF bytes."""
-    from playwright.async_api import async_playwright
+def _html_to_pdf_bytes(html: str) -> bytes:
+    """HTML → A4 PDF via WeasyPrint (sync, no headless browser).
 
-    with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as tmp:
-        tmp.write(html)
-        tmp_path = tmp.name
+    WeasyPrint rispetta print CSS (@page, page-break-*, named pages, running
+    elements) molto meglio di Chromium headless. Niente più footer isolato
+    su pagina vuota: page-break-before:avoid e break-inside:avoid vengono
+    applicati correttamente.
+    """
+    from weasyprint import HTML
 
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            try:
-                context = await browser.new_context()
-                page = await context.new_page()
-                await page.goto(f"file://{tmp_path}", wait_until="networkidle")
-                # Force-expand any collapsible widget so it prints fully open.
-                await page.evaluate(
-                    """() => {
-                      document.querySelectorAll('details').forEach(d => d.setAttribute('open', ''));
-                      document.querySelectorAll('[aria-expanded="false"]').forEach(el => el.setAttribute('aria-expanded', 'true'));
-                      document.querySelectorAll('[hidden]').forEach(el => el.removeAttribute('hidden'));
-                      document.querySelectorAll('.collapse,.accordion,.collapsed').forEach(el => {
-                        el.classList.add('show', 'open', 'expanded');
-                        el.classList.remove('collapsed', 'closed');
-                        el.style.maxHeight = 'none';
-                        el.style.height = 'auto';
-                        el.style.overflow = 'visible';
-                      });
-                    }"""
-                )
-                # Margini delegati al CSS @page (default 14mm pagine 2+,
-                # 0 sulla pagina 1 via @page :first). Python non passa margin
-                # così il CSS vince — niente più contenuti tagliati ai bordi.
-                pdf = await page.pdf(
-                    format="A4",
-                    print_background=True,
-                    prefer_css_page_size=True,
-                )
-                return pdf
-            finally:
-                await browser.close()
-    finally:
-        try:
-            Path(tmp_path).unlink()
-        except OSError:
-            pass
+    pdf = HTML(string=html, base_url=str(TEMPLATES_DIR)).write_pdf(
+        # Margini delegati al CSS @page rules — pdf engine rispetta @page :first.
+        presentational_hints=False,
+        optimize_images=True,
+    )
+    return pdf
 
 
 def render_pdf(analysis: Dict[str, Any], *, session_id: str) -> bytes:
-    """Sync entrypoint: analysis JSON → PDF bytes."""
+    """Sync entrypoint: analysis JSON → PDF bytes (WeasyPrint sync)."""
     html = render_html(analysis, session_id=session_id)
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(_html_to_pdf_bytes(html))
-    # Inside an event loop (e.g. FastAPI handler): schedule into a fresh thread.
-    import concurrent.futures
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-        fut = ex.submit(asyncio.run, _html_to_pdf_bytes(html))
-        return fut.result(timeout=120)
+    return _html_to_pdf_bytes(html)
