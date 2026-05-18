@@ -1,9 +1,38 @@
 "use client";
 
+import { Fragment } from "react";
 import { motion } from "framer-motion";
 import { Bot } from "lucide-react";
 import { ChatMessage } from "@/types/chat";
 import { prettyTime } from "@/lib/utils";
+
+const CITATION_RE = /\(pag\.\s*(\d+)\)/gi;
+
+/** Riconosce "(pag. N)" e li mostra come chip cliccabili (styling only per ora). */
+function renderWithCitations(text: string) {
+  if (!text) return text;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  CITATION_RE.lastIndex = 0;
+  while ((match = CITATION_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <span
+        key={`cite-${match.index}`}
+        title={`Riferimento pagina ${match[1]}`}
+        className="mx-0.5 inline-flex items-baseline rounded-md border border-[var(--teal)]/40 bg-[var(--teal)]/10 px-1 py-0 text-[11px] font-medium text-[var(--teal)] align-baseline"
+      >
+        pag.&nbsp;{match[1]}
+      </span>,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts.length > 1 ? parts.map((p, i) => <Fragment key={i}>{p}</Fragment>) : text;
+}
 
 export function MessageBubble({
   message,
@@ -34,19 +63,43 @@ export function MessageBubble({
         )}
 
         <p className="whitespace-pre-wrap text-[15px] leading-7 text-[var(--text-main)]">
-          {message.content}
+          {renderWithCitations(message.content)}
         </p>
 
         {message.attachments && message.attachments.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {message.attachments.map((f) => (
-              <span
-                key={f.path}
-                className="rounded-full border border-[var(--line)] px-2 py-1 text-xs text-[var(--text-soft)]"
-              >
-                Allegato: {f.name}
-              </span>
-            ))}
+            {message.attachments.map((f) => {
+              const isImage =
+                (f.type || "").startsWith("image/") ||
+                /\.(jpe?g|png|gif|webp)$/i.test(f.name);
+              if (isImage && f.publicUrl) {
+                return (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <a
+                    key={f.path}
+                    href={f.publicUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block overflow-hidden rounded-lg border border-[var(--line)]"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={f.publicUrl}
+                      alt={f.name}
+                      className="h-24 w-24 object-cover"
+                    />
+                  </a>
+                );
+              }
+              return (
+                <span
+                  key={f.path}
+                  className="rounded-full border border-[var(--line)] px-2 py-1 text-xs text-[var(--text-soft)]"
+                >
+                  Allegato: {f.name}
+                </span>
+              );
+            })}
           </div>
         )}
 

@@ -32,4 +32,6 @@ export type Conversation = {
   messages: ChatMessage[];
   /** Backend kbot_sessions.id — null until first ensureSession in this conv. */
   kbotSessionId?: string | null;
+  /** Backend kbot_conversations.id — null per anon, valorizzato dopo POST /conversations. */
+  remoteId?: string | null;
 };

@@ -119,15 +119,28 @@ export function Composer({
       <div className="k2-panel rounded-2xl p-2">
         {(files.length > 0 || uploadingFiles.length > 0) && (
           <div className="mb-2 flex flex-wrap gap-2 px-1">
-            {files.map((f) => (
-              <span
-                key={f.path}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-2 py-1 text-xs text-[var(--text-soft)]"
-              >
-                <Paperclip size={11} className="text-[var(--teal)]" />
-                {f.name}
-              </span>
-            ))}
+            {files.map((f) => {
+              const isImage = (f.type || "").startsWith("image/") ||
+                /\.(jpe?g|png|gif|webp)$/i.test(f.name);
+              return (
+                <span
+                  key={f.path}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] py-1 pl-1 pr-2 text-xs text-[var(--text-soft)]"
+                >
+                  {isImage && f.publicUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- thumb, no Next image overhead
+                    <img
+                      src={f.publicUrl}
+                      alt={f.name}
+                      className="h-5 w-5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <Paperclip size={11} className="ml-1 text-[var(--teal)]" />
+                  )}
+                  <span className="truncate max-w-[160px]">{f.name}</span>
+                </span>
+              );
+            })}
             {uploadingFiles.map((f, i) => (
               <span
                 key={`up-${i}-${f.name}`}

@@ -8,7 +8,18 @@ import { Composer } from "@/components/chat/Composer";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
 import { InsightPanel } from "@/components/insights/InsightPanel";
-import { sendMessage, uploadFiles, startCheckout, fetchUrl, type UploadedFile, type AnalyzedUrl } from "@/lib/api";
+import {
+  sendMessage,
+  uploadFiles,
+  startCheckout,
+  fetchUrl,
+  listConversations,
+  createRemoteConversation,
+  updateRemoteConversation,
+  deleteRemoteConversation,
+  type UploadedFile,
+  type AnalyzedUrl,
+} from "@/lib/api";
 import { track } from "@/lib/analytics";
 import { ChatMessage, Conversation, Mode } from "@/types/chat";
 import { uid } from "@/lib/utils";
@@ -113,6 +124,40 @@ export default function HomePage() {
     }
   }, [authLoading, isSignedIn]);
 
+  // Bootstrap: load remote conversations on first authed render.
+  // Anon: keep the in-memory single welcome conv.
+  const [bootstrapped, setBootstrapped] = useState(false);
+  useEffect(() => {
+    if (bootstrapped || authLoading || !isSignedIn) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const remote = await listConversations(token);
+        if (cancelled || remote.length === 0) return;
+        const mapped: Conversation[] = remote.map((r) => ({
+          id: r.id,
+          remoteId: r.id,
+          title: r.title || "Nuova conversazione",
+          mode: r.mode,
+          kbotSessionId: r.kbotSessionId,
+          messages: [{ id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 }],
+        }));
+        setConversations(mapped);
+        setActiveId(mapped[0].id);
+      } catch {
+        /* anon o errore di rete: lasciamo la conv locale */
+      } finally {
+        if (!cancelled) setBootstrapped(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isSignedIn]);
+
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: uid("conv"),
@@ -164,13 +209,27 @@ export default function HomePage() {
   /* Bind backend session id back to the active conversation once known. */
   useEffect(() => {
     if (!kbotSession?.id) return;
+    let remoteIdToSync: string | null | undefined;
     setConversations((prev) =>
-      prev.map((c) =>
-        c.id === activeConversation.id && c.kbotSessionId !== kbotSession.id
-          ? { ...c, kbotSessionId: kbotSession.id }
-          : c,
-      ),
+      prev.map((c) => {
+        if (c.id !== activeConversation.id || c.kbotSessionId === kbotSession.id) return c;
+        remoteIdToSync = c.remoteId;
+        return { ...c, kbotSessionId: kbotSession.id };
+      }),
     );
+    if (remoteIdToSync && isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (token)
+            await updateRemoteConversation(token, remoteIdToSync!, {
+              kbotSessionId: kbotSession.id,
+            });
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbotSession?.id, activeConversation.id]);
 
@@ -184,16 +243,30 @@ export default function HomePage() {
   function maybeSetTitle(label: string) {
     const clean = label.trim().replace(/\s+/g, " ").slice(0, 48);
     if (!clean) return;
+    let updatedRemoteId: string | null | undefined;
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== activeConversation.id) return c;
         const isGeneric = !c.title || /^Nuova (chat|conversazione)$/i.test(c.title);
-        return isGeneric ? { ...c, title: clean } : c;
+        if (!isGeneric) return c;
+        updatedRemoteId = c.remoteId;
+        return { ...c, title: clean };
       }),
     );
+    if (updatedRemoteId && isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (token) await updateRemoteConversation(token, updatedRemoteId!, { title: clean });
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 
   function handleDeleteConversation(convId: string) {
+    const target = conversations.find((c) => c.id === convId);
     setConversations((prev) => {
       const filtered = prev.filter((c) => c.id !== convId);
       // If we deleted the active one, switch to the first remaining (or create empty)
@@ -215,18 +288,31 @@ export default function HomePage() {
     });
     // Drop the kbot session id from localStorage so the next message starts fresh
     resetSession();
+    // Persist soft-delete server-side (best-effort, anon fa nulla).
+    if (target?.remoteId && isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (token) await deleteRemoteConversation(token, target.remoteId!);
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 
   function handleNewConversation() {
     resetSession(); // start a fresh kbot_sessions row on the next message
+    const localId = uid("conv");
     const newConv: Conversation = {
-      id: uid("conv"),
+      id: localId,
       title: "Nuova chat",
       mode,
       messages: [
         { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
       ],
       kbotSessionId: null, // backend session creato on demand alla 1ª azione
+      remoteId: null,
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveId(newConv.id);
@@ -234,6 +320,28 @@ export default function HomePage() {
     setUsedSkills([]);
     setPendingFiles([]);
     setAnalyzedUrls([]); // drop URL analizzati della conv precedente
+
+    // Persist server-side for authed user (anon = noop).
+    if (isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (!token) return;
+          const remote = await createRemoteConversation(token, {
+            title: "Nuova chat",
+            mode,
+          });
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === localId ? { ...c, remoteId: remote.id, id: remote.id } : c,
+            ),
+          );
+          setActiveId((prev) => (prev === localId ? remote.id : prev));
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 
   const handleFilePick = useCallback(

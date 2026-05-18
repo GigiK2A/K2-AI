@@ -306,6 +306,70 @@ export async function generatePdf(
 }
 
 /* -----------------------------------------------------------------
+ * Conversations history (persisted server-side for authed users)
+ * ----------------------------------------------------------------- */
+
+export interface RemoteConversation {
+  id: string;
+  title: string;
+  mode: Mode;
+  kbotSessionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listConversations(authToken: string): Promise<RemoteConversation[]> {
+  const res = await fetch(`${API_BASE}/api/kbot/conversations`, {
+    headers: { ...authHeaders(authToken) },
+    cache: "no-store",
+  });
+  if (!res.ok) await parseErr(res, "Errore caricamento conversazioni");
+  const data = await res.json();
+  return (data.conversations as RemoteConversation[]) ?? [];
+}
+
+export async function createRemoteConversation(
+  authToken: string,
+  payload: { title?: string; mode?: Mode; kbotSessionId?: string | null },
+): Promise<RemoteConversation> {
+  const res = await fetch(`${API_BASE}/api/kbot/conversations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({
+      title: payload.title,
+      mode: payload.mode ?? "report",
+      kbotSessionId: payload.kbotSessionId,
+    }),
+  });
+  if (!res.ok) await parseErr(res, "Errore creazione conversazione");
+  const data = await res.json();
+  return data.conversation as RemoteConversation;
+}
+
+export async function updateRemoteConversation(
+  authToken: string,
+  convId: string,
+  patch: { title?: string; kbotSessionId?: string | null },
+): Promise<RemoteConversation> {
+  const res = await fetch(`${API_BASE}/api/kbot/conversations/${convId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) await parseErr(res, "Errore aggiornamento conversazione");
+  const data = await res.json();
+  return data.conversation as RemoteConversation;
+}
+
+export async function deleteRemoteConversation(authToken: string, convId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/kbot/conversations/${convId}`, {
+    method: "DELETE",
+    headers: { ...authHeaders(authToken) },
+  });
+  if (!res.ok) await parseErr(res, "Errore eliminazione conversazione");
+}
+
+/* -----------------------------------------------------------------
  * Status polling (used after Stripe redirect)
  * ----------------------------------------------------------------- */
 
