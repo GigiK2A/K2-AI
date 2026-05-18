@@ -180,6 +180,19 @@ export default function HomePage() {
     );
   }
 
+  /** Imposta titolo conv se ancora generico ("Nuova chat" / "Nuova conversazione"). */
+  function maybeSetTitle(label: string) {
+    const clean = label.trim().replace(/\s+/g, " ").slice(0, 48);
+    if (!clean) return;
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== activeConversation.id) return c;
+        const isGeneric = !c.title || /^Nuova (chat|conversazione)$/i.test(c.title);
+        return isGeneric ? { ...c, title: clean } : c;
+      }),
+    );
+  }
+
   function handleDeleteConversation(convId: string) {
     setConversations((prev) => {
       const filtered = prev.filter((c) => c.id !== convId);
@@ -242,6 +255,11 @@ export default function HomePage() {
           ...prev,
           [activeConversation.id]: [...(prev[activeConversation.id] ?? []), ...uploaded],
         }));
+        // Auto-title: nome del 1° file caricato (senza estensione).
+        if (uploaded[0]) {
+          const base = uploaded[0].name.replace(/\.[^.]+$/, "");
+          maybeSetTitle(base);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Errore upload file");
       } finally {
@@ -269,6 +287,13 @@ export default function HomePage() {
           const exists = prev.some((u) => u.url === url);
           return exists ? prev : [...prev, result];
         });
+        // Auto-title: hostname + path corto.
+        try {
+          const u = new URL(url);
+          maybeSetTitle(u.hostname.replace(/^www\./, "") + (u.pathname !== "/" ? u.pathname : ""));
+        } catch {
+          /* ignore */
+        }
         const confirmMsg: ChatMessage = {
           id: uid("msg"),
           role: "assistant",
@@ -311,6 +336,8 @@ export default function HomePage() {
     };
     const currentMessages = [...activeConversation.messages, userMessage, stubMessage];
     updateMessages(currentMessages);
+    // Auto-title: prime parole del 1° messaggio utente (se conv ancora generica).
+    maybeSetTitle(composer);
 
     const prompt = composer;
     track("kbot_message_sent", { length: prompt.length, mode });
