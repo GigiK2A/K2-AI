@@ -163,10 +163,19 @@ export async function linkSessionToUser(
  * Chat turn
  * ----------------------------------------------------------------- */
 
+export class RateLimitError extends Error {
+  retryAfter: number;
+  constructor(retryAfter: number, message = "Rate limit") {
+    super(message);
+    this.name = "RateLimitError";
+    this.retryAfter = retryAfter;
+  }
+}
+
 export async function sendMessage(
   sessionId: string,
   message: string,
-  opts: { serviceId?: string; authToken?: string | null } = {},
+  opts: { serviceId?: string; authToken?: string | null; forcedSkills?: string[] } = {},
 ): Promise<SendMessageResult> {
   const res = await fetch(`${API_BASE}/api/kbot/message`, {
     method: "POST",
@@ -175,10 +184,228 @@ export async function sendMessage(
       session_id: sessionId,
       service_id: opts.serviceId,
       message,
+      forced_skills: opts.forcedSkills,
     }),
   });
+  if (res.status === 429) {
+    const ra = parseInt(res.headers.get("retry-after") || "30", 10);
+    throw new RateLimitError(Number.isFinite(ra) && ra > 0 ? ra : 30, "Troppe richieste");
+  }
   if (!res.ok) await parseErr(res, "Errore invio messaggio");
   return res.json() as Promise<SendMessageResult>;
+}
+
+/* -----------------------------------------------------------------
+ * Context (remove a file/URL from session)
+ * ----------------------------------------------------------------- */
+
+export async function removeContextItem(
+  sessionId: string,
+  type: "file" | "url",
+  idOrName: string,
+  authToken?: string | null,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/kbot/context/remove`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, type, id_or_name: idOrName }),
+  });
+  if (!res.ok) await parseErr(res, "Errore rimozione contesto");
+}
+
+/* -----------------------------------------------------------------
+ * Skills registry
+ * ----------------------------------------------------------------- */
+
+export interface AvailableSkill {
+  name: string;
+  description: string;
+}
+
+export async function listSkills(): Promise<AvailableSkill[]> {
+  const res = await fetch(`${API_BASE}/api/kbot/skills`, { cache: "no-store" });
+  if (!res.ok) await parseErr(res, "Errore caricamento skill");
+  const data = await res.json();
+  return (data.skills as AvailableSkill[]) ?? [];
+}
+
+/* -----------------------------------------------------------------
+ * Follow-up suggestions (after long assistant reports)
+ * ----------------------------------------------------------------- */
+
+export async function fetchFollowUps(
+  sessionId: string,
+  authToken?: string | null,
+): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/api/kbot/followups`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.followups as string[]) ?? [];
+}
+
+/* -----------------------------------------------------------------
+ * Streaming chat turn (SSE)
+ * ----------------------------------------------------------------- */
+
+export interface StreamCallbacks {
+  onDelta: (chunk: string) => void;
+  onDone: (result: SendMessageResult) => void;
+  onError?: (error: string) => void;
+  signal?: AbortSignal;
+}
+
+/**
+ * Stream a chat turn via Server-Sent Events.
+ *
+ * Falls back gracefully: if the response is not `text/event-stream` (e.g. an
+ * error JSON), the body is parsed once and surfaced via `onError`.
+ */
+export async function streamMessage(
+  sessionId: string,
+  message: string,
+  opts: { serviceId?: string; authToken?: string | null; forcedSkills?: string[] } & StreamCallbacks,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/kbot/message/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(opts.authToken) },
+    body: JSON.stringify({
+      session_id: sessionId,
+      service_id: opts.serviceId,
+      message,
+      forced_skills: opts.forcedSkills,
+    }),
+    signal: opts.signal,
+  });
+
+  if (!res.ok || !res.body) {
+    let detail = "Errore invio messaggio";
+    try {
+      const data = await res.json();
+      detail = (data?.detail as string) || (data?.message as string) || detail;
+    } catch {
+      /* ignore */
+    }
+    opts.onError?.(detail);
+    throw new Error(detail);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalPayload: SendMessageResult | null = null;
+  let sawError: string | null = null;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // Parse complete SSE events (delimited by blank line).
+    let sepIdx: number;
+    while ((sepIdx = buffer.indexOf("\n\n")) >= 0) {
+      const rawEvent = buffer.slice(0, sepIdx);
+      buffer = buffer.slice(sepIdx + 2);
+      const dataLines = rawEvent
+        .split("\n")
+        .filter((l) => l.startsWith("data:"))
+        .map((l) => l.slice(5).trimStart());
+      if (!dataLines.length) continue;
+      const dataStr = dataLines.join("\n");
+      try {
+        const evt = JSON.parse(dataStr) as {
+          delta?: string;
+          done?: boolean;
+          error?: string;
+          message?: string;
+          summary?: Record<string, unknown> | null;
+          nextAction?: string;
+          session?: KbotSession;
+        };
+        if (evt.error) {
+          sawError = evt.error;
+          opts.onError?.(evt.error);
+          continue;
+        }
+        if (typeof evt.delta === "string") {
+          opts.onDelta(evt.delta);
+        }
+        if (evt.done && evt.session && typeof evt.message === "string") {
+          finalPayload = {
+            message: evt.message,
+            summary: evt.summary ?? null,
+            nextAction: evt.nextAction ?? "continue",
+            session: evt.session,
+          };
+        }
+      } catch {
+        // ignore malformed chunk
+      }
+    }
+  }
+
+  if (sawError && !finalPayload) {
+    throw new Error(sawError);
+  }
+  if (!finalPayload) {
+    throw new Error("Stream chiuso senza payload finale");
+  }
+  opts.onDone(finalPayload);
+}
+
+/* -----------------------------------------------------------------
+ * Export a single message (PDF / DOCX). Markdown is purely client-side.
+ * ----------------------------------------------------------------- */
+
+export type MessageExportFormat = "pdf" | "docx";
+
+export async function downloadMessageExport(
+  sessionId: string,
+  format: MessageExportFormat,
+  opts: { messageIndex?: number; messageId?: string; authToken?: string | null } = {},
+): Promise<void> {
+  const endpoint = format === "pdf" ? "render-message-pdf" : "render-message-docx";
+  const res = await fetch(`${API_BASE}/api/kbot/${endpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(opts.authToken) },
+    body: JSON.stringify({
+      session_id: sessionId,
+      message_index: opts.messageIndex,
+      message_id: opts.messageId,
+    }),
+  });
+  if (!res.ok) await parseErr(res, "Errore export");
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename =
+    match?.[1] ?? `k2ai-report-${sessionId.slice(0, 8)}.${format}`;
+  triggerBlobDownload(blob, filename);
+}
+
+export function downloadMarkdown(sessionId: string, content: string): void {
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\..+/, "")
+    .replace("T", "-");
+  const filename = `k2ai-report-${sessionId.slice(0, 8)}-${stamp}.md`;
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  triggerBlobDownload(blob, filename);
+}
+
+function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 /* -----------------------------------------------------------------
@@ -303,6 +530,70 @@ export async function generatePdf(
   if (!res.ok) await parseErr(res, "Errore generazione PDF");
   const data = await res.json();
   return { pdfUrl: data.pdf_url as string, session: data.session };
+}
+
+/* -----------------------------------------------------------------
+ * Conversations history (persisted server-side for authed users)
+ * ----------------------------------------------------------------- */
+
+export interface RemoteConversation {
+  id: string;
+  title: string;
+  mode: Mode;
+  kbotSessionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listConversations(authToken: string): Promise<RemoteConversation[]> {
+  const res = await fetch(`${API_BASE}/api/kbot/conversations`, {
+    headers: { ...authHeaders(authToken) },
+    cache: "no-store",
+  });
+  if (!res.ok) await parseErr(res, "Errore caricamento conversazioni");
+  const data = await res.json();
+  return (data.conversations as RemoteConversation[]) ?? [];
+}
+
+export async function createRemoteConversation(
+  authToken: string,
+  payload: { title?: string; mode?: Mode; kbotSessionId?: string | null },
+): Promise<RemoteConversation> {
+  const res = await fetch(`${API_BASE}/api/kbot/conversations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({
+      title: payload.title,
+      mode: payload.mode ?? "report",
+      kbotSessionId: payload.kbotSessionId,
+    }),
+  });
+  if (!res.ok) await parseErr(res, "Errore creazione conversazione");
+  const data = await res.json();
+  return data.conversation as RemoteConversation;
+}
+
+export async function updateRemoteConversation(
+  authToken: string,
+  convId: string,
+  patch: { title?: string; kbotSessionId?: string | null },
+): Promise<RemoteConversation> {
+  const res = await fetch(`${API_BASE}/api/kbot/conversations/${convId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) await parseErr(res, "Errore aggiornamento conversazione");
+  const data = await res.json();
+  return data.conversation as RemoteConversation;
+}
+
+export async function deleteRemoteConversation(authToken: string, convId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/kbot/conversations/${convId}`, {
+    method: "DELETE",
+    headers: { ...authHeaders(authToken) },
+  });
+  if (!res.ok) await parseErr(res, "Errore eliminazione conversazione");
 }
 
 /* -----------------------------------------------------------------

@@ -4,12 +4,14 @@ Mirror of api/kbot/message.ts in the site.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re as _re
 from typing import List, Optional
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
@@ -71,6 +73,7 @@ class MessageBody(BaseModel):
     serviceId: Optional[str] = Field(default=None, alias="service_id")
     message: Optional[str] = None
     messages: Optional[List[dict]] = None
+    forcedSkills: Optional[List[str]] = Field(default=None, alias="forced_skills")
 
     class Config:
         populate_by_name = True
@@ -122,8 +125,21 @@ async def post_message(
     last_user_text = new_msgs[-1]["content"] if new_msgs else ""
     collected = await _auto_fetch_urls(last_user_text, collected)
 
+    # Persist forced skills (UI may toggle them on/off) into collected_data.
+    if body.forcedSkills is not None:
+        forced = [s for s in (body.forcedSkills or []) if isinstance(s, str) and s.strip()]
+        collected["forced_skills"] = forced
+
     session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages}
     skills = resolve_skills_for_session(session_for_prompt)
+    # Merge user-forced skills on top (deduped, order-preserving).
+    forced_skills: list[str] = list(collected.get("forced_skills") or [])
+    if forced_skills:
+        seen = set(skills)
+        for fs in forced_skills:
+            if fs and fs not in seen:
+                skills.append(fs)
+                seen.add(fs)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt)
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
@@ -180,6 +196,11 @@ async def post_message(
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
 
+    # Always expose the skills used in this turn so the UI can render them.
+    existing_extracted = dict(collected.get("extractedData") or {})
+    existing_extracted["used_skills"] = list(skills)
+    collected["extractedData"] = existing_extracted
+
     new_step = int(session.get("step") or 1) + 1
     updated = sessions.update_session(
         body.sessionId,
@@ -196,3 +217,163 @@ async def post_message(
         "nextAction": "show_summary" if summary else "continue",
         "session": sessions.public_session(updated),
     }
+
+
+# ---------------------------------------------------------------------------
+# Streaming variant (Server-Sent Events).
+# ---------------------------------------------------------------------------
+
+
+async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
+    """Shared setup: load session, append user msg, fetch URLs, build prompt."""
+    session = sessions.get_session(body.sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    _check_ownership(session, user)
+
+    new_msgs = _new_user_messages(body)
+    if not new_msgs:
+        raise HTTPException(status_code=400, detail="empty message")
+
+    collected = dict(session.get("collected_data") or {})
+    incoming_service = normalize_service_id(body.serviceId)
+    if incoming_service:
+        collected["service_id"] = incoming_service
+
+    merged_messages = sessions.append_messages(session, new_msgs)
+    last_user_text = new_msgs[-1]["content"] if new_msgs else ""
+    collected = await _auto_fetch_urls(last_user_text, collected)
+
+    session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages}
+    skills = resolve_skills_for_session(session_for_prompt)
+    system_prompt = build_system_prompt_v2(skills, session_for_prompt)
+    history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
+
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
+
+    return session, merged_messages, collected, system_prompt, history
+
+
+def _persist_assistant_turn(
+    session: dict,
+    body_session_id: str,
+    merged_messages: list,
+    collected: dict,
+    raw_text: str,
+) -> tuple[str, Optional[dict], dict]:
+    """Apply summary extraction + persist assistant message. Returns (user_visible, summary, updated_session)."""
+    summary = extract_summary(raw_text)
+    user_visible = normalize_assistant_reply(strip_summary_block(raw_text))
+
+    updated_messages = sessions.append_messages(
+        {**session, "messages": merged_messages},
+        [{"role": "assistant", "content": user_visible}],
+    )
+    if summary:
+        collected.update(
+            {k: v for k, v in summary.items() if v is not None and v != ""}
+        )
+        collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
+        collected["analysis_ready"] = True
+
+    new_step = int(session.get("step") or 1) + 1
+    updated = sessions.update_session(
+        body_session_id,
+        {
+            "messages": updated_messages,
+            "collected_data": collected,
+            "step": new_step,
+        },
+    )
+    return user_visible, summary, updated
+
+
+def _sse(event_data: dict) -> str:
+    return f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
+
+
+@router.post("/message/stream")
+@limiter.limit("30/minute")
+async def post_message_stream(
+    request: Request,
+    body: MessageBody,
+    user: Optional[AuthUser] = Depends(optional_user),
+):
+    session, merged_messages, collected, system_prompt, history = await _prepare_turn(body, user)
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+    async def event_gen():
+        raw_buffer: list[str] = []
+        try:
+            # Anthropic SDK sync streaming context manager — iterate token deltas.
+            with client.messages.stream(
+                model=ANTHROPIC_MODEL,
+                max_tokens=8000,
+                system=system_prompt,
+                messages=history,
+                timeout=120.0,
+            ) as stream:
+                for text_chunk in stream.text_stream:
+                    if await request.is_disconnected():
+                        log.info("kbot stream: client disconnected mid-response")
+                        return
+                    if not text_chunk:
+                        continue
+                    raw_buffer.append(text_chunk)
+                    yield _sse({"delta": text_chunk})
+                final = stream.get_final_message()
+                usage = getattr(final, "usage", None)
+        except anthropic.APITimeoutError:
+            log.exception("Anthropic stream timeout")
+            yield _sse({"error": "K-BOT è temporaneamente lento, riprova tra qualche secondo."})
+            return
+        except anthropic.APIError:
+            log.exception("Anthropic stream error")
+            yield _sse({"error": "Errore upstream temporaneo. Riprova."})
+            return
+        except Exception:
+            log.exception("Unexpected stream error")
+            yield _sse({"error": "Errore imprevisto durante lo stream."})
+            return
+
+        raw_text = "".join(raw_buffer)
+        track_server(
+            distinct_id=body.sessionId,
+            event="message_processed",
+            properties={
+                "role": "assistant",
+                "tokens_in": getattr(usage, "input_tokens", None) if usage else None,
+                "tokens_out": getattr(usage, "output_tokens", None) if usage else None,
+                "model": ANTHROPIC_MODEL,
+                "stream": True,
+            },
+        )
+        try:
+            user_visible, summary, updated = _persist_assistant_turn(
+                session, body.sessionId, merged_messages, collected, raw_text
+            )
+        except Exception:
+            log.exception("Failed to persist streamed assistant turn")
+            yield _sse({"error": "Errore salvataggio risposta."})
+            return
+
+        yield _sse(
+            {
+                "done": True,
+                "message": user_visible,
+                "summary": summary,
+                "nextAction": "show_summary" if summary else "continue",
+                "session": sessions.public_session(updated),
+            }
+        )
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

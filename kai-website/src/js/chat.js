@@ -30,6 +30,10 @@ const messages = [];
 let isSending = false;
 let chatBooted = false;
 
+// Context assets tracked in this session: { id, type: 'file'|'url', label }
+// Used to render context chips above the composer.
+const contextAssets = [];
+
 function resolveApiBaseUrl() {
   if (API_BASE_URL.trim()) {
     return API_BASE_URL.replace(/\/$/, '');
@@ -39,7 +43,8 @@ function resolveApiBaseUrl() {
 }
 
 const CHAT_SESSION_ENDPOINT = `${resolveApiBaseUrl()}/api/kbot/session`;
-const CHAT_MESSAGE_ENDPOINT = `${resolveApiBaseUrl()}/api/kbot/message`;
+const CHAT_MESSAGE_ENDPOINT = `${resolveApiBaseUrl()}/api/kbot/chat`;
+const CHAT_STREAM_ENDPOINT = `${resolveApiBaseUrl()}/api/kbot/chat/stream`;
 
 // Nota privacy: la chat viene processata da Claude (Anthropic, US). I contenuti
 // possono essere usati per generare un report e analizzare la conversazione.
@@ -323,6 +328,112 @@ function _trackKbot(event, props) {
   try { window.posthog && window.posthog.capture(event, props || {}); } catch { /* ignore */ }
 }
 
+// ── Context chips ─────────────────────────────────────────────────────────────
+
+/**
+ * Add an asset to the context chip bar.
+ * type: 'file' | 'url'
+ * label: display name (e.g. filename or hostname)
+ * Returns the assigned id so callers can store it for removal.
+ */
+function addContextAsset(type, label) {
+  const id = String(Date.now()) + Math.random().toString(36).slice(2, 6);
+  contextAssets.push({ id, type, label });
+  renderContextChips();
+  return id;
+}
+
+function removeContextAsset(id) {
+  const idx = contextAssets.findIndex(a => a.id === id);
+  if (idx !== -1) contextAssets.splice(idx, 1);
+  renderContextChips();
+}
+
+function renderContextChips() {
+  const bar = document.getElementById('chat-context-chips');
+  if (!bar) return;
+
+  if (contextAssets.length === 0) {
+    bar.style.display = 'none';
+    bar.replaceChildren();
+    return;
+  }
+
+  bar.style.display = 'flex';
+  bar.replaceChildren();
+
+  for (const asset of contextAssets) {
+    const chip = document.createElement('span');
+    chip.className = 'ctx-chip';
+    chip.dataset.assetId = asset.id;
+
+    const icon = document.createElement('span');
+    icon.className = 'ctx-chip-icon';
+    icon.textContent = asset.type === 'file' ? '📎' : '🌐';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'ctx-chip-label';
+    lbl.textContent = asset.label;
+
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'ctx-chip-remove';
+    rm.setAttribute('aria-label', `Rimuovi ${asset.label} dal contesto`);
+    rm.textContent = '×';
+    rm.addEventListener('click', () => removeContextAsset(asset.id));
+
+    chip.appendChild(icon);
+    chip.appendChild(lbl);
+    chip.appendChild(rm);
+    bar.appendChild(chip);
+  }
+}
+
+/** Returns labels of currently active context assets for display/payload purposes */
+function getActiveContextLabels() {
+  return contextAssets.map(a => a.label);
+}
+
+// ── Rate-limit countdown ──────────────────────────────────────────────────────
+
+let _retryTimer = null;
+
+/**
+ * Show a countdown message and then auto-retry the given callback.
+ * @param {HTMLElement} bubble - The message bubble to update with countdown.
+ * @param {number} seconds - Countdown duration in seconds.
+ * @param {Function} retryFn - Called when countdown reaches 0.
+ */
+function startRetryCountdown(bubble, seconds, retryFn) {
+  if (_retryTimer) {
+    clearInterval(_retryTimer);
+    _retryTimer = null;
+  }
+
+  let remaining = seconds;
+
+  const updateLabel = () => {
+    const textNode = bubble.querySelector('.chat-retry-countdown');
+    if (textNode) textNode.textContent = `Riprova fra ${remaining}s`;
+  };
+
+  updateLabel();
+
+  _retryTimer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(_retryTimer);
+      _retryTimer = null;
+      bubble.remove();
+      retryFn();
+    } else {
+      updateLabel();
+    }
+  }, 1000);
+}
+
+// ── Streaming sendMessage ──────────────────────────────────────────────────────
+
 function initChat() {
   if (chatBooted) return;
 
@@ -335,6 +446,9 @@ function initChat() {
   if (!container || !input || !sendBtn) return;
   chatBooted = true;
   _trackKbot('kbot_open', { surface: IS_HOME_WIDGET ? 'home_widget' : 'k-bot_page' });
+
+  // Inject context chips bar above the composer if not already present
+  _ensureContextChipsBar(form || input.parentElement);
 
   if (IS_HOME_WIDGET) {
     refreshSessionId();
@@ -387,16 +501,25 @@ function initChat() {
   });
 }
 
-async function sendMessage() {
+function _ensureContextChipsBar(composerEl) {
+  if (!composerEl || document.getElementById('chat-context-chips')) return;
+  const bar = document.createElement('div');
+  bar.id = 'chat-context-chips';
+  bar.className = 'chat-context-chips';
+  bar.style.display = 'none'; // hidden until an asset is added
+  composerEl.parentElement?.insertBefore(bar, composerEl);
+}
+
+async function sendMessage(overrideText) {
   const input = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send');
   if (!input || !sendBtn || isSending) return;
 
-  const text = input.value.trim();
+  const text = overrideText || input.value.trim();
   if (!text) return;
 
   isSending = true;
-  input.value = '';
+  if (!overrideText) input.value = '';
   _trackKbot('kbot_message_sent', {
     length: text.length,
     surface: IS_HOME_WIDGET ? 'home_widget' : 'k-bot_page',
@@ -406,6 +529,7 @@ async function sendMessage() {
   persistMessages();
   renderMessage(userMsg);
 
+  // Skeleton "." while connecting
   const typing = renderTyping();
   sendBtn.disabled = true;
 
@@ -416,6 +540,116 @@ async function sendMessage() {
       message: text,
     };
 
+    // Try streaming first, fall back to non-streaming on older envs
+    const streamRes = await fetch(CHAT_STREAM_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        'X-KAI-Request': 'fetch-stream'
+      },
+      body: JSON.stringify(chatPayload)
+    });
+
+    if (streamRes.status === 429) {
+      typing.remove();
+      const retryAfter = parseInt(streamRes.headers.get('Retry-After') || '15', 10);
+      const countdownSeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 15;
+      const bubble = _renderRateLimitBubble(countdownSeconds);
+      startRetryCountdown(bubble, countdownSeconds, () => sendMessage(text));
+      return;
+    }
+
+    // If stream endpoint not available (404) fall back to non-streaming
+    if (streamRes.status === 404 || !streamRes.body) {
+      typing.remove();
+      await _sendMessageNonStreaming(text, backendSessionId, chatPayload, sendBtn, input);
+      return;
+    }
+
+    if (streamRes.status === 504) {
+      typing.remove();
+      renderMessage({ role: 'assistant', content: 'K-BOT è temporaneamente lento. Riprova tra qualche secondo.', retry: true });
+      const ipt = document.getElementById('chat-input');
+      if (ipt) ipt.value = text;
+      return;
+    }
+
+    if (!streamRes.ok) throw new Error(`HTTP ${streamRes.status}`);
+
+    // Streaming read
+    typing.remove();
+    const streamBubble = _createStreamBubble();
+    let accumulatedText = '';
+    let finalMessage = null;
+
+    const reader = streamRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process all complete SSE lines
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete last line
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') break;
+
+        let evt;
+        try { evt = JSON.parse(raw); } catch { continue; }
+
+        if (evt.error) {
+          streamBubble.remove();
+          renderMessage({ role: 'assistant', content: evt.error, retry: true });
+          finalMessage = null;
+          break;
+        }
+
+        if (evt.delta) {
+          accumulatedText += evt.delta;
+          _updateStreamBubble(streamBubble, accumulatedText);
+        }
+
+        if (evt.done && evt.message) {
+          finalMessage = evt;
+          // Replace streamed content with normalized message from server
+          _updateStreamBubble(streamBubble, evt.message);
+          accumulatedText = evt.message;
+        }
+      }
+    }
+
+    // If we streamed successfully, persist the cleaned final message
+    const assistantContent = finalMessage?.message || accumulatedText;
+    if (assistantContent) {
+      const assistantMsg = { role: 'assistant', content: assistantContent };
+      messages.push(assistantMsg);
+      persistMessages();
+    }
+
+  } catch {
+    const typingEl = document.querySelector('.chat-typing');
+    if (typingEl) typingEl.remove();
+    renderMessage({ role: 'assistant', content: 'Errore di connessione con K-BOT. Riprova tra qualche secondo.', retry: true });
+    // restore input so user can resubmit
+    const ipt = document.getElementById('chat-input');
+    if (ipt && !ipt.value) ipt.value = text;
+  } finally {
+    isSending = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+/** Non-streaming fallback (same as original sendMessage logic) */
+async function _sendMessageNonStreaming(text, backendSessionId, chatPayload, sendBtn, input) {
+  try {
     const res = await fetch(CHAT_MESSAGE_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -427,15 +661,15 @@ async function sendMessage() {
     });
 
     if (res.status === 429) {
-      typing.remove();
-      renderMessage({ role: 'assistant', content: 'Hai inviato troppi messaggi di fila. Aspetta un minuto e riprova.' });
+      const retryAfter = parseInt(res.headers.get('Retry-After') || '15', 10);
+      const countdownSeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 15;
+      const bubble = _renderRateLimitBubble(countdownSeconds);
+      startRetryCountdown(bubble, countdownSeconds, () => sendMessage(text));
       return;
     }
 
     if (res.status === 504) {
-      typing.remove();
       renderMessage({ role: 'assistant', content: 'K-BOT è temporaneamente lento. Riprova tra qualche secondo.', retry: true });
-      // restore input so user can resubmit easily
       const ipt = document.getElementById('chat-input');
       if (ipt) ipt.value = text;
       return;
@@ -447,19 +681,48 @@ async function sendMessage() {
     const assistantMsg = { role: 'assistant', content: data.message };
     messages.push(assistantMsg);
     persistMessages();
-    typing.remove();
     renderMessage(assistantMsg);
   } catch {
-    typing.remove();
     renderMessage({ role: 'assistant', content: 'Errore di connessione con K-BOT. Riprova tra qualche secondo.', retry: true });
-    // restore input so user can resubmit
     const ipt = document.getElementById('chat-input');
     if (ipt && !ipt.value) ipt.value = text;
   } finally {
     isSending = false;
-    sendBtn.disabled = false;
-    input.focus();
+    if (sendBtn) sendBtn.disabled = false;
+    if (input) input.focus();
   }
+}
+
+/** Creates a streaming bubble that updates in-place */
+function _createStreamBubble() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-message chat-assistant chat-streaming';
+  div.setAttribute('aria-live', 'polite');
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function _updateStreamBubble(bubble, text) {
+  // Re-use the same render logic as _renderAssistantContent
+  bubble.replaceChildren(_renderAssistantContent(text));
+  const container = document.getElementById('chat-messages');
+  if (container) container.scrollTop = container.scrollHeight;
+}
+
+/** Creates and appends the rate-limit countdown bubble */
+function _renderRateLimitBubble(seconds) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-message chat-assistant chat-ratelimit';
+  const span = document.createElement('span');
+  span.className = 'chat-retry-countdown';
+  span.textContent = `Riprova fra ${seconds}s`;
+  div.appendChild(span);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
 }
 
 function renderMessage({ role, content, retry }) {
@@ -559,6 +822,9 @@ function resetChat() {
   container.replaceChildren();
   refreshSessionId();
   clearMessages();
+  // Also clear context chips on reset
+  contextAssets.splice(0, contextAssets.length);
+  renderContextChips();
   renderMessage(FIRST_MESSAGE);
 
   if (input) {
@@ -572,3 +838,8 @@ if (document.readyState === 'loading') {
 } else {
   initChat();
 }
+
+// Expose addContextAsset so other scripts (e.g. upload.js) can add chips
+window._kbotAddContextAsset = addContextAsset;
+window._kbotRemoveContextAsset = removeContextAsset;
+window._kbotGetActiveContextLabels = getActiveContextLabels;

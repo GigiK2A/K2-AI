@@ -8,7 +8,23 @@ import { Composer } from "@/components/chat/Composer";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
 import { InsightPanel } from "@/components/insights/InsightPanel";
-import { sendMessage, uploadFiles, startCheckout, fetchUrl, type UploadedFile, type AnalyzedUrl } from "@/lib/api";
+import {
+  sendMessage,
+  streamMessage,
+  uploadFiles,
+  startCheckout,
+  fetchUrl,
+  listConversations,
+  createRemoteConversation,
+  updateRemoteConversation,
+  deleteRemoteConversation,
+  removeContextItem,
+  fetchFollowUps,
+  RateLimitError,
+  type UploadedFile,
+  type AnalyzedUrl,
+} from "@/lib/api";
+import { RateLimitBanner } from "@/components/chat/RateLimitBanner";
 import { track } from "@/lib/analytics";
 import { ChatMessage, Conversation, Mode } from "@/types/chat";
 import { uid } from "@/lib/utils";
@@ -105,12 +121,48 @@ export default function HomePage() {
   >({});
   const [fetchingUrl, setFetchingUrl] = useState(false);
   const [analyzedUrls, setAnalyzedUrls] = useState<AnalyzedUrl[]>([]);
+  const [forcedSkills, setForcedSkills] = useState<string[]>([]);
+  const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
 
   // Track kbot_open once the chat surface mounts for an authenticated user.
   useEffect(() => {
     if (!authLoading && isSignedIn) {
       track("kbot_open", { surface: "kbot_app" });
     }
+  }, [authLoading, isSignedIn]);
+
+  // Bootstrap: load remote conversations on first authed render.
+  // Anon: keep the in-memory single welcome conv.
+  const [bootstrapped, setBootstrapped] = useState(false);
+  useEffect(() => {
+    if (bootstrapped || authLoading || !isSignedIn) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const remote = await listConversations(token);
+        if (cancelled || remote.length === 0) return;
+        const mapped: Conversation[] = remote.map((r) => ({
+          id: r.id,
+          remoteId: r.id,
+          title: r.title || "Nuova conversazione",
+          mode: r.mode,
+          kbotSessionId: r.kbotSessionId,
+          messages: [{ id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 }],
+        }));
+        setConversations(mapped);
+        setActiveId(mapped[0].id);
+      } catch {
+        /* anon o errore di rete: lasciamo la conv locale */
+      } finally {
+        if (!cancelled) setBootstrapped(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isSignedIn]);
 
   const [conversations, setConversations] = useState<Conversation[]>([
@@ -164,13 +216,27 @@ export default function HomePage() {
   /* Bind backend session id back to the active conversation once known. */
   useEffect(() => {
     if (!kbotSession?.id) return;
+    let remoteIdToSync: string | null | undefined;
     setConversations((prev) =>
-      prev.map((c) =>
-        c.id === activeConversation.id && c.kbotSessionId !== kbotSession.id
-          ? { ...c, kbotSessionId: kbotSession.id }
-          : c,
-      ),
+      prev.map((c) => {
+        if (c.id !== activeConversation.id || c.kbotSessionId === kbotSession.id) return c;
+        remoteIdToSync = c.remoteId;
+        return { ...c, kbotSessionId: kbotSession.id };
+      }),
     );
+    if (remoteIdToSync && isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (token)
+            await updateRemoteConversation(token, remoteIdToSync!, {
+              kbotSessionId: kbotSession.id,
+            });
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbotSession?.id, activeConversation.id]);
 
@@ -184,16 +250,79 @@ export default function HomePage() {
   function maybeSetTitle(label: string) {
     const clean = label.trim().replace(/\s+/g, " ").slice(0, 48);
     if (!clean) return;
+    let updatedRemoteId: string | null | undefined;
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== activeConversation.id) return c;
         const isGeneric = !c.title || /^Nuova (chat|conversazione)$/i.test(c.title);
-        return isGeneric ? { ...c, title: clean } : c;
+        if (!isGeneric) return c;
+        updatedRemoteId = c.remoteId;
+        return { ...c, title: clean };
       }),
+    );
+    if (updatedRemoteId && isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (token) await updateRemoteConversation(token, updatedRemoteId!, { title: clean });
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
+  }
+
+  function handleRenameConversation(convId: string, nextTitle: string) {
+    const clean = nextTitle.trim().slice(0, 80);
+    if (!clean) return;
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convId ? { ...c, title: clean } : c)),
     );
   }
 
+  function toggleForcedSkill(name: string) {
+    setForcedSkills((prev) =>
+      prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name],
+    );
+  }
+
+  async function handleRemoveContext({
+    type,
+    idOrName,
+  }: {
+    type: "file" | "url";
+    idOrName: string;
+  }) {
+    const sessionId = activeConversation.kbotSessionId ?? kbotSession?.id ?? null;
+    // Optimistic UI update first.
+    if (type === "file") {
+      setPendingFiles((prev) =>
+        prev.filter((f) => f.path !== idOrName && f.name !== idOrName),
+      );
+      setContextFilesByConversation((prev) => {
+        const cur = prev[activeConversation.id] ?? [];
+        return {
+          ...prev,
+          [activeConversation.id]: cur.filter(
+            (f) => f.path !== idOrName && f.name !== idOrName,
+          ),
+        };
+      });
+    } else {
+      setAnalyzedUrls((prev) => prev.filter((u) => u.url !== idOrName));
+    }
+    if (!sessionId) return;
+    try {
+      const token = await getToken();
+      await removeContextItem(sessionId, type, idOrName, token);
+    } catch (err) {
+      // Non-fatal: backend cleanup failed but local state is already updated.
+      setError(err instanceof Error ? err.message : "Errore rimozione contesto");
+    }
+  }
+
   function handleDeleteConversation(convId: string) {
+    const target = conversations.find((c) => c.id === convId);
     setConversations((prev) => {
       const filtered = prev.filter((c) => c.id !== convId);
       // If we deleted the active one, switch to the first remaining (or create empty)
@@ -215,18 +344,31 @@ export default function HomePage() {
     });
     // Drop the kbot session id from localStorage so the next message starts fresh
     resetSession();
+    // Persist soft-delete server-side (best-effort, anon fa nulla).
+    if (target?.remoteId && isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (token) await deleteRemoteConversation(token, target.remoteId!);
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 
   function handleNewConversation() {
     resetSession(); // start a fresh kbot_sessions row on the next message
+    const localId = uid("conv");
     const newConv: Conversation = {
-      id: uid("conv"),
+      id: localId,
       title: "Nuova chat",
       mode,
       messages: [
         { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
       ],
       kbotSessionId: null, // backend session creato on demand alla 1ª azione
+      remoteId: null,
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveId(newConv.id);
@@ -234,6 +376,28 @@ export default function HomePage() {
     setUsedSkills([]);
     setPendingFiles([]);
     setAnalyzedUrls([]); // drop URL analizzati della conv precedente
+
+    // Persist server-side for authed user (anon = noop).
+    if (isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (!token) return;
+          const remote = await createRemoteConversation(token, {
+            title: "Nuova chat",
+            mode,
+          });
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === localId ? { ...c, remoteId: remote.id, id: remote.id } : c,
+            ),
+          );
+          setActiveId((prev) => (prev === localId ? remote.id : prev));
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 
   const handleFilePick = useCallback(
@@ -316,15 +480,17 @@ export default function HomePage() {
     [activeConversation.messages, ensureSession, fetchingUrl, getToken, mode],
   );
 
-  async function handleSubmit() {
-    if (!composer.trim() || loading) return;
+  async function handleSubmit(overrideText?: string) {
+    const promptInput = (overrideText ?? composer).trim();
+    if (!promptInput || loading) return;
+    if (rateLimitUntil && rateLimitUntil > Date.now()) return;
 
     setError("");
     setLoading(true);
     const userMessage: ChatMessage = {
       id: uid("msg"),
       role: "user",
-      content: composer,
+      content: promptInput,
       ts: Date.now(),
       attachments: pendingFiles,
     };
@@ -337,9 +503,9 @@ export default function HomePage() {
     const currentMessages = [...activeConversation.messages, userMessage, stubMessage];
     updateMessages(currentMessages);
     // Auto-title: prime parole del 1° messaggio utente (se conv ancora generica).
-    maybeSetTitle(composer);
+    maybeSetTitle(promptInput);
 
-    const prompt = composer;
+    const prompt = promptInput;
     track("kbot_message_sent", { length: prompt.length, mode });
     setComposer("");
     setPendingFiles([]);
@@ -347,28 +513,73 @@ export default function HomePage() {
     try {
       const session = await ensureSession({ mode });
       const token = await getToken();
-      const res = await sendMessage(session.id, prompt, { authToken: token });
-      const skills = (res.session?.extractedData as { used_skills?: string[] } | undefined)?.used_skills ?? [];
-      setUsedSkills(skills);
+      // Live-update the stub message as deltas stream in.
+      const patchStub = (patch: Partial<ChatMessage>) => {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeConversation.id
+              ? {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    m.id === stubMessage.id ? { ...m, ...patch } : m,
+                  ),
+                }
+              : c,
+          ),
+        );
+      };
 
-      updateMessages(
-        currentMessages.map((m) =>
-          m.id === stubMessage.id
-            ? {
-                ...m,
-                content: res.message,
-                reportReady: res.nextAction === "show_summary",
-                sessionId: session.id,
-              }
-            : m,
-        ),
-      );
+      let streamed = "";
+      let finalMessage = "";
+      await streamMessage(session.id, prompt, {
+        authToken: token,
+        forcedSkills: forcedSkills.length ? forcedSkills : undefined,
+        onDelta: (chunk) => {
+          streamed += chunk;
+          patchStub({ content: streamed, sessionId: session.id });
+        },
+        onDone: (res) => {
+          finalMessage = res.message;
+          const skills =
+            (res.session?.extractedData as { used_skills?: string[] } | undefined)
+              ?.used_skills ?? [];
+          setUsedSkills(skills);
+          patchStub({
+            content: res.message,
+            reportReady: res.nextAction === "show_summary",
+            sessionId: session.id,
+          });
+        },
+      });
+
+      // Long-form report → fetch follow-up suggestions (non-blocking).
+      if (finalMessage && finalMessage.length > 1500) {
+        void (async () => {
+          try {
+            const ups = await fetchFollowUps(session.id, token);
+            if (ups.length) {
+              patchStub({ followUps: ups });
+            }
+          } catch {
+            /* silent */
+          }
+        })();
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Errore imprevisto");
+      if (e instanceof RateLimitError) {
+        setRateLimitUntil(Date.now() + e.retryAfter * 1000);
+        setError("");
+      } else {
+        setError(e instanceof Error ? e.message : "Errore imprevisto");
+      }
       updateMessages(activeConversation.messages);
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleFollowUpClick(text: string) {
+    void handleSubmit(text);
   }
 
   async function startCheckoutFromUI() {
@@ -403,6 +614,7 @@ export default function HomePage() {
         onSelect={setActiveId}
         onNew={handleNewConversation}
         onDelete={handleDeleteConversation}
+        onRename={handleRenameConversation}
         onClose={() => setSidebarOpen(false)}
       />
 
@@ -419,15 +631,24 @@ export default function HomePage() {
         <main className="scroll-premium flex-1 overflow-y-auto px-4 pb-24 pt-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
             <AnimatePresence>
-              {activeConversation.messages.map((m) => (
+              {activeConversation.messages.map((m, idx) => (
                 <MessageBubble
                   key={m.id}
                   message={{ ...m, hasPaid }}
                   onCheckout={startCheckoutFromUI}
+                  onFollowUp={handleFollowUpClick}
+                  getAuthToken={getToken}
+                  messageIndex={idx}
                 />
               ))}
             </AnimatePresence>
             {loading && <LoadingState />}
+            {rateLimitUntil && rateLimitUntil > Date.now() && (
+              <RateLimitBanner
+                retryAt={rateLimitUntil}
+                onExpired={() => setRateLimitUntil(null)}
+              />
+            )}
             {activeConversation.messages.length <= 2 && (
               <p className="px-4 text-center text-xs text-[var(--text-muted)]">
                 Le tue conversazioni vengono salvate sul tuo account. I documenti generati
@@ -444,13 +665,19 @@ export default function HomePage() {
               value={composer}
               onChange={setComposer}
               onSubmit={handleSubmit}
-              disabled={loading || fetchingUrl}
+              disabled={
+                loading ||
+                fetchingUrl ||
+                (rateLimitUntil !== null && rateLimitUntil > Date.now())
+              }
               suggestions={REPORT_SUGGESTIONS}
               onPickFiles={handleFilePick}
               files={pendingFiles}
               uploadingFiles={uploadingFiles}
               onFetchUrl={handleFetchUrl}
               fetchingUrl={fetchingUrl}
+              analyzedUrls={analyzedUrls}
+              onRemoveContext={handleRemoveContext}
             />
           </div>
         </div>
@@ -465,7 +692,12 @@ export default function HomePage() {
         </nav>
       </div>
 
-      <InsightPanel mode={mode} usedSkills={usedSkills} availableSkills={[]} onLeadSave={async () => {}} />
+      <InsightPanel
+        mode={mode}
+        usedSkills={usedSkills}
+        forcedSkills={forcedSkills}
+        onToggleForcedSkill={toggleForcedSkill}
+      />
     </div>
   );
 }

@@ -23,6 +23,8 @@ export type ChatMessage = {
   /** Pre-generated PDF URL (if backend returned it inline). Usually null until checkout. */
   reportPdfUrl?: string | null;
   hasPaid?: boolean;
+  /** Cached follow-up question suggestions (3 chips) for long assistant reports. */
+  followUps?: string[];
 };
 
 export type Conversation = {
@@ -32,4 +34,6 @@ export type Conversation = {
   messages: ChatMessage[];
   /** Backend kbot_sessions.id — null until first ensureSession in this conv. */
   kbotSessionId?: string | null;
+  /** Backend kbot_conversations.id — null per anon, valorizzato dopo POST /conversations. */
+  remoteId?: string | null;
 };
