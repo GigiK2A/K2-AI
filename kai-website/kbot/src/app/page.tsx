@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { ChatLayoutHeader } from "@/components/layout/ChatLayout";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -123,6 +123,7 @@ export default function HomePage() {
   const [analyzedUrls, setAnalyzedUrls] = useState<AnalyzedUrl[]>([]);
   const [forcedSkills, setForcedSkills] = useState<string[]>([]);
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Track kbot_open once the chat surface mounts for an authenticated user.
   useEffect(() => {
@@ -195,6 +196,11 @@ export default function HomePage() {
     () => conversations.find((c) => c.id === activeId) ?? conversations[0],
     [conversations, activeId],
   );
+
+  // Auto-scroll to bottom on new messages / streaming deltas / loading state.
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [activeConversation.messages.length, activeConversation.messages.at(-1)?.content, loading]);
 
   /* Per-conversation backend session: each sidebar conv must talk to its OWN
      kbot_sessions row, otherwise switching/creating conversations leaks
@@ -656,6 +662,7 @@ export default function HomePage() {
               </p>
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}
+            <div ref={messagesEndRef} />
           </div>
         </main>
 

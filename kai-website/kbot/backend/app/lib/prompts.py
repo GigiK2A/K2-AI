@@ -64,13 +64,20 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
         for f in uploaded_files
     )
 
-    attachments_state = (
-        "estratti testuali disponibili — usali, non fare domande già rispondibili dai file"
-        if has_extracted_text
-        else "file caricati ma senza testo estraibile"
-        if has_files
-        else "nessun allegato"
+    analyzed_urls = collected.get("analyzed_urls") or []
+    has_urls = len(analyzed_urls) > 0
+    url_list_for_state = ", ".join(
+        [str(u.get("url") or "").strip() for u in analyzed_urls if u.get("url")]
     )
+
+    state_parts = []
+    if has_extracted_text:
+        state_parts.append("file con testo estratto disponibili — usali, non fare domande già rispondibili dai file")
+    elif has_files:
+        state_parts.append("file caricati ma senza testo estraibile")
+    if has_urls:
+        state_parts.append(f"URL già analizzati in questa sessione: {url_list_for_state} — NON ri-chiedere l'URL del sito, è già nel contesto")
+    attachments_state = " | ".join(state_parts) if state_parts else "nessun allegato"
 
     # Wrap untrusted file extracts in an explicit delimiter block so the
     # model treats their content as data, not instructions (indirect prompt
@@ -129,7 +136,6 @@ def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
             )
 
     # Same wrapping for URL summaries (attacker-controlled web pages — H-4).
-    analyzed_urls = collected.get("analyzed_urls") or []
     url_context = ""
     if analyzed_urls:
         url_lines = []
