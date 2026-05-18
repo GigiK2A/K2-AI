@@ -5,6 +5,7 @@ Source of truth: /Volumes/PARASSITA/K-AI/kai-website/src/data/suiteAiServices.ts
 """
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Optional, TypedDict
 
 
@@ -66,19 +67,95 @@ def get_service_skills(service_id: Optional[str]) -> List[str]:
     return list(svc["skills"])
 
 
-def resolve_skills_for_session(session: dict) -> List[str]:
-    """Mirror of resolveSkillNamesForSession() in api/kbot/_shared.ts.
+# Intent detection — keyword → service mapping. Necessario perché in modalità
+# chat libera (no widget Suite) service_id resta None e la sessione caricava
+# solo BASE_SKILL ("diagnosi-ai-operativa-pmi") indipendentemente dall'intent
+# reale dell'utente (es. audit SEO).
+_INTENT_KEYWORDS: Dict[str, List[str]] = {
+    "P01": ["email", "crm", "lead generation", "outreach", "campagna email", "sales pipeline", "agenti email"],
+    "P02": ["amministr", "fatture", "fatturazione elettronica", "contabilità", "riconciliazion", "scadenz", "bilancio", "bilanci", "analisi bilancio", "budget", "forecast"],
+    "P03": ["contratto", "contratti", "legale", "gdpr", "privacy policy", "nda", "diritto societario", "antitrust"],
+    "P04": ["ingegneria", "progettazione", "cantiere", "strutturale", "psc", "direzione lavori", "capitolato"],
+    "P05": ["microapp", "documento tecnico", "template generation", "runbook", "documentation"],
+    "P06": ["customer service", "ticket", "supporto cliente", "knowledge base helpdesk", "sentiment"],
+    "P07": ["rag", "knowledge base", "embedding", "retrieval", "memoria documentale"],
+    "P08": ["compliance", "audit interno", "transizione 5", "audit trail", "sox", "sicurezza lavoro"],
+    "P09": ["controllo di gestione", "kpi", "cruscotto", "variance analysis", "budget forecast", "pricing"],
+    "P10": ["erp", "integrazione gestionale", "api integration", "data pipeline", "sql"],
+    "P11": ["seo", "audit seo", "audit del sito", "audit sito", "keyword", "ranking google", "brand voice",
+            "marketing", "campagna marketing", "content strategy", "digital marketing", "sem", "social",
+            "posizionamento organico", "serp", "metadata", "title tag", "h1", "schema.org"],
+    "P12": ["consulenza strategica", "piano crescita", "analisi settore", "strategia pmi", "go-to-market"],
+    "P13": ["bandi", "agevolazioni", "sabatini", "simest", "credito r&d", "de minimis"],
+    "P14": ["edilizia", "costruzioni", "buildboost"],
+    "P15": ["hr", "recruiting", "selezione personale", "onboarding", "performance review", "compensation"],
+    "P16": ["real estate", "tokenizzazione", "tgc"],
+    "P17": ["data analytics", "machine learning", "dashboard analytics", "statistica"],
+    "P18": ["design", "ux", "design system", "accessibility", "user research"],
+    "P19": ["energia", "efficienza energetica", "hvac", "diagnosi energetica"],
+    "P20": ["hospitality", "ricettiva", "hotel", "revenue management"],
+}
 
-    Priority:
-      1. collected_data.service_id
-      2. fallback: base skill only
+
+def infer_service_id_from_session(session: dict) -> Optional[str]:
+    """Conta hit-keyword in messaggi recenti + URL analizzati + service_id forzato.
+
+    Restituisce il service con score più alto (≥2 hit). None se ambiguo
+    o troppo debole → si torna a BASE_SKILL.
+    """
+    collected = session.get("collected_data") or {}
+    text_parts: List[str] = []
+    # Ultimi 6 messaggi user/assistant (più recenti pesano di più).
+    messages = session.get("messages") or []
+    for m in messages[-6:]:
+        if isinstance(m, dict) and isinstance(m.get("content"), str):
+            text_parts.append(m["content"])
+    # Title + summary degli URL crawlati.
+    for u in collected.get("analyzed_urls") or []:
+        for k in ("title", "summary", "meta_description"):
+            if isinstance(u.get(k), str):
+                text_parts.append(u[k])
+    # Nomi file caricati (suggeriscono il dominio: bilancio.pdf → P02/P09).
+    for f in collected.get("uploaded_files") or []:
+        if isinstance(f.get("name"), str):
+            text_parts.append(f["name"])
+    if not text_parts:
+        return None
+    haystack = " \n ".join(text_parts).lower()
+    haystack = re.sub(r"\s+", " ", haystack)
+
+    scores: Dict[str, int] = {}
+    for sid, kws in _INTENT_KEYWORDS.items():
+        score = 0
+        for kw in kws:
+            # Word-boundary match per evitare match parziali rumorosi.
+            hits = len(re.findall(rf"\b{re.escape(kw)}\b", haystack))
+            score += hits
+        if score > 0:
+            scores[sid] = score
+    if not scores:
+        return None
+    best_sid, best_score = max(scores.items(), key=lambda kv: kv[1])
+    if best_score < 2:  # soglia minima per evitare match casuali
+        return None
+    return best_sid
+
+
+def resolve_skills_for_session(session: dict) -> List[str]:
+    """Risolvi le skill in base a (1) service_id esplicito, (2) intent
+    inferito da messaggi+URL+file, (3) fallback BASE_SKILL.
+
+    Storia: prima ritornava SOLO BASE_SKILL quando service_id era None,
+    quindi in tutte le chat libere si attivava una sola skill
+    (`diagnosi-ai-operativa-pmi`) indipendentemente dall'intent reale.
     """
     collected = session.get("collected_data") or {}
     service_id = normalize_service_id(collected.get("service_id"))
+    if not service_id:
+        service_id = infer_service_id_from_session(session)
     skills = get_service_skills(service_id)
     if not skills:
         return [BASE_SKILL]
-    # Prepend base skill if not already there.
     if BASE_SKILL not in skills:
         skills = [BASE_SKILL] + skills
     return skills
