@@ -53,12 +53,14 @@ function renderWithCitations(text: string) {
 export function MessageBubble({
   message,
   onCheckout,
+  onGeneratePdf,
   onFollowUp,
   getAuthToken,
   messageIndex,
 }: {
   message: ChatMessage;
   onCheckout?: () => Promise<void>;
+  onGeneratePdf?: () => Promise<void>;
   onFollowUp?: (text: string) => void;
   getAuthToken?: () => Promise<string | null>;
   messageIndex?: number;
@@ -167,11 +169,11 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Report-ready CTA: only for paid users (no more 19€ unlock during free phase). */}
-        {message.reportReady && !message.reportPdfUrl && message.hasPaid && (
+        {/* Report-ready CTA: in fase free, genera direttamente il PDF (no checkout). */}
+        {message.reportReady && !message.reportPdfUrl && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
-              onClick={onCheckout}
+              onClick={message.hasPaid ? onCheckout : onGeneratePdf}
               className="inline-flex rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-black hover:opacity-90"
             >
               Genera il report PDF

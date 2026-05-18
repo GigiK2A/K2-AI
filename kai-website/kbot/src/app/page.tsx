@@ -13,6 +13,7 @@ import {
   streamMessage,
   uploadFiles,
   startCheckout,
+  generatePdf,
   fetchUrl,
   listConversations,
   createRemoteConversation,
@@ -597,6 +598,34 @@ export default function HomePage() {
     window.location.href = url;
   }
 
+  /** Fase free: genera il PDF direttamente (test_mode), poi attacca l'url al messaggio. */
+  async function generateReportPdfFromUI(messageId: string) {
+    const session = await ensureSession({ mode });
+    track("kbot_pdf_generation_requested", { mode });
+    const token = await getToken();
+    setLoading(true);
+    setError("");
+    try {
+      const { pdfUrl } = await generatePdf(session.id, token, true);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeConversation.id
+            ? {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === messageId ? { ...m, reportPdfUrl: pdfUrl } : m,
+                ),
+              }
+            : c,
+        ),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Errore generazione PDF");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (authLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050505] text-sm text-[#6b7280]">
@@ -642,6 +671,7 @@ export default function HomePage() {
                   key={m.id}
                   message={{ ...m, hasPaid }}
                   onCheckout={startCheckoutFromUI}
+                  onGeneratePdf={() => generateReportPdfFromUI(m.id)}
                   onFollowUp={handleFollowUpClick}
                   getAuthToken={getToken}
                   messageIndex={idx}
