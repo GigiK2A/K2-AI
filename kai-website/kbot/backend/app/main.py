@@ -24,6 +24,7 @@ from .api import (
     context,
     skills as skills_api,
     followups,
+    export,
 )
 from .lib.analytics import track_server
 from .lib.limiter import limiter
@@ -92,4 +93,5 @@ app.include_router(diagnostics.router, prefix="/api/kbot", tags=["diagnostics"])
 app.include_router(context.router, prefix="/api/kbot", tags=["context"])
 app.include_router(skills_api.router, prefix="/api/kbot", tags=["skills"])
 app.include_router(followups.router, prefix="/api/kbot", tags=["followups"])
+app.include_router(export.router, prefix="/api/kbot", tags=["export"])
 app.include_router(webhook.router, prefix="/api", tags=["webhook"])

@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/chat/LoadingState";
 import { InsightPanel } from "@/components/insights/InsightPanel";
 import {
   sendMessage,
+  streamMessage,
   uploadFiles,
   startCheckout,
   fetchUrl,
@@ -512,43 +513,52 @@ export default function HomePage() {
     try {
       const session = await ensureSession({ mode });
       const token = await getToken();
-      const res = await sendMessage(session.id, prompt, {
+      // Live-update the stub message as deltas stream in.
+      const patchStub = (patch: Partial<ChatMessage>) => {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeConversation.id
+              ? {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    m.id === stubMessage.id ? { ...m, ...patch } : m,
+                  ),
+                }
+              : c,
+          ),
+        );
+      };
+
+      let streamed = "";
+      let finalMessage = "";
+      await streamMessage(session.id, prompt, {
         authToken: token,
         forcedSkills: forcedSkills.length ? forcedSkills : undefined,
+        onDelta: (chunk) => {
+          streamed += chunk;
+          patchStub({ content: streamed, sessionId: session.id });
+        },
+        onDone: (res) => {
+          finalMessage = res.message;
+          const skills =
+            (res.session?.extractedData as { used_skills?: string[] } | undefined)
+              ?.used_skills ?? [];
+          setUsedSkills(skills);
+          patchStub({
+            content: res.message,
+            reportReady: res.nextAction === "show_summary",
+            sessionId: session.id,
+          });
+        },
       });
-      const skills = (res.session?.extractedData as { used_skills?: string[] } | undefined)?.used_skills ?? [];
-      setUsedSkills(skills);
-
-      const finalMessages = currentMessages.map((m) =>
-        m.id === stubMessage.id
-          ? {
-              ...m,
-              content: res.message,
-              reportReady: res.nextAction === "show_summary",
-              sessionId: session.id,
-            }
-          : m,
-      );
-      updateMessages(finalMessages);
 
       // Long-form report → fetch follow-up suggestions (non-blocking).
-      if (res.message && res.message.length > 1500) {
+      if (finalMessage && finalMessage.length > 1500) {
         void (async () => {
           try {
             const ups = await fetchFollowUps(session.id, token);
             if (ups.length) {
-              setConversations((prev) =>
-                prev.map((c) =>
-                  c.id !== activeConversation.id
-                    ? c
-                    : {
-                        ...c,
-                        messages: c.messages.map((m) =>
-                          m.id === stubMessage.id ? { ...m, followUps: ups } : m,
-                        ),
-                      },
-                ),
-              );
+              patchStub({ followUps: ups });
             }
           } catch {
             /* silent */
@@ -621,12 +631,14 @@ export default function HomePage() {
         <main className="scroll-premium flex-1 overflow-y-auto px-4 pb-24 pt-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
             <AnimatePresence>
-              {activeConversation.messages.map((m) => (
+              {activeConversation.messages.map((m, idx) => (
                 <MessageBubble
                   key={m.id}
                   message={{ ...m, hasPaid }}
                   onCheckout={startCheckoutFromUI}
                   onFollowUp={handleFollowUpClick}
+                  getAuthToken={getToken}
+                  messageIndex={idx}
                 />
               ))}
             </AnimatePresence>
