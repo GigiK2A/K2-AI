@@ -142,6 +142,13 @@ export function Composer({
     }
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (!disabled && value.trim()) onSubmit();
+    }
+  }
+
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     const pasted = e.clipboardData.getData("text");
     const match = URL_RE.exec(pasted);
@@ -184,7 +191,7 @@ export function Composer({
   ];
 
   return (
-    <div className="sticky bottom-0 mt-4 border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(5,5,5,0.2),rgba(5,5,5,0.95))] pt-3">
+    <div className="sticky bottom-0 mt-4 border-t border-[var(--line)] bg-[var(--bg-0)]/95 pt-3 backdrop-blur">
       {activeContext.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--bg-1)] px-2 py-1.5">
           <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
@@ -227,7 +234,7 @@ export function Composer({
       </div>
 
       {urlMode && (
-        <div className="mb-2 flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[#0a0a0a] px-3 py-2">
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--bg-1)] px-3 py-2">
           <Globe size={14} className="shrink-0 text-[var(--teal)]" />
           <input
             ref={urlRef}
@@ -308,6 +315,7 @@ export function Composer({
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder="Scrivi la tua richiesta…"
           className="k2-focus max-h-[170px] w-full resize-none rounded-xl border border-transparent bg-transparent px-3 py-2 text-sm leading-6"
@@ -373,7 +381,7 @@ export function Composer({
           </div>
           <button
             type="button"
-            onClick={onSubmit}
+            onClick={() => onSubmit()}
             disabled={disabled || !value.trim()}
             aria-label="Invia messaggio"
             className="rounded-xl bg-[var(--teal)] p-2 text-black disabled:opacity-50"

@@ -207,7 +207,7 @@ export function MessageBubble({
               <Download size={14} /> Scarica
             </button>
             {menuOpen && (
-              <div className="absolute z-20 mt-1 w-44 rounded-lg border border-[var(--line)] bg-[#0a0a0a] p-1 text-xs shadow-lg">
+              <div className="absolute z-20 mt-1 w-44 rounded-lg border border-[var(--line)] bg-[var(--bg-1)] p-1 text-xs shadow-lg">
                 <button
                   type="button"
                   disabled={busy !== null}

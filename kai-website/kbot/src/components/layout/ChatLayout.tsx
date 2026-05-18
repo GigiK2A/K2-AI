@@ -21,7 +21,7 @@ export function ChatLayoutHeader({
   isSignedIn?: boolean | null;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[rgba(5,5,5,0.82)] px-4 py-3 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg-0)]/85 px-4 py-3 backdrop-blur">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button onClick={onOpenSidebar} className="rounded-lg border border-[var(--line)] p-2 lg:hidden"><Menu size={16} /></button>

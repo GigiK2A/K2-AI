@@ -66,7 +66,7 @@ export function Sidebar({
           </div>
 
           <div className="absolute inset-x-4 bottom-4 rounded-xl border border-[var(--line)] p-3 text-xs text-[var(--text-soft)]">
-            <p className="font-medium text-white">Account K2-AI</p>
+            <p className="font-medium text-[var(--text-main)]">Account K2-AI</p>
             <p>Consulenza enterprise attiva</p>
           </div>
         </motion.aside>

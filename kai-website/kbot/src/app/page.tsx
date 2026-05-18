@@ -682,7 +682,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[rgba(5,5,5,0.95)] px-4 py-2 xl:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[var(--bg-0)]/95 px-4 py-2 backdrop-blur xl:hidden">
           <div className="mx-auto flex max-w-xl items-center justify-around text-xs text-[var(--text-soft)]">
             <button className="flex flex-col items-center gap-1 text-[var(--teal)]">
               <MessageCircle size={16} />Chat
