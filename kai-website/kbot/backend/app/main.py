@@ -10,8 +10,20 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from .api import (
-    session, message, upload, report, checkout, generate_pdf, status, webhook,
-    fetch_url, conversations, diagnostics,
+    session,
+    message,
+    upload,
+    report,
+    checkout,
+    generate_pdf,
+    status,
+    webhook,
+    fetch_url,
+    conversations,
+    diagnostics,
+    context,
+    skills as skills_api,
+    followups,
 )
 from .lib.analytics import track_server
 from .lib.limiter import limiter
@@ -77,4 +89,7 @@ app.include_router(status.router, prefix="/api/kbot", tags=["status"])
 app.include_router(fetch_url.router, prefix="/api/kbot", tags=["fetch-url"])
 app.include_router(conversations.router, prefix="/api/kbot", tags=["conversations"])
 app.include_router(diagnostics.router, prefix="/api/kbot", tags=["diagnostics"])
+app.include_router(context.router, prefix="/api/kbot", tags=["context"])
+app.include_router(skills_api.router, prefix="/api/kbot", tags=["skills"])
+app.include_router(followups.router, prefix="/api/kbot", tags=["followups"])
 app.include_router(webhook.router, prefix="/api", tags=["webhook"])

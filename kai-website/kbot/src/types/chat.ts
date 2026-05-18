@@ -23,6 +23,8 @@ export type ChatMessage = {
   /** Pre-generated PDF URL (if backend returned it inline). Usually null until checkout. */
   reportPdfUrl?: string | null;
   hasPaid?: boolean;
+  /** Cached follow-up question suggestions (3 chips) for long assistant reports. */
+  followUps?: string[];
 };
 
 export type Conversation = {

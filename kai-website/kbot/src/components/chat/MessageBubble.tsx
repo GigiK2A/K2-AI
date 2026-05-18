@@ -37,9 +37,11 @@ function renderWithCitations(text: string) {
 export function MessageBubble({
   message,
   onCheckout,
+  onFollowUp,
 }: {
   message: ChatMessage;
   onCheckout?: () => Promise<void>;
+  onFollowUp?: (text: string) => void;
 }) {
   const isBot = message.role === "assistant";
 
@@ -129,6 +131,21 @@ export function MessageBubble({
             <span className="text-xs text-[var(--text-muted)]">
               Documento di ~9 pagine con KPI, piano d&apos;azione e roadmap.
             </span>
+          </div>
+        )}
+
+        {isBot && message.followUps && message.followUps.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {message.followUps.slice(0, 3).map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => onFollowUp?.(q)}
+                className="rounded-full border border-[var(--line)] px-3 py-1 text-xs text-[var(--text-soft)] hover:border-[var(--teal)] hover:text-[var(--text-main)]"
+              >
+                {q}
+              </button>
+            ))}
           </div>
         )}
 

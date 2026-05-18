@@ -163,10 +163,19 @@ export async function linkSessionToUser(
  * Chat turn
  * ----------------------------------------------------------------- */
 
+export class RateLimitError extends Error {
+  retryAfter: number;
+  constructor(retryAfter: number, message = "Rate limit") {
+    super(message);
+    this.name = "RateLimitError";
+    this.retryAfter = retryAfter;
+  }
+}
+
 export async function sendMessage(
   sessionId: string,
   message: string,
-  opts: { serviceId?: string; authToken?: string | null } = {},
+  opts: { serviceId?: string; authToken?: string | null; forcedSkills?: string[] } = {},
 ): Promise<SendMessageResult> {
   const res = await fetch(`${API_BASE}/api/kbot/message`, {
     method: "POST",
@@ -175,10 +184,67 @@ export async function sendMessage(
       session_id: sessionId,
       service_id: opts.serviceId,
       message,
+      forced_skills: opts.forcedSkills,
     }),
   });
+  if (res.status === 429) {
+    const ra = parseInt(res.headers.get("retry-after") || "30", 10);
+    throw new RateLimitError(Number.isFinite(ra) && ra > 0 ? ra : 30, "Troppe richieste");
+  }
   if (!res.ok) await parseErr(res, "Errore invio messaggio");
   return res.json() as Promise<SendMessageResult>;
+}
+
+/* -----------------------------------------------------------------
+ * Context (remove a file/URL from session)
+ * ----------------------------------------------------------------- */
+
+export async function removeContextItem(
+  sessionId: string,
+  type: "file" | "url",
+  idOrName: string,
+  authToken?: string | null,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/kbot/context/remove`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, type, id_or_name: idOrName }),
+  });
+  if (!res.ok) await parseErr(res, "Errore rimozione contesto");
+}
+
+/* -----------------------------------------------------------------
+ * Skills registry
+ * ----------------------------------------------------------------- */
+
+export interface AvailableSkill {
+  name: string;
+  description: string;
+}
+
+export async function listSkills(): Promise<AvailableSkill[]> {
+  const res = await fetch(`${API_BASE}/api/kbot/skills`, { cache: "no-store" });
+  if (!res.ok) await parseErr(res, "Errore caricamento skill");
+  const data = await res.json();
+  return (data.skills as AvailableSkill[]) ?? [];
+}
+
+/* -----------------------------------------------------------------
+ * Follow-up suggestions (after long assistant reports)
+ * ----------------------------------------------------------------- */
+
+export async function fetchFollowUps(
+  sessionId: string,
+  authToken?: string | null,
+): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/api/kbot/followups`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.followups as string[]) ?? [];
 }
 
 /* -----------------------------------------------------------------

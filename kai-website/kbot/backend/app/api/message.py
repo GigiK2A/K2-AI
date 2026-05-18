@@ -71,6 +71,7 @@ class MessageBody(BaseModel):
     serviceId: Optional[str] = Field(default=None, alias="service_id")
     message: Optional[str] = None
     messages: Optional[List[dict]] = None
+    forcedSkills: Optional[List[str]] = Field(default=None, alias="forced_skills")
 
     class Config:
         populate_by_name = True
@@ -122,8 +123,21 @@ async def post_message(
     last_user_text = new_msgs[-1]["content"] if new_msgs else ""
     collected = await _auto_fetch_urls(last_user_text, collected)
 
+    # Persist forced skills (UI may toggle them on/off) into collected_data.
+    if body.forcedSkills is not None:
+        forced = [s for s in (body.forcedSkills or []) if isinstance(s, str) and s.strip()]
+        collected["forced_skills"] = forced
+
     session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages}
     skills = resolve_skills_for_session(session_for_prompt)
+    # Merge user-forced skills on top (deduped, order-preserving).
+    forced_skills: list[str] = list(collected.get("forced_skills") or [])
+    if forced_skills:
+        seen = set(skills)
+        for fs in forced_skills:
+            if fs and fs not in seen:
+                skills.append(fs)
+                seen.add(fs)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt)
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
@@ -179,6 +193,11 @@ async def post_message(
         )
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
+
+    # Always expose the skills used in this turn so the UI can render them.
+    existing_extracted = dict(collected.get("extractedData") or {})
+    existing_extracted["used_skills"] = list(skills)
+    collected["extractedData"] = existing_extracted
 
     new_step = int(session.get("step") or 1) + 1
     updated = sessions.update_session(

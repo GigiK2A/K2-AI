@@ -17,9 +17,13 @@ import {
   createRemoteConversation,
   updateRemoteConversation,
   deleteRemoteConversation,
+  removeContextItem,
+  fetchFollowUps,
+  RateLimitError,
   type UploadedFile,
   type AnalyzedUrl,
 } from "@/lib/api";
+import { RateLimitBanner } from "@/components/chat/RateLimitBanner";
 import { track } from "@/lib/analytics";
 import { ChatMessage, Conversation, Mode } from "@/types/chat";
 import { uid } from "@/lib/utils";
@@ -116,6 +120,8 @@ export default function HomePage() {
   >({});
   const [fetchingUrl, setFetchingUrl] = useState(false);
   const [analyzedUrls, setAnalyzedUrls] = useState<AnalyzedUrl[]>([]);
+  const [forcedSkills, setForcedSkills] = useState<string[]>([]);
+  const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
 
   // Track kbot_open once the chat surface mounts for an authenticated user.
   useEffect(() => {
@@ -262,6 +268,55 @@ export default function HomePage() {
           /* ignore */
         }
       })();
+    }
+  }
+
+  function handleRenameConversation(convId: string, nextTitle: string) {
+    const clean = nextTitle.trim().slice(0, 80);
+    if (!clean) return;
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convId ? { ...c, title: clean } : c)),
+    );
+  }
+
+  function toggleForcedSkill(name: string) {
+    setForcedSkills((prev) =>
+      prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name],
+    );
+  }
+
+  async function handleRemoveContext({
+    type,
+    idOrName,
+  }: {
+    type: "file" | "url";
+    idOrName: string;
+  }) {
+    const sessionId = activeConversation.kbotSessionId ?? kbotSession?.id ?? null;
+    // Optimistic UI update first.
+    if (type === "file") {
+      setPendingFiles((prev) =>
+        prev.filter((f) => f.path !== idOrName && f.name !== idOrName),
+      );
+      setContextFilesByConversation((prev) => {
+        const cur = prev[activeConversation.id] ?? [];
+        return {
+          ...prev,
+          [activeConversation.id]: cur.filter(
+            (f) => f.path !== idOrName && f.name !== idOrName,
+          ),
+        };
+      });
+    } else {
+      setAnalyzedUrls((prev) => prev.filter((u) => u.url !== idOrName));
+    }
+    if (!sessionId) return;
+    try {
+      const token = await getToken();
+      await removeContextItem(sessionId, type, idOrName, token);
+    } catch (err) {
+      // Non-fatal: backend cleanup failed but local state is already updated.
+      setError(err instanceof Error ? err.message : "Errore rimozione contesto");
     }
   }
 
@@ -424,15 +479,17 @@ export default function HomePage() {
     [activeConversation.messages, ensureSession, fetchingUrl, getToken, mode],
   );
 
-  async function handleSubmit() {
-    if (!composer.trim() || loading) return;
+  async function handleSubmit(overrideText?: string) {
+    const promptInput = (overrideText ?? composer).trim();
+    if (!promptInput || loading) return;
+    if (rateLimitUntil && rateLimitUntil > Date.now()) return;
 
     setError("");
     setLoading(true);
     const userMessage: ChatMessage = {
       id: uid("msg"),
       role: "user",
-      content: composer,
+      content: promptInput,
       ts: Date.now(),
       attachments: pendingFiles,
     };
@@ -445,9 +502,9 @@ export default function HomePage() {
     const currentMessages = [...activeConversation.messages, userMessage, stubMessage];
     updateMessages(currentMessages);
     // Auto-title: prime parole del 1° messaggio utente (se conv ancora generica).
-    maybeSetTitle(composer);
+    maybeSetTitle(promptInput);
 
-    const prompt = composer;
+    const prompt = promptInput;
     track("kbot_message_sent", { length: prompt.length, mode });
     setComposer("");
     setPendingFiles([]);
@@ -455,28 +512,64 @@ export default function HomePage() {
     try {
       const session = await ensureSession({ mode });
       const token = await getToken();
-      const res = await sendMessage(session.id, prompt, { authToken: token });
+      const res = await sendMessage(session.id, prompt, {
+        authToken: token,
+        forcedSkills: forcedSkills.length ? forcedSkills : undefined,
+      });
       const skills = (res.session?.extractedData as { used_skills?: string[] } | undefined)?.used_skills ?? [];
       setUsedSkills(skills);
 
-      updateMessages(
-        currentMessages.map((m) =>
-          m.id === stubMessage.id
-            ? {
-                ...m,
-                content: res.message,
-                reportReady: res.nextAction === "show_summary",
-                sessionId: session.id,
-              }
-            : m,
-        ),
+      const finalMessages = currentMessages.map((m) =>
+        m.id === stubMessage.id
+          ? {
+              ...m,
+              content: res.message,
+              reportReady: res.nextAction === "show_summary",
+              sessionId: session.id,
+            }
+          : m,
       );
+      updateMessages(finalMessages);
+
+      // Long-form report → fetch follow-up suggestions (non-blocking).
+      if (res.message && res.message.length > 1500) {
+        void (async () => {
+          try {
+            const ups = await fetchFollowUps(session.id, token);
+            if (ups.length) {
+              setConversations((prev) =>
+                prev.map((c) =>
+                  c.id !== activeConversation.id
+                    ? c
+                    : {
+                        ...c,
+                        messages: c.messages.map((m) =>
+                          m.id === stubMessage.id ? { ...m, followUps: ups } : m,
+                        ),
+                      },
+                ),
+              );
+            }
+          } catch {
+            /* silent */
+          }
+        })();
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Errore imprevisto");
+      if (e instanceof RateLimitError) {
+        setRateLimitUntil(Date.now() + e.retryAfter * 1000);
+        setError("");
+      } else {
+        setError(e instanceof Error ? e.message : "Errore imprevisto");
+      }
       updateMessages(activeConversation.messages);
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleFollowUpClick(text: string) {
+    void handleSubmit(text);
   }
 
   async function startCheckoutFromUI() {
@@ -511,6 +604,7 @@ export default function HomePage() {
         onSelect={setActiveId}
         onNew={handleNewConversation}
         onDelete={handleDeleteConversation}
+        onRename={handleRenameConversation}
         onClose={() => setSidebarOpen(false)}
       />
 
@@ -532,10 +626,17 @@ export default function HomePage() {
                   key={m.id}
                   message={{ ...m, hasPaid }}
                   onCheckout={startCheckoutFromUI}
+                  onFollowUp={handleFollowUpClick}
                 />
               ))}
             </AnimatePresence>
             {loading && <LoadingState />}
+            {rateLimitUntil && rateLimitUntil > Date.now() && (
+              <RateLimitBanner
+                retryAt={rateLimitUntil}
+                onExpired={() => setRateLimitUntil(null)}
+              />
+            )}
             {activeConversation.messages.length <= 2 && (
               <p className="px-4 text-center text-xs text-[var(--text-muted)]">
                 Le tue conversazioni vengono salvate sul tuo account. I documenti generati
@@ -552,13 +653,19 @@ export default function HomePage() {
               value={composer}
               onChange={setComposer}
               onSubmit={handleSubmit}
-              disabled={loading || fetchingUrl}
+              disabled={
+                loading ||
+                fetchingUrl ||
+                (rateLimitUntil !== null && rateLimitUntil > Date.now())
+              }
               suggestions={REPORT_SUGGESTIONS}
               onPickFiles={handleFilePick}
               files={pendingFiles}
               uploadingFiles={uploadingFiles}
               onFetchUrl={handleFetchUrl}
               fetchingUrl={fetchingUrl}
+              analyzedUrls={analyzedUrls}
+              onRemoveContext={handleRemoveContext}
             />
           </div>
         </div>
@@ -573,7 +680,12 @@ export default function HomePage() {
         </nav>
       </div>
 
-      <InsightPanel mode={mode} usedSkills={usedSkills} availableSkills={[]} onLeadSave={async () => {}} />
+      <InsightPanel
+        mode={mode}
+        usedSkills={usedSkills}
+        forcedSkills={forcedSkills}
+        onToggleForcedSkill={toggleForcedSkill}
+      />
     </div>
   );
 }

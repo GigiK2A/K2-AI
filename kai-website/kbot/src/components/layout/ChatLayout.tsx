@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AIStatusIndicator } from "@/components/ui/AIStatusIndicator";
 import { SkillBadge } from "@/components/chat/SkillBadge";
 import { AccountButton } from "@/components/auth/AccountButton";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function ChatLayoutHeader({
   mode,
@@ -40,6 +41,7 @@ export function ChatLayoutHeader({
               </Link>
             )}
           </div>
+          <ThemeToggle />
           {isSignedIn ? (
             <AccountButton />
           ) : (

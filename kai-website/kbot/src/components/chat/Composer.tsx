@@ -1,10 +1,45 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Globe, Loader2, Paperclip, X } from "lucide-react";
-import { UploadedFile } from "@/types/chat";
+import { ArrowUp, Globe, Loader2, Mic, MicOff, Paperclip, X } from "lucide-react";
+import { UploadedFile, AnalyzedUrl } from "@/lib/api";
 
 const URL_RE = /https?:\/\/[^\s<>"']{6,}/i;
+
+type ActiveContext =
+  | { kind: "file"; key: string; label: string; idOrName: string }
+  | { kind: "url"; key: string; label: string; idOrName: string };
+
+/** Web Speech API typing helpers (kept loose; not all browsers expose them). */
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  0: { transcript: string };
+}
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+interface SpeechRecognitionInstance {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((e: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((e: unknown) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+type SpeechRecognitionCtor = new () => SpeechRecognitionInstance;
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
 
 export function Composer({
   value,
@@ -17,6 +52,8 @@ export function Composer({
   uploadingFiles = [],
   onFetchUrl,
   fetchingUrl,
+  analyzedUrls = [],
+  onRemoveContext,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -28,12 +65,24 @@ export function Composer({
   uploadingFiles?: { name: string; size: number; type: string }[];
   onFetchUrl?: (url: string) => void;
   fetchingUrl?: boolean;
+  analyzedUrls?: AnalyzedUrl[];
+  onRemoveContext?: (item: { type: "file" | "url"; idOrName: string }) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [urlMode, setUrlMode] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const urlRef = useRef<HTMLInputElement>(null);
+
+  // Voice input ----------------------------------------------------------
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const baseValueRef = useRef("");
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [recording, setRecording] = useState(false);
+
+  useEffect(() => {
+    setVoiceSupported(getSpeechRecognitionCtor() !== null);
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
@@ -45,6 +94,53 @@ export function Composer({
   useEffect(() => {
     if (urlMode) urlRef.current?.focus();
   }, [urlMode]);
+
+  // Stop recognition on unmount.
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.abort();
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
+
+  function toggleVoice() {
+    if (recording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.lang = "it-IT";
+    rec.interimResults = true;
+    rec.continuous = true;
+    baseValueRef.current = value ? value.replace(/\s+$/, "") + " " : "";
+    rec.onresult = (e: SpeechRecognitionEventLike) => {
+      let finalChunk = "";
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalChunk += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      if (finalChunk) {
+        baseValueRef.current = (baseValueRef.current + finalChunk).replace(/\s+/g, " ");
+      }
+      onChange((baseValueRef.current + interim).trim());
+    };
+    rec.onerror = () => setRecording(false);
+    rec.onend = () => setRecording(false);
+    try {
+      rec.start();
+      recognitionRef.current = rec;
+      setRecording(true);
+    } catch {
+      setRecording(false);
+    }
+  }
 
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     const pasted = e.clipboardData.getData("text");
@@ -63,8 +159,61 @@ export function Composer({
     setUrlMode(false);
   }
 
+  // Build the "Contesto attivo" list (files + URLs).
+  const activeContext: ActiveContext[] = [
+    ...files.map((f) => ({
+      kind: "file" as const,
+      key: `f-${f.path}`,
+      label: f.name,
+      idOrName: f.path || f.name,
+    })),
+    ...analyzedUrls.map((u) => {
+      let host = u.url;
+      try {
+        host = new URL(u.url).hostname.replace(/^www\./, "");
+      } catch {
+        /* keep raw */
+      }
+      return {
+        kind: "url" as const,
+        key: `u-${u.url}`,
+        label: host,
+        idOrName: u.url,
+      };
+    }),
+  ];
+
   return (
     <div className="sticky bottom-0 mt-4 border-t border-[var(--line)] bg-[linear-gradient(180deg,rgba(5,5,5,0.2),rgba(5,5,5,0.95))] pt-3">
+      {activeContext.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--bg-1)] px-2 py-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+            Contesto attivo
+          </span>
+          {activeContext.map((ctx) => (
+            <span
+              key={ctx.key}
+              className="inline-flex max-w-[220px] items-center gap-1 rounded-full border border-[var(--teal)]/40 bg-[var(--teal-soft)] px-2 py-0.5 text-xs text-[var(--text-soft)]"
+            >
+              <span aria-hidden>{ctx.kind === "file" ? "📎" : "🌐"}</span>
+              <span className="truncate">{ctx.label}</span>
+              {onRemoveContext && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onRemoveContext({ type: ctx.kind, idOrName: ctx.idOrName })
+                  }
+                  aria-label={`Rimuovi ${ctx.label} dal contesto`}
+                  className="ml-0.5 rounded-full p-0.5 hover:bg-red-500/15 hover:text-red-400"
+                >
+                  <X size={10} />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
         {suggestions.map((s) => (
           <button
@@ -200,6 +349,27 @@ export function Composer({
                 <Globe size={15} />
               </button>
             )}
+            <button
+              type="button"
+              onClick={toggleVoice}
+              disabled={!voiceSupported}
+              aria-pressed={recording}
+              aria-label={recording ? "Ferma dettatura" : "Avvia dettatura vocale"}
+              title={
+                voiceSupported
+                  ? recording
+                    ? "Ferma dettatura"
+                    : "Dettatura vocale (it-IT)"
+                  : "Voce non supportata in questo browser"
+              }
+              className={`rounded-lg border p-2 text-[var(--text-soft)] hover:border-[var(--line-strong)] disabled:cursor-not-allowed disabled:opacity-40 ${
+                recording
+                  ? "k2-mic-recording border-red-500/60 text-red-400"
+                  : "border-[var(--line)]"
+              }`}
+            >
+              {recording ? <Mic size={15} /> : voiceSupported ? <Mic size={15} /> : <MicOff size={15} />}
+            </button>
           </div>
           <button
             type="button"
