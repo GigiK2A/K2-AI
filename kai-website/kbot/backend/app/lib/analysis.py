@@ -122,7 +122,7 @@ def _build_context_block(session: dict) -> str:
             extra = u.get("additional_pages") or []
             if extra:
                 lines.append(f"  ALTRE PAGINE CRAWLATE ({len(extra)}):")
-                for p in extra[:8]:
+                for p in extra[:20]:
                     bits = [p.get("url", "")]
                     if p.get("title"):
                         bits.append(f"title=«{p['title']}»")
@@ -253,7 +253,20 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "un campo manca, scrivi 'non rilevato — verificare manualmente'. Mai inventare title/H1.\n"
         "  • COMPETITOR ANONIMI: VIETATO 'Competitor A/B/C' con dati stimati. Solo due scelte: "
         "(1) competitor REALI nominati con fonte web_search, (2) omettere il blocco competitor e "
-        "descrivere il mercato in generale senza tabelle simulate.\n\n"
+        "descrivere il mercato in generale senza tabelle simulate.\n"
+        "  • COMPETITOR NON VERIFICATI: ogni nome competitor citato DEVE essere accompagnato da "
+        "un URL fonte ottenuto da web_search REALMENTE eseguita in questa sessione. Nomi plausibili "
+        "ma non verificati (es. 'Digital Automations', 'Yellow Tech', 'Castaldo Solutions') con "
+        "metriche specifiche ('12+ articoli', '300+ agenti in produzione', 'DA 38') = INVENZIONE "
+        "anche se i nomi suonano reali. Senza URL fonte → non includere il competitor.\n"
+        "  • DATO MERCATO/SETTORE: numeri di mercato (es. 'mercato italiano agenti AI vale 1,8 "
+        "miliardi €', '84% delle PMI non usa AI', 'CAGR +50%') DEVONO avere fonte URL inline "
+        "(report Anitec-Assinform, ISTAT, Politecnico Milano, ecc) verificata via web_search. "
+        "Senza fonte → 'stima di settore — fonte da verificare' o ometti il numero.\n"
+        "  • SEDE AZIENDA: la sede legale del cliente (città, regione) NON va mai assunta. Estraila "
+        "ESATTAMENTE dal contesto sessione (URL crawlati, file caricati, P.IVA). Se non rilevata, "
+        "scrivi 'sede da verificare'. VIETATO scrivere 'Milano/Italia', 'Roma' o altre città di "
+        "default. (Caso K2-AI: sede a Perugia, non Milano.)\n\n"
         "CATEGORIA 2 — ERRORI DI OUTPUT (verifica prima di emettere JSON):\n"
         "  • NIENTE SEZIONI VUOTE: ogni blocco dichiarato DEVE avere contenuto sostanziale. "
         "Il blocco 'conclusions' OBBLIGATORIAMENTE deve contenere: 3 problemi principali in "

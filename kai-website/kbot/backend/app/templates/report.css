@@ -475,9 +475,13 @@ table.inline-table tbody tr:last-child td { border-bottom: 0; }
 .report-footer {
   background: linear-gradient(135deg, #0F2544 0%, #1A3A6B 100%);
   color: #FFFFFF;
-  padding: 8mm 12mm 9mm;
-  margin-top: 6mm;
-  display: flex; align-items: center; gap: 6mm;
+  padding: 5mm 12mm 6mm;
+  margin-top: 5mm;
+  display: flex; align-items: center; gap: 5mm;
+  /* Footer compatto + page-break aggressivo: prova a mantenerlo
+     attaccato al blocco prima evitando pagine bianche finali. */
+  break-inside: avoid; page-break-inside: avoid;
+  break-before: avoid-page; page-break-before: avoid;
 }
 .report-footer .footer-logo {
   width: 12mm; height: 12mm; border-radius: 2.5mm;
@@ -487,20 +491,20 @@ table.inline-table tbody tr:last-child td { border-bottom: 0; }
   font-weight: 800; font-size: 11pt; letter-spacing: -0.04em;
 }
 .report-footer .footer-logo-img {
-  width: 16mm; height: 11mm; object-fit: contain;
+  width: 12mm; height: 8mm; object-fit: contain;
   filter: brightness(1.1);
   flex-shrink: 0;
 }
 .report-footer .footer-meta {
-  font-size: 9pt; line-height: 1.55; opacity: 0.9;
+  font-size: 8.5pt; line-height: 1.45; opacity: 0.9;
 }
 .report-footer .footer-meta a { color: #FFFFFF; text-decoration: none; }
 .report-footer .footer-meta .footer-row { display: flex; gap: 4mm; }
 .report-footer .footer-disclaimer {
-  margin-top: 3mm; padding-top: 2.5mm;
+  margin-top: 2mm; padding-top: 2mm;
   border-top: 0.3pt solid rgba(255,255,255,0.18);
-  font-size: 7.5pt; line-height: 1.45; opacity: 0.72;
-  font-style: italic; max-width: 165mm;
+  font-size: 7pt; line-height: 1.35; opacity: 0.72;
+  font-style: italic; max-width: 170mm;
 }
 
 /* Block standalone narrative */
@@ -560,5 +564,16 @@ details > *:not(summary) { display: revert !important; }
   table tfoot { display: table-footer-group; }
   /* Banner repeats only on first page */
   .report-banner, .banner-stripe { page-break-after: avoid; }
-  .report-footer { page-break-before: avoid; }
+  /* Footer deve restare attaccato al blocco precedente — evita pagina finale
+     quasi vuota con solo banner footer + spazio bianco. */
+  .report-footer {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-top: 4mm;
+    padding: 6mm 12mm 6mm;
+  }
+  /* Penultimo blocco: niente avoid se costringe footer a pagina nuova vuota. */
+  .block-card:last-of-type { page-break-after: avoid; break-after: avoid; }
 }

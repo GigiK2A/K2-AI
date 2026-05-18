@@ -18,8 +18,11 @@ FULL_CONTENT_HTML_THRESHOLD = 20_000
 MAX_SUMMARY_CHARS = 1_500
 MAX_REDIRECTS = 5
 
-# Multi-page crawl limits (audit SEO needs more than just the homepage).
-MAX_ADDITIONAL_PAGES = 6
+# Multi-page crawl limits — audit SEO ha bisogno della ricognizione completa
+# del sito, non solo della home. Era 6: per K2-AI.it (11 pagine reali) Sonnet
+# vedeva 7 totali e riportava "monopage o poche sezioni" anche dopo i fix
+# precedenti. Crawl parallelo, time cost di 15 page ≈ time cost di 6.
+MAX_ADDITIONAL_PAGES = 18
 ADDITIONAL_PAGE_TIMEOUT = 6.0
 ADDITIONAL_PAGE_BYTES = 300_000
 
@@ -332,7 +335,14 @@ async def _fetch_page_compact(url: str, client: httpx.AsyncClient) -> Dict[str, 
 
 
 async def _crawl_additional_pages(html: str, base_url: str) -> List[Dict[str, Any]]:
-    """Discover internal links (sitemap > homepage anchors) and fetch them in parallel."""
+    """Discover internal links e fetch parallelo.
+
+    Strategia: UNIONE sitemap + anchor discovery. Prima si usava solo
+    sitemap (se presente) e si saltava completamente la scansione degli
+    anchor — quindi pagine elencate solo nel footer (privacy/cookie/
+    note-legali) venivano omesse dal crawl. Adesso le due fonti
+    vengono fuse, deduplicate, e capate a MAX_ADDITIONAL_PAGES * 2.
+    """
     async with httpx.AsyncClient(
         follow_redirects=True,
         timeout=ADDITIONAL_PAGE_TIMEOUT,
@@ -341,12 +351,23 @@ async def _crawl_additional_pages(html: str, base_url: str) -> List[Dict[str, An
             "Accept": "text/html,application/xhtml+xml,application/xml",
         },
     ) as client:
-        candidates = await _try_sitemap(base_url, client)
-        if not candidates:
-            candidates = await _discover_internal_links(html, base_url)
+        sitemap_urls = await _try_sitemap(base_url, client)
+        anchor_urls = await _discover_internal_links(html, base_url)
+
+        # Unione preservando l'ordine: sitemap prima (più autoritativa),
+        # poi anchor (cattura privacy/cookie/footer-only).
+        seen: set = set()
+        candidates: List[str] = []
+        for u in sitemap_urls + anchor_urls:
+            norm = u.rstrip("/")
+            if norm in seen:
+                continue
+            seen.add(norm)
+            candidates.append(u)
+            if len(candidates) >= MAX_ADDITIONAL_PAGES * 2:
+                break
         if not candidates:
             return []
-        candidates = candidates[: MAX_ADDITIONAL_PAGES * 2]
         results = await asyncio.gather(
             *[_fetch_page_compact(u, client) for u in candidates],
             return_exceptions=True,
