@@ -221,7 +221,9 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "- Italiano corretto (è, à, ù, ò, ì). Numeri italiani: €31.500 non $31,500.\n"
         "- Tono pragmatico, mai marketing, mai 'rivoluzionario'/'all'avanguardia'.\n"
         "- Ogni numero quantificato, mai 'X' o placeholder.\n"
-        "- 6-10 blocchi totali, sempre executive_summary primo e conclusions ultimo.\n"
+        "- 6-8 blocchi totali (mai oltre 8), sempre executive_summary primo e conclusions ultimo.\n"
+        "- JSON COMPATTO: ogni stringa max 350 caratteri, ogni array max 8 voci, "
+        "no spazi superflui. Output deve stare in 14k tokens.\n"
         "- Coerenza interna: stesso numero in blocchi diversi senza contraddizioni.\n"
         "- Adatta i titoli e le sezioni AL CASO SPECIFICO dell'utente (investimento, marketing, "
         "legale, finanziario, tecnico…). Non c'è una struttura fissa.\n"
@@ -282,7 +284,7 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
             try:
                 return client.messages.create(
                     model=ANTHROPIC_PDF_MODEL,
-                    max_tokens=8192,
+                    max_tokens=16000,
                     system=system_blocks,
                     tools=tools,
                     messages=messages,
@@ -319,4 +321,25 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         break
     if not raw:
         raise RuntimeError("LLM returned no text block (web_search loop esaurito)")
-    return _extract_json(raw)
+    try:
+        return _extract_json(raw)
+    except (ValueError, json.JSONDecodeError) as exc:
+        # JSON troncato o malformato (max_tokens esaurito, virgola mancante, ecc).
+        # Retry singolo chiedendo a Sonnet di riemettere SOLO un JSON valido,
+        # senza tools né web_search (output puro, niente prosa).
+        log.warning("JSON parse fallita (%s), retry compact mode", exc)
+        repair_user = (
+            "Il JSON precedente era invalido o troncato. RIEMETTI ORA solo l'oggetto "
+            "{meta, blocks} valido, compatto, senza commenti né testo fuori. "
+            "Mantieni 6-8 blocchi massimo, ogni blocco essenziale. Niente fence markdown.\n\n"
+            f"CONTESTO ORIGINALE:\n{user_message[:6000]}"
+        )
+        retry = client.messages.create(
+            model=ANTHROPIC_PDF_MODEL,
+            max_tokens=16000,
+            system=system_blocks,
+            messages=[{"role": "user", "content": repair_user}],
+            timeout=180.0,
+        )
+        repaired = "".join(b.text for b in retry.content if getattr(b, "type", "") == "text")
+        return _extract_json(repaired)
