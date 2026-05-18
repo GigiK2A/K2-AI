@@ -447,7 +447,21 @@ def _sanitize_recursive(value: Any, ctx: dict) -> Any:
     if isinstance(value, dict):
         return {k: _sanitize_recursive(v, ctx) for k, v in value.items()}
     if isinstance(value, list):
-        return [_sanitize_recursive(v, ctx) for v in value]
+        # Filtra elementi vuoti: stringhe blank, dict senza testo, oggetti
+        # incompleti (es. {"text":""}). Era causa di bullet vuoti pagina 3.
+        cleaned: list = []
+        for v in value:
+            sub = _sanitize_recursive(v, ctx)
+            if isinstance(sub, str) and not sub.strip():
+                ctx["fixed"] += 1
+                continue
+            if isinstance(sub, dict):
+                # Drop dict senza alcuna stringa non-vuota
+                if not any(isinstance(x, str) and x.strip() for x in sub.values()):
+                    ctx["fixed"] += 1
+                    continue
+            cleaned.append(sub)
+        return cleaned
     if isinstance(value, str):
         s = value
         # Traffico/visite con numero secco senza disclaimer → tag stima

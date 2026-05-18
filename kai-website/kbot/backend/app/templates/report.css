@@ -204,20 +204,24 @@ h5 { font-size: 9.5pt; font-weight: 600; color: var(--text); margin: 6pt 0 3pt; 
 .exec-narrative p { font-size: 10pt; line-height: 1.65; margin-bottom: 4pt; }
 .exec-narrative p:last-child { margin-bottom: 0; }
 
+/* WeasyPrint friendly: gauge senza position absolute, flex column. SVG sopra,
+   numero+label sotto. Chrome rendeva "52/100", WeasyPrint clippava a "5/1"
+   col vecchio layout absolute. */
 .exec-gauge {
-  width: 40mm; height: 24mm; position: relative;
-  display: flex; align-items: flex-end; justify-content: center;
+  width: 42mm;
+  display: flex; flex-direction: column; align-items: center;
 }
-.exec-gauge svg { width: 100%; height: 100%; }
+.exec-gauge svg { width: 42mm; height: 25mm; display: block; }
 .exec-gauge .gauge-value {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  text-align: center;
+  text-align: center; margin-top: -10mm; /* sovrappone parzialmente l'arco */
 }
 .exec-gauge .gauge-value .num {
   font-size: 22pt; font-weight: 700; color: var(--primary); line-height: 1;
+  display: block;
 }
 .exec-gauge .gauge-value .lbl {
-  font-size: 8pt; color: var(--text-muted); margin-top: 0.5mm;
+  font-size: 8pt; color: var(--text-muted); margin-top: 1mm;
+  display: block;
 }
 
 .exec-badges { display: flex; flex-wrap: wrap; gap: 3mm; margin-top: 5mm; }
@@ -284,7 +288,10 @@ h5 { font-size: 9.5pt; font-weight: 600; color: var(--text); margin: 6pt 0 3pt; 
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8mm;
+  align-items: start;
 }
+.two-col > div { min-width: 0; word-wrap: break-word; overflow-wrap: break-word; }
+.conclusions-grid > div { min-width: 0; word-wrap: break-word; overflow-wrap: break-word; }
 .col-heading {
   font-size: 11pt; font-weight: 600; color: var(--text); margin-bottom: 3mm;
 }
@@ -571,20 +578,25 @@ details > *:not(summary) { display: revert !important; }
   table tfoot { display: table-footer-group; }
   /* Banner repeats only on first page */
   .report-banner, .banner-stripe { page-break-after: avoid; }
-  /* Footer + ultimo blocco wrap: ENTRAMBI dentro <div class="last-block-group">
-     che ha break-inside:avoid → forzano stessa pagina o vanno insieme alla
-     successiva. Elimina pagina vuota finale con solo banner footer. */
-  .last-block-group {
-    page-break-inside: avoid;
-    break-inside: avoid;
+  /* Footer + ultimo blocco wrap insieme.
+     - .last-block-group: niente break-inside:avoid (blocco potenzialmente
+       grande → forzava pagina vuota se non stava intero). Lascia flow libero.
+     - .last-block-group > .block-card override: rimuovi page-break-inside
+       avoid SOLO sull'ultimo blocco così WeasyPrint può spezzarlo e mettere
+       il footer in coda. */
+  .last-block-group > .block-card {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
   .report-footer-inline {
     page-break-before: avoid !important;
     break-before: avoid !important;
     margin-top: 4mm;
     padding: 6mm 12mm 6mm;
-    /* full-bleed: estende fino ai bordi della @page area */
     margin-left: -12mm;
     margin-right: -12mm;
+    /* Forza footer compatto, niente espansione verticale */
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
