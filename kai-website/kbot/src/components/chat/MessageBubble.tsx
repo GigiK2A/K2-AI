@@ -16,6 +16,8 @@ const EXPORT_THRESHOLD = 1500;
 function isExportable(message: ChatMessage): boolean {
   if (message.role !== "assistant") return false;
   if (!message.sessionId) return false;
+  // Export gated to post-payment users (hasPaid) or pre-generated PDF on the message.
+  if (!message.hasPaid && !message.reportPdfUrl) return false;
   if (message.reportReady) return true;
   return (message.content?.length ?? 0) >= EXPORT_THRESHOLD;
 }
@@ -165,14 +167,14 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Report-ready CTA: shown when the V2 summary has been emitted but no PDF yet */}
-        {message.reportReady && !message.reportPdfUrl && (
+        {/* Report-ready CTA: only for paid users (no more 19€ unlock during free phase). */}
+        {message.reportReady && !message.reportPdfUrl && message.hasPaid && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={onCheckout}
               className="inline-flex rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-black hover:opacity-90"
             >
-              {message.hasPaid ? "Genera il report PDF" : "Sblocca il report PDF · 19€"}
+              Genera il report PDF
             </button>
             <span className="text-xs text-[var(--text-muted)]">
               Documento di ~9 pagine con KPI, piano d&apos;azione e roadmap.
