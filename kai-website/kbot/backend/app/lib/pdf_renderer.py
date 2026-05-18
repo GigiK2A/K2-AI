@@ -251,11 +251,15 @@ def _html_to_pdf_bytes(html: str) -> bytes:
     elements) molto meglio di Chromium headless. Niente più footer isolato
     su pagina vuota: page-break-before:avoid e break-inside:avoid vengono
     applicati correttamente.
+
+    Encoding: stringa già UTF-8 in memoria, ma forziamo bytes + utf-8 encoding
+    esplicito così caratteri italiani (è, à, ò, ì, ù) e simboli (→, €, ✓, ✕)
+    non vengono mangiati dal font-fallback su sistemi senza Inter.
     """
     from weasyprint import HTML
 
-    pdf = HTML(string=html, base_url=str(TEMPLATES_DIR)).write_pdf(
-        # Margini delegati al CSS @page rules — pdf engine rispetta @page :first.
+    html_bytes = html.encode("utf-8")
+    pdf = HTML(string=html_bytes, encoding="utf-8", base_url=str(TEMPLATES_DIR)).write_pdf(
         presentational_hints=False,
         optimize_images=True,
     )

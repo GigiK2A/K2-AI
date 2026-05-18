@@ -191,15 +191,18 @@ async def generate_pdf_stream(
 
         async def heartbeat():
             start = time.monotonic()
-            # Sonnet con web_search dura tipicamente 30-90s. Mappiamo 0→60% in 70s.
-            target_duration = 70.0
+            # Sonnet + web_search + validator + repair retry: 60-180s totali.
+            # Mappiamo 5→85% in 150s. Niente più stallo "60% stuck" mentre
+            # validator gira in background.
+            target_duration = 150.0
             while not analysis_done.is_set():
                 elapsed = time.monotonic() - start
-                pct = min(60, int(60 * elapsed / target_duration))
+                pct = min(85, int(5 + 80 * elapsed / target_duration))
                 stage_text = (
                     "Ricerche web in corso..." if pct < 25
-                    else "Analisi dati e benchmark..." if pct < 45
-                    else "Strutturazione del report..."
+                    else "Analisi dati e benchmark..." if pct < 50
+                    else "Strutturazione del report..." if pct < 70
+                    else "Validazione e ripristino sezioni..."
                 )
                 yield _sse({"stage": stage_text, "progress": max(5, pct)})
                 try:
@@ -227,7 +230,7 @@ async def generate_pdf_stream(
             return
         analysis = analysis_result["data"]
 
-        yield _sse({"stage": "Rendering PDF...", "progress": 65})
+        yield _sse({"stage": "Rendering PDF...", "progress": 88})
         try:
             pdf_bytes = render_pdf(analysis, session_id=session["id"])
         except Exception as exc:
@@ -235,7 +238,7 @@ async def generate_pdf_stream(
             yield _sse({"stage": "error", "progress": 0, "error": f"rendering: {exc}"})
             return
 
-        yield _sse({"stage": "Caricamento su storage...", "progress": 88})
+        yield _sse({"stage": "Caricamento su storage...", "progress": 95})
         storage_path = _make_friendly_filename(analysis, session)
         try:
             public_url = await asyncio.to_thread(

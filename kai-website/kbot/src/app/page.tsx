@@ -14,6 +14,7 @@ import {
   uploadFiles,
   startCheckout,
   generatePdfStream,
+  getSession,
   fetchUrl,
   listConversations,
   createRemoteConversation,
@@ -653,7 +654,40 @@ export default function HomePage() {
         onMode={(m) => setMode(m)}
         conversations={conversations}
         activeId={activeId}
-        onSelect={setActiveId}
+        onSelect={(id) => {
+          setActiveId(id);
+          // Lazy-load messages reali della session backend la prima volta che
+          // la conv viene aperta. Era bug: bootstrap mostrava titoli ma
+          // messages restavano [WELCOME] vuoti → sembrava cronologia azzerata.
+          const target = conversations.find((c) => c.id === id);
+          const sessionId = target?.kbotSessionId;
+          const isStubMessages = (target?.messages.length ?? 0) <= 1;
+          if (sessionId && isStubMessages && isSignedIn) {
+            void (async () => {
+              try {
+                const token = await getToken();
+                if (!token) return;
+                const sess = await getSession(sessionId, token);
+                const backendMsgs = sess.messages || [];
+                if (!backendMsgs.length) return;
+                const mapped: ChatMessage[] = [
+                  { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
+                  ...backendMsgs.map((m) => ({
+                    id: uid("msg"),
+                    role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+                    content: typeof m.content === "string" ? m.content : "",
+                    ts: Date.now(),
+                  })),
+                ];
+                setConversations((prev) =>
+                  prev.map((c) => (c.id === id ? { ...c, messages: mapped } : c)),
+                );
+              } catch {
+                /* network fail = mantiene welcome locale */
+              }
+            })();
+          }
+        }}
         onNew={handleNewConversation}
         onDelete={handleDeleteConversation}
         onRename={handleRenameConversation}

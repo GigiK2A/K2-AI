@@ -64,13 +64,17 @@
 }
 
 html, body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Font fallback ricco per WeasyPrint Linux: Inter primary,
+     DejaVu/Liberation per simboli unicode (→, ✓, ✕, ⚠, €),
+     Noto Color Emoji per emoji se presenti. */
+  font-family: "Inter", "DejaVu Sans", "Liberation Sans",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   font-size: 10.5pt;
   line-height: 1.6;
   color: var(--text);
   background: var(--bg-page);
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "kern", "ss01";
 }
 
 /* Browser-only preview (Vite serve): center the document at ~A4 width
