@@ -1923,6 +1923,163 @@ async function summarizeKbotPdf(base64, fileName) {
   return response.content?.[0]?.type === 'text' ? response.content[0].text.trim() : '';
 }
 
+// ── SSE streaming variant of /api/kbot/chat ──────────────────────────────────
+// Emits `data: {"delta":"..."}` events per token, then `data: [DONE]`.
+// Falls back to `data: {"error":"..."}` on failure.
+async function handleKbotChatStream(req, res) {
+  if (req.method !== 'POST') {
+    res.writeHead(405, { Allow: 'POST' });
+    res.end();
+    return;
+  }
+
+  const body = await readJsonBody(req);
+  const sessionId = String(body.session_id || body.sessionId || '').trim();
+  const userMessage = String(body.message || '').trim().slice(0, 6000);
+  if (!sessionId || (!userMessage && !Array.isArray(body.messages))) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'session_id e message obbligatori' }));
+    return;
+  }
+
+  // SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const sseWrite = (data) => {
+    try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch { /* ignore */ }
+  };
+  const sseDone = () => {
+    try { res.write('data: [DONE]\n\n'); res.end(); } catch { /* ignore */ }
+  };
+  const sseError = (msg) => {
+    try { res.write(`data: ${JSON.stringify({ error: msg })}\n\n`); res.end(); } catch { /* ignore */ }
+  };
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data: session, error: sessionError } = await supabase
+      .from('kbot_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .single();
+
+    if (sessionError || !session) return sseError('Session not found');
+
+    const requestedServiceId = body.serviceId || body.service_id || session.collected_data?.service_id;
+    const serviceValidation = validateServiceId(requestedServiceId || 'P12');
+    if (!serviceValidation.ok) return sseError(serviceValidation.error);
+
+    const mode = session.collected_data?.mode === 'lead' ? 'lead' : 'report';
+    const step = Number(session.step || 1);
+    const previousMessages = Array.isArray(session.messages) ? session.messages : [];
+    const persistedMessages = coalesceKbotMessages(appendKbotUserMessage(
+      mergeKbotMessages(previousMessages, normalizeIncomingMessages(body.messages)),
+      userMessage,
+    ));
+    const currentIntent = detectKbotIntent(userMessage || persistedMessages[persistedMessages.length - 1]?.content || '', mode);
+    const preAssistantSummary = buildDynamicConversationSummary(persistedMessages, {
+      ...(session.collected_data || {}),
+      service_id: serviceValidation.serviceId,
+      currentIntent,
+    }, currentIntent);
+
+    const anthropic = createAnthropicClient();
+    let rawAssistant = '';
+
+    const stream = anthropic.messages.stream({
+      model: KBOT_MODEL,
+      max_tokens: 900,
+      system: buildKbotSystemPrompt({
+        mode,
+        sector: session.sector,
+        step,
+        session: {
+          ...session,
+          collected_data: {
+            ...(session.collected_data || {}),
+            service_id: serviceValidation.serviceId,
+            currentIntent,
+            conversationSummary: preAssistantSummary,
+          },
+        },
+      }),
+      messages: compactKbotMessages(persistedMessages).map(m => ({ role: m.role, content: m.content })),
+    });
+
+    stream.on('text', (delta) => {
+      rawAssistant += delta;
+      // Strip summary block tokens from stream — send cleaned delta
+      // We can't perfectly strip mid-stream, so send raw delta and let
+      // the client accumulate; the final message will be the cleaned one.
+      sseWrite({ delta });
+    });
+
+    await stream.finalMessage();
+
+    const isReportReady = /report_ready\s*:\s*true/i.test(rawAssistant);
+    const isLeadReady = /lead_ready\s*:\s*true/i.test(rawAssistant);
+    const summaryBlock = extractKbotSummaryBlock(rawAssistant);
+    let assistantMessage = cleanKbotAssistantMessage(stripKbotSummaryBlock(rawAssistant));
+    if (isReportReady) assistantMessage = stripTrailingQuestion(assistantMessage);
+    const leadBrief = isLeadReady ? extractLeadBrief(rawAssistant) : '';
+    const collectedData = {
+      ...(session.collected_data || {}),
+      mode,
+      service_id: serviceValidation.serviceId,
+      currentIntent,
+      ...(isReportReady ? { report_ready: true } : {}),
+      ...(isLeadReady ? { lead_ready: true } : {}),
+      ...(summaryBlock ? {
+        ...summaryBlock,
+        extractedData: {
+          ...((session.collected_data || {}).extractedData || {}),
+          ...summaryBlock,
+        },
+        summary: summaryBlock.summary,
+        recommendedTier: summaryBlock.recommendedTier,
+      } : {}),
+    };
+    const nextAction = detectKbotNextAction(mode, step, collectedData, rawAssistant);
+    const updatedMessages = [
+      ...persistedMessages,
+      { role: 'assistant', content: assistantMessage, ts: new Date().toISOString() },
+    ];
+    collectedData.conversationSummary = buildDynamicConversationSummary(updatedMessages, collectedData, currentIntent);
+    collectedData.contactPrefillSummary = buildContactPrefillSummary({ ...session, messages: updatedMessages }, collectedData);
+
+    await supabase
+      .from('kbot_sessions')
+      .update({
+        messages: updatedMessages,
+        step: step + 1,
+        path: mode === 'lead' ? 'B' : 'A',
+        collected_data: collectedData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', sessionId);
+
+    // Final event carries cleaned message + metadata
+    sseWrite({
+      done: true,
+      message: assistantMessage,
+      mode,
+      next_action: nextAction,
+      session: { ...serializeKbotSession({ ...session, messages: updatedMessages, collected_data: collectedData, updated_at: new Date().toISOString() }), step: step + 1, mode },
+      ...(summaryBlock ? { v2_summary: summaryBlock } : {}),
+    });
+    sseDone();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Errore interno';
+    const isTimeout = /timeout/i.test(msg);
+    sseError(isTimeout ? 'K-BOT è temporaneamente lento, riprova tra qualche secondo.' : msg);
+  }
+}
+
 async function handleKbotUpload(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
 
@@ -2498,6 +2655,7 @@ async function handleAdminAlert(req, res) {
 async function handleKbotApi(req, res, rawPath) {
   if (rawPath === '/api/kbot/session') return handleKbotSession(req, res);
   if (rawPath === '/api/kbot/chat') return handleKbotChat(req, res);
+  if (rawPath === '/api/kbot/chat/stream') return handleKbotChatStream(req, res);
   if (rawPath === '/api/kbot/upload') return handleKbotUpload(req, res);
   if (rawPath === '/api/kbot/teaser') return handleKbotTeaser(req, res);
   if (rawPath === '/api/kbot/contact') return handleKbotContact(req, res);
