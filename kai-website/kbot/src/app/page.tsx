@@ -87,7 +87,7 @@ function LoginFirstScreen() {
 }
 
 export default function HomePage() {
-  const { loading: authLoading, getToken, isSignedIn, hasPaid, ensureSession, resetSession } =
+  const { loading: authLoading, getToken, isSignedIn, hasPaid, ensureSession, resetSession, kbotSession } =
     useKbotAuth();
 
   const [mode, setMode] = useState<Mode>("report");
@@ -144,6 +144,36 @@ export default function HomePage() {
     [conversations, activeId],
   );
 
+  /* Per-conversation backend session: each sidebar conv must talk to its OWN
+     kbot_sessions row, otherwise switching/creating conversations leaks
+     uploaded_files + analyzed_urls across topics (Juventus + k2-ai.it mix). */
+  useEffect(() => {
+    const convSid = activeConversation.kbotSessionId ?? null;
+    const liveSid = kbotSession?.id ?? null;
+    if (convSid && convSid !== liveSid) {
+      // Switch backend session to the one bound to this conversation.
+      resetSession();
+      void ensureSession({ mode: activeConversation.mode, adopt: convSid });
+    } else if (!convSid && liveSid) {
+      // New conv with no backend session yet — drop any stale one.
+      resetSession();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation.id]);
+
+  /* Bind backend session id back to the active conversation once known. */
+  useEffect(() => {
+    if (!kbotSession?.id) return;
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === activeConversation.id && c.kbotSessionId !== kbotSession.id
+          ? { ...c, kbotSessionId: kbotSession.id }
+          : c,
+      ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kbotSession?.id, activeConversation.id]);
+
   function updateMessages(next: ChatMessage[]) {
     setConversations((prev) =>
       prev.map((c) => (c.id === activeConversation.id ? { ...c, messages: next } : c)),
@@ -183,12 +213,14 @@ export default function HomePage() {
       messages: [
         { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
       ],
+      kbotSessionId: null, // backend session creato on demand alla 1ª azione
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveId(newConv.id);
     setComposer("");
     setUsedSkills([]);
     setPendingFiles([]);
+    setAnalyzedUrls([]); // drop URL analizzati della conv precedente
   }
 
   const handleFilePick = useCallback(

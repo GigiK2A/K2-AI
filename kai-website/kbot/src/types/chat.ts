@@ -30,4 +30,6 @@ export type Conversation = {
   title: string;
   mode: Mode;
   messages: ChatMessage[];
+  /** Backend kbot_sessions.id — null until first ensureSession in this conv. */
+  kbotSessionId?: string | null;
 };
