@@ -7,13 +7,47 @@
 
 @page {
   size: A4 portrait;
-  /* Margine fisico A4 — pagine 2+ avranno questo padding intorno al contenuto
-     così niente blocchi attaccati ai bordi. La pagina 1 ha il banner full-bleed
-     che cancella questo margine top tramite margin-top negativo sul banner. */
-  margin: 14mm 0 14mm 0;
+  /* Margini fisici A4 + footer running element nel margin bottom.
+     Pagina 1: banner full-bleed annulla top margin. Tutte le pagine
+     hanno il footer fisso nel margin bottom area via @bottom-center. */
+  margin: 14mm 0 28mm 0;
+  @bottom-center {
+    content: element(reportFooter);
+    /* Vert align top of bottom margin area */
+    vertical-align: top;
+  }
 }
 @page :first {
-  margin-top: 0;  /* pagina 1: banner full-bleed senza margine fisico */
+  margin-top: 0;
+}
+
+/* Footer running: estratto dal flow, posizionato in @bottom-center.
+   WeasyPrint elimina così la pagina isolata bug presente in 11 versioni. */
+.report-footer-content {
+  position: running(reportFooter);
+}
+.footer-inner {
+  background: linear-gradient(135deg, #0F2544 0%, #1A3A6B 100%);
+  color: #FFFFFF;
+  padding: 5mm 12mm 5mm;
+  display: flex; align-items: center; gap: 5mm;
+  font-size: 8pt; line-height: 1.45;
+  width: 210mm;
+  margin-left: -0;
+}
+.footer-inner .footer-logo-img { width: 12mm; height: 8mm; object-fit: contain; flex-shrink: 0; }
+.footer-inner .footer-logo {
+  width: 8mm; height: 8mm; border-radius: 2mm;
+  background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.18);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 8pt;
+}
+.footer-inner .footer-meta { flex: 1; font-size: 7.5pt; opacity: 0.9; }
+.footer-inner .footer-meta .footer-row { display: flex; gap: 3mm; margin-top: 0.5mm; }
+.footer-inner .footer-meta .footer-disclaimer {
+  margin-top: 1.5mm; padding-top: 1.5mm;
+  border-top: 0.3pt solid rgba(255,255,255,0.18);
+  font-size: 6.5pt; line-height: 1.4; opacity: 0.7; font-style: italic;
 }
 
 /* Content area: 210mm wide × 297mm tall (A4).
@@ -305,10 +339,13 @@ h5 { font-size: 9.5pt; font-weight: 600; color: var(--text); margin: 6pt 0 3pt; 
 .col-table { margin-top: 3mm; }
 .col-badges { display: flex; flex-direction: column; gap: 2.5mm; margin-top: 1mm; }
 .col-badge-row {
-  display: flex; align-items: center; gap: 3mm;
+  display: flex; align-items: flex-start; gap: 3mm;
+  min-width: 0; /* permette al desc di shrinkare invece di overflow */
 }
 .col-badge-row .pill { flex-shrink: 0; min-width: 14mm; justify-content: center; }
 .col-badge-row .desc {
+  flex: 1 1 0; min-width: 0;
+  word-wrap: break-word; overflow-wrap: break-word;
   font-size: 9.5pt; color: var(--text-secondary); line-height: 1.45;
 }
 
@@ -352,6 +389,11 @@ table.data-table {
   font-size: 9.5pt;
   margin-top: 1mm;
 }
+/* Forza thead repeat su page-break: WeasyPrint rispetta display:table-header-group
+   ma serve esplicito + break-inside avoid sul thead stesso. */
+table.data-table thead { display: table-header-group !important; }
+table.data-table tfoot { display: table-footer-group; }
+table.data-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
 table.data-table thead th {
   background: var(--primary);
   color: #FFFFFF;
@@ -582,25 +624,6 @@ details > *:not(summary) { display: revert !important; }
   table tfoot { display: table-footer-group; }
   /* Banner repeats only on first page */
   .report-banner, .banner-stripe { page-break-after: avoid; }
-  /* Footer + ultimo blocco wrap insieme.
-     - .last-block-group: niente break-inside:avoid (blocco potenzialmente
-       grande → forzava pagina vuota se non stava intero). Lascia flow libero.
-     - .last-block-group > .block-card override: rimuovi page-break-inside
-       avoid SOLO sull'ultimo blocco così WeasyPrint può spezzarlo e mettere
-       il footer in coda. */
-  .last-block-group > .block-card {
-    page-break-inside: auto !important;
-    break-inside: auto !important;
-  }
-  .report-footer-inline {
-    page-break-before: avoid !important;
-    break-before: avoid !important;
-    margin-top: 4mm;
-    padding: 6mm 12mm 6mm;
-    margin-left: -12mm;
-    margin-right: -12mm;
-    /* Forza footer compatto, niente espansione verticale */
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
+  /* Footer è running element (vedi @page @bottom-center sopra) — niente più
+     rules legacy .report-footer-inline / .last-block-group. */
 }

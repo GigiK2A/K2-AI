@@ -95,13 +95,25 @@ def _build_context_block(session: dict) -> str:
         for u in urls:
             total_pages += 1  # homepage stessa
             total_pages += len(u.get("additional_pages") or [])
+        # Enumera ESPLICITAMENTE tutti gli URL crawlati così Sonnet non può
+        # "non vedere" privacy/cookie/note-legali e inventare numero diverso.
+        all_urls = []
+        for u in urls:
+            home = u.get("url", "")
+            if home:
+                all_urls.append(home)
+            for p in (u.get("additional_pages") or []):
+                pu = p.get("url", "")
+                if pu and pu not in all_urls:
+                    all_urls.append(pu)
         lines.append(f"\n⚠️ PAGINE INDICIZZABILI = {total_pages} ⚠️")
-        lines.append(f"Conteggio AUTORITATIVO da crawl reale: {total_pages} pagine.")
+        lines.append(f"ELENCO COMPLETO URL CRAWLATI ({total_pages} pagine):")
+        for idx, url in enumerate(all_urls[:30], 1):
+            lines.append(f"  {idx}. {url}")
         lines.append(f"OBBLIGATORIO usare {total_pages} (non altri numeri) nei blocchi 'pagine "
                      f"indicizzabili', 'metriche SEO', 'architettura', 'punti forza'. "
-                     f"VIETATO scrivere '7 pagine' o '6 sezioni' o altri conteggi parziali. "
-                     f"Il numero {total_pages} include homepage + tutte le pagine secondarie "
-                     f"(privacy, cookie, note-legali, ecc) reperite da sitemap.xml o anchor del sito.")
+                     f"VIETATO scrivere '7 pagine' o conteggi parziali. Includi privacy/cookie/"
+                     f"note-legali nel conteggio (sono pagine indicizzabili come le altre).")
         lines.append("\nURL ANALIZZATI (dati reali estratti dal crawl):")
         for u in urls[-3:]:
             lines.append(f"\n• {u.get('url', '')}")
