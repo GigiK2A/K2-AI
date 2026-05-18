@@ -252,7 +252,7 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
 
-    return session, merged_messages, collected, system_prompt, history
+    return session, merged_messages, collected, system_prompt, history, skills
 
 
 def _persist_assistant_turn(
@@ -261,6 +261,7 @@ def _persist_assistant_turn(
     merged_messages: list,
     collected: dict,
     raw_text: str,
+    skills: Optional[List[str]] = None,
 ) -> tuple[str, Optional[dict], dict]:
     """Apply summary extraction + persist assistant message. Returns (user_visible, summary, updated_session)."""
     summary = extract_summary(raw_text)
@@ -276,6 +277,13 @@ def _persist_assistant_turn(
         )
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
+
+    # Always expose skills used in this turn so the UI panel can render them
+    # (mirror of the non-streaming branch — era assente nello stream).
+    if skills is not None:
+        existing_extracted = dict(collected.get("extractedData") or {})
+        existing_extracted["used_skills"] = list(skills)
+        collected["extractedData"] = existing_extracted
 
     new_step = int(session.get("step") or 1) + 1
     updated = sessions.update_session(
@@ -300,7 +308,7 @@ async def post_message_stream(
     body: MessageBody,
     user: Optional[AuthUser] = Depends(optional_user),
 ):
-    session, merged_messages, collected, system_prompt, history = await _prepare_turn(body, user)
+    session, merged_messages, collected, system_prompt, history, skills = await _prepare_turn(body, user)
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     async def event_gen():
@@ -351,7 +359,7 @@ async def post_message_stream(
         )
         try:
             user_visible, summary, updated = _persist_assistant_turn(
-                session, body.sessionId, merged_messages, collected, raw_text
+                session, body.sessionId, merged_messages, collected, raw_text, skills
             )
         except Exception:
             log.exception("Failed to persist streamed assistant turn")
