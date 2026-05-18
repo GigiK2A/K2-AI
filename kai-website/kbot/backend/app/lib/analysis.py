@@ -198,12 +198,20 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
 
     system_prompt = (
         "Sei l'analista K2-AI che produce report premium per PMI italiane. "
-        "Output: SOLO un oggetto JSON valido `{meta, blocks}` secondo lo schema "
-        "definito nella MASTER SKILL allegata. Niente testo prima/dopo, niente code fence.\n\n"
+        "Output finale: SOLO un oggetto JSON valido `{meta, blocks}` secondo lo schema "
+        "definito nella MASTER SKILL allegata. Niente testo prima/dopo il JSON, niente code fence.\n\n"
         f"DATA CORRENTE: oggi è {today_long} ({today_human}). "
         f"Roadmap, KPI e milestone DEVONO partire da oggi e proiettarsi nel futuro "
         f"(es. 'Mese 3: {plus3_month} {plus3_year}', 'Mese 6: {plus6_month} {plus6_year}', "
         f"'Mese 12: {plus12_month} {plus12_year}'). MAI usare date passate o anni del training.\n\n"
+        "STRUMENTO web_search DISPONIBILE — USALO PRIMA DEL JSON:\n"
+        "Hai accesso a un tool `web_search` (max 6 ricerche). DEVI usarlo PRIMA di emettere il JSON "
+        "per verificare: (a) competitor reali del settore/mercato del cliente, (b) volumi keyword "
+        "e CPC indicativi se l'analisi è SEO/SEM, (c) benchmark di settore (margini, conversion "
+        "rate, costi medi), (d) normative/eventi recenti rilevanti, (e) qualunque numero o nome "
+        "che non sia già nel contesto sessione. Strategia query: italiano, specifica, geo-Italia "
+        "quando rilevante (es. 'consulenza AI PMI Italia 2026 competitor', 'benchmark conversion "
+        "rate SaaS B2B Italia'). Dopo le ricerche, sintetizza nel JSON solo dati con fonte.\n\n"
         "REGOLE FERREE:\n"
         "- Italiano corretto (è, à, ù, ò, ì). Numeri italiani: €31.500 non $31,500.\n"
         "- Tono pragmatico, mai marketing, mai 'rivoluzionario'/'all'avanguardia'.\n"
@@ -212,14 +220,26 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "- Coerenza interna: stesso numero in blocchi diversi senza contraddizioni.\n"
         "- Adatta i titoli e le sezioni AL CASO SPECIFICO dell'utente (investimento, marketing, "
         "legale, finanziario, tecnico…). Non c'è una struttura fissa.\n"
-        "- Usa SOLO i tipi di blocco documentati nella master skill.\n"
-        "- VINCOLO DATI: se nel contesto trovi 'URL ANALIZZATI', usa ESATTAMENTE i title/H1/meta "
+        "- Usa SOLO i tipi di blocco documentati nella master skill.\n\n"
+        "VINCOLI DI INTEGRITÀ — NESSUNA HALLUCINATION:\n"
+        "- VINCOLO DATI SITO: se nel contesto trovi 'URL ANALIZZATI', usa ESATTAMENTE i title/H1/meta "
         "elencati. NON inventare title o H1 alternativi. Se un campo manca, scrivi 'non rilevato' "
         "invece di inventarlo. Se architettura sito ha più pagine crawlate, NON descriverla come "
         "'monopage'.\n"
-        "- VINCOLO COMPETITOR: se non hai competitor reali nei dati di sessione, NON inventare "
-        "'Competitor A/B/C' con DA fittizi. Dichiara esplicitamente che sono benchmark di mercato "
-        "generici. Mai DA, posizioni o keyword rankate inventate per competitor specifici.\n\n"
+        "- VINCOLO COMPETITOR: VIETATO inventare 'Competitor A/B/C' con DA/keyword rankate fittizi. "
+        "Solo due scelte ammesse: (1) competitor REALI nominati esplicitamente con fonte web_search "
+        "(es. 'cribis.com', 'atoka.io'), (2) omettere il blocco competitor. Mai placeholder anonimi.\n"
+        "- VINCOLO METRICHE: ogni numero che NON sia stato direttamente fornito dal cliente "
+        "(via chat/file/URL crawl) o verificato via web_search DEVE essere etichettato come "
+        "'stima di mercato (range tipico)' con range esplicito, mai numero secco inventato. "
+        "Es. sbagliato: 'DA competitor: 38'. Es. corretto: 'DA tipico mid-market SaaS B2B Italia: "
+        "15-40 (stima di mercato, non rilevazione diretta)'.\n"
+        "- VINCOLO FONTI: ogni blocco con dati esterni (keyword, competitor, normative, benchmark) "
+        "DEVE includere nel campo 'note' o 'source' un riferimento alla fonte web_search con URL e "
+        f"data di verifica ({today_human}). Niente fonte = niente numero specifico.\n"
+        "- VINCOLO ONESTÀ: se un dato non è verificabile (es. backlink profile senza accesso "
+        "Majestic/Ahrefs), scrivi 'non misurato — richiede tool dedicato (Ahrefs/Semrush)' invece "
+        "di assumere 'N/A — sito nuovo'.\n\n"
         "SKILL E DESIGN SYSTEM:\n"
         f"{skills_payload}"
     )
@@ -234,12 +254,43 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     log.info("Generating report JSON with model=%s skills=%d-chars", ANTHROPIC_PDF_MODEL, len(skills_payload))
-    result = client.messages.create(
-        model=ANTHROPIC_PDF_MODEL,
-        max_tokens=8192,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-        timeout=180.0,
-    )
-    raw = "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
+
+    # Web search tool — Anthropic server-side, niente handler lato nostro.
+    # Il modello decide quando cercare; loop finché non emette stop_reason="end_turn"
+    # con testo finale (il JSON). max_uses limita il costo (~$10/1000 search).
+    tools = [{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}]
+
+    conversation: List[Dict[str, Any]] = [{"role": "user", "content": user_message}]
+    raw = ""
+    for _hop in range(8):  # safety cap: max 8 round-trip se il modello tool-spamma
+        result = client.messages.create(
+            model=ANTHROPIC_PDF_MODEL,
+            max_tokens=8192,
+            system=system_prompt,
+            tools=tools,
+            messages=conversation,
+            timeout=240.0,
+        )
+        stop = getattr(result, "stop_reason", None)
+        # Server-side web_search: server_tool_use + web_search_tool_result blocks
+        # vengono già rinviati al modello automaticamente — non serve gestirli.
+        # Iteriamo solo se stop_reason == "tool_use" (client-side tool, raro qui).
+        if stop == "tool_use":
+            # Echo assistant turn + dummy tool_result per chiudere il ciclo.
+            conversation.append({"role": "assistant", "content": result.content})
+            tool_uses = [b for b in result.content if getattr(b, "type", "") == "tool_use"]
+            if not tool_uses:
+                break
+            conversation.append({
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": tu.id, "content": "[no client-side tool wired]"}
+                    for tu in tool_uses
+                ],
+            })
+            continue
+        raw = "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
+        break
+    if not raw:
+        raise RuntimeError("LLM returned no text block (web_search loop esaurito)")
     return _extract_json(raw)
