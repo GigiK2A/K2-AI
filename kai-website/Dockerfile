@@ -49,13 +49,12 @@ ENV NODE_ENV=production \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-# Python 3 + WeasyPrint native deps (libpango/cairo/harfbuzz/gdk-pixbuf).
-# Era chromium per Playwright; ora WeasyPrint sync, niente headless browser.
+# Python 3 only — ReportLab è pure-python con font Helvetica builtin.
+# Niente più Chromium (Playwright) né libpango (WeasyPrint) → immagine
+# docker più piccola, cold start più rapido, zero apt-get dipendenze
+# native per il PDF rendering.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-venv \
-    ca-certificates fonts-liberation fonts-inter \
-    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b \
-    libcairo2 libgdk-pixbuf-2.0-0 shared-mime-info \
+    python3 python3-pip python3-venv ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 # -------- Install Python dependencies for kbot backend --------

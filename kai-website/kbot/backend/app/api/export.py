@@ -157,13 +157,8 @@ def _wrap_html(md_body: str, session_id: str) -> str:
 
 
 def _run_pdf(html_str: str) -> bytes:
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(_html_to_pdf_bytes(html_str))
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-        fut = ex.submit(asyncio.run, _html_to_pdf_bytes(html_str))
-        return fut.result(timeout=120)
+    """ReportLab è sync, niente più asyncio wrapper."""
+    return _html_to_pdf_bytes(html_str)
 
 
 @router.post("/render-message-pdf")

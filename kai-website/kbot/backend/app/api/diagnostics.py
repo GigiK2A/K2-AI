@@ -72,11 +72,11 @@ def _check_pdfplumber() -> Dict[str, Any]:
         return {"status": "error", "error": exc.__class__.__name__, "msg": str(exc)[:200]}
 
 
-def _check_weasyprint() -> Dict[str, Any]:
+def _check_reportlab() -> Dict[str, Any]:
     try:
-        import weasyprint  # noqa: F401
+        import reportlab  # noqa: F401
 
-        return {"status": "ok", "version": getattr(weasyprint, "__version__", "unknown")}
+        return {"status": "ok", "version": getattr(reportlab, "Version", "unknown")}
     except ImportError:
         return {"status": "missing"}
     except Exception as exc:
@@ -96,7 +96,7 @@ def _aggregate_status(checks: Dict[str, Dict[str, Any]]) -> str:
     statuses = [v.get("status") for v in checks.values()]
     if all(s == "ok" for s in statuses):
         return "ok"
-    # supabase or anthropic broken = error; only weasyprint/pdfplumber = degraded
+    # supabase or anthropic broken = error; only reportlab/pdfplumber = degraded
     critical = {"supabase", "anthropic"}
     if any(checks.get(k, {}).get("status") == "error" for k in critical):
         return "error"
@@ -119,7 +119,7 @@ def diagnostics(
         "supabase": _check_supabase(),
         "anthropic": _check_anthropic(),
         "pdfplumber": _check_pdfplumber(),
-        "weasyprint": _check_weasyprint(),
+        "reportlab": _check_reportlab(),
     }
 
     packages = {

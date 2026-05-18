@@ -2,18 +2,10 @@
 builder = "NIXPACKS"
 
 [build.nixpacksConfig]
-# WeasyPrint native deps (libpango/cairo/harfbuzz) replace chromium.
-# Lighter image + faster cold start, no headless browser.
+# ReportLab pure-Python: niente più chromium/playwright o libpango/weasyprint.
+# Helvetica built-in basta per il rendering. Immagine docker minima.
 phases.setup.aptPkgs = [
     "ca-certificates",
-    "fonts-liberation",
-    "fonts-inter",
-    "libpango-1.0-0",
-    "libpangoft2-1.0-0",
-    "libharfbuzz0b",
-    "libcairo2",
-    "libgdk-pixbuf-2.0-0",
-    "shared-mime-info",
 ]
 
 [deploy]
