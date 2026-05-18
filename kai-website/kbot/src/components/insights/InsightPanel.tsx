@@ -1,10 +1,9 @@
 "use client";
 
-import { Activity, Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Activity, Sparkles } from "lucide-react";
 import { SkillSummary } from "@/types/chat";
 import { ReportCard } from "@/components/report/ReportCard";
-import { listSkills, type AvailableSkill } from "@/lib/api";
+import type { AvailableSkill } from "@/lib/api";
 
 export function InsightPanel({
   usedSkills,
@@ -14,30 +13,10 @@ export function InsightPanel({
   /** Legacy props kept for backwards compatibility with existing callsites. */
   forcedSkills?: string[];
   onToggleForcedSkill?: (name: string) => void;
-  availableSkills?: SkillSummary[];
+  availableSkills?: SkillSummary[] | AvailableSkill[];
   onLeadSave?: (email: string) => Promise<void>;
 }) {
-  const [skills, setSkills] = useState<AvailableSkill[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const list = await listSkills();
-        if (!cancelled) setSkills(list);
-      } catch {
-        /* silent — non-critical */
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const usedSet = new Set(usedSkills);
+  const hasSkills = usedSkills.length > 0;
 
   return (
     <aside className="k2-panel hidden w-[320px] border-l p-4 xl:block">
@@ -48,43 +27,37 @@ export function InsightPanel({
 
       <div className="mt-4 space-y-3">
         <ReportCard title="Modalità" value="Report Premium" />
-        <ReportCard
-          title="Skill usate"
-          value={usedSkills.length ? usedSkills.join(" • ") : "In attesa di elaborazione"}
-        />
 
         <div className="rounded-xl border border-[var(--line)] p-3">
-          <p className="mb-2 text-xs uppercase tracking-wider text-[var(--text-muted)]">
-            Skill registry ({skills.length})
-          </p>
-          <p className="mb-2 text-[11px] text-[var(--text-muted)]">
-            L&apos;agente sceglie autonomamente quali attivare in base alla richiesta.
-          </p>
-          <div className="scroll-premium max-h-[260px] space-y-1 overflow-y-auto pr-1">
-            {loading && (
-              <p className="text-xs text-[var(--text-muted)]">Caricamento…</p>
+          <div className="mb-2 flex items-center gap-1.5">
+            <Sparkles size={12} className="text-[var(--teal)]" />
+            <p className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
+              Skill attive ora
+            </p>
+            {hasSkills && (
+              <span className="ml-auto rounded-full bg-[var(--teal-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--teal)]">
+                {usedSkills.length}
+              </span>
             )}
-            {!loading && skills.length === 0 && (
-              <p className="text-xs text-[var(--text-muted)]">Nessuna skill.</p>
-            )}
-            {skills.map((s) => {
-              const isUsed = usedSet.has(s.name);
-              return (
-                <div
-                  key={s.name}
-                  title={s.description || s.name}
-                  className={`flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1 text-left text-xs ${
-                    isUsed
-                      ? "border-[var(--teal)] bg-[var(--teal-soft)] text-[var(--text-main)]"
-                      : "border-[var(--line)] text-[var(--text-soft)]"
-                  }`}
-                >
-                  <span className="truncate">{s.name}</span>
-                  {isUsed && <Check size={12} className="shrink-0 text-[var(--teal)]" />}
-                </div>
-              );
-            })}
           </div>
+          {!hasSkills && (
+            <p className="text-xs text-[var(--text-muted)]">
+              In attesa del primo turno — l&apos;agente seleziona le skill in base alla richiesta.
+            </p>
+          )}
+          {hasSkills && (
+            <ul className="space-y-1.5">
+              {usedSkills.map((name) => (
+                <li
+                  key={name}
+                  className="flex items-center gap-2 rounded-md border border-[var(--teal)]/40 bg-[var(--teal-soft)] px-2 py-1.5 text-xs text-[var(--text-main)]"
+                >
+                  <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--teal)]" />
+                  <span className="truncate">{name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </aside>
