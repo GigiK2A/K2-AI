@@ -1,26 +1,10 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import { motion } from "framer-motion";
-import { Bot, Download, FileText, FileCode, FileType2 } from "lucide-react";
+import { Bot } from "lucide-react";
 import { ChatMessage } from "@/types/chat";
 import { prettyTime } from "@/lib/utils";
-import {
-  downloadMarkdown,
-  downloadMessageExport,
-  type MessageExportFormat,
-} from "@/lib/api";
-
-const EXPORT_THRESHOLD = 1500;
-
-function isExportable(message: ChatMessage): boolean {
-  if (message.role !== "assistant") return false;
-  if (!message.sessionId) return false;
-  // Export gated to post-payment users (hasPaid) or pre-generated PDF on the message.
-  if (!message.hasPaid && !message.reportPdfUrl) return false;
-  if (message.reportReady) return true;
-  return (message.content?.length ?? 0) >= EXPORT_THRESHOLD;
-}
 
 const CITATION_RE = /\(pag\.\s*(\d+)\)/gi;
 
@@ -55,45 +39,16 @@ export function MessageBubble({
   onCheckout,
   onGeneratePdf,
   onFollowUp,
-  getAuthToken,
-  messageIndex,
 }: {
   message: ChatMessage;
   onCheckout?: () => Promise<void>;
   onGeneratePdf?: () => Promise<void>;
   onFollowUp?: (text: string) => void;
+  /** Legacy props kept for backwards compatibility. */
   getAuthToken?: () => Promise<string | null>;
   messageIndex?: number;
 }) {
   const isBot = message.role === "assistant";
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [busy, setBusy] = useState<MessageExportFormat | "md" | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  const canExport = isExportable(message);
-
-  async function handleExport(format: MessageExportFormat | "md") {
-    if (!message.sessionId) return;
-    setBusy(format);
-    setExportError(null);
-    try {
-      if (format === "md") {
-        downloadMarkdown(message.sessionId, message.content);
-      } else {
-        const token = getAuthToken ? await getAuthToken() : null;
-        await downloadMessageExport(message.sessionId, format, {
-          messageIndex,
-          messageId: message.id,
-          authToken: token,
-        });
-      }
-      setMenuOpen(false);
-    } catch (e) {
-      setExportError(e instanceof Error ? e.message : "Errore export");
-    } finally {
-      setBusy(null);
-    }
-  }
 
   return (
     <motion.div
@@ -196,54 +151,6 @@ export function MessageBubble({
                 {q}
               </button>
             ))}
-          </div>
-        )}
-
-        {/* Inline export menu for long assistant messages */}
-        {canExport && (
-          <div className="relative mt-3">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((s) => !s)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-3 py-1.5 text-xs font-medium text-[var(--text-soft)] hover:text-[var(--text-main)]"
-              aria-expanded={menuOpen}
-            >
-              <Download size={14} /> Scarica
-            </button>
-            {menuOpen && (
-              <div className="absolute z-20 mt-1 w-44 rounded-lg border border-[var(--line)] bg-[var(--bg-1)] p-1 text-xs shadow-lg">
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() => handleExport("pdf")}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[var(--text-soft)] hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--text-main)] disabled:opacity-50"
-                >
-                  <FileType2 size={14} />
-                  {busy === "pdf" ? "Generazione PDF…" : "Scarica PDF"}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() => handleExport("md")}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[var(--text-soft)] hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--text-main)] disabled:opacity-50"
-                >
-                  <FileCode size={14} />
-                  {busy === "md" ? "Salvataggio…" : "Scarica Markdown"}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() => handleExport("docx")}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[var(--text-soft)] hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--text-main)] disabled:opacity-50"
-                >
-                  <FileText size={14} />
-                  {busy === "docx" ? "Generazione DOCX…" : "Scarica DOCX"}
-                </button>
-              </div>
-            )}
-            {exportError && (
-              <p className="mt-1 text-xs text-red-300">{exportError}</p>
-            )}
           </div>
         )}
 
