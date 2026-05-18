@@ -89,6 +89,16 @@ def _build_context_block(session: dict) -> str:
     # title/H1/architettura. Ora i dati reali del sito arrivano al modello.
     urls = collected.get("analyzed_urls") or []
     if urls:
+        # Conteggio TOTALE pagine viste (homepage + additional_pages) — il
+        # modello deve usarlo nel report invece di "7 pagine visibili nel menu".
+        total_pages = 0
+        for u in urls:
+            total_pages += 1  # homepage stessa
+            total_pages += len(u.get("additional_pages") or [])
+        lines.append(f"\nTOTALE PAGINE CRAWLATE (homepage + interne): {total_pages}")
+        lines.append("→ Questo è il conteggio AUTORITATIVO delle pagine del sito. "
+                     "Usalo nei blocchi 'pagine indicizzabili', 'architettura', 'metriche'. "
+                     "NON usare conteggi parziali (es. solo menu) come totali.")
         lines.append("\nURL ANALIZZATI (dati reali estratti dal crawl):")
         for u in urls[-3:]:
             lines.append(f"\n• {u.get('url', '')}")
@@ -270,8 +280,19 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "'success'/✓ = OK, 'warning'/⚠ = parziale, 'alert'/✗ = critico. Mai mischiare stili.\n"
         "  • TABELLE COMPLETE: ogni tabella ha intestazioni chiare, unità di misura esplicite "
         "(€, %, mesi, ore/sett), e colonna 'priorità' o 'stato' quando elenca azioni.\n"
-        "  • CONCLUSIONS BLOCK: il LAST blocco DEVE essere di type 'conclusions' con left.body_html "
-        "che elenca i 3 problemi + 3 azioni + KPI 30/60/90gg. Mai vuoto, mai generico.\n"
+        "  • CONCLUSIONS BLOCK: il LAST blocco DEVE essere di type 'conclusions' con questa "
+        "shape ESATTA — usa SOLO le chiavi indicate, non variarne i nomi:\n"
+        "    {\"type\":\"conclusions\",\"title\":\"Conclusioni e Prossimi Passi\",\n"
+        "     \"left\":{\"heading\":\"3 problemi principali\",\"heading_variant\":\"alert\",\n"
+        "             \"body_html\":\"<ol><li>Problema 1...</li><li>Problema 2...</li><li>Problema 3...</li></ol>\"},\n"
+        "     \"right\":{\"heading\":\"3 azioni immediate (settimana 1)\",\n"
+        "              \"milestones\":[\n"
+        "                {\"label\":\"Azione 1\",\"tone\":\"alert\",\"items\":[\"step concreto a\",\"step b\"]},\n"
+        "                {\"label\":\"Azione 2\",\"tone\":\"warning\",\"items\":[\"step a\",\"step b\"]},\n"
+        "                {\"label\":\"KPI 30/60/90 giorni\",\"tone\":\"neutral\",\"items\":[\"30gg: ...\",\"60gg: ...\",\"90gg: ...\"]}\n"
+        "              ]}}\n"
+        "    NOMI CHIAVE OBBLIGATORI: right.milestones (NON 'actions', 'steps', 'tasks'). "
+        "Ogni milestone con label+items+tone. Mai colonna right vuota.\n"
         "  • FOOTER DISCLAIMER: il campo 'footer.disclaimer' del JSON DEVE contenere: "
         "'Le stime di traffico, volume keyword e proiezioni sono basate su benchmark di mercato. "
         "I dati reali possono variare. Verificare con Google Search Console e strumenti di analisi "

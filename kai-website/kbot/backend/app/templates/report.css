@@ -7,7 +7,13 @@
 
 @page {
   size: A4 portrait;
-  margin: 0;
+  /* Margine fisico A4 — pagine 2+ avranno questo padding intorno al contenuto
+     così niente blocchi attaccati ai bordi. La pagina 1 ha il banner full-bleed
+     che cancella questo margine top tramite margin-top negativo sul banner. */
+  margin: 14mm 0 14mm 0;
+}
+@page :first {
+  margin-top: 0;  /* pagina 1: banner full-bleed senza margine fisico */
 }
 
 /* Content area: 210mm wide × 297mm tall (A4).
@@ -142,32 +148,36 @@ h5 { font-size: 9.5pt; font-weight: 600; color: var(--text); margin: 6pt 0 3pt; 
 }
 
 /* Body section — light gray background, white cards inside */
-.report-body { padding: 8mm 10mm 0; }
+.report-body { padding: 8mm 10mm 8mm; }
 
-/* Each block is a white card. Compact margins so 2-3 cards fit per A4 page. */
+/* Each block is a white card. Compact margins so 2-3 cards fit per A4 page.
+   NO max-height + overflow:hidden — tagliava silenziosamente blocchi alti
+   ("3 azioni immediate" o tabelle lunghe sparivano). Ora se un blocco
+   eccede l'altezza pagina, può fluire alla pagina successiva con il
+   ritaglio gestito da page-break. */
 .block-card {
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 7mm 9mm;
   margin-bottom: 5mm;
-  page-break-inside: avoid;
-  break-inside: avoid;
-  /* Hard ceiling so an oversized block can still split into the next page */
-  max-height: 252mm; /* A4 height − banner ≈ 32mm − safety 13mm */
-  overflow: hidden;
-}
-
-/* Tall blocks (long tables, narrative_split with lots of bullets) get a relaxed
-   ceiling and may break across pages cleanly. */
-.block-card.tall, .block-card:has(.data-table tbody tr:nth-child(8)),
-.block-card:has(.narrative-body) {
-  max-height: none;
+  /* Preferiamo mantenere il blocco intero su una pagina, ma se non sta
+     lasciamo che si spezzi invece di nascondere contenuto. */
   page-break-inside: auto;
   break-inside: auto;
 }
-.block-card:has(.data-table tbody tr:nth-child(8)) .block-title { break-after: avoid; }
-.block-card:has(.data-table tbody tr:nth-child(8)) tr { break-inside: avoid; }
+
+/* Blocchi compatti (executive_summary, kpi_grid, action_list corti) stanno
+   sempre su 1 pagina sola: mai spezzarli. Distinti dai blocchi "tall". */
+.block-card.compact,
+.block-card:not(:has(.data-table)):not(:has(.narrative-body)):not(:has(.conclusions-grid)) {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Titoli e righe tabella non si spezzano mai a metà */
+.block-title { break-after: avoid; page-break-after: avoid; }
+.data-table tr, .kpi-card, .milestone, .col-badge-row { break-inside: avoid; page-break-inside: avoid; }
 
 .block-title {
   font-size: 13pt; font-weight: 600; color: var(--text);

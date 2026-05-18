@@ -72,6 +72,82 @@ _CONCLUSIONS_FALLBACK_HTML = (
     "</ol>"
 )
 
+_CONCLUSIONS_RIGHT_FALLBACK = {
+    "heading": "3 azioni immediate (settimana 1)",
+    "milestones": [
+        {
+            "label": "Audit dati",
+            "tone": "neutral",
+            "items": ["Collega Google Search Console", "Esporta lista keyword/posizioni attuali"],
+        },
+        {
+            "label": "Quick win",
+            "tone": "warning",
+            "items": ["Identifica 3 quick win on-page tra le criticità rilevate"],
+        },
+        {
+            "label": "KPI 30/60/90gg",
+            "tone": "neutral",
+            "items": ["Definisci target su 3 KPI misurabili con baseline esplicita"],
+        },
+    ],
+}
+
+
+def _normalize_conclusions_right(right: dict) -> dict:
+    """Mappa varianti comuni di nomi-chiavi emessi da Sonnet → schema milestones.
+
+    Sonnet può scrivere right.actions / right.steps / right.immediate / right.tasks /
+    right.next_steps invece di right.milestones. Senza questo mapping il template
+    renderizza solo l'heading e la colonna destra appare vuota.
+    """
+    if not isinstance(right, dict):
+        return _CONCLUSIONS_RIGHT_FALLBACK.copy()
+    out = dict(right)
+    # Heading aliases.
+    if not out.get("heading"):
+        for k in ("title", "subtitle", "label"):
+            if out.get(k):
+                out["heading"] = out[k]
+                break
+    # Milestones already present and valid → keep.
+    milestones = out.get("milestones")
+    if isinstance(milestones, list) and milestones and any(isinstance(m, dict) for m in milestones):
+        return out
+    # Try common variants.
+    for alt_key in ("actions", "steps", "immediate", "tasks", "next_steps", "todos", "priorities", "weekly_actions"):
+        candidate = out.get(alt_key)
+        if isinstance(candidate, list) and candidate:
+            converted: list = []
+            for item in candidate:
+                if isinstance(item, dict):
+                    label = item.get("label") or item.get("title") or item.get("name") or item.get("action") or ""
+                    items_list = item.get("items") or item.get("steps") or item.get("details") or []
+                    if not items_list and item.get("description"):
+                        items_list = [item["description"]]
+                    tone = item.get("tone") or item.get("variant") or "neutral"
+                    converted.append({"label": str(label), "items": [str(x) for x in items_list], "tone": tone})
+                elif isinstance(item, str):
+                    converted.append({"label": item, "items": [], "tone": "neutral"})
+            if converted:
+                out["milestones"] = converted
+                return out
+    # Plain list under right.items → bullet group.
+    items = out.get("items")
+    if isinstance(items, list) and items:
+        out["milestones"] = [{"label": out.get("heading") or "Azioni", "items": [str(x) for x in items], "tone": "neutral"}]
+        return out
+    # body_html / body present → kept as-is (template gestisce fallback).
+    if out.get("body_html") or out.get("body"):
+        if out.get("body") and not out.get("body_html"):
+            out["body_html"] = f"<p>{out['body']}</p>"
+        return out
+    # Nessuna shape utilizzabile → fallback testuale onesto.
+    fallback = _CONCLUSIONS_RIGHT_FALLBACK.copy()
+    if out.get("heading"):
+        fallback["heading"] = out["heading"]
+    return fallback
+
 
 def _block_has_content(block: dict) -> bool:
     """True se il blocco ha contenuto sostanziale (non solo titolo vuoto)."""
@@ -112,11 +188,14 @@ def _normalize_blocks(blocks: list) -> list:
                 val = b.get(side)
                 if not isinstance(val, dict):
                     b[side] = {}
-            # conclusions: body_html OBBLIGATORIO. Fallback testuale onesto.
+            # conclusions: body_html OBBLIGATORIO + normalizzazione right.
             if btype == "conclusions":
                 if not b["left"].get("body_html"):
                     body = b["left"].get("body") or b.get("body_html") or b.get("body")
                     b["left"]["body_html"] = body or _CONCLUSIONS_FALLBACK_HTML
+                # Mappa varianti right.* → milestones così la colonna "azioni
+                # immediate" non resta vuota anche se Sonnet usa altri nomi.
+                b["right"] = _normalize_conclusions_right(b["right"])
         # Skip blocchi vuoti (solo titolo, niente contenuto).
         if not _block_has_content(b):
             log.warning("Block %r skipped: no content beyond title", btype)
@@ -197,12 +276,13 @@ async def _html_to_pdf_bytes(html: str) -> bytes:
                       });
                     }"""
                 )
-                # No top/bottom margins; @page rules in CSS define them.
+                # Margini delegati al CSS @page (default 14mm pagine 2+,
+                # 0 sulla pagina 1 via @page :first). Python non passa margin
+                # così il CSS vince — niente più contenuti tagliati ai bordi.
                 pdf = await page.pdf(
                     format="A4",
                     print_background=True,
                     prefer_css_page_size=True,
-                    margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
                 )
                 return pdf
             finally:
