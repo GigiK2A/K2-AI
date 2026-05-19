@@ -523,6 +523,56 @@ def _render_data_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
     return _wrap_in_card(flows)
 
 
+_FRAME_AVAIL_H = PAGE_H - MARGIN_TOP_REST - MARGIN_BOTTOM  # ~739.84pt
+_TWO_COL_SAFETY = 60  # reserve title/spacer/divider
+
+
+def _measure_flow_height(flows: List[Flowable], width: float) -> float:
+    total = 0.0
+    for f in flows:
+        try:
+            _, h = f.wrap(width, _FRAME_AVAIL_H * 4)
+        except Exception:
+            h = 0
+        total += h
+    return total
+
+
+def _two_col_or_stack(
+    left_flows: List[Flowable],
+    right_flows: List[Flowable],
+    inner_w: float,
+) -> List[Flowable]:
+    """Side-by-side via Table when fits; stacked fallback when too tall.
+
+    ReportLab non spezza una Table cell con flowables nidificati: se un lato
+    supera l'altezza del frame, esplode con 'row too large'. Misurando prima
+    e fallback a stack vertico salviamo il rendering.
+    """
+    if not left_flows and not right_flows:
+        return []
+    avail = _FRAME_AVAIL_H - _TWO_COL_SAFETY
+    cell_w = inner_w - 3 * mm
+    lh = _measure_flow_height(left_flows, cell_w)
+    rh = _measure_flow_height(right_flows, cell_w)
+    if max(lh, rh) > avail:
+        out: List[Flowable] = list(left_flows)
+        if left_flows and right_flows:
+            out.append(Spacer(1, 4 * mm))
+        out.extend(right_flows)
+        return out
+    tbl = Table([[left_flows, right_flows]], colWidths=[inner_w, inner_w])
+    tbl.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (0, 0), 3 * mm),
+        ("LEFTPADDING", (1, 0), (1, 0), 3 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    return [tbl]
+
+
 def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
     left = block.get("left") or {}
     right = block.get("right") or {}
@@ -582,16 +632,8 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
     left_flows = render_side(left)
     right_flows = render_side(right)
     inner_w = (CONTENT_W - 6 * mm) / 2
-    tbl = Table([[left_flows, right_flows]], colWidths=[inner_w, inner_w])
-    tbl.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (0, 0), 3 * mm),
-        ("LEFTPADDING", (1, 0), (1, 0), 3 * mm),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    return _wrap_in_card([_render_block_title(block.get("title") or "", s), tbl])
+    body = _two_col_or_stack(left_flows, right_flows, inner_w)
+    return _wrap_in_card([_render_block_title(block.get("title") or "", s)] + body)
 
 
 def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
@@ -707,14 +749,8 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
     if not right_flows:
         right_flows = [Paragraph("Nessuna azione specifica disponibile.", s["body_soft"])]
     inner_w = (CONTENT_W - 6 * mm) / 2
-    tbl = Table([[left_flows, right_flows]], colWidths=[inner_w, inner_w])
-    tbl.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (0, 0), 3 * mm),
-        ("LEFTPADDING", (1, 0), (1, 0), 3 * mm),
-    ]))
-    return _wrap_in_card([_render_block_title(block.get("title") or "Conclusioni e Prossimi Passi", s), tbl])
+    body = _two_col_or_stack(left_flows, right_flows, inner_w)
+    return _wrap_in_card([_render_block_title(block.get("title") or "Conclusioni e Prossimi Passi", s)] + body)
 
 
 def _render_narrative(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
