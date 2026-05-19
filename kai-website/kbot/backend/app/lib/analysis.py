@@ -200,7 +200,10 @@ def _run_llm_call(
     *,
     max_tokens: int = 16000,
     use_web_search: bool = True,
-    timeout: float = 240.0,
+    timeout: float = 120.0,
+    max_hops: int = 4,
+    web_search_uses: int = 4,
+    label: str = "llm",
 ) -> str:
     """Single Sonnet call con rate-limit backoff + web_search server-side loop.
 
@@ -209,7 +212,7 @@ def _run_llm_call(
     """
     delays = [12, 25, 45]
     tools = (
-        [{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}]
+        [{"type": "web_search_20250305", "name": "web_search", "max_uses": web_search_uses}]
         if use_web_search else []
     )
 
@@ -236,8 +239,11 @@ def _run_llm_call(
         raise last_exc if last_exc else RuntimeError("rate-limit retry loop exhausted")
 
     conversation: List[Dict[str, Any]] = [{"role": "user", "content": user_message}]
-    for _hop in range(8):
+    call_start = time.monotonic()
+    for hop in range(max_hops):
+        hop_start = time.monotonic()
         result = _create(conversation)
+        log.info("LLM[%s] hop=%d duration=%.1fs stop=%s", label, hop, time.monotonic() - hop_start, getattr(result, "stop_reason", None))
         stop = getattr(result, "stop_reason", None)
         if stop == "tool_use":
             conversation.append({"role": "assistant", "content": result.content})
@@ -252,7 +258,10 @@ def _run_llm_call(
                 ],
             })
             continue
-        return "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
+        text = "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
+        log.info("LLM[%s] DONE total=%.1fs text_len=%d", label, time.monotonic() - call_start, len(text))
+        return text
+    log.warning("LLM[%s] EXHAUSTED max_hops=%d after %.1fs", label, max_hops, time.monotonic() - call_start)
     return ""
 
 
@@ -279,7 +288,7 @@ def _generate_multi_call(
         "Usa web_search per dati benchmark/competitor REALI. Output: solo l'oggetto, "
         "niente prosa fuori, niente altri blocchi corpo né conclusions."
     )
-    raw_a = _run_llm_call(client, system_blocks, ua, max_tokens=8000, use_web_search=True)
+    raw_a = _run_llm_call(client, system_blocks, ua, max_tokens=8000, use_web_search=True, label="A.exec_summary")
     payload_a = _extract_json(raw_a)
     meta = payload_a.get("meta") or {}
     exec_summary = payload_a.get("executive_summary") or {}
@@ -298,7 +307,7 @@ def _generate_multi_call(
         f"  exec_summary.title = {str(exec_summary.get('title',''))[:120]}\n\n"
         "Output: solo l'oggetto {blocks}, niente prosa, niente footer, niente meta."
     )
-    raw_b = _run_llm_call(client, system_blocks, ub, max_tokens=12000, use_web_search=False)
+    raw_b = _run_llm_call(client, system_blocks, ub, max_tokens=12000, use_web_search=False, label="B.body")
     payload_b = _extract_json(raw_b)
     body_blocks = payload_b.get("blocks") or []
     if not isinstance(body_blocks, list):
@@ -330,7 +339,7 @@ def _generate_multi_call(
         f"  body blocks emessi = {body_summary}\n\n"
         "Output: solo l'oggetto {conclusions}, niente prosa fuori."
     )
-    raw_c = _run_llm_call(client, system_blocks, uc, max_tokens=4000, use_web_search=False)
+    raw_c = _run_llm_call(client, system_blocks, uc, max_tokens=4000, use_web_search=False, label="C.conclusions")
     payload_c = _extract_json(raw_c)
     conclusions = payload_c.get("conclusions") or {}
     log.info("Multi-call C: conclusions=%s", bool(conclusions.get("left") or conclusions.get("right")))
@@ -547,7 +556,7 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         except (ValueError, json.JSONDecodeError, RuntimeError) as exc:
             log.warning("Multi-call generation failed (%s), falling back to single-call", exc)
 
-    raw = _run_llm_call(client, system_blocks, user_message, max_tokens=16000, use_web_search=True)
+    raw = _run_llm_call(client, system_blocks, user_message, max_tokens=16000, use_web_search=True, label="single")
     if not raw:
         raise RuntimeError("LLM returned no text block (web_search loop esaurito)")
     try:
