@@ -232,7 +232,7 @@ def _html_to_paragraphs(html: str, style: ParagraphStyle, bullet_style: Optional
             for chunk in chunks:
                 txt = _clean_inline(chunk)
                 if txt:
-                    out.append(Paragraph(txt, style))
+                    out.append(_safe_paragraph(txt, style))
         else:
             items = _LIST_ITEM.findall(content)
             for i, it in enumerate(items, 1):
@@ -240,7 +240,7 @@ def _html_to_paragraphs(html: str, style: ParagraphStyle, bullet_style: Optional
                 if not txt:
                     continue
                 marker = f"{i}." if kind == "ol" else "•"
-                out.append(Paragraph(f"<b>{marker}</b>&nbsp;&nbsp;{txt}", bullet_style))
+                out.append(_safe_paragraph(f"<b>{marker}</b>&nbsp;&nbsp;{txt}", bullet_style))
     return out
 
 
@@ -250,9 +250,45 @@ def _clean_inline(txt: str) -> str:
         return ""
     txt = _TAG_STRIP.sub("", txt)
     txt = re.sub(r"\s+", " ", txt).strip()
-    # Escape & ma preserva entità note
+    # Escape & ma preserva entità note + bilancia tag inline → XML valido
     txt = txt.replace("&nbsp;", " ")
+    txt = _AMP_NOT_ENTITY.sub("&amp;", txt)
+    txt = _balance_inline_tags(txt)
     return txt
+
+
+_AMP_NOT_ENTITY = re.compile(r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)")
+_INLINE_TAGS = ("b", "i", "u")
+
+
+def _balance_inline_tags(s: str) -> str:
+    """Chiude tag <b>/<i>/<u> sbilanciati (ReportLab XML strict).
+
+    Sonnet emette markup tipo '<b>PILLAR 1: Automazione…' senza chiusura
+    quando il body_html è troncato → Paragraph.__init__ alza ValueError.
+    """
+    for tag in _INLINE_TAGS:
+        opens = len(re.findall(rf"<{tag}\b[^>]*>", s, re.IGNORECASE))
+        closes = len(re.findall(rf"</{tag}\s*>", s, re.IGNORECASE))
+        if opens > closes:
+            s = s + f"</{tag}>" * (opens - closes)
+        elif closes > opens:
+            s = f"<{tag}>" * (closes - opens) + s
+    return s
+
+
+def _safe_paragraph(txt: str, style: ParagraphStyle) -> Paragraph:
+    """Paragraph con fallback plain-text se il parser XML fallisce.
+
+    ReportLab Paragraph.__init__ alza ValueError su XML malformato anche
+    dopo _clean_inline (es. entity sconosciute, control chars residui).
+    Fallback: strip totale markup + escape & → Paragraph minimale.
+    """
+    try:
+        return Paragraph(txt, style)
+    except Exception:
+        plain = re.sub(r"<[^>]+>", "", txt or "").replace("&", "&amp;")
+        return Paragraph(plain or " ", style)
 
 
 # ---------------------------------------------------------------------------
