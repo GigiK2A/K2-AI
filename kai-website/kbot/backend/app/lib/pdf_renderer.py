@@ -27,6 +27,8 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
     BaseDocTemplate,
@@ -46,37 +48,84 @@ log = logging.getLogger(__name__)
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+FONTS_DIR = ASSETS_DIR / "fonts"
 
-# Palette K2-AI (allineata al vecchio CSS).
-PRIMARY = colors.HexColor("#0F2544")
-PRIMARY_LIGHT = colors.HexColor("#1A3A6B")
-ACCENT = colors.HexColor("#C2410C")
-ACCENT_WARM = colors.HexColor("#D97706")
-BG_PAGE = colors.HexColor("#F0F2F5")
-SURFACE = colors.HexColor("#FFFFFF")
-SURFACE_2 = colors.HexColor("#F8FAFC")
-BORDER = colors.HexColor("#E2E8F0")
-TEXT = colors.HexColor("#1A1A2E")
-TEXT_SOFT = colors.HexColor("#475569")
-TEXT_MUTED = colors.HexColor("#64748B")
-GREEN = colors.HexColor("#16A34A")
-GREEN_BG = colors.HexColor("#DCFCE7")
-GREEN_BORDER = colors.HexColor("#86EFAC")
-YELLOW = colors.HexColor("#CA8A04")
-YELLOW_BG = colors.HexColor("#FEF9C3")
-YELLOW_BORDER = colors.HexColor("#FDE68A")
-RED = colors.HexColor("#DC2626")
-RED_BG = colors.HexColor("#FEE2E2")
-RED_BORDER = colors.HexColor("#FCA5A5")
-INFO = colors.HexColor("#1D4ED8")
-INFO_BG = colors.HexColor("#DBEAFE")
+
+def _register_fonts() -> Dict[str, str]:
+    """Registra TTF Syne/DMSans/DMMono in ReportLab. Fallback Helvetica/Courier.
+
+    Ritorna mapping logical-name → fontName effettivo (per styling). Idempotente.
+    """
+    mapping = {
+        "title": "Helvetica-Bold",     # Syne-Bold
+        "title_sb": "Helvetica-Bold",  # Syne-SemiBold
+        "title_r": "Helvetica",         # Syne-Regular
+        "body": "Helvetica",            # DMSans
+        "body_sb": "Helvetica-Bold",   # DMSans-SemiBold
+        "body_it": "Helvetica-Oblique", # DMSans-Italic
+        "mono": "Courier",              # DMMono
+    }
+    pairs = [
+        ("title", "Syne-Bold", "Syne-Bold.ttf"),
+        ("title_sb", "Syne-SemiBold", "Syne-SemiBold.ttf"),
+        ("title_r", "Syne-Regular", "Syne-Regular.ttf"),
+        ("body", "DMSans-Regular", "DMSans-Regular.ttf"),
+        ("body_sb", "DMSans-SemiBold", "DMSans-SemiBold.ttf"),
+        ("body_it", "DMSans-Italic", "DMSans-Italic.ttf"),
+        ("mono", "DMMono-Regular", "DMMono-Regular.ttf"),
+    ]
+    registered = {n for n in pdfmetrics.getRegisteredFontNames()}
+    for logical, rl_name, fname in pairs:
+        if rl_name in registered:
+            mapping[logical] = rl_name
+            continue
+        path = FONTS_DIR / fname
+        if not path.exists():
+            log.warning("Font missing %s — fallback to %s", fname, mapping[logical])
+            continue
+        try:
+            pdfmetrics.registerFont(TTFont(rl_name, str(path)))
+            mapping[logical] = rl_name
+        except Exception as exc:
+            log.warning("Font register failed %s: %s — fallback %s", rl_name, exc, mapping[logical])
+    return mapping
+
+
+_FONTS = _register_fonts()
+
+# Palette Editorial Light — warm grays + gold accent, semantic colors per stato.
 WHITE = colors.HexColor("#FFFFFF")
+SURFACE = colors.HexColor("#FFFFFF")
+SURFACE_2 = colors.HexColor("#F7F7F5")   # grigio superficie (card, righe alt)
+BG_PAGE = colors.HexColor("#FFFFFF")
+BORDER = colors.HexColor("#E8E8E4")      # grigio bordo
+TEXT_MUTED = colors.HexColor("#888880")  # grigio testo muto (label, note)
+TEXT_SOFT = colors.HexColor("#666660")   # grigio body secondario
+TEXT = colors.HexColor("#1A1A1A")        # nero testo principale
+TEXT_DEEP = colors.HexColor("#0A0A0A")   # nero titoli
+PRIMARY = TEXT_DEEP
+PRIMARY_LIGHT = TEXT_MUTED
+GOLD = colors.HexColor("#C9A84C")        # oro accento (4 posti soli)
+GOLD_LIGHT = colors.HexColor("#E2C97E")
+ACCENT = GOLD
+ACCENT_WARM = colors.HexColor("#D4821A") # ambra warning
+RED = colors.HexColor("#C0392B")          # rosso alert / criticità
+RED_BG = colors.HexColor("#FBF7F7")       # red tint background
+RED_BORDER = colors.HexColor("#E8C8C4")
+GREEN = colors.HexColor("#27765C")        # verde ok / forza
+GREEN_BG = colors.HexColor("#F7FBF8")     # green tint background
+GREEN_BORDER = colors.HexColor("#C4DECF")
+YELLOW = ACCENT_WARM
+YELLOW_BG = colors.HexColor("#FBF7EE")
+YELLOW_BORDER = colors.HexColor("#E8D8B8")
+INFO = colors.HexColor("#3B4A6B")
+INFO_BG = colors.HexColor("#F4F5F8")
 
 PAGE_W, PAGE_H = A4
-MARGIN_X = 14 * mm
-MARGIN_TOP = 28 * mm  # banner space page 1
-MARGIN_TOP_REST = 14 * mm
-MARGIN_BOTTOM = 22 * mm  # footer space
+MARGIN_X = 20 * mm                       # spec: 20mm L/R
+MARGIN_TOP = 18 * mm + 28                 # 18mm + 28pt running header
+MARGIN_TOP_REST = MARGIN_TOP              # header uguale su tutte le pagine
+MARGIN_BOTTOM = 16 * mm + 22              # 16mm + 22pt footer
 
 CONTENT_W = PAGE_W - 2 * MARGIN_X
 
@@ -85,87 +134,117 @@ _styles = getSampleStyleSheet()
 
 
 def _make_styles() -> Dict[str, ParagraphStyle]:
+    """Typography Editorial Light: Syne titoli, DM Sans corpo, DM Mono dati."""
     return {
         "h1": ParagraphStyle(
             "h1", parent=_styles["Heading1"],
-            fontName="Helvetica-Bold", fontSize=18, leading=22,
-            textColor=PRIMARY, spaceAfter=4 * mm, spaceBefore=0,
+            fontName=_FONTS["title"], fontSize=28, leading=34,
+            textColor=TEXT_DEEP, spaceAfter=4 * mm, spaceBefore=0,
         ),
         "h2": ParagraphStyle(
             "h2", parent=_styles["Heading2"],
-            fontName="Helvetica-Bold", fontSize=13, leading=16,
-            textColor=TEXT, spaceAfter=3 * mm, spaceBefore=2 * mm,
-            borderPadding=0,
+            fontName=_FONTS["title_sb"], fontSize=14, leading=18,
+            textColor=TEXT_DEEP, spaceAfter=3 * mm, spaceBefore=2 * mm,
         ),
         "h3": ParagraphStyle(
             "h3", parent=_styles["Heading3"],
-            fontName="Helvetica-Bold", fontSize=10.5, leading=14,
-            textColor=TEXT, spaceAfter=2 * mm, spaceBefore=1.5 * mm,
+            fontName=_FONTS["title_sb"], fontSize=11, leading=15,
+            textColor=TEXT_DEEP, spaceAfter=2 * mm, spaceBefore=1.5 * mm,
         ),
         "body": ParagraphStyle(
             "body", parent=_styles["BodyText"],
-            fontName="Helvetica", fontSize=10, leading=14.5,
+            fontName=_FONTS["body"], fontSize=9.5, leading=14,
             textColor=TEXT, spaceAfter=2.5 * mm,
         ),
         "body_soft": ParagraphStyle(
             "body_soft", parent=_styles["BodyText"],
-            fontName="Helvetica", fontSize=9.5, leading=13.5,
+            fontName=_FONTS["body"], fontSize=9, leading=13,
             textColor=TEXT_SOFT, spaceAfter=2 * mm,
         ),
         "small": ParagraphStyle(
             "small", parent=_styles["BodyText"],
-            fontName="Helvetica", fontSize=8.5, leading=11.5,
+            fontName=_FONTS["body"], fontSize=7.5, leading=10.5,
             textColor=TEXT_MUTED, spaceAfter=1.5 * mm,
         ),
         "kpi_value": ParagraphStyle(
             "kpi_value", parent=_styles["BodyText"],
-            fontName="Helvetica-Bold", fontSize=22, leading=26,
-            textColor=PRIMARY, alignment=TA_LEFT, spaceAfter=1 * mm,
+            fontName=_FONTS["title"], fontSize=22, leading=26,
+            textColor=TEXT_DEEP, alignment=TA_LEFT, spaceAfter=1 * mm,
+        ),
+        "kpi_value_unverified": ParagraphStyle(
+            "kpi_value_unv", parent=_styles["BodyText"],
+            fontName=_FONTS["title"], fontSize=22, leading=26,
+            textColor=ACCENT_WARM, alignment=TA_LEFT, spaceAfter=1 * mm,
         ),
         "kpi_label": ParagraphStyle(
             "kpi_label", parent=_styles["BodyText"],
-            fontName="Helvetica", fontSize=7.5, leading=10,
+            fontName=_FONTS["mono"], fontSize=7.5, leading=10,
             textColor=TEXT_MUTED, spaceAfter=2 * mm,
         ),
         "kpi_note": ParagraphStyle(
             "kpi_note", parent=_styles["BodyText"],
-            fontName="Helvetica", fontSize=9, leading=12.5,
-            textColor=TEXT_SOFT, spaceAfter=1.5 * mm,
+            fontName=_FONTS["body"], fontSize=8.5, leading=11.5,
+            textColor=TEXT_MUTED, spaceAfter=1.5 * mm,
         ),
         "kpi_disclaimer": ParagraphStyle(
             "kpi_disclaimer", parent=_styles["BodyText"],
-            fontName="Helvetica-Oblique", fontSize=8, leading=10.5,
-            textColor=ACCENT, spaceAfter=1.5 * mm,
+            fontName=_FONTS["body_it"], fontSize=7.5, leading=10.5,
+            textColor=ACCENT_WARM, spaceAfter=1.5 * mm,
         ),
         "score_huge": ParagraphStyle(
             "score_huge", parent=_styles["BodyText"],
-            fontName="Helvetica-Bold", fontSize=36, leading=40,
-            textColor=PRIMARY, alignment=TA_CENTER,
+            fontName=_FONTS["title"], fontSize=36, leading=40,
+            textColor=TEXT_DEEP, alignment=TA_CENTER,
         ),
         "score_max": ParagraphStyle(
             "score_max", parent=_styles["BodyText"],
-            fontName="Helvetica", fontSize=10, leading=12,
+            fontName=_FONTS["mono"], fontSize=10, leading=12,
             textColor=TEXT_MUTED, alignment=TA_CENTER, spaceAfter=2 * mm,
         ),
         "badge": ParagraphStyle(
             "badge", parent=_styles["BodyText"],
-            fontName="Helvetica-Bold", fontSize=8.5, leading=11,
+            fontName=_FONTS["mono"], fontSize=7.5, leading=10,
             textColor=TEXT, alignment=TA_CENTER,
         ),
         "table_th": ParagraphStyle(
             "table_th", parent=_styles["BodyText"],
-            fontName="Helvetica-Bold", fontSize=8.5, leading=11,
+            fontName=_FONTS["mono"], fontSize=8, leading=10,
             textColor=WHITE, alignment=TA_LEFT,
         ),
         "table_td": ParagraphStyle(
             "table_td", parent=_styles["BodyText"],
-            fontName="Helvetica", fontSize=9, leading=12.5,
-            textColor=TEXT_SOFT, alignment=TA_LEFT,
+            fontName=_FONTS["body"], fontSize=9, leading=12,
+            textColor=TEXT, alignment=TA_LEFT,
         ),
         "table_td_bold": ParagraphStyle(
             "table_td_bold", parent=_styles["BodyText"],
-            fontName="Helvetica-Bold", fontSize=9, leading=12.5,
-            textColor=TEXT, alignment=TA_LEFT,
+            fontName=_FONTS["body_sb"], fontSize=9, leading=12,
+            textColor=TEXT_DEEP, alignment=TA_LEFT,
+        ),
+        "col_title_ok": ParagraphStyle(
+            "col_title_ok", parent=_styles["BodyText"],
+            fontName=_FONTS["title_sb"], fontSize=8, leading=11,
+            textColor=GREEN, alignment=TA_LEFT, spaceAfter=2 * mm,
+        ),
+        "col_title_alert": ParagraphStyle(
+            "col_title_alert", parent=_styles["BodyText"],
+            fontName=_FONTS["title_sb"], fontSize=8, leading=11,
+            textColor=RED, alignment=TA_LEFT, spaceAfter=2 * mm,
+        ),
+        "sprint_number": ParagraphStyle(
+            "sprint_n", parent=_styles["BodyText"],
+            fontName=_FONTS["title"], fontSize=28, leading=32,
+            textColor=BORDER, alignment=TA_CENTER,
+        ),
+        "sprint_title": ParagraphStyle(
+            "sprint_t", parent=_styles["BodyText"],
+            fontName=_FONTS["title_sb"], fontSize=11, leading=14,
+            textColor=TEXT_DEEP, spaceAfter=1 * mm,
+        ),
+        "sprint_meta": ParagraphStyle(
+            "sprint_m", parent=_styles["BodyText"],
+            fontName=_FONTS["mono"], fontSize=7.5, leading=10,
+            textColor=TEXT_MUTED, spaceAfter=1 * mm,
         ),
     }
 
@@ -376,13 +455,14 @@ class GaugeArc(Flowable):
 
 
 def _render_block_title(title: str, s: Dict[str, ParagraphStyle]) -> Flowable:
-    """Titolo blocco con barra orange accent sotto."""
+    """Titolo sezione Editorial Light: Syne SemiBold 14pt + linea muta 0.75pt sotto."""
     t = Table([[Paragraph(title, s["h2"])]], colWidths=[CONTENT_W])
     t.setStyle(TableStyle([
-        ("LINEBELOW", (0, 0), (-1, -1), 1.2, ACCENT),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.75, BORDER),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2 * mm),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 2 * mm),
     ]))
     return t
 
@@ -458,10 +538,16 @@ def _render_executive_summary(block: dict, s: Dict[str, ParagraphStyle]) -> List
 
 
 def _render_kpi_grid(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """KPI cards Editorial: sfondo F7F7F5, bordo E8E8E4, bordo TOP 2.5pt GOLD UNIFICATO.
+
+    Spec: oro appare solo in 4 posti — qui è il bordo top KPI card. Non variabile
+    per variant (warning/alert): la semantica passa per il colore del value
+    (ACCENT_WARM se verified:false) e del note italic.
+    """
     items = block.get("items") or block.get("kpis") or block.get("cards") or []
     if not items:
         return []
-    cols = 3 if len(items) >= 6 else 2
+    cols = 3 if len(items) >= 5 else 2
     cells: List[List[List[Flowable]]] = []
     row: List[List[Flowable]] = []
     for item in items[:12]:
@@ -470,24 +556,21 @@ def _render_kpi_grid(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable
         label = (item.get("label") or "").upper()
         value = str(item.get("value") or "")
         note = item.get("note") or item.get("description") or ""
-        variant = item.get("variant") or "neutral"
         sub = item.get("sub") or item.get("subtitle") or ""
-        # verified flag: True (default) = dato misurato, False = stima/non verificato
         verified = item.get("verified")
+        value_style = s["kpi_value_unverified"] if verified is False else s["kpi_value"]
         value_html = _clean_inline(value)
         if verified is False and value_html:
-            value_html = f'<font color="#C2410C">†</font> {value_html}'
-        cell = [
-            Paragraph(label, s["kpi_label"]),
-            Paragraph(value_html, s["kpi_value"]),
+            value_html = f"† {value_html}"
+        cell: List[Flowable] = [
+            Paragraph(_clean_inline(label), s["kpi_label"]),
+            Paragraph(value_html, value_style),
         ]
         if sub:
             cell.append(Paragraph(_clean_inline(sub), s["kpi_note"]))
         if note:
             note_style = s["kpi_disclaimer"] if verified is False else s["small"]
             cell.append(Paragraph(_clean_inline(note), note_style))
-        # Salva variant per styling sotto
-        cell.append(_VariantMarker(variant))
         row.append(cell)
         if len(row) == cols:
             cells.append(row)
@@ -498,27 +581,23 @@ def _render_kpi_grid(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable
         cells.append(row)
     if not cells:
         return []
-    col_w = (CONTENT_W) / cols
-    tbl_data = [[c[:-1] if c else "" for c in r] for r in cells]
-    tbl = Table(tbl_data, colWidths=[col_w] * cols)
+    col_w = CONTENT_W / cols
+    tbl = Table(cells, colWidths=[col_w] * cols)
     style_cmds = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 5 * mm),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5 * mm),
-        ("TOPPADDING", (0, 0), (-1, -1), 5 * mm),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5 * mm),
-        ("BOX", (0, 0), (-1, -1), 0.4, BORDER),
-        ("BACKGROUND", (0, 0), (-1, -1), SURFACE),
-        ("INNERGRID", (0, 0), (-1, -1), 0.4, BORDER),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 14),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
+        ("BOX", (0, 0), (-1, -1), 1, BORDER),
+        ("INNERGRID", (0, 0), (-1, -1), 1, BORDER),
+        ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
     ]
-    # Border top variant color per cell
+    # Bordo TOP oro 2.5pt — unico accento gold visibile sulle card
     for r_idx, r in enumerate(cells):
         for c_idx, cell in enumerate(r):
             if cell:
-                marker = cell[-1]
-                v = getattr(marker, "variant", "neutral").lower()
-                color_map = {"ok": GREEN, "success": GREEN, "warning": ACCENT_WARM, "alert": RED, "critical": RED, "neutral": PRIMARY}
-                style_cmds.append(("LINEABOVE", (c_idx, r_idx), (c_idx, r_idx), 2.0, color_map.get(v, PRIMARY)))
+                style_cmds.append(("LINEABOVE", (c_idx, r_idx), (c_idx, r_idx), 2.5, GOLD))
     tbl.setStyle(TableStyle(style_cmds))
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "Metriche", s), [tbl]))
 
@@ -551,22 +630,24 @@ def _render_data_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
             body_row.append(Paragraph("", s["table_td"]))
         body_rows.append(body_row)
     n_cols = len(cols)
-    col_w = (CONTENT_W) / n_cols
+    col_w = CONTENT_W / n_cols
     tbl = Table([header_row] + body_rows, colWidths=[col_w] * n_cols, repeatRows=1)
     style_cmds: List[Any] = [
-        ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+        # Header riga: sfondo nero TEXT_DEEP, mono uppercase white
+        ("BACKGROUND", (0, 0), (-1, 0), TEXT_DEEP),
         ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 8.5),
+        ("FONTNAME", (0, 0), (-1, 0), _FONTS["mono"]),
+        ("FONTSIZE", (0, 0), (-1, 0), 8),
         ("ALIGN", (0, 0), (-1, 0), "LEFT"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3 * mm),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3 * mm),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.5 * mm),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5 * mm),
-        ("LINEBELOW", (0, 0), (-1, -1), 0.3, BORDER),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        # Bordi solo orizzontali 0.5pt
+        ("LINEBELOW", (0, 0), (-1, -1), 0.5, BORDER),
     ]
-    # Zebra striping
+    # Righe alternate bianco/F7F7F5
     for i in range(1, len(body_rows) + 1):
         if i % 2 == 0:
             style_cmds.append(("BACKGROUND", (0, i), (-1, i), SURFACE_2))
@@ -635,24 +716,44 @@ def _two_col_or_stack(
     return [tbl]
 
 
+def _bullet_paragraph(text: str, style: ParagraphStyle) -> Paragraph:
+    """Bullet point con · oro (spec: bullet · oro + testo body)."""
+    return _safe_paragraph(
+        f'<font color="#C9A84C">·</font>&nbsp;&nbsp;{_clean_inline(text)}',
+        style,
+    )
+
+
 def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Two-column Editorial: sinistra verde tinted, destra rosso tinted, bullet oro.
+
+    Convention: left = punti forza (ok), right = gap (alert). Le tinte bg
+    + colore titolo derivano dalla posizione, NON da heading_variant del blocco.
+    """
     left = block.get("left") or {}
     right = block.get("right") or {}
 
-    def render_side(side: dict) -> List[Flowable]:
+    def render_side(side: dict, is_left: bool) -> List[Flowable]:
         out: List[Flowable] = []
+        title_style = s["col_title_ok"] if is_left else s["col_title_alert"]
         if side.get("heading"):
-            out.append(Paragraph(_clean_inline(side["heading"]), s["h3"]))
+            heading_upper = _clean_inline(side["heading"]).upper()
+            out.append(_safe_paragraph(heading_upper, title_style))
         if side.get("body_html"):
-            out.extend(_html_to_paragraphs(side["body_html"], s["body_soft"], bullet_style=s["body_soft"]))
+            # Use bullet paragraph for list items; prosa libera resta body_soft
+            html = side["body_html"]
+            # Pre-process: convert <li>X</li> → bullet oro
+            parsed = _html_to_paragraphs(html, s["body"])
+            out.extend(parsed)
         if side.get("body"):
-            out.append(Paragraph(_clean_inline(side["body"]), s["body_soft"]))
+            out.append(_safe_paragraph(_clean_inline(side["body"]), s["body"]))
         badges = side.get("badges") or []
         for b in badges:
             if not isinstance(b, dict):
                 continue
             row = Table(
-                [[_badge_pill(b.get("label") or "", b.get("variant") or "neutral"), Paragraph(_clean_inline(b.get("description") or ""), s["body_soft"])]],
+                [[_badge_pill(b.get("label") or "", b.get("variant") or "neutral"),
+                  _safe_paragraph(_clean_inline(b.get("description") or ""), s["body"])]],
                 colWidths=[28 * mm, None],
             )
             row.setStyle(TableStyle([
@@ -666,35 +767,47 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
             tbl_d = side["table"]
             if tbl_d.get("columns") and tbl_d.get("rows"):
                 rendered = _render_data_table({"table": tbl_d, "title": ""}, s)
-                for r in rendered:
-                    if not (hasattr(r, "_card_wrap") and r._card_wrap):
-                        out.append(r)
+                out.extend(rendered)
         callout = side.get("callout")
         if callout and isinstance(callout, dict):
-            tone = callout.get("tone") or "info"
-            bg = INFO_BG if tone == "info" else YELLOW_BG if tone == "warning" else RED_BG
-            brd = INFO if tone == "info" else YELLOW if tone == "warning" else RED
             label = callout.get("label") or ""
             body = callout.get("body") or ""
             label_html = f"<b>{_clean_inline(label)}:</b> " if label else ""
-            cb = Paragraph(f"{label_html}{_clean_inline(body)}", s["body_soft"])
+            cb = _safe_paragraph(f"{label_html}{_clean_inline(body)}", s["body"])
             cbt = Table([[cb]], colWidths=[None])
             cbt.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), bg),
-                ("LINEBEFORE", (0, 0), (0, -1), 2.5, brd),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4 * mm),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4 * mm),
-                ("TOPPADDING", (0, 0), (-1, -1), 3 * mm),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3 * mm),
+                ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
+                ("LINEBEFORE", (0, 0), (0, -1), 2.5, GOLD),
+                ("LEFTPADDING", (0, 0), (-1, -1), 12),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
             ]))
             out.append(Spacer(1, 2 * mm))
             out.append(cbt)
         return out
 
-    left_flows = render_side(left)
-    right_flows = render_side(right)
+    def _tint_panel(flows: List[Flowable], bg: colors.Color) -> Flowable:
+        """Wrap flows in single-cell Table con sfondo tinted."""
+        if not flows:
+            return Spacer(0, 0)
+        t = Table([[flows]], colWidths=[None])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), bg),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        return t
+
+    left_flows = render_side(left, is_left=True)
+    right_flows = render_side(right, is_left=False)
+    left_panel = [_tint_panel(left_flows, GREEN_BG)] if left_flows else []
+    right_panel = [_tint_panel(right_flows, RED_BG)] if right_flows else []
     inner_w = (CONTENT_W - 6 * mm) / 2
-    body = _two_col_or_stack(left_flows, right_flows, inner_w)
+    body = _two_col_or_stack(left_panel, right_panel, inner_w)
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "", s), body))
 
 
@@ -702,6 +815,7 @@ def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
     actions = block.get("actions") or block.get("items") or []
     if not actions:
         return []
+    """Sprint/azione list Editorial: numero 28pt grigio decorativo, no box."""
     rows = []
     for i, a in enumerate(actions[:12], 1):
         if not isinstance(a, dict):
@@ -711,30 +825,35 @@ def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
         priority = a.get("priority") or ""
         impact = a.get("impact") or ""
         effort = a.get("effort") or a.get("complexity") or ""
-        meta = " · ".join(filter(None, [
-            f"Priorità: {priority}" if priority else None,
-            f"Impatto: {impact}" if impact else None,
-            f"Effort: {effort}" if effort else None,
+        meta = "  ·  ".join(filter(None, [
+            f"PRIORITÀ {priority.upper()}" if priority else None,
+            f"IMPATTO {impact.upper()}" if impact else None,
+            f"EFFORT {effort.upper()}" if effort else None,
         ]))
-        num_para = Paragraph(f"<b>{i}</b>", ParagraphStyle("n", parent=s["body"], fontSize=14, fontName="Helvetica-Bold", textColor=ACCENT, alignment=TA_CENTER))
-        content = [Paragraph(f"<b>{_clean_inline(title)}</b>", s["body"])]
-        if body:
-            content.append(Paragraph(_clean_inline(body), s["body_soft"]))
+        # Numero grande grigio chiarissimo decorativo (Syne Bold 28pt BORDER)
+        num_para = _safe_paragraph(f"{i:02d}", s["sprint_number"])
+        content: List[Flowable] = [
+            _safe_paragraph(_clean_inline(title), s["sprint_title"]),
+        ]
         if meta:
-            content.append(Paragraph(meta, s["small"]))
+            content.append(_safe_paragraph(meta, s["sprint_meta"]))
+        if body:
+            content.append(_safe_paragraph(_clean_inline(body), s["body"]))
         rows.append([num_para, content])
     if not rows:
         return []
-    tbl = Table(rows, colWidths=[12 * mm, None])
-    tbl.setStyle(TableStyle([
+    tbl = Table(rows, colWidths=[16 * mm, None])
+    style_cmds = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 2 * mm),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 2 * mm),
-        ("TOPPADDING", (0, 0), (-1, -1), 3 * mm),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3 * mm),
-        ("LINEBELOW", (0, 0), (-1, -2), 0.3, BORDER),
-        ("BACKGROUND", (0, 0), (0, -1), SURFACE_2),
-    ]))
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]
+    # Separatore bottom 0.5pt — non sull'ultimo
+    for i in range(len(rows) - 1):
+        style_cmds.append(("LINEBELOW", (0, i), (-1, i), 0.5, BORDER))
+    tbl.setStyle(TableStyle(style_cmds))
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "Azioni", s), [tbl]))
 
 
@@ -768,50 +887,102 @@ def _render_risk_mitigation(block: dict, s: Dict[str, ParagraphStyle]) -> List[F
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "Rischi", s), [tbl]))
 
 
+class _CircleNumber(Flowable):
+    """Cerchio nero pieno con numero bianco al centro (Syne Bold 10pt)."""
+    def __init__(self, num: int, diameter: float = 16, color=TEXT_DEEP):
+        super().__init__()
+        self.num = num
+        self.d = diameter
+        self.color = color
+
+    def wrap(self, aw, ah):
+        return self.d, self.d
+
+    def draw(self):
+        c = self.canv
+        c.setFillColor(self.color)
+        c.circle(self.d / 2, self.d / 2, self.d / 2, stroke=0, fill=1)
+        c.setFillColor(WHITE)
+        c.setFont(_FONTS["title_sb"], 9)
+        # Approx center text
+        c.drawCentredString(self.d / 2, self.d / 2 - 3, str(self.num))
+
+
+_LI_SPLIT = re.compile(r"<li[^>]*>(.*?)</li>", re.IGNORECASE | re.DOTALL)
+
+
+def _parse_ol_items(html: str) -> List[str]:
+    """Estrae plain text dei <li> ignorando wrapping <ol>/<ul>."""
+    return [_clean_inline(m) for m in _LI_SPLIT.findall(html or "")]
+
+
 def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Conclusions Editorial: sinistra problemi con cerchio nero, destra azioni
+    con callout border-left oro."""
     left = block.get("left") or {}
     right = block.get("right") or {}
+
+    # Sinistra: 3 problemi con cerchio nero
     left_flows: List[Flowable] = []
-    if left.get("heading"):
-        left_flows.append(Paragraph(_clean_inline(left["heading"]), s["h3"]))
-    if left.get("body_html"):
-        left_flows.extend(_html_to_paragraphs(left["body_html"], s["body_soft"], bullet_style=s["body_soft"]))
-    elif left.get("body"):
-        left_flows.append(Paragraph(_clean_inline(left["body"]), s["body_soft"]))
-    right_flows: List[Flowable] = []
+    problems = _parse_ol_items(left.get("body_html") or "")
+    if not problems and left.get("body"):
+        problems = [_clean_inline(left["body"])]
+    for i, prob in enumerate(problems[:5], 1):
+        if not prob:
+            continue
+        row = Table(
+            [[_CircleNumber(i), _safe_paragraph(prob, s["body"])]],
+            colWidths=[20, None],
+        )
+        row.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (0, 0), 8),
+            ("RIGHTPADDING", (1, 0), (1, 0), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        left_flows.append(row)
+        if i < min(len(problems), 5):
+            sep = Table([[""]], colWidths=[None], rowHeights=[0.5])
+            sep.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.5, BORDER)]))
+            left_flows.append(sep)
+            left_flows.append(Spacer(1, 4))
+
+    # Destra: callout azioni — sfondo SURFACE_2, bordo left 2.5pt GOLD, padding 12pt
+    right_inner: List[Flowable] = []
     if right.get("heading"):
-        right_flows.append(Paragraph(_clean_inline(right["heading"]), s["h3"]))
+        right_inner.append(_safe_paragraph(_clean_inline(right["heading"]), s["h3"]))
     milestones = right.get("milestones") or []
-    for m in milestones[:6]:
+    for idx, m in enumerate(milestones[:6]):
         if not isinstance(m, dict):
             continue
-        tone = (m.get("tone") or "neutral").lower()
-        bar_color = {"alert": RED, "warning": ACCENT_WARM, "ok": GREEN, "success": GREEN}.get(tone, PRIMARY)
         label = m.get("label") or ""
         items = m.get("items") or []
-        cell: List[Flowable] = []
         if label:
-            cell.append(Paragraph(f"<b>{_clean_inline(label)}</b>", s["body"]))
+            right_inner.append(_safe_paragraph(_clean_inline(label), s["sprint_title"]))
         for it in items[:6]:
-            cell.append(Paragraph(f"• {_clean_inline(str(it))}", s["body_soft"]))
+            right_inner.append(_bullet_paragraph(str(it), s["body"]))
         if m.get("body_html"):
-            cell.extend(_html_to_paragraphs(m["body_html"], s["body_soft"]))
-        if not cell:
-            continue
-        mt = Table([[cell]], colWidths=[None])
-        mt.setStyle(TableStyle([
-            ("LINEBEFORE", (0, 0), (0, -1), 2.5, bar_color),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4 * mm),
-            ("TOPPADDING", (0, 0), (-1, -1), 1.5 * mm),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5 * mm),
-            ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
-        ]))
-        right_flows.append(mt)
-        right_flows.append(Spacer(1, 2 * mm))
-    if not right_flows:
-        right_flows = [Paragraph("Nessuna azione specifica disponibile.", s["body_soft"])]
+            right_inner.extend(_html_to_paragraphs(m["body_html"], s["body"]))
+        if idx < len(milestones) - 1:
+            right_inner.append(Spacer(1, 4))
+    if not right_inner:
+        right_inner = [_safe_paragraph("Nessuna azione specifica disponibile.", s["body_soft"])]
+
+    callout_panel = Table([[right_inner]], colWidths=[None])
+    callout_panel.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
+        ("LINEBEFORE", (0, 0), (0, -1), 2.5, GOLD),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 12),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+
     inner_w = (CONTENT_W - 6 * mm) / 2
-    body = _two_col_or_stack(left_flows, right_flows, inner_w)
+    body = _two_col_or_stack(left_flows, [callout_panel], inner_w)
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "Conclusioni e Prossimi Passi", s), body))
 
 
@@ -900,108 +1071,94 @@ def _render_blocks(blocks: List[dict], s: Dict[str, ParagraphStyle]) -> List[Flo
 # Header / footer canvas handlers
 # ---------------------------------------------------------------------------
 
-def _draw_banner_page1(c: Canvas, doc: BaseDocTemplate) -> None:
-    """Banner full-bleed solo pagina 1 — gradiente navy via rect + accent stripe."""
-    title = getattr(doc, "_report_title", "Report Premium")
-    kicker = getattr(doc, "_report_kicker", "REPORT PREMIUM")
-    client_meta_lines: List[str] = getattr(doc, "_report_meta_lines", []) or []
+def _draw_running_header(c: Canvas, doc: BaseDocTemplate) -> None:
+    """Running header 28pt su OGNI pagina — sfondo F7F7F5, bordo bottom oro 1pt.
 
-    # Banner full bleed top
-    banner_h = 26 * mm
+    Sinistra: 'K²-AI' (Syne Bold 16pt) + nome report (DM Mono 8pt muto)
+    Destra: sezione corrente (DM Mono 8pt oro upper) + 'Pag. N' (DM Mono 8pt nero)
+    """
+    title = getattr(doc, "_report_title", "Report Premium")
+    section = getattr(doc, "_current_section", "")
+    page_num = c.getPageNumber()
+
+    header_h = 28  # pt
+    y_top = PAGE_H
+    y_bottom = y_top - header_h
+
     c.saveState()
-    c.setFillColor(PRIMARY)
-    c.rect(0, PAGE_H - banner_h, PAGE_W, banner_h, stroke=0, fill=1)
-    # Stripe accent
-    c.setFillColor(ACCENT)
-    c.rect(0, PAGE_H - banner_h - 1.5, PAGE_W, 1.5, stroke=0, fill=1)
-    # Logo
-    logo = _logo_path()
-    if logo:
-        try:
-            c.drawImage(str(logo), MARGIN_X, PAGE_H - banner_h + 5 * mm,
-                        width=18 * mm, height=14 * mm,
-                        preserveAspectRatio=True, mask="auto")
-        except Exception:
-            pass
-    # Kicker + title
-    c.setFillColor(WHITE)
-    c.setFont("Helvetica", 7.5)
-    c.drawString(MARGIN_X + 22 * mm, PAGE_H - 8 * mm, kicker.upper())
-    c.setFont("Helvetica-Bold", 14)
-    title_lines = _wrap_text(title, 78)
-    y = PAGE_H - 13 * mm
-    for line in title_lines[:2]:
-        c.drawString(MARGIN_X + 22 * mm, y, line)
-        y -= 5 * mm
-    # Right meta
-    c.setFont("Helvetica", 8.5)
-    y = PAGE_H - 8 * mm
-    for line in client_meta_lines[:3]:
-        c.drawRightString(PAGE_W - MARGIN_X, y, line)
-        y -= 4 * mm
+    c.setFillColor(SURFACE_2)
+    c.rect(0, y_bottom, PAGE_W, header_h, stroke=0, fill=1)
+    # Bordo bottom oro 1pt
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(1)
+    c.line(0, y_bottom, PAGE_W, y_bottom)
+
+    # Sinistra: brand + report name
+    c.setFillColor(TEXT_DEEP)
+    c.setFont(_FONTS["title"], 16)
+    c.drawString(MARGIN_X, y_bottom + 9, "K²-AI")
+    c.setFillColor(TEXT_MUTED)
+    c.setFont(_FONTS["mono"], 8)
+    title_short = (title[:60] + "…") if len(title) > 60 else title
+    c.drawString(MARGIN_X + 60, y_bottom + 10, title_short)
+
+    # Destra: sezione (oro upper) + pag. N (nero)
+    page_label = f"PAG. {page_num:02d}"
+    c.setFillColor(TEXT_DEEP)
+    c.setFont(_FONTS["mono"], 8)
+    c.drawRightString(PAGE_W - MARGIN_X, y_bottom + 10, page_label)
+    if section:
+        c.setFillColor(GOLD)
+        sec_upper = section.upper()[:42]
+        page_label_w = c.stringWidth(page_label, _FONTS["mono"], 8)
+        c.drawRightString(PAGE_W - MARGIN_X - page_label_w - 10, y_bottom + 10, sec_upper)
     c.restoreState()
 
 
 def _draw_footer(c: Canvas, doc: BaseDocTemplate) -> None:
-    """Footer full-bleed bottom — su ogni pagina."""
+    """Footer minimale: 22pt, solo linea top 0.5pt E8E8E4.
+
+    Sinistra: 'k2-ai.it · info@k2-ai.it' (DM Sans 7.5pt muto)
+    Centro: codice report (DM Mono 7.5pt muto)
+    Destra: disclaimer italic muto, troncato a 1 riga.
+    """
     footer = getattr(doc, "_report_footer", {}) or {}
-    page_num = c.getPageNumber()
-    total_pages = getattr(doc, "_total_pages", 0) or "?"
     code = footer.get("code") or ""
-    line1 = footer.get("line1") or "Report generato da K2-AI"
     disclaimer = footer.get("disclaimer") or ""
 
-    footer_h = 18 * mm
+    footer_h = 22
     c.saveState()
-    c.setFillColor(PRIMARY)
-    c.rect(0, 0, PAGE_W, footer_h, stroke=0, fill=1)
+    # Solo linea top sottile
+    c.setStrokeColor(BORDER)
+    c.setLineWidth(0.5)
+    c.line(MARGIN_X, footer_h, PAGE_W - MARGIN_X, footer_h)
 
-    # Logo small
-    logo = _logo_path()
-    if logo:
-        try:
-            c.drawImage(str(logo), MARGIN_X, 4 * mm,
-                        width=10 * mm, height=8 * mm,
-                        preserveAspectRatio=True, mask="auto")
-        except Exception:
-            pass
-    # Footer text
-    c.setFillColor(WHITE)
-    c.setFont("Helvetica", 7.5)
-    c.drawString(MARGIN_X + 13 * mm, footer_h - 4 * mm, line1)
-    c.setFont("Helvetica", 7)
-    info_parts = ["k2-ai.it", "info@k2-ai.it"]
+    c.setFillColor(TEXT_MUTED)
+    # Sinistra: contatti
+    c.setFont(_FONTS["body"], 7.5)
+    c.drawString(MARGIN_X, footer_h - 11, "k2-ai.it  ·  info@k2-ai.it")
+    # Centro: codice
     if code:
-        info_parts.append(code)
-    c.drawString(MARGIN_X + 13 * mm, footer_h - 7.5 * mm, " · ".join(info_parts))
-
-    # Disclaimer (smaller, italic) — wrap su 2 righe contenuto nei margini
+        c.setFont(_FONTS["mono"], 7.5)
+        cx = PAGE_W / 2
+        c.drawCentredString(cx, footer_h - 11, code)
+    # Destra: disclaimer corto italic
     if disclaimer:
-        c.setFont("Helvetica-Oblique", 6.5)
-        c.setFillColor(colors.HexColor("#CBD5E1"))
-        # 6.5pt @ Helvetica-Oblique ≈ 1.5mm/char avg. Disponibile da
-        # MARGIN_X+13mm a PAGE_W-MARGIN_X-25mm (riservato per Pag. N).
-        avail_mm = (PAGE_W - 2 * MARGIN_X - 13 * mm - 25 * mm) / mm
-        max_chars = int(avail_mm / 1.45)  # margine sicurezza
-        disc_lines = _wrap_text(disclaimer, max_chars)
-        y = footer_h - 11 * mm
-        for line in disc_lines[:2]:
-            c.drawString(MARGIN_X + 13 * mm, y, line)
-            y -= 3 * mm
-
-    # Page number right
-    c.setFillColor(WHITE)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawRightString(PAGE_W - MARGIN_X, footer_h - 6 * mm, f"Pag. {page_num}")
+        c.setFont(_FONTS["body_it"], 7)
+        avail = PAGE_W - MARGIN_X - PAGE_W / 2 - 20
+        max_chars = int(avail / 3.5)
+        short = disclaimer if len(disclaimer) <= max_chars else disclaimer[:max_chars - 1] + "…"
+        c.drawRightString(PAGE_W - MARGIN_X, footer_h - 11, short)
     c.restoreState()
 
 
 def _on_first_page(c: Canvas, doc: BaseDocTemplate) -> None:
-    _draw_banner_page1(c, doc)
+    _draw_running_header(c, doc)
     _draw_footer(c, doc)
 
 
 def _on_later_pages(c: Canvas, doc: BaseDocTemplate) -> None:
+    _draw_running_header(c, doc)
     _draw_footer(c, doc)
 
 
