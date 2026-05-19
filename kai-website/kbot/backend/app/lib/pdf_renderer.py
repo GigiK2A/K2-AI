@@ -509,66 +509,56 @@ def _render_executive_summary(block: dict, s: Dict[str, ParagraphStyle]) -> List
     else:
         flows = _section(_render_block_title(block.get("title") or "Executive Summary", s), para_flows)
 
-    # Badges: 3 colonne, ogni cella = icona colorata + label inline (no pill stretto).
-    # Bug v13: pill 26mm tagliava label "Fondamenta Tecniche Solide" su 4 righe.
+    # Badges: lista verticale full-width — UNA badge per riga, icona + label
+    # estesa con eventuale descrizione inline. Document-style, no grid.
+    # Bug v13/v14: pill stretto e 3-col tagliavano "Fondamenta Tecniche Solide".
     badges = block.get("badges") or []
     if badges:
         icon_map = {"ok": "●", "success": "●", "warning": "■", "alert": "✕", "critical": "✕", "neutral": "▸", "info": "◆"}
         color_map = {"ok": GREEN, "success": GREEN, "warning": ACCENT_WARM, "alert": RED, "critical": RED, "neutral": TEXT_MUTED, "info": INFO}
         badge_style = ParagraphStyle(
-            "badge_inline", parent=s["body"],
-            fontName=_FONTS["title_sb"], fontSize=8.5, leading=11,
-            textColor=TEXT_DEEP, alignment=TA_LEFT, spaceAfter=0,
+            "badge_line", parent=s["body"],
+            fontName=_FONTS["body_sb"], fontSize=9, leading=13,
+            textColor=TEXT_DEEP, alignment=TA_LEFT, spaceAfter=4,
         )
-        cells = []
-        row = []
+        flows.append(Spacer(1, 3 * mm))
         for b in badges[:9]:
             if not isinstance(b, dict):
                 continue
             variant = (b.get("variant") or "neutral").lower()
             label = _clean_inline(b.get("label") or "")
+            desc = _clean_inline(b.get("description") or "")
             icon = icon_map.get(variant, "▸")
             color = color_map.get(variant, TEXT_MUTED)
-            html = f'<font color="{color.hexval()}" face="{_FONTS["title_sb"]}">{icon}</font>&nbsp;&nbsp;{label}'
-            row.append(_safe_paragraph(html, badge_style))
-            if len(row) == 3:
-                cells.append(row)
-                row = []
-        if row:
-            while len(row) < 3:
-                row.append("")
-            cells.append(row)
-        if cells:
-            col_w = CONTENT_W / 3
-            badge_tbl = Table(cells, colWidths=[col_w] * 3)
-            badge_tbl.setStyle(TableStyle([
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ]))
-            flows.append(Spacer(1, 4 * mm))
-            flows.append(badge_tbl)
+            if desc:
+                html = (
+                    f'<font color="{color.hexval()}" size="11">{icon}</font>'
+                    f'&nbsp;&nbsp;<b>{label}.</b>&nbsp;{desc}'
+                )
+            else:
+                html = (
+                    f'<font color="{color.hexval()}" size="11">{icon}</font>'
+                    f'&nbsp;&nbsp;<b>{label}</b>'
+                )
+            flows.append(_safe_paragraph(html, badge_style))
     return _wrap_in_card(flows)
 
 
 def _render_kpi_grid(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
-    """KPI cards Editorial: sfondo F7F7F5, bordo E8E8E4, bordo TOP 2.5pt GOLD UNIFICATO.
+    """KPI documento — lista verticale full-width, una riga per KPI.
 
-    Spec: oro appare solo in 4 posti — qui è il bordo top KPI card. Non variabile
-    per variant (warning/alert): la semantica passa per il colore del value
-    (ACCENT_WARM se verified:false) e del note italic.
+    Cambio v15: report = documento, non infografica. Niente 3-col cards.
+    Ogni KPI = una riga della tabella con 3 sub-celle: LABEL | VALUE | NOTE.
+    Larghezza piena pagina, scroll verticale naturale.
     """
     items = block.get("items") or block.get("kpis") or block.get("cards") or []
-    if not items:
+    valid_items = [i for i in items[:14] if isinstance(i, dict)]
+    if not valid_items:
         return []
-    cols = 3 if len(items) >= 5 else 2
-    cells: List[List[List[Flowable]]] = []
-    row: List[List[Flowable]] = []
-    for item in items[:12]:
-        if not isinstance(item, dict):
-            continue
+    # Pesi colonne: label 25% / value 25% / note 50%. value compatto, note descrittiva.
+    col_w = [CONTENT_W * 0.25, CONTENT_W * 0.25, CONTENT_W * 0.50]
+    rows: List[List[Flowable]] = []
+    for item in valid_items:
         label = (item.get("label") or "").upper()
         value = str(item.get("value") or "")
         note = item.get("note") or item.get("description") or ""
@@ -578,42 +568,36 @@ def _render_kpi_grid(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable
         value_html = _clean_inline(value)
         if verified is False and value_html:
             value_html = f"† {value_html}"
-        cell: List[Flowable] = [
-            Paragraph(_clean_inline(label), s["kpi_label"]),
-            Paragraph(value_html, value_style),
-        ]
+        # Cella label: piccola, mono
+        label_para = _safe_paragraph(_clean_inline(label), s["kpi_label"])
+        # Cella value: grande, syne bold (o ambra se non verified)
+        value_para = _safe_paragraph(value_html, value_style)
+        # Cella note: sub + note unificati su 2 paragrafi
+        note_flows: List[Flowable] = []
         if sub:
-            cell.append(Paragraph(_clean_inline(sub), s["kpi_note"]))
+            note_flows.append(_safe_paragraph(_clean_inline(sub), s["body_soft"]))
         if note:
             note_style = s["kpi_disclaimer"] if verified is False else s["small"]
-            cell.append(Paragraph(_clean_inline(note), note_style))
-        row.append(cell)
-        if len(row) == cols:
-            cells.append(row)
-            row = []
-    if row:
-        while len(row) < cols:
-            row.append([])
-        cells.append(row)
-    if not cells:
-        return []
-    col_w = CONTENT_W / cols
-    tbl = Table(cells, colWidths=[col_w] * cols)
+            note_flows.append(_safe_paragraph(_clean_inline(note), note_style))
+        if not note_flows:
+            note_flows = [_safe_paragraph("", s["small"])]
+        rows.append([label_para, value_para, note_flows])
+    tbl = Table(rows, colWidths=col_w)
     style_cmds = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 14),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
-        ("TOPPADDING", (0, 0), (-1, -1), 14),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
-        ("BOX", (0, 0), (-1, -1), 1, BORDER),
-        ("INNERGRID", (0, 0), (-1, -1), 1, BORDER),
-        ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
+        ("LEFTPADDING", (0, 0), (0, -1), 0),
+        ("RIGHTPADDING", (0, 0), (0, -1), 14),
+        ("LEFTPADDING", (1, 0), (1, -1), 0),
+        ("RIGHTPADDING", (1, 0), (1, -1), 14),
+        ("LEFTPADDING", (2, 0), (2, -1), 14),
+        ("RIGHTPADDING", (2, 0), (2, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        # Separatori orizzontali sottili tra KPI (no box esterno, no inner vertical grid)
+        ("LINEBELOW", (0, 0), (-1, -2), 0.5, BORDER),
+        # Linea top oro 1pt prima del primo KPI (unico accento gold)
+        ("LINEABOVE", (0, 0), (-1, 0), 1, GOLD),
     ]
-    # Bordo TOP oro 2.5pt — unico accento gold visibile sulle card
-    for r_idx, r in enumerate(cells):
-        for c_idx, cell in enumerate(r):
-            if cell:
-                style_cmds.append(("LINEABOVE", (c_idx, r_idx), (c_idx, r_idx), 2.5, GOLD))
     tbl.setStyle(TableStyle(style_cmds))
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "Metriche", s), [tbl]))
 
@@ -804,27 +788,24 @@ def _bullet_paragraph(text: str, style: ParagraphStyle) -> Paragraph:
 
 
 def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
-    """Two-column Editorial: sinistra verde tinted, destra rosso tinted, bullet oro.
+    """Two-column → STACK verticale full-width (documento, no infografica).
 
-    Convention: left = punti forza (ok), right = gap (alert). Le tinte bg
-    + colore titolo derivano dalla posizione, NON da heading_variant del blocco.
+    Cambio v15: ex side-by-side verde/rosso, ora due sezioni distinte verticali:
+    1. PUNTI DI FORZA (heading verde + ul/contenuto + linea sotto)
+    2. CRITICITÀ (heading rosso + ul/contenuto)
+    Ogni sezione occupa full width per leggibilità tipo report McKinsey.
     """
     left = block.get("left") or {}
     right = block.get("right") or {}
 
-    inner_w = (CONTENT_W - 6 * mm) / 2
-
-    def render_side(side: dict, is_left: bool) -> List[Flowable]:
+    def render_side_stacked(side: dict, is_left: bool) -> List[Flowable]:
         out: List[Flowable] = []
         title_style = s["col_title_ok"] if is_left else s["col_title_alert"]
         if side.get("heading"):
             heading_upper = _clean_inline(side["heading"]).upper()
             out.append(_safe_paragraph(heading_upper, title_style))
         if side.get("body_html"):
-            # Use bullet paragraph for list items; prosa libera resta body_soft
-            html = side["body_html"]
-            # Pre-process: convert <li>X</li> → bullet oro
-            parsed = _html_to_paragraphs(html, s["body"])
+            parsed = _html_to_paragraphs(side["body_html"], s["body"])
             out.extend(parsed)
         if side.get("body"):
             out.append(_safe_paragraph(_clean_inline(side["body"]), s["body"]))
@@ -832,28 +813,17 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
         for b in badges:
             if not isinstance(b, dict):
                 continue
-            badge_w = 28 * mm
-            desc_w = inner_w - 24 - badge_w  # cell content minus padding minus badge col
-            row = Table(
-                [[_badge_pill(b.get("label") or "", b.get("variant") or "neutral"),
-                  _safe_paragraph(_clean_inline(b.get("description") or ""), s["body"])]],
-                colWidths=[badge_w, desc_w],
-            )
-            row.setStyle(TableStyle([
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5 * mm),
-            ]))
-            out.append(row)
+            label = _clean_inline(b.get("label") or "")
+            desc = _clean_inline(b.get("description") or "")
+            # Inline: label bold + desc plain, no pill colorato
+            line = f"<b>{label}.</b> {desc}" if desc else f"<b>{label}</b>"
+            out.append(_safe_paragraph(line, s["body"]))
         if side.get("table"):
             tbl_d = side["table"]
             if tbl_d.get("columns") and tbl_d.get("rows"):
-                # Nested data_table: width = inner_w - padding (24pt) per stare nella cella.
-                # bare=True salta block_title (CONTENT_W width) e card divider.
                 rendered = _render_data_table(
                     {"table": tbl_d, "title": ""}, s,
-                    max_width=inner_w - 24, bare=True,
+                    max_width=CONTENT_W, bare=True,
                 )
                 out.extend(rendered)
         callout = side.get("callout")
@@ -862,7 +832,7 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
             body = callout.get("body") or ""
             label_html = f"<b>{_clean_inline(label)}:</b> " if label else ""
             cb = _safe_paragraph(f"{label_html}{_clean_inline(body)}", s["body"])
-            cbt = Table([[cb]], colWidths=[inner_w - 48])
+            cbt = Table([[cb]], colWidths=[CONTENT_W - 24])
             cbt.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
                 ("LINEBEFORE", (0, 0), (0, -1), 2.5, GOLD),
@@ -875,18 +845,32 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
             out.append(cbt)
         return out
 
-    left_flows = render_side(left, is_left=True)
-    right_flows = render_side(right, is_left=False)
-    body = _two_col_or_stack(left_flows, right_flows, inner_w, left_bg=GREEN_BG, right_bg=RED_BG)
+    body: List[Flowable] = []
+    left_flows = render_side_stacked(left, is_left=True)
+    right_flows = render_side_stacked(right, is_left=False)
+    body.extend(left_flows)
+    if left_flows and right_flows:
+        body.append(Spacer(1, 5 * mm))
+        # Linea separatrice fra le due sezioni
+        sep = Table([[""]], colWidths=[CONTENT_W], rowHeights=[0.5])
+        sep.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.5, BORDER)]))
+        body.append(sep)
+        body.append(Spacer(1, 5 * mm))
+    body.extend(right_flows)
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "", s), body))
 
 
 def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Action list — vertical document style (no numero decorativo grande).
+
+    Cambio v15: prima era Table 2 col (numero 28pt sx + content dx). Ora:
+    `01. Title` inline + meta riga sotto + body riga sotto. Full width.
+    Più documento, meno infografica.
+    """
     actions = block.get("actions") or block.get("items") or []
     if not actions:
         return []
-    """Sprint/azione list Editorial: numero 28pt grigio decorativo, no box."""
-    rows = []
+    flows: List[Flowable] = []
     for i, a in enumerate(actions[:12], 1):
         if not isinstance(a, dict):
             continue
@@ -900,31 +884,21 @@ def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
             f"IMPATTO {impact.upper()}" if impact else None,
             f"EFFORT {effort.upper()}" if effort else None,
         ]))
-        # Numero grande grigio chiarissimo decorativo (Syne Bold 28pt BORDER)
-        num_para = _safe_paragraph(f"{i:02d}", s["sprint_number"])
-        content: List[Flowable] = [
-            _safe_paragraph(_clean_inline(title), s["sprint_title"]),
-        ]
+        # Titolo: '01. Title' su una riga, syne semibold
+        num_label = f'<font color="#C9A84C">{i:02d}.</font>&nbsp;&nbsp;{_clean_inline(title)}'
+        flows.append(_safe_paragraph(num_label, s["sprint_title"]))
         if meta:
-            content.append(_safe_paragraph(meta, s["sprint_meta"]))
+            flows.append(_safe_paragraph(meta, s["sprint_meta"]))
         if body:
-            content.append(_safe_paragraph(_clean_inline(body), s["body"]))
-        rows.append([num_para, content])
-    if not rows:
-        return []
-    tbl = Table(rows, colWidths=[16 * mm, CONTENT_W - 16 * mm])
-    style_cmds = [
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-    ]
-    # Separatore bottom 0.5pt — non sull'ultimo
-    for i in range(len(rows) - 1):
-        style_cmds.append(("LINEBELOW", (0, i), (-1, i), 0.5, BORDER))
-    tbl.setStyle(TableStyle(style_cmds))
-    return _wrap_in_card(_section(_render_block_title(block.get("title") or "Azioni", s), [tbl]))
+            flows.append(_safe_paragraph(_clean_inline(body), s["body"]))
+        if i < min(len(actions), 12):
+            # Separator sottile fra azioni
+            sep = Table([[""]], colWidths=[CONTENT_W], rowHeights=[0.5])
+            sep.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.5, BORDER)]))
+            flows.append(Spacer(1, 4))
+            flows.append(sep)
+            flows.append(Spacer(1, 6))
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "Azioni", s), flows))
 
 
 def _render_risk_mitigation(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
@@ -992,13 +966,14 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
     left = block.get("left") or {}
     right = block.get("right") or {}
 
-    # inner_w spostato qui per renderlo disponibile ai nested Table colWidths
-    inner_w = (CONTENT_W - 6 * mm) / 2
+    # Conclusions verticale: problemi (full width) → azioni (full width callout)
     circle_w = 20
-    circle_text_w = inner_w - 28 - circle_w  # padding 24 + gap 8
+    circle_text_w = CONTENT_W - circle_w - 8  # gap 8pt fra circle e testo
 
-    # Sinistra: 3 problemi con cerchio nero
+    left_heading = _clean_inline(left.get("heading") or "")
     left_flows: List[Flowable] = []
+    if left_heading:
+        left_flows.append(_safe_paragraph(left_heading.upper(), s["col_title_alert"]))
     problems = _parse_ol_items(left.get("body_html") or "")
     if not problems and left.get("body"):
         problems = [_clean_inline(left["body"])]
@@ -1015,19 +990,19 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
             ("RIGHTPADDING", (0, 0), (0, 0), 8),
             ("RIGHTPADDING", (1, 0), (1, 0), 0),
             ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
         ]))
         left_flows.append(row)
         if i < min(len(problems), 5):
-            sep = Table([[""]], colWidths=[None], rowHeights=[0.5])
+            sep = Table([[""]], colWidths=[CONTENT_W], rowHeights=[0.5])
             sep.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.5, BORDER)]))
             left_flows.append(sep)
             left_flows.append(Spacer(1, 4))
 
-    # Destra: callout azioni — sfondo SURFACE_2, bordo left 2.5pt GOLD, padding 12pt
+    # Destra: azioni in callout full-width (sfondo SURFACE_2, border-left oro)
     right_inner: List[Flowable] = []
     if right.get("heading"):
-        right_inner.append(_safe_paragraph(_clean_inline(right["heading"]), s["h3"]))
+        right_inner.append(_safe_paragraph(_clean_inline(right["heading"]).upper(), s["col_title_alert"]))
     milestones = right.get("milestones") or []
     for idx, m in enumerate(milestones[:6]):
         if not isinstance(m, dict):
@@ -1041,13 +1016,12 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
         if m.get("body_html"):
             right_inner.extend(_html_to_paragraphs(m["body_html"], s["body"]))
         if idx < len(milestones) - 1:
-            right_inner.append(Spacer(1, 4))
+            right_inner.append(Spacer(1, 6))
     if not right_inner:
         right_inner = [_safe_paragraph("Nessuna azione specifica disponibile.", s["body_soft"])]
 
-    # Callout azioni: width esplicito = inner_w (lato dx in two_col_or_stack).
-    # Senza colWidths esplicito ReportLab non sa misurare → cell height infinito.
-    callout_panel = Table([[right_inner]], colWidths=[inner_w - 24])
+    # Callout full width
+    callout_panel = Table([[right_inner]], colWidths=[CONTENT_W - 24])
     callout_panel.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
         ("LINEBEFORE", (0, 0), (0, -1), 2.5, GOLD),
@@ -1058,7 +1032,10 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
     ]))
 
-    body = _two_col_or_stack(left_flows, [callout_panel], inner_w)
+    body: List[Flowable] = list(left_flows)
+    if left_flows and right_inner:
+        body.append(Spacer(1, 6 * mm))
+    body.append(callout_panel)
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "Conclusioni e Prossimi Passi", s), body))
 
 
