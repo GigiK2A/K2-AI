@@ -126,7 +126,7 @@ PAGE_W, PAGE_H = A4
 MARGIN_X = 20 * mm                       # spec: 20mm L/R
 MARGIN_TOP = 18 * mm + 28                 # 18mm + 28pt running header
 MARGIN_TOP_REST = MARGIN_TOP              # header uguale su tutte le pagine
-MARGIN_BOTTOM = 16 * mm + 22              # 16mm + 22pt footer
+MARGIN_BOTTOM = 16 * mm + 30              # 16mm + 30pt footer (2-line)
 
 CONTENT_W = PAGE_W - 2 * MARGIN_X
 
@@ -509,14 +509,28 @@ def _render_executive_summary(block: dict, s: Dict[str, ParagraphStyle]) -> List
     else:
         flows = _section(_render_block_title(block.get("title") or "Executive Summary", s), para_flows)
 
-    # Badges
+    # Badges: 3 colonne, ogni cella = icona colorata + label inline (no pill stretto).
+    # Bug v13: pill 26mm tagliava label "Fondamenta Tecniche Solide" su 4 righe.
     badges = block.get("badges") or []
     if badges:
+        icon_map = {"ok": "●", "success": "●", "warning": "■", "alert": "✕", "critical": "✕", "neutral": "▸", "info": "◆"}
+        color_map = {"ok": GREEN, "success": GREEN, "warning": ACCENT_WARM, "alert": RED, "critical": RED, "neutral": TEXT_MUTED, "info": INFO}
+        badge_style = ParagraphStyle(
+            "badge_inline", parent=s["body"],
+            fontName=_FONTS["title_sb"], fontSize=8.5, leading=11,
+            textColor=TEXT_DEEP, alignment=TA_LEFT, spaceAfter=0,
+        )
         cells = []
         row = []
-        for b in badges[:8]:
-            if isinstance(b, dict):
-                row.append(_badge_pill(b.get("label") or "", b.get("variant") or "neutral"))
+        for b in badges[:9]:
+            if not isinstance(b, dict):
+                continue
+            variant = (b.get("variant") or "neutral").lower()
+            label = _clean_inline(b.get("label") or "")
+            icon = icon_map.get(variant, "▸")
+            color = color_map.get(variant, TEXT_MUTED)
+            html = f'<font color="{color.hexval()}" face="{_FONTS["title_sb"]}">{icon}</font>&nbsp;&nbsp;{label}'
+            row.append(_safe_paragraph(html, badge_style))
             if len(row) == 3:
                 cells.append(row)
                 row = []
@@ -525,15 +539,16 @@ def _render_executive_summary(block: dict, s: Dict[str, ParagraphStyle]) -> List
                 row.append("")
             cells.append(row)
         if cells:
-            badge_tbl = Table(cells, colWidths=[CONTENT_W * 0.32] * 3)
+            col_w = CONTENT_W / 3
+            badge_tbl = Table(cells, colWidths=[col_w] * 3)
             badge_tbl.setStyle(TableStyle([
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 2 * mm),
-                ("TOPPADDING", (0, 0), (-1, -1), 1.5 * mm),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]))
-            flows.append(Spacer(1, 3 * mm))
+            flows.append(Spacer(1, 4 * mm))
             flows.append(badge_tbl)
     return _wrap_in_card(flows)
 
@@ -780,9 +795,10 @@ def _make_side_panel(flows: List[Flowable], width: float, bg: Optional[colors.Co
 
 
 def _bullet_paragraph(text: str, style: ParagraphStyle) -> Paragraph:
-    """Bullet point con · oro (spec: bullet · oro + testo body)."""
+    """Bullet point oro + testo body. Uso • (U+2022) per visibilità reale —
+    · (U+00B7 middle dot) renderizzava troppo piccolo in DM Mono."""
     return _safe_paragraph(
-        f'<font color="#C9A84C">·</font>&nbsp;&nbsp;{_clean_inline(text)}',
+        f'<font color="#C9A84C" size="11"><b>•</b></font>&nbsp;&nbsp;{_clean_inline(text)}',
         style,
     )
 
@@ -1182,39 +1198,35 @@ def _draw_running_header(c: Canvas, doc: BaseDocTemplate) -> None:
 
 
 def _draw_footer(c: Canvas, doc: BaseDocTemplate) -> None:
-    """Footer minimale: 22pt, solo linea top 0.5pt E8E8E4.
+    """Footer 2 righe: top contatti+codice; bottom disclaimer full-width.
 
-    Sinistra: 'k2-ai.it · info@k2-ai.it' (DM Sans 7.5pt muto)
-    Centro: codice report (DM Mono 7.5pt muto)
-    Destra: disclaimer italic muto, troncato a 1 riga.
+    Bug v13: codice centrato + disclaimer destro overlap (no truncation
+    sufficiente). Layout split su 2 righe risolve + dà più spazio.
     """
     footer = getattr(doc, "_report_footer", {}) or {}
     code = footer.get("code") or ""
     disclaimer = footer.get("disclaimer") or ""
 
-    footer_h = 22
+    footer_h = 30
     c.saveState()
-    # Solo linea top sottile
     c.setStrokeColor(BORDER)
     c.setLineWidth(0.5)
     c.line(MARGIN_X, footer_h, PAGE_W - MARGIN_X, footer_h)
 
     c.setFillColor(TEXT_MUTED)
-    # Sinistra: contatti
+    # Riga 1 (top): contatti sinistra, codice destra
     c.setFont(_FONTS["body"], 7.5)
     c.drawString(MARGIN_X, footer_h - 11, "k2-ai.it  ·  info@k2-ai.it")
-    # Centro: codice
     if code:
         c.setFont(_FONTS["mono"], 7.5)
-        cx = PAGE_W / 2
-        c.drawCentredString(cx, footer_h - 11, code)
-    # Destra: disclaimer corto italic
+        c.drawRightString(PAGE_W - MARGIN_X, footer_h - 11, code)
+    # Riga 2 (bottom): disclaimer full-width, italic
     if disclaimer:
         c.setFont(_FONTS["body_it"], 7)
-        avail = PAGE_W - MARGIN_X - PAGE_W / 2 - 20
-        max_chars = int(avail / 3.5)
+        avail = PAGE_W - 2 * MARGIN_X
+        max_chars = int(avail / 3.2)
         short = disclaimer if len(disclaimer) <= max_chars else disclaimer[:max_chars - 1] + "…"
-        c.drawRightString(PAGE_W - MARGIN_X, footer_h - 11, short)
+        c.drawString(MARGIN_X, footer_h - 23, short)
     c.restoreState()
 
 
