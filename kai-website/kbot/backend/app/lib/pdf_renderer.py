@@ -685,35 +685,72 @@ def _two_col_or_stack(
     left_flows: List[Flowable],
     right_flows: List[Flowable],
     inner_w: float,
+    *,
+    left_bg: Optional[colors.Color] = None,
+    right_bg: Optional[colors.Color] = None,
 ) -> List[Flowable]:
     """Side-by-side via Table when fits; stacked fallback when too tall.
 
     ReportLab non spezza una Table cell con flowables nidificati: se un lato
     supera l'altezza del frame, esplode con 'row too large'. Misurando prima
     e fallback a stack vertico salviamo il rendering.
+
+    Opzionale: bg per lato (verde/rosso tinted) applicato come BACKGROUND sulle
+    celle quando side-by-side; in stack-mode wrappa ogni lato in un Table
+    single-cell con bg + width esplicito.
     """
     if not left_flows and not right_flows:
         return []
     avail = _FRAME_AVAIL_H - _TWO_COL_SAFETY
-    cell_w = inner_w - 3 * mm
+    # Padding outer Table 12pt × 2 = 24pt sottratto dal cell content width
+    cell_w = inner_w - 24
     lh = _measure_flow_height(left_flows, cell_w)
     rh = _measure_flow_height(right_flows, cell_w)
     if max(lh, rh) > avail:
+        # Stack mode: emit flat flows senza Table wrap — necessario perché un
+        # singolo Table cell non si spezza fra pagine (cella troppo alta su
+        # contenuti lunghi). bg per lato sacrificato ma il PDF si compone.
         out: List[Flowable] = list(left_flows)
         if left_flows and right_flows:
             out.append(Spacer(1, 4 * mm))
         out.extend(right_flows)
         return out
     tbl = Table([[left_flows, right_flows]], colWidths=[inner_w, inner_w])
-    tbl.setStyle(TableStyle([
+    style = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (0, 0), 3 * mm),
-        ("LEFTPADDING", (1, 0), (1, 0), 3 * mm),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
+        ("LEFTPADDING", (0, 0), (0, 0), 12),
+        ("RIGHTPADDING", (0, 0), (0, 0), 12),
+        ("LEFTPADDING", (1, 0), (1, 0), 12),
+        ("RIGHTPADDING", (1, 0), (1, 0), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    ]
+    if left_bg is not None:
+        style.append(("BACKGROUND", (0, 0), (0, 0), left_bg))
+    if right_bg is not None:
+        style.append(("BACKGROUND", (1, 0), (1, 0), right_bg))
+    tbl.setStyle(TableStyle(style))
     return [tbl]
+
+
+def _make_side_panel(flows: List[Flowable], width: float, bg: Optional[colors.Color]) -> Flowable:
+    """Wrap flows in single-cell Table con colWidths esplicito + bg opzionale.
+
+    Stack-mode helper: previene nested Table senza width esplicito → 'row too
+    large' bug (cell height = inf).
+    """
+    t = Table([[flows]], colWidths=[width])
+    style = [
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    ]
+    if bg is not None:
+        style.append(("BACKGROUND", (0, 0), (-1, -1), bg))
+    t.setStyle(TableStyle(style))
+    return t
 
 
 def _bullet_paragraph(text: str, style: ParagraphStyle) -> Paragraph:
@@ -732,6 +769,8 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
     """
     left = block.get("left") or {}
     right = block.get("right") or {}
+
+    inner_w = (CONTENT_W - 6 * mm) / 2
 
     def render_side(side: dict, is_left: bool) -> List[Flowable]:
         out: List[Flowable] = []
@@ -774,7 +813,7 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
             body = callout.get("body") or ""
             label_html = f"<b>{_clean_inline(label)}:</b> " if label else ""
             cb = _safe_paragraph(f"{label_html}{_clean_inline(body)}", s["body"])
-            cbt = Table([[cb]], colWidths=[None])
+            cbt = Table([[cb]], colWidths=[inner_w - 48])
             cbt.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
                 ("LINEBEFORE", (0, 0), (0, -1), 2.5, GOLD),
@@ -787,27 +826,9 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
             out.append(cbt)
         return out
 
-    def _tint_panel(flows: List[Flowable], bg: colors.Color) -> Flowable:
-        """Wrap flows in single-cell Table con sfondo tinted."""
-        if not flows:
-            return Spacer(0, 0)
-        t = Table([[flows]], colWidths=[None])
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), bg),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 12),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
-            ("TOPPADDING", (0, 0), (-1, -1), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-        ]))
-        return t
-
     left_flows = render_side(left, is_left=True)
     right_flows = render_side(right, is_left=False)
-    left_panel = [_tint_panel(left_flows, GREEN_BG)] if left_flows else []
-    right_panel = [_tint_panel(right_flows, RED_BG)] if right_flows else []
-    inner_w = (CONTENT_W - 6 * mm) / 2
-    body = _two_col_or_stack(left_panel, right_panel, inner_w)
+    body = _two_col_or_stack(left_flows, right_flows, inner_w, left_bg=GREEN_BG, right_bg=RED_BG)
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "", s), body))
 
 
@@ -970,7 +991,10 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
     if not right_inner:
         right_inner = [_safe_paragraph("Nessuna azione specifica disponibile.", s["body_soft"])]
 
-    callout_panel = Table([[right_inner]], colWidths=[None])
+    inner_w = (CONTENT_W - 6 * mm) / 2
+    # Callout azioni: width esplicito = inner_w (lato dx in two_col_or_stack).
+    # Senza colWidths esplicito ReportLab non sa misurare → cell height infinito.
+    callout_panel = Table([[right_inner]], colWidths=[inner_w - 24])
     callout_panel.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
         ("LINEBEFORE", (0, 0), (0, -1), 2.5, GOLD),
@@ -981,7 +1005,6 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
     ]))
 
-    inner_w = (CONTENT_W - 6 * mm) / 2
     body = _two_col_or_stack(left_flows, [callout_panel], inner_w)
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "Conclusioni e Prossimi Passi", s), body))
 
