@@ -48,7 +48,7 @@ kbot/
 | Storage | Supabase Storage — bucket `kbot-uploads`, `kbot-reports` |
 | Payments | Stripe Checkout one-time 19€ + webhook su FastAPI |
 | Email | Resend (dominio `k2-ai.it` verificato) |
-| PDF | Playwright headless Chromium su HTML A4-print |
+| PDF | **ReportLab nativo Python** (Flowables + Platypus, BaseDocTemplate, no HTML/CSS) |
 
 ---
 
@@ -60,7 +60,7 @@ Il backend kbot **replica l'architettura V2 del sito** (`kai-website/api/kbot/*.
 - Ogni conversazione è una row di `kbot_sessions` identificata da UUID
 - I messaggi sono salvati come array JSONB nel campo `messages`
 - Il dato strutturato estratto da Claude finisce in `collected_data.extractedData`
-- La generazione PDF è in due step: (a) JSON strutturato via Sonnet, (b) Jinja2 + Playwright → A4 PDF
+- La generazione PDF è in due step: (a) JSON strutturato via Sonnet (single-call o multi-call 3-fase, flag `ANTHROPIC_PDF_MULTI_CALL`), (b) `pdf_renderer.py` mappa i blocchi su Flowables ReportLab nativi → A4 PDF
 - Lo schema dei blocchi PDF è documentato in **`lib/skills/report-premium-design/SKILL.md`** del sito (skill master sempre caricata)
 
 ### Endpoint del backend Python
@@ -142,6 +142,7 @@ cd kbot/backend && .venv/bin/python -m app.lib.pdf_renderer  # se aggiungi un __
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-haiku-4-5
 ANTHROPIC_PDF_MODEL=claude-sonnet-4-5
+ANTHROPIC_PDF_MULTI_CALL=0                   # 1 per attivare generazione 3-fase (riduce troncamento conclusions)
 NEXT_PUBLIC_SUPABASE_URL=https://<proj>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
 # JWT verification via JWKS (auto-derived from SUPABASE_URL); legacy HS256:

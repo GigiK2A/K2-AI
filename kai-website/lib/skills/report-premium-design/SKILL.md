@@ -100,21 +100,27 @@ Griglia di carte metriche. 2-6 elementi. Renderer mette in 2 colonne se ≤4, 3 
       "label": "REVPAR STIMATO",
       "value": "€52",
       "subtitle": "Mediana Centro case vacanza: €48 (benchmark mercato)",
-      "hint": "Superiore alla media di zona grazie alle dotazioni premium",
+      "note": "Superiore alla media di zona grazie alle dotazioni premium",
+      "verified": true,
       "variant": "ok"
     },
     {
-      "label": "OCCUPANCY TARGET",
-      "value": "50%",
-      "subtitle": "Mediana Centro: 55% (benchmark mercato)",
-      "hint": "Raggiungibile con strategia marketing mirata",
+      "label": "TRAFFICO ORGANICO 12M",
+      "value": "180–250 vis/mese",
+      "note": "† proiezione su CTR 2.5% — richiede GSC/Analytics per baseline",
+      "verified": false,
       "variant": "warning"
     }
   ]
 }
 ```
 
-`variant` colora il bordo superiore della card: `ok`, `warning`, `alert`, `neutral` (default).
+**Regole obbligatorie kpi_grid items:**
+- `value`: SOLO numero/range secco, max 20 caratteri. **Mai** disclaimer inline tipo `"€52 [stima]"`.
+- `note`: disclaimer o contesto, max 80 caratteri. Per dati non verificati, prefissa con `†`.
+- `verified`: boolean. `true` se il dato proviene da fonte misurata in sessione (Analytics, GSC, crawl reale, file caricato). `false` se è stima/proiezione/benchmark.
+- Il renderer aggiunge automaticamente il marker dagger `†` davanti al value quando `verified:false` e renderizza la `note` in corsivo arancione.
+- `variant` colora il bordo superiore: `ok`, `warning`, `alert`, `neutral` (default).
 
 ### 4.3 `two_column`
 Sezione con due colonne. Tipico: narrativa + lista qualificata, oppure tabella + insight.

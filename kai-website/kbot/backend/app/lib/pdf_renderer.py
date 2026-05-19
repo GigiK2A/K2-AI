@@ -132,6 +132,11 @@ def _make_styles() -> Dict[str, ParagraphStyle]:
             fontName="Helvetica", fontSize=9, leading=12.5,
             textColor=TEXT_SOFT, spaceAfter=1.5 * mm,
         ),
+        "kpi_disclaimer": ParagraphStyle(
+            "kpi_disclaimer", parent=_styles["BodyText"],
+            fontName="Helvetica-Oblique", fontSize=8, leading=10.5,
+            textColor=ACCENT, spaceAfter=1.5 * mm,
+        ),
         "score_huge": ParagraphStyle(
             "score_huge", parent=_styles["BodyText"],
             fontName="Helvetica-Bold", fontSize=36, leading=40,
@@ -416,15 +421,21 @@ def _render_kpi_grid(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable
         value = str(item.get("value") or "")
         note = item.get("note") or item.get("description") or ""
         variant = item.get("variant") or "neutral"
-        sub = item.get("sub") or ""
+        sub = item.get("sub") or item.get("subtitle") or ""
+        # verified flag: True (default) = dato misurato, False = stima/non verificato
+        verified = item.get("verified")
+        value_html = _clean_inline(value)
+        if verified is False and value_html:
+            value_html = f'<font color="#C2410C">†</font> {value_html}'
         cell = [
             Paragraph(label, s["kpi_label"]),
-            Paragraph(value, s["kpi_value"]),
+            Paragraph(value_html, s["kpi_value"]),
         ]
         if sub:
             cell.append(Paragraph(_clean_inline(sub), s["kpi_note"]))
         if note:
-            cell.append(Paragraph(_clean_inline(note), s["small"]))
+            note_style = s["kpi_disclaimer"] if verified is False else s["small"]
+            cell.append(Paragraph(_clean_inline(note), note_style))
         # Salva variant per styling sotto
         cell.append(_VariantMarker(variant))
         row.append(cell)

@@ -23,6 +23,7 @@ import anthropic
 from ..settings import (
     ANTHROPIC_API_KEY,
     ANTHROPIC_PDF_MODEL,
+    ANTHROPIC_PDF_MULTI_CALL,
     MAX_HISTORY_MESSAGES,
     MAX_MESSAGE_CHARS,
     PDF_SYSTEM_MAX_CHARS,
@@ -192,6 +193,155 @@ def _build_skill_payload(session: dict) -> str:
     return master_section + "\n\n" + vertical_bundle
 
 
+def _run_llm_call(
+    client: anthropic.Anthropic,
+    system_blocks: list,
+    user_message: str,
+    *,
+    max_tokens: int = 16000,
+    use_web_search: bool = True,
+    timeout: float = 240.0,
+) -> str:
+    """Single Sonnet call con rate-limit backoff + web_search server-side loop.
+
+    Ritorna il testo raw del modello (no JSON parse). Helper riusato da
+    single-call e da ciascuna fase del multi-call orchestrator.
+    """
+    delays = [12, 25, 45]
+    tools = (
+        [{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}]
+        if use_web_search else []
+    )
+
+    def _create(messages: List[Dict[str, Any]]):
+        last_exc: Optional[Exception] = None
+        for attempt, delay in enumerate([0] + delays):
+            if delay:
+                log.warning("Rate-limited, retry %d/%d after %ds", attempt, len(delays), delay)
+                time.sleep(delay)
+            try:
+                kwargs: Dict[str, Any] = dict(
+                    model=ANTHROPIC_PDF_MODEL,
+                    max_tokens=max_tokens,
+                    system=system_blocks,
+                    messages=messages,
+                    timeout=timeout,
+                )
+                if tools:
+                    kwargs["tools"] = tools
+                return client.messages.create(**kwargs)
+            except anthropic.RateLimitError as exc:
+                last_exc = exc
+                continue
+        raise last_exc if last_exc else RuntimeError("rate-limit retry loop exhausted")
+
+    conversation: List[Dict[str, Any]] = [{"role": "user", "content": user_message}]
+    for _hop in range(8):
+        result = _create(conversation)
+        stop = getattr(result, "stop_reason", None)
+        if stop == "tool_use":
+            conversation.append({"role": "assistant", "content": result.content})
+            tool_uses = [b for b in result.content if getattr(b, "type", "") == "tool_use"]
+            if not tool_uses:
+                break
+            conversation.append({
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": tu.id, "content": "[no client-side tool wired]"}
+                    for tu in tool_uses
+                ],
+            })
+            continue
+        return "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
+    return ""
+
+
+def _generate_multi_call(
+    client: anthropic.Anthropic,
+    system_blocks: list,
+    base_user_message: str,
+) -> Dict[str, Any]:
+    """3 chiamate Sonnet sequenziali: exec_summary (web_search), body, conclusions.
+
+    Risolve il problema 'ultimo blocco troncato' quando il report singolo eccede
+    max_tokens. Ogni call ha output ridotto (8k/12k/4k token) → no troncamento.
+    Cache hit su system prompt dopo prima call → costo input scontato 90%.
+    """
+    # FASE 1/3 — meta + executive_summary + footer (web_search per benchmark/competitor)
+    ua = base_user_message + (
+        "\n\n=== FASE 1/3 — EMETTI SOLO QUESTO JSON ===\n"
+        "{\n"
+        '  "meta": {title, subtitle, kicker, sector, date},\n'
+        '  "executive_summary": {type:"executive_summary", title, body, score, '
+        'score_breakdown:[4 dimensioni con items dettagliati]},\n'
+        '  "footer": {disclaimer}\n'
+        "}\n"
+        "Usa web_search per dati benchmark/competitor REALI. Output: solo l'oggetto, "
+        "niente prosa fuori, niente altri blocchi corpo né conclusions."
+    )
+    raw_a = _run_llm_call(client, system_blocks, ua, max_tokens=8000, use_web_search=True)
+    payload_a = _extract_json(raw_a)
+    meta = payload_a.get("meta") or {}
+    exec_summary = payload_a.get("executive_summary") or {}
+    footer = payload_a.get("footer") or {}
+    log.info("Multi-call A: meta=%s exec_summary_score=%s", bool(meta), exec_summary.get("score"))
+
+    # FASE 2/3 — body blocks (no web_search, già usato in fase 1)
+    ub = base_user_message + (
+        "\n\n=== FASE 2/3 — EMETTI SOLO QUESTO JSON ===\n"
+        '{"blocks": [ ...4-6 blocchi corpo... ]}\n'
+        "TIPI AMMESSI: kpi_grid, two_column, data_table, action_list, risk_mitigation, narrative.\n"
+        "VIETATO: executive_summary, conclusions (già emessi in fase 1/3 e separati in fase 3/3).\n\n"
+        "Contesto già emesso (NON ripetere, sintetizza coerente):\n"
+        f"  meta.title = {str(meta.get('title',''))[:120]}\n"
+        f"  score totale = {exec_summary.get('score')}/100\n"
+        f"  exec_summary.title = {str(exec_summary.get('title',''))[:120]}\n\n"
+        "Output: solo l'oggetto {blocks}, niente prosa, niente footer, niente meta."
+    )
+    raw_b = _run_llm_call(client, system_blocks, ub, max_tokens=12000, use_web_search=False)
+    payload_b = _extract_json(raw_b)
+    body_blocks = payload_b.get("blocks") or []
+    if not isinstance(body_blocks, list):
+        body_blocks = []
+    log.info("Multi-call B: body_blocks=%d", len(body_blocks))
+
+    # FASE 3/3 — conclusions (no web_search, contesto compatto)
+    body_summary = "; ".join(
+        f"{i+1}.{b.get('type','?')}({str(b.get('title',''))[:30]})"
+        for i, b in enumerate(body_blocks[:8])
+        if isinstance(b, dict)
+    )
+    uc = base_user_message + (
+        "\n\n=== FASE 3/3 — EMETTI SOLO QUESTO JSON ===\n"
+        "{\n"
+        '  "conclusions": {\n'
+        '    type:"conclusions", title:"Conclusioni e Prossimi Passi",\n'
+        '    left:{heading:"3 problemi principali", heading_variant:"alert", '
+        'body_html:"<ol><li>...</li><li>...</li><li>...</li></ol>"},\n'
+        '    right:{heading:"3 azioni immediate (settimana 1-2)", '
+        'milestones:[{label,tone,items:[]}, ..., '
+        '{label:"KPI 30/60/90 giorni", tone:"neutral", items:["30gg:...","60gg:...","90gg:..."]}]}\n'
+        "  }\n"
+        "}\n"
+        "REQUISITI: left.body_html ≥ 30 parole sui 3 problemi. right.milestones ≥ 3 voci "
+        "(2 azioni + 1 KPI 30/60/90).\n\n"
+        "Sintetizza coerente con quanto già emesso:\n"
+        f"  score = {exec_summary.get('score')}/100\n"
+        f"  body blocks emessi = {body_summary}\n\n"
+        "Output: solo l'oggetto {conclusions}, niente prosa fuori."
+    )
+    raw_c = _run_llm_call(client, system_blocks, uc, max_tokens=4000, use_web_search=False)
+    payload_c = _extract_json(raw_c)
+    conclusions = payload_c.get("conclusions") or {}
+    log.info("Multi-call C: conclusions=%s", bool(conclusions.get("left") or conclusions.get("right")))
+
+    return {
+        "meta": meta,
+        "blocks": [exec_summary] + body_blocks + ([conclusions] if conclusions else []),
+        "footer": footer,
+    }
+
+
 def generate_analysis_json(session: dict) -> Dict[str, Any]:
     """Call Sonnet with master + vertical skills + session context.
 
@@ -253,19 +403,37 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "- Coerenza interna: stesso numero in blocchi diversi senza contraddizioni.\n"
         "- Adatta i titoli e le sezioni AL CASO SPECIFICO dell'utente.\n"
         "- Usa SOLO i tipi di blocco documentati nella master skill.\n\n"
-        "RUBRIC SCORE DETERMINISTICO (eseguilo sempre per ogni audit):\n"
-        "Lo score 0-100 deve essere calcolato sommando 4 sotto-dimensioni di 25 punti ciascuna\n"
-        "(mostrate nel breakdown del blocco executive_summary o kpi_grid):\n"
-        "  1. Technical SEO (0-25): HTTPS, mobile-friendly, sitemap.xml, robots.txt, "
-        "canonical, schema.org. Conta i presenti, parti da 0.\n"
-        "  2. Content & On-page (0-25): title unici, meta description, H1 coerenti, "
-        "alt-text, internal linking. Conta presenti su totale pagine.\n"
-        "  3. Architecture (0-25): n. pagine indicizzabili (≥10 → 25, 5-9 → 15, <5 → 5), "
-        "presenza blog, struttura cluster.\n"
-        "  4. Off-page & Authority (0-25): backlink rilevati (se misurati), DA reale, "
-        "menzioni brand. Se non misurabile → 12 (stima neutrale, dichiarare 'non misurato').\n"
-        "Lo score finale = somma 4 dimensioni. STESSO INPUT → STESSO SCORE. Esponi sempre "
-        "il breakdown nel report. NIENTE score oscillanti tra run sullo stesso sito.\n\n"
+        "RUBRIC SCORE DETERMINISTICO (eseguilo sempre per ogni audit SEO):\n"
+        "Lo score 0-100 = somma di 4 dimensioni × 25 punti. NON stimare il totale: somma i\n"
+        "punti dei check individuali. Pesi FISSI per check — usa esattamente questi:\n\n"
+        "  1. Technical SEO (max 25):\n"
+        "     • HTTPS attivo = 5pt · mobile-friendly = 5pt · sitemap.xml presente = 4pt\n"
+        "     • robots.txt valido = 3pt · schema.org markup = 5pt · canonical esplicito = 3pt\n"
+        "  2. Content & On-page (max 25):\n"
+        "     • title unici per pagina = 5pt · meta description ≥ 90% pagine = 5pt\n"
+        "     • H1 uno per pagina = 5pt · alt-text immagini ≥ 80% = 5pt · internal linking ≥ 3/pagina = 5pt\n"
+        "  3. Architecture (max 25):\n"
+        "     • pagine indicizzabili ≥ 10 = 10pt (5-9 = 6pt, <5 = 2pt) · presenza blog = 8pt\n"
+        "     • struttura a cluster/hub-spoke = 7pt\n"
+        "  4. Off-page & Authority (max 25):\n"
+        "     • Se non misurabile in sessione (no Ahrefs/Majestic) → 12pt FISSI, dichiarare\n"
+        "       esplicitamente 'non misurato' nella note del breakdown item.\n"
+        "     • Se misurato: backlink ≥ 20 = 10pt, DA ≥ 20 = 10pt, menzioni brand = 5pt\n\n"
+        "FORMATO BREAKDOWN OBBLIGATORIO nel blocco executive_summary (campo score_breakdown):\n"
+        "  [{\"label\":\"Technical SEO\",\"value\":18,\"max\":25,\"items\":[\n"
+        "      {\"name\":\"HTTPS\",\"points\":5,\"max\":5,\"status\":\"ok\"},\n"
+        "      {\"name\":\"Mobile-friendly\",\"points\":5,\"max\":5,\"status\":\"ok\"},\n"
+        "      {\"name\":\"Sitemap.xml\",\"points\":4,\"max\":4,\"status\":\"ok\"},\n"
+        "      {\"name\":\"Robots.txt\",\"points\":3,\"max\":3,\"status\":\"ok\"},\n"
+        "      {\"name\":\"Schema.org\",\"points\":0,\"max\":5,\"status\":\"alert\"},\n"
+        "      {\"name\":\"Canonical\",\"points\":1,\"max\":3,\"status\":\"warning\"}\n"
+        "   ]},\n"
+        "   {\"label\":\"Content & On-page\",\"value\":N,\"max\":25,\"items\":[...]},\n"
+        "   {\"label\":\"Architecture\",\"value\":N,\"max\":25,\"items\":[...]},\n"
+        "   {\"label\":\"Off-page & Authority\",\"value\":N,\"max\":25,\"items\":[...]}]\n"
+        "REGOLA AURO: value della dimensione = SOMMA dei points dei suoi items. Score totale\n"
+        "= SOMMA dei value delle 4 dimensioni. Verifica aritmetica prima di emettere. STESSO\n"
+        "INPUT → STESSO SCORE. Niente oscillazioni tra run sullo stesso sito.\n\n"
         "CATEGORIA 1 — ERRORI DI DATI (vietati assoluti):\n"
         "  • DATI INVENTATI: VIETATO affermare metriche non estratte da fonte reale in questa "
         "sessione. Niente 'keyword in top X: N attuali' senza GSC. Niente 'Domain Authority: N' "
@@ -296,6 +464,14 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "scrivi 'sede da verificare'. VIETATO scrivere 'Milano/Italia', 'Roma' o altre città di "
         "default. (Caso K2-AI: sede a Perugia, non Milano.)\n\n"
         "CATEGORIA 2 — ERRORI DI OUTPUT (verifica prima di emettere JSON):\n"
+        "  • KPI_GRID — separa value / note / verified, NON concatenare:\n"
+        "    ❌ {\"value\":\"180-250 vis/mese [non verificato — richiede GSC]\"}\n"
+        "    ✅ {\"value\":\"180–250 vis/mese\",\"note\":\"† richiede GSC/Analytics\",\"verified\":false}\n"
+        "    Regola: `value` è SOLO il numero/range secco (max 20 char). `note` contiene "
+        "il disclaimer/contesto (max 80 char). `verified` è boolean: true se il dato viene "
+        "da fonte misurata in questa sessione (Analytics, GSC, crawl reale, file caricato), "
+        "false se è stima/proiezione. Il renderer aggiunge automaticamente il dagger † per "
+        "verified:false. Non includere il dagger manualmente nel value.\n"
         "  • NIENTE SEZIONI VUOTE: ogni blocco dichiarato DEVE avere contenuto sostanziale. "
         "Il blocco 'conclusions' OBBLIGATORIAMENTE deve contenere: 3 problemi principali in "
         "ordine di priorità, 3 azioni immediate per questa settimana, KPI con cui misurare il "
@@ -351,12 +527,10 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
     )
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    log.info("Generating report JSON with model=%s skills=%d-chars", ANTHROPIC_PDF_MODEL, len(skills_payload))
-
-    # Web search tool — Anthropic server-side, niente handler lato nostro.
-    # Il modello decide quando cercare; loop finché non emette stop_reason="end_turn"
-    # con testo finale (il JSON). max_uses limita il costo (~$10/1000 search).
-    tools = [{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}]
+    log.info(
+        "Generating report JSON model=%s skills=%d-chars multi_call=%s",
+        ANTHROPIC_PDF_MODEL, len(skills_payload), ANTHROPIC_PDF_MULTI_CALL,
+    )
 
     # Prompt caching: skills payload è stabile tra chiamate → 90% sconto su cache hit.
     # cache_control sul system prompt finale (ultimo blocco testuale).
@@ -364,52 +538,16 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}},
     ]
 
-    def _create_with_backoff(messages: List[Dict[str, Any]]):
-        """Retry su 429 con backoff esponenziale (rate limit Anthropic per minuto)."""
-        delays = [12, 25, 45]  # finestra rate-limit Anthropic = 60s, backoff sotto 1 min
-        last_exc: Optional[Exception] = None
-        for attempt, delay in enumerate([0] + delays):
-            if delay:
-                log.warning("Rate-limited, retry %d/%d after %ds", attempt, len(delays), delay)
-                time.sleep(delay)
-            try:
-                return client.messages.create(
-                    model=ANTHROPIC_PDF_MODEL,
-                    max_tokens=16000,
-                    system=system_blocks,
-                    tools=tools,
-                    messages=messages,
-                    timeout=240.0,
-                )
-            except anthropic.RateLimitError as exc:
-                last_exc = exc
-                continue
-        raise last_exc if last_exc else RuntimeError("rate-limit retry loop exhausted")
+    if ANTHROPIC_PDF_MULTI_CALL:
+        try:
+            parsed = _generate_multi_call(client, system_blocks, user_message)
+            parsed = _sanitize_hallucinations(parsed)
+            parsed = _validate_and_repair(parsed, client, system_blocks, user_message)
+            return parsed
+        except (ValueError, json.JSONDecodeError, RuntimeError) as exc:
+            log.warning("Multi-call generation failed (%s), falling back to single-call", exc)
 
-    conversation: List[Dict[str, Any]] = [{"role": "user", "content": user_message}]
-    raw = ""
-    for _hop in range(8):  # safety cap: max 8 round-trip se il modello tool-spamma
-        result = _create_with_backoff(conversation)
-        stop = getattr(result, "stop_reason", None)
-        # Server-side web_search: server_tool_use + web_search_tool_result blocks
-        # vengono già rinviati al modello automaticamente — non serve gestirli.
-        # Iteriamo solo se stop_reason == "tool_use" (client-side tool, raro qui).
-        if stop == "tool_use":
-            # Echo assistant turn + dummy tool_result per chiudere il ciclo.
-            conversation.append({"role": "assistant", "content": result.content})
-            tool_uses = [b for b in result.content if getattr(b, "type", "") == "tool_use"]
-            if not tool_uses:
-                break
-            conversation.append({
-                "role": "user",
-                "content": [
-                    {"type": "tool_result", "tool_use_id": tu.id, "content": "[no client-side tool wired]"}
-                    for tu in tool_uses
-                ],
-            })
-            continue
-        raw = "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
-        break
+    raw = _run_llm_call(client, system_blocks, user_message, max_tokens=16000, use_web_search=True)
     if not raw:
         raise RuntimeError("LLM returned no text block (web_search loop esaurito)")
     try:
@@ -455,15 +593,26 @@ _FORBIDDEN_CITIES = re.compile(r"\b(Milano|Roma|Torino|Napoli|Bologna)\b\s*(?:/I
 _UNSOURCED_PCT_RE = re.compile(r"(\d+\s*%)\s+(?:di|delle|degli)\s+(?:PMI|aziende|imprese)\b(?!.{0,80}(?:fonte|http|istat|anitec|polimi|politecnico))", re.IGNORECASE)
 
 
-def _sanitize_recursive(value: Any, ctx: dict) -> Any:
+def _sanitize_recursive(value: Any, ctx: dict, parent_keys: tuple = ()) -> Any:
     if isinstance(value, dict):
-        return {k: _sanitize_recursive(v, ctx) for k, v in value.items()}
+        # KPI item shape: contiene `value` + (`label` o `verified`).
+        # Marca contesto per evitare riapplicare regex inline su .value già
+        # normalizzato in _normalize_kpi_blocks.
+        is_kpi_item = "value" in value and ("label" in value or "verified" in value)
+        out = {}
+        for k, v in value.items():
+            child_parents = parent_keys + (k,)
+            if is_kpi_item and k == "value" and isinstance(v, str):
+                out[k] = v  # leave as-is, già normalizzato
+            else:
+                out[k] = _sanitize_recursive(v, ctx, child_parents)
+        return out
     if isinstance(value, list):
         # Filtra elementi vuoti: stringhe blank, dict senza testo, oggetti
         # incompleti (es. {"text":""}). Era causa di bullet vuoti pagina 3.
         cleaned: list = []
         for v in value:
-            sub = _sanitize_recursive(v, ctx)
+            sub = _sanitize_recursive(v, ctx, parent_keys)
             if isinstance(sub, str) and not sub.strip():
                 ctx["fixed"] += 1
                 continue
@@ -492,11 +641,61 @@ def _sanitize_recursive(value: Any, ctx: dict) -> Any:
     return value
 
 
+_INLINE_DISCLAIMER_RE = re.compile(r"\s*[\[(]\s*([^\])]+?)\s*[\])]")
+_DISCLAIMER_KEYWORDS = ("non verificato", "stima", "da verificare", "richiede", "fonte", "proiezione")
+
+
+def _split_kpi_value_disclaimer(item: Dict[str, Any]) -> bool:
+    """Sposta disclaimer inline da `value` a `note` + setta `verified=False`.
+
+    Sonnet a volte concatena '[non verificato — richiede GSC]' dentro `value`,
+    distruggendo la tipografia della card KPI (8 righe di disclaimer al posto
+    del numero secco). Separiamo il dato dal disclaimer, marchiamo unverified.
+    Ritorna True se ha modificato l'item.
+    """
+    value = str(item.get("value") or "")
+    if not value:
+        return False
+    changed = False
+    m = _INLINE_DISCLAIMER_RE.search(value)
+    if m and any(k in m.group(1).lower() for k in _DISCLAIMER_KEYWORDS):
+        disclaimer = m.group(1).strip()
+        item["value"] = (value[:m.start()] + value[m.end():]).strip(" ·,-—")
+        existing = str(item.get("note") or "").strip()
+        item["note"] = f"† {disclaimer}" if not existing else f"{existing} · {disclaimer}"
+        item["verified"] = False
+        changed = True
+    elif _TRAFFIC_RE.search(value) or _KEYWORD_POS_RE.search(value):
+        if item.get("verified") is None:
+            item["verified"] = False
+            if not item.get("note"):
+                item["note"] = "† richiede GSC/Analytics"
+            changed = True
+    return changed
+
+
+def _normalize_kpi_blocks(analysis: Dict[str, Any]) -> int:
+    """Pre-pass: normalizza kpi_grid items (split value/note/verified)."""
+    fixed = 0
+    for block in analysis.get("blocks") or []:
+        if not isinstance(block, dict) or block.get("type") != "kpi_grid":
+            continue
+        items = block.get("items") or block.get("kpis") or block.get("cards") or []
+        for item in items:
+            if isinstance(item, dict) and _split_kpi_value_disclaimer(item):
+                fixed += 1
+    return fixed
+
+
 def _sanitize_hallucinations(analysis: Dict[str, Any]) -> Dict[str, Any]:
     """Catch-all regex per pattern di hallucination che Sonnet emette nonostante
     il prompt. Sostituisce numeri secchi con tag "[non verificato]" e applica
     correzioni context-aware (es. sede K2-AI = Perugia)."""
     ctx: dict = {"fixed": 0}
+    # KPI normalize PRIMA del walk ricorsivo: evita doppia tag inline.
+    kpi_fixed = _normalize_kpi_blocks(analysis)
+    if kpi_fixed:
+        log.info("Post-gen sanitizer normalized %d KPI items", kpi_fixed)
     # Detection sede K2-AI dal flatten dell'intero JSON (cerca P.IVA o "Perugia").
     flat = json.dumps(analysis, ensure_ascii=False)
     ctx["force_perugia"] = bool(_PERUGIA_HINT.search(flat))
@@ -532,6 +731,59 @@ def _block_content_length(block: dict) -> int:
     return total
 
 
+_WORD_COUNT_RE = re.compile(r"\b\w{2,}\b", re.UNICODE)
+
+
+def _strip_html_tags(s: str) -> str:
+    return re.sub(r"<[^>]+>", " ", s or "")
+
+
+def _validate_conclusions(block: dict) -> Optional[str]:
+    """Conclusions strutturale: left.body_html ≥ 30 parole + right.milestones ≥ 2."""
+    left = block.get("left") or {}
+    right = block.get("right") or {}
+    left_text = _strip_html_tags(str(left.get("body_html") or left.get("body") or ""))
+    left_words = len(_WORD_COUNT_RE.findall(left_text))
+    if left_words < 30:
+        return f"conclusions.left troppo corto ({left_words} parole, serve ≥30 sui 3 problemi principali)"
+    milestones = right.get("milestones") or right.get("actions") or right.get("steps") or []
+    valid_milestones = [
+        m for m in milestones
+        if isinstance(m, dict) and (m.get("items") or m.get("body_html") or m.get("body"))
+    ]
+    if len(valid_milestones) < 2:
+        return f"conclusions.right.milestones insufficienti ({len(valid_milestones)} validi, serve ≥2 fra azioni + KPI 30/60/90)"
+    return None
+
+
+def _validate_action_list(block: dict) -> Optional[str]:
+    """Action list: almeno 3 actions con title non vuoto."""
+    actions = block.get("actions") or block.get("items") or []
+    valid = [
+        a for a in actions
+        if isinstance(a, dict) and (a.get("title") or a.get("action") or a.get("label"))
+    ]
+    if len(valid) < 3:
+        return f"action_list: solo {len(valid)} azioni valide (servono ≥3 con title)"
+    return None
+
+
+def _validate_kpi_grid(block: dict) -> Optional[str]:
+    """KPI grid: almeno 2 items con value non vuoto."""
+    items = block.get("items") or block.get("kpis") or block.get("cards") or []
+    valid = [i for i in items if isinstance(i, dict) and str(i.get("value") or "").strip()]
+    if len(valid) < 2:
+        return f"kpi_grid: solo {len(valid)} item con value (servono ≥2)"
+    return None
+
+
+_STRUCTURAL_VALIDATORS = {
+    "conclusions": _validate_conclusions,
+    "action_list": _validate_action_list,
+    "kpi_grid": _validate_kpi_grid,
+}
+
+
 def _validate_blocks(analysis: dict) -> List[Dict[str, Any]]:
     """Ritorna lista di issue {block_idx, block_type, reason} da riparare."""
     issues: List[Dict[str, Any]] = []
@@ -541,6 +793,13 @@ def _validate_blocks(analysis: dict) -> List[Dict[str, Any]]:
             issues.append({"block_idx": i, "block_type": "unknown", "reason": "non-dict block"})
             continue
         btype = b.get("type") or "unknown"
+        # Validator strutturale per block type noto (più strict di char count).
+        struct = _STRUCTURAL_VALIDATORS.get(btype)
+        if struct:
+            reason = struct(b)
+            if reason:
+                issues.append({"block_idx": i, "block_type": btype, "reason": reason})
+                continue
         clen = _block_content_length(b)
         # Soglia minima 80 char di contenuto reale → blocchi quasi-vuoti
         if clen < 80:
@@ -553,8 +812,14 @@ def _validate_blocks(analysis: dict) -> List[Dict[str, Any]]:
 
 
 def _validate_score_math(analysis: dict) -> Optional[str]:
-    """Se exec_summary contiene score, verifica che somma breakdown == totale.
-    Ritorna messaggio di issue se incoerente, altrimenti None."""
+    """Verifica aritmetica score: totale == somma dimensioni == somma items per dim.
+
+    Tre check in cascata:
+      1. somma 4 value dimensioni ≈ totale (tolleranza 2pt)
+      2. ogni dimensione: somma points dei suoi items == value della dimensione
+      3. nessun item supera il proprio max
+    Ritorna primo issue trovato, None se tutto ok.
+    """
     blocks = analysis.get("blocks") or []
     for b in blocks:
         if not isinstance(b, dict) or b.get("type") != "executive_summary":
@@ -565,11 +830,35 @@ def _validate_score_math(analysis: dict) -> Optional[str]:
             return None
         try:
             total = int(score)
-            parts = [int(p.get("value") or p.get("score") or 0) for p in breakdown if isinstance(p, dict)]
-            if parts and abs(sum(parts) - total) > 2:  # tolleranza 2 punti
-                return f"score totale {total} ≠ somma breakdown {sum(parts)}"
         except (ValueError, TypeError):
             return None
+        dim_values: List[int] = []
+        for dim in breakdown:
+            if not isinstance(dim, dict):
+                continue
+            try:
+                dv = int(dim.get("value") or dim.get("score") or 0)
+            except (ValueError, TypeError):
+                continue
+            dim_values.append(dv)
+            items = dim.get("items") or []
+            if isinstance(items, list) and items:
+                points_sum = 0
+                for it in items:
+                    if not isinstance(it, dict):
+                        continue
+                    try:
+                        p = int(it.get("points") or 0)
+                        mx = int(it.get("max") or 0)
+                        if mx and p > mx:
+                            return f"score: item '{it.get('name','?')}' di '{dim.get('label','?')}' supera max ({p}>{mx})"
+                        points_sum += p
+                    except (ValueError, TypeError):
+                        continue
+                if abs(points_sum - dv) > 1:
+                    return f"score: dimensione '{dim.get('label','?')}' value={dv} ≠ somma items={points_sum}"
+        if dim_values and abs(sum(dim_values) - total) > 2:
+            return f"score totale {total} ≠ somma dimensioni {sum(dim_values)}"
     return None
 
 

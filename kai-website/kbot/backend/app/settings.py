@@ -25,6 +25,10 @@ def _env(name: str, *fallbacks: str, default: Optional[str] = None) -> Optional[
 ANTHROPIC_API_KEY = _env("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = _env("ANTHROPIC_MODEL", "CLAUDE_MODEL", default="claude-haiku-4-5")
 ANTHROPIC_PDF_MODEL = _env("ANTHROPIC_PDF_MODEL", default="claude-sonnet-4-5")
+# Multi-call generation: spezza il JSON in 3 chiamate (exec_summary, body, conclusions)
+# per evitare troncamento ultime sezioni con report lunghi. Default OFF — feature
+# flag per safe rollout. Attivare con ANTHROPIC_PDF_MULTI_CALL=1.
+ANTHROPIC_PDF_MULTI_CALL = (_env("ANTHROPIC_PDF_MULTI_CALL", default="0") or "0").lower() in ("1", "true", "yes")
 
 SUPABASE_URL = _env("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = _env(
