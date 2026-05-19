@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
@@ -95,9 +95,10 @@ class LinkUserBody(BaseModel):
 @router.post("/session/{session_id}/link-user")
 def link_user(
     session_id: str,
-    body: LinkUserBody,
+    body: Optional[LinkUserBody] = Body(default=None),
     user: AuthUser = Depends(require_user),
 ):
+    body = body or LinkUserBody()
     row = sessions.get_session(session_id)
     if not row:
         raise HTTPException(status_code=404, detail="session not found")

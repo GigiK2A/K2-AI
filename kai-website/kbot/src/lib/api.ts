@@ -32,6 +32,7 @@ export interface KbotSession {
   status: string | null;
   pdfUrl: string | null;
   hasUser: boolean;
+  linkToken?: string | null;
   timestamps: { createdAt: string; updatedAt: string };
 }
 
@@ -115,7 +116,10 @@ export async function createSession(opts: {
   });
   if (!res.ok) await parseErr(res, "Errore creazione sessione");
   const data = await res.json();
-  return data.session as KbotSession;
+  const session = data.session as KbotSession;
+  // Backend emette link_token solo per sessioni anonime — serve per claim post-login.
+  if (data.link_token) session.linkToken = data.link_token as string;
+  return session;
 }
 
 export async function getSession(
@@ -149,10 +153,12 @@ export async function fetchUserSessions(authToken: string): Promise<DashboardPay
 export async function linkSessionToUser(
   sessionId: string,
   authToken: string,
+  linkToken?: string | null,
 ): Promise<KbotSession> {
   const res = await fetch(`${API_BASE}/api/kbot/session/${sessionId}/link-user`, {
     method: "POST",
-    headers: { ...authHeaders(authToken) },
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ linkToken: linkToken ?? null }),
   });
   if (!res.ok) await parseErr(res, "Errore collegamento sessione");
   const data = await res.json();

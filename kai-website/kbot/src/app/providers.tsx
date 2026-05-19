@@ -192,7 +192,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       const token = await getToken();
       if (!token) return;
       try {
-        const linked = await linkSessionToUser(kbotSession.id, token);
+        const linked = await linkSessionToUser(kbotSession.id, token, kbotSession.linkToken);
         setKbotSession(linked);
       } catch (err) {
         // 409 = already linked to a different user; drop our stale id so a fresh anon session can start.

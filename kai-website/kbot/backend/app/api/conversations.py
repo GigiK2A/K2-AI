@@ -21,6 +21,12 @@ log = logging.getLogger(__name__)
 TABLE = "kbot_conversations"
 
 
+def _is_missing_table_error(exc: Exception) -> bool:
+    """Detect Postgrest PGRST205 (schema cache miss) — tabella non esistente."""
+    msg = str(exc).lower()
+    return "pgrst205" in msg or "schema cache" in msg or "could not find the table" in msg
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -61,15 +67,21 @@ def _check_owner(row: dict, user: AuthUser) -> None:
 @router.get("/conversations")
 def list_conversations(user: AuthUser = Depends(require_user)) -> dict:
     client = get_admin_client()
-    res = (
-        client.table(TABLE)
-        .select("*")
-        .eq("user_id", user.id)
-        .is_("deleted_at", "null")
-        .order("created_at", desc=True)
-        .limit(100)
-        .execute()
-    )
+    try:
+        res = (
+            client.table(TABLE)
+            .select("*")
+            .eq("user_id", user.id)
+            .is_("deleted_at", "null")
+            .order("created_at", desc=True)
+            .limit(100)
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            log.warning("kbot_conversations table missing — returning empty list (run migration 007)")
+            return {"conversations": []}
+        raise
     return {"conversations": [_public(r) for r in (res.data or [])]}
 
 

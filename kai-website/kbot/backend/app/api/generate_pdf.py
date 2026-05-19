@@ -215,7 +215,8 @@ async def generate_pdf_stream(
             try:
                 analysis_result["data"] = generate_analysis_json(session)
             except Exception as exc:
-                analysis_result["error"] = str(exc)
+                log.exception("generate_analysis_json failed for session=%s", session.get("id"))
+                analysis_result["error"] = f"{type(exc).__name__}: {exc}"
             finally:
                 loop.call_soon_threadsafe(analysis_done.set)
 
