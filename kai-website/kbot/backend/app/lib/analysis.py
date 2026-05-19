@@ -169,6 +169,270 @@ def _extract_json(text: str) -> Dict[str, Any]:
     return json.loads(candidate[start : end + 1])
 
 
+# ---------------------------------------------------------------------------
+# Report profile: classifier + per-type prompt sections.
+#
+# Sonnet riceve linee guida differenti in base al reportType estratto dalla
+# chat. Senza questo, il prompt forzava score formula SEO (4 dim × 25pt) e
+# schema conclusions con KPI 30/60/90 anche su bilancio/business plan dove
+# non ha senso → punteggi arbitrari, sezioni vuote, schema rigido.
+# ---------------------------------------------------------------------------
+
+def _classify_report(report_type: Optional[str]) -> str:
+    """Mappa reportType (stringa libera dalla chat) in categoria enum."""
+    rt = (report_type or "").lower()
+    if any(k in rt for k in ("seo", "audit seo", "posizionamento ricerca", "ricerca organica", "indicizz")):
+        return "seo"
+    if any(k in rt for k in ("bilancio", "salute finanziaria", "controllo gestione", "flussi cassa", "cash flow")):
+        return "bilancio"
+    if any(k in rt for k in ("business plan", "piano industriale", "piano strategico")):
+        return "business_plan"
+    if any(k in rt for k in ("fattibilit", "feasibility")):
+        return "fattibilita"
+    if any(k in rt for k in ("due diligence", "dd commercial", "dd operativ")):
+        return "due_diligence"
+    if any(k in rt for k in ("investiment", "roi", "payback", "npv", "irr")):
+        return "investimento"
+    if any(k in rt for k in ("processi", "as-is", "to-be", "mappatura process", "lean", "bottleneck")):
+        return "processi"
+    if any(k in rt for k in ("mercato", "settore", "ricerca settoriale", "studio mercato", "tam", "sam")):
+        return "mercato"
+    if any(k in rt for k in ("sentiment", "reputation", "reputazione")):
+        return "sentiment"
+    if any(k in rt for k in ("competitiv", "benchmark")):
+        return "competitivo"
+    if any(k in rt for k in ("marketing", "funnel", "customer journey", "positioning", "posizionamento mark")):
+        return "marketing"
+    if any(k in rt for k in ("dati", "dataset", "data analysis")):
+        return "custom_data"
+    return "generic"
+
+
+_SCORE_RUBRICS: Dict[str, str] = {
+    "seo": (
+        "RUBRIC SCORE SEO (somma 4 dim × 25pt = totale 0-100):\n"
+        "  1. Technical SEO (max 25): HTTPS=5, mobile=5, sitemap=4, robots=3, schema.org=5, canonical=3\n"
+        "  2. Content & On-page (max 25): title unici=5, meta desc≥90%=5, H1 unico=5, alt-text≥80%=5, internal links≥3/pg=5\n"
+        "  3. Architecture (max 25): pagine indicizzabili ≥10=10 (5-9=6, <5=2), blog=8, cluster=7\n"
+        "  4. Off-page & Authority (max 25): backlink≥20=10, DA≥20=10, menzioni brand=5. Se non misurabile→12 fissi, dichiarare 'non misurato'\n"
+    ),
+    "bilancio": (
+        "RUBRIC SCORE SALUTE FINANZIARIA (somma 4 dim × 25pt):\n"
+        "  1. Liquidità (max 25): current ratio≥1.5=10, quick ratio≥1=8, DSO<60gg=7\n"
+        "  2. Redditività (max 25): EBITDA margin≥10%=10, ROE≥8%=8, ROI≥5%=7\n"
+        "  3. Solvibilità (max 25): leverage≤2x=10, debt/equity≤1=8, copertura interessi≥3x=7\n"
+        "  4. Crescita (max 25): CAGR ricavi 3yr≥5%=10, margine in crescita=8, working capital efficienza=7\n"
+        "Se metrica non disponibile (no file bilancio in sessione)→assegna 12pt fissi per dimensione e marca 'non misurato'.\n"
+    ),
+    "business_plan": (
+        "RUBRIC SCORE BUSINESS PLAN (somma 4 dim × 25pt):\n"
+        "  1. Mercato/Demand (max 25): TAM credibile=10, SAM realistico=8, segmentazione=7\n"
+        "  2. Modello/Offering (max 25): value prop chiara=10, pricing logico=8, differenziazione=7\n"
+        "  3. Finanza/Sostenibilità (max 25): break-even <24m=10, cash burn coperto=8, unit economics positivi=7\n"
+        "  4. Esecuzione (max 25): team competente=10, roadmap 12m=8, KPI tracciabili=7\n"
+    ),
+    "fattibilita": (
+        "RUBRIC SCORE FATTIBILITÀ (somma 4 dim × 25pt):\n"
+        "  1. Tecnica (max 25): tecnologia disponibile=10, complessità integrazione=8, skill team=7\n"
+        "  2. Mercato (max 25): domanda dimostrata=10, competizione gestibile=8, willingness to pay=7\n"
+        "  3. Finanza (max 25): CapEx sostenibile=10, payback <36m=8, ROI positivo=7\n"
+        "  4. Tempistica (max 25): MVP <6m=10, rollout <12m=8, dependencies note=7\n"
+    ),
+    "investimento": (
+        "RUBRIC SCORE INVESTIMENTO (somma 4 dim × 25pt):\n"
+        "  1. Ritorno (max 25): IRR≥15%=10, NPV>0=8, ROI≥20%=7\n"
+        "  2. Tempo recupero (max 25): payback <2y=10, <4y=15, >4y=8\n"
+        "  3. Rischio (max 25): scenario stress positivo=10, hedge attivi=8, downside limitato=7\n"
+        "  4. Strategia (max 25): allineamento obiettivi=10, exit pianificata=8, scalabilità=7\n"
+    ),
+    "generic": (
+        "SCORE QUALITATIVO: per analisi senza rubric numerica obbligatoria (processi/sentiment/due\n"
+        "diligence/mercato/competitivo/marketing/custom_data), OMETTI il campo score nell'executive_summary\n"
+        "e usa invece un giudizio sintetico in 'body' (es. 'Maturità complessiva: media-alta; gap critico\n"
+        "su X'). NIENTE numero arbitrario tipo '62/100' senza criteri.\n"
+    ),
+}
+# Alias per categorie senza rubric specifica
+for _k in ("due_diligence", "processi", "mercato", "sentiment", "competitivo", "marketing", "custom_data"):
+    _SCORE_RUBRICS[_k] = _SCORE_RUBRICS["generic"]
+
+
+_REQUIRED_BLOCKS: Dict[str, str] = {
+    "seo": (
+        "BLOCCHI OBBLIGATORI AUDIT SEO (oltre exec_summary + conclusions):\n"
+        "  a) data_table 'Keyword target identificate' columns=[Keyword, Volume mensile, KD, Intent, Priorità], ≥8 righe reali da crawl/web_search\n"
+        "  b) data_table 'Analisi competitor' columns=[Competitor, URL, Pagine indicizzate, DA stimato, Gap], ≥3 righe da web_search REALI\n"
+    ),
+    "bilancio": (
+        "BLOCCHI OBBLIGATORI ANALISI BILANCIO:\n"
+        "  a) data_table 'Indici di bilancio' columns=[Indice, Valore, Benchmark settore, Stato, Note], ≥6 righe (current ratio, ROE, ROI, EBITDA margin, leverage, DSO)\n"
+        "  b) data_table 'Proiezione P&L 3 anni' columns=[Voce, Anno 1, Anno 2, Anno 3, CAGR], ≥5 righe (Ricavi, COGS, EBITDA, Net income, Cash flow op)\n"
+        "  c) two_column 'Punti forza / Aree miglioramento' (forza=verde / aree=rosso)\n"
+    ),
+    "marketing": (
+        "BLOCCHI OBBLIGATORI ANALISI MARKETING:\n"
+        "  a) data_table 'Channel mix' columns=[Canale, Spesa %, CAC stimato, Conversion rate, ROAS], ≥4 righe (Search, Social, Email, Direct)\n"
+        "  b) data_table 'Funnel conversion' columns=[Stage, Volume, Conversion %, Tempo medio], ≥4 righe (Awareness, Interest, Decision, Action)\n"
+        "  c) two_column 'Posizionamento forte / Gap competitivo'\n"
+    ),
+    "business_plan": (
+        "BLOCCHI OBBLIGATORI BUSINESS PLAN:\n"
+        "  a) data_table 'Proiezione finanziaria 5 anni' columns=[Voce, Y1, Y2, Y3, Y4, Y5], ≥6 righe (Ricavi, COGS, OPEX, EBITDA, CapEx, Cash flow)\n"
+        "  b) data_table 'Roadmap milestone 12 mesi' columns=[Mese, Milestone, KPI atteso, Owner], ≥6 righe con date assolute dal corrente\n"
+        "  c) two_column 'Punti forza modello / Rischi go-to-market'\n"
+    ),
+    "fattibilita": (
+        "BLOCCHI OBBLIGATORI ANALISI FATTIBILITÀ:\n"
+        "  a) data_table 'Risk register' columns=[Rischio, Probabilità, Impatto, Mitigazione, Owner], ≥5 righe\n"
+        "  b) data_table 'Investment summary' columns=[Voce, Ammontare €, Note], ≥4 righe (CapEx, OPEX 1y, Working capital, Total)\n"
+        "  c) two_column 'Driver di successo / Mancanze critiche'\n"
+    ),
+    "due_diligence": (
+        "BLOCCHI OBBLIGATORI DUE DILIGENCE:\n"
+        "  a) data_table 'Red flags' columns=[Area, Red flag, Severità, Evidenza, Azione raccomandata], ≥4 righe (Legal, Fiscal, Commercial, Operational)\n"
+        "  b) data_table 'Checklist documentale' columns=[Area, Documento richiesto, Stato (✓/✕/?), Note], ≥6 righe\n"
+        "  c) two_column 'Strengths / Concerns'\n"
+    ),
+    "investimento": (
+        "BLOCCHI OBBLIGATORI ANALISI INVESTIMENTO:\n"
+        "  a) data_table 'Cash flow scenari' columns=[Anno, Best case, Base case, Worst case], ≥5 righe (Y1-Y5)\n"
+        "  b) data_table 'Metriche di ritorno' columns=[Metrica, Valore, Soglia decisione, Verdetto], righe per IRR, NPV, Payback, ROI, breakeven\n"
+        "  c) two_column 'Upside / Downside'\n"
+    ),
+    "processi": (
+        "BLOCCHI OBBLIGATORI ANALISI PROCESSI:\n"
+        "  a) data_table 'Bottleneck' columns=[Processo, Bottleneck, Impatto (h/sett), Causa, Azione TO-BE], ≥4 righe\n"
+        "  b) data_table 'KPI as-is vs to-be' columns=[KPI, As-is, To-be target, Δ %, Time-to-impact], ≥4 righe\n"
+        "  c) two_column 'Quick wins / Trasformazioni strutturali'\n"
+    ),
+    "mercato": (
+        "BLOCCHI OBBLIGATORI STUDIO MERCATO:\n"
+        "  a) data_table 'Mercato' columns=[Segmento, TAM €, SAM €, SOM €, CAGR %], ≥3 righe\n"
+        "  b) data_table 'Competitor mappati' columns=[Player, Quota %, Pricing, Posizionamento, Forza], ≥4 righe da web_search REALI\n"
+        "  c) two_column 'Trend favorevoli / Headwinds'\n"
+    ),
+    "sentiment": (
+        "BLOCCHI OBBLIGATORI ANALISI SENTIMENT:\n"
+        "  a) data_table 'Sentiment per canale' columns=[Canale, Volume menzioni, Positive %, Neutral %, Negative %], ≥4 righe\n"
+        "  b) data_table 'Top criticità ricorrenti' columns=[Tema, Frequenza, Sentiment, Esempio testuale, Azione], ≥4 righe\n"
+        "  c) two_column 'Punti di forza percepiti / Aree di criticità reputation'\n"
+    ),
+    "competitivo": (
+        "BLOCCHI OBBLIGATORI ANALISI COMPETITIVA:\n"
+        "  a) data_table 'Benchmark competitor' columns=[Competitor, Quota %, Prezzo medio, Differenziazione, Note], ≥4 righe REALI da web_search\n"
+        "  b) data_table 'Feature comparison' columns=[Feature, Cliente, Competitor1, Competitor2, Gap], ≥5 righe\n"
+        "  c) two_column 'Vantaggi competitivi / Gap strategici'\n"
+    ),
+    "custom_data": (
+        "BLOCCHI OBBLIGATORI ANALISI DATI:\n"
+        "  a) data_table 'Statistiche descrittive' columns=[Variabile, N, Media, Mediana, Min, Max, Std], dipende dataset\n"
+        "  b) data_table 'Correlazioni / pattern rilevati' columns=[Pattern, Variabili, Evidenza, Significatività, Implicazione], ≥3 righe\n"
+        "  c) narrative 'Insight chiave' (≥150 parole)\n"
+    ),
+    "generic": (
+        "BLOCCHI RACCOMANDATI: oltre exec_summary + conclusions, includi almeno 1 data_table\n"
+        "rilevante al tema e 1 two_column 'forza/gap' o equivalente. 4-6 blocchi totali.\n"
+    ),
+}
+
+
+_CONCLUSIONS_SCHEMAS: Dict[str, str] = {
+    "seo": (
+        "  left.heading='3 problemi principali' · body_html=<ol> 3 problemi · heading_variant='alert'\n"
+        "  right.heading='3 azioni immediate (settimana 1-2)' · right.milestones=[azione1, azione2, KPI 30/60/90]\n"
+    ),
+    "bilancio": (
+        "  left.heading='3 rischi finanziari principali' · body_html=<ol> 3 rischi (liquidità/marginalità/leverage)\n"
+        "  right.heading='Leve di miglioramento' · right.milestones=[\n"
+        "    Riduzione DSO/working capital | Ottimizzazione costi | KPI bilancio 90/180/365gg]\n"
+    ),
+    "marketing": (
+        "  left.heading='3 gap di posizionamento' · body_html=<ol> 3 gap rispetto a competitor/audience\n"
+        "  right.heading='Iniziative growth' · right.milestones=[\n"
+        "    Campaign quick-win | Sviluppo channel | KPI marketing 30/60/90gg (CAC, ROAS, conv rate)]\n"
+    ),
+    "business_plan": (
+        "  left.heading='3 rischi go-to-market' · body_html=<ol> 3 rischi su mercato/competizione/esecuzione\n"
+        "  right.heading='Milestone chiave 12 mesi' · right.milestones=[\n"
+        "    Mese 3 milestone | Mese 6 milestone | KPI 12 mesi (revenue/CAC/burn)]\n"
+    ),
+    "fattibilita": (
+        "  left.heading='3 fattori di rischio critici' · body_html=<ol> 3 rischi tecnici/mercato/finanziari\n"
+        "  right.heading='Raccomandazione go/no-go' · right.milestones=[\n"
+        "    Decisione | Pre-condizioni | KPI di go-decision]\n"
+    ),
+    "due_diligence": (
+        "  left.heading='3 red flag prioritarie' · body_html=<ol> 3 issue critiche\n"
+        "  right.heading='Azioni di mitigazione/follow-up' · right.milestones=[\n"
+        "    Azione legale | Azione fiscale/finanziaria | KPI di monitoring post-deal]\n"
+    ),
+    "investimento": (
+        "  left.heading='3 rischi di investimento' · body_html=<ol> rischio mercato/tecnologico/finanziario\n"
+        "  right.heading='Decisione + condizioni' · right.milestones=[\n"
+        "    Verdetto (go/conditional/no-go) | Condizioni go | KPI monitoring 90/180gg]\n"
+    ),
+    "processi": (
+        "  left.heading='3 colli di bottiglia critici' · body_html=<ol> 3 bottleneck con impatto h/sett\n"
+        "  right.heading='Iniziative TO-BE' · right.milestones=[\n"
+        "    Quick win 30gg | Trasformazione 90gg | KPI TO-BE 6 mesi]\n"
+    ),
+    "mercato": (
+        "  left.heading='3 trend chiave' · body_html=<ol> 3 trend con evidenza (CAGR, regolamentazione, tecnologia)\n"
+        "  right.heading='Opportunità di mercato' · right.milestones=[\n"
+        "    Segmento prioritario | Strategia entry | KPI go-to-market 6/12 mesi]\n"
+    ),
+    "sentiment": (
+        "  left.heading='3 criticità reputation prioritarie' · body_html=<ol> 3 cluster di criticità\n"
+        "  right.heading='Azioni di response' · right.milestones=[\n"
+        "    Azione immediata <7gg | Strategia 30/60gg | KPI sentiment monitoring]\n"
+    ),
+    "competitivo": (
+        "  left.heading='3 gap strategici principali' · body_html=<ol> 3 gap vs competitor\n"
+        "  right.heading='Iniziative di differenziazione' · right.milestones=[\n"
+        "    Quick win competitivo | Sviluppo medium-term | KPI quota/posizionamento]\n"
+    ),
+    "custom_data": (
+        "  left.heading='3 insight principali dai dati' · body_html=<ol> 3 finding (con riferimento numerico)\n"
+        "  right.heading='Azioni data-driven' · right.milestones=[\n"
+        "    Decisione tattica | Approfondimento richiesto | KPI di monitoring]\n"
+    ),
+    "generic": (
+        "  left.heading='3 problemi/insight principali' · body_html=<ol> 3 punti chiave\n"
+        "  right.heading='Azioni raccomandate' · right.milestones=[\n"
+        "    Azione 1 | Azione 2 | KPI 30/60/90gg]\n"
+    ),
+}
+
+
+_FOOTER_DISCLAIMERS: Dict[str, str] = {
+    "seo": "Le stime di traffico, volume keyword e proiezioni sono basate su benchmark di mercato. I dati reali possono variare. Verificare con Google Search Console e strumenti di analisi dedicati.",
+    "bilancio": "Le proiezioni finanziarie sono basate sui dati di bilancio forniti e su benchmark di settore. Verificare con il commercialista e dati gestionali aggiornati.",
+    "marketing": "Le stime di CAC, conversion e ROAS sono benchmark di mercato. I valori reali dipendono da budget, creatività e audience. Verificare con Analytics e piattaforme ads.",
+    "business_plan": "Le proiezioni economico-finanziarie sono basate su assunzioni esplicitate nel documento. Soggette a revisione in base a evoluzione mercato ed esecuzione.",
+    "fattibilita": "L'analisi è basata sui dati forniti e su benchmark pubblici. Decisione finale richiede validazione tecnica e commerciale approfondita.",
+    "due_diligence": "Documento di sintesi preliminare. Non sostituisce due diligence legale, fiscale e commerciale completa di professionisti qualificati.",
+    "investimento": "Le metriche di ritorno sono stime su scenari forniti. Investimenti soggetti a rischio di mercato e operativo. Non costituisce consulenza finanziaria.",
+    "processi": "Analisi basata su mappatura AS-IS raccolta. Le proiezioni TO-BE richiedono validazione operativa e change management.",
+    "mercato": "Dati di mercato basati su fonti pubbliche citate. Stime TAM/SAM/SOM soggette a metodologia. Aggiornare con ricerche primarie per decisioni operative.",
+    "sentiment": "Analisi basata su menzioni rilevate. Sentiment soggetto a interpretazione algoritmica. Verificare a campione su rilevazioni manuali.",
+    "competitivo": "Benchmark competitor basati su fonti pubbliche e stime di settore. Dati interni concorrenti non verificabili senza accesso diretto.",
+    "custom_data": "Analisi statistica sui dati forniti. Conclusioni dipendenti da qualità e completezza del dataset.",
+    "generic": "Le stime e proiezioni sono basate sui dati raccolti in sessione e su benchmark di mercato. Verificare con strumenti e fonti dedicate per decisioni operative.",
+}
+
+
+def _build_report_profile(report_type: Optional[str]) -> Dict[str, str]:
+    """Ritorna sezioni di prompt customizzate per il reportType detected."""
+    cat = _classify_report(report_type)
+    return {
+        "category": cat,
+        "score_rubric": _SCORE_RUBRICS.get(cat, _SCORE_RUBRICS["generic"]),
+        "required_blocks": _REQUIRED_BLOCKS.get(cat, _REQUIRED_BLOCKS["generic"]),
+        "conclusions_schema": _CONCLUSIONS_SCHEMAS.get(cat, _CONCLUSIONS_SCHEMAS["generic"]),
+        "footer_disclaimer": _FOOTER_DISCLAIMERS.get(cat, _FOOTER_DISCLAIMERS["generic"]),
+    }
+
+
 def _build_skill_payload(session: dict) -> str:
     """Always-on master skill + vertical skills bundle.
 
@@ -374,6 +638,15 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
 
     skills_payload = _build_skill_payload(session)
     context_block = _build_context_block(session)
+
+    # Profile per reportType: rubric score / blocchi obbligatori / conclusions
+    # schema / footer disclaimer specifici per il tipo di analisi richiesto.
+    collected = session.get("collected_data") or {}
+    extracted = collected.get("extractedData") or {}
+    report_type_raw = extracted.get("reportType") or collected.get("reportType") or ""
+    profile = _build_report_profile(report_type_raw)
+    log.info("Report profile: reportType=%r → category=%s", report_type_raw, profile["category"])
+
     history = compact_messages(
         session.get("messages") or [],
         max_messages=MAX_HISTORY_MESSAGES,
@@ -424,37 +697,15 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "- Coerenza interna: stesso numero in blocchi diversi senza contraddizioni.\n"
         "- Adatta i titoli e le sezioni AL CASO SPECIFICO dell'utente.\n"
         "- Usa SOLO i tipi di blocco documentati nella master skill.\n\n"
-        "RUBRIC SCORE DETERMINISTICO (eseguilo sempre per ogni audit SEO):\n"
-        "Lo score 0-100 = somma di 4 dimensioni × 25 punti. NON stimare il totale: somma i\n"
-        "punti dei check individuali. Pesi FISSI per check — usa esattamente questi:\n\n"
-        "  1. Technical SEO (max 25):\n"
-        "     • HTTPS attivo = 5pt · mobile-friendly = 5pt · sitemap.xml presente = 4pt\n"
-        "     • robots.txt valido = 3pt · schema.org markup = 5pt · canonical esplicito = 3pt\n"
-        "  2. Content & On-page (max 25):\n"
-        "     • title unici per pagina = 5pt · meta description ≥ 90% pagine = 5pt\n"
-        "     • H1 uno per pagina = 5pt · alt-text immagini ≥ 80% = 5pt · internal linking ≥ 3/pagina = 5pt\n"
-        "  3. Architecture (max 25):\n"
-        "     • pagine indicizzabili ≥ 10 = 10pt (5-9 = 6pt, <5 = 2pt) · presenza blog = 8pt\n"
-        "     • struttura a cluster/hub-spoke = 7pt\n"
-        "  4. Off-page & Authority (max 25):\n"
-        "     • Se non misurabile in sessione (no Ahrefs/Majestic) → 12pt FISSI, dichiarare\n"
-        "       esplicitamente 'non misurato' nella note del breakdown item.\n"
-        "     • Se misurato: backlink ≥ 20 = 10pt, DA ≥ 20 = 10pt, menzioni brand = 5pt\n\n"
-        "FORMATO BREAKDOWN OBBLIGATORIO nel blocco executive_summary (campo score_breakdown):\n"
-        "  [{\"label\":\"Technical SEO\",\"value\":18,\"max\":25,\"items\":[\n"
-        "      {\"name\":\"HTTPS\",\"points\":5,\"max\":5,\"status\":\"ok\"},\n"
-        "      {\"name\":\"Mobile-friendly\",\"points\":5,\"max\":5,\"status\":\"ok\"},\n"
-        "      {\"name\":\"Sitemap.xml\",\"points\":4,\"max\":4,\"status\":\"ok\"},\n"
-        "      {\"name\":\"Robots.txt\",\"points\":3,\"max\":3,\"status\":\"ok\"},\n"
-        "      {\"name\":\"Schema.org\",\"points\":0,\"max\":5,\"status\":\"alert\"},\n"
-        "      {\"name\":\"Canonical\",\"points\":1,\"max\":3,\"status\":\"warning\"}\n"
-        "   ]},\n"
-        "   {\"label\":\"Content & On-page\",\"value\":N,\"max\":25,\"items\":[...]},\n"
-        "   {\"label\":\"Architecture\",\"value\":N,\"max\":25,\"items\":[...]},\n"
-        "   {\"label\":\"Off-page & Authority\",\"value\":N,\"max\":25,\"items\":[...]}]\n"
-        "REGOLA AURO: value della dimensione = SOMMA dei points dei suoi items. Score totale\n"
-        "= SOMMA dei value delle 4 dimensioni. Verifica aritmetica prima di emettere. STESSO\n"
-        "INPUT → STESSO SCORE. Niente oscillazioni tra run sullo stesso sito.\n\n"
+        f"RUBRIC SCORE (per reportType={profile['category']}):\n"
+        f"{profile['score_rubric']}\n"
+        "FORMATO BREAKDOWN OBBLIGATORIO nell'executive_summary (campo score_breakdown) "
+        "QUANDO la rubric è numerica (4 dim × 25pt): array di 4 oggetti con shape\n"
+        "  {label, value (int), max:25, items:[{name, points (int), max (int), status: ok|warning|alert}]}\n"
+        "REGOLA AUREA: value dimensione = SOMMA points items. Score totale = SOMMA value 4 dimensioni.\n"
+        "Verifica aritmetica prima di emettere. STESSO INPUT → STESSO SCORE.\n"
+        "Per reportType qualitativi (vedi rubric sopra), OMETTI il campo `score` e `score_breakdown`,\n"
+        "metti un giudizio sintetico in `body` (es. 'Maturità: media-alta').\n\n"
         "CATEGORIA 1 — ERRORI DI DATI (vietati assoluti):\n"
         "  • DATI INVENTATI: VIETATO affermare metriche non estratte da fonte reale in questa "
         "sessione. Niente 'keyword in top X: N attuali' senza GSC. Niente 'Domain Authority: N' "
@@ -504,20 +755,9 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "e tre = riga inutile.\n"
         "  • KPI CON BASELINE: target tipo '+25% traffico' DEVE includere il punto di partenza "
         "(es. 'da X a Y visite/mese'). Se baseline non disponibile, scrivilo esplicitamente.\n"
-        "  • AUDIT SEO — BLOCCHI OBBLIGATORI: se il reportType è 'audit SEO' / 'SEO audit' / "
-        "'analisi SEO' / contiene parola 'SEO', includi SEMPRE questi 2 data_table aggiuntivi "
-        "oltre executive_summary + conclusions:\n"
-        "    a) data_table 'Keyword target identificate' con columns: ['Keyword','Volume mensile',\n"
-        "       'KD','Intent','Priorità']. ALMENO 8 righe con keyword realmente identificate dal\n"
-        "       crawl URL o da web_search. Volume in numero secco (es. '720'), KD da 1 a 100,\n"
-        "       Intent in {informational, commercial, transactional, navigational}, Priorità\n"
-        "       in {alta, media, bassa}. Se volume/KD non misurabili, scrivi 'stima' nella cella.\n"
-        "    b) data_table 'Analisi competitor' con columns: ['Competitor','URL','Pagine\n"
-        "       indicizzate','DA stimato','Gap rispetto al cliente']. ALMENO 3 righe con\n"
-        "       competitor REALI nominati da web_search (no 'Competitor A/B/C'). Se nome non\n"
-        "       verificato, ometti la riga invece di inventare.\n"
-        "    Posiziona keyword_table prima di analysis on-page; competitor_table prima delle\n"
-        "    conclusions. Skippare uno dei due = report SEO incompleto.\n\n"
+        f"  • BLOCCHI OBBLIGATORI per reportType={profile['category']}:\n"
+        f"{profile['required_blocks']}"
+        "    Posiziona i data_table specifici PRIMA delle conclusions. Skippare uno = report incompleto.\n\n"
         "CATEGORIA 3 — CREDIBILITÀ (mai compromettere):\n"
         "  • BENCHMARK ETICHETTATI: stime di mercato vanno dichiarate come tali. 'Mediana del "
         "settore (stima di mercato)' invece di 'Mediana 2,1%' come se fosse un dato cliente.\n"
@@ -532,23 +772,16 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "'success'/✓ = OK, 'warning'/⚠ = parziale, 'alert'/✗ = critico. Mai mischiare stili.\n"
         "  • TABELLE COMPLETE: ogni tabella ha intestazioni chiare, unità di misura esplicite "
         "(€, %, mesi, ore/sett), e colonna 'priorità' o 'stato' quando elenca azioni.\n"
-        "  • CONCLUSIONS BLOCK: il LAST blocco DEVE essere di type 'conclusions' con questa "
-        "shape ESATTA — usa SOLO le chiavi indicate, non variarne i nomi:\n"
-        "    {\"type\":\"conclusions\",\"title\":\"Conclusioni e Prossimi Passi\",\n"
-        "     \"left\":{\"heading\":\"3 problemi principali\",\"heading_variant\":\"alert\",\n"
-        "             \"body_html\":\"<ol><li>Problema 1...</li><li>Problema 2...</li><li>Problema 3...</li></ol>\"},\n"
-        "     \"right\":{\"heading\":\"3 azioni immediate (settimana 1)\",\n"
-        "              \"milestones\":[\n"
-        "                {\"label\":\"Azione 1\",\"tone\":\"alert\",\"items\":[\"step concreto a\",\"step b\"]},\n"
-        "                {\"label\":\"Azione 2\",\"tone\":\"warning\",\"items\":[\"step a\",\"step b\"]},\n"
-        "                {\"label\":\"KPI 30/60/90 giorni\",\"tone\":\"neutral\",\"items\":[\"30gg: ...\",\"60gg: ...\",\"90gg: ...\"]}\n"
-        "              ]}}\n"
-        "    NOMI CHIAVE OBBLIGATORI: right.milestones (NON 'actions', 'steps', 'tasks'). "
-        "Ogni milestone con label+items+tone. Mai colonna right vuota.\n"
-        "  • FOOTER DISCLAIMER: il campo 'footer.disclaimer' del JSON DEVE contenere: "
-        "'Le stime di traffico, volume keyword e proiezioni sono basate su benchmark di mercato. "
-        "I dati reali possono variare. Verificare con Google Search Console e strumenti di analisi "
-        "dedicati.' (esattamente questa frase).\n\n"
+        "  • CONCLUSIONS BLOCK: il LAST blocco DEVE essere type='conclusions' con shape:\n"
+        "    {type:'conclusions', title:'Conclusioni e Prossimi Passi',\n"
+        "     left:{heading, heading_variant:'alert', body_html:'<ol><li>...3 items...</li></ol>'},\n"
+        "     right:{heading, milestones:[{label,tone,items:[]}, ...]}}\n"
+        f"    HEADING + MILESTONES adattati al reportType={profile['category']}:\n"
+        f"{profile['conclusions_schema']}"
+        "    NOMI CHIAVE OBBLIGATORI: right.milestones (NON 'actions', 'steps', 'tasks').\n"
+        "    Ogni milestone con label+items+tone. Mai colonna right vuota.\n"
+        f"  • FOOTER DISCLAIMER: il campo 'footer.disclaimer' del JSON DEVE contenere ESATTAMENTE:\n"
+        f"    '{profile['footer_disclaimer']}'\n\n"
         "SKILL E DESIGN SYSTEM:\n"
         f"{skills_payload}"
     )
