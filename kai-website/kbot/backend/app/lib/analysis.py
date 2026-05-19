@@ -314,12 +314,22 @@ def _generate_multi_call(
         body_blocks = []
     log.info("Multi-call B: body_blocks=%d", len(body_blocks))
 
-    # FASE 3/3 — conclusions (no web_search, contesto compatto)
-    body_summary = "; ".join(
-        f"{i+1}.{b.get('type','?')}({str(b.get('title',''))[:30]})"
-        for i, b in enumerate(body_blocks[:8])
-        if isinstance(b, dict)
+    # FASE 3/3 — conclusions con CONTESTO COMPLETO delle fasi precedenti.
+    # Bug v12: conclusions emetteva "dati insufficienti" perché riceveva solo
+    # un sommario degli altri blocchi → no specificità. Fix: passa JSON compatto
+    # exec_summary + body_blocks così Sonnet può citare numeri/nomi/problemi reali.
+    exec_compact = {
+        "score": exec_summary.get("score"),
+        "title": str(exec_summary.get("title") or "")[:120],
+        "body": str(exec_summary.get("body") or "")[:400],
+        "score_breakdown": exec_summary.get("score_breakdown") or [],
+    }
+    context_payload = json.dumps(
+        {"executive_summary": exec_compact, "body_blocks": body_blocks[:8]},
+        ensure_ascii=False,
     )
+    if len(context_payload) > 12000:
+        context_payload = context_payload[:12000] + "...}"
     uc = base_user_message + (
         "\n\n=== FASE 3/3 — EMETTI SOLO QUESTO JSON ===\n"
         "{\n"
@@ -331,12 +341,14 @@ def _generate_multi_call(
         'milestones:[{label,tone,items:[]}, ..., '
         '{label:"KPI 30/60/90 giorni", tone:"neutral", items:["30gg:...","60gg:...","90gg:..."]}]}\n'
         "  }\n"
-        "}\n"
-        "REQUISITI: left.body_html ≥ 30 parole sui 3 problemi. right.milestones ≥ 3 voci "
-        "(2 azioni + 1 KPI 30/60/90).\n\n"
-        "Sintetizza coerente con quanto già emesso:\n"
-        f"  score = {exec_summary.get('score')}/100\n"
-        f"  body blocks emessi = {body_summary}\n\n"
+        "}\n\n"
+        "REQUISITI STRINGENTI:\n"
+        "- left.body_html: ≥30 parole sui 3 problemi principali. CITA numeri/nomi/"
+        "metriche reali dal contesto sotto. NIENTE placeholder tipo 'dati insufficienti'.\n"
+        "- right.milestones ≥3 voci: 2 azioni concrete (con step puntuali in items) + "
+        "1 KPI 30/60/90 con baseline numerica.\n\n"
+        "=== CONTESTO FASI 1+2 (usa questi dati per concludere) ===\n"
+        f"{context_payload}\n\n"
         "Output: solo l'oggetto {conclusions}, niente prosa fuori."
     )
     raw_c = _run_llm_call(client, system_blocks, uc, max_tokens=4000, use_web_search=False, label="C.conclusions")
@@ -792,11 +804,54 @@ _STRUCTURAL_VALIDATORS = {
     "kpi_grid": _validate_kpi_grid,
 }
 
+# Soglie minime di contenuto utile per tipo blocco. Sotto questo threshold
+# il blocco è scheletro/placeholder → rigenera. Override del check generico
+# 80 char per dare richieste mirate al LLM.
+_REQUIRED_MIN_CHARS = {
+    "conclusions": 300,
+    "narrative": 150,
+    "narrative_split": 150,
+    "two_column": 200,
+    "action_list": 120,
+    "risk_mitigation": 150,
+    "data_table": 150,
+    "executive_summary": 200,
+    "kpi_grid": 80,
+}
+
+
+_REQUIRED_BLOCK_TYPES = ("executive_summary", "conclusions")
+
+
+def _detect_missing_required_blocks(analysis: dict) -> List[Dict[str, Any]]:
+    """Issue per blocchi obbligatori mancanti (executive_summary, conclusions).
+
+    Sonnet ogni tanto skippa exec_summary o conclusions in single-call quando
+    output troncato. Block_idx=-1 + insert_position dice al repair di inserire
+    invece di sostituire un blocco esistente.
+    """
+    issues: List[Dict[str, Any]] = []
+    blocks = analysis.get("blocks") or []
+    present_types = {b.get("type") for b in blocks if isinstance(b, dict)}
+    for required in _REQUIRED_BLOCK_TYPES:
+        if required not in present_types:
+            issues.append({
+                "block_idx": -1,
+                "block_type": required,
+                "reason": (
+                    f"blocco obbligatorio '{required}' MANCANTE — generalo ex-novo "
+                    f"con tutti i campi previsti dalla master skill"
+                ),
+                "insert_position": "first" if required == "executive_summary" else "last",
+            })
+    return issues
+
 
 def _validate_blocks(analysis: dict) -> List[Dict[str, Any]]:
     """Ritorna lista di issue {block_idx, block_type, reason} da riparare."""
     issues: List[Dict[str, Any]] = []
     blocks = analysis.get("blocks") or []
+    issues.extend(_detect_missing_required_blocks(analysis))
     for i, b in enumerate(blocks):
         if not isinstance(b, dict):
             issues.append({"block_idx": i, "block_type": "unknown", "reason": "non-dict block"})
@@ -810,12 +865,12 @@ def _validate_blocks(analysis: dict) -> List[Dict[str, Any]]:
                 issues.append({"block_idx": i, "block_type": btype, "reason": reason})
                 continue
         clen = _block_content_length(b)
-        # Soglia minima 80 char di contenuto reale → blocchi quasi-vuoti
-        if clen < 80:
+        min_chars = _REQUIRED_MIN_CHARS.get(btype, 80)
+        if clen < min_chars:
             issues.append({
                 "block_idx": i,
                 "block_type": btype,
-                "reason": f"contenuto troppo scarso ({clen} char), serve testo sostanziale",
+                "reason": f"contenuto insufficiente per type={btype} ({clen} char, serve >={min_chars}). Espandi con dati specifici, numeri, nomi, scadenze.",
             })
     return issues
 
@@ -886,17 +941,22 @@ def _repair_block(
     idx = issue["block_idx"]
     btype = issue["block_type"]
     reason = issue["reason"]
+    is_insert = idx < 0
     other_blocks_summary = []
     for i, b in enumerate(full_analysis.get("blocks") or []):
         if i == idx or not isinstance(b, dict):
             continue
         other_blocks_summary.append(f"  [{i}] type={b.get('type')} title={b.get('title','')[:60]}")
+    if is_insert:
+        action = f"GENERA EX-NOVO un blocco type='{btype}' (mancante nel report)"
+    else:
+        action = f"RIEMETTI il blocco #{idx} (type='{btype}')"
     repair_user = (
-        f"Il blocco #{idx} (type='{btype}') del JSON precedente è invalido: {reason}.\n\n"
+        f"Problema: {reason}.\n\n"
         f"Altri blocchi del report (riferimento, NON riemetterli):\n"
         + "\n".join(other_blocks_summary) +
-        f"\n\nRIEMETTI ORA SOLO IL BLOCCO #{idx} come oggetto JSON valido secondo lo schema "
-        f"master. Niente fence markdown, niente prosa fuori. Solo l'oggetto.\n\n"
+        f"\n\n{action} come oggetto JSON valido secondo lo schema master. "
+        f"Niente fence markdown, niente prosa fuori. Solo l'oggetto.\n\n"
         f"CONTESTO ORIGINALE:\n{user_message[:4000]}"
     )
     try:
@@ -942,10 +1002,21 @@ def _validate_and_repair(
     if not issues and not score_issue:
         return analysis
     log.info("Validation pipeline: %d block issues + score_issue=%s", len(issues), bool(score_issue))
-    # Cap retry a 3 blocchi per evitare loop costosi.
-    for issue in issues[:3]:
+    # Cap retry a 4 issue per evitare loop costosi.
+    for issue in issues[:4]:
         repaired = _repair_block(client, system_blocks, user_message, analysis, issue)
-        if repaired and isinstance(repaired, dict):
-            analysis["blocks"][issue["block_idx"]] = repaired
-            log.info("Repaired block #%d (type=%s)", issue["block_idx"], issue["block_type"])
+        if not (repaired and isinstance(repaired, dict)):
+            continue
+        idx = issue.get("block_idx", -1)
+        if idx >= 0:
+            analysis["blocks"][idx] = repaired
+            log.info("Repaired block #%d (type=%s)", idx, issue["block_type"])
+        else:
+            # Insert missing required block at correct position.
+            pos = issue.get("insert_position", "last")
+            if pos == "first":
+                analysis["blocks"].insert(0, repaired)
+            else:
+                analysis["blocks"].append(repaired)
+            log.info("Inserted missing required block (type=%s, pos=%s)", issue["block_type"], pos)
     return _sanitize_hallucinations(analysis)

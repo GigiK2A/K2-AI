@@ -387,6 +387,20 @@ def _render_block_title(title: str, s: Dict[str, ParagraphStyle]) -> Flowable:
     return t
 
 
+def _section(title_flow: Flowable, content_flows: List[Flowable]) -> List[Flowable]:
+    """Wrap titolo + primo flowable in KeepTogether per evitare heading orfani.
+
+    Pattern problema osservato: heading 'Conclusioni' a fondo pagina, corpo
+    spinto a pagina successiva. ReportLab non sa che il titolo va col corpo.
+    Fix: KeepTogether([title, first_content_flow]) lega solo i primi due —
+    NON l'intero blocco (sennò row too large su contenuti corposi).
+    """
+    if not content_flows:
+        return [title_flow]
+    head = KeepTogether([title_flow, content_flows[0]])
+    return [head] + content_flows[1:]
+
+
 def _render_executive_summary(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
     body_html = block.get("body_html") or block.get("body") or ""
     para_flows = _html_to_paragraphs(body_html, s["body"])
@@ -410,9 +424,9 @@ def _render_executive_summary(block: dict, s: Dict[str, ParagraphStyle]) -> List
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ]))
-        flows: List[Flowable] = [_render_block_title(block.get("title") or "Executive Summary", s), tbl]
+        flows: List[Flowable] = _section(_render_block_title(block.get("title") or "Executive Summary", s), [tbl])
     else:
-        flows = [_render_block_title(block.get("title") or "Executive Summary", s)] + para_flows
+        flows = _section(_render_block_title(block.get("title") or "Executive Summary", s), para_flows)
 
     # Badges
     badges = block.get("badges") or []
@@ -506,7 +520,7 @@ def _render_kpi_grid(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable
                 color_map = {"ok": GREEN, "success": GREEN, "warning": ACCENT_WARM, "alert": RED, "critical": RED, "neutral": PRIMARY}
                 style_cmds.append(("LINEABOVE", (c_idx, r_idx), (c_idx, r_idx), 2.0, color_map.get(v, PRIMARY)))
     tbl.setStyle(TableStyle(style_cmds))
-    return _wrap_in_card([_render_block_title(block.get("title") or "Metriche", s), tbl])
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "Metriche", s), [tbl]))
 
 
 class _VariantMarker:
@@ -557,17 +571,18 @@ def _render_data_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
         if i % 2 == 0:
             style_cmds.append(("BACKGROUND", (0, i), (-1, i), SURFACE_2))
     tbl.setStyle(TableStyle(style_cmds))
-    flows: List[Flowable] = [_render_block_title(block.get("title") or "", s)]
+    title_flow = _render_block_title(block.get("title") or "", s)
+    content: List[Flowable] = []
     intro = block.get("intro") or block.get("description")
     if intro:
-        flows.append(Paragraph(_clean_inline(intro), s["body_soft"]))
-        flows.append(Spacer(1, 2 * mm))
-    flows.append(tbl)
+        content.append(Paragraph(_clean_inline(intro), s["body_soft"]))
+        content.append(Spacer(1, 2 * mm))
+    content.append(tbl)
     note = block.get("note") or block.get("footer_note")
     if note:
-        flows.append(Spacer(1, 2 * mm))
-        flows.append(Paragraph(f"<i>{_clean_inline(note)}</i>", s["small"]))
-    return _wrap_in_card(flows)
+        content.append(Spacer(1, 2 * mm))
+        content.append(Paragraph(f"<i>{_clean_inline(note)}</i>", s["small"]))
+    return _wrap_in_card(_section(title_flow, content))
 
 
 _FRAME_AVAIL_H = PAGE_H - MARGIN_TOP_REST - MARGIN_BOTTOM  # ~739.84pt
@@ -680,7 +695,7 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
     right_flows = render_side(right)
     inner_w = (CONTENT_W - 6 * mm) / 2
     body = _two_col_or_stack(left_flows, right_flows, inner_w)
-    return _wrap_in_card([_render_block_title(block.get("title") or "", s)] + body)
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "", s), body))
 
 
 def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
@@ -720,7 +735,7 @@ def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
         ("LINEBELOW", (0, 0), (-1, -2), 0.3, BORDER),
         ("BACKGROUND", (0, 0), (0, -1), SURFACE_2),
     ]))
-    return _wrap_in_card([_render_block_title(block.get("title") or "Azioni", s), tbl])
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "Azioni", s), [tbl]))
 
 
 def _render_risk_mitigation(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
@@ -750,7 +765,7 @@ def _render_risk_mitigation(block: dict, s: Dict[str, ParagraphStyle]) -> List[F
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5 * mm),
         ("LINEBELOW", (0, 0), (-1, -1), 0.3, BORDER),
     ]))
-    return _wrap_in_card([_render_block_title(block.get("title") or "Rischi", s), tbl])
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "Rischi", s), [tbl]))
 
 
 def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
@@ -797,7 +812,7 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
         right_flows = [Paragraph("Nessuna azione specifica disponibile.", s["body_soft"])]
     inner_w = (CONTENT_W - 6 * mm) / 2
     body = _two_col_or_stack(left_flows, right_flows, inner_w)
-    return _wrap_in_card([_render_block_title(block.get("title") or "Conclusioni e Prossimi Passi", s)] + body)
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "Conclusioni e Prossimi Passi", s), body))
 
 
 def _render_narrative(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
@@ -805,7 +820,7 @@ def _render_narrative(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowabl
     flows = _html_to_paragraphs(body_html, s["body"])
     if not flows:
         return []
-    return _wrap_in_card([_render_block_title(block.get("title") or "", s)] + flows)
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "", s), flows))
 
 
 def _render_narrative_split(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
