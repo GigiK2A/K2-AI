@@ -32,6 +32,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
     BaseDocTemplate,
+    CondPageBreak,
     Flowable,
     Frame,
     Image,
@@ -393,7 +394,7 @@ def _badge_pill(label: str, variant: str = "neutral") -> Table:
         textColor=fg, alignment=TA_LEFT,
     )
     p = Paragraph(f"{icon}&nbsp;&nbsp;{label}", style)
-    t = Table([[p]], colWidths=[None], rowHeights=[7 * mm])
+    t = Table([[p]], colWidths=[26 * mm], rowHeights=[7 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), bg),
         ("BOX", (0, 0), (-1, -1), 0.5, brd),
@@ -608,7 +609,7 @@ class _VariantMarker:
         self.variant = variant
 
 
-def _render_data_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+def _render_data_table(block: dict, s: Dict[str, ParagraphStyle], *, max_width: Optional[float] = None, bare: bool = False) -> List[Flowable]:
     table_data = block.get("table") or {}
     cols = table_data.get("columns") or []
     rows = table_data.get("rows") or []
@@ -630,7 +631,8 @@ def _render_data_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
             body_row.append(Paragraph("", s["table_td"]))
         body_rows.append(body_row)
     n_cols = len(cols)
-    col_w = CONTENT_W / n_cols
+    avail_w = max_width if max_width is not None else CONTENT_W
+    col_w = avail_w / n_cols
     tbl = Table([header_row] + body_rows, colWidths=[col_w] * n_cols, repeatRows=1)
     style_cmds: List[Any] = [
         # Header riga: sfondo nero TEXT_DEEP, mono uppercase white
@@ -652,7 +654,6 @@ def _render_data_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
         if i % 2 == 0:
             style_cmds.append(("BACKGROUND", (0, i), (-1, i), SURFACE_2))
     tbl.setStyle(TableStyle(style_cmds))
-    title_flow = _render_block_title(block.get("title") or "", s)
     content: List[Flowable] = []
     intro = block.get("intro") or block.get("description")
     if intro:
@@ -663,6 +664,10 @@ def _render_data_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
     if note:
         content.append(Spacer(1, 2 * mm))
         content.append(Paragraph(f"<i>{_clean_inline(note)}</i>", s["small"]))
+    if bare:
+        # Nested mode: no block title wrap, no card divider (caller controlla larghezza)
+        return content
+    title_flow = _render_block_title(block.get("title") or "", s)
     return _wrap_in_card(_section(title_flow, content))
 
 
@@ -671,10 +676,27 @@ _TWO_COL_SAFETY = 60  # reserve title/spacer/divider
 
 
 def _measure_flow_height(flows: List[Flowable], width: float) -> float:
+    """Stima altezza totale flows + spaceBefore/spaceAfter (non inclusi in wrap()).
+
+    KeepTogether richiede recursion sui figli perché .wrap diretto può fallire
+    fuori dal doc.build context. Paragraph.wrap() ritorna SOLO l'altezza del
+    box di testo, escluso spaceAfter/spaceBefore dello style — su 30 paragrafi
+    con spaceAfter=7pt il delta è 200pt → stack mode mai triggered. Aggiungo
+    esplicitamente i margin dello style.
+    """
     total = 0.0
     for f in flows:
         try:
-            _, h = f.wrap(width, _FRAME_AVAIL_H * 4)
+            if isinstance(f, KeepTogether):
+                inner = getattr(f, "_content", None) or getattr(f, "_flowables", None) or []
+                h = _measure_flow_height(list(inner), width)
+            else:
+                _, h = f.wrap(width, _FRAME_AVAIL_H * 4)
+                # Aggiungi spaceBefore/spaceAfter dello style se Paragraph
+                style = getattr(f, "style", None)
+                if style is not None:
+                    h += getattr(style, "spaceBefore", 0) or 0
+                    h += getattr(style, "spaceAfter", 0) or 0
         except Exception:
             h = 0
         total += h
@@ -715,6 +737,10 @@ def _two_col_or_stack(
             out.append(Spacer(1, 4 * mm))
         out.extend(right_flows)
         return out
+    # Side-by-side fits: prepend CondPageBreak che forza nuova pagina se lo
+    # spazio residuo è insufficiente (bug: blocco iniziato mid-page non si
+    # spezza, fallisce layout). Buffer +30pt per padding + safety.
+    needed_h = max(lh, rh) + 30
     tbl = Table([[left_flows, right_flows]], colWidths=[inner_w, inner_w])
     style = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -730,7 +756,7 @@ def _two_col_or_stack(
     if right_bg is not None:
         style.append(("BACKGROUND", (1, 0), (1, 0), right_bg))
     tbl.setStyle(TableStyle(style))
-    return [tbl]
+    return [CondPageBreak(needed_h), tbl]
 
 
 def _make_side_panel(flows: List[Flowable], width: float, bg: Optional[colors.Color]) -> Flowable:
@@ -790,10 +816,12 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
         for b in badges:
             if not isinstance(b, dict):
                 continue
+            badge_w = 28 * mm
+            desc_w = inner_w - 24 - badge_w  # cell content minus padding minus badge col
             row = Table(
                 [[_badge_pill(b.get("label") or "", b.get("variant") or "neutral"),
                   _safe_paragraph(_clean_inline(b.get("description") or ""), s["body"])]],
-                colWidths=[28 * mm, None],
+                colWidths=[badge_w, desc_w],
             )
             row.setStyle(TableStyle([
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -805,7 +833,12 @@ def _render_two_column(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowab
         if side.get("table"):
             tbl_d = side["table"]
             if tbl_d.get("columns") and tbl_d.get("rows"):
-                rendered = _render_data_table({"table": tbl_d, "title": ""}, s)
+                # Nested data_table: width = inner_w - padding (24pt) per stare nella cella.
+                # bare=True salta block_title (CONTENT_W width) e card divider.
+                rendered = _render_data_table(
+                    {"table": tbl_d, "title": ""}, s,
+                    max_width=inner_w - 24, bare=True,
+                )
                 out.extend(rendered)
         callout = side.get("callout")
         if callout and isinstance(callout, dict):
@@ -863,7 +896,7 @@ def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
         rows.append([num_para, content])
     if not rows:
         return []
-    tbl = Table(rows, colWidths=[16 * mm, None])
+    tbl = Table(rows, colWidths=[16 * mm, CONTENT_W - 16 * mm])
     style_cmds = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -943,6 +976,11 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
     left = block.get("left") or {}
     right = block.get("right") or {}
 
+    # inner_w spostato qui per renderlo disponibile ai nested Table colWidths
+    inner_w = (CONTENT_W - 6 * mm) / 2
+    circle_w = 20
+    circle_text_w = inner_w - 28 - circle_w  # padding 24 + gap 8
+
     # Sinistra: 3 problemi con cerchio nero
     left_flows: List[Flowable] = []
     problems = _parse_ol_items(left.get("body_html") or "")
@@ -953,7 +991,7 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
             continue
         row = Table(
             [[_CircleNumber(i), _safe_paragraph(prob, s["body"])]],
-            colWidths=[20, None],
+            colWidths=[circle_w, circle_text_w],
         )
         row.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -991,7 +1029,6 @@ def _render_conclusions(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
     if not right_inner:
         right_inner = [_safe_paragraph("Nessuna azione specifica disponibile.", s["body_soft"])]
 
-    inner_w = (CONTENT_W - 6 * mm) / 2
     # Callout azioni: width esplicito = inner_w (lato dx in two_col_or_stack).
     # Senza colWidths esplicito ReportLab non sa misurare → cell height infinito.
     callout_panel = Table([[right_inner]], colWidths=[inner_w - 24])
@@ -1040,21 +1077,27 @@ def _wrap_in_card(flows: List[Flowable]) -> List[Flowable]:
 
 
 class _SectionDivider(Flowable):
-    """Linea sottile orizzontale come separatore tra sezioni."""
-    def __init__(self, width: float = CONTENT_W, color=BORDER):
+    """Linea sottile orizzontale come separatore tra sezioni — adatta ad avail_w.
+
+    Bug fix: wrap NON deve ritornare width fissato (CONTENT_W). Quando il
+    divider è nidificato in una cella stretta (es. two_column inner_w),
+    ritornare CONTENT_W fa esplodere la cella → cell height infinito.
+    """
+    def __init__(self, color=BORDER):
         super().__init__()
-        self.width = width
         self.color = color
         self.height = 0.8 * mm
+        self._draw_w = 0
 
     def wrap(self, avail_w, avail_h):
-        return self.width, self.height
+        self._draw_w = avail_w
+        return avail_w, self.height
 
     def draw(self):
         c = self.canv
         c.setStrokeColor(self.color)
         c.setLineWidth(0.4)
-        c.line(0, 0, self.width, 0)
+        c.line(0, 0, self._draw_w, 0)
 
 
 # ---------------------------------------------------------------------------
