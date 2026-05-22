@@ -126,6 +126,7 @@ export default defineConfig({
         laboratorio: 'src/laboratorio.html',
         analisi: 'src/analisi.html',
         'k-bot': 'src/k-bot.html',
+        'k-bot/grazie': 'src/k-bot/grazie.html',
         'per-te': 'src/per-te.html',
         'report-preview': 'src/report-preview.html',
         contatti: 'src/contatti.html',
