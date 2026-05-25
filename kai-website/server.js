@@ -7,23 +7,7 @@ const { spawn } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const Anthropic = require('@anthropic-ai/sdk');
-const DOMPurify = require('isomorphic-dompurify');
 const log = require('./lib/logger');
-
-// Allow-list for newsletter HTML stored from the publish endpoint. The
-// content is rendered as innerHTML in the browser at /newsletter-entry, so
-// any tag/attribute we forward becomes a potential XSS sink. Block scripts,
-// event handlers, and embedded frames.
-const NEWSLETTER_SANITIZE_OPTS = {
-  USE_PROFILES: { html: true },
-  FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'style', 'link', 'meta'],
-  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit', 'formaction', 'srcdoc'],
-  ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:|#|\/[^/])/i,
-};
-
-function sanitizeNewsletterHtml(rawHtml) {
-  return DOMPurify.sanitize(String(rawHtml || ''), NEWSLETTER_SANITIZE_OPTS);
-}
 
 const PORT = process.env.PORT || 4173;
 const DIST_DIR = path.join(__dirname, 'dist');
@@ -38,17 +22,6 @@ const REPORT_MODEL = process.env.REPORT_MODEL || 'claude-sonnet-4-6';
 const SKILLS_DIR = path.join(__dirname, 'lib', 'skills');
 const SUITE_AI_SERVICES = require('./lib/kbot/services-data.json');
 const BOARD_REPORT_MOCKS = require('./lib/report/board-report-mocks.json');
-// Optional path-token bypass for the n8n publishing workflow which cannot
-// easily set headers. Sourced from env only — never hardcode. If unset the
-// path-token route is disabled and INTERNAL_API_KEY (header) is the only
-// accepted credential.
-//
-// SECURITY: a previously-hardcoded value
-// (c7f1b5cb492f8d744b041ce9507f246c8339367313de315a, commit 1347095e) MUST be
-// treated as compromised. Rotate via Railway / Vercel env vars and never
-// reuse it.
-const NEWSLETTER_PUBLISH_PATH_TOKEN = (process.env.NEWSLETTER_PUBLISH_PATH_TOKEN || '').trim();
-
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -107,6 +80,9 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
 };
 
 let kbotProcess = null;
@@ -380,29 +356,6 @@ function normalizeText(value, maxLen) {
   return String(value || '').trim().slice(0, maxLen);
 }
 
-function slugify(value) {
-  return String(value || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 80);
-}
-
-function datePrefix(date = new Date()) {
-  return date.toISOString().slice(0, 10);
-}
-
-function formatItalianIssueTitle(date) {
-  return `Newsletter del ${date.toLocaleDateString('it-IT', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })}`;
-}
 
 function extractInternalApiKeyCandidates(req, body = {}) {
   const auth = String(req.headers.authorization || '');
@@ -1418,201 +1371,6 @@ async function handleNewsletterConfirm(req, res) {
   send(res, 302, { Location: '/newsletter-ok' }, '');
 }
 
-async function handleNewsletterPublish(req, res, options = {}) {
-  if (req.method === 'OPTIONS') {
-    send(res, 204, {
-      'Access-Control-Allow-Origin': SITE_URL,
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-internal-key',
-    }, '');
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    sendJson(res, 405, { error: 'Method not allowed' });
-    return;
-  }
-
-  let body;
-  try {
-    body = await readJsonBody(req, 4 * 1024 * 1024);
-  } catch {
-    sendJson(res, 400, { error: 'Invalid JSON' });
-    return;
-  }
-
-  const expectedKey = getEnvVar('INTERNAL_API_KEY');
-  const providedKeys = extractInternalApiKeyCandidates(req, body);
-  // Path-token bypass is only honoured when an env-configured token is set
-  // AND it timing-safely matches the supplied path segment. Fall-closed
-  // behaviour: empty env => no bypass possible.
-  const hasValidPathToken = NEWSLETTER_PUBLISH_PATH_TOKEN
-    && typeof options.pathToken === 'string'
-    && options.pathToken.length === NEWSLETTER_PUBLISH_PATH_TOKEN.length
-    && crypto.timingSafeEqual(
-      Buffer.from(options.pathToken),
-      Buffer.from(NEWSLETTER_PUBLISH_PATH_TOKEN),
-    );
-  if (!hasValidPathToken && (!expectedKey || !providedKeys.includes(expectedKey))) {
-    sendJson(res, 401, { error: 'Unauthorized' });
-    return;
-  }
-
-  if (body.cleanup_tests === true) {
-    const supabase = createSupabaseAdminClient();
-    const { error } = await supabase
-      .from('newsletter_issues')
-      .delete()
-      .like('slug', '2026-05-08-test-%');
-
-    if (error) {
-      console.error('Newsletter cleanup error:', error);
-      sendJson(res, 500, { error: 'Cleanup failed' });
-      return;
-    }
-
-    sendJson(res, 200, { ok: true, cleanup: 'tests' });
-    return;
-  }
-
-  const originalSubject = normalizeText(body.subject, 220);
-  const previewText = normalizeText(body.preview_text, 500);
-  // Sanitize the publisher-supplied HTML before persisting it. Newsletter
-  // content is later rendered via innerHTML, so anything that survives this
-  // step is what visitors will see (and execute) — keep the allow-list tight.
-  const html = sanitizeNewsletterHtml(String(body.html || '').trim());
-
-  if (!originalSubject) {
-    sendJson(res, 400, { error: 'Missing subject' });
-    return;
-  }
-  if (!html) {
-    sendJson(res, 400, { error: 'Missing html' });
-    return;
-  }
-
-  const publishedAt = new Date();
-  const displaySubject = formatItalianIssueTitle(publishedAt);
-  const customSlug = normalizeText(body.slug, 120);
-  const safeBase = slugify(customSlug || originalSubject) || 'newsletter';
-  const finalSlug = `${datePrefix(publishedAt)}-${safeBase}`.slice(0, 120);
-
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from('newsletter_issues')
-    .upsert({
-      slug: finalSlug,
-      subject: displaySubject,
-      preview_text: previewText,
-      html,
-      source: normalizeText(body.source, 120) || 'n8n',
-      published_at: publishedAt.toISOString(),
-      updated_at: publishedAt.toISOString(),
-    }, { onConflict: 'slug' })
-    .select('slug, subject, published_at')
-    .single();
-
-  if (error || !data) {
-    console.error('Newsletter publish error:', error);
-    sendJson(res, 500, { error: 'Publish failed' });
-    return;
-  }
-
-  sendJson(res, 200, {
-    ok: true,
-    slug: data.slug,
-    url: `${SITE_URL}/newsletter-entry?slug=${encodeURIComponent(data.slug)}`,
-    published_at: data.published_at,
-  });
-}
-
-async function handleNewsletterIssues(req, res) {
-  if (req.method !== 'GET') {
-    sendJson(res, 405, { error: 'Method not allowed' });
-    return;
-  }
-
-  const url = new URL(req.url || '', SITE_URL);
-  const limitRaw = Number(url.searchParams.get('limit') || 100);
-  const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 100;
-  const supabase = createSupabaseAdminClient();
-
-  const { data, error } = await supabase
-    .from('newsletter_issues')
-    .select('slug,subject,preview_text,published_at')
-    .order('published_at', { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error('Newsletter list error:', error);
-    sendJson(res, 500, { error: 'List failed' });
-    return;
-  }
-
-  sendJson(res, 200, { ok: true, items: data || [] });
-}
-
-async function handleNewsletterIssue(req, res) {
-  if (req.method !== 'GET') {
-    sendJson(res, 405, { error: 'Method not allowed' });
-    return;
-  }
-
-  const url = new URL(req.url || '', SITE_URL);
-  const slug = String(url.searchParams.get('slug') || '').trim();
-  if (!slug) {
-    sendJson(res, 400, { error: 'Missing slug' });
-    return;
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from('newsletter_issues')
-    .select('slug,subject,preview_text,html,published_at')
-    .eq('slug', slug)
-    .single();
-
-  if (error || !data) {
-    sendJson(res, 404, { error: 'Not found' });
-    return;
-  }
-
-  sendJson(res, 200, { ok: true, item: data });
-}
-
-async function handleNewsletterCleanupTests(req, res, options = {}) {
-  if (req.method !== 'POST') {
-    sendJson(res, 405, { error: 'Method not allowed' });
-    return;
-  }
-
-  if (
-    !NEWSLETTER_PUBLISH_PATH_TOKEN
-    || typeof options.pathToken !== 'string'
-    || options.pathToken.length !== NEWSLETTER_PUBLISH_PATH_TOKEN.length
-    || !crypto.timingSafeEqual(
-      Buffer.from(options.pathToken),
-      Buffer.from(NEWSLETTER_PUBLISH_PATH_TOKEN),
-    )
-  ) {
-    sendJson(res, 401, { error: 'Unauthorized' });
-    return;
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
-    .from('newsletter_issues')
-    .delete()
-    .like('slug', '2026-05-08-test-auth-%');
-
-  if (error) {
-    console.error('Newsletter cleanup error:', error);
-    sendJson(res, 500, { error: 'Cleanup failed' });
-    return;
-  }
-
-  sendJson(res, 200, { ok: true });
-}
 
 function serializeKbotSession(session) {
   const collectedData = session?.collected_data && typeof session.collected_data === 'object'
@@ -2701,12 +2459,12 @@ function serveFile(req, res, filePath) {
       send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not found');
       return;
     }
-      // HTML: rivalidazione obbligatoria ad ogni richiesta (no CDN cache)
+      // HTML: cache breve browser (1h) + edge CDN (24h)
       // Asset con hash nel nome: cache immutabile 1 anno
       const isHtml = ext === '.html';
       const hasHash = /\-[a-zA-Z0-9_]{8,}\.[a-z]+$/.test(filePath);
       const cacheControl = isHtml
-        ? 'no-cache, no-store, must-revalidate'
+        ? 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800'
         : hasHash
           ? 'public, max-age=31536000, immutable'
           : 'public, max-age=3600';
@@ -2742,6 +2500,8 @@ const server = http.createServer((req, res) => {
     '/casi-studio.html': '/laboratorio',
     '/workshop': '/suite-ai',
     '/workshop.html': '/suite-ai',
+    '/suite-ai/diagnosi-strategica-pmi': '/suite-ai/analisi-strategica-pmi',
+    '/suite-ai/diagnosi-strategica-pmi.html': '/suite-ai/analisi-strategica-pmi',
   };
   const rawPath = (req.url || '/').split('?')[0];
   const rawQuery = (req.url || '').includes('?') ? `?${(req.url || '').split('?').slice(1).join('?')}` : '';
@@ -2789,41 +2549,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (rawPath === '/api/newsletter/publish' || rawPath.startsWith('/api/newsletter/publish/')) {
-    const pathToken = rawPath.startsWith('/api/newsletter/publish/')
-      ? rawPath.slice('/api/newsletter/publish/'.length)
-      : '';
-    handleNewsletterPublish(req, res, { pathToken }).catch(err => {
-      console.error('Newsletter publish error:', err);
-      sendJson(res, 500, { error: 'Errore pubblicazione newsletter' });
-    });
-    return;
-  }
-
-  if (rawPath === '/api/newsletter/issues') {
-    handleNewsletterIssues(req, res).catch(err => {
-      console.error('Newsletter issues error:', err);
-      sendJson(res, 500, { error: 'Errore archivio newsletter' });
-    });
-    return;
-  }
-
-  if (rawPath === '/api/newsletter/issue') {
-    handleNewsletterIssue(req, res).catch(err => {
-      console.error('Newsletter issue error:', err);
-      sendJson(res, 500, { error: 'Errore newsletter' });
-    });
-    return;
-  }
-
-  if (rawPath.startsWith('/api/newsletter/admin/cleanup-tests/')) {
-    const pathToken = rawPath.slice('/api/newsletter/admin/cleanup-tests/'.length);
-    handleNewsletterCleanupTests(req, res, { pathToken }).catch(err => {
-      console.error('Newsletter cleanup tests error:', err);
-      sendJson(res, 500, { error: 'Errore cleanup newsletter' });
-    });
-    return;
-  }
 
   if (rawPath === '/api/report/pdf' || rawPath === '/api/report/docx') {
     // Cost-amplification gate: heavy Puppeteer / DOCX rendering. Cap to

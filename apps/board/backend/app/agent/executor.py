@@ -171,7 +171,7 @@ def _get_revenue_summary(sb, args: Dict[str, Any]) -> Dict[str, Any]:
     start = _period_start(period)
     res = (
         sb.table("board_revenue_events")
-        .select("amount_cents, status, occurred_at, kind")
+        .select("amount_cents, status, occurred_at, description")
         .gte("occurred_at", start.isoformat())
         .execute()
     )
@@ -202,7 +202,7 @@ def _list_meetings(sb, args: Dict[str, Any]) -> Dict[str, Any]:
     )
     res = (
         sb.table("board_meetings")
-        .select("id, title, starts_at, ends_at, notes, lead_id, contact_id")
+        .select("id, title, starts_at, ends_at, description, lead_id, contact_id")
         .gte("starts_at", start.isoformat())
         .lte("starts_at", end.isoformat())
         .order("starts_at", desc=False)

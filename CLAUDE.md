@@ -106,44 +106,72 @@ Se un'istruzione contraddice questi file, chiedi conferma a Luca prima di proced
 - **Canonical**: ogni pagina deve avere `<link rel="canonical">` esplicito
 - **Sitemap** e **robots.txt** già presenti in `src/public/` — aggiorna sitemap quando aggiungi pagine
 
-## 8. K-BOT — upgrade al 5° esito paid
+## 8. K-BOT — architettura e flusso paid
 
-Il K-BOT (k-bot.html + js/chat.js) produce attualmente risposte via `/api/intake/kbot-chat`.
+Il K-BOT **non vive più** in `k-bot.html + js/chat.js` (legacy landing). Quella pagina è solo brochure che linka a `/app/`. L'app reale è:
 
-Aggiungere il 5° esito paid:
-- Trigger: diagnosi completata + intent alto (2+ "approfondisci" nel flusso)
-- CTA: *"Vuoi il piano d'azione operativo di 7 pagine con priorità, tempi e template pronti? 19€ — consegna in 10 minuti"*
-- Flusso: click → redirect a `STRIPE_TIER0_PAYMENT_LINK` (env var) → webhook → Resend invia PDF
-- PDF generato server-side dalle risposte della sessione
-- Upgrade path: bottone "Passa al Tier 1 da 49€" → form Airtable
+- **Frontend chat**: Next.js 16 standalone in `kbot/` (basePath `/app`, output standalone)
+- **Backend**: FastAPI Python in `kbot/backend/`, deploy Railway separato
+- **Auth**: Supabase (login-first prima di chattare)
+- **DB**: tabella `kbot_sessions` con `user_id` su `auth.users`
+- **LLM**: Anthropic Claude Haiku per chat, Sonnet per report PDF
+- **PDF**: ReportLab nativo Python (no HTML/CSS print)
+
+Vedi `kbot/AGENTS.md` per dettaglio endpoint, env e flusso completo.
+
+### Flusso paid (già implementato)
+1. Utente apre `/app/` → login Supabase → entra in chat
+2. Conversazione → Claude Haiku emette blocco `CONSULENZA_SUMMARY_*` → `reportReady=true`
+3. CTA "Sblocca il report PDF · 19€" in `kbot/src/components/chat/MessageBubble.tsx`
+4. Click → `POST /api/kbot/checkout` (FastAPI) crea Stripe Checkout dinamico con `client_reference_id=<kbot_session_id>`
+5. Pagamento → webhook FastAPI verifica firma → `status='paid'`, `has_paid:true` su Supabase
+6. Webhook triggera `/api/kbot/generate-pdf` → Sonnet + ReportLab → upload Supabase Storage
+7. Resend invia email con PDF allegato
+8. Frontend polla `/api/kbot/status` → mostra link al report
+
+### Payment Link statico (entry alternativo)
+Esiste anche un **Stripe Payment Link statico** (`STRIPE_TIER0_PAYMENT_LINK` env var) come entry point indipendente dal chat, per:
+- Distribuzione via email marketing / social / newsletter
+- Link diretto in firma email, footer, social bio
+- Demo / test esterno
+
+Per agganciare un pagamento da Payment Link statico alla sessione K-BOT corrente, appendere `?client_reference_id=<kbot_session_id>&prefilled_email=<email>` all'URL. Senza `client_reference_id` il webhook accetta il pagamento ma fa skip silenzioso (nessuna sessione K-BOT da aggiornare).
+
+Pagina conferma post-checkout: `/k-bot/grazie?session_id={CHECKOUT_SESSION_ID}` (servita dal sito principale, vedi `src/k-bot/grazie.html`).
+
+### Upgrade path Tier 1
+Bottone "Passa al Tier 1 da 49€" → form Airtable (lead qualificato, non self-serve).
 
 ## 9. File structure rilevanti
 
 ```
-kai-website/
+kai-website/                 ← sito principale (Vite + HTML vanilla)
 ├── src/
-│   ├── *.html          ← pagine principali
-│   ├── css/
-│   │   ├── base.css    ← variabili, tipografia, layout
-│   │   ├── nav.css     ← navigazione
-│   │   ├── components.css ← cards, buttons, grids, chat widget
-│   │   └── pages.css   ← layout page-specific
+│   ├── *.html               ← pagine principali (k-bot.html è brochure, NON chat)
+│   ├── k-bot/grazie.html    ← landing post-pagamento (gestisce session_id query)
+│   ├── suite-ai/*.html      ← 10 pillar hub
+│   ├── css/                 ← base.css, nav.css, components.css, pages.css, k2-immersive.css
 │   ├── js/
-│   │   ├── chat.js     ← K-BOT logic (sessionStorage, API calls)
-│   │   ├── nav.js      ← hamburger, active links
-│   │   ├── scroll.js   ← reveal animations
-│   │   ├── contact-form.js
-│   │   ├── hero-neural-bg.js
-│   │   └── filter.js
-│   └── public/
-│       ├── sitemap.xml ← aggiornare con nuove pagine
-│       ├── robots.txt
-│       ├── llms.txt
-│       └── fonts/
-├── api/                ← backend Vercel functions
-├── server.js           ← Node HTTP server prod
-├── vite.config.js      ← entry points + proxy config
-└── vercel.json         ← rewrites + redirects
+│   │   ├── chat.js          ← widget K-BOT lite per landing (qualificazione lead, NON la chat premium)
+│   │   ├── k-bot-grazie.js  ← parser session_id su /k-bot/grazie
+│   │   ├── nav.js, scroll.js, contact-form.js, hero-neural-bg.js, filter.js
+│   └── public/              ← sitemap.xml, robots.txt, llms.txt, fonts/
+├── api/                     ← API Node/TS (alcune deprecated, prod usa Python)
+│   └── kbot/                ← endpoint K-BOT TS (legacy, prod proxia a Python)
+├── server.js                ← Node HTTP server prod (proxy /api/kbot/* + /api/stripe/webhook a FastAPI)
+├── vite.config.js           ← entry points multi-page
+└── vercel.json              ← header CSP + redirects 301
+
+kbot/                        ← K-BOT Premium app (Next.js + Python, deploy Railway separato)
+├── src/                     ← Next.js 16 (basePath /app, output standalone)
+│   ├── app/                 ← page.tsx, sign-in, dashboard, providers.tsx
+│   ├── components/chat/     ← MessageBubble.tsx (CTA paid qui)
+│   ├── lib/api.ts           ← client FastAPI
+│   └── types/chat.ts
+├── backend/                 ← FastAPI Python
+│   └── app/api/             ← session, message, checkout, generate-pdf, webhook
+├── next.config.ts           ← basePath '/app'
+└── AGENTS.md                ← guida specifica K-BOT (leggi anche questa)
 ```
 
 ## 10. Cosa NON fare mai senza chiedere
