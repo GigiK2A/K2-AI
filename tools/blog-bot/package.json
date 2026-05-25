@@ -1,0 +1,22 @@
+{
+  "name": "k2-blog-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Autopilot blog publishing for K2-AI — pulls topic from Google Sheet, generates teaser article via Claude, validates, commits to repo. Designed to run from GitHub Actions cron.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "run": "tsx generate-article.ts",
+    "lint": "echo 'no lint configured'"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.92.0",
+    "cheerio": "^1.0.0-rc.12",
+    "googleapis": "^144.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
