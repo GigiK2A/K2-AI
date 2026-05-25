@@ -28,7 +28,7 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"Blog","@id":"https://www.k2-ai.it/blog#blog","url":"https://www.k2-ai.it/blog","name":"Blog K2-AI","description":"Articoli pratici su agenti AI, automazioni e microapp per PMI italiane.","publisher":{"@type":"Organization","name":"K2-AI","url":"https://www.k2-ai.it/"},"inLanguage":"it-IT"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.k2-ai.it/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://www.k2-ai.it/blog"}]}</script>
 </head>
-<body class="blog-page">
+<body class="cases-page">
 
   <nav id="navbar">
     <div class="nav-inner">
@@ -63,26 +63,34 @@
     <a href="/contatti.html">Contatti</a>
   </div>
 
-  <main class="blog-index-wrap">
+  <!-- HEADER (stesso pattern di /laboratorio) -->
+  <section class="page-header-fit">
+    <p class="hero-eyebrow reveal">Risorse</p>
+    <h1 class="display-xl reveal reveal-delay-1 page-title-fit">
+      Articoli per chi<br>vuole capire prima<br>di costruire.
+    </h1>
+    <p class="reveal reveal-delay-2 page-copy-16">
+      Pezzi pratici su quando un agente AI risolve davvero, quando un plug-in standard basta, quando conviene non costruire. Niente buzzword. Numeri, casi reali, criteri di scelta.
+    </p>
+  </section>
 
-    <header class="blog-index-header">
-      <p class="hero-eyebrow reveal">Risorse</p>
-      <h1 class="display-xl reveal reveal-delay-1">Articoli per chi<br>vuole capire prima<br>di costruire.</h1>
-      <p class="reveal reveal-delay-2 page-copy-16">
-        Pezzi pratici su quando un agente AI risolve davvero, quando un plug-in standard basta, quando conviene non costruire. Niente buzzword. Numeri, casi reali, criteri di scelta.
-      </p>
-    </header>
+  <hr class="hr-section">
 
-    <section class="blog-index-grid">
-      <a class="blog-index-card" href="/blog/perche-team-commerciale-perde-2-ore-email-ripetitive">
-        <div class="kicker">25 maggio 2026 · Agenti email &amp; CRM</div>
-        <div class="title">Perché il team commerciale perde 2 ore al giorno su email ripetitive.</div>
-        <div class="excerpt">Quante ore brucia ogni settimana il tuo team su email che si ripetono. Cosa sta accadendo, perché le sequenze non bastano, quando ha senso costruire custom.</div>
-        <div class="read-more">Leggi articolo →</div>
-      </a>
-    </section>
+  <!-- GRIGLIA ARTICOLI (stesso pattern di /laboratorio) -->
+  <section>
+    <div class="grid-2" id="blog-grid">
 
-  </main>
+      <article class="case-card reveal">
+        <div class="case-card-header">
+          <div class="case-card-sector">25 maggio 2026 · Agenti email &amp; CRM</div>
+          <h3 class="case-card-title">Perché il team commerciale perde 2 ore al giorno su email ripetitive.</h3>
+          <p class="case-card-desc">Quante ore brucia ogni settimana il tuo team su email che si ripetono. Numeri reali, perché le sequenze HubSpot non bastano, quando ha senso costruire qualcosa di custom e quando fermarsi alle soluzioni standard.</p>
+          <a href="/blog/perche-team-commerciale-perde-2-ore-email-ripetitive" class="case-card-cta">Leggi l'articolo →</a>
+        </div>
+      </article>
+
+    </div>
+  </section>
 
   <hr class="hr-section">
 
