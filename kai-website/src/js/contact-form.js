@@ -12,7 +12,7 @@ const SUITE_PACKAGE_TITLES = {
   P09: 'AI Controllo di Gestione',
   P10: 'Integrazione Gestionali & ERP',
   P11: 'AI Marketing & Contenuti',
-  P12: 'Diagnosi Strategica PMI',
+  P12: 'Analisi Strategica PMI',
   P13: 'Agevolazioni & Finanza Agevolata',
   P14: 'AI Edilizia & Appalti Pubblici',
   P15: 'AI HR & Recruiting',

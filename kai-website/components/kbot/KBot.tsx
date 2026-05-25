@@ -41,7 +41,7 @@ const SERVICE_MAP: Record<string, ServicePreset> = {
   P09: { name: 'AI Controllo di Gestione',          sector: 'commercialista',   contentType: 'bilancio', url: '/suite-ai/ai-controllo-gestione-reporting.html' },
   P10: { name: 'Integrazione Gestionali & ERP',     sector: 'studio-ingegneria',contentType: 'documento-tecnico', url: '/suite-ai/integrazione-gestionali-erp.html' },
   P11: { name: 'AI Marketing & Contenuti',          sector: 'servizi-b2b',      contentType: 'marketing-seo', url: '/suite-ai/ai-marketing-contenuti.html' },
-  P12: { name: 'Diagnosi Strategica PMI',           sector: 'servizi-b2b',      contentType: 'generico', url: '/suite-ai/diagnosi-strategica-pmi.html' },
+  P12: { name: 'Analisi Strategica PMI',            sector: 'servizi-b2b',      contentType: 'generico', url: '/suite-ai/analisi-strategica-pmi.html' },
   P13: { name: 'Agevolazioni & Finanza Agevolata',  sector: 'commercialista',   contentType: 'bilancio', url: '/suite-ai/agevolazioni-finanza-agevolata.html' },
   P14: { name: 'AI Edilizia & Appalti Pubblici',    sector: 'studio-ingegneria',contentType: 'documento-tecnico', url: '/suite-ai/ai-edilizia-appalti-pubblici.html' },
   P15: { name: 'AI HR & Recruiting',                sector: 'servizi-b2b',      contentType: 'processo-operativo', url: '/suite-ai/ai-hr-recruiting.html' },

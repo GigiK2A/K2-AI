@@ -317,7 +317,7 @@ P08 · AI Compliance & Audit — WEB · verifica conformità, audit trail, check
 P09 · AI Controllo di Gestione — WEB · reporting automatico, KPI, budget vs consuntivo
 P10 · Integrazione Gestionali & ERP — STUDIO · connettori API, sync dati, automazioni tra gestionali
 P11 · AI Marketing & Contenuti — HOST/WEB · copy, SEO, newsletter, campagne
-P12 · Diagnosi Strategica PMI — WEB · analisi processi, gap operativi, roadmap AI
+P12 · Analisi Strategica PMI — WEB · analisi processi, gap operativi, roadmap AI
 P13 · Agevolazioni & Finanza Agevolata — WEB · identificazione bandi, pratiche, documentazione
 P14 · AI Edilizia & Appalti Pubblici — WEB · gare, pratiche, documentazione tecnica appalti
 P15 · AI HR & Recruiting — HOST/WEB · screening CV, job description, onboarding automatico
