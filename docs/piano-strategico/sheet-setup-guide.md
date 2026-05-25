@@ -98,7 +98,7 @@ solo se push fallisce.
 
 ## 7. Test
 
-Trigger manuale (non aspetta il giovedì):
+Trigger manuale (non aspetta il mercoledì):
 
 ```bash
 gh workflow run "Blog autopilot" --field dry_run=true
@@ -123,11 +123,13 @@ Verifica:
 ## 8. Schedule attivo
 
 Da quando il workflow è committato e i secret sono settati, parte
-automatico ogni **giovedì alle 06:00 CET** (5:00 UTC).
+automatico ogni **mercoledì alle 06:00 CET** (5:00 UTC).
 
-Stessa data: alle **18:00 CET** il workflow n8n esistente
-pubblica il post Instagram, che ora include il link al blog.
+Stessa data: alle **18:00 CET di mercoledì** il workflow n8n esistente
+pubblica il post Instagram, che ora include il link al blog. **Importante**:
+l'agente che gestisce n8n deve spostare il cron del Workflow 07 da
+giovedì 18:00 a mercoledì 18:00 (vedi `n8n-ig-update-prompt.md`).
 
 Se per qualche motivo blog NON è uscito (validator FAIL o crash), n8n IG
-NON deve pubblicare quel giovedì — vedi `n8n-ig-update-prompt.md` per le
+NON deve pubblicare quel mercoledì — vedi `n8n-ig-update-prompt.md` per le
 istruzioni da dare all'agente che gestisce il workflow IG.

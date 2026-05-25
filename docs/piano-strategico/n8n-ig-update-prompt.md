@@ -10,16 +10,17 @@
 
 Ciao. Abbiamo aggiunto un **blog autopilot** al sito K2-AI
 (https://www.k2-ai.it/blog). Da questa settimana il blog pubblica un
-articolo ogni giovedì alle 06:00 CET, sullo stesso topic della riga del
+articolo ogni **mercoledì alle 06:00 CET**, sullo stesso topic della riga del
 Google Sheet "Servizi" che tu poi userai per il post Instagram alle
-18:00 dello stesso giorno.
+**18:00 dello stesso mercoledì**.
 
-Il tuo workflow n8n attuale (Spotlight Instagram, lanciato giovedì
+Il tuo workflow n8n attuale (Spotlight Instagram, oggi lanciato giovedì
 18:00) deve essere **modificato in modo non distruttivo** per:
 
-1. Leggere 3 colonne nuove dal Sheet
-2. Non pubblicare se il blog non è uscito
-3. Includere il link al blog nella caption
+1. **Spostare il cron da giovedì 18:00 a MERCOLEDÌ 18:00**
+2. Leggere 3 colonne nuove dal Sheet
+3. Non pubblicare se il blog non è uscito
+4. Includere il link al blog nella caption
 
 ---
 
@@ -38,7 +39,7 @@ Il tuo workflow n8n attuale (Spotlight Instagram, lanciato giovedì
 | J | `pillar_padre` | codice pillar K2-AI (P01-P20) |
 | K | `pillar_url` | URL pillar (es. `/suite-ai/agenti-email-crm.html`) |
 
-Il blog autopilot **gira prima di te** (giovedì 06:00). Quando il blog
+Il blog autopilot **gira prima di te** (mercoledì 06:00). Quando il blog
 pubblica, scrive le colonne G, H, I della stessa riga.
 
 Il tuo workflow attuale guarda solo la colonna E (`Stato`) per scegliere
@@ -47,6 +48,11 @@ la riga, poi marca `Stato=usato` + scrive `Data` dopo aver pubblicato.
 ---
 
 ### MODIFICHE RICHIESTE AL WORKFLOW
+
+**0. Sposta il cron a mercoledì 18:00**
+
+Vai nel trigger Schedule del Workflow 07 e cambia da `0 18 * * 4` (giovedì)
+a `0 18 * * 3` (mercoledì). Stesso orario, giorno prima.
 
 **1. Filtro nuovo per la riga**
 
@@ -92,7 +98,7 @@ Google. Importante: il link va citato esplicitamente per chiarezza.
 **4. (Bonus opzionale) Pin del link in bio settimanale**
 
 Se vuoi automatizzare anche l'aggiornamento del link in bio Instagram:
-ogni giovedì 18:01 (dopo la pubblicazione del post), aggiorna il link
+ogni mercoledì 18:01 (dopo la pubblicazione del post), aggiorna il link
 in bio a:
 
 ```
@@ -134,6 +140,7 @@ testo "Articolo completo (lettura 7 min)" esattamente come scritto.
 
 ### CHECKLIST POST-MODIFICA
 
+- [ ] Cron Schedule spostato da giovedì a mercoledì 18:00 (`0 18 * * 3`)
 - [ ] Filtro riga aggiornato (Stato=`da usare` AND blog_pubblicato!=vuoto)
 - [ ] HEAD request verso `https://www.k2-ai.it{blog_url}` aggiunta
 - [ ] Telegram alert per caso "no blog oggi"
@@ -145,14 +152,14 @@ testo "Articolo completo (lettura 7 min)" esattamente come scritto.
 
 ### DOMANDE FREQUENTI
 
-**Q: cosa succede se il blog bot fallisce un giovedì?**
+**Q: cosa succede se il blog bot fallisce un mercoledì?**
 A: il tuo workflow IG trova zero righe con `blog_pubblicato != ""` per
-quella settimana. Skip + alert. Settimana saltata. Riprende il giovedì
+quella settimana. Skip + alert. Settimana saltata. Riprende il mercoledì
 successivo.
 
 **Q: cosa succede se IG fallisce ma blog è OK?**
 A: la riga ha `blog_pubblicato` valorizzato ma `Stato` ancora `da usare`.
-Il giovedì successivo, blog bot vede `Stato=da usare` AND
+Il mercoledì successivo, blog bot vede `Stato=da usare` AND
 `blog_pubblicato != vuoto` → **skippa** quella riga e va alla
 successiva (perché blog bot pubblica solo righe con
 blog_pubblicato=vuoto). IG ritenta. Coerente.
