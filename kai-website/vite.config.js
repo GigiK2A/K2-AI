@@ -138,6 +138,7 @@ export default defineConfig({
         'newsletter-ok': 'src/newsletter-ok.html',
         'newsletter-error': 'src/newsletter-error.html',
         ...collectSuiteAiHtmlInputs(),
+        ...collectBlogHtmlInputs(),
       }
     }
   },
@@ -174,6 +175,22 @@ function collectSuiteAiHtmlInputs() {
     if (fileName.startsWith('._')) continue
     const slug = fileName.replace(/\.html$/i, '')
     entries[`suite-ai/${slug}`] = `src/suite-ai/${fileName}`
+  }
+  return entries
+}
+
+function collectBlogHtmlInputs() {
+  const blogDir = path.resolve(process.cwd(), 'src/blog')
+  if (!fs.existsSync(blogDir)) return {}
+
+  const entries = {}
+  for (const fileName of fs.readdirSync(blogDir)) {
+    if (!fileName.endsWith('.html')) continue
+    if (fileName.startsWith('._')) continue
+    // file con prefisso "_" sono template, non vanno esposti come pagina
+    if (fileName.startsWith('_')) continue
+    const slug = fileName.replace(/\.html$/i, '')
+    entries[`blog/${slug}`] = `src/blog/${fileName}`
   }
   return entries
 }
