@@ -135,8 +135,6 @@ export default defineConfig({
         'note-legali': 'src/note-legali.html',
         workshop: 'src/workshop.html',
         'suite-ai': 'src/suite-ai.html',
-        newsletter: 'src/newsletter.html',
-        'newsletter-entry': 'src/newsletter-entry.html',
         'newsletter-ok': 'src/newsletter-ok.html',
         'newsletter-error': 'src/newsletter-error.html',
         ...collectSuiteAiHtmlInputs(),
