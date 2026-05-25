@@ -2703,7 +2703,17 @@ const server = http.createServer((req, res) => {
   const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
   let filePath = path.join(DIST_DIR, safePath);
   if (!path.extname(filePath)) {
-    filePath = `${filePath}.html`;
+    // Prova prima <path>.html (es. /metodo → metodo.html). Se non esiste,
+    // cerca una directory con index.html (es. /blog → blog/index.html).
+    const asFile = `${filePath}.html`;
+    const asDirIndex = path.join(filePath, 'index.html');
+    if (fs.existsSync(asFile)) {
+      filePath = asFile;
+    } else if (fs.existsSync(asDirIndex)) {
+      filePath = asDirIndex;
+    } else {
+      filePath = asFile; // serveFile risponderà 404 in modo coerente
+    }
   }
   serveFile(req, res, filePath);
 });
