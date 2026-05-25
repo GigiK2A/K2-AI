@@ -1,12 +1,15 @@
 name: Blog autopilot
 
-# Esegue ogni mercoledì alle 06:00 CET (05:00 UTC in inverno, 04:00 in estate).
-# 5 UTC = 06:00 in inverno (CET) / 07:00 in estate (CEST).
-# Per restare sempre 06-07 CET locale, usiamo 05 UTC. Workflow ammette anche
-# manual dispatch per generare on-demand.
+# Esegue ogni mercoledì.
+# GitHub Actions cron è SOLO UTC, non timezone-aware.
+# 04:00 UTC corrisponde a:
+#   - 06:00 CEST (estate Italia) ← target principale
+#   - 05:00 CET  (inverno Italia)
+# Preferiamo "mai dopo le 06:00 italiane" piuttosto che "mai prima",
+# quindi 04 UTC. Workflow accetta anche manual dispatch on-demand.
 on:
   schedule:
-    - cron: "0 5 * * 3"   # Mercoledì 05:00 UTC
+    - cron: "0 4 * * 3"   # Mercoledì 04:00 UTC (= 06:00 CEST / 05:00 CET)
   workflow_dispatch:
     inputs:
       dry_run:
