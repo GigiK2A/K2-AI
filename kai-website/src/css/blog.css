@@ -3,7 +3,8 @@
    Riusa i token di base.css. Convive con base/components/pages.
    ============================================================ */
 
-.blog-page { background: var(--bg); color: var(--text-primary); }
+/* .blog-page eredita background gradient e color da body in base.css.
+   Non sovrascrivere bg o color qui: romperebbe il radial gradient del sito. */
 
 .blog-wrap {
   max-width: 760px;
