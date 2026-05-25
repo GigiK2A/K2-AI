@@ -35,7 +35,9 @@ export default async function handler(req: any, res: any) {
     }
 
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2026-03-25.dahlia' })
-    const siteUrl = (getSystemEnvVar('NEXT_PUBLIC_SITE_URL') || 'https://www.k2-ai.it').replace(/\/$/, '')
+    const ALLOWED_SITE_URLS = new Set(['https://www.k2-ai.it', 'https://k2-ai.it', 'http://localhost:4173'])
+    const rawSiteUrl = (getSystemEnvVar('NEXT_PUBLIC_SITE_URL') || 'https://www.k2-ai.it').replace(/\/$/, '')
+    const siteUrl = ALLOWED_SITE_URLS.has(rawSiteUrl) ? rawSiteUrl : 'https://www.k2-ai.it'
     const sectorLabel = resolveSectorLabel(session.sector)
 
     const checkoutSession = await stripe.checkout.sessions.create({
