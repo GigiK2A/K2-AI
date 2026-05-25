@@ -30,10 +30,12 @@ export function LoadingState({ text = "K2-AI sta elaborando...", reportProgress 
   const [stepIndex, setStepIndex] = useState(0);
   const live = !!reportProgress;
 
-  // Real progress: aggiorna stato dai dati SSE
+  // Real progress: sync local state with external prop coming from SSE stream.
   useEffect(() => {
     if (reportProgress) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsReport(true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProgress(reportProgress.progress);
     }
   }, [reportProgress]);

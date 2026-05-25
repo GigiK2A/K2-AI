@@ -80,7 +80,10 @@ export function Composer({
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [recording, setRecording] = useState(false);
 
+  // Browser-API detection on mount (hydration-safe pattern: SSR can't know
+  // window.SpeechRecognition, so we read it after mount and update state).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVoiceSupported(getSpeechRecognitionCtor() !== null);
   }, []);
 
