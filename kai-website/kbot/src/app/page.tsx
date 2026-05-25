@@ -135,6 +135,20 @@ export default function HomePage() {
     }
   }, [authLoading, isSignedIn]);
 
+  // State definitions must come BEFORE the bootstrap effect below so that
+  // the setters aren't referenced in a TDZ context (react-hooks lint rule).
+  const [conversations, setConversations] = useState<Conversation[]>([
+    {
+      id: uid("conv"),
+      title: "Nuova conversazione",
+      mode: "report",
+      messages: [
+        { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
+      ],
+    },
+  ]);
+  const [activeId, setActiveId] = useState(conversations[0].id);
+
   // Bootstrap: load remote conversations on first authed render.
   // Anon: keep the in-memory single welcome conv.
   const [bootstrapped, setBootstrapped] = useState(false);
@@ -168,18 +182,6 @@ export default function HomePage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isSignedIn]);
-
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: uid("conv"),
-      title: "Nuova conversazione",
-      mode: "report",
-      messages: [
-        { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
-      ],
-    },
-  ]);
-  const [activeId, setActiveId] = useState(conversations[0].id);
 
   /* Cross-bot bridge: when arriving from suite-ai widget with ?continue=<id>,
      adopt that session id instead of creating a new one. Stripped after read
@@ -226,6 +228,10 @@ export default function HomePage() {
   useEffect(() => {
     if (!kbotSession?.id) return;
     let remoteIdToSync: string | null | undefined;
+    // Syncing local state with an external system (backend session id from
+    // the kbot API), which is exactly the documented "OK" case for setState
+    // inside an effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== activeConversation.id || c.kbotSessionId === kbotSession.id) return c;
@@ -720,6 +726,10 @@ export default function HomePage() {
               ))}
             </AnimatePresence>
             {loading && <LoadingState reportProgress={pdfProgress} />}
+            {/* Date.now() in render is a deliberate snapshot — the banner's
+                onExpired callback nulls rateLimitUntil so subsequent renders
+                will drop the banner. */}
+            {/* eslint-disable-next-line react-hooks/purity */}
             {rateLimitUntil && rateLimitUntil > Date.now() && (
               <RateLimitBanner
                 retryAt={rateLimitUntil}
@@ -746,6 +756,7 @@ export default function HomePage() {
               disabled={
                 loading ||
                 fetchingUrl ||
+                // eslint-disable-next-line react-hooks/purity
                 (rateLimitUntil !== null && rateLimitUntil > Date.now())
               }
               suggestions={REPORT_SUGGESTIONS}

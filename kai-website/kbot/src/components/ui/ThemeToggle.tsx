@@ -19,7 +19,10 @@ export function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
+  // Hydration-safe init: read localStorage on mount only, then apply theme.
+  // SSR has no localStorage so we must defer to after-mount.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     try {
       const stored = (localStorage.getItem(KEY) as Theme | null) ?? "dark";
