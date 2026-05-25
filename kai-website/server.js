@@ -1663,6 +1663,34 @@ function isTextLikeFile(mime, name) {
   return String(mime || '').startsWith('text/') || /\.(txt|md|csv|json|xml)$/i.test(lower);
 }
 
+// Verify the declared MIME type matches the buffer's magic bytes. Prevents
+// a malicious upload from claiming text/plain or application/pdf to slip
+// past the text/PDF processing branches.
+function isAllowedUploadBuffer(mime, name, buffer) {
+  if (!buffer || buffer.length < 4) return false;
+  const lower = String(name || '').toLowerCase();
+  const head4 = buffer.subarray(0, 4).toString('ascii');
+  const head5 = buffer.subarray(0, 5).toString('ascii');
+
+  if (mime === 'application/pdf' || lower.endsWith('.pdf')) {
+    return head5 === '%PDF-';
+  }
+  if (isTextLikeFile(mime, name)) {
+    // Reject executables / binaries that bypass text MIME (PK = zip/office,
+    // MZ = PE, \x7fELF, %PDF, \x89PNG, GIF, RIFF, OggS, ID3, etc.)
+    const binaryHeads = ['%PDF', 'PK', 'MZ ', 'ELF', 'PNG', 'GIF8', 'RIFF', 'OggS'];
+    if (binaryHeads.some(h => head4.startsWith(h.slice(0, 4)))) return false;
+    // Heuristic: most of the bytes should be printable text.
+    const sample = buffer.subarray(0, Math.min(buffer.length, 1024));
+    let printable = 0;
+    for (const b of sample) {
+      if (b === 9 || b === 10 || b === 13 || (b >= 32 && b <= 126) || b >= 128) printable++;
+    }
+    return printable / sample.length > 0.85;
+  }
+  return false;
+}
+
 async function summarizeKbotPdf(base64, fileName) {
   const anthropic = createAnthropicClient();
   const response = await anthropic.messages.create({
@@ -1855,6 +1883,9 @@ async function handleKbotUpload(req, res) {
     const raw = String(file.base64 || '').replace(/^data:.*;base64,/, '');
     const buffer = Buffer.from(raw, 'base64');
     if (buffer.length > 4 * 1024 * 1024) return sendJson(res, 413, { error: `File troppo grande: ${name}` });
+    if (!isAllowedUploadBuffer(mime, name, buffer)) {
+      return sendJson(res, 415, { error: `Tipo file non valido o contenuto non corrispondente: ${name}` });
+    }
 
     let extractedSummary = '';
     let extractedText = '';

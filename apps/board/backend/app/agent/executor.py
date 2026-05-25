@@ -6,16 +6,70 @@ is the only allowed direct write outside approvals.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
+import re
+import socket
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 
 import httpx
 
 log = logging.getLogger(__name__)
 
 MAX_FETCH_BYTES = 50_000
+
+# PostgREST .or_() takes a comma-separated string; user input must not be
+# able to inject extra clauses or ilike wildcards.
+_OR_FILTER_BLOCKED = re.compile(r"[,()*\\]")
+
+
+def _sanitize_or_ilike(query: str, max_len: int = 80) -> str:
+    """Sanitize user input for use inside a PostgREST .or_() ilike pattern.
+
+    Strips characters that PostgREST treats as clause delimiters or operators
+    and escapes ilike wildcards so user-supplied % / _ match literally.
+    """
+    if not query:
+        return ""
+    cleaned = _OR_FILTER_BLOCKED.sub("", query)
+    cleaned = cleaned.replace("%", r"\%").replace("_", r"\_")
+    return cleaned.strip()[:max_len]
+
+
+def _is_safe_fetch_url(url: str) -> bool:
+    """Reject URLs that resolve to private/internal/link-local ranges (SSRF guard)."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return False
+    if parsed.scheme not in ("http", "https"):
+        return False
+    host = parsed.hostname
+    if not host:
+        return False
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return False
+    for info in infos:
+        addr = info[4][0]
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            continue
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            return False
+    return True
 
 
 def _now() -> datetime:
@@ -114,7 +168,7 @@ def _get_lead(sb, args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _search_contacts(sb, args: Dict[str, Any]) -> Dict[str, Any]:
-    query = (args.get("query") or "").strip()
+    query = _sanitize_or_ilike(args.get("query") or "")
     if not query:
         return {"contacts": []}
     like = f"%{query}%"
@@ -153,7 +207,9 @@ def _list_pending_approvals(sb) -> Dict[str, Any]:
 
 
 def _search_memos(sb, args: Dict[str, Any]) -> Dict[str, Any]:
-    query = (args.get("query") or "").strip()
+    query = _sanitize_or_ilike(args.get("query") or "")
+    if not query:
+        return {"count": 0, "memos": []}
     like = f"%{query}%"
     res = (
         sb.table("board_memos")
@@ -214,11 +270,15 @@ def _list_meetings(sb, args: Dict[str, Any]) -> Dict[str, Any]:
 
 async def _fetch_url(args: Dict[str, Any]) -> Dict[str, Any]:
     url = args.get("url") or ""
-    if not url.startswith(("http://", "https://")):
-        return {"error": "url must start with http:// or https://"}
+    if not _is_safe_fetch_url(url):
+        return {"error": "url must be a public http(s) URL (private/internal targets blocked)"}
     try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        # follow_redirects=False so a 30x cannot bounce the request to an
+        # internal address that bypassed our pre-flight DNS check.
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
             resp = await client.get(url, headers={"User-Agent": "K2-Board/Giuseppina"})
+        if resp.status_code in (301, 302, 303, 307, 308):
+            return {"error": f"redirect to {resp.headers.get('location', '')} blocked"}
         text = resp.text[:MAX_FETCH_BYTES]
         return {
             "url": str(resp.url),
