@@ -1,12 +1,12 @@
 name: Blog autopilot
 
-# Esegue ogni giovedì alle 06:00 CET (05:00 UTC in inverno, 04:00 in estate).
+# Esegue ogni mercoledì alle 06:00 CET (05:00 UTC in inverno, 04:00 in estate).
 # 5 UTC = 06:00 in inverno (CET) / 07:00 in estate (CEST).
 # Per restare sempre 06-07 CET locale, usiamo 05 UTC. Workflow ammette anche
 # manual dispatch per generare on-demand.
 on:
   schedule:
-    - cron: "0 5 * * 4"   # Giovedì 05:00 UTC
+    - cron: "0 5 * * 3"   # Mercoledì 05:00 UTC
   workflow_dispatch:
     inputs:
       dry_run:

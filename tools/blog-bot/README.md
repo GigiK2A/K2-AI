@@ -1,11 +1,11 @@
 # K2-AI blog autopilot
 
-Ogni giovedì alle 06:00 CET il workflow GitHub Actions `blog-autopilot`
+Ogni mercoledì alle 06:00 CET il workflow GitHub Actions `blog-autopilot`
 legge la prossima riga "da usare" dal Google Sheet, chiama Claude per
 generare un articolo teaser brand-aligned, lo valida, lo committa nel
 repo e fa push su `main`. Railway redeploya automaticamente.
 
-Alle 18:00 CET dello stesso giorno, il workflow n8n esistente
+Alle 18:00 CET dello stesso mercoledì, il workflow n8n esistente
 ("Spotlight Instagram") pesca la stessa riga, pubblica il post IG e
 include nella caption il link `https://www.k2-ai.it{blog_url}` che
 adesso esiste perché il blog è stato pubblicato 12h prima.
