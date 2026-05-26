@@ -72,9 +72,9 @@ const DRAFTS_REJECTED = join(__dirname, "drafts-rejected");
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
 
-  const sheetId = process.env.GOOGLE_SHEET_ID;
-  if (!sheetId) throw new Error("GOOGLE_SHEET_ID env var missing");
-  const sheet = new SheetClient(sheetId);
+  // Source of truth è schedule.json nel repo (vedi lib/sheet-client.ts).
+  // Nessuna Google API necessaria.
+  const sheet = new SheetClient();
 
   const row = await sheet.pickNextForBlog();
   if (!row) {
@@ -91,7 +91,7 @@ async function main() {
   let pieces = await generateDraft(anthropic, {
     servizio: row.servizio,
     problema: row.descrizione,
-    risultato_kpi: row.risultatoKpi,
+    risultato_kpi: row.risultati_kpi,
     agevolazione: row.agevolazione,
     pillar_padre: pillar.code,
     pillar_url: pillar.url,
