@@ -17,6 +17,39 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { SheetClient, type SheetRow } from "./lib/sheet-client.js";
+
+// Mapping URL → codice pillar (per metadata + section-label).
+// Le righe "Laboratorio" puntano a /laboratorio invece di un pillar.
+const URL_TO_PILLAR: Record<string, { code: string; label: string }> = {
+  "/suite-ai/agenti-email-crm.html": { code: "P01", label: "Agenti email & CRM" },
+  "/suite-ai/automazioni-amministrative.html": { code: "P02", label: "Automazioni amministrative" },
+  "/suite-ai/ai-legale-contratti.html": { code: "P03", label: "AI legale & contratti" },
+  "/suite-ai/ai-ingegneria-progettazione.html": { code: "P04", label: "AI ingegneria & progettazione" },
+  "/suite-ai/microapp-documenti-tecnici.html": { code: "P05", label: "Microapp documenti tecnici" },
+  "/suite-ai/ai-customer-service-ticket.html": { code: "P06", label: "AI customer service & ticket" },
+  "/suite-ai/rag-knowledge-base.html": { code: "P07", label: "RAG knowledge base" },
+  "/suite-ai/ai-compliance-audit.html": { code: "P08", label: "AI compliance & audit" },
+  "/suite-ai/ai-controllo-gestione-reporting.html": { code: "P09", label: "AI controllo di gestione" },
+  "/suite-ai/integrazione-gestionali-erp.html": { code: "P10", label: "Integrazione gestionali & ERP" },
+  "/suite-ai/ai-marketing-contenuti.html": { code: "P11", label: "AI marketing & contenuti" },
+  "/suite-ai/analisi-strategica-pmi.html": { code: "P12", label: "Analisi strategica PMI" },
+  "/suite-ai/diagnosi-strategica-pmi.html": { code: "P12", label: "Analisi strategica PMI" },
+  "/suite-ai/agevolazioni-finanza-agevolata.html": { code: "P13", label: "Agevolazioni & finanza agevolata" },
+  "/suite-ai/ai-edilizia-appalti-pubblici.html": { code: "P14", label: "AI edilizia & appalti pubblici" },
+  "/suite-ai/ai-hr-recruiting.html": { code: "P15", label: "AI HR & recruiting" },
+  "/suite-ai/ai-real-estate-tokenizzazione.html": { code: "P16", label: "AI real estate & tokenizzazione" },
+  "/suite-ai/ai-data-analytics-bi.html": { code: "P17", label: "AI data analytics & BI" },
+  "/suite-ai/ai-ux-design-system.html": { code: "P18", label: "AI UX & design system" },
+  "/suite-ai/ai-efficienza-energetica.html": { code: "P19", label: "AI efficienza energetica" },
+  "/suite-ai/ai-hospitality-revenue.html": { code: "P20", label: "AI hospitality & revenue" },
+  "/laboratorio": { code: "LAB", label: "Laboratorio" },
+};
+
+function resolvePillarFromUrl(url: string): { code: string; label: string; url: string } {
+  const map = URL_TO_PILLAR[url];
+  if (map) return { code: map.code, label: map.label, url };
+  return { code: "P00", label: "Suite AI", url: "/suite-ai.html" };
+}
 import { createClient, generateDraft, reviseArticle } from "./lib/claude.js";
 import { renderArticleHtml } from "./lib/template.js";
 import { injectSitemapEntry } from "./lib/sitemap.js";
@@ -34,38 +67,7 @@ const BLOG_DIR = join(REPO_ROOT, "kai-website", "src", "blog");
 const SITEMAP_PATH = join(REPO_ROOT, "kai-website", "src", "public", "sitemap.xml");
 const DRAFTS_REJECTED = join(__dirname, "drafts-rejected");
 
-const PILLAR_LABEL_MAP: Record<string, { label: string; url: string }> = {
-  P01: { label: "Agenti email & CRM", url: "/suite-ai/agenti-email-crm.html" },
-  P02: { label: "Automazioni amministrative", url: "/suite-ai/automazioni-amministrative.html" },
-  P03: { label: "AI legale & contratti", url: "/suite-ai/ai-legale-contratti.html" },
-  P04: { label: "AI ingegneria & progettazione", url: "/suite-ai/ai-ingegneria-progettazione.html" },
-  P05: { label: "Microapp documenti tecnici", url: "/suite-ai/microapp-documenti-tecnici.html" },
-  P06: { label: "AI customer service & ticket", url: "/suite-ai/ai-customer-service-ticket.html" },
-  P07: { label: "RAG knowledge base", url: "/suite-ai/rag-knowledge-base.html" },
-  P08: { label: "AI compliance & audit", url: "/suite-ai/ai-compliance-audit.html" },
-  P09: { label: "AI controllo di gestione", url: "/suite-ai/ai-controllo-gestione-reporting.html" },
-  P10: { label: "Integrazione gestionali & ERP", url: "/suite-ai/integrazione-gestionali-erp.html" },
-  P11: { label: "AI marketing & contenuti", url: "/suite-ai/ai-marketing-contenuti.html" },
-  P12: { label: "Analisi strategica PMI", url: "/suite-ai/analisi-strategica-pmi.html" },
-  P13: { label: "Agevolazioni & finanza agevolata", url: "/suite-ai/agevolazioni-finanza-agevolata.html" },
-  P14: { label: "AI edilizia & appalti pubblici", url: "/suite-ai/ai-edilizia-appalti-pubblici.html" },
-  P15: { label: "AI HR & recruiting", url: "/suite-ai/ai-hr-recruiting.html" },
-  P16: { label: "AI real estate & tokenizzazione", url: "/suite-ai/ai-real-estate-tokenizzazione.html" },
-  P17: { label: "AI data analytics & BI", url: "/suite-ai/ai-data-analytics-bi.html" },
-  P18: { label: "AI UX & design system", url: "/suite-ai/ai-ux-design-system.html" },
-  P19: { label: "AI efficienza energetica", url: "/suite-ai/ai-efficienza-energetica.html" },
-  P20: { label: "AI hospitality & revenue", url: "/suite-ai/ai-hospitality-revenue.html" },
-};
-
-function resolvePillar(row: SheetRow): { code: string; label: string; url: string } {
-  const code = (row.pillarPadre || "").toUpperCase().trim();
-  const map = PILLAR_LABEL_MAP[code];
-  if (!map) {
-    // fallback: punta alla landing suite-ai
-    return { code: code || "P00", label: "Suite AI", url: "/suite-ai.html" };
-  }
-  return { code, label: map.label, url: row.pillarUrl || map.url };
-}
+// Mapping pillar derivato dall'URL: vedi URL_TO_PILLAR sopra.
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
@@ -82,13 +84,13 @@ async function main() {
   }
   console.log(`[pick] row ${row.rowIndex}: ${row.servizio}`);
 
-  const pillar = resolvePillar(row);
+  const pillar = resolvePillarFromUrl(row.url);
   const anthropic = createClient();
 
   console.log("[draft] calling Claude Sonnet...");
   let pieces = await generateDraft(anthropic, {
     servizio: row.servizio,
-    problema: row.problema,
+    problema: row.descrizione,
     risultato_kpi: row.risultatoKpi,
     agevolazione: row.agevolazione,
     pillar_padre: pillar.code,
