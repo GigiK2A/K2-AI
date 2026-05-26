@@ -1,108 +1,117 @@
 /**
- * Google Sheets client per la "Servizi" sheet del piano IG/Blog.
+ * Schedule client: source of truth è un JSON committato nel repo
+ * (`tools/blog-bot/schedule.json`), NON Google Sheets API.
  *
- * Schema reale (riga 1 = header):
+ * Motivo: l'org Google ha policy `iam.disableServiceAccountKeyCreation`
+ * che blocca la creazione di chiavi service account → non possiamo
+ * autenticare il bot via API. Soluzione pragmatica: scaletta in repo,
+ * stato versionato in git.
  *
- *  A  Servizio
- *  B  Categoria
- *  C  Descrizione                 (= Problema)
- *  D  Risultati_KPI
- *  E  Agevolazione
- *  F  URL                         (pillar URL o /laboratorio)
- *  G  Stato                       ("da usare" | "usato")          ← IG
- *  H  Data                        (compilata da n8n IG)            ← IG
- *  I  blog_slug                   (auto-compilata da blog bot)     ← BLOG
- *  J  blog_pubblicato             (data ISO compilata da blog bot) ← BLOG
- *  K  blog_url                    (path /blog/<slug> da blog bot)  ← BLOG
+ * n8n IG può continuare a leggere lo stesso file via raw URL:
+ *   https://raw.githubusercontent.com/GigiK2A/K2-AI/main/tools/blog-bot/schedule.json
  *
- * Il blog bot:
- * 1. Cerca la prima riga con Stato="da usare" AND blog_pubblicato vuoto
- * 2. Genera articolo, scrive blog_slug + blog_pubblicato + blog_url
- * 3. Lascia Stato="da usare" (sarà n8n IG a marcarlo "usato" la sera)
- *
- * Il codice pillar (P01-P20) viene derivato dall'URL al runtime —
- * non serve una colonna pillar_padre nel foglio.
+ * Schema di schedule.json:
+ *   {
+ *     "version": 1,
+ *     "rows": [
+ *       {
+ *         "row": number,                  riga originale (debug)
+ *         "servizio": string,
+ *         "categoria": string,
+ *         "descrizione": string,
+ *         "risultati_kpi": string,
+ *         "agevolazione": string,
+ *         "url": string,                  pillar URL o /laboratorio
+ *         "stato_ig": "da usare" | "usato",
+ *         "data_ig": string,              ISO YYYY-MM-DD
+ *         "blog_slug": string,
+ *         "blog_pubblicato": string,      ISO YYYY-MM-DD
+ *         "blog_url": string              path /blog/<slug>
+ *       }, ...
+ *     ]
+ *   }
  */
-import { google, sheets_v4 } from "googleapis";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-export interface SheetRow {
-  rowIndex: number; // 1-based
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const SCHEDULE_PATH = resolve(__dirname, "..", "schedule.json");
+
+export interface ScheduleRow {
+  row: number;
   servizio: string;
   categoria: string;
-  descrizione: string;       // ex problema
-  risultatoKpi: string;
+  descrizione: string;
+  risultati_kpi: string;
   agevolazione: string;
-  url: string;               // pillar url o /laboratorio
-  stato: string;
-  data: string;
-  blogSlug: string;
-  blogPubblicato: string;
-  blogUrl: string;
+  url: string;
+  stato_ig: string;
+  data_ig: string;
+  blog_slug: string;
+  blog_pubblicato: string;
+  blog_url: string;
 }
 
+interface Schedule {
+  version: number;
+  updated_at?: string;
+  description?: string;
+  rows: ScheduleRow[];
+}
+
+// Alias retro-compatibile col vecchio nome usato nell'orchestrator.
+export type SheetRow = ScheduleRow & {
+  rowIndex: number;
+  descrizioneAlias?: string;
+};
+
 export class SheetClient {
-  private sheets: sheets_v4.Sheets;
-  constructor(private spreadsheetId: string, private sheetName = "Servizi") {
-    const credentialsJson = process.env.GOOGLE_SHEETS_CREDENTIALS;
-    if (!credentialsJson) {
-      throw new Error("GOOGLE_SHEETS_CREDENTIALS env var missing");
-    }
-    const credentials = JSON.parse(credentialsJson);
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-    });
-    this.sheets = google.sheets({ version: "v4", auth: auth as never });
+  private schedulePath: string;
+
+  constructor(_spreadsheetId?: string, _sheetName?: string) {
+    // I parametri sono ignorati: usiamo schedule.json nel repo.
+    this.schedulePath = SCHEDULE_PATH;
+  }
+
+  private read(): Schedule {
+    const raw = readFileSync(this.schedulePath, "utf-8");
+    return JSON.parse(raw) as Schedule;
+  }
+
+  private write(s: Schedule): void {
+    writeFileSync(this.schedulePath, JSON.stringify(s, null, 2) + "\n", "utf-8");
   }
 
   async readAll(): Promise<SheetRow[]> {
-    const res = await this.sheets.spreadsheets.values.get({
-      spreadsheetId: this.spreadsheetId,
-      range: `${this.sheetName}!A1:K1000`,
-    });
-    const values = res.data.values ?? [];
-    // skip header row
-    const rows: SheetRow[] = [];
-    for (let i = 1; i < values.length; i++) {
-      const r = values[i] ?? [];
-      rows.push({
-        rowIndex: i + 1,
-        servizio: r[0] ?? "",
-        categoria: r[1] ?? "",
-        descrizione: r[2] ?? "",
-        risultatoKpi: r[3] ?? "",
-        agevolazione: r[4] ?? "",
-        url: r[5] ?? "",
-        stato: r[6] ?? "",
-        data: r[7] ?? "",
-        blogSlug: r[8] ?? "",
-        blogPubblicato: r[9] ?? "",
-        blogUrl: r[10] ?? "",
-      });
-    }
-    return rows;
+    const sch = this.read();
+    return sch.rows.map((r) => ({
+      ...r,
+      rowIndex: r.row,
+    }));
   }
 
   /**
    * Prossima riga da pubblicare sul blog:
-   * - Stato = "da usare" (in coda anche per IG)
+   * - stato_ig = "da usare" (in coda anche per IG)
    * - blog_pubblicato = vuoto
-   * Pubblichiamo il blog SOLO per righe che IG NON ha ancora pubblicato,
-   * così IG (alle 18:00 stessa data) trova blog_pubblicato!=vuoto e include link.
    */
   async pickNextForBlog(): Promise<SheetRow | null> {
     const all = await this.readAll();
-    return all.find(
-      (r) =>
-        r.servizio.trim().length > 0 &&
-        r.stato.trim().toLowerCase() === "da usare" &&
-        r.blogPubblicato.trim() === ""
-    ) ?? null;
+    return (
+      all.find(
+        (r) =>
+          r.servizio.trim().length > 0 &&
+          r.stato_ig.trim().toLowerCase() === "da usare" &&
+          r.blog_pubblicato.trim() === ""
+      ) ?? null
+    );
   }
 
   /**
-   * Aggiorna le colonne blog_slug (I), blog_pubblicato (J), blog_url (K)
-   * della riga specificata. Lascia Stato e Data invariati (le aggiorna n8n IG).
+   * Marca riga come pubblicata sul blog. Scrive blog_slug + blog_pubblicato
+   * + blog_url. Lo stato IG resta "da usare" (lo gestirà n8n IG la sera).
    */
   async markBlogPublished(
     rowIndex: number,
@@ -110,13 +119,13 @@ export class SheetClient {
     publishedAtIso: string,
     blogUrl: string
   ): Promise<void> {
-    await this.sheets.spreadsheets.values.update({
-      spreadsheetId: this.spreadsheetId,
-      range: `${this.sheetName}!I${rowIndex}:K${rowIndex}`,
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [[slug, publishedAtIso, blogUrl]],
-      },
-    });
+    const sch = this.read();
+    const target = sch.rows.find((r) => r.row === rowIndex);
+    if (!target) throw new Error(`row ${rowIndex} not found in schedule.json`);
+    target.blog_slug = slug;
+    target.blog_pubblicato = publishedAtIso;
+    target.blog_url = blogUrl;
+    sch.updated_at = publishedAtIso;
+    this.write(sch);
   }
 }
