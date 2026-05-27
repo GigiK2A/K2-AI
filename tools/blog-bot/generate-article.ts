@@ -134,7 +134,10 @@ async function main() {
 
   // Validators
   console.log("[validate] seo + voice + facts + teaser...");
-  const keywordPrimaria = row.servizio.toLowerCase();
+  // Keyword normalization: schedule.json usa " & " (es. "Agenti AI Email & CRM"),
+  // ma l'articolo scrive naturale "agenti AI email e CRM". Convertiamo per
+  // permettere il match in densità.
+  const keywordPrimaria = row.servizio.toLowerCase().replace(/\s+&\s+/g, " e ");
   const seoRes = validateSeo(fullHtml);
   const voiceRes = validateVoice(fullHtml, keywordPrimaria);
   const factsRes = validateFacts(fullHtml, []);
