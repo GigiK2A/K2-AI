@@ -57,8 +57,20 @@ function parsePieces(rawText: string): ArticlePieces {
   } catch (e) {
     throw new Error(`META block invalid JSON: ${(e as Error).message}`);
   }
-  const bodyHtml = rawText.replace(metaMatch[0], "").trim();
-  return { bodyHtml, meta };
+  let bodyHtml = rawText.replace(metaMatch[0], "").trim();
+
+  // Strip code fences che Haiku a volte mette intorno all'output (```html ... ```)
+  bodyHtml = bodyHtml.replace(/^```(?:html)?\s*/i, "").replace(/```\s*$/i, "");
+
+  // Hard cut: il body articolo termina con l'ultimo </section>. Qualsiasi
+  // testo dopo è changelog/commento del modello e va scartato (bug visto
+  // su Haiku revise che ha appeso "### Modifiche applicate: ..." in fondo).
+  const lastSectionClose = bodyHtml.toLowerCase().lastIndexOf("</section>");
+  if (lastSectionClose !== -1) {
+    bodyHtml = bodyHtml.slice(0, lastSectionClose + "</section>".length);
+  }
+
+  return { bodyHtml: bodyHtml.trim(), meta };
 }
 
 export async function generateDraft(

@@ -85,3 +85,22 @@ così che `title_h1 + " | K2-AI"` resti dentro 65.
 ## OUTPUT
 
 Articolo intero rivisto, stesso formato. Niente preamboli.
+
+## ⛔ ZERO COMMENTI AGGIUNTI (BLOCCANTE)
+
+L'output deve contenere SOLO:
+1. Body HTML (sezioni `<section>...</section>` + hr)
+2. Blocco `<!--META ... -->` con metadati
+
+Vietato in fondo (o in mezzo) all'output:
+- ❌ Code fences ``` ```
+- ❌ "Modifiche applicate", "Changelog", "Riepilogo modifiche"
+- ❌ "Nessun termine banned rilevato", note di verifica
+- ❌ Liste numerate di cosa hai cambiato
+- ❌ Markdown headers tipo `### **...**`
+- ❌ Qualsiasi testo dopo il `-->` di chiusura META
+
+Se vuoi annotare cosa hai cambiato, NON FARLO: il sistema fa diff
+automatico. Tu restituisci solo il prodotto finale. L'output dopo `-->`
+viene tagliato dal parser ma se ci finisce contenuto importante
+(es. una sezione) si perde. Stai dentro: body → META → STOP.
