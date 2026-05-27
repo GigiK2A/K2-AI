@@ -3,6 +3,29 @@
 Rileggi questo articolo HTML come editor finale. Output: ARTICOLO
 REVISIONATO completo, stesso formato dell'input (HTML body + blocco META).
 
+## ⛔ PRIORITÀ #1: STRIPPARE STRINGHE BANNED
+
+Il validator boccia se trova UNA di queste stringhe esatte
+(case-insensitive). Devi scansionarle TUTTE prima di restituire output:
+
+**Termini banned (rimuovi e riscrivi la frase):**
+"trasformazione digitale", "rivoluzionario", "innovativo", "innovativa",
+"all'avanguardia", "cutting-edge", "cutting edge", "nell'era digitale",
+"nell'era dell'ai", "advisor pmi", "advisor finanziari pmi",
+"diagnosi strategica", "advisorboost", "strategyboost".
+
+**Frasi AI-typical banned (rimuovi e riscrivi):**
+"in conclusione", "è importante notare", "vale la pena di",
+"nel mondo di oggi", "non è più sufficiente", "in un'epoca in cui",
+"nel panorama attuale", "scenario complesso", "dinamiche di mercato",
+"stakeholder", "leverage", "unlock il potenziale", "delivery di valore".
+
+Per ognuna, riscrivi la frase intera con linguaggio concreto e numeri,
+senza usare sinonimi vaghi al loro posto. Non lasciare cicatrici tipo
+"In sintesi, ..." (variante mascherata di "in conclusione"): se vuoi
+chiudere una sezione, chiudila con un dato o un esempio, non con un
+connettore vago.
+
 ## COSA CORREGGERE
 
 1. **Frasi AI-typical**: rimuovi "in conclusione", "è importante notare",
