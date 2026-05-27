@@ -35,10 +35,12 @@ function injectInlineImages(
   if (!inline1 && !inline2) return bodyHtml;
   const HR = '<hr class="hr-section">';
   const parts = bodyHtml.split(HR);
-  // bodyHtml ha 4 hr che separano: [sezione01, sezione02, sezione03, sezione04, sezione05+FAQ]
-  // Vogliamo immagine PRIMA di parts[2] (tra 02 e 03) e PRIMA di parts[4] (tra 04 e 05).
-  // Se la struttura è diversa, abort silente: rendi il body originale.
-  if (parts.length !== 5) return bodyHtml;
+  // Body atteso: 5 sezioni 01-05 + FAQ con hr in mezzo. Split tipico produce
+  // 5 o 6 parti (FAQ può essere separato da hr o no). Vogliamo:
+  // - immagine PRIMA di parts[2] (tra sezione 02 e 03)
+  // - immagine PRIMA di parts[4] (tra sezione 04 e 05)
+  // Serve almeno 5 parti per avere indici 2 e 4 validi.
+  if (parts.length < 5) return bodyHtml;
 
   const imgBlock = (src: string, alt: string) =>
     `\n  <section>\n    <img class="blog-cover-full reveal" src="./img/${src}" alt="${alt}" loading="lazy">\n  </section>\n`;
