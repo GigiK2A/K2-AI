@@ -222,7 +222,12 @@ Dopo il body HTML, su una nuova riga, genera un blocco JSON `<!--META`:
     {"q": "[domanda 1]", "a": "[risposta 1 condensata 1 frase per schema.org]"},
     {"q": "[domanda 2]", "a": "[risposta 2 condensata]"},
     {"q": "[domanda 3]", "a": "[risposta 3 condensata]"}
-  ]
+  ],
+  "image_scenes": {
+    "cover": "[scena cover, 1-2 frasi in INGLESE, foto realistica ufficio PMI italiana — focus sul concetto principale dell'articolo, NO testo leggibile, NO loghi]",
+    "inline1": "[scena dettaglio del PROBLEMA, 1 frase in INGLESE, foto documentaria — angolo ravvicinato su un elemento concreto del pain point]",
+    "inline2": "[scena dettaglio del RISULTATO/SOLUZIONE, 1 frase in INGLESE, foto documentaria — angolo ravvicinato su un elemento del processo dopo l'intervento]"
+  }
 }
 -->
 ```

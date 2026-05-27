@@ -19,22 +19,55 @@ export interface TemplateInput {
   pillarPadre: string;         // es. "P01"
   pillarUrl: string;           // es. "/suite-ai/agenti-email-crm.html"
   pillarLabel: string;         // es. "Agenti email & CRM"
-  coverUrl?: string;           // path immagine cover, opzionale
+  coverUrl?: string;           // path immagine cover (es. "slug-cover.png")
+  inline1Url?: string;         // path immagine inline tra sezione 02 e 03
+  inline2Url?: string;         // path immagine inline tra sezione 04 e 05
   publishedAtIso: string;      // YYYY-MM-DD
   related: RelatedLink[];      // 3 card "continua a leggere"
+}
+
+function injectInlineImages(
+  bodyHtml: string,
+  meta: ArticlePieces["meta"],
+  inline1?: string,
+  inline2?: string
+): string {
+  if (!inline1 && !inline2) return bodyHtml;
+  const HR = '<hr class="hr-section">';
+  const parts = bodyHtml.split(HR);
+  // bodyHtml ha 4 hr che separano: [sezione01, sezione02, sezione03, sezione04, sezione05+FAQ]
+  // Vogliamo immagine PRIMA di parts[2] (tra 02 e 03) e PRIMA di parts[4] (tra 04 e 05).
+  // Se la struttura è diversa, abort silente: rendi il body originale.
+  if (parts.length !== 5) return bodyHtml;
+
+  const imgBlock = (src: string, alt: string) =>
+    `\n  <section>\n    <img class="blog-cover-full reveal" src="./img/${src}" alt="${alt}" loading="lazy">\n  </section>\n`;
+
+  const out: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (i > 0) out.push(HR);
+    if (i === 2 && inline1) out.push(imgBlock(inline1, `${meta.title_h1} — dettaglio del problema`));
+    if (i === 4 && inline2) out.push(imgBlock(inline2, `${meta.title_h1} — dettaglio della soluzione`));
+    out.push(parts[i] ?? "");
+  }
+  return out.join("");
 }
 
 export function renderArticleHtml(input: TemplateInput): string {
   const {
     meta,
-    bodyHtml,
+    bodyHtml: rawBodyHtml,
     pillarPadre,
     pillarUrl,
     pillarLabel,
     coverUrl,
+    inline1Url,
+    inline2Url,
     publishedAtIso,
     related,
   } = input;
+
+  const bodyHtml = injectInlineImages(rawBodyHtml, meta, inline1Url, inline2Url);
 
   const canonical = `https://www.k2-ai.it/blog/${meta.slug}`;
   const ogImage = coverUrl
