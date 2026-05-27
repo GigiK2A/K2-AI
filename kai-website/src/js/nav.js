@@ -69,3 +69,45 @@ if (hamburger && overlay) {
     if (window.innerWidth > 768) closeMenu();
   });
 }
+
+// Hide navbar on scroll down (mobile only). Show on scroll up.
+const navbar = document.getElementById('navbar');
+if (navbar) {
+  const MOBILE_BP = 768;
+  const DELTA = 6;
+  const SHOW_ABOVE = 80;
+  let lastY = window.scrollY;
+  let ticking = false;
+
+  function updateNavVisibility() {
+    ticking = false;
+    if (window.innerWidth > MOBILE_BP) {
+      navbar.classList.remove('nav-hidden');
+      lastY = window.scrollY;
+      return;
+    }
+    if (document.body.classList.contains('nav-open')) {
+      navbar.classList.remove('nav-hidden');
+      lastY = window.scrollY;
+      return;
+    }
+    const y = window.scrollY;
+    const diff = y - lastY;
+    if (Math.abs(diff) < DELTA) return;
+    if (y < SHOW_ABOVE) {
+      navbar.classList.remove('nav-hidden');
+    } else if (diff > 0) {
+      navbar.classList.add('nav-hidden');
+    } else {
+      navbar.classList.remove('nav-hidden');
+    }
+    lastY = y;
+  }
+
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(updateNavVisibility);
+      ticking = true;
+    }
+  }, { passive: true });
+}

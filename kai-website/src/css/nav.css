@@ -23,8 +23,9 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, transform 0.3s var(--ease-cinema);
   overflow: visible;
+  will-change: transform;
 }
 
 #navbar::before {
@@ -290,6 +291,13 @@ html.nav-open {
 
   body.nav-open #navbar {
     border-bottom-color: transparent;
+  }
+
+  /* Hide-on-scroll-down: only mobile, only when overlay is closed.
+     !important defends against page-specific rules that set
+     `transform: none` on the navbar (e.g. home intro animation). */
+  #navbar.nav-hidden {
+    transform: translateY(-100%) !important;
   }
 
   /* Mobile: navbar must be FULLY opaque so the status-bar safe-area is
