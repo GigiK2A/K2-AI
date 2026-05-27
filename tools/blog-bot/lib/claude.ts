@@ -27,6 +27,11 @@ export interface ArticlePieces {
     lede: string;
     slug: string;
     faq_questions: { q: string; a: string }[];
+    image_scenes?: {
+      cover: string;
+      inline1: string;
+      inline2: string;
+    };
   };
 }
 
