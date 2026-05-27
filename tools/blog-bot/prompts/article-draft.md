@@ -14,6 +14,19 @@ Riceverai un brief con questi campi:
 - `pillar_padre` — codice pillar P01-P20 (per linkare)
 - `pillar_url` — URL del pillar (es. /suite-ai/agenti-email-crm.html)
 
+## LUNGHEZZA TARGET (BLOCCANTE)
+
+L'articolo COMPLETO (sezioni 01-05 + FAQ, escluso hero/footer) deve
+contenere **almeno 1.400 parole, target 1.600-1.800**. Il validator
+boccia sotto 1.200 parole. Conta paragrafi e righe FAQ.
+
+Distribuzione consigliata:
+- Sezioni 01-05: 3 paragrafi × 5 sezioni × ~80 parole = ~1.200 parole
+- FAQ: 3 risposte × 110-140 parole = ~360 parole
+
+Se una sezione sta sotto i 200 parole, espandila con un esempio
+quantificato o un'implicazione di non agire.
+
 ## OUTPUT (HTML body strutturato)
 
 Genera SOLO il body dell'articolo (sezioni interne). NON generare:
@@ -159,9 +172,9 @@ Dopo il body HTML, su una nuova riga, genera un blocco JSON `<!--META`:
 ```
 <!--META
 {
-  "title_h1": "[titolo articolo, 45-65 char, contiene keyword primaria]",
-  "title_tag": "[H1] | K2-AI",
-  "meta_description": "[140-155 char, include keyword + CTA implicita]",
+  "title_h1": "[titolo articolo, MAX 55 char, contiene keyword primaria]",
+  "title_tag": "[title_h1 stesso + ' | K2-AI' — risultato MAX 65 char totali]",
+  "meta_description": "[STRETTO 140-155 char, include keyword + CTA implicita]",
   "lede": "[paragrafo 3-4 righe, va sotto h1 nella hero, frame del problema, NON spiega soluzione]",
   "slug": "[slug-url-friendly-derivato-da-h1]",
   "faq_questions": [
@@ -201,6 +214,14 @@ parlare con qualcuno che la implementi".
   "StrategyBoost"
 - Numeri sempre quantificati ("3-5 minuti", "€450/mese", "120 lead/sett")
 - Periodi brevi. Max 25 parole per frase media.
+
+## KEYWORD PRIMARIA
+
+La keyword primaria coincide con il `servizio` ricevuto nel brief
+(es. "Agenti AI Email & CRM"). Usa la sua forma normalizzata
+("agenti AI email e CRM", "agente AI per email e CRM") almeno
+4-6 volte nel corpo dell'articolo, distribuita su H2 + paragrafi.
+Niente keyword stuffing: deve leggersi naturale.
 
 ## NUMERI
 
