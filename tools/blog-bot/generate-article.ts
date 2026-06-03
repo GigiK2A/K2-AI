@@ -17,39 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { SheetClient, type SheetRow } from "./lib/sheet-client.js";
-
-// Mapping URL → codice pillar (per metadata + section-label).
-// Le righe "Laboratorio" puntano a /laboratorio invece di un pillar.
-const URL_TO_PILLAR: Record<string, { code: string; label: string }> = {
-  "/suite-ai/agenti-email-crm.html": { code: "P01", label: "Agenti email & CRM" },
-  "/suite-ai/automazioni-amministrative.html": { code: "P02", label: "Automazioni amministrative" },
-  "/suite-ai/ai-legale-contratti.html": { code: "P03", label: "AI legale & contratti" },
-  "/suite-ai/ai-ingegneria-progettazione.html": { code: "P04", label: "AI ingegneria & progettazione" },
-  "/suite-ai/microapp-documenti-tecnici.html": { code: "P05", label: "Microapp documenti tecnici" },
-  "/suite-ai/ai-customer-service-ticket.html": { code: "P06", label: "AI customer service & ticket" },
-  "/suite-ai/rag-knowledge-base.html": { code: "P07", label: "RAG knowledge base" },
-  "/suite-ai/ai-compliance-audit.html": { code: "P08", label: "AI compliance & audit" },
-  "/suite-ai/ai-controllo-gestione-reporting.html": { code: "P09", label: "AI controllo di gestione" },
-  "/suite-ai/integrazione-gestionali-erp.html": { code: "P10", label: "Integrazione gestionali & ERP" },
-  "/suite-ai/ai-marketing-contenuti.html": { code: "P11", label: "AI marketing & contenuti" },
-  "/suite-ai/analisi-strategica-pmi.html": { code: "P12", label: "Analisi strategica PMI" },
-  "/suite-ai/diagnosi-strategica-pmi.html": { code: "P12", label: "Analisi strategica PMI" },
-  "/suite-ai/agevolazioni-finanza-agevolata.html": { code: "P13", label: "Agevolazioni & finanza agevolata" },
-  "/suite-ai/ai-edilizia-appalti-pubblici.html": { code: "P14", label: "AI edilizia & appalti pubblici" },
-  "/suite-ai/ai-hr-recruiting.html": { code: "P15", label: "AI HR & recruiting" },
-  "/suite-ai/ai-real-estate-tokenizzazione.html": { code: "P16", label: "AI real estate & tokenizzazione" },
-  "/suite-ai/ai-data-analytics-bi.html": { code: "P17", label: "AI data analytics & BI" },
-  "/suite-ai/ai-ux-design-system.html": { code: "P18", label: "AI UX & design system" },
-  "/suite-ai/ai-efficienza-energetica.html": { code: "P19", label: "AI efficienza energetica" },
-  "/suite-ai/ai-hospitality-revenue.html": { code: "P20", label: "AI hospitality & revenue" },
-  "/laboratorio": { code: "LAB", label: "Laboratorio" },
-};
-
-function resolvePillarFromUrl(url: string): { code: string; label: string; url: string } {
-  const map = URL_TO_PILLAR[url];
-  if (map) return { code: map.code, label: map.label, url };
-  return { code: "P00", label: "Suite AI", url: "/suite-ai.html" };
-}
+import { resolvePillarFromUrl } from "./lib/pillar.js";
 import { createClient, generateDraft, reviseArticle } from "./lib/claude.js";
 import { renderArticleHtml } from "./lib/template.js";
 import { injectSitemapEntry } from "./lib/sitemap.js";
@@ -70,8 +38,6 @@ const BLOG_INDEX_PATH = join(BLOG_DIR, "index.html");
 const BLOG_IMG_DIR = join(BLOG_DIR, "img");
 const SITEMAP_PATH = join(REPO_ROOT, "kai-website", "src", "public", "sitemap.xml");
 const DRAFTS_REJECTED = join(__dirname, "drafts-rejected");
-
-// Mapping pillar derivato dall'URL: vedi URL_TO_PILLAR sopra.
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
