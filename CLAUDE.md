@@ -181,9 +181,7 @@ kbot/                        ← K-BOT Premium app (Next.js + Python, deploy Rai
 3. Rimuovere pagine v1 che hanno backlink
 4. Integrare SaaS a pagamento non in elenco
 5. Modificare pricing mostrato al pubblico senza conferma
-6. Fare deploy in produzione — Luca mergia manualmente su `main` dopo review
-7. Push su `main` direttamente: sempre su feature branch `feat/...`
-8. Aggiungere npm packages frontend senza motivazione esplicita di peso bundle
+6. Aggiungere npm packages frontend senza motivazione esplicita di peso bundle
 
 ## 11. Workflow Git
 
