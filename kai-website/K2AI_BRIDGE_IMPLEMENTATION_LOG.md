@@ -80,4 +80,3 @@ Implementare il sistema di self-selection "K2-AI Bridge": nuova pagina `/per-te`
 - Test responsive completo (375px → 1920px)
 - Aggiunta /per-te a sitemap.xml
 - Verifica tracking PostHog eventi profile_selected e chip_clicked
-- Deploy: Luca mergia su main dopo review

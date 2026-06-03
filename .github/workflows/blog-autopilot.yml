@@ -1,15 +1,18 @@
 name: Blog autopilot
 
 # Esegue ogni mercoledì.
-# GitHub Actions cron è SOLO UTC, non timezone-aware.
-# 04:00 UTC corrisponde a:
-#   - 06:00 CEST (estate Italia) ← target principale
-#   - 05:00 CET  (inverno Italia)
-# Preferiamo "mai dopo le 06:00 italiane" piuttosto che "mai prima",
-# quindi 04 UTC. Workflow accetta anche manual dispatch on-demand.
+# GitHub Actions cron è SOLO UTC, non timezone-aware, ed è best-effort:
+# i job schedulati al minuto :00 cadono nella massima congestione e GitHub
+# li ritarda di ore o li scarta. Usiamo un minuto NON tondo e anticipiamo
+# a 03:40 UTC per assorbire il ritardo tipico restando vicini al target.
+# 03:40 UTC corrisponde a:
+#   - 05:40 CEST (estate Italia) ← target principale
+#   - 04:40 CET  (inverno Italia)
+# Anche con ritardo GitHub l'articolo esce in mattinata italiana.
+# Workflow accetta anche manual dispatch on-demand.
 on:
   schedule:
-    - cron: "0 4 * * 3"   # Mercoledì 04:00 UTC (= 06:00 CEST / 05:00 CET)
+    - cron: "40 3 * * 3"   # Mercoledì 03:40 UTC (= 05:40 CEST / 04:40 CET)
   workflow_dispatch:
     inputs:
       dry_run:
