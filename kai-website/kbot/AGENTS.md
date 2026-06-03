@@ -111,6 +111,25 @@ Il sito principale ha un widget K-BOT su `suite-ai.html` (e altrove) per qualifi
 
 ---
 
+## K-BOT produce DELIVERABLE, non solo report (giu 2026)
+
+Lo scope-lock "K-BOT = SOLO analisi e report" è stato rimosso. Oltre alle analisi, K-BOT
+genera **deliverable operativi**: calendari editoriali, piani contenuti, checklist, tabelle,
+bozze testi. Unico confine invariato: NON costruisce software/automazioni → rimanda a `suite-ai`.
+
+- **Classifier** (`lib/analysis.py`): categoria `contenuti` con `data_table` "Calendario editoriale"
+  (una riga per ogni uscita; **deroga esplicita** al cap globale "array max 8 voci", altrimenti i
+  calendari venivano troncati a 8 righe). `deliverableType` dal summary guida la categoria insieme a `reportType`.
+- **Routing skill per intento** (`lib/services.py` → `infer_service_id_from_session`): i messaggi
+  utente pesano ×3 vs URL/file ×1, così l'intento (es. "calendario instagram" → P11 marketing/content)
+  batte il dominio del sito analizzato (es. ingegneria). Regressione coperta in `tests/test_routing_and_profile.py`.
+- **Export Excel**: `POST /api/kbot/render-deliverable-xlsx` (gated come generate-pdf: paid/internal/test)
+  ri-renderizza l'`analysis_json` persistito in `collected_data` come `.xlsx` (`lib/xlsx_renderer.py`,
+  ogni `data_table` → un foglio). Frontend: `downloadDeliverableXlsx` (`lib/api.ts`) + bottone "Scarica in
+  Excel" in `MessageBubble`. Export PDF/Word per-messaggio restano in `api/export.py`.
+
+---
+
 ## Comandi utili
 
 ```bash

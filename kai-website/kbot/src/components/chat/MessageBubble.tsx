@@ -38,11 +38,13 @@ export function MessageBubble({
   message,
   onCheckout,
   onGeneratePdf,
+  onDownloadXlsx,
   onFollowUp,
 }: {
   message: ChatMessage;
   onCheckout?: () => Promise<void>;
   onGeneratePdf?: () => Promise<void>;
+  onDownloadXlsx?: () => Promise<void>;
   onFollowUp?: (text: string) => void;
   /** Legacy props kept for backwards compatibility. */
   getAuthToken?: () => Promise<string | null>;
@@ -110,9 +112,9 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Already-generated PDF link (post-payment) */}
+        {/* Already-generated deliverable (post-payment): PDF + Excel */}
         {message.reportPdfUrl && (
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <a
               href={message.reportPdfUrl}
               target="_blank"
@@ -121,6 +123,17 @@ export function MessageBubble({
             >
               Apri il report (PDF)
             </a>
+            {onDownloadXlsx && (
+              <button
+                type="button"
+                onClick={() => {
+                  void onDownloadXlsx();
+                }}
+                className="inline-flex rounded-lg border border-[var(--teal)] px-3 py-2 text-xs font-semibold text-[var(--teal)] hover:bg-[var(--teal)]/10"
+              >
+                Scarica in Excel
+              </button>
+            )}
           </div>
         )}
 
