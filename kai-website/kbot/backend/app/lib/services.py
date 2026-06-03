@@ -84,7 +84,12 @@ _INTENT_KEYWORDS: Dict[str, List[str]] = {
     "P10": ["erp", "integrazione gestionale", "api integration", "data pipeline", "sql"],
     "P11": ["seo", "audit seo", "audit del sito", "audit sito", "keyword", "ranking google", "brand voice",
             "marketing", "campagna marketing", "content strategy", "digital marketing", "sem", "social",
-            "posizionamento organico", "serp", "metadata", "title tag", "h1", "schema.org"],
+            "posizionamento organico", "serp", "metadata", "title tag", "h1", "schema.org",
+            # Contenuti / editoriale / social — deliverable di content (calendario, post, copy)
+            "calendario editoriale", "calendario contenuti", "calendario", "piano editoriale",
+            "piano contenuti", "contenuti social", "contenuti", "post instagram", "post social",
+            "instagram", "linkedin", "facebook", "tiktok", "reel", "caption", "copy", "editoriale",
+            "social media", "newsletter"],
     "P12": ["consulenza strategica", "piano crescita", "analisi settore", "strategia pmi", "go-to-market"],
     "P13": ["bandi", "agevolazioni", "sabatini", "simest", "credito r&d", "de minimis"],
     "P14": ["edilizia", "costruzioni", "buildboost"],
@@ -98,39 +103,54 @@ _INTENT_KEYWORDS: Dict[str, List[str]] = {
 
 
 def infer_service_id_from_session(session: dict) -> Optional[str]:
-    """Conta hit-keyword in messaggi recenti + URL analizzati + service_id forzato.
+    """Inferisci il service dall'INTENTO dell'utente, non dal dominio del sito.
 
-    Restituisce il service con score più alto (≥2 hit). None se ambiguo
-    o troppo debole → si torna a BASE_SKILL.
+    L'intento esplicito (cosa l'utente vuole FARE, nei suoi messaggi) pesa molto
+    più del contesto-fonte (di cosa parla il sito/file analizzato). Senza questa
+    distinzione, un sito di ingegneria faceva vincere P04/P19 anche quando
+    l'utente chiedeva un calendario social (P11) → caricava le skill sbagliate.
+
+    Scansiona TUTTI i messaggi utente (non solo gli ultimi 6) così l'intento
+    iniziale ("calendario instagram") non scivola fuori finestra in chat lunghe.
+    Restituisce il service con score più alto (≥2). None se debole/ambiguo.
     """
     collected = session.get("collected_data") or {}
-    text_parts: List[str] = []
-    # Ultimi 6 messaggi user/assistant (più recenti pesano di più).
     messages = session.get("messages") or []
-    for m in messages[-6:]:
-        if isinstance(m, dict) and isinstance(m.get("content"), str):
-            text_parts.append(m["content"])
-    # Title + summary degli URL crawlati.
+
+    # (1) Intento utente — tutto ciò che l'utente ha scritto.
+    user_parts: List[str] = [
+        m["content"] for m in messages
+        if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str)
+    ]
+    # (2) Contesto-fonte — di cosa parlano sito/file (solo tie-breaker).
+    aux_parts: List[str] = []
     for u in collected.get("analyzed_urls") or []:
         for k in ("title", "summary", "meta_description"):
             if isinstance(u.get(k), str):
-                text_parts.append(u[k])
-    # Nomi file caricati (suggeriscono il dominio: bilancio.pdf → P02/P09).
+                aux_parts.append(u[k])
     for f in collected.get("uploaded_files") or []:
         if isinstance(f.get("name"), str):
-            text_parts.append(f["name"])
-    if not text_parts:
+            aux_parts.append(f["name"])
+
+    if not user_parts and not aux_parts:
         return None
-    haystack = " \n ".join(text_parts).lower()
-    haystack = re.sub(r"\s+", " ", haystack)
+
+    def _norm(parts: List[str]) -> str:
+        return re.sub(r"\s+", " ", " \n ".join(parts).lower())
+
+    user_hay = _norm(user_parts)
+    aux_hay = _norm(aux_parts)
+
+    USER_WEIGHT = 3   # l'intento esplicito domina
+    AUX_WEIGHT = 1    # il dominio del sito/file conta solo a parità
 
     scores: Dict[str, int] = {}
     for sid, kws in _INTENT_KEYWORDS.items():
         score = 0
         for kw in kws:
-            # Word-boundary match per evitare match parziali rumorosi.
-            hits = len(re.findall(rf"\b{re.escape(kw)}\b", haystack))
-            score += hits
+            pat = rf"\b{re.escape(kw)}\b"  # word-boundary: niente match parziali rumorosi
+            score += USER_WEIGHT * len(re.findall(pat, user_hay))
+            score += AUX_WEIGHT * len(re.findall(pat, aux_hay))
         if score > 0:
             scores[sid] = score
     if not scores:

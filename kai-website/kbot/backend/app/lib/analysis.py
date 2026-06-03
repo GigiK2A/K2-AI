@@ -201,6 +201,11 @@ def _classify_report(report_type: Optional[str]) -> str:
         return "sentiment"
     if any(k in rt for k in ("competitiv", "benchmark")):
         return "competitivo"
+    if any(k in rt for k in ("calendario", "editorial", "piano contenuti", "piano editoriale",
+                             "content plan", "content calendar", "contenuti social", "contenuti",
+                             "post social", "social media", "instagram", "linkedin", "redazionale",
+                             "newsletter", "bozze", "copywriting")):
+        return "contenuti"
     if any(k in rt for k in ("marketing", "funnel", "customer journey", "positioning", "posizionamento mark")):
         return "marketing"
     if any(k in rt for k in ("dati", "dataset", "data analysis")):
@@ -253,7 +258,7 @@ _SCORE_RUBRICS: Dict[str, str] = {
     ),
 }
 # Alias per categorie senza rubric specifica
-for _k in ("due_diligence", "processi", "mercato", "sentiment", "competitivo", "marketing", "custom_data"):
+for _k in ("due_diligence", "processi", "mercato", "sentiment", "competitivo", "marketing", "custom_data", "contenuti"):
     _SCORE_RUBRICS[_k] = _SCORE_RUBRICS["generic"]
 
 
@@ -274,6 +279,17 @@ _REQUIRED_BLOCKS: Dict[str, str] = {
         "  a) data_table 'Channel mix' columns=[Canale, Spesa %, CAC stimato, Conversion rate, ROAS], ≥4 righe (Search, Social, Email, Direct)\n"
         "  b) data_table 'Funnel conversion' columns=[Stage, Volume, Conversion %, Tempo medio], ≥4 righe (Awareness, Interest, Decision, Action)\n"
         "  c) two_column 'Posizionamento forte / Gap competitivo'\n"
+    ),
+    "contenuti": (
+        "BLOCCHI OBBLIGATORI PIANO CONTENUTI / CALENDARIO EDITORIALE:\n"
+        "  a) data_table 'Pilastri di contenuto' columns=[Pilastro, Obiettivo, Mix %, Esempi di tema], ≥3 righe\n"
+        "  b) data_table 'Calendario editoriale' columns=[Data, Giorno, Pilastro, Titolo, Gancio/Copy breve, Formato, CTA]\n"
+        "     UNA RIGA PER OGNI USCITA del periodo richiesto (es. 3 post/sett per 3 mesi ≈ 36-40 righe).\n"
+        "     ⚠ ECCEZIONE alla regola 'array max 8 voci': QUESTA tabella DEVE elencare TUTTE le uscite,\n"
+        "     anche 40, dalla data di oggi in poi. NIENTE troncamenti, niente 'Post 1/Post 2' generici:\n"
+        "     titoli e ganci concreti del settore del cliente. Tieni Titolo ≤60 char e Gancio ≤90 char\n"
+        "     per restare compatto. Date assolute progressive nei giorni di pubblicazione richiesti.\n"
+        "  c) two_column 'Tono di voce e linee guida / Cose da evitare'\n"
     ),
     "business_plan": (
         "BLOCCHI OBBLIGATORI BUSINESS PLAN:\n"
@@ -351,6 +367,11 @@ _CONCLUSIONS_SCHEMAS: Dict[str, str] = {
         "  right.heading='Iniziative growth' · right.milestones=[\n"
         "    Campaign quick-win | Sviluppo channel | KPI marketing 30/60/90gg (CAC, ROAS, conv rate)]\n"
     ),
+    "contenuti": (
+        "  left.heading='3 priorità del piano contenuti' · body_html=<ol> 3 priorità (coerenza pilastri, cadenza sostenibile, CTA verso obiettivo)\n"
+        "  right.heading='Come partire (prime 2 settimane)' · right.milestones=[\n"
+        "    Setup asset/template | Prime uscite + hashtag/keyword | KPI 30/60/90gg (reach, salvataggi, click, lead)]\n"
+    ),
     "business_plan": (
         "  left.heading='3 rischi go-to-market' · body_html=<ol> 3 rischi su mercato/competizione/esecuzione\n"
         "  right.heading='Milestone chiave 12 mesi' · right.milestones=[\n"
@@ -408,6 +429,7 @@ _FOOTER_DISCLAIMERS: Dict[str, str] = {
     "seo": "Le stime di traffico, volume keyword e proiezioni sono basate su benchmark di mercato. I dati reali possono variare. Verificare con Google Search Console e strumenti di analisi dedicati.",
     "bilancio": "Le proiezioni finanziarie sono basate sui dati di bilancio forniti e su benchmark di settore. Verificare con il commercialista e dati gestionali aggiornati.",
     "marketing": "Le stime di CAC, conversion e ROAS sono benchmark di mercato. I valori reali dipendono da budget, creatività e audience. Verificare con Analytics e piattaforme ads.",
+    "contenuti": "Piano editoriale basato sugli obiettivi e sul materiale forniti. Adattare i contenuti al calendario reale dell'azienda e alle linee guida di brand. Le metriche social vanno verificate negli insight delle piattaforme.",
     "business_plan": "Le proiezioni economico-finanziarie sono basate su assunzioni esplicitate nel documento. Soggette a revisione in base a evoluzione mercato ed esecuzione.",
     "fattibilita": "L'analisi è basata sui dati forniti e su benchmark pubblici. Decisione finale richiede validazione tecnica e commerciale approfondita.",
     "due_diligence": "Documento di sintesi preliminare. Non sostituisce due diligence legale, fiscale e commerciale completa di professionisti qualificati.",
@@ -643,7 +665,17 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
     # schema / footer disclaimer specifici per il tipo di analisi richiesto.
     collected = session.get("collected_data") or {}
     extracted = collected.get("extractedData") or {}
-    report_type_raw = extracted.get("reportType") or collected.get("reportType") or ""
+    # deliverableType ("calendario editoriale", "tabella"…) guida la categoria
+    # tanto quanto reportType (il tema). Li concateniamo: così un calendario
+    # social diventa categoria "contenuti" anche se reportType resta "marketing".
+    report_type_raw = " ".join(
+        str(v) for v in (
+            extracted.get("deliverableType"),
+            collected.get("deliverableType"),
+            extracted.get("reportType"),
+            collected.get("reportType"),
+        ) if v
+    )
     profile = _build_report_profile(report_type_raw)
     log.info("Report profile: reportType=%r → category=%s", report_type_raw, profile["category"])
 
@@ -692,8 +724,10 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "- Tono pragmatico, mai marketing, mai 'rivoluzionario'/'all'avanguardia'.\n"
         "- Ogni numero quantificato, mai 'X' o placeholder.\n"
         "- 6-8 blocchi totali (mai oltre 8), sempre executive_summary primo e conclusions ultimo.\n"
-        "- JSON COMPATTO: ogni stringa max 350 caratteri, ogni array max 8 voci, "
-        "no spazi superflui. Output deve stare in 14k tokens.\n"
+        "- JSON COMPATTO: ogni stringa max 350 caratteri, ogni array max 8 voci "
+        "(ECCEZIONE: le data_table di tipo calendario/elenco temporale elencano UNA riga per "
+        "uscita/periodo, anche 40 — vedi blocchi obbligatori), no spazi superflui. Tieni l'output "
+        "compatto ma COMPLETO: non troncare i calendari.\n"
         "- Coerenza interna: stesso numero in blocchi diversi senza contraddizioni.\n"
         "- Adatta i titoli e le sezioni AL CASO SPECIFICO dell'utente.\n"
         "- Usa SOLO i tipi di blocco documentati nella master skill.\n\n"
