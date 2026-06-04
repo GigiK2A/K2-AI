@@ -21,12 +21,24 @@ def main() -> None:
                          ig_user_id=os.environ.get("AIOS_IG_USER_ID", "17841429842127461"))
     for t in instagram_tools(ig):
         k.register_tool(t)
+    from aios.sources.calendar import calendar_tools
+    from aios.sources.tools import competitor_tools
+    for t in calendar_tools(k._supabase):
+        k.register_tool(t)
+    # set the calendar scheduling action to L1 (propose -> human approves -> writes)
+    from aios.sources.calendar import CALENDAR_ACTION
+    from aios.autonomy import AutonomyLevel
+    k.policy.set_level(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
+    k.policy.set_cap(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
+    COMPETITORS = ["aizwei", "ey_italy"]  # PLACEHOLDER @handles — replace with real competitors
+    for t in competitor_tools(ig, COMPETITORS):
+        k.register_tool(t)
 
     fm = default_founder_model()
     posts = k.execute("leggi_post_ig", actor="bootstrap", args={"limit": 10}).result
     fm.voice_samples = [p.get("caption", "") for p in posts if p.get("caption")][:5]
 
-    agent = MarketingAgent(kernel=k, llm=AnthropicLLM(), founder=fm, skills=SkillLibrary())
+    agent = MarketingAgent(kernel=k, llm=AnthropicLLM(enable_web_search=True), founder=fm, skills=SkillLibrary())
     result = agent.run()
     print(f"{len(result.proposals)} proposte scritte in Supabase (aios_approvals, L1).")
     for appr in k.approvals.pending():

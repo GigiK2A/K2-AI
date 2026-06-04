@@ -73,12 +73,18 @@ class MarketingAgent:
     def _gather(self) -> dict:
         def read(name, **a):
             return self.k.execute(name, actor=self.actor, args=a).result
-        return {
+        data = {
             "servizi": read("leggi_servizi"),
             "topics": read("leggi_topics"),
             "profilo_ig": read("leggi_profilo_ig"),
             "post_ig": read("leggi_post_ig", limit=10),
         }
+        names = self.k.tools.names()
+        if "leggi_competitor_ig" in names:
+            data["competitor_ig"] = read("leggi_competitor_ig")
+        if "leggi_calendario" in names:
+            data["calendario"] = read("leggi_calendario")
+        return data
 
     def run(self) -> MarketingResult:
         data = self._gather()
@@ -89,9 +95,15 @@ class MarketingAgent:
             + "\n## Temi blog\n" + json.dumps(data["topics"], ensure_ascii=False)
             + "\n## Profilo Instagram\n" + json.dumps(data["profilo_ig"], ensure_ascii=False)
             + "\n## Ultimi post Instagram\n" + json.dumps(data["post_ig"], ensure_ascii=False)
-            + "\n\nValuta cosa funziona e cosa no, poi proponi miglioramenti "
-              "concreti (nuovi temi ad alto potenziale, caption migliori con numeri, "
-              "calendario, fix). Massimo 5 proposte."
+        )
+        if "competitor_ig" in data:
+            user += "\n## Competitor Instagram\n" + json.dumps(data["competitor_ig"], ensure_ascii=False)
+        if "calendario" in data:
+            user += "\n## Calendario editoriale attuale\n" + json.dumps(data["calendario"], ensure_ascii=False)
+        user += (
+            "\n\nValuta cosa funziona e cosa no, poi proponi miglioramenti "
+            "concreti (nuovi temi ad alto potenziale, caption migliori con numeri, "
+            "calendario, fix). Massimo 5 proposte."
         )
         if self.skills is not None:
             user += (

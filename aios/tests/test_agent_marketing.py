@@ -108,3 +108,18 @@ def test_agent_works_without_skills():
     agent = MarketingAgent(kernel=k, llm=llm, founder=default_founder_model())
     result = agent.run()  # no skills => no crash
     assert result.approval_ids == []
+
+
+def test_agent_gathers_competitor_and_calendar_when_present():
+    from aios.tools import Tool
+    k = _kernel_with_fake_sensors()
+    k.register_tool(Tool(name="leggi_competitor_ig", action_type=None, readonly=True,
+                         run=lambda **_: {"rival": {"followers_count": 999}}))
+    k.register_tool(Tool(name="leggi_calendario", action_type=None, readonly=True,
+                         run=lambda **_: [{"titolo": "gia in calendario"}]))
+    llm = FakeLLM(responses=['{"proposte": []}'])
+    agent = MarketingAgent(kernel=k, llm=llm, founder=default_founder_model())
+    agent.run()
+    _, user = llm.calls[0]
+    assert "999" in user
+    assert "gia in calendario" in user
