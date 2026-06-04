@@ -3,7 +3,7 @@ name = "aios"
 version = "0.0.1"
 description = "K2-AI AIOS kernel core"
 requires-python = ">=3.12"
-dependencies = ["psycopg[binary]>=3.1", "anthropic>=0.40"]
+dependencies = ["psycopg[binary]>=3.1", "anthropic>=0.40", "fastapi>=0.110", "uvicorn>=0.29"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -13,7 +13,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "httpx>=0.27"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
