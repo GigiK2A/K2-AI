@@ -49,6 +49,22 @@ class Kernel:
         k._conn = conn
         return k
 
+    @classmethod
+    def with_supabase_rest(cls, url: str, service_key: str, *,
+                           promotion_threshold: int = 10) -> "Kernel":
+        from aios.supabase_rest import SupabaseREST
+        from aios.store.rest import (
+            RestAuditBackend, RestPolicyStateStore, RestApprovalBackend,
+        )
+        client = SupabaseREST(url=url, service_key=service_key)
+        k = cls(promotion_threshold=promotion_threshold)
+        k.audit = AuditLog(RestAuditBackend(client))
+        k.policy = PolicyEngine(promotion_threshold=promotion_threshold,
+                                store=RestPolicyStateStore(client))
+        k.approvals = ApprovalQueue(RestApprovalBackend(client))
+        k._supabase = client
+        return k
+
     def register_tool(self, tool: Tool) -> None:
         self.tools.register(tool)
 
