@@ -17,7 +17,7 @@ class ResolveBody(BaseModel):
     reason: str | None = None
 
 
-def create_app(kernel: Kernel) -> FastAPI:
+def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     app = FastAPI(title="K2-AI Operating System")
 
     @app.get("/", response_class=HTMLResponse)
@@ -77,5 +77,24 @@ def create_app(kernel: Kernel) -> FastAPI:
         res = kernel.resolve_approval(approval_id, approve=False,
                                       reason=body.reason or "rejected")
         return {"outcome": res.outcome.name}
+
+    @app.get("/api/domini")
+    def domini():
+        return {"domini": platform.domains() if platform else []}
+
+    @app.post("/api/agents/{domain}/run")
+    def run_agent(domain: str):
+        if platform is None:
+            return {"error": "no platform"}
+        try:
+            return platform.run(domain)
+        except KeyError:
+            return {"error": f"dominio sconosciuto: {domain}"}
+
+    @app.get("/api/deliverables")
+    def deliverables():
+        if platform is None:
+            return []
+        return platform.deliverables()
 
     return app
