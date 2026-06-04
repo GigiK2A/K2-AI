@@ -12,10 +12,16 @@ AI Operating System che fa girare K2-AI: kernel orchestratore + 5 strati + agent
 - **Deliverable verificato** = `layers/deliverable.py` (markdown con sezione Fonti).
 - **Facade** = `aios/aios.py` (`AIOS.situazione()`), **Platform** = `platform.py` (multi-dominio).
 
-## Agenti
-- **Marketing** (ricco): insight IG + competitor auto-scoperti + calendario + skill complete + analisi post-per-post → proposte + voci calendario (L1).
-- **Vendite** (`DomainAgent` + `sales_config.py`) sui lead reali `pipeline_leads`.
-- Framework `DomainAgent` config-driven: nuovo ambito = nuova `DomainConfig` + i suoi sensori/contesto. Finance/Operations sono framework-ready (mancano solo le fonti dati).
+## Agenti (6 domini, ognuno con reparto ricercato + sotto-funzioni)
+Per ogni dominio è stata fatta ricerca su come le aziende compongono quel reparto
+(8 sotto-funzioni ciascuno), poi implementato come agente su dati reali. Tutti a **cap L1** (propongono, il founder approva).
+- **Marketing** (ricco): insight IG + competitor auto-scoperti + calendario + skill complete + analisi post-per-post → proposte + voci calendario.
+- **Vendite** (`sales_config.py`): 8 sotto-funzioni (qualificazione, pipeline, outreach, account research, meeting prep, proposta/ROI, obiezioni, forecast) su `pipeline_leads` + `board_memos`.
+- **Finance** (`finance_config.py`): ricavi/MRR, forecast pipeline, cash-flow, controllo costi, budget vs actual, FP&A, KPI, scadenze fiscali — su `kbot_conversions`, `board_revenue_events`, `projects`, `shared_memory`.
+- **Operations** (`operations_config.py`): tracking commessa, SAL, capacity, rischi/blocchi, onboarding, documenti, SLA, report — su `projects`, `project_phases`, `project_tasks`, `project_documents`, `tasks`.
+- **Legal & Compliance** (`legal_config.py`): review contratti/NDA, GDPR, tracciamento consensi, 231, regulatory watch, DPA, risk, IP — su `newsletter_subscribers`, `kbot_profiles`. (Verificato live: ha trovato anomalie GDPR reali.)
+- **HR** (`hr_config.py`): recruiting, interview, onboarding, people ops, performance, training, retention, org planning — **modalità consulenza** (nessuna anagrafica dipendenti/candidati ancora connessa: lo dichiara in ogni output).
+- Framework `DomainAgent` config-driven: nuovo ambito = nuova `DomainConfig` + i suoi sensori. Sensori non-marketing in `sources/domains.py`.
 
 ## Run
 ```bash

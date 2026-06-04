@@ -20,7 +20,8 @@ Internal K2-AI platform. Cloud stack (Anthropic Claude + Supabase EU). GDPR-awar
 4. Tenere il bind su `127.0.0.1` se non dietro proxy.
 
 ## Note GDPR
-- Dati con **PII** (nomi lead da `pipeline_leads`) finiscono nei prompt verso **Anthropic (cloud)**. È un trattamento da registrare nel Registro dei Trattamenti. Mitigazione possibile: pseudonimizzare (iniziali + id) prima dell'invio, o passare a LLM on-premise (come da schema K2-OS) per i dati sensibili.
+- Dati con **PII** finiscono nei prompt verso **Anthropic (cloud)**: nomi lead (`pipeline_leads`), e-mail iscritti newsletter (`newsletter_subscribers`) e consensi (`kbot_profiles`) letti dagli agenti Vendite/Legal. È un trattamento da registrare nel Registro dei Trattamenti. Mitigazione: pseudonimizzare (iniziali + id) prima dell'invio, o LLM on-premise per i dati sensibili. L'agente **Legal** legge i consensi solo per audit e **propone** (non scrive/cancella).
+- L'agente Legal in verifica live ha segnalato anomalie reali (iscritto non confermato, `is_active` incoerente con `unsubscribed_at`, timestamp consenso mancanti): da sanare a parte, non automaticamente.
 
 ## Avvisi pre-esistenti Supabase (non da questo codice — fixare a parte)
 - `function_search_path_mutable` su `set_updated_at`
