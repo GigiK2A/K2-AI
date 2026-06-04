@@ -47,7 +47,8 @@ def main() -> None:
     print(f"{len(result.proposals)} proposte + {len(result.calendar)} voci calendario "
           f"(tutte in coda L1 su Supabase).")
     for appr in k.approvals.pending():
-        print(f"  [#{appr.id}] {appr.action_key.split('.')[-1]}: {appr.payload.get('titolo')}")
+        titolo = appr.payload.get("titolo") if isinstance(appr.payload, dict) else str(appr.payload)[:40]
+        print(f"  [#{appr.id}] {appr.action_key.split('.')[-1]}: {titolo}")
 
 
 if __name__ == "__main__":
