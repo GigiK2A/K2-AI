@@ -60,3 +60,21 @@ def test_no_auto_promotion_beyond_l2():
     for _ in range(10):
         pe.record_outcome(AT, clean=True)
     assert pe.level_for(AT) == AutonomyLevel.L2_ROUTINE  # L2->L3 is manual only
+
+
+def test_l2_streak_is_preserved_not_reset_by_record_outcome():
+    pe = PolicyEngine(promotion_threshold=2)
+    pe.set_level(AT, AutonomyLevel.L2_ROUTINE)
+    for _ in range(10):
+        pe.record_outcome(AT, clean=True)
+    assert pe.level_for(AT) == AutonomyLevel.L2_ROUTINE
+    assert pe._state(AT).streak == 10
+
+
+def test_set_level_clears_streak():
+    pe = PolicyEngine(promotion_threshold=3)
+    pe.set_level(AT, AutonomyLevel.L1_PROPOSE)
+    pe.record_outcome(AT, clean=True)
+    pe.record_outcome(AT, clean=True)
+    pe.set_level(AT, AutonomyLevel.L1_PROPOSE)  # re-set clears streak
+    assert pe._state(AT).streak == 0

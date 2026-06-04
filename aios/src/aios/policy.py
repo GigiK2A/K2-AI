@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 
 from aios.autonomy import ActionType, AutonomyLevel, DEFAULT_PROMOTION_THRESHOLD
@@ -31,7 +31,11 @@ class PolicyEngine:
         return self._state(action).level
 
     def set_level(self, action: ActionType, level: AutonomyLevel) -> None:
-        self._state(action).level = level
+        # changing the level manually clears any in-flight reliability streak,
+        # so a stale streak can't trigger an immediate promotion later
+        state = self._state(action)
+        state.level = level
+        state.streak = 0
 
     def decide(self, action: ActionType) -> Decision:
         level = self.level_for(action)
