@@ -1,0 +1,91 @@
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+
+from aios.autonomy import ActionType, AutonomyLevel
+from aios.kernel import Kernel
+from aios.founder import FounderModel
+from aios.llm import LLM
+from aios.tools import Tool
+
+PROPOSE_ACTION = ActionType("marketing", "content.proposta")
+
+_SYSTEM = (
+    "Sei il responsabile marketing di K2-AI. Lavori SEMPRE rispettando il "
+    "Founder Model qui sotto (voce, priorità, regole). Non pubblichi nulla: "
+    "PROPONI soltanto, ogni proposta è una bozza da far approvare.\n\n"
+    "Rispondi ESCLUSIVAMENTE con JSON valido nella forma:\n"
+    '{"proposte": [{"tipo": "nuovo_tema|caption|calendario|fix", '
+    '"titolo": "...", "contenuto": "...", "motivo": "..."}]}\n'
+    "Niente testo fuori dal JSON."
+)
+
+
+@dataclass
+class MarketingResult:
+    approval_ids: list[int]
+    proposals: list[dict]
+
+
+def _extract_json(text: str) -> dict:
+    t = text.strip()
+    if "```" in t:
+        t = t.split("```", 2)[1]
+        if t.startswith("json"):
+            t = t[4:]
+    a, b = t.find("{"), t.rfind("}")
+    if a >= 0 and b > a:
+        t = t[a:b + 1]
+    return json.loads(t)
+
+
+def propose_tool() -> Tool:
+    return Tool(name="proponi_marketing", action_type=PROPOSE_ACTION,
+                run=lambda **payload: {"accettata": True, **payload})
+
+
+class MarketingAgent:
+    def __init__(self, *, kernel: Kernel, llm: LLM, founder: FounderModel,
+                 actor: str = "marketing_agent") -> None:
+        self.k = kernel
+        self.llm = llm
+        self.founder = founder
+        self.actor = actor
+        if "proponi_marketing" not in self.k.tools.names():
+            self.k.register_tool(propose_tool())
+        self.k.policy.set_level(PROPOSE_ACTION, AutonomyLevel.L1_PROPOSE)
+        self.k.policy.set_cap(PROPOSE_ACTION, AutonomyLevel.L1_PROPOSE)
+
+    def _gather(self) -> dict:
+        def read(name, **a):
+            return self.k.execute(name, actor=self.actor, args=a).result
+        return {
+            "servizi": read("leggi_servizi"),
+            "topics": read("leggi_topics"),
+            "profilo_ig": read("leggi_profilo_ig"),
+            "post_ig": read("leggi_post_ig", limit=10),
+        }
+
+    def run(self) -> MarketingResult:
+        data = self._gather()
+        user = (
+            self.founder.to_prompt()
+            + "\n\n# DATI REALI ATTUALI\n"
+            + "## Servizi (tabella contenuti)\n" + json.dumps(data["servizi"], ensure_ascii=False)
+            + "\n## Temi blog\n" + json.dumps(data["topics"], ensure_ascii=False)
+            + "\n## Profilo Instagram\n" + json.dumps(data["profilo_ig"], ensure_ascii=False)
+            + "\n## Ultimi post Instagram\n" + json.dumps(data["post_ig"], ensure_ascii=False)
+            + "\n\nValuta cosa funziona e cosa no, poi proponi miglioramenti "
+              "concreti (nuovi temi ad alto potenziale, caption migliori con numeri, "
+              "calendario, fix). Massimo 5 proposte."
+        )
+        raw = self.llm.complete(system=_SYSTEM, user=user)
+        parsed = _extract_json(raw)
+        proposals = parsed.get("proposte", [])
+        ids: list[int] = []
+        for p in proposals:
+            res = self.k.execute("proponi_marketing", actor=self.actor, args=p)
+            if res.approval_id is not None:
+                ids.append(res.approval_id)
+        return MarketingResult(approval_ids=ids, proposals=proposals)
