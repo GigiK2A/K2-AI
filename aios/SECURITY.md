@@ -1,0 +1,29 @@
+# AIOS — Security posture
+
+Internal K2-AI platform. Cloud stack (Anthropic Claude + Supabase EU). GDPR-aware.
+
+## Controlli attivi
+- **Autonomia governata**: ogni azione esterna passa dalla scaletta L0→L3 + coda approvazioni. Proposte e calendario sono **cap L1** (serve approvazione umana). **Kill-switch** globale nel kernel. Ogni azione è in **audit log** immutabile.
+- **DB**: tutte le tabelle `aios_*` + `servizi`/`topics` hanno **RLS attiva senza policy** → solo `service_role` (backend) accede; anon/authenticated = zero righe. Verificato dal vivo (anon → `[]`).
+- **API**: **bearer auth** env-gated (`AIOS_API_TOKEN`) sulle route che mutano (`run`, `approve`, `reject`). CORS ristretto (`AIOS_ALLOWED_ORIGIN`). Header `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`. `approval_id` validato `>0`. Errori di dominio generici (no echo). `action_key` validato con regex prima dell'uso.
+- **Segreti**: tutti in `aios/.env` (ignorato da git via `*.env`). **Nessun segreto nei file tracciati** (verificato con grep su `sk-ant`, `eyJhbGci`, `EAA*`, `service_role`).
+- **Iniezione**: accesso DB via PostgREST con parametri url-encoded e psycopg parametrico. Nessuna interpolazione SQL diretta.
+
+## DA FARE prima del deploy in produzione (HARD requirements)
+1. **Ruotare i segreti** esposti in chat durante lo sviluppo:
+   - `AIOS_SUPABASE_SERVICE_KEY` → Supabase → Settings → API → rigenera
+   - `ANTHROPIC_API_KEY` → console.anthropic.com → API Keys
+   - `AIOS_IG_TOKEN` (Meta long-lived) → rigenera/revoca
+   - **Meta App Secret** → Meta for Developers → App Settings → Basic → rigenera
+2. **Impostare `AIOS_API_TOKEN`** (un valore forte) — senza, l'auth è disabilitata (ok solo in locale).
+3. **HTTPS + reverse proxy** (nginx/caddy) davanti a uvicorn; non esporre :8800 in chiaro.
+4. Tenere il bind su `127.0.0.1` se non dietro proxy.
+
+## Note GDPR
+- Dati con **PII** (nomi lead da `pipeline_leads`) finiscono nei prompt verso **Anthropic (cloud)**. È un trattamento da registrare nel Registro dei Trattamenti. Mitigazione possibile: pseudonimizzare (iniziali + id) prima dell'invio, o passare a LLM on-premise (come da schema K2-OS) per i dati sensibili.
+
+## Avvisi pre-esistenti Supabase (non da questo codice — fixare a parte)
+- `function_search_path_mutable` su `set_updated_at`
+- `pg_trgm` installata nello schema `public`
+- `handle_new_kbot_user` SECURITY DEFINER eseguibile da anon (legacy kbot)
+- protezione password compromesse (HaveIBeenPwned) disattivata in Auth
