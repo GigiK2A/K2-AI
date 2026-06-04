@@ -26,3 +26,37 @@ def test_decision_l2_and_l3_are_execute():
     assert pe.decide(AT) == Decision.EXECUTE
     pe.set_level(AT, AutonomyLevel.L3_AUTO)
     assert pe.decide(AT) == Decision.EXECUTE
+
+
+def test_clean_approvals_promote_l1_to_l2():
+    pe = PolicyEngine(promotion_threshold=3)
+    pe.set_level(AT, AutonomyLevel.L1_PROPOSE)
+    for _ in range(3):
+        pe.record_outcome(AT, clean=True)
+    assert pe.level_for(AT) == AutonomyLevel.L2_ROUTINE
+
+
+def test_correction_resets_streak():
+    pe = PolicyEngine(promotion_threshold=3)
+    pe.set_level(AT, AutonomyLevel.L1_PROPOSE)
+    pe.record_outcome(AT, clean=True)
+    pe.record_outcome(AT, clean=False)
+    pe.record_outcome(AT, clean=True)
+    assert pe.level_for(AT) == AutonomyLevel.L1_PROPOSE
+
+
+def test_cap_blocks_auto_promotion():
+    pe = PolicyEngine(promotion_threshold=2)
+    pe.set_level(AT, AutonomyLevel.L1_PROPOSE)
+    pe.set_cap(AT, AutonomyLevel.L1_PROPOSE)  # money/contracts style cap
+    for _ in range(5):
+        pe.record_outcome(AT, clean=True)
+    assert pe.level_for(AT) == AutonomyLevel.L1_PROPOSE
+
+
+def test_no_auto_promotion_beyond_l2():
+    pe = PolicyEngine(promotion_threshold=2)
+    pe.set_level(AT, AutonomyLevel.L2_ROUTINE)
+    for _ in range(10):
+        pe.record_outcome(AT, clean=True)
+    assert pe.level_for(AT) == AutonomyLevel.L2_ROUTINE  # L2->L3 is manual only

@@ -40,3 +40,19 @@ class PolicyEngine:
         if level == AutonomyLevel.L1_PROPOSE:
             return Decision.PROPOSE
         return Decision.EXECUTE
+
+    def set_cap(self, action: ActionType, cap: AutonomyLevel) -> None:
+        self._state(action).capped_at = cap
+
+    def record_outcome(self, action: ActionType, *, clean: bool) -> None:
+        state = self._state(action)
+        if not clean:
+            state.streak = 0
+            return
+        state.streak += 1
+        # auto-promotion only L1 -> L2, never beyond, never past the cap
+        if (state.level == AutonomyLevel.L1_PROPOSE
+                and state.capped_at >= AutonomyLevel.L2_ROUTINE
+                and state.streak >= self._threshold):
+            state.level = AutonomyLevel.L2_ROUTINE
+            state.streak = 0
