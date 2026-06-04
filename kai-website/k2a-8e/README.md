@@ -1,5 +1,12 @@
 # k2a-8e — Motore di esecuzione deliverable (Phase-1 skeleton)
 
+> **STATO OWNERSHIP (2026-06-04)**: engine costruito lato Luigi come **candidato**.
+> Esiste in parallelo il `PROMPT_8e_Phase1` che Code potrebbe eseguire sul Mac di
+> Luca (`~/Code/k2a-8e`). **Decisione su quale engine vince: RIMANDATA** finché non
+> arriva lo zip completo di Luca (MCP + skill + snapshot reali). Fino ad allora
+> questo serve come riferimento/mock avanzato e per sviluppare il client K-BOT
+> contro un engine fedele al contratto. NON è ancora "il" motore ufficiale.
+
 Implementa il design `8e_Phase0_design_API.md` e il `PROMPT_8e_Phase1` (pilota
 LegalBoost). Servizio FastAPI stateless, deployabile su Railway, contratto API =
 `docs/interfaccia-kbot-8e.md §1`.
