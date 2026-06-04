@@ -161,3 +161,20 @@ def test_agent_files_calendar_entries_via_programma_contenuto():
     assert cal.rows == []
     k.resolve_approval(res.calendar_ids[0], approve=True)
     assert len(cal.rows) == 1 and cal.rows[0]["titolo"] == "Post X"
+
+
+def test_agent_coerces_string_proposte_without_crash():
+    # model returns proposte as a JSON-encoded STRING (Haiku quirk) -> no crash
+    k = _kernel_with_fake_sensors()
+    bad = '{"proposte": "[{\\"tipo\\":\\"fix\\",\\"titolo\\":\\"T\\",\\"contenuto\\":\\"C\\",\\"motivo\\":\\"M\\"}]"}'
+    agent = MarketingAgent(kernel=k, llm=FakeLLM(responses=[bad]), founder=default_founder_model())
+    res = agent.run()
+    assert len(res.approval_ids) == 1  # the stringified array was recovered
+
+
+def test_agent_ignores_garbage_proposte():
+    k = _kernel_with_fake_sensors()
+    agent = MarketingAgent(kernel=k, llm=FakeLLM(responses=['{"proposte": "non e una lista"}']),
+                           founder=default_founder_model())
+    res = agent.run()
+    assert res.approval_ids == []  # coerced to empty, no crash

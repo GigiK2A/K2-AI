@@ -39,7 +39,8 @@ def main() -> None:
     posts = k.execute("leggi_post_ig", actor="bootstrap", args={"limit": 10}).result
     fm.voice_samples = [p.get("caption", "") for p in posts if p.get("caption")][:5]
 
-    agent = MarketingAgent(kernel=k, llm=AnthropicLLM(enable_web_search=True),
+    # max_tokens alto per JSON ricco; web search off in questo run per JSON affidabile
+    agent = MarketingAgent(kernel=k, llm=AnthropicLLM(max_tokens=4096),
                            founder=fm, skills=SkillLibrary())
     result = agent.run()
 

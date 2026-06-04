@@ -53,6 +53,19 @@ def _extract_json(text: str) -> dict:
     raise ValueError("nessun oggetto JSON nella risposta")
 
 
+def _as_dict_list(x) -> list[dict]:
+    """Coerce a model field to a list of dicts. Handles the model returning a
+    JSON-encoded string instead of an array, or non-dict items."""
+    if isinstance(x, str):
+        try:
+            x = json.loads(x)
+        except Exception:
+            return []
+    if not isinstance(x, list):
+        return []
+    return [i for i in x if isinstance(i, dict)]
+
+
 def propose_tool() -> Tool:
     return Tool(name="proponi_marketing", action_type=PROPOSE_ACTION,
                 run=lambda **payload: {"accettata": True, **payload})
@@ -139,9 +152,19 @@ class MarketingAgent:
         user += ("\n\nValuta i post uno per uno rispetto a reach/like, confronta coi competitor, "
                  "e proponi miglioramenti concreti (proposte) e, dove utile, voci di calendario datate. "
                  "Massimo 6 proposte.")
-        parsed = _extract_json(self.llm.complete(system=_SYSTEM, user=user))
-        proposte = parsed.get("proposte", [])
-        voci = parsed.get("voci_calendario", [])
+        schema = {"type": "object", "properties": {
+            "proposte": {"type": "array", "items": {"type": "object", "properties": {
+                "tipo": {"type": "string"}, "titolo": {"type": "string"},
+                "contenuto": {"type": "string"}, "motivo": {"type": "string"}},
+                "required": ["tipo", "titolo", "contenuto", "motivo"]}},
+            "voci_calendario": {"type": "array", "items": {"type": "object", "properties": {
+                "canale": {"type": "string"}, "titolo": {"type": "string"},
+                "bozza": {"type": "string"}, "data_programmata": {"type": "string"}},
+                "required": ["canale", "titolo"]}}},
+            "required": ["proposte"]}
+        parsed = self.llm.complete_json(system=_SYSTEM, user=user, schema=schema)
+        proposte = _as_dict_list(parsed.get("proposte"))
+        voci = _as_dict_list(parsed.get("voci_calendario"))
         ids, cal_ids = [], []
         for p in proposte:
             r = self.k.execute("proponi_marketing", actor=self.actor, args=p)
