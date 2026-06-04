@@ -1,2 +1,139 @@
-<!doctype html><html lang="it"><head><meta charset="utf-8"><title>K2-AI Operating System</title></head>
-<body><h1>K2 - AI Operating System</h1><div id="app">loading…</div></body></html>
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K2-AI Operating System</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background: radial-gradient(1200px 600px at 80% -10%, #10213f 0%, #070708 55%); }
+  .glass { background: rgba(13,14,20,.72); backdrop-filter: blur(8px); }
+</style>
+</head>
+<body class="text-zinc-100 font-sans min-h-screen">
+
+<header class="px-6 py-4 border-b border-zinc-800/80 flex items-center justify-between sticky top-0 glass z-10">
+  <div class="flex items-center gap-3">
+    <div class="w-9 h-9 rounded-xl bg-cyan-400 text-black font-black grid place-items-center">K</div>
+    <div>
+      <h1 class="text-lg font-bold leading-tight">K2 — AI Operating System</h1>
+      <p class="text-[11px] text-zinc-500 -mt-0.5">AI-first company command center · Marketing</p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2 text-xs">
+    <span id="livedot" class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+    <span class="text-zinc-400">live</span>
+  </div>
+</header>
+
+<main class="p-6 space-y-7 max-w-6xl mx-auto">
+
+  <!-- Company Pulse + KPI -->
+  <section class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+    <div class="glass rounded-2xl border border-zinc-800 p-5 flex items-center gap-5">
+      <div class="relative w-20 h-20 shrink-0">
+        <svg viewBox="0 0 36 36" class="w-20 h-20 -rotate-90">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1f2937" stroke-width="3"></circle>
+          <circle id="pulsearc" cx="18" cy="18" r="15.9" fill="none" stroke="#34d399" stroke-width="3"
+                  stroke-dasharray="100 100" stroke-linecap="round"></circle>
+        </svg>
+        <div id="pulseval" class="absolute inset-0 grid place-items-center text-lg font-bold">—</div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wider text-zinc-500">Company Pulse</div>
+        <div class="text-sm text-zinc-300 mt-1">Marketing operativo</div>
+        <div id="pulsesub" class="text-xs text-zinc-500 mt-1">—</div>
+      </div>
+    </div>
+    <div id="kpis" class="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+  </section>
+
+  <!-- Approval queue -->
+  <section>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm uppercase tracking-wider text-zinc-400">Human Approval Queue</h2>
+      <button onclick="refresh()" class="text-xs text-zinc-400 hover:text-zinc-100">↻ aggiorna</button>
+    </div>
+    <div id="queue" class="space-y-3"></div>
+  </section>
+
+  <!-- Agents -->
+  <section>
+    <h2 class="text-sm uppercase tracking-wider text-zinc-400 mb-3">AI Agents</h2>
+    <div id="agents" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+  </section>
+
+  <p class="text-center text-[11px] text-zinc-600 pt-4">K2-AI Operating System · cockpit MVP</p>
+</main>
+
+<script>
+async function jget(u){ return (await fetch(u)).json(); }
+async function jpost(u,b){ return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json(); }
+
+function kpiCard(label, value, accent){
+  return `<div class="glass rounded-2xl border border-zinc-800 p-4">
+    <div class="text-2xl font-bold ${accent||''}">${value}</div>
+    <div class="text-[11px] text-zinc-500 mt-1">${label}</div></div>`;
+}
+
+async function loadOverview(){
+  const o = await jget("/api/overview");
+  const acc = o.agents?.[0]?.accuracy ?? "—";
+  document.getElementById("kpis").innerHTML =
+      kpiCard("Approvazioni in attesa", o.pending_count, "text-amber-300")
+    + kpiCard("Automazioni eseguite", o.automations_done, "text-emerald-300")
+    + kpiCard("Eventi audit", o.audit_count, "text-cyan-300")
+    + kpiCard("AI Agent Accuracy", acc+"%", "text-violet-300");
+  // pulse = healthy if queue small; simple heuristic for MVP
+  const pulse = Math.max(40, 100 - o.pending_count*6);
+  document.getElementById("pulseval").textContent = pulse+"%";
+  document.getElementById("pulsearc").setAttribute("stroke-dasharray", pulse+" 100");
+  document.getElementById("pulsesub").textContent = o.pending_count+" proposte da rivedere";
+  // agents
+  document.getElementById("agents").innerHTML = (o.agents||[]).map(a=>`
+    <div class="glass rounded-2xl border border-zinc-800 p-4 flex items-center justify-between">
+      <div><div class="font-semibold">${a.name}</div>
+        <div class="text-[11px] text-zinc-500">${a.status}</div></div>
+      <div class="text-right"><div class="text-emerald-300 font-bold">${a.accuracy}%</div>
+        <div class="text-[10px] text-zinc-500">accuracy</div></div>
+    </div>`).join("");
+}
+
+function card(a){
+  const p = a.payload || {};
+  return `<div class="glass rounded-2xl border border-zinc-800 p-4" data-id="${a.id}">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300">${p.tipo||"proposta"}</span>
+      <span class="text-xs text-zinc-600">#${a.id} · ${a.actor||""}</span>
+    </div>
+    <div class="font-semibold mb-1">${p.titolo||""}</div>
+    <div class="text-sm text-zinc-400 mb-1 whitespace-pre-wrap">${(p.contenuto||"").slice(0,400)}</div>
+    <div class="text-xs text-zinc-500 mb-3">perché: ${p.motivo||"—"}</div>
+    <div class="flex gap-2">
+      <button class="approve px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold">Approva</button>
+      <button class="edit px-3 py-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-sm">Modifica</button>
+      <button class="reject px-3 py-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-sm">Rifiuta</button>
+    </div></div>`;
+}
+
+async function loadQueue(){
+  const items = await jget("/api/approvals");
+  const q = document.getElementById("queue");
+  if(!items.length){ q.innerHTML = '<div class="glass rounded-2xl border border-zinc-800 p-6 text-center text-zinc-500 text-sm">Nessuna proposta in attesa. 🎉</div>'; return; }
+  q.innerHTML = items.map(card).join("");
+  items.forEach(a=>{
+    const el = q.querySelector(`[data-id="${a.id}"]`);
+    el.querySelector(".approve").onclick = async(e)=>{ e.target.textContent="…"; await jpost(`/api/approvals/${a.id}/approve`,{}); refresh(); };
+    el.querySelector(".reject").onclick = async()=>{ const reason = prompt("Motivo del rifiuto?")||"rifiutato"; await jpost(`/api/approvals/${a.id}/reject`,{reason}); refresh(); };
+    el.querySelector(".edit").onclick = async()=>{
+      const titolo = prompt("Titolo:", a.payload.titolo||""); if(titolo===null) return;
+      const contenuto = prompt("Contenuto:", a.payload.contenuto||""); if(contenuto===null) return;
+      await jpost(`/api/approvals/${a.id}/approve`,{edited_payload:{...a.payload, titolo, contenuto}}); refresh();
+    };
+  });
+}
+async function refresh(){ try{ await loadOverview(); await loadQueue(); }catch(e){ console.error(e); } }
+refresh();
+</script>
+</body>
+</html>
