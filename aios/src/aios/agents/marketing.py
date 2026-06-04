@@ -90,6 +90,7 @@ class MarketingAgent:
             data["calendario"] = self._read("leggi_calendario")
         if "leggi_competitor_ig" in names:
             data["competitor_ig"] = self._read("leggi_competitor_ig")
+        # NB: competitor discovery consumes one extra llm.complete() call BEFORE the proposals call
         elif self.discover and "analizza_competitor" in names:
             try:
                 from aios.sources.competitor_discovery import discover_competitor_handles
@@ -121,18 +122,19 @@ class MarketingAgent:
             self.k.policy.set_level(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
             self.k.policy.set_cap(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
 
-        def sec(k):
-            return json.dumps(data.get(k), ensure_ascii=False)
+        def sec(k, cap=4000):
+            return json.dumps(data.get(k), ensure_ascii=False)[:cap]
         user = (self.founder.to_prompt()
-                + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi")
-                + "\n## Temi blog\n" + sec("topics")
+                + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi", 3000)
+                + "\n## Temi blog\n" + sec("topics", 2500)
                 + "\n## Profilo IG\n" + sec("profilo_ig")
-                + "\n## Insight IG\n" + sec("insight")
-                + "\n## Post IG (analizza UNO PER UNO vs metriche)\n" + sec("post_ig"))
+                + "\n## Post IG (analizza UNO PER UNO vs metriche)\n" + sec("post_ig", 3500))
+        if "insight" in data:
+            user += "\n## Insight IG\n" + sec("insight")
         if "competitor_ig" in data:
-            user += "\n## Competitor (analisi)\n" + sec("competitor_ig")
+            user += "\n## Competitor (analisi)\n" + sec("competitor_ig", 3000)
         if "calendario" in data:
-            user += "\n## Calendario attuale\n" + sec("calendario")
+            user += "\n## Calendario attuale\n" + sec("calendario", 2500)
         user += self._skill_context()
         user += ("\n\nValuta i post uno per uno rispetto a reach/like, confronta coi competitor, "
                  "e proponi miglioramenti concreti (proposte) e, dove utile, voci di calendario datate. "
