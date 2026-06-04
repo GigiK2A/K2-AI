@@ -3,6 +3,7 @@ name = "aios"
 version = "0.0.1"
 description = "K2-AI AIOS kernel core"
 requires-python = ">=3.12"
+dependencies = ["psycopg[binary]>=3.1"]
 
 [build-system]
 requires = ["setuptools>=68"]
