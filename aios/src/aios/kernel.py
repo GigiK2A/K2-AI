@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
+import psycopg
+
 from aios.approvals import ApprovalQueue, ApprovalStatus
 from aios.audit import AuditLog
 from aios.autonomy import ActionType
@@ -32,6 +34,20 @@ class Kernel:
         self.audit = AuditLog()
         self.killswitch = KillSwitch()
         self.approvals = ApprovalQueue()
+
+    @classmethod
+    def with_postgres(cls, dsn: str, *, promotion_threshold: int = 10) -> "Kernel":
+        from aios.store.postgres import (
+            PostgresAuditBackend, PostgresPolicyStateStore, PostgresApprovalBackend,
+        )
+        conn = psycopg.connect(dsn)
+        k = cls(promotion_threshold=promotion_threshold)
+        k.audit = AuditLog(PostgresAuditBackend(conn))
+        k.policy = PolicyEngine(promotion_threshold=promotion_threshold,
+                                store=PostgresPolicyStateStore(conn))
+        k.approvals = ApprovalQueue(PostgresApprovalBackend(conn))
+        k._conn = conn
+        return k
 
     def register_tool(self, tool: Tool) -> None:
         self.tools.register(tool)
