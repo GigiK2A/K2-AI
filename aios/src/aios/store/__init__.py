@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+from aios.audit import AuditRecord
+from aios.approvals import Approval
+from aios.policy import PolicyState
+
+
+class AuditBackend(Protocol):
+    def append(self, *, action_key: str, event: str, actor: str,
+               detail: dict[str, Any]) -> AuditRecord: ...
+    def list_records(self) -> list[AuditRecord]: ...
+
+
+class PolicyStateStore(Protocol):
+    def get(self, action_key: str) -> PolicyState: ...
+    def save(self, action_key: str, state: PolicyState) -> None: ...
+
+
+class ApprovalBackend(Protocol):
+    def add(self, *, action_key: str, actor: str,
+            payload: dict[str, Any]) -> Approval: ...
+    def get(self, approval_id: int) -> Approval: ...
+    def pending(self) -> list[Approval]: ...
+    def save(self, approval: Approval) -> None: ...
