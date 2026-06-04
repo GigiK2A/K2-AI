@@ -26,7 +26,7 @@ def test_run_agent():
 
 def test_run_unknown_domain():
     c = TestClient(create_app(Kernel(), platform=FakePlatform()))
-    assert "error" in c.post("/api/agents/finance/run").json()
+    assert c.post("/api/agents/finance/run").json() == {"error": "dominio non valido"}
 
 
 def test_deliverables():

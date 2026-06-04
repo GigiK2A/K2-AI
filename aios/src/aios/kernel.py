@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
@@ -122,6 +123,8 @@ class Kernel:
                               actor=appr.actor, detail={"reason": self.killswitch.reason})
             return ExecResult(outcome=ExecOutcome.DENIED)
 
+        if not re.match(r"^[a-z_]+\.[a-z_.]+$", appr.action_key):
+            raise ValueError(f"action_key non valido: {appr.action_key!r}")
         action = ActionType(*appr.action_key.split(".", 1))
 
         if not approve:
