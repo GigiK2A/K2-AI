@@ -67,6 +67,10 @@
       <div class="flex-1"></div>
       <div class="hidden lg:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 w-64 text-slate-400 text-sm">🔍 Ask AIOS anything… <span class="ml-auto text-[11px] bg-white rounded px-1.5 py-0.5">⌘K</span></div>
       <button class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2">⤓ Report</button>
+      <select id="domsel" class="text-sm border border-slate-200 rounded-xl px-2 py-2 bg-white">
+        <option value="marketing">Marketing</option><option value="vendite">Vendite</option>
+      </select>
+      <button onclick="runAgent()" class="text-sm font-semibold bg-emerald-600 text-white rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
       <button onclick="boot()" class="text-sm font-semibold bg-blue-600 text-white rounded-xl px-3 py-2">↻ Aggiorna</button>
     </header>
 
@@ -130,6 +134,14 @@
                 <tbody id="decisioni"></tbody>
               </table>
             </div>
+          </section>
+
+          <section class="card p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <h3 class="font-extrabold">Deliverable approvati</h3>
+              <span class="real">reale · aios_deliverables</span>
+            </div>
+            <div id="deliverables" class="space-y-2 text-[13px]"></div>
           </section>
         </div>
 
@@ -241,6 +253,27 @@ async function boot(){
   document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{await jpost(`/api/approvals/${b.dataset.id}/approve`,{});boot();});
   document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});boot();});
   document.querySelectorAll(".edit").forEach(b=>b.onclick=async()=>{const it=items.find(x=>String(x.id)===b.dataset.id);const titolo=prompt("Titolo:",it.payload.titolo||"");if(titolo===null)return;const contenuto=prompt("Contenuto:",it.payload.contenuto||"");if(contenuto===null)return;await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{...it.payload,titolo,contenuto}});boot();});
+  loadDeliverables();
+}
+async function loadDeliverables(){
+  try{
+    const d = await jget("/api/deliverables");
+    const el = document.getElementById("deliverables");
+    if(!d || !d.length){ el.innerHTML = '<div class="text-slate-400">Nessun deliverable ancora — approva una proposta per crearne uno.</div>'; return; }
+    el.innerHTML = d.slice(0,15).map(x=>`<div class="border-t border-slate-100 pt-2">
+      <span class="chip bg-slate-100 text-slate-600">${x.dominio||''}</span> <b>${x.titolo||''}</b>
+      <div class="text-slate-500">${(x.contenuto||'').slice(0,160)}</div></div>`).join("");
+  }catch(e){}
+}
+async function runAgent(){
+  const dom = document.getElementById("domsel").value;
+  const btn = event.target, old = btn.textContent;
+  btn.textContent = "⏳ sto girando…"; btn.disabled = true;
+  try{
+    const r = await jpost(`/api/agents/${dom}/run`, {});
+    alert(`Agente ${dom}: ${r.proposte||0} proposte` + (r.calendario ? `, ${r.calendario} voci calendario` : ""));
+  }catch(e){ alert("errore nel far girare l'agente"); }
+  btn.textContent = old; btn.disabled = false; boot();
 }
 boot();
 </script>
