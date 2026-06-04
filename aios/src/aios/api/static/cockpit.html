@@ -197,12 +197,13 @@ const PRIO=["Alta","Media","Bassa"], prioColor={Alta:"text-red-600",Media:"text-
 
 function spark(){return `<svg viewBox="0 0 80 24" class="w-16 h-6"><polyline fill="none" stroke="#06b6d4" stroke-width="2" points="0,18 12,16 24,19 36,11 48,13 60,6 72,8 80,4"/></svg>`;}
 
+const $=id=>document.getElementById(id);
 function render(d){
   // hero
-  h_foll.textContent=d.overview.followers; h_post.textContent=d.overview.posts;
-  h_eng.textContent=d.overview.engagement; h_prop.textContent=d.proposals.length;
-  cs_aud.textContent=d.overview.audit; cs_pending.textContent=d.overview.pending;
-  st_pub.textContent=d.overview.servizi_pub; st_tod.textContent=d.overview.servizi_todo;
+  $("h-foll").textContent=d.overview.followers; $("h-post").textContent=d.overview.posts;
+  $("h-eng").textContent=d.overview.engagement; $("h-prop").textContent=d.proposals.length;
+  $("cs-aud").textContent=d.overview.audit; $("cs-pending").textContent=d.overview.pending;
+  $("st-pub").textContent=d.overview.servizi_pub; $("st-tod").textContent=d.overview.servizi_todo;
 
   // KPIs (real)
   const eng=d.overview.engagement, posts=d.overview.posts;
@@ -234,7 +235,7 @@ function render(d){
     options:{cutout:"72%",plugins:{legend:{display:false}}}});
 
   // decisioni
-  dec_count.textContent=d.proposals.length+" in attesa";
+  $("dec-count").textContent=d.proposals.length+" in attesa";
   decisioni.innerHTML=d.proposals.map((a,i)=>{const pr=PRIO[i%3];return `<tr class="border-t border-slate-100 align-top" data-id="${a.id}">
     <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
     <td class="py-3 pr-3 font-semibold max-w-[190px]">${a.titolo}</td>
