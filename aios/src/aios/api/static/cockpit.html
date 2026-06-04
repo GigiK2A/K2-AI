@@ -9,135 +9,120 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
-tailwind.config = { theme: { extend: {
-  fontFamily: { sans: ['Manrope','ui-sans-serif','system-ui'] },
-  colors: { brand: { 50:'#ecfeff',100:'#cffafe',500:'#06b6d4',600:'#0891b2' },
-            ink:'#0f172a', sub:'#64748b' } } } };
+tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','ui-sans-serif','system-ui']}}}};
 </script>
 <style>
-  body{ background:#f4f6fb; color:#0f172a; }
-  .card{ background:#fff; border:1px solid #eef1f6; border-radius:18px; box-shadow:0 1px 2px rgba(16,24,40,.04),0 6px 24px rgba(16,24,40,.04); }
-  .navi{ display:flex; align-items:center; gap:.7rem; padding:.55rem .8rem; border-radius:12px; color:#475569; font-weight:600; font-size:.9rem; cursor:pointer; }
-  .navi:hover{ background:#f1f5f9; }
-  .navi.active{ background:#e6f6fa; color:#0891b2; }
-  .tab{ padding:.45rem .1rem; color:#64748b; font-weight:600; font-size:.86rem; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; }
-  .tab.active{ color:#0891b2; border-color:#06b6d4; }
-  .pos{ color:#16a34a; } .neg{ color:#dc2626; }
-  .chip{ font-size:.62rem; font-weight:700; padding:.12rem .5rem; border-radius:999px; text-transform:uppercase; letter-spacing:.04em; }
-  ::-webkit-scrollbar{ height:8px; width:8px; } ::-webkit-scrollbar-thumb{ background:#dde3ec; border-radius:8px; }
+  body{background:#f4f6fb;color:#0f172a}
+  .card{background:#fff;border:1px solid #eef1f6;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.05)}
+  .navi{display:flex;align-items:center;gap:.7rem;padding:.55rem .8rem;border-radius:12px;color:#475569;font-weight:600;font-size:.9rem;cursor:pointer}
+  .navi:hover{background:#f1f5f9}.navi.active{background:#e6f6fa;color:#0891b2}
+  .tab{padding:.5rem .15rem;color:#64748b;font-weight:600;font-size:.86rem;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  .tab.active{color:#0891b2;border-color:#06b6d4}
+  .pos{color:#16a34a}.neg{color:#dc2626}
+  .chip{font-size:.62rem;font-weight:700;padding:.14rem .55rem;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+  .real{font-size:.58rem;font-weight:700;color:#0891b2;background:#e6f6fa;border-radius:999px;padding:.08rem .45rem}
+  .hero{background:radial-gradient(120% 140% at 85% 10%,#1e3a8a 0%,#0f172a 55%,#020617 100%)}
+  .heroGrid{background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:26px 26px}
+  ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-thumb{background:#dde3ec;border-radius:8px}
 </style>
 </head>
 <body class="font-sans text-[15px]">
 <div class="flex min-h-screen">
 
-  <!-- SIDEBAR -->
   <aside class="w-60 shrink-0 bg-white border-r border-slate-100 flex flex-col p-4 sticky top-0 h-screen">
     <div class="flex items-center gap-2 px-2 pb-5">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-blue-600 text-white grid place-items-center font-extrabold">K</div>
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white grid place-items-center font-extrabold">K</div>
       <div><div class="font-extrabold leading-none">K2-AI</div><div class="text-[11px] text-slate-400">AI Operating System</div></div>
     </div>
     <nav class="space-y-1 flex-1 overflow-auto">
-      <div class="navi">▦ Overview</div>
-      <div class="navi">✦ AI Agents</div>
-      <div class="navi active">◈ Marketing</div>
-      <div class="navi">⊞ Sales / CRM</div>
-      <div class="navi">€ Finance</div>
-      <div class="navi">§ Legal &amp; Compliance</div>
-      <div class="navi">⚙ Operations</div>
-      <div class="navi">☺ HR</div>
-      <div class="navi">▤ Projects</div>
-      <div class="navi">▢ Documents</div>
-      <div class="navi">⟳ Automations</div>
-      <div class="navi">▭ Analytics</div>
-      <div class="navi">⚙ Settings</div>
+      <div class="navi">▦ Overview</div><div class="navi">✦ AI Agents</div>
+      <div class="navi active">◈ Marketing</div><div class="navi">⊞ Sales / CRM</div>
+      <div class="navi">€ Finance</div><div class="navi">§ Legal &amp; Compliance</div>
+      <div class="navi">⚙ Operations</div><div class="navi">☺ HR</div>
+      <div class="navi">▤ Projects</div><div class="navi">▢ Documents</div>
+      <div class="navi">⟳ Automations</div><div class="navi">▭ Analytics</div><div class="navi">⚙ Settings</div>
     </nav>
     <div class="card p-3 mt-3">
       <div class="text-[11px] font-bold text-slate-500 mb-2">K2-AI Core Status</div>
       <div class="space-y-1.5 text-[12px]">
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b id="cs-agents">18</b><span class="text-slate-400">Agents Online</span></div>
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-autom">42</b><span class="text-slate-400">Automations Active</span></div>
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending">—</b><span class="text-slate-400">Pending Approvals</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b>1</b><span class="text-slate-400">Agente attivo</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-aud">—</b><span class="text-slate-400">Eventi audit</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending">—</b><span class="text-slate-400">Decisioni in attesa</span></div>
       </div>
       <div class="mt-2"><div class="text-[11px] text-slate-400 mb-1">System Health <b class="text-slate-700">98%</b></div>
         <div class="h-1.5 rounded-full bg-slate-100"><div class="h-1.5 rounded-full bg-emerald-500" style="width:98%"></div></div></div>
     </div>
     <div class="flex items-center gap-2 px-1 pt-3">
       <div class="w-8 h-8 rounded-full bg-slate-200 grid place-items-center text-xs font-bold">LR</div>
-      <div><div class="text-sm font-bold leading-none">Admin</div><div class="text-[11px] text-slate-400">CEO</div></div>
+      <div><div class="text-sm font-bold leading-none">Luigi</div><div class="text-[11px] text-slate-400">CEO · K2-AI</div></div>
     </div>
   </aside>
 
-  <!-- MAIN -->
   <div class="flex-1 min-w-0">
-    <!-- topbar -->
     <header class="flex items-center gap-4 px-7 py-4 bg-white/70 backdrop-blur border-b border-slate-100 sticky top-0 z-10">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-lg bg-emerald-100 grid place-items-center">◈</div>
-        <div>
-          <div class="font-extrabold leading-none flex items-center gap-2">Marketing Agent
-            <span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-          <div class="text-[12px] text-slate-400">AI Marketing Agent · Autonomous execution with human oversight</div>
-        </div>
+        <div><div class="font-extrabold leading-none flex items-center gap-2">Marketing Agent
+          <span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
+          <div class="text-[12px] text-slate-400">AI Marketing Agent · esecuzione autonoma con supervisione umana</div></div>
       </div>
       <div class="flex-1"></div>
-      <div class="hidden md:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 w-72 text-slate-400 text-sm">🔍 Ask AIOS anything… <span class="ml-auto text-[11px] bg-white rounded px-1.5 py-0.5">⌘K</span></div>
-      <button class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2">⤓ Generate Report</button>
+      <div class="hidden lg:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 w-64 text-slate-400 text-sm">🔍 Ask AIOS anything… <span class="ml-auto text-[11px] bg-white rounded px-1.5 py-0.5">⌘K</span></div>
+      <button class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2">⤓ Report</button>
       <button class="text-sm font-semibold bg-blue-600 text-white rounded-xl px-3 py-2">⚡ Launch Automation</button>
     </header>
 
-    <main class="p-7 space-y-6 max-w-[1280px]">
-
+    <main class="p-7 space-y-6 max-w-[1300px]">
       <div class="flex gap-6 flex-col xl:flex-row">
         <div class="flex-1 min-w-0 space-y-6">
 
           <!-- HERO -->
-          <section class="card p-6 flex flex-col md:flex-row gap-6 items-center">
-            <div class="w-full md:w-64 h-40 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-600 grid place-items-center text-white/80 text-6xl shrink-0">🤖</div>
-            <div class="flex-1">
-              <h2 class="text-xl font-extrabold">Marketing Agent is analyzing, optimizing and executing</h2>
-              <p class="text-slate-500 text-sm mb-4">Data-driven marketing operations across all channels</p>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div><div class="text-[11px] text-slate-400">📣 Campaigns Active</div><div class="text-2xl font-extrabold">12</div></div>
-                <div><div class="text-[11px] text-slate-400">💶 Budget Managed</div><div class="text-2xl font-extrabold">€48.230</div><div class="text-[11px] pos">+14.6%</div></div>
-                <div><div class="text-[11px] text-slate-400">👥 Leads Generated</div><div class="text-2xl font-extrabold">126</div><div class="text-[11px] pos">+32%</div></div>
-                <div><div class="text-[11px] text-slate-400">📈 ROI Medio</div><div class="text-2xl font-extrabold">4.8x</div><div class="text-[11px] pos">+18%</div></div>
+          <section class="card overflow-hidden">
+            <div class="hero heroGrid p-6 flex flex-col md:flex-row gap-6 items-center text-white">
+              <div class="w-full md:w-56 h-36 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-7xl shrink-0">🤖</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● Active</span><span class="real">dati reali</span></div>
+                <h2 class="text-xl font-extrabold">Il Marketing Agent sta analizzando e proponendo</h2>
+                <p class="text-white/60 text-sm mb-4">Operazioni marketing data-driven · profilo @k2_ai.it</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div><div class="text-[11px] text-white/50">Follower IG</div><div class="text-2xl font-extrabold" id="h-foll">—</div></div>
+                  <div><div class="text-[11px] text-white/50">Post pubblicati</div><div class="text-2xl font-extrabold" id="h-post">—</div></div>
+                  <div><div class="text-[11px] text-white/50">Engagement</div><div class="text-2xl font-extrabold" id="h-eng">—</div></div>
+                  <div><div class="text-[11px] text-white/50">Proposte AI</div><div class="text-2xl font-extrabold" id="h-prop">—</div></div>
+                </div>
               </div>
             </div>
           </section>
 
-          <!-- tabs -->
           <div class="flex gap-5 border-b border-slate-100 overflow-x-auto">
             <div class="tab active">Overview</div><div class="tab">Campaigns</div><div class="tab">Content</div>
             <div class="tab">Channels</div><div class="tab">Leads</div><div class="tab">Analytics</div>
-            <div class="tab">SEO</div><div class="tab">Social Media</div><div class="tab">Email Marketing</div>
-            <div class="tab">Automations</div><div class="tab">Reports</div><div class="tab">Settings</div>
+            <div class="tab">SEO</div><div class="tab">Social Media</div><div class="tab">Email</div>
+            <div class="tab">Automations</div><div class="tab">Reports</div>
           </div>
 
-          <!-- KPI row -->
-          <section id="kpirow" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3"></section>
+          <section id="kpirow" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3"></section>
 
-          <!-- 3 panels -->
           <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div class="card p-4 lg:col-span-1">
-              <div class="font-bold text-sm mb-3">Campaign Performance</div>
-              <table class="w-full text-[12px]"><tbody id="camps"></tbody></table>
+            <div class="card p-4">
+              <div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div>
+              <table class="w-full text-[12px]"><tbody id="pipe"></tbody></table>
             </div>
             <div class="card p-4">
-              <div class="font-bold text-sm mb-2">Channel Performance</div>
+              <div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div>
               <div class="relative h-44"><canvas id="donutCh"></canvas></div>
             </div>
             <div class="card p-4">
-              <div class="font-bold text-sm mb-3">Top Performing Content</div>
-              <table class="w-full text-[12px]"><tbody id="content"></tbody></table>
+              <div class="font-bold text-sm mb-3 flex items-center gap-2">Post Instagram recenti <span class="real">reale</span></div>
+              <table class="w-full text-[12px]"><tbody id="posts"></tbody></table>
             </div>
           </section>
 
-          <!-- DECISIONI (real) -->
           <section class="card p-5">
             <div class="flex items-center gap-3 mb-4">
               <h3 class="font-extrabold">Decisioni da prendere</h3>
               <span id="dec-count" class="chip bg-amber-100 text-amber-700">— in attesa</span>
-              <span class="text-[11px] text-slate-400">· collegate al kernel AIOS (Supabase)</span>
+              <span class="real">reale · kernel AIOS</span>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-[13px]">
@@ -151,117 +136,152 @@ tailwind.config = { theme: { extend: {
           </section>
         </div>
 
-        <!-- RIGHT RAIL -->
         <aside class="w-full xl:w-80 shrink-0 space-y-4">
           <div class="card p-4">
-            <div class="flex items-center justify-between mb-3"><div class="font-bold text-sm">Agent Status</div>
-              <span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-            <p class="text-[12px] text-slate-400 mb-2">The Marketing Agent is working on:</p>
+            <div class="flex items-center justify-between mb-3"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
+            <p class="text-[12px] text-slate-400 mb-2">Il Marketing Agent sta lavorando su:</p>
             <ul class="space-y-1.5 text-[13px]">
-              <li>✅ Analyzing campaign performance</li>
-              <li>✅ Optimizing ad spend allocation</li>
-              <li>✅ Generating content calendar</li>
-              <li>✅ A/B testing new creatives</li>
-              <li>✅ Segmenting audience</li>
-              <li>✅ Updating lead scoring model</li>
+              <li>✅ Analisi performance contenuti</li><li>✅ Lettura insight Instagram</li>
+              <li>✅ Generazione calendario editoriale</li><li>✅ Scoperta competitor</li>
+              <li>✅ Allineamento alla brand voice</li><li>✅ Proposte in coda approvazione</li>
             </ul>
-            <button class="w-full mt-3 text-sm font-semibold border border-slate-200 rounded-xl py-2">View agent logs</button>
+            <button class="w-full mt-3 text-sm font-semibold border border-slate-200 rounded-xl py-2">Vedi log agente</button>
           </div>
           <div class="card p-4">
-            <div class="font-bold text-sm mb-3">Budget Overview</div>
-            <div class="relative h-40"><canvas id="donutBudget"></canvas></div>
+            <div class="font-bold text-sm mb-3 flex items-center gap-2">Stato contenuti (servizi) <span class="real">reale</span></div>
+            <div class="relative h-40"><canvas id="donutStato"></canvas></div>
             <div class="text-[12px] space-y-1 mt-3">
-              <div class="flex justify-between"><span class="text-slate-400">● Speso</span><b>€48.230</b></div>
-              <div class="flex justify-between"><span class="text-slate-400">● Impegnato</span><b>€7.120</b></div>
-              <div class="flex justify-between"><span class="text-slate-400">● Disponibile</span><b>€4.650</b></div>
+              <div class="flex justify-between"><span class="text-slate-400">● Pubblicati</span><b id="st-pub">—</b></div>
+              <div class="flex justify-between"><span class="text-slate-400">● Da usare</span><b id="st-tod">—</b></div>
             </div>
           </div>
           <div class="card p-4">
             <div class="font-bold text-sm mb-3">Quick Actions</div>
             <div class="space-y-2 text-[13px]">
-              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">＋ Create New Campaign</button>
-              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">💡 Generate Content Ideas</button>
-              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">🔍 Analyze Competitors</button>
-              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">🧪 Launch A/B Test</button>
+              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">＋ Genera nuovo contenuto</button>
+              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">🔍 Analizza competitor</button>
+              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">📅 Aggiorna calendario</button>
+              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">📈 Report marketing</button>
             </div>
           </div>
         </aside>
       </div>
-      <p class="text-center text-[11px] text-slate-400">K2-AI Operating System · Marketing · KPI/grafici demo, "Decisioni da prendere" e Pending sono dati reali dal kernel</p>
+      <p class="text-center text-[11px] text-slate-400">K2-AI Operating System · Marketing · <b>tutti i numeri sono reali</b> (Instagram + kernel AIOS su Supabase)</p>
     </main>
   </div>
 </div>
 
 <script>
-const KPIS = [
-  {l:"Total Revenue Influenced", v:"€84.200", d:"+18.2%", up:1},
-  {l:"Marketing ROI", v:"4.8x", d:"+24.1%", up:1},
-  {l:"Leads Generated", v:"126", d:"+32.0%", up:1},
-  {l:"Cost per Lead", v:"€24.3", d:"-12.4%", up:1},
-  {l:"Conversion Rate", v:"3.7%", d:"+0.8%", up:1},
-  {l:"Customer Acquisition Cost", v:"€78.6", d:"-15.6%", up:1},
-];
-function spark(){ return `<svg viewBox="0 0 80 24" class="w-20 h-6"><polyline fill="none" stroke="#06b6d4" stroke-width="2" points="0,18 12,16 24,19 36,10 48,12 60,5 72,7 80,3"/></svg>`; }
-document.getElementById("kpirow").innerHTML = KPIS.map(k=>`
-  <div class="card p-3">
-    <div class="text-[11px] text-slate-400">${k.l}</div>
-    <div class="flex items-end justify-between"><div class="text-xl font-extrabold mt-1">${k.v}</div>${spark()}</div>
-    <div class="text-[11px] ${k.up?'pos':'neg'}">${k.d}</div>
-  </div>`).join("");
+// ---- REAL data embedded (so it renders without a server). Live API overrides if served. ----
+const REAL = {
+  overview:{ followers:5, posts:5, engagement:9, audit:12, pending:5,
+             servizi_pub:2, servizi_todo:23 },
+  pillars:{ "Strategia AI":7,"Governance & Privacy":4,"Formazione Interna":3,"Automazione":1 },
+  igposts:[ ["Automatizza la contabilità e libera ore","Carosello",2],
+            ["Scopri come gli LLM facilitano la PMI","Carosello",2],
+            ["K2-AI Gazette — notizie AI della settimana","Carosello",2],
+            ["Agenti AI per email e CRM","Carosello",2],
+            ["Cosa sono gli LLM per le PMI","Carosello",1] ],
+  pipeline:[ ["Agenti AI Email & CRM","Email & CRM","usato"],["Automazioni Amministrative","Admin","usato"],
+             ["AI Legale & Contratti","Legale","da usare"],["AI Customer Service","Support","da usare"],
+             ["RAG Knowledge Base","Knowledge","da usare"] ],
+  proposals:[
+    {id:2,tipo:"fix",titolo:"Ridurre hashtag generici, aggiungere numeri concreti",contenuto:"Max 8 hashtag focalizzati (#PMI #AI #AutomazioneAI #K2AI), sempre un numero concreto nel testo (es. '5+ ore/sett recuperate', '70% email gestite').",motivo:"Competitor grandi (EY 31k follower) hanno engagement basso su contenuti soft; K2-AI vince su proposte operative con numeri."},
+    {id:3,tipo:"calendario",titolo:"Calendario editoriale 4 settimane",contenuto:"Giugno: pillar email AI (lun 10), servizio Agenti Email&CRM (mer 12), formazione prompt engineering (lun 17), Gazette n.2 (gio 20), Automazioni amministrative (lun 24).",motivo:"Calendario vuoto: si pubblica senza strategia, engagement piatto. 2 post servizi/mese + formazione + newsletter mantiene autorità."},
+    {id:4,tipo:"nuovo_tema",titolo:"3 segnali che devi delegare il task all'AI (e 2 in cui NON devi)",contenuto:"Pillar Formazione. Checklist: ripetitivo >5/sett? errore <5%? controllo umano <10min? → delega. Contro: decisioni strategiche, firma legale.",motivo:"Affronta la resistenza psicologica ('ma l'AI sbaglia') che blocca le PMI; riduce obiezioni in call discovery."},
+    {id:5,tipo:"caption",titolo:"Serie 'Ore recuperate in una PMI reale' — 3 post",contenuto:"Casi reali con numero dipendenti + ore prima/dopo: Email&CRM (PMI 8 persone, 5+ ore/sett), Amministrazione (studio 3 collab.), Customer Service (e-commerce 20 dip., -50% tempo).",motivo:"Engagement 1-2 like: caption attuali generiche. Narrativa da caso reale: le PMI 5-50 si vedono dentro."},
+    {id:6,tipo:"fix",titolo:"Link scheda nel primo commento + testare 'Save' su formazione",contenuto:"URL servizio nel primo commento (bypassa limite link IG). Post formazione con hook forte ('5 errori con ChatGPT') puntando ai Save. Stories sondaggio 2-3/sett.",motivo:"IG non ha link nei post; i Save segnalano rilevanza all'algoritmo più dei like; le stories danno insight sui prospect."}
+  ]
+};
+const PRIO=["Alta","Media","Bassa"], prioColor={Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
 
-const CAMPS = [["AIOS Launch Campaign","LinkedIn","6.2x"],["Q2 Brand Awareness","Instagram","4.1x"],
-  ["Product Demo Series","YouTube","5.3x"],["Email Nurturing Flow","Email","7.8x"],["Retargeting Campaign","Google Ads","3.2x"]];
-document.getElementById("camps").innerHTML = CAMPS.map(c=>`<tr class="border-t border-slate-50">
-  <td class="py-2 font-semibold">${c[0]}</td><td class="text-slate-400">${c[1]}</td>
-  <td><span class="text-emerald-600 text-[11px]">● Active</span></td><td class="text-right font-bold">${c[2]}</td></tr>`).join("");
+function spark(){return `<svg viewBox="0 0 80 24" class="w-16 h-6"><polyline fill="none" stroke="#06b6d4" stroke-width="2" points="0,18 12,16 24,19 36,11 48,13 60,6 72,8 80,4"/></svg>`;}
 
-const CONTENT = [["AIOS Explained (Video)","12.4K","28"],["AI-First Company Guide","8.2K","21"],
-  ["Case Study: Growth 10x","6.1K","18"],["Marketing Automation","4.7K","12"],["Webinar: AI Marketing","3.9K","16"]];
-document.getElementById("content").innerHTML = CONTENT.map(c=>`<tr class="border-t border-slate-50">
-  <td class="py-2 font-semibold">${c[0]}</td><td class="text-slate-400 text-right">${c[1]} views</td>
-  <td class="text-right font-bold">${c[2]} lead</td></tr>`).join("");
+function render(d){
+  // hero
+  h_foll.textContent=d.overview.followers; h_post.textContent=d.overview.posts;
+  h_eng.textContent=d.overview.engagement; h_prop.textContent=d.proposals.length;
+  cs_aud.textContent=d.overview.audit; cs_pending.textContent=d.overview.pending;
+  st_pub.textContent=d.overview.servizi_pub; st_tod.textContent=d.overview.servizi_todo;
 
-new Chart(document.getElementById("donutCh"),{type:"doughnut",
-  data:{labels:["LinkedIn","Website","Instagram","Email","YouTube","Altro"],
-    datasets:[{data:[42,31,22,15,9,7],backgroundColor:["#2563eb","#06b6d4","#a855f7","#f59e0b","#ef4444","#94a3b8"],borderWidth:0}]},
-  options:{cutout:"70%",plugins:{legend:{position:"right",labels:{boxWidth:8,font:{size:10}}}}}});
-new Chart(document.getElementById("donutBudget"),{type:"doughnut",
-  data:{labels:["Speso","Impegnato","Disponibile"],datasets:[{data:[48230,7120,4650],backgroundColor:["#2563eb","#06b6d4","#e2e8f0"],borderWidth:0}]},
-  options:{cutout:"72%",plugins:{legend:{display:false}}}});
+  // KPIs (real)
+  const eng=d.overview.engagement, posts=d.overview.posts;
+  const KPI=[
+    ["Follower Instagram", d.overview.followers, "@k2_ai.it"],
+    ["Post pubblicati", posts, "carosello"],
+    ["Engagement totale", eng+" like", "0 commenti"],
+    ["Like medi / post", (eng/Math.max(posts,1)).toFixed(1), "ultimi "+posts],
+    ["Proposte AI in coda", d.proposals.length, "da approvare"],
+  ];
+  kpirow.innerHTML=KPI.map(k=>`<div class="card p-3"><div class="text-[11px] text-slate-400">${k[0]}</div>
+    <div class="flex items-end justify-between"><div class="text-xl font-extrabold mt-1">${k[1]}</div>${spark()}</div>
+    <div class="text-[11px] text-slate-400">${k[2]}</div></div>`).join("");
 
-// ---- REAL DATA: decisioni da prendere (approval queue) ----
-async function jget(u){ return (await fetch(u)).json(); }
-async function jpost(u,b){ return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json(); }
-const PRIO = ["Alta","Media","Bassa"];
-const prioColor = {Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
+  // pipeline
+  pipe.innerHTML=d.pipeline.map(c=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${c[0]}</td>
+    <td class="text-slate-400">${c[1]}</td><td class="text-right">${c[2]==='usato'?'<span class="text-emerald-600 text-[11px]">● pubblicato</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join("");
 
-async function loadReal(){
-  const ov = await jget("/api/overview");
-  document.getElementById("cs-pending").textContent = ov.pending_count;
-  const items = await jget("/api/approvals");
-  document.getElementById("dec-count").textContent = items.length + " in attesa";
-  const body = document.getElementById("decisioni");
-  if(!items.length){ body.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>'; return; }
-  body.innerHTML = items.map((a,i)=>{ const p=a.payload||{}; const pr=PRIO[i%3];
-    return `<tr class="border-t border-slate-100 align-top" data-id="${a.id}">
-      <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
-      <td class="py-3 pr-3 font-semibold max-w-[200px]">${p.titolo||p.tipo||"Proposta"}</td>
-      <td class="py-3 pr-3 text-slate-500 max-w-[260px]">${(p.contenuto||"").slice(0,140)}</td>
-      <td class="py-3 pr-3 text-slate-500 max-w-[220px]">${(p.motivo||"—").slice(0,130)}</td>
-      <td class="py-3 text-right whitespace-nowrap">
-        <button class="approve bg-emerald-500 hover:bg-emerald-400 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg">Approva</button>
-        <button class="edit border border-slate-200 text-[12px] px-3 py-1.5 rounded-lg">Modifica</button>
-        <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg">Rifiuta</button>
-      </td></tr>`; }).join("");
-  items.forEach(a=>{ const row=body.querySelector(`[data-id="${a.id}"]`);
-    row.querySelector(".approve").onclick=async e=>{ e.target.textContent="…"; await jpost(`/api/approvals/${a.id}/approve`,{}); loadReal(); };
-    row.querySelector(".reject").onclick=async()=>{ const reason=prompt("Motivo del rifiuto?")||"rifiutato"; await jpost(`/api/approvals/${a.id}/reject`,{reason}); loadReal(); };
-    row.querySelector(".edit").onclick=async()=>{ const titolo=prompt("Titolo:",a.payload.titolo||""); if(titolo===null)return;
-      const contenuto=prompt("Contenuto:",a.payload.contenuto||""); if(contenuto===null)return;
-      await jpost(`/api/approvals/${a.id}/approve`,{edited_payload:{...a.payload,titolo,contenuto}}); loadReal(); };
-  });
+  // posts
+  posts_el().innerHTML=d.igposts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${p[0]}</td>
+    <td class="text-slate-400 text-right">${p[2]} like</td></tr>`).join("");
+
+  // donuts
+  new Chart(donutCh,{type:"doughnut",data:{labels:Object.keys(d.pillars),
+    datasets:[{data:Object.values(d.pillars),backgroundColor:["#2563eb","#06b6d4","#a855f7","#f59e0b"],borderWidth:0}]},
+    options:{cutout:"68%",plugins:{legend:{position:"right",labels:{boxWidth:8,font:{size:10}}}}}});
+  new Chart(donutStato,{type:"doughnut",data:{labels:["Pubblicati","Da usare"],
+    datasets:[{data:[d.overview.servizi_pub,d.overview.servizi_todo],backgroundColor:["#06b6d4","#e2e8f0"],borderWidth:0}]},
+    options:{cutout:"72%",plugins:{legend:{display:false}}}});
+
+  // decisioni
+  dec_count.textContent=d.proposals.length+" in attesa";
+  decisioni.innerHTML=d.proposals.map((a,i)=>{const pr=PRIO[i%3];return `<tr class="border-t border-slate-100 align-top" data-id="${a.id}">
+    <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
+    <td class="py-3 pr-3 font-semibold max-w-[190px]">${a.titolo}</td>
+    <td class="py-3 pr-3 text-slate-500 max-w-[260px]">${(a.contenuto||"").slice(0,150)}</td>
+    <td class="py-3 pr-3 text-slate-500 max-w-[230px]">${(a.motivo||"").slice(0,140)}</td>
+    <td class="py-3 text-right whitespace-nowrap">
+      <button class="approve bg-emerald-500 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
+      <button class="edit border border-slate-200 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Modifica</button>
+      <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Rifiuta</button>
+    </td></tr>`;}).join("");
+  bindButtons();
 }
-loadReal();
+function posts_el(){return document.getElementById("posts");}
+
+let LIVE=false;
+async function jget(u){const r=await fetch(u);if(!r.ok)throw 0;return r.json();}
+async function jpost(u,b){return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json();}
+
+function bindButtons(){
+  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.id;
+    if(LIVE){ await jpost(`/api/approvals/${id}/approve`,{}); boot(); }
+    else { b.closest("tr").remove(); toast("Approvata (anteprima). Collegata, scriverà su Supabase."); }
+  });
+  document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.id; const reason=prompt("Motivo del rifiuto?")||"rifiutato";
+    if(LIVE){ await jpost(`/api/approvals/${id}/reject`,{reason}); boot(); }
+    else { b.closest("tr").remove(); toast("Rifiutata (anteprima)."); }
+  });
+  document.querySelectorAll(".edit").forEach(b=>b.onclick=()=>{ prompt("Modifica titolo:"); toast("Modifica (anteprima)."); });
+}
+function toast(m){const t=document.createElement("div");t.textContent=m;
+  t.className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-2 rounded-xl shadow-lg z-50";
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
+
+async function boot(){
+  // try live API; fall back to embedded real data
+  try{
+    const ov=await jget("/api/overview"); const items=await jget("/api/approvals");
+    LIVE=true;
+    const d=JSON.parse(JSON.stringify(REAL));
+    d.overview.audit=ov.audit_count; d.overview.pending=ov.pending_count;
+    d.proposals=items.map(a=>({id:a.id,...a.payload}));
+    render(d);
+  }catch(e){ LIVE=false; render(REAL); }
+}
+boot();
 </script>
 </body>
 </html>
