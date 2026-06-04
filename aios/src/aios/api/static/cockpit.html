@@ -90,7 +90,7 @@ const META={
 const TBL={leggi_lead:"Lead pipeline",leggi_memo_vendite:"Memo vendite",leggi_conversioni:"Conversioni K-BOT",leggi_revenue:"Eventi ricavo (Stripe)",leggi_valore_commesse:"Valore commesse",leggi_memoria_finance:"Memoria finance",leggi_commesse:"Commesse",leggi_fasi:"Fasi progetto",leggi_task_commessa:"Task commessa",leggi_documenti:"Documenti",leggi_task_operativi:"Task operativi",leggi_iscritti_newsletter:"Iscritti newsletter",leggi_consensi_kbot:"Consensi K-BOT",leggi_assegnatari:"Task assegnati"};
 // chart group field + KPI builders per dominio
 const CHART={vendite:["leggi_lead","status","Lead per stato"],finance:["leggi_conversioni","type","Conversioni per tipo"],operations:["leggi_task_operativi","status","Task per stato"],legal:["leggi_iscritti_newsletter","confirmed","Iscritti (confermati)"],hr:["leggi_assegnatari","status","Task per stato"]};
-let DOMAINS=[],VIEW="overview",CUR=null,charts=[];
+let DOMAINS=[],VIEW="overview",CUR=null,charts=[],MK={};
 function killCharts(){charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];}
 function arr(v){return Array.isArray(v)?v:[];}
 function group(rows,field){const o={};arr(rows).forEach(r=>{let k=r[field];k=(k===true?"sì":k===false?"no":(k==null||k===""?"n/d":k));o[k]=(o[k]||0)+1;});return o;}
@@ -274,33 +274,87 @@ async function loadDomain(){
 
 // ---------------- MARKETING ----------------
 async function loadMarketing(){
-  killCharts();let ov={},ins={},v={};
+  killCharts();let ov={},ins={},v={},vl={};
   try{ov=await jget("/api/overview");}catch(e){}
   try{ins=await jget("/api/insights");}catch(e){}
   try{v=await jget("/api/domain/marketing");}catch(e){}
-  const items=v.proposals||[],deliv=v.deliverables||[];
-  const prof=ins.profilo||{},insg=ins.insight||{},posts=ins.post||[],servizi=ins.servizi||[],topics=ins.topics||[];
-  $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=items.length;
-  const KPI=[kpi("Follower IG",NUM(prof.followers_count),{t:prof.username?("@"+prof.username):"agente IG",real:1}),kpi("Post",NUM(prof.media_count),{t:"reale",real:1}),kpi("Reach (oggi)",NUM(insg.reach),"oggi"),kpi("Interazioni",NUM(insg.total_interactions),"oggi"),kpi("Proposte",items.length,{t:"da approvare",real:1})].join("");
-  const pill={};topics.forEach(t=>{const k=t.Pillar||"Altro";pill[k]=(pill[k]||0)+1;});
+  try{vl=await jget("/api/domain/vendite");}catch(e){}
+  MK={ov,ins,items:v.proposals||[],deliv:v.deliverables||[],prof:ins.profilo||{},insg:ins.insight||{},
+     posts:ins.post||[],servizi:ins.servizi||[],topics:ins.topics||[],leads:arr((vl.data||{}).leggi_lead),
+     tab:MK.tab||"Overview"};
+  $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=MK.items.length;
   const agentStatus=`<div class="card p-4"><div class="flex items-center justify-between mb-2"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
     <ul class="space-y-1 text-[13px]"><li>✅ Performance contenuti</li><li>✅ Insight Instagram</li><li>✅ Calendario editoriale</li><li>✅ Competitor</li><li>✅ Brand voice</li></ul></div>`;
+  const tabsBar=MK_TABS.map(t=>`<div class="tab ${t===MK.tab?'active':''}" data-mk="${t}">${t}</div>`).join("");
   $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
-    <div class="flex gap-5 border-b border-slate-100 overflow-x-auto"><div class="tab active">Overview</div><div class="tab">Campaigns</div><div class="tab">Content</div><div class="tab">Channels</div><div class="tab">Leads</div><div class="tab">Analytics</div><div class="tab">SEO</div></div>
-    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI}</section>
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="pipe"></tbody></table></div>
-      <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div></div>
-      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Post IG recenti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="posts"></tbody></table></div></section>
-    ${decisioniTable(items)}
-    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoBlock(deliv)}
+    <div id="mktabs" class="flex gap-5 border-b border-slate-100 overflow-x-auto">${tabsBar}</div>
+    <div id="mktab" class="space-y-6"></div>
+    ${decisioniTable(MK.items)}
+    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoBlock(MK.deliv)}
       <div class="card p-4"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">
         <button onclick="runAgent()" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
         <button onclick="route('overview')" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▦ Overview</button></div></div></aside></div>`;
-  $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((s.Servizio||"").slice(0,24))}</td><td class="text-slate-400">${esc(s.Categoria||"")}</td><td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubbl.</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">…</td></tr>';
-  $("posts").innerHTML=posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((p.caption||"(senza testo)").slice(0,36))}</td><td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">…</td></tr>';
-  if(Object.keys(pill).length)donut("donutCh",Object.keys(pill),Object.values(pill));
+  document.querySelectorAll("#mktabs .tab").forEach(el=>el.onclick=()=>{MK.tab=el.dataset.mk;renderMkTab();});
+  renderMkTab();
   wireDecisioni();
+}
+const MK_TABS=["Overview","Campaigns","Content","Channels","Leads","Analytics","SEO"];
+function emptyMk(msg){return `<section class="card p-10 text-center text-slate-400 text-sm">${esc(msg)}</section>`;}
+function renderMkTab(){
+  document.querySelectorAll("#mktabs .tab").forEach(el=>el.classList.toggle("active",el.dataset.mk===MK.tab));
+  killCharts();
+  const c=$("mktab");if(!c)return;
+  const {prof,insg,posts,servizi,topics,items,leads}=MK;
+  if(MK.tab==="Overview"){
+    const KPI=[kpi("Follower IG",NUM(prof.followers_count),{t:prof.username?("@"+prof.username):"agente IG",real:1}),kpi("Post",NUM(prof.media_count),{t:"reale",real:1}),kpi("Reach (oggi)",NUM(insg.reach),"oggi"),kpi("Interazioni",NUM(insg.total_interactions),"oggi"),kpi("Proposte",items.length,{t:"da approvare",real:1})].join("");
+    c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI}</section>
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="pipe"></tbody></table></div>
+        <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div></div>
+        <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Post IG recenti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="posts"></tbody></table></div></section>`;
+    $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((s.Servizio||"").slice(0,24))}</td><td class="text-slate-400">${esc(s.Categoria||"")}</td><td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubbl.</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">nessun servizio</td></tr>';
+    $("posts").innerHTML=posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((p.caption||"(senza testo)").slice(0,36))}</td><td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">nessun post</td></tr>';
+    const pill={};topics.forEach(t=>{const k=t.Pillar||"Altro";pill[k]=(pill[k]||0)+1;});
+    if(Object.keys(pill).length)donut("donutCh",Object.keys(pill),Object.values(pill));
+  }
+  else if(MK.tab==="Campaigns"){
+    c.innerHTML=items.length?`<section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Contenuti / campagne proposti dall'agente <span class="real">reale · coda L1</span></div>
+      <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Tipo</th><th class="py-1">Titolo</th><th class="py-1">Contenuto</th></tr></thead>
+      <tbody>${items.map(a=>{const p=a.payload||{};return `<tr class="border-t border-slate-50"><td class="py-2"><span class="chip bg-slate-100 text-slate-500">${esc(p.tipo||'')}</span></td><td class="py-2 font-semibold">${esc(p.titolo||'')}</td><td class="py-2 text-slate-500 text-[12px]">${esc((p.contenuto||'').slice(0,90))}</td></tr>`;}).join("")}</tbody></table></section>`
+      :emptyMk("Nessuna campagna/contenuto proposto. Premi ▶ Fai girare l'agente per generarne.");
+  }
+  else if(MK.tab==="Content"){
+    c.innerHTML=`<section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Servizi (${servizi.length}) <span class="real">reale · tabella servizi</span></div>
+        <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><tbody>${servizi.length?servizi.map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(s.Servizio||'')}</td><td class="text-slate-400">${esc(s.Categoria||'')}</td><td class="text-right text-[11px] ${String(s.Stato).toLowerCase()==='usato'?'text-emerald-600':'text-amber-600'}">● ${esc(s.Stato||'')}</td></tr>`).join(""):'<tr><td class="py-4 text-center text-slate-400">nessun servizio</td></tr>'}</tbody></table></div></div>
+      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Temi / topics (${topics.length}) <span class="real">reale · tabella topics</span></div>
+        <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><tbody>${topics.length?topics.map(t=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(t.Tema||'')}</td><td class="text-slate-400 text-[11px]">${esc(t.Pillar||'')}</td></tr>`).join(""):'<tr><td class="py-4 text-center text-slate-400">nessun topic</td></tr>'}</tbody></table></div></div></section>`;
+  }
+  else if(MK.tab==="Channels"){
+    const igRows=[["Follower",NUM(prof.followers_count)],["Post pubblicati",NUM(prof.media_count)],["Reach (oggi)",NUM(insg.reach)],["Profile views",NUM(insg.profile_views)],["Account coinvolti",NUM(insg.accounts_engaged)],["Interazioni",NUM(insg.total_interactions)]];
+    c.innerHTML=`<section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Instagram ${prof.username?('· @'+esc(prof.username)):''} <span class="real">reale · Graph API</span></div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">${igRows.map(r=>`<div><div class="text-[11px] text-slate-400">${r[0]}</div><div class="text-xl font-extrabold">${r[1]}</div></div>`).join("")}</div></section>
+      <section class="card p-5 text-slate-500 text-sm">Altri canali (LinkedIn, Email, YouTube): non ancora collegati. Solo Instagram è connesso all'agente.</section>`;
+  }
+  else if(MK.tab==="Leads"){
+    const byCh={};leads.forEach(l=>{const k=l.channel||"n/d";byCh[k]=(byCh[k]||0)+1;});
+    c.innerHTML=`<section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Lead per canale <span class="real">reale</span></div>${Object.keys(byCh).length?'<div class="relative h-48"><canvas id="leadCh"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px]">nessun lead</div>'}</div>
+      <div class="card p-4 lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Lead (${leads.length}) <span class="real">reale · pipeline_leads</span></div>
+        <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Nome</th><th>Azienda</th><th>Canale</th><th>Stato</th><th class="text-right">Score</th></tr></thead>
+        <tbody>${leads.length?leads.map(l=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(l.name||'')}</td><td class="text-slate-500">${esc(l.company||'')}</td><td class="text-slate-400">${esc(l.channel||'')}</td><td><span class="chip bg-slate-100 text-slate-500">${esc(l.status||'')}</span></td><td class="text-right font-bold">${NUM(l.score)}</td></tr>`).join(""):'<tr><td colspan="5" class="py-4 text-center text-slate-400">nessun lead</td></tr>'}</tbody></table></div></div></section>`;
+    if(Object.keys(byCh).length)donut("leadCh",Object.keys(byCh),Object.values(byCh));
+  }
+  else if(MK.tab==="Analytics"){
+    const A=[kpi("Reach (oggi)",NUM(insg.reach),"Instagram"),kpi("Profile views",NUM(insg.profile_views),"Instagram"),kpi("Account coinvolti",NUM(insg.accounts_engaged),"Instagram"),kpi("Interazioni",NUM(insg.total_interactions),"Instagram")].join("");
+    c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${A}</section>
+      <section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Engagement per post <span class="real">reale</span></div>
+      <table class="w-full text-[12px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Post</th><th class="text-right">Like</th><th class="text-right">Commenti</th></tr></thead>
+      <tbody>${posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2">${esc((p.caption||'(senza testo)').slice(0,50))}</td><td class="text-right">${NUM(p.like_count)}</td><td class="text-right">${NUM(p.comments_count)}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun post</td></tr>'}</tbody></table></section>`;
+  }
+  else if(MK.tab==="SEO"){
+    c.innerHTML=emptyMk("Nessuna fonte SEO collegata all'agente (Search Console / Ahrefs non connessi). Le keyword di prodotto sono nella tabella topics → tab Content.");
+  }
 }
 
 // ---------------- DOCUMENTS / ANALYTICS ----------------
