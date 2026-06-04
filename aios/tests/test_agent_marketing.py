@@ -88,3 +88,23 @@ def test_value_with_backticks_parses():
                            founder=default_founder_model())
     result = agent.run()
     assert len(result.approval_ids) == 1
+
+
+def test_agent_includes_skill_menu_when_library_given():
+    from aios.skills import SkillLibrary
+    k = _kernel_with_fake_sensors()
+    llm = FakeLLM(responses=['{"proposte": []}'])
+    agent = MarketingAgent(kernel=k, llm=llm, founder=default_founder_model(),
+                           skills=SkillLibrary())
+    agent.run()
+    system, user = llm.calls[0]
+    assert "FRAMEWORK MARKETING DISPONIBILI" in user
+    assert "content-creation" in user  # a real skill name from the library
+
+
+def test_agent_works_without_skills():
+    k = _kernel_with_fake_sensors()
+    llm = FakeLLM(responses=['{"proposte": []}'])
+    agent = MarketingAgent(kernel=k, llm=llm, founder=default_founder_model())
+    result = agent.run()  # no skills => no crash
+    assert result.approval_ids == []

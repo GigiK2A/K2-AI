@@ -16,6 +16,7 @@ from aios.llm import AnthropicLLM
 from aios.sources.instagram import InstagramClient
 from aios.sources.tools import content_tools, instagram_tools
 from aios.agents.marketing import MarketingAgent
+from aios.skills import SkillLibrary
 
 
 def main() -> None:
@@ -32,7 +33,7 @@ def main() -> None:
     posts = k.execute("leggi_post_ig", actor="bootstrap", args={"limit": 10}).result
     fm.voice_samples = [p.get("caption", "") for p in posts if p.get("caption")][:5]
 
-    agent = MarketingAgent(kernel=k, llm=AnthropicLLM(), founder=fm)
+    agent = MarketingAgent(kernel=k, llm=AnthropicLLM(), founder=fm, skills=SkillLibrary())
     result = agent.run()
 
     print(f"\n=== {len(result.proposals)} PROPOSTE (in coda approvazioni, L1) ===\n")

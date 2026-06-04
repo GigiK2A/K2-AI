@@ -9,6 +9,7 @@ from aios.kernel import Kernel
 from aios.founder import FounderModel
 from aios.llm import LLM
 from aios.tools import Tool
+from aios.skills import SkillLibrary
 
 PROPOSE_ACTION = ActionType("marketing", "content.proposta")
 
@@ -57,10 +58,12 @@ def propose_tool() -> Tool:
 
 class MarketingAgent:
     def __init__(self, *, kernel: Kernel, llm: LLM, founder: FounderModel,
+                 skills: SkillLibrary | None = None,
                  actor: str = "marketing_agent") -> None:
         self.k = kernel
         self.llm = llm
         self.founder = founder
+        self.skills = skills
         self.actor = actor
         if "proponi_marketing" not in self.k.tools.names():
             self.k.register_tool(propose_tool())
@@ -90,6 +93,13 @@ class MarketingAgent:
               "concreti (nuovi temi ad alto potenziale, caption migliori con numeri, "
               "calendario, fix). Massimo 5 proposte."
         )
+        if self.skills is not None:
+            user += (
+                "\n\n# FRAMEWORK MARKETING DISPONIBILI\n"
+                "Quando valuti e proponi, applica i framework più pertinenti tra questi "
+                "(sono competenze di marketing che possiedi):\n"
+                + self.skills.menu()
+            )
         raw = self.llm.complete(system=_SYSTEM, user=user)
         try:
             parsed = _extract_json(raw)
