@@ -10,8 +10,12 @@ Status: Draft per review
 
 K2-AI diventa la **prima azienda AI-first italiana, gestita dal suo stesso AIOS** (AI Operating System).
 Non un gestionale con qualche automazione: un sistema operativo per agenti che fa girare l'azienda
-in tutti gli ambiti (Vendite, Marketing, Operations, Finance), con destinazione **pieno autopilota**
-raggiunto a gradi.
+in tutti gli ambiti, con destinazione **pieno autopilota** raggiunto a gradi.
+
+**Ambiti (dominî) target** — confermati dal mockup cockpit 2026-06-04:
+Marketing · Sales/CRM · Finance · Operations · **Legal & Compliance** · **HR** + funzioni di supporto
+(**Projects**, **Documents**, **Analytics**). I primi 4 restano il nucleo; Legal/HR/Projects/Documents
+entrano come domini propri nelle fasi successive. **Marketing è il primo verticale.**
 
 L'AIOS è anche:
 - il **caso studio vetrina** ("i primi clienti siamo stati noi")
@@ -58,7 +62,7 @@ INTEGRAZIONI (mondo reale)
 - **Modello**: Claude (Anthropic) primario, con prompt caching sui system prompt lunghi. Fallback opzionale.
 - **DB / source of truth**: Postgres su Supabase EU (già in uso, RLS, GDPR).
 - **Memory vettoriale**: pgvector su Supabase.
-- **Control plane**: dashboard web (stack da definire nel plan) + bot Telegram (chat `278384928`) per ping/approvazioni al volo.
+- **Control plane**: dashboard web **Next.js + Tailwind + shadcn/ui** (SPA ricca, vedi §10) + bot Telegram (chat `278384928`) per ping/approvazioni al volo. Companion mobile-web da subito (PWA-ready), app nativa Fase 4.
 - **Deploy**: Railway (coerente con resto progetto).
 - **Observability**: audit log strutturato su Postgres dal giorno 1; trace per invocazione agente.
 
@@ -178,13 +182,43 @@ Ogni fase successiva avrà la sua spec → plan → implementazione.
 
 1. Schema esatto della tabella contenuti Supabase (campi, asset, stato).
 2. Token IG Graph: riuso quello di n8n o credenziale dedicata AIOS.
-3. Stack dashboard web (es. FastAPI+HTMX vs Next.js) — da decidere nel plan di Fase 0/1.
+3. ~~Stack dashboard web~~ → **RISOLTO**: Next.js + Tailwind + shadcn/ui (mockup 2026-06-04, vedi §9).
 4. Valore default N per promozione L1→L2.
 5. Confini precisi tra "trigger n8n da AIOS" vs "AIOS sostituisce n8n" per il flusso IG.
 
 ---
 
-## 9. Non-obiettivi (YAGNI in questa fase)
+## 9. Cockpit UI (control plane) — riferimento mockup 2026-06-04
+
+Stack: **Next.js + Tailwind + shadcn/ui**. Mobile-web responsive da subito.
+
+**Layout Overview (home cockpit)**:
+- **Sidebar**: Overview · AI Agents · Marketing · Sales/CRM · Finance · Legal & Compliance · Operations · HR · Projects · Documents · Automations · Analytics · Settings · "Ask AIOS" (assistente).
+- **Header**: barra "Ask AIOS anything" (comando naturale) + Generate Report + Launch Automation + profilo.
+- **Company Pulse**: indice salute azienda (%) + agenti online + automazioni attive + approvazioni umane pending.
+- **Striscia KPI**: Monthly Revenue, Net Margin, Active Leads, Contracts Reviewed, Tasks Automated, Hours Saved, AI Agent Accuracy, Risk Level.
+- **Card per-dominio**: una per ambito, con metrica chiave + mini-grafico + "Open <X> Agent →".
+- **AI Agents**: lista agenti con stato (Active/Waiting/Idle) + **accuracy %** (= segnale di affidabilità che alimenta la scaletta autonomia).
+- **Human Approval Queue**: coda azioni L1 con **Approve / Edit / Reject** per riga (cuore del control plane).
+- **Automation Center**: automazioni attive, run riusciti/falliti, tempo risparmiato, top automations.
+- **Company Intelligence**: growth score, operational efficiency, financial stability, legal risk, marketing momentum, sales velocity.
+- **Core Status** (sidebar footer): agenti online, automazioni attive, approvazioni pending, System Health %.
+- **Companion mobile**: stessa Overview compatta (Pulse, KPI, agenti, approvazioni).
+
+Mapping ai moduli kernel:
+- "AI Agent Accuracy / accuracy %" ← metrica di affidabilità del modulo ⑥ (Access/Policy) → guida promozioni L1→L2.
+- "Human Approval Queue" ← coda L1 del modulo ⑥ + audit log.
+- "Automation Center" ← scheduler (①) + tool runs (⑤).
+- "Company Pulse / Intelligence" ← Analytics & Ops + storage (④).
+- "Ask AIOS" ← entry point linguaggio naturale verso il Director-agent del dominio.
+
+In **Fase 1** il cockpit nasce con: Overview (Pulse + KPI marketing + card Marketing), pagina Marketing,
+AI Agents (le 6 sotto-funzioni marketing), Human Approval Queue, Automation Center (blog-bot/n8n), Settings.
+Gli altri domini compaiono come card/voci "in arrivo" finché non vengono accesi.
+
+---
+
+## 10. Non-obiettivi (YAGNI in questa fase)
 - Multi-tenant reale (solo architettura che non lo preclude).
 - App mobile (Fase 4).
 - Sales/Operations/Finance (Fasi 2+).
