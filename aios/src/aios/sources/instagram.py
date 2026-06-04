@@ -47,3 +47,13 @@ class InstagramClient:
             "limit": str(limit),
         })
         return data.get("data", [])
+
+    def business_discovery(self, username: str, media_limit: int = 6) -> dict[str, Any]:
+        fields = (
+            f"business_discovery.username({username})"
+            "{username,followers_count,media_count,"
+            f"media.limit({media_limit})"
+            "{caption,like_count,comments_count,timestamp,media_type,permalink}}"
+        )
+        data = self._get(self._uid, {"fields": fields})
+        return data.get("business_discovery", {})

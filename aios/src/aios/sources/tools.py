@@ -31,3 +31,15 @@ def content_tools_rest(client: Any) -> list[Tool]:
         Tool(name="leggi_topics", action_type=None, readonly=True,
              run=lambda **_: client.select("topics", {"select": "*", "order": "id.asc"})),
     ]
+
+
+def competitor_tools(ig_client: Any, usernames: list[str]) -> list[Tool]:
+    def _run(**_):
+        out = {}
+        for u in usernames:
+            try:
+                out[u] = ig_client.business_discovery(u)
+            except Exception as exc:
+                out[u] = {"error": str(exc)}
+        return out
+    return [Tool(name="leggi_competitor_ig", action_type=None, readonly=True, run=_run)]
