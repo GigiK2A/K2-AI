@@ -123,3 +123,41 @@ def test_agent_gathers_competitor_and_calendar_when_present():
     _, user = llm.calls[0]
     assert "999" in user
     assert "gia in calendario" in user
+
+
+def test_agent_uses_insights_competitors_calendar_and_full_skills():
+    from aios.tools import Tool
+    from aios.skills import SkillLibrary
+    k = _kernel_with_fake_sensors()
+    k.register_tool(Tool(name="leggi_insight_ig", action_type=None, readonly=True,
+                         run=lambda **_: {"reach": 182, "total_interactions": 9}))
+    k.register_tool(Tool(name="analizza_competitor", action_type=None, readonly=True,
+                         run=lambda usernames=None, **_: {h: {"followers_count": 100} for h in (usernames or [])}))
+    k.register_tool(Tool(name="leggi_calendario", action_type=None, readonly=True,
+                         run=lambda **_: [{"titolo": "gia in cal"}]))
+    llm = FakeLLM(responses=['{"handles": ["rivale_uno"]}', '{"proposte": [], "voci_calendario": []}'])
+    agent = MarketingAgent(kernel=k, llm=llm, founder=default_founder_model(), skills=SkillLibrary())
+    agent.run()
+    sys, user = llm.calls[-1]
+    assert "182" in user
+    assert "rivale_uno" in user or "followers_count" in user
+    assert "gia in cal" in user
+    assert "SKILL:" in user
+
+
+def test_agent_files_calendar_entries_via_programma_contenuto():
+    from aios.sources.calendar import calendar_tools
+    class FakeCal:
+        def __init__(self): self.rows=[]; self._id=0
+        def select(self,t,p): return list(self.rows)
+        def insert(self,t,row): self._id+=1; r={"id":self._id,**row}; self.rows.append(r); return [r]
+    k = _kernel_with_fake_sensors()
+    cal = FakeCal()
+    for t in calendar_tools(cal): k.register_tool(t)
+    llm = FakeLLM(responses=['{"proposte": [], "voci_calendario": [{"canale":"instagram","titolo":"Post X","bozza":"b","data_programmata":"2026-06-15"}]}'])
+    agent = MarketingAgent(kernel=k, llm=llm, founder=default_founder_model())
+    res = agent.run()
+    assert len(res.calendar_ids) == 1
+    assert cal.rows == []
+    k.resolve_approval(res.calendar_ids[0], approve=True)
+    assert len(cal.rows) == 1 and cal.rows[0]["titolo"] == "Post X"

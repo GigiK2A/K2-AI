@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from aios.autonomy import ActionType, AutonomyLevel
 from aios.kernel import Kernel
@@ -12,43 +12,45 @@ from aios.tools import Tool
 from aios.skills import SkillLibrary
 
 PROPOSE_ACTION = ActionType("marketing", "content.proposta")
+CALENDAR_ACTION = ActionType("marketing", "calendario.voce")
 
 _SYSTEM = (
-    "Sei il responsabile marketing di K2-AI. Lavori SEMPRE rispettando il "
-    "Founder Model qui sotto (voce, priorità, regole). Non pubblichi nulla: "
-    "PROPONI soltanto, ogni proposta è una bozza da far approvare.\n\n"
-    "Rispondi ESCLUSIVAMENTE con JSON valido nella forma:\n"
-    '{"proposte": [{"tipo": "nuovo_tema|caption|calendario|fix", '
-    '"titolo": "...", "contenuto": "...", "motivo": "..."}]}\n'
+    "Sei il responsabile marketing di K2-AI. Rispetti SEMPRE il Founder Model "
+    "(voce, priorità, regole) e i framework forniti. Non pubblichi nulla: PROPONI. "
+    "Analizza i dati reali (insight, post uno per uno, competitor, calendario) e "
+    "produci proposte concrete e, dove utile, voci di calendario.\n\n"
+    "Rispondi SOLO con JSON:\n"
+    '{"proposte":[{"tipo":"nuovo_tema|caption|fix|analisi_post","titolo":"...","contenuto":"...","motivo":"..."}],'
+    '"voci_calendario":[{"canale":"instagram|blog","titolo":"...","bozza":"...","data_programmata":"YYYY-MM-DD"}]}\n'
     "Niente testo fuori dal JSON."
 )
+_FOCUS = ["brand-voice", "content-creation", "campaign-plan"]
 
 
 @dataclass
 class MarketingResult:
     approval_ids: list[int]
     proposals: list[dict]
+    calendar_ids: list[int] = field(default_factory=list)
+    calendar: list[dict] = field(default_factory=list)
 
 
 def _extract_json(text: str) -> dict:
     t = text.strip()
-    # 1) try the whole thing as-is (covers values that contain backticks)
     try:
         return json.loads(t)
     except json.JSONDecodeError:
         pass
-    # 2) fenced ```json ... ``` or ``` ... ```
     m = re.search(r"```(?:json)?\s*(.*?)```", t, re.DOTALL)
     if m:
         try:
             return json.loads(m.group(1).strip())
         except json.JSONDecodeError:
             t = m.group(1).strip()
-    # 3) outermost braces slice
     a, b = t.find("{"), t.rfind("}")
     if a >= 0 and b > a:
         return json.loads(t[a:b + 1])
-    raise ValueError("nessun oggetto JSON trovato nella risposta")
+    raise ValueError("nessun oggetto JSON nella risposta")
 
 
 def propose_tool() -> Tool:
@@ -58,70 +60,95 @@ def propose_tool() -> Tool:
 
 class MarketingAgent:
     def __init__(self, *, kernel: Kernel, llm: LLM, founder: FounderModel,
-                 skills: SkillLibrary | None = None,
-                 actor: str = "marketing_agent") -> None:
+                 skills: "SkillLibrary | None" = None, actor: str = "marketing_agent",
+                 discover_competitors: bool = True) -> None:
         self.k = kernel
         self.llm = llm
         self.founder = founder
         self.skills = skills
         self.actor = actor
+        self.discover = discover_competitors
         if "proponi_marketing" not in self.k.tools.names():
             self.k.register_tool(propose_tool())
         self.k.policy.set_level(PROPOSE_ACTION, AutonomyLevel.L1_PROPOSE)
         self.k.policy.set_cap(PROPOSE_ACTION, AutonomyLevel.L1_PROPOSE)
+        if "programma_contenuto" in self.k.tools.names():
+            self.k.policy.set_level(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
+            self.k.policy.set_cap(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
+
+    def _read(self, name, **a):
+        return self.k.execute(name, actor=self.actor, args=a).result
 
     def _gather(self) -> dict:
-        def read(name, **a):
-            return self.k.execute(name, actor=self.actor, args=a).result
-        data = {
-            "servizi": read("leggi_servizi"),
-            "topics": read("leggi_topics"),
-            "profilo_ig": read("leggi_profilo_ig"),
-            "post_ig": read("leggi_post_ig", limit=10),
-        }
         names = self.k.tools.names()
-        if "leggi_competitor_ig" in names:
-            data["competitor_ig"] = read("leggi_competitor_ig")
+        data = {"servizi": self._read("leggi_servizi"), "topics": self._read("leggi_topics"),
+                "profilo_ig": self._read("leggi_profilo_ig"),
+                "post_ig": self._read("leggi_post_ig", limit=10)}
+        if "leggi_insight_ig" in names:
+            data["insight"] = self._read("leggi_insight_ig")
         if "leggi_calendario" in names:
-            data["calendario"] = read("leggi_calendario")
+            data["calendario"] = self._read("leggi_calendario")
+        if "leggi_competitor_ig" in names:
+            data["competitor_ig"] = self._read("leggi_competitor_ig")
+        elif self.discover and "analizza_competitor" in names:
+            try:
+                from aios.sources.competitor_discovery import discover_competitor_handles
+                handles = discover_competitor_handles(self.llm, self.founder)
+            except Exception:
+                handles = []
+            if handles:
+                data["competitor_handles"] = handles
+                data["competitor_ig"] = self._read("analizza_competitor", usernames=handles)
         return data
+
+    def _skill_context(self) -> str:
+        if not self.skills:
+            return ""
+        out = []
+        for n in _FOCUS:
+            try:
+                out.append(f"## SKILL: {n}\n" + self.skills.load(n)[:1500])
+            except KeyError:
+                pass
+        menu = "\n\n# FRAMEWORK MARKETING DISPONIBILI\n" + self.skills.menu()
+        full = ("\n\n# FRAMEWORK DA APPLICARE (testo completo)\n" + "\n\n".join(out)) if out else ""
+        return menu + full
 
     def run(self) -> MarketingResult:
         data = self._gather()
-        user = (
-            self.founder.to_prompt()
-            + "\n\n# DATI REALI ATTUALI\n"
-            + "## Servizi (tabella contenuti)\n" + json.dumps(data["servizi"], ensure_ascii=False)
-            + "\n## Temi blog\n" + json.dumps(data["topics"], ensure_ascii=False)
-            + "\n## Profilo Instagram\n" + json.dumps(data["profilo_ig"], ensure_ascii=False)
-            + "\n## Ultimi post Instagram\n" + json.dumps(data["post_ig"], ensure_ascii=False)
-        )
+        # re-check policy for programma_contenuto in case tools were registered after __init__
+        if "programma_contenuto" in self.k.tools.names():
+            self.k.policy.set_level(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
+            self.k.policy.set_cap(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
+
+        def sec(k):
+            return json.dumps(data.get(k), ensure_ascii=False)
+        user = (self.founder.to_prompt()
+                + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi")
+                + "\n## Temi blog\n" + sec("topics")
+                + "\n## Profilo IG\n" + sec("profilo_ig")
+                + "\n## Insight IG\n" + sec("insight")
+                + "\n## Post IG (analizza UNO PER UNO vs metriche)\n" + sec("post_ig"))
         if "competitor_ig" in data:
-            user += "\n## Competitor Instagram\n" + json.dumps(data["competitor_ig"], ensure_ascii=False)
+            user += "\n## Competitor (analisi)\n" + sec("competitor_ig")
         if "calendario" in data:
-            user += "\n## Calendario editoriale attuale\n" + json.dumps(data["calendario"], ensure_ascii=False)
-        user += (
-            "\n\nValuta cosa funziona e cosa no, poi proponi miglioramenti "
-            "concreti (nuovi temi ad alto potenziale, caption migliori con numeri, "
-            "calendario, fix). Massimo 5 proposte."
-        )
-        if self.skills is not None:
-            user += (
-                "\n\n# FRAMEWORK MARKETING DISPONIBILI\n"
-                "Quando valuti e proponi, applica i framework più pertinenti tra questi "
-                "(sono competenze di marketing che possiedi):\n"
-                + self.skills.menu()
-            )
-        raw = self.llm.complete(system=_SYSTEM, user=user)
-        try:
-            parsed = _extract_json(raw)
-        except (json.JSONDecodeError, ValueError) as exc:
-            raise ValueError(
-                f"LLM ha risposto con JSON non valido: {raw[:200]!r}") from exc
-        proposals = parsed.get("proposte", [])
-        ids: list[int] = []
-        for p in proposals:
-            res = self.k.execute("proponi_marketing", actor=self.actor, args=p)
-            if res.approval_id is not None:
-                ids.append(res.approval_id)
-        return MarketingResult(approval_ids=ids, proposals=proposals)
+            user += "\n## Calendario attuale\n" + sec("calendario")
+        user += self._skill_context()
+        user += ("\n\nValuta i post uno per uno rispetto a reach/like, confronta coi competitor, "
+                 "e proponi miglioramenti concreti (proposte) e, dove utile, voci di calendario datate. "
+                 "Massimo 6 proposte.")
+        parsed = _extract_json(self.llm.complete(system=_SYSTEM, user=user))
+        proposte = parsed.get("proposte", [])
+        voci = parsed.get("voci_calendario", [])
+        ids, cal_ids = [], []
+        for p in proposte:
+            r = self.k.execute("proponi_marketing", actor=self.actor, args=p)
+            if r.approval_id is not None:
+                ids.append(r.approval_id)
+        if "programma_contenuto" in self.k.tools.names():
+            for v in voci:
+                r = self.k.execute("programma_contenuto", actor=self.actor, args=v)
+                if r.approval_id is not None:
+                    cal_ids.append(r.approval_id)
+        return MarketingResult(approval_ids=ids, proposals=proposte,
+                               calendar_ids=cal_ids, calendar=voci)
