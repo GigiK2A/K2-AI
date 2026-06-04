@@ -61,3 +61,30 @@ def test_proposals_default_to_L1_so_they_need_approval():
                            founder=default_founder_model())
     agent.run()
     assert k.policy.level_for(PROPOSE_ACTION) == AutonomyLevel.L1_PROPOSE
+
+
+def test_invalid_llm_json_raises_clear_error():
+    import pytest
+    k = _kernel_with_fake_sensors()
+    agent = MarketingAgent(kernel=k, llm=FakeLLM(responses=["non sono json, scusa"]),
+                           founder=default_founder_model())
+    with pytest.raises(ValueError):
+        agent.run()
+
+
+def test_empty_proposals_is_ok():
+    k = _kernel_with_fake_sensors()
+    agent = MarketingAgent(kernel=k, llm=FakeLLM(responses=['{"proposte": []}']),
+                           founder=default_founder_model())
+    result = agent.run()
+    assert result.approval_ids == [] and result.proposals == []
+
+
+def test_value_with_backticks_parses():
+    k = _kernel_with_fake_sensors()
+    payload = {"proposte": [{"tipo": "fix", "titolo": "snippet",
+                             "contenuto": "usa ``` per il codice", "motivo": "chiarezza"}]}
+    agent = MarketingAgent(kernel=k, llm=FakeLLM(responses=[json.dumps(payload, ensure_ascii=False)]),
+                           founder=default_founder_model())
+    result = agent.run()
+    assert len(result.approval_ids) == 1

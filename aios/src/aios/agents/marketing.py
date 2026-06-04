@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 
 from aios.autonomy import ActionType, AutonomyLevel
@@ -30,14 +31,23 @@ class MarketingResult:
 
 def _extract_json(text: str) -> dict:
     t = text.strip()
-    if "```" in t:
-        t = t.split("```", 2)[1]
-        if t.startswith("json"):
-            t = t[4:]
+    # 1) try the whole thing as-is (covers values that contain backticks)
+    try:
+        return json.loads(t)
+    except json.JSONDecodeError:
+        pass
+    # 2) fenced ```json ... ``` or ``` ... ```
+    m = re.search(r"```(?:json)?\s*(.*?)```", t, re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(1).strip())
+        except json.JSONDecodeError:
+            t = m.group(1).strip()
+    # 3) outermost braces slice
     a, b = t.find("{"), t.rfind("}")
     if a >= 0 and b > a:
-        t = t[a:b + 1]
-    return json.loads(t)
+        return json.loads(t[a:b + 1])
+    raise ValueError("nessun oggetto JSON trovato nella risposta")
 
 
 def propose_tool() -> Tool:
@@ -81,7 +91,11 @@ class MarketingAgent:
               "calendario, fix). Massimo 5 proposte."
         )
         raw = self.llm.complete(system=_SYSTEM, user=user)
-        parsed = _extract_json(raw)
+        try:
+            parsed = _extract_json(raw)
+        except (json.JSONDecodeError, ValueError) as exc:
+            raise ValueError(
+                f"LLM ha risposto con JSON non valido: {raw[:200]!r}") from exc
         proposals = parsed.get("proposte", [])
         ids: list[int] = []
         for p in proposals:
