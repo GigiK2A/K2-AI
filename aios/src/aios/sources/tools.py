@@ -22,3 +22,12 @@ def instagram_tools(client: Any) -> list[Tool]:
         Tool(name="leggi_post_ig", action_type=None, readonly=True,
              run=lambda limit=10, **_: client.recent_media(limit=limit)),
     ]
+
+
+def content_tools_rest(client: Any) -> list[Tool]:
+    return [
+        Tool(name="leggi_servizi", action_type=None, readonly=True,
+             run=lambda **_: client.select("servizi", {"select": "*", "order": "id.asc"})),
+        Tool(name="leggi_topics", action_type=None, readonly=True,
+             run=lambda **_: client.select("topics", {"select": "*", "order": "id.asc"})),
+    ]
