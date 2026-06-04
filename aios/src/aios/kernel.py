@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
-from aios.approvals import ApprovalQueue
+from aios.approvals import ApprovalQueue, ApprovalStatus
 from aios.audit import AuditLog
 from aios.autonomy import ActionType
 from aios.killswitch import KillSwitch
@@ -75,8 +75,10 @@ class Kernel:
     def resolve_approval(self, approval_id: int, *, approve: bool,
                          edited_payload: dict[str, Any] | None = None,
                          reason: str | None = None) -> ExecResult:
-        pending = {a.id: a for a in self.approvals.pending()}
-        appr = pending[approval_id]
+        appr = self.approvals.get(approval_id)  # raises KeyError if id never existed
+        if appr.status != ApprovalStatus.PENDING:
+            raise ValueError(
+                f"approval {approval_id} is already {appr.status.name}")
         action = ActionType(*appr.action_key.split(".", 1))
 
         if not approve:

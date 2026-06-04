@@ -79,3 +79,19 @@ def test_rejecting_approval_does_not_run_and_resets_streak():
     assert run_res.outcome == ExecOutcome.DENIED
     assert calls == []
     assert k.policy._state(PUBLISH).streak == 0
+
+
+def test_resolve_unknown_approval_raises_keyerror():
+    k, _ = _kernel_with_publish()
+    with pytest.raises(KeyError):
+        k.resolve_approval(999, approve=True)
+
+
+def test_double_resolve_raises_valueerror():
+    k, calls = _kernel_with_publish()
+    k.policy.set_level(PUBLISH, AutonomyLevel.L1_PROPOSE)
+    res = k.execute("publish_post", actor="marketing_agent", args={"caption": "ciao"})
+    k.resolve_approval(res.approval_id, approve=True)
+    with pytest.raises(ValueError):
+        k.resolve_approval(res.approval_id, approve=True)
+    assert calls == [{"caption": "ciao"}]  # tool ran exactly once

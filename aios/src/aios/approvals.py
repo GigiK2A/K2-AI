@@ -39,6 +39,11 @@ class ApprovalQueue:
         return [a for a in self._items.values()
                 if a.status == ApprovalStatus.PENDING]
 
+    def get(self, approval_id: int) -> Approval:
+        if approval_id not in self._items:
+            raise KeyError(f"unknown approval_id: {approval_id}")
+        return self._items[approval_id]
+
     def approve(self, approval_id: int,
                 edited_payload: dict[str, Any] | None = None) -> Approval:
         appr = self._items[approval_id]
