@@ -48,3 +48,15 @@ def competitor_tools(ig_client: Any, usernames: list[str]) -> list[Tool]:
 def insights_tools(ig_client: Any) -> list[Tool]:
     return [Tool(name="leggi_insight_ig", action_type=None, readonly=True,
                  run=lambda **_: ig_client.account_insights())]
+
+
+def competitor_lookup_tool(ig_client: Any) -> Tool:
+    def _run(usernames=None, **_):
+        out = {}
+        for u in (usernames or []):
+            try:
+                out[u] = ig_client.business_discovery(u)
+            except Exception as exc:
+                out[u] = {"error": str(exc)}
+        return out
+    return Tool(name="analizza_competitor", action_type=None, readonly=True, run=_run)
