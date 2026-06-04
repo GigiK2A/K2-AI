@@ -38,7 +38,12 @@ class Kernel:
 
     def _run(self, tool: Tool, actor: str, args: dict[str, Any],
              action_key: str) -> ExecResult:
-        result = tool.run(**args)
+        try:
+            result = tool.run(**args)
+        except Exception as exc:
+            self.audit.append(action_key=action_key, event="error",
+                              actor=actor, detail={"error": str(exc)})
+            raise
         self.audit.append(action_key=action_key, event="executed",
                           actor=actor, detail={"args": args})
         return ExecResult(outcome=ExecOutcome.EXECUTED, result=result)
@@ -79,6 +84,12 @@ class Kernel:
         if appr.status != ApprovalStatus.PENDING:
             raise ValueError(
                 f"approval {approval_id} is already {appr.status.name}")
+
+        if self.killswitch.engaged:
+            self.audit.append(action_key=appr.action_key, event="blocked_killswitch",
+                              actor=appr.actor, detail={"reason": self.killswitch.reason})
+            return ExecResult(outcome=ExecOutcome.DENIED)
+
         action = ActionType(*appr.action_key.split(".", 1))
 
         if not approve:

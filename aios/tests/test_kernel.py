@@ -95,3 +95,27 @@ def test_double_resolve_raises_valueerror():
     with pytest.raises(ValueError):
         k.resolve_approval(res.approval_id, approve=True)
     assert calls == [{"caption": "ciao"}]  # tool ran exactly once
+
+
+def test_killswitch_blocks_queued_approval_execution():
+    k, calls = _kernel_with_publish()
+    k.policy.set_level(PUBLISH, AutonomyLevel.L1_PROPOSE)
+    res = k.execute("publish_post", actor="marketing_agent", args={"caption": "ciao"})
+    k.killswitch.engage(reason="stop")
+    run_res = k.resolve_approval(res.approval_id, approve=True)
+    assert run_res.outcome == ExecOutcome.DENIED
+    assert calls == []  # tool did NOT run despite prior approval
+    assert k.audit.records()[-1].event == "blocked_killswitch"
+
+
+def test_raising_tool_is_audited_then_reraised():
+    k = Kernel()
+    boom = ActionType("marketing", "social.publish_post")
+    def explode(**kw):
+        raise RuntimeError("api down")
+    k.register_tool(Tool(name="publish_post", action_type=boom, run=explode))
+    k.policy.set_level(boom, AutonomyLevel.L2_ROUTINE)
+    with pytest.raises(RuntimeError):
+        k.execute("publish_post", actor="marketing_agent", args={"caption": "x"})
+    assert k.audit.records()[-1].event == "error"
+    assert k.audit.records()[-1].detail["error"] == "api down"
