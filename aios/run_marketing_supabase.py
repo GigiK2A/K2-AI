@@ -24,6 +24,10 @@ def main() -> None:
     ig = InstagramClient(token=os.environ["AIOS_IG_TOKEN"],
                          ig_user_id=os.environ.get("AIOS_IG_USER_ID", "17841429842127461"))
 
+    # approval of a proposal saves it as a deliverable (closes the loop)
+    from aios.sources.outputs import output_tool
+    k.register_tool(output_tool(k._supabase))
+
     # the agent's senses
     for t in content_tools_rest(k._supabase):
         k.register_tool(t)
