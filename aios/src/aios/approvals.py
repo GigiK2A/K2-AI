@@ -23,41 +23,38 @@ class Approval:
 
 
 class ApprovalQueue:
-    def __init__(self) -> None:
-        self._items: dict[int, Approval] = {}
-        self._next_id = 1
+    def __init__(self, backend=None) -> None:
+        if backend is None:
+            from aios.store.memory import InMemoryApprovalBackend
+            backend = InMemoryApprovalBackend()
+        self._backend = backend
 
     def enqueue(self, *, action_key: str, actor: str,
                 payload: dict[str, Any]) -> Approval:
-        appr = Approval(id=self._next_id, action_key=action_key,
-                        actor=actor, payload=dict(payload))
-        self._items[appr.id] = appr
-        self._next_id += 1
-        return appr
-
-    def pending(self) -> list[Approval]:
-        return [a for a in self._items.values()
-                if a.status == ApprovalStatus.PENDING]
+        return self._backend.add(action_key=action_key, actor=actor, payload=payload)
 
     def get(self, approval_id: int) -> Approval:
-        if approval_id not in self._items:
-            raise KeyError(f"unknown approval_id: {approval_id}")
-        return self._items[approval_id]
+        return self._backend.get(approval_id)
+
+    def pending(self) -> list[Approval]:
+        return self._backend.pending()
 
     def approve(self, approval_id: int,
                 edited_payload: dict[str, Any] | None = None) -> Approval:
-        appr = self._items[approval_id]
+        appr = self._backend.get(approval_id)
         appr.status = ApprovalStatus.APPROVED
         if edited_payload is not None:
             appr.payload = dict(edited_payload)
             appr.clean = False
         else:
             appr.clean = True
+        self._backend.save(appr)
         return appr
 
     def reject(self, approval_id: int, *, reason: str) -> Approval:
-        appr = self._items[approval_id]
+        appr = self._backend.get(approval_id)
         appr.status = ApprovalStatus.REJECTED
         appr.clean = False
         appr.reason = reason
+        self._backend.save(appr)
         return appr

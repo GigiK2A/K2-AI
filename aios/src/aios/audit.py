@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from aios.store import AuditBackend
 
 
 @dataclass(frozen=True)
@@ -14,15 +17,16 @@ class AuditRecord:
 
 
 class AuditLog:
-    def __init__(self) -> None:
-        self._records: list[AuditRecord] = []
+    def __init__(self, backend: "AuditBackend | None" = None) -> None:
+        if backend is None:
+            from aios.store.memory import InMemoryAuditBackend
+            backend = InMemoryAuditBackend()
+        self._backend = backend
 
     def append(self, *, action_key: str, event: str, actor: str,
                detail: dict[str, Any]) -> AuditRecord:
-        rec = AuditRecord(seq=len(self._records) + 1, action_key=action_key,
-                          event=event, actor=actor, detail=dict(detail))
-        self._records.append(rec)
-        return rec
+        return self._backend.append(action_key=action_key, event=event,
+                                    actor=actor, detail=detail)
 
     def records(self) -> list[AuditRecord]:
-        return list(self._records)
+        return self._backend.list_records()

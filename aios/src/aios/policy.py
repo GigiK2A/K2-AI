@@ -20,22 +20,25 @@ class PolicyState:
 
 
 class PolicyEngine:
-    def __init__(self, *, promotion_threshold: int = DEFAULT_PROMOTION_THRESHOLD) -> None:
-        self._states: dict[str, PolicyState] = {}
+    def __init__(self, *, promotion_threshold: int = DEFAULT_PROMOTION_THRESHOLD,
+                 store=None) -> None:
+        if store is None:
+            from aios.store.memory import InMemoryPolicyStateStore
+            store = InMemoryPolicyStateStore()
+        self._store = store
         self._threshold = promotion_threshold
 
     def _state(self, action: ActionType) -> PolicyState:
-        return self._states.setdefault(action.key, PolicyState())
+        return self._store.get(action.key)
 
     def level_for(self, action: ActionType) -> AutonomyLevel:
         return self._state(action).level
 
     def set_level(self, action: ActionType, level: AutonomyLevel) -> None:
-        # changing the level manually clears any in-flight reliability streak,
-        # so a stale streak can't trigger an immediate promotion later
         state = self._state(action)
         state.level = level
         state.streak = 0
+        self._store.save(action.key, state)
 
     def decide(self, action: ActionType) -> Decision:
         level = self.level_for(action)
@@ -46,17 +49,20 @@ class PolicyEngine:
         return Decision.EXECUTE
 
     def set_cap(self, action: ActionType, cap: AutonomyLevel) -> None:
-        self._state(action).capped_at = cap
+        state = self._state(action)
+        state.capped_at = cap
+        self._store.save(action.key, state)
 
     def record_outcome(self, action: ActionType, *, clean: bool) -> None:
         state = self._state(action)
         if not clean:
             state.streak = 0
+            self._store.save(action.key, state)
             return
         state.streak += 1
-        # auto-promotion only L1 -> L2, never beyond, never past the cap
         if (state.level == AutonomyLevel.L1_PROPOSE
                 and state.capped_at >= AutonomyLevel.L2_ROUTINE
                 and state.streak >= self._threshold):
             state.level = AutonomyLevel.L2_ROUTINE
             state.streak = 0
+        self._store.save(action.key, state)
