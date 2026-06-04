@@ -3,137 +3,265 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>K2-AI Operating System</title>
+<title>K2-AI Operating System — Marketing</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: {
+  fontFamily: { sans: ['Manrope','ui-sans-serif','system-ui'] },
+  colors: { brand: { 50:'#ecfeff',100:'#cffafe',500:'#06b6d4',600:'#0891b2' },
+            ink:'#0f172a', sub:'#64748b' } } } };
+</script>
 <style>
-  body { background: radial-gradient(1200px 600px at 80% -10%, #10213f 0%, #070708 55%); }
-  .glass { background: rgba(13,14,20,.72); backdrop-filter: blur(8px); }
+  body{ background:#f4f6fb; color:#0f172a; }
+  .card{ background:#fff; border:1px solid #eef1f6; border-radius:18px; box-shadow:0 1px 2px rgba(16,24,40,.04),0 6px 24px rgba(16,24,40,.04); }
+  .navi{ display:flex; align-items:center; gap:.7rem; padding:.55rem .8rem; border-radius:12px; color:#475569; font-weight:600; font-size:.9rem; cursor:pointer; }
+  .navi:hover{ background:#f1f5f9; }
+  .navi.active{ background:#e6f6fa; color:#0891b2; }
+  .tab{ padding:.45rem .1rem; color:#64748b; font-weight:600; font-size:.86rem; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; }
+  .tab.active{ color:#0891b2; border-color:#06b6d4; }
+  .pos{ color:#16a34a; } .neg{ color:#dc2626; }
+  .chip{ font-size:.62rem; font-weight:700; padding:.12rem .5rem; border-radius:999px; text-transform:uppercase; letter-spacing:.04em; }
+  ::-webkit-scrollbar{ height:8px; width:8px; } ::-webkit-scrollbar-thumb{ background:#dde3ec; border-radius:8px; }
 </style>
 </head>
-<body class="text-zinc-100 font-sans min-h-screen">
+<body class="font-sans text-[15px]">
+<div class="flex min-h-screen">
 
-<header class="px-6 py-4 border-b border-zinc-800/80 flex items-center justify-between sticky top-0 glass z-10">
-  <div class="flex items-center gap-3">
-    <div class="w-9 h-9 rounded-xl bg-cyan-400 text-black font-black grid place-items-center">K</div>
-    <div>
-      <h1 class="text-lg font-bold leading-tight">K2 — AI Operating System</h1>
-      <p class="text-[11px] text-zinc-500 -mt-0.5">AI-first company command center · Marketing</p>
+  <!-- SIDEBAR -->
+  <aside class="w-60 shrink-0 bg-white border-r border-slate-100 flex flex-col p-4 sticky top-0 h-screen">
+    <div class="flex items-center gap-2 px-2 pb-5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-blue-600 text-white grid place-items-center font-extrabold">K</div>
+      <div><div class="font-extrabold leading-none">K2-AI</div><div class="text-[11px] text-slate-400">AI Operating System</div></div>
     </div>
-  </div>
-  <div class="flex items-center gap-2 text-xs">
-    <span id="livedot" class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-    <span class="text-zinc-400">live</span>
-  </div>
-</header>
-
-<main class="p-6 space-y-7 max-w-6xl mx-auto">
-
-  <!-- Company Pulse + KPI -->
-  <section class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-    <div class="glass rounded-2xl border border-zinc-800 p-5 flex items-center gap-5">
-      <div class="relative w-20 h-20 shrink-0">
-        <svg viewBox="0 0 36 36" class="w-20 h-20 -rotate-90">
-          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1f2937" stroke-width="3"></circle>
-          <circle id="pulsearc" cx="18" cy="18" r="15.9" fill="none" stroke="#34d399" stroke-width="3"
-                  stroke-dasharray="100 100" stroke-linecap="round"></circle>
-        </svg>
-        <div id="pulseval" class="absolute inset-0 grid place-items-center text-lg font-bold">—</div>
+    <nav class="space-y-1 flex-1 overflow-auto">
+      <div class="navi">▦ Overview</div>
+      <div class="navi">✦ AI Agents</div>
+      <div class="navi active">◈ Marketing</div>
+      <div class="navi">⊞ Sales / CRM</div>
+      <div class="navi">€ Finance</div>
+      <div class="navi">§ Legal &amp; Compliance</div>
+      <div class="navi">⚙ Operations</div>
+      <div class="navi">☺ HR</div>
+      <div class="navi">▤ Projects</div>
+      <div class="navi">▢ Documents</div>
+      <div class="navi">⟳ Automations</div>
+      <div class="navi">▭ Analytics</div>
+      <div class="navi">⚙ Settings</div>
+    </nav>
+    <div class="card p-3 mt-3">
+      <div class="text-[11px] font-bold text-slate-500 mb-2">K2-AI Core Status</div>
+      <div class="space-y-1.5 text-[12px]">
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b id="cs-agents">18</b><span class="text-slate-400">Agents Online</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-autom">42</b><span class="text-slate-400">Automations Active</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending">—</b><span class="text-slate-400">Pending Approvals</span></div>
       </div>
-      <div>
-        <div class="text-xs uppercase tracking-wider text-zinc-500">Company Pulse</div>
-        <div class="text-sm text-zinc-300 mt-1">Marketing operativo</div>
-        <div id="pulsesub" class="text-xs text-zinc-500 mt-1">—</div>
+      <div class="mt-2"><div class="text-[11px] text-slate-400 mb-1">System Health <b class="text-slate-700">98%</b></div>
+        <div class="h-1.5 rounded-full bg-slate-100"><div class="h-1.5 rounded-full bg-emerald-500" style="width:98%"></div></div></div>
+    </div>
+    <div class="flex items-center gap-2 px-1 pt-3">
+      <div class="w-8 h-8 rounded-full bg-slate-200 grid place-items-center text-xs font-bold">LR</div>
+      <div><div class="text-sm font-bold leading-none">Admin</div><div class="text-[11px] text-slate-400">CEO</div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="flex-1 min-w-0">
+    <!-- topbar -->
+    <header class="flex items-center gap-4 px-7 py-4 bg-white/70 backdrop-blur border-b border-slate-100 sticky top-0 z-10">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-emerald-100 grid place-items-center">◈</div>
+        <div>
+          <div class="font-extrabold leading-none flex items-center gap-2">Marketing Agent
+            <span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
+          <div class="text-[12px] text-slate-400">AI Marketing Agent · Autonomous execution with human oversight</div>
+        </div>
       </div>
-    </div>
-    <div id="kpis" class="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-  </section>
+      <div class="flex-1"></div>
+      <div class="hidden md:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 w-72 text-slate-400 text-sm">🔍 Ask AIOS anything… <span class="ml-auto text-[11px] bg-white rounded px-1.5 py-0.5">⌘K</span></div>
+      <button class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2">⤓ Generate Report</button>
+      <button class="text-sm font-semibold bg-blue-600 text-white rounded-xl px-3 py-2">⚡ Launch Automation</button>
+    </header>
 
-  <!-- Approval queue -->
-  <section>
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-sm uppercase tracking-wider text-zinc-400">Human Approval Queue</h2>
-      <button onclick="refresh()" class="text-xs text-zinc-400 hover:text-zinc-100">↻ aggiorna</button>
-    </div>
-    <div id="queue" class="space-y-3"></div>
-  </section>
+    <main class="p-7 space-y-6 max-w-[1280px]">
 
-  <!-- Agents -->
-  <section>
-    <h2 class="text-sm uppercase tracking-wider text-zinc-400 mb-3">AI Agents</h2>
-    <div id="agents" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-  </section>
+      <div class="flex gap-6 flex-col xl:flex-row">
+        <div class="flex-1 min-w-0 space-y-6">
 
-  <p class="text-center text-[11px] text-zinc-600 pt-4">K2-AI Operating System · cockpit MVP</p>
-</main>
+          <!-- HERO -->
+          <section class="card p-6 flex flex-col md:flex-row gap-6 items-center">
+            <div class="w-full md:w-64 h-40 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-600 grid place-items-center text-white/80 text-6xl shrink-0">🤖</div>
+            <div class="flex-1">
+              <h2 class="text-xl font-extrabold">Marketing Agent is analyzing, optimizing and executing</h2>
+              <p class="text-slate-500 text-sm mb-4">Data-driven marketing operations across all channels</p>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div><div class="text-[11px] text-slate-400">📣 Campaigns Active</div><div class="text-2xl font-extrabold">12</div></div>
+                <div><div class="text-[11px] text-slate-400">💶 Budget Managed</div><div class="text-2xl font-extrabold">€48.230</div><div class="text-[11px] pos">+14.6%</div></div>
+                <div><div class="text-[11px] text-slate-400">👥 Leads Generated</div><div class="text-2xl font-extrabold">126</div><div class="text-[11px] pos">+32%</div></div>
+                <div><div class="text-[11px] text-slate-400">📈 ROI Medio</div><div class="text-2xl font-extrabold">4.8x</div><div class="text-[11px] pos">+18%</div></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- tabs -->
+          <div class="flex gap-5 border-b border-slate-100 overflow-x-auto">
+            <div class="tab active">Overview</div><div class="tab">Campaigns</div><div class="tab">Content</div>
+            <div class="tab">Channels</div><div class="tab">Leads</div><div class="tab">Analytics</div>
+            <div class="tab">SEO</div><div class="tab">Social Media</div><div class="tab">Email Marketing</div>
+            <div class="tab">Automations</div><div class="tab">Reports</div><div class="tab">Settings</div>
+          </div>
+
+          <!-- KPI row -->
+          <section id="kpirow" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3"></section>
+
+          <!-- 3 panels -->
+          <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="card p-4 lg:col-span-1">
+              <div class="font-bold text-sm mb-3">Campaign Performance</div>
+              <table class="w-full text-[12px]"><tbody id="camps"></tbody></table>
+            </div>
+            <div class="card p-4">
+              <div class="font-bold text-sm mb-2">Channel Performance</div>
+              <div class="relative h-44"><canvas id="donutCh"></canvas></div>
+            </div>
+            <div class="card p-4">
+              <div class="font-bold text-sm mb-3">Top Performing Content</div>
+              <table class="w-full text-[12px]"><tbody id="content"></tbody></table>
+            </div>
+          </section>
+
+          <!-- DECISIONI (real) -->
+          <section class="card p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <h3 class="font-extrabold">Decisioni da prendere</h3>
+              <span id="dec-count" class="chip bg-amber-100 text-amber-700">— in attesa</span>
+              <span class="text-[11px] text-slate-400">· collegate al kernel AIOS (Supabase)</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-[13px]">
+                <thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
+                  <th class="py-2 pr-3">Priorità</th><th class="py-2 pr-3">Decisione</th>
+                  <th class="py-2 pr-3">Descrizione</th><th class="py-2 pr-3">Raccomandazione AI</th>
+                  <th class="py-2 pr-3 text-right">Azione</th></tr></thead>
+                <tbody id="decisioni"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- RIGHT RAIL -->
+        <aside class="w-full xl:w-80 shrink-0 space-y-4">
+          <div class="card p-4">
+            <div class="flex items-center justify-between mb-3"><div class="font-bold text-sm">Agent Status</div>
+              <span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
+            <p class="text-[12px] text-slate-400 mb-2">The Marketing Agent is working on:</p>
+            <ul class="space-y-1.5 text-[13px]">
+              <li>✅ Analyzing campaign performance</li>
+              <li>✅ Optimizing ad spend allocation</li>
+              <li>✅ Generating content calendar</li>
+              <li>✅ A/B testing new creatives</li>
+              <li>✅ Segmenting audience</li>
+              <li>✅ Updating lead scoring model</li>
+            </ul>
+            <button class="w-full mt-3 text-sm font-semibold border border-slate-200 rounded-xl py-2">View agent logs</button>
+          </div>
+          <div class="card p-4">
+            <div class="font-bold text-sm mb-3">Budget Overview</div>
+            <div class="relative h-40"><canvas id="donutBudget"></canvas></div>
+            <div class="text-[12px] space-y-1 mt-3">
+              <div class="flex justify-between"><span class="text-slate-400">● Speso</span><b>€48.230</b></div>
+              <div class="flex justify-between"><span class="text-slate-400">● Impegnato</span><b>€7.120</b></div>
+              <div class="flex justify-between"><span class="text-slate-400">● Disponibile</span><b>€4.650</b></div>
+            </div>
+          </div>
+          <div class="card p-4">
+            <div class="font-bold text-sm mb-3">Quick Actions</div>
+            <div class="space-y-2 text-[13px]">
+              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">＋ Create New Campaign</button>
+              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">💡 Generate Content Ideas</button>
+              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">🔍 Analyze Competitors</button>
+              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">🧪 Launch A/B Test</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+      <p class="text-center text-[11px] text-slate-400">K2-AI Operating System · Marketing · KPI/grafici demo, "Decisioni da prendere" e Pending sono dati reali dal kernel</p>
+    </main>
+  </div>
+</div>
 
 <script>
+const KPIS = [
+  {l:"Total Revenue Influenced", v:"€84.200", d:"+18.2%", up:1},
+  {l:"Marketing ROI", v:"4.8x", d:"+24.1%", up:1},
+  {l:"Leads Generated", v:"126", d:"+32.0%", up:1},
+  {l:"Cost per Lead", v:"€24.3", d:"-12.4%", up:1},
+  {l:"Conversion Rate", v:"3.7%", d:"+0.8%", up:1},
+  {l:"Customer Acquisition Cost", v:"€78.6", d:"-15.6%", up:1},
+];
+function spark(){ return `<svg viewBox="0 0 80 24" class="w-20 h-6"><polyline fill="none" stroke="#06b6d4" stroke-width="2" points="0,18 12,16 24,19 36,10 48,12 60,5 72,7 80,3"/></svg>`; }
+document.getElementById("kpirow").innerHTML = KPIS.map(k=>`
+  <div class="card p-3">
+    <div class="text-[11px] text-slate-400">${k.l}</div>
+    <div class="flex items-end justify-between"><div class="text-xl font-extrabold mt-1">${k.v}</div>${spark()}</div>
+    <div class="text-[11px] ${k.up?'pos':'neg'}">${k.d}</div>
+  </div>`).join("");
+
+const CAMPS = [["AIOS Launch Campaign","LinkedIn","6.2x"],["Q2 Brand Awareness","Instagram","4.1x"],
+  ["Product Demo Series","YouTube","5.3x"],["Email Nurturing Flow","Email","7.8x"],["Retargeting Campaign","Google Ads","3.2x"]];
+document.getElementById("camps").innerHTML = CAMPS.map(c=>`<tr class="border-t border-slate-50">
+  <td class="py-2 font-semibold">${c[0]}</td><td class="text-slate-400">${c[1]}</td>
+  <td><span class="text-emerald-600 text-[11px]">● Active</span></td><td class="text-right font-bold">${c[2]}</td></tr>`).join("");
+
+const CONTENT = [["AIOS Explained (Video)","12.4K","28"],["AI-First Company Guide","8.2K","21"],
+  ["Case Study: Growth 10x","6.1K","18"],["Marketing Automation","4.7K","12"],["Webinar: AI Marketing","3.9K","16"]];
+document.getElementById("content").innerHTML = CONTENT.map(c=>`<tr class="border-t border-slate-50">
+  <td class="py-2 font-semibold">${c[0]}</td><td class="text-slate-400 text-right">${c[1]} views</td>
+  <td class="text-right font-bold">${c[2]} lead</td></tr>`).join("");
+
+new Chart(document.getElementById("donutCh"),{type:"doughnut",
+  data:{labels:["LinkedIn","Website","Instagram","Email","YouTube","Altro"],
+    datasets:[{data:[42,31,22,15,9,7],backgroundColor:["#2563eb","#06b6d4","#a855f7","#f59e0b","#ef4444","#94a3b8"],borderWidth:0}]},
+  options:{cutout:"70%",plugins:{legend:{position:"right",labels:{boxWidth:8,font:{size:10}}}}}});
+new Chart(document.getElementById("donutBudget"),{type:"doughnut",
+  data:{labels:["Speso","Impegnato","Disponibile"],datasets:[{data:[48230,7120,4650],backgroundColor:["#2563eb","#06b6d4","#e2e8f0"],borderWidth:0}]},
+  options:{cutout:"72%",plugins:{legend:{display:false}}}});
+
+// ---- REAL DATA: decisioni da prendere (approval queue) ----
 async function jget(u){ return (await fetch(u)).json(); }
 async function jpost(u,b){ return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json(); }
+const PRIO = ["Alta","Media","Bassa"];
+const prioColor = {Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
 
-function kpiCard(label, value, accent){
-  return `<div class="glass rounded-2xl border border-zinc-800 p-4">
-    <div class="text-2xl font-bold ${accent||''}">${value}</div>
-    <div class="text-[11px] text-zinc-500 mt-1">${label}</div></div>`;
-}
-
-async function loadOverview(){
-  const o = await jget("/api/overview");
-  const acc = o.agents?.[0]?.accuracy ?? "—";
-  document.getElementById("kpis").innerHTML =
-      kpiCard("Approvazioni in attesa", o.pending_count, "text-amber-300")
-    + kpiCard("Automazioni eseguite", o.automations_done, "text-emerald-300")
-    + kpiCard("Eventi audit", o.audit_count, "text-cyan-300")
-    + kpiCard("AI Agent Accuracy", acc+"%", "text-violet-300");
-  // pulse = healthy if queue small; simple heuristic for MVP
-  const pulse = Math.max(40, 100 - o.pending_count*6);
-  document.getElementById("pulseval").textContent = pulse+"%";
-  document.getElementById("pulsearc").setAttribute("stroke-dasharray", pulse+" 100");
-  document.getElementById("pulsesub").textContent = o.pending_count+" proposte da rivedere";
-  // agents
-  document.getElementById("agents").innerHTML = (o.agents||[]).map(a=>`
-    <div class="glass rounded-2xl border border-zinc-800 p-4 flex items-center justify-between">
-      <div><div class="font-semibold">${a.name}</div>
-        <div class="text-[11px] text-zinc-500">${a.status}</div></div>
-      <div class="text-right"><div class="text-emerald-300 font-bold">${a.accuracy}%</div>
-        <div class="text-[10px] text-zinc-500">accuracy</div></div>
-    </div>`).join("");
-}
-
-function card(a){
-  const p = a.payload || {};
-  return `<div class="glass rounded-2xl border border-zinc-800 p-4" data-id="${a.id}">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300">${p.tipo||"proposta"}</span>
-      <span class="text-xs text-zinc-600">#${a.id} · ${a.actor||""}</span>
-    </div>
-    <div class="font-semibold mb-1">${p.titolo||""}</div>
-    <div class="text-sm text-zinc-400 mb-1 whitespace-pre-wrap">${(p.contenuto||"").slice(0,400)}</div>
-    <div class="text-xs text-zinc-500 mb-3">perché: ${p.motivo||"—"}</div>
-    <div class="flex gap-2">
-      <button class="approve px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold">Approva</button>
-      <button class="edit px-3 py-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-sm">Modifica</button>
-      <button class="reject px-3 py-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-sm">Rifiuta</button>
-    </div></div>`;
-}
-
-async function loadQueue(){
+async function loadReal(){
+  const ov = await jget("/api/overview");
+  document.getElementById("cs-pending").textContent = ov.pending_count;
   const items = await jget("/api/approvals");
-  const q = document.getElementById("queue");
-  if(!items.length){ q.innerHTML = '<div class="glass rounded-2xl border border-zinc-800 p-6 text-center text-zinc-500 text-sm">Nessuna proposta in attesa. 🎉</div>'; return; }
-  q.innerHTML = items.map(card).join("");
-  items.forEach(a=>{
-    const el = q.querySelector(`[data-id="${a.id}"]`);
-    el.querySelector(".approve").onclick = async(e)=>{ e.target.textContent="…"; await jpost(`/api/approvals/${a.id}/approve`,{}); refresh(); };
-    el.querySelector(".reject").onclick = async()=>{ const reason = prompt("Motivo del rifiuto?")||"rifiutato"; await jpost(`/api/approvals/${a.id}/reject`,{reason}); refresh(); };
-    el.querySelector(".edit").onclick = async()=>{
-      const titolo = prompt("Titolo:", a.payload.titolo||""); if(titolo===null) return;
-      const contenuto = prompt("Contenuto:", a.payload.contenuto||""); if(contenuto===null) return;
-      await jpost(`/api/approvals/${a.id}/approve`,{edited_payload:{...a.payload, titolo, contenuto}}); refresh();
-    };
+  document.getElementById("dec-count").textContent = items.length + " in attesa";
+  const body = document.getElementById("decisioni");
+  if(!items.length){ body.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>'; return; }
+  body.innerHTML = items.map((a,i)=>{ const p=a.payload||{}; const pr=PRIO[i%3];
+    return `<tr class="border-t border-slate-100 align-top" data-id="${a.id}">
+      <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
+      <td class="py-3 pr-3 font-semibold max-w-[200px]">${p.titolo||p.tipo||"Proposta"}</td>
+      <td class="py-3 pr-3 text-slate-500 max-w-[260px]">${(p.contenuto||"").slice(0,140)}</td>
+      <td class="py-3 pr-3 text-slate-500 max-w-[220px]">${(p.motivo||"—").slice(0,130)}</td>
+      <td class="py-3 text-right whitespace-nowrap">
+        <button class="approve bg-emerald-500 hover:bg-emerald-400 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg">Approva</button>
+        <button class="edit border border-slate-200 text-[12px] px-3 py-1.5 rounded-lg">Modifica</button>
+        <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg">Rifiuta</button>
+      </td></tr>`; }).join("");
+  items.forEach(a=>{ const row=body.querySelector(`[data-id="${a.id}"]`);
+    row.querySelector(".approve").onclick=async e=>{ e.target.textContent="…"; await jpost(`/api/approvals/${a.id}/approve`,{}); loadReal(); };
+    row.querySelector(".reject").onclick=async()=>{ const reason=prompt("Motivo del rifiuto?")||"rifiutato"; await jpost(`/api/approvals/${a.id}/reject`,{reason}); loadReal(); };
+    row.querySelector(".edit").onclick=async()=>{ const titolo=prompt("Titolo:",a.payload.titolo||""); if(titolo===null)return;
+      const contenuto=prompt("Contenuto:",a.payload.contenuto||""); if(contenuto===null)return;
+      await jpost(`/api/approvals/${a.id}/approve`,{edited_payload:{...a.payload,titolo,contenuto}}); loadReal(); };
   });
 }
-async function refresh(){ try{ await loadOverview(); await loadQueue(); }catch(e){ console.error(e); } }
-refresh();
+loadReal();
 </script>
 </body>
 </html>
