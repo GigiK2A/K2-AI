@@ -78,6 +78,18 @@ SKILLS_DIR = Path(
 STORAGE_UPLOADS_BUCKET = _env("STORAGE_UPLOADS_BUCKET", default="kbot-uploads")
 STORAGE_REPORTS_BUCKET = _env("STORAGE_REPORTS_BUCKET", default="kbot-reports")
 
+# Catalog (fonte unica prezzi/servizi/percorsi). Interim: file committato in
+# app/data/catalog.json. Target: generato da k2a-catalogo (vedi
+# docs/interfaccia-kbot-8e.md §2). Override con KBOT_CATALOG_PATH.
+CATALOG_PATH = Path(
+    _env("KBOT_CATALOG_PATH", default=str(ROOT / "app" / "data" / "catalog.json"))
+).resolve()
+
+# Motore 8e (generazione deliverable). Vuoto in dev → si usa il MOCK locale
+# (kbot/mock-8e). Vedi docs/interfaccia-kbot-8e.md.
+ENGINE_8E_BASE_URL = _env("K2A_8E_BASE_URL", default="http://localhost:8800")
+ENGINE_8E_API_KEY = _env("K2A_8E_API_KEY")  # Bearer backend-to-backend
+
 # Prompt size limits, mirroring api/kbot/_shared.ts.
 CHAT_SYSTEM_MAX_CHARS = int(_env("CHAT_SYSTEM_MAX_CHARS", default="26000") or "26000")
 PDF_SYSTEM_MAX_CHARS = int(_env("PDF_SYSTEM_MAX_CHARS", default="55000") or "55000")

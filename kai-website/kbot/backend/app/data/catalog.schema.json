@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "K2-AI catalog.json",
+  "type": "object",
+  "required": ["version", "tipi_listino", "servizi", "percorsi", "mapping_tag_to_servizi"],
+  "properties": {
+    "version": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "note": { "type": "string" },
+    "engine": {
+      "type": "object",
+      "properties": {
+        "expected_8e_version": { "type": "string" },
+        "expected_grounding_snapshot_version": { "type": "string" }
+      }
+    },
+    "tipi_listino": { "type": "object" },
+    "servizi": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "tipo", "label", "prezzo_eur", "genera_via"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "tipo": { "enum": ["consumo", "tappa", "servizio", "retainer"] },
+          "label": { "type": "string", "minLength": 1 },
+          "descrizione_breve": { "type": "string" },
+          "prezzo_eur": { "type": "integer", "minimum": 0 },
+          "tag_pillar_sito": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^P[0-9]{2}$" }
+          },
+          "genera_via": { "enum": ["8e", "manuale", "external"] },
+          "blueprint_id": { "type": ["string", "null"] },
+          "output_schema_ref": { "type": ["string", "null"] },
+          "percorso_padre": { "type": "string" },
+          "ordine": { "type": "integer", "minimum": 1 },
+          "tappe_ordinate": { "type": "array", "items": { "type": "string" } },
+          "sconto_completamento_pct": { "type": "integer", "minimum": 0, "maximum": 100 }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "genera_via": { "const": "8e" } } },
+            "then": { "required": ["blueprint_id"], "properties": { "blueprint_id": { "type": "string" } } }
+          }
+        ]
+      }
+    },
+    "percorsi": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "destinazione_id", "tappe_id_ordinate"],
+        "properties": {
+          "id": { "type": "string" },
+          "destinazione_id": { "type": "string" },
+          "tappe_id_ordinate": { "type": "array", "items": { "type": "string" } },
+          "sconto_completamento_pct": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    "abbonamenti": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "prezzo_mensile_eur": { "type": "integer" },
+          "crediti_mensili": { "type": "integer" },
+          "sconto_tappa_pct": { "type": "integer" }
+        }
+      }
+    },
+    "mapping_tag_to_servizi": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "check": { "type": "string" },
+          "boost_primario": { "type": "string" }
+        }
+      }
+    }
+  }
+}

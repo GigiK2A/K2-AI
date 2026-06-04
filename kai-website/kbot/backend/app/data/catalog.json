@@ -1,0 +1,158 @@
+{
+  "version": "0.1.0-interim",
+  "updated_at": "2026-06-04",
+  "note": "INTERIM editato a mano da Luigi per sblocco sviluppo. Target: generato da k2a-catalogo (vedi docs/interfaccia-kbot-8e.md §2). Prezzi e blueprint_id DA CONFERMARE con Luca.",
+  "engine": {
+    "expected_8e_version": "mock-0.1",
+    "expected_grounding_snapshot_version": "mock-0.1"
+  },
+  "tipi_listino": {
+    "consumo":  { "label": "Check Express", "ruolo": "entry" },
+    "tappa":    { "label": "Tappa percorso", "ruolo": "intermedio" },
+    "servizio": { "label": "Boost", "ruolo": "destinazione" },
+    "retainer": { "label": "Abbonamento", "ruolo": "post-boost" }
+  },
+  "servizi": [
+    {
+      "id": "check-express",
+      "tipo": "consumo",
+      "label": "Check Express PMI",
+      "descrizione_breve": "Diagnosi rapida, report PDF di sintesi.",
+      "prezzo_eur": 19,
+      "tag_pillar_sito": ["P01","P02","P03","P04","P05","P06","P07","P08","P09","P10","P11","P12","P13","P14","P15","P16","P17","P18","P19","P20"],
+      "genera_via": "8e",
+      "blueprint_id": "check-pmi-express.check",
+      "output_schema_ref": "check-pmi-express/schemas/output-schema.json"
+    },
+    {
+      "id": "flusso-legalboost-pmi",
+      "tipo": "servizio",
+      "label": "LegalBoost",
+      "descrizione_breve": "Analisi legale/contrattuale fondata su norma vigente con citazioni.",
+      "prezzo_eur": 1499,
+      "tag_pillar_sito": ["P03"],
+      "genera_via": "8e",
+      "blueprint_id": "flusso-legalboost-pmi.boost",
+      "output_schema_ref": "flusso-legalboost-pmi/schemas/output-schema.json"
+    },
+    {
+      "id": "flusso-fiscoboost-pmi",
+      "tipo": "servizio",
+      "label": "FiscoBoost",
+      "descrizione_breve": "Analisi fiscale/tributaria con aliquote per anno d'imposta.",
+      "prezzo_eur": 1499,
+      "tag_pillar_sito": ["P02"],
+      "genera_via": "8e",
+      "blueprint_id": "flusso-fiscoboost-pmi.boost",
+      "output_schema_ref": "flusso-fiscoboost-pmi/schemas/output-schema.json"
+    },
+    {
+      "id": "flusso-advisorboost-pmi",
+      "tipo": "servizio",
+      "label": "AdvisorBoost",
+      "descrizione_breve": "Diagnosi strategica completa + roadmap operativa.",
+      "prezzo_eur": 2499,
+      "tag_pillar_sito": ["P12","P09","P04"],
+      "genera_via": "8e",
+      "blueprint_id": "flusso-advisorboost-pmi.boost",
+      "output_schema_ref": "flusso-advisorboost-pmi/schemas/output-schema.json",
+      "tappe_ordinate": ["ab-tappa-1","ab-tappa-2","ab-tappa-3","ab-tappa-4","ab-tappa-5"],
+      "sconto_completamento_pct": 24
+    },
+    {
+      "id": "flusso-agevolazioni-pmi",
+      "tipo": "servizio",
+      "label": "Dossier Agevolazioni PMI",
+      "descrizione_breve": "Mappatura bandi/agevolazioni applicabili. Dato dinamico (MCP live / snapshot recente).",
+      "prezzo_eur": 1999,
+      "tag_pillar_sito": ["P13"],
+      "genera_via": "8e",
+      "blueprint_id": "flusso-agevolazioni-pmi.boost",
+      "output_schema_ref": "flusso-agevolazioni-pmi/schemas/output-schema.json"
+    },
+    {
+      "id": "ab-tappa-1",
+      "tipo": "tappa",
+      "label": "AdvisorBoost · Tappa 1 — Check di partenza",
+      "prezzo_eur": 299,
+      "percorso_padre": "advisorboost",
+      "ordine": 1,
+      "genera_via": "8e",
+      "blueprint_id": "check-pmi-express.check",
+      "output_schema_ref": "check-pmi-express/schemas/output-schema.json"
+    },
+    {
+      "id": "ab-tappa-2",
+      "tipo": "tappa",
+      "label": "AdvisorBoost · Tappa 2 — Analisi settore",
+      "prezzo_eur": 349,
+      "percorso_padre": "advisorboost",
+      "ordine": 2,
+      "genera_via": "8e",
+      "blueprint_id": "analisi-settore-pmi.tappa",
+      "output_schema_ref": "analisi-settore-pmi/schemas/output-schema.json"
+    },
+    {
+      "id": "ab-tappa-3",
+      "tipo": "tappa",
+      "label": "AdvisorBoost · Tappa 3 — Analisi bilancio",
+      "prezzo_eur": 449,
+      "percorso_padre": "advisorboost",
+      "ordine": 3,
+      "genera_via": "8e",
+      "blueprint_id": "analisi-bilancio-pmi.tappa",
+      "output_schema_ref": "analisi-bilancio-pmi/schemas/output-schema.json"
+    },
+    {
+      "id": "ab-tappa-4",
+      "tipo": "tappa",
+      "label": "AdvisorBoost · Tappa 4 — Posizionamento",
+      "prezzo_eur": 449,
+      "percorso_padre": "advisorboost",
+      "ordine": 4,
+      "genera_via": "8e",
+      "blueprint_id": "posizionamento-pmi.tappa",
+      "output_schema_ref": "posizionamento-pmi/schemas/output-schema.json"
+    },
+    {
+      "id": "ab-tappa-5",
+      "tipo": "tappa",
+      "label": "AdvisorBoost · Tappa 5 — Sintesi finale",
+      "prezzo_eur": 701,
+      "percorso_padre": "advisorboost",
+      "ordine": 5,
+      "genera_via": "8e",
+      "blueprint_id": "flusso-advisorboost-pmi.boost",
+      "output_schema_ref": "flusso-advisorboost-pmi/schemas/output-schema.json"
+    },
+    {
+      "id": "boost-crm-automation",
+      "tipo": "servizio",
+      "label": "Boost Agenti Email & CRM",
+      "descrizione_breve": "Servizio di implementazione AI operativa (no blueprint diagnostico).",
+      "prezzo_eur": 1499,
+      "tag_pillar_sito": ["P01"],
+      "genera_via": "manuale",
+      "blueprint_id": null,
+      "output_schema_ref": null
+    }
+  ],
+  "percorsi": [
+    {
+      "id": "advisorboost",
+      "destinazione_id": "flusso-advisorboost-pmi",
+      "tappe_id_ordinate": ["ab-tappa-1","ab-tappa-2","ab-tappa-3","ab-tappa-4","ab-tappa-5"],
+      "sconto_completamento_pct": 24
+    }
+  ],
+  "abbonamenti": [],
+  "mapping_tag_to_servizi": {
+    "P01": { "check": "check-express", "boost_primario": "boost-crm-automation" },
+    "P02": { "check": "check-express", "boost_primario": "flusso-fiscoboost-pmi" },
+    "P03": { "check": "check-express", "boost_primario": "flusso-legalboost-pmi" },
+    "P04": { "check": "check-express", "boost_primario": "flusso-advisorboost-pmi" },
+    "P09": { "check": "check-express", "boost_primario": "flusso-advisorboost-pmi" },
+    "P12": { "check": "check-express", "boost_primario": "flusso-advisorboost-pmi" },
+    "P13": { "check": "check-express", "boost_primario": "flusso-agevolazioni-pmi" }
+  }
+}
