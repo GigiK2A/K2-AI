@@ -57,3 +57,18 @@ class InstagramClient:
         )
         data = self._get(self._uid, {"fields": fields})
         return data.get("business_discovery", {})
+
+    def account_insights(self,
+                         metrics=("reach", "accounts_engaged",
+                                  "total_interactions", "profile_views"),
+                         period: str = "day") -> dict[str, Any]:
+        data = self._get(f"{self._uid}/insights", {
+            "metric": ",".join(metrics),
+            "period": period,
+            "metric_type": "total_value",
+        })
+        out = {}
+        for m in data.get("data", []):
+            tv = m.get("total_value") or {}
+            out[m.get("name")] = tv.get("value")
+        return out

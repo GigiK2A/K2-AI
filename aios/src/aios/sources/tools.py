@@ -43,3 +43,8 @@ def competitor_tools(ig_client: Any, usernames: list[str]) -> list[Tool]:
                 out[u] = {"error": str(exc)}
         return out
     return [Tool(name="leggi_competitor_ig", action_type=None, readonly=True, run=_run)]
+
+
+def insights_tools(ig_client: Any) -> list[Tool]:
+    return [Tool(name="leggi_insight_ig", action_type=None, readonly=True,
+                 run=lambda **_: ig_client.account_insights())]
