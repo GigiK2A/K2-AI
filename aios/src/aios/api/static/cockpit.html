@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>K2-AI Operating System — Marketing</title>
+<title>K2-AI Operating System</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +16,6 @@
   .navi:hover{background:#f1f5f9}.navi.active{background:#e6f6fa;color:#0891b2}
   .tab{padding:.5rem .15rem;color:#64748b;font-weight:600;font-size:.86rem;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
   .tab.active{color:#0891b2;border-color:#06b6d4}
-  .pos{color:#16a34a}.neg{color:#dc2626}
   .chip{font-size:.62rem;font-weight:700;padding:.14rem .55rem;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
   .real{font-size:.58rem;font-weight:700;color:#0891b2;background:#e6f6fa;border-radius:999px;padding:.08rem .45rem}
   .hero{background:radial-gradient(120% 140% at 85% 10%,#1e3a8a 0%,#0f172a 55%,#020617 100%)}
@@ -32,23 +31,14 @@
       <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white grid place-items-center font-extrabold">K</div>
       <div><div class="font-extrabold leading-none">K2-AI</div><div class="text-[11px] text-slate-400">AI Operating System</div></div>
     </div>
-    <nav class="space-y-1 flex-1 overflow-auto">
-      <div class="navi">▦ Overview</div><div class="navi">✦ AI Agents</div>
-      <div class="navi active">◈ Marketing</div><div class="navi">⊞ Sales / CRM</div>
-      <div class="navi">€ Finance</div><div class="navi">§ Legal &amp; Compliance</div>
-      <div class="navi">⚙ Operations</div><div class="navi">☺ HR</div>
-      <div class="navi">▤ Projects</div><div class="navi">▢ Documents</div>
-      <div class="navi">⟳ Automations</div><div class="navi">▭ Analytics</div><div class="navi">⚙ Settings</div>
-    </nav>
+    <nav id="nav" class="space-y-1 flex-1 overflow-auto"></nav>
     <div class="card p-3 mt-3">
       <div class="text-[11px] font-bold text-slate-500 mb-2">K2-AI Core Status</div>
       <div class="space-y-1.5 text-[12px]">
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b>1</b><span class="text-slate-400">Agente attivo</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b id="cs-agents">6</b><span class="text-slate-400">Agenti</span></div>
         <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-aud">—</b><span class="text-slate-400">Eventi audit</span></div>
         <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending">—</b><span class="text-slate-400">Decisioni in attesa</span></div>
       </div>
-      <div class="mt-2"><div class="text-[11px] text-slate-400 mb-1">System Health <b class="text-slate-700">98%</b></div>
-        <div class="h-1.5 rounded-full bg-slate-100"><div class="h-1.5 rounded-full bg-emerald-500" style="width:98%"></div></div></div>
     </div>
     <div class="flex items-center gap-2 px-1 pt-3">
       <div class="w-8 h-8 rounded-full bg-slate-200 grid place-items-center text-xs font-bold">LR</div>
@@ -59,223 +49,199 @@
   <div class="flex-1 min-w-0">
     <header class="flex items-center gap-4 px-7 py-4 bg-white/70 backdrop-blur border-b border-slate-100 sticky top-0 z-10">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-emerald-100 grid place-items-center">◈</div>
-        <div><div class="font-extrabold leading-none flex items-center gap-2">Marketing Agent
+        <div id="hd-ico" class="w-8 h-8 rounded-lg bg-emerald-100 grid place-items-center">◈</div>
+        <div><div id="hd-title" class="font-extrabold leading-none flex items-center gap-2">—
           <span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-          <div class="text-[12px] text-slate-400">AI Marketing Agent · esecuzione autonoma con supervisione umana</div></div>
+          <div id="hd-sub" class="text-[12px] text-slate-400">esecuzione autonoma con supervisione umana</div></div>
       </div>
       <div class="flex-1"></div>
-      <div class="hidden lg:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 w-64 text-slate-400 text-sm">🔍 Ask AIOS anything… <span class="ml-auto text-[11px] bg-white rounded px-1.5 py-0.5">⌘K</span></div>
-      <button class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2">⤓ Report</button>
-      <select id="domsel" class="text-sm border border-slate-200 rounded-xl px-2 py-2 bg-white">
-        <option value="marketing">Marketing</option><option value="vendite">Vendite</option>
-      </select>
       <button onclick="runAgent()" class="text-sm font-semibold bg-emerald-600 text-white rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
-      <button onclick="boot()" class="text-sm font-semibold bg-blue-600 text-white rounded-xl px-3 py-2">↻ Aggiorna</button>
+      <button onclick="load()" class="text-sm font-semibold bg-blue-600 text-white rounded-xl px-3 py-2">↻ Aggiorna</button>
     </header>
 
-    <main class="p-7 space-y-6 max-w-[1300px]">
-      <div class="flex gap-6 flex-col xl:flex-row">
-        <div class="flex-1 min-w-0 space-y-6">
-
-          <section class="card overflow-hidden">
-            <div class="hero heroGrid p-6 flex flex-col md:flex-row gap-6 items-center text-white">
-              <div class="w-full md:w-56 h-36 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-7xl shrink-0">🤖</div>
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● Active</span><span class="real">dati reali dall'agente</span></div>
-                <h2 class="text-xl font-extrabold">Il Marketing Agent sta analizzando e proponendo</h2>
-                <p class="text-white/60 text-sm mb-4">Operazioni marketing data-driven · profilo @k2_ai.it</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div><div class="text-[11px] text-white/50">Follower IG</div><div class="text-2xl font-extrabold" id="h-foll">—</div></div>
-                  <div><div class="text-[11px] text-white/50">Post pubblicati</div><div class="text-2xl font-extrabold" id="h-post">—</div></div>
-                  <div><div class="text-[11px] text-white/50">Interazioni (oggi)</div><div class="text-2xl font-extrabold" id="h-eng">—</div></div>
-                  <div><div class="text-[11px] text-white/50">Proposte AI</div><div class="text-2xl font-extrabold" id="h-prop">—</div></div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <div class="flex gap-5 border-b border-slate-100 overflow-x-auto">
-            <div class="tab active">Overview</div><div class="tab">Campaigns</div><div class="tab">Content</div>
-            <div class="tab">Channels</div><div class="tab">Leads</div><div class="tab">Analytics</div>
-            <div class="tab">SEO</div><div class="tab">Social Media</div><div class="tab">Email</div>
-            <div class="tab">Automations</div><div class="tab">Reports</div>
-          </div>
-
-          <section id="kpirow" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3"></section>
-
-          <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div class="card p-4">
-              <div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div>
-              <table class="w-full text-[12px]"><tbody id="pipe"></tbody></table>
-            </div>
-            <div class="card p-4">
-              <div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div>
-              <div class="relative h-44"><canvas id="donutCh"></canvas></div>
-            </div>
-            <div class="card p-4">
-              <div class="font-bold text-sm mb-3 flex items-center gap-2">Post Instagram recenti <span class="real">reale</span></div>
-              <table class="w-full text-[12px]"><tbody id="posts"></tbody></table>
-            </div>
-          </section>
-
-          <section class="card p-5">
-            <div class="flex items-center gap-3 mb-4">
-              <h3 class="font-extrabold">Decisioni da prendere</h3>
-              <span id="dec-count" class="chip bg-amber-100 text-amber-700">— in attesa</span>
-              <span class="real">reale · kernel AIOS</span>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-[13px]">
-                <thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-                  <th class="py-2 pr-3">Priorità</th><th class="py-2 pr-3">Decisione</th>
-                  <th class="py-2 pr-3">Descrizione</th><th class="py-2 pr-3">Raccomandazione AI</th>
-                  <th class="py-2 pr-3 text-right">Azione</th></tr></thead>
-                <tbody id="decisioni"></tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="card p-5">
-            <div class="flex items-center gap-3 mb-3">
-              <h3 class="font-extrabold">Deliverable approvati</h3>
-              <span class="real">reale · aios_deliverables</span>
-            </div>
-            <div id="deliverables" class="space-y-2 text-[13px]"></div>
-          </section>
-        </div>
-
-        <aside class="w-full xl:w-80 shrink-0 space-y-4">
-          <div class="card p-4">
-            <div class="flex items-center justify-between mb-3"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-            <p class="text-[12px] text-slate-400 mb-2">Il Marketing Agent sta lavorando su:</p>
-            <ul class="space-y-1.5 text-[13px]">
-              <li>✅ Analisi performance contenuti</li><li>✅ Lettura insight Instagram</li>
-              <li>✅ Generazione calendario editoriale</li><li>✅ Scoperta competitor</li>
-              <li>✅ Allineamento alla brand voice</li><li>✅ Proposte in coda approvazione</li>
-            </ul>
-          </div>
-          <div class="card p-4">
-            <div class="font-bold text-sm mb-3 flex items-center gap-2">Stato contenuti (servizi) <span class="real">reale</span></div>
-            <div class="relative h-40"><canvas id="donutStato"></canvas></div>
-            <div class="text-[12px] space-y-1 mt-3">
-              <div class="flex justify-between"><span class="text-slate-400">● Pubblicati</span><b id="st-pub">—</b></div>
-              <div class="flex justify-between"><span class="text-slate-400">● Da usare</span><b id="st-tod">—</b></div>
-            </div>
-          </div>
-          <div class="card p-4">
-            <div class="font-bold text-sm mb-3">Quick Actions</div>
-            <div class="space-y-2 text-[13px]">
-              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">＋ Genera nuovo contenuto</button>
-              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">🔍 Analizza competitor</button>
-              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">📅 Aggiorna calendario</button>
-            </div>
-          </div>
-        </aside>
-      </div>
-      <p class="text-center text-[11px] text-slate-400">K2-AI Operating System · Marketing · ogni numero è letto live dai sensori dell'agente (Instagram + kernel su Supabase)</p>
-    </main>
+    <main id="view" class="p-7 space-y-6 max-w-[1300px]"></main>
   </div>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
 const NUM=x=>(x===undefined||x===null||x==="")?"—":x;
+const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();}
 async function jpost(u,b){return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json();}
 const PRIO=["Alta","Media","Bassa"], prioColor={Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
-function spark(){return `<svg viewBox="0 0 80 24" class="w-16 h-6"><polyline fill="none" stroke="#06b6d4" stroke-width="2" points="0,18 12,16 24,19 36,11 48,13 60,6 72,8 80,4"/></svg>`;}
-let chCh,chSt;
 
-async function boot(){
-  let ov={},ins={},items=[];
-  try{ov=await jget("/api/overview");}catch(e){}
-  try{ins=await jget("/api/insights");}catch(e){}
-  try{items=await jget("/api/approvals");}catch(e){}
-  const prof=ins.profilo||{}, insg=ins.insight||{}, posts=ins.post||[], servizi=ins.servizi||[], topics=ins.topics||[];
+const META={
+  marketing:{ico:"◈",label:"Marketing",sub:"Operazioni marketing data-driven · profilo @k2_ai.it"},
+  vendite:{ico:"⊞",label:"Sales / CRM",sub:"Pipeline, lead e proposte commerciali"},
+  finance:{ico:"€",label:"Finance",sub:"Ricavi, costi, forecast e scadenze fiscali"},
+  operations:{ico:"⚙",label:"Operations",sub:"Commesse, fasi, SAL e avanzamento"},
+  legal:{ico:"§",label:"Legal & Compliance",sub:"GDPR, consensi, contratti e compliance"},
+  hr:{ico:"☺",label:"HR",sub:"Persone, recruiting, onboarding e org"},
+};
+const TBL={
+  leggi_lead:"Lead pipeline",leggi_memo_vendite:"Memo vendite",
+  leggi_conversioni:"Conversioni K-BOT",leggi_revenue:"Eventi ricavo (Stripe)",
+  leggi_valore_commesse:"Valore commesse",leggi_memoria_finance:"Memoria finance",
+  leggi_commesse:"Commesse",leggi_fasi:"Fasi progetto",leggi_task_commessa:"Task commessa",
+  leggi_documenti:"Documenti",leggi_task_operativi:"Task operativi",
+  leggi_iscritti_newsletter:"Iscritti newsletter",leggi_consensi_kbot:"Consensi K-BOT",
+  leggi_assegnatari:"Task assegnati",
+};
+let DOMAINS=[], CUR="marketing";
 
-  $("h-foll").textContent=NUM(prof.followers_count);
-  $("h-post").textContent=NUM(prof.media_count);
-  $("h-eng").textContent=NUM(insg.total_interactions);
-  $("h-prop").textContent=items.length;
-  $("cs-aud").textContent=NUM(ov.audit_count);
-  $("cs-pending").textContent=NUM(ov.pending_count!==undefined?ov.pending_count:items.length);
+async function buildNav(){
+  try{ const d=await jget("/api/domini"); DOMAINS=d.domini||[]; }catch(e){ DOMAINS=["marketing"]; }
+  $("nav").innerHTML = DOMAINS.map(d=>{
+    const m=META[d]||{ico:"•",label:d};
+    return `<div class="navi" data-dom="${d}">${m.ico} ${esc(m.label)}</div>`;
+  }).join("");
+  document.querySelectorAll("#nav .navi").forEach(n=>n.onclick=()=>{CUR=n.dataset.dom;load();});
+}
+function setHeader(){
+  const m=META[CUR]||{ico:"•",label:CUR,sub:""};
+  $("hd-ico").textContent=m.ico;
+  $("hd-title").innerHTML=`${esc(m.label)} Agent <span class="chip bg-emerald-100 text-emerald-700">● Active</span>`;
+  $("hd-sub").textContent=m.sub||"";
+  document.querySelectorAll("#nav .navi").forEach(n=>n.classList.toggle("active",n.dataset.dom===CUR));
+}
 
-  const pub=servizi.filter(s=>String(s.Stato||"").toLowerCase()==="usato").length;
-  const tod=servizi.length-pub;
-  $("st-pub").textContent=servizi.length?pub:"—";
-  $("st-tod").textContent=servizi.length?tod:"—";
-
-  const KPI=[
-    ["Follower Instagram", NUM(prof.followers_count), prof.username?("@"+prof.username):"agente IG"],
-    ["Reach (oggi)", NUM(insg.reach), "copertura"],
-    ["Profile views", NUM(insg.profile_views), "oggi"],
-    ["Account coinvolti", NUM(insg.accounts_engaged), "oggi"],
-    ["Proposte AI in coda", items.length, "da approvare"],
-  ];
-  $("kpirow").innerHTML=KPI.map(k=>`<div class="card p-3"><div class="text-[11px] text-slate-400">${k[0]}</div>
-    <div class="flex items-end justify-between"><div class="text-xl font-extrabold mt-1">${k[1]}</div>${spark()}</div>
-    <div class="text-[11px] text-slate-400">${k[2]}</div></div>`).join("");
-
-  $("pipe").innerHTML = servizi.length ? servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50">
-    <td class="py-2 font-semibold">${(s.Servizio||"").slice(0,28)}</td><td class="text-slate-400">${s.Categoria||""}</td>
-    <td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubblicato</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join("")
-    : '<tr><td class="py-4 text-slate-400 text-center">caricamento dall\'agente…</td></tr>';
-
-  $("posts").innerHTML = posts.length ? posts.map(p=>`<tr class="border-t border-slate-50">
-    <td class="py-2 font-semibold">${(p.caption||"(senza testo)").slice(0,42)}</td>
-    <td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join("")
-    : '<tr><td class="py-4 text-slate-400 text-center">caricamento…</td></tr>';
-
-  const pill={}; topics.forEach(t=>{const k=t.Pillar||"Altro"; pill[k]=(pill[k]||0)+1;});
-  if(chCh)chCh.destroy(); if(chSt)chSt.destroy();
-  if(Object.keys(pill).length) chCh=new Chart($("donutCh"),{type:"doughnut",
-    data:{labels:Object.keys(pill),datasets:[{data:Object.values(pill),backgroundColor:["#2563eb","#06b6d4","#a855f7","#f59e0b","#ef4444","#94a3b8"],borderWidth:0}]},
-    options:{cutout:"68%",plugins:{legend:{position:"right",labels:{boxWidth:8,font:{size:10}}}}}});
-  chSt=new Chart($("donutStato"),{type:"doughnut",
-    data:{labels:["Pubblicati","Da usare"],datasets:[{data:[pub||0,tod||0],backgroundColor:["#06b6d4","#e2e8f0"],borderWidth:0}]},
-    options:{cutout:"72%",plugins:{legend:{display:false}}}});
-
-  $("dec-count").textContent=items.length+" in attesa";
-  $("decisioni").innerHTML = items.length ? items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
-    return `<tr class="border-t border-slate-100 align-top" data-id="${a.id}">
+function decisioniTable(items){
+  const rows = items.length ? items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
+    return `<tr class="border-t border-slate-100 align-top">
       <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
-      <td class="py-3 pr-3 font-semibold max-w-[190px]">${p.titolo||p.tipo||"Proposta"}</td>
-      <td class="py-3 pr-3 text-slate-500 max-w-[260px]">${(p.contenuto||"").slice(0,150)}</td>
-      <td class="py-3 pr-3 text-slate-500 max-w-[230px]">${(p.motivo||"").slice(0,140)}</td>
+      <td class="py-3 pr-3 font-semibold max-w-[210px]">${esc((p.titolo||p.tipo||"Proposta"))}</td>
+      <td class="py-3 pr-3 text-slate-500 max-w-[300px]">${esc((p.contenuto||"").slice(0,160))}</td>
+      <td class="py-3 pr-3 text-slate-500 max-w-[230px]">${esc((p.motivo||"").slice(0,140))}</td>
       <td class="py-3 text-right whitespace-nowrap">
         <button class="approve bg-emerald-500 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
-        <button class="edit border border-slate-200 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Modifica</button>
         <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Rifiuta</button>
       </td></tr>`;}).join("")
     : '<tr><td colspan="5" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>';
+  return `<section class="card p-5">
+    <div class="flex items-center gap-3 mb-4"><h3 class="font-extrabold">Decisioni da prendere</h3>
+      <span class="chip bg-amber-100 text-amber-700">${items.length} in attesa</span>
+      <span class="real">reale · kernel AIOS</span></div>
+    <div class="overflow-x-auto"><table class="w-full text-[13px]">
+      <thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
+        <th class="py-2 pr-3">Priorità</th><th class="py-2 pr-3">Decisione</th>
+        <th class="py-2 pr-3">Descrizione</th><th class="py-2 pr-3">Motivo AI</th>
+        <th class="py-2 pr-3 text-right">Azione</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></section>`;
+}
+function deliverablesBlock(d){
+  const body = (d&&d.length) ? d.slice(0,15).map(x=>`<div class="border-t border-slate-100 pt-2">
+      <span class="chip bg-slate-100 text-slate-600">${esc(x.dominio||'')}</span> <b>${esc(x.titolo||'')}</b>
+      <div class="text-slate-500">${esc((x.contenuto||'').slice(0,180))}</div></div>`).join("")
+    : '<div class="text-slate-400">Nessun deliverable ancora — approva una proposta per crearne uno.</div>';
+  return `<section class="card p-5"><div class="flex items-center gap-3 mb-3">
+    <h3 class="font-extrabold">Deliverable approvati</h3><span class="real">reale · aios_deliverables</span></div>
+    <div class="space-y-2 text-[13px]">${body}</div></section>`;
+}
+function wireDecisioni(){
+  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{await jpost(`/api/approvals/${b.dataset.id}/approve`,{});load();});
+  document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();});
+}
 
-  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{await jpost(`/api/approvals/${b.dataset.id}/approve`,{});boot();});
-  document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});boot();});
-  document.querySelectorAll(".edit").forEach(b=>b.onclick=async()=>{const it=items.find(x=>String(x.id)===b.dataset.id);const titolo=prompt("Titolo:",it.payload.titolo||"");if(titolo===null)return;const contenuto=prompt("Contenuto:",it.payload.contenuto||"");if(contenuto===null)return;await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{...it.payload,titolo,contenuto}});boot();});
-  loadDeliverables();
+// ---------- vista generica (vendite/finance/operations/legal/hr) ----------
+function rowsCount(v){return Array.isArray(v)?v.length:(v&&v.error?"err":"—");}
+async function loadGeneric(){
+  let v={};
+  try{ v=await jget("/api/domain/"+CUR); }catch(e){ $("view").innerHTML='<div class="card p-6 text-red-600">Errore caricamento dominio</div>'; return; }
+  const data=v.data||{}, props=v.proposals||[], deliv=v.deliverables||[], skills=v.skills||[];
+  $("cs-pending").textContent=props.length;
+  const sensors=Object.keys(data);
+  const totRows=sensors.reduce((s,k)=>s+(Array.isArray(data[k])?data[k].length:0),0);
+  const kpis=[
+    ["Proposte AI in coda",props.length,"da approvare"],
+    ["Fonti dati lette",sensors.length,"sensori reali"],
+    ["Righe lette",totRows,"da Supabase"],
+    ["Deliverable",deliv.length,"approvati"],
+  ];
+  const kpiHTML=kpis.map(k=>`<div class="card p-3"><div class="text-[11px] text-slate-400">${k[0]}</div>
+    <div class="text-2xl font-extrabold mt-1">${k[1]}</div><div class="text-[11px] text-slate-400">${k[2]}</div></div>`).join("");
+  // pannello dati reali per sensore
+  const dataHTML=sensors.length? sensors.map(s=>{
+    const v=data[s], n=rowsCount(v); const label=TBL[s]||s;
+    let sample="";
+    if(Array.isArray(v)&&v.length){ const r=v[0];
+      sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,40))}`).join(" · ");
+    } else if(v&&v.error){ sample=`<span class="text-red-500">${esc(v.error).slice(0,80)}</span>`; }
+    else { sample='<span class="text-slate-400">nessuna riga</span>'; }
+    return `<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(label)}</td>
+      <td class="py-2 text-center"><span class="chip ${n? 'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${n} righe</span></td>
+      <td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;
+  }).join("") : '<tr><td class="py-4 text-slate-400 text-center" colspan="3">Nessun sensore</td></tr>';
+  const skillsHTML = skills.length? skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join(" ") : '<span class="text-slate-400 text-[12px]">contesto da knowledge base + Founder Model</span>';
+
+  $("view").innerHTML=`
+    <section class="card overflow-hidden"><div class="hero heroGrid p-6 flex gap-6 items-center text-white">
+      <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-4xl shrink-0">${(META[CUR]||{}).ico||"•"}</div>
+      <div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● Active</span><span class="real">dati reali dall'agente</span></div>
+        <h2 class="text-xl font-extrabold">L'agente ${esc((META[CUR]||{}).label||CUR)} sta analizzando e proponendo</h2>
+        <p class="text-white/60 text-sm">${esc((META[CUR]||{}).sub||"")} · cap autonomia L1 (propone, tu approvi)</p></div></div></section>
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${kpiHTML}</section>
+    <section class="card p-5"><div class="flex items-center gap-3 mb-3"><h3 class="font-extrabold">Dati reali letti dai sensori</h3><span class="real">reale · Supabase</span></div>
+      <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase">
+        <th class="py-1">Fonte</th><th class="py-1 text-center">Volume</th><th class="py-1">Esempio prima riga</th></tr></thead>
+        <tbody>${dataHTML}</tbody></table>
+      <div class="mt-4 pt-3 border-t border-slate-50 text-[12px]"><span class="font-bold text-slate-500">Skill attive:</span> ${skillsHTML}</div></section>
+    ${decisioniTable(props)}
+    ${deliverablesBlock(deliv)}`;
+  wireDecisioni();
 }
-async function loadDeliverables(){
-  try{
-    const d = await jget("/api/deliverables");
-    const el = document.getElementById("deliverables");
-    if(!d || !d.length){ el.innerHTML = '<div class="text-slate-400">Nessun deliverable ancora — approva una proposta per crearne uno.</div>'; return; }
-    el.innerHTML = d.slice(0,15).map(x=>`<div class="border-t border-slate-100 pt-2">
-      <span class="chip bg-slate-100 text-slate-600">${x.dominio||''}</span> <b>${x.titolo||''}</b>
-      <div class="text-slate-500">${(x.contenuto||'').slice(0,160)}</div></div>`).join("");
-  }catch(e){}
+
+// ---------- vista ricca marketing ----------
+let chCh,chSt;
+async function loadMarketing(){
+  let ov={},ins={},items=[];
+  try{ov=await jget("/api/overview");}catch(e){}
+  try{ins=await jget("/api/insights");}catch(e){}
+  try{items=(await jget("/api/domain/marketing")).proposals||[];}catch(e){}
+  const prof=ins.profilo||{}, insg=ins.insight||{}, posts=ins.post||[], servizi=ins.servizi||[], topics=ins.topics||[];
+  $("cs-aud").textContent=NUM(ov.audit_count); $("cs-pending").textContent=items.length;
+  const pub=servizi.filter(s=>String(s.Stato||"").toLowerCase()==="usato").length, tod=servizi.length-pub;
+  const KPI=[["Follower IG",NUM(prof.followers_count),prof.username?("@"+prof.username):"agente IG"],
+    ["Reach (oggi)",NUM(insg.reach),"copertura"],["Profile views",NUM(insg.profile_views),"oggi"],
+    ["Account coinvolti",NUM(insg.accounts_engaged),"oggi"],["Proposte in coda",items.length,"da approvare"]];
+  $("view").innerHTML=`
+    <section class="card overflow-hidden"><div class="hero heroGrid p-6 flex flex-col md:flex-row gap-6 items-center text-white">
+      <div class="w-full md:w-48 h-32 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-6xl shrink-0">🤖</div>
+      <div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● Active</span><span class="real">dati reali dall'agente</span></div>
+        <h2 class="text-xl font-extrabold">Il Marketing Agent sta analizzando e proponendo</h2>
+        <p class="text-white/60 text-sm mb-4">Operazioni marketing data-driven · profilo @k2_ai.it</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div><div class="text-[11px] text-white/50">Follower IG</div><div class="text-2xl font-extrabold">${NUM(prof.followers_count)}</div></div>
+          <div><div class="text-[11px] text-white/50">Post</div><div class="text-2xl font-extrabold">${NUM(prof.media_count)}</div></div>
+          <div><div class="text-[11px] text-white/50">Interazioni</div><div class="text-2xl font-extrabold">${NUM(insg.total_interactions)}</div></div>
+          <div><div class="text-[11px] text-white/50">Proposte AI</div><div class="text-2xl font-extrabold">${items.length}</div></div>
+        </div></div></div></section>
+    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI.map(k=>`<div class="card p-3"><div class="text-[11px] text-slate-400">${k[0]}</div><div class="text-xl font-extrabold mt-1">${k[1]}</div><div class="text-[11px] text-slate-400">${k[2]}</div></div>`).join("")}</section>
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="card p-4"><div class="font-bold text-sm mb-3">Pipeline contenuti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="pipe"></tbody></table></div>
+      <div class="card p-4"><div class="font-bold text-sm mb-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div></div>
+      <div class="card p-4"><div class="font-bold text-sm mb-3">Post IG recenti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="posts"></tbody></table></div>
+    </section>
+    ${decisioniTable(items)}
+    ${deliverablesBlock([])}`;
+  $("pipe").innerHTML = servizi.length ? servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((s.Servizio||"").slice(0,26))}</td><td class="text-slate-400">${esc(s.Categoria||"")}</td><td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubblicato</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join("") : '<tr><td class="py-4 text-slate-400 text-center">caricamento…</td></tr>';
+  $("posts").innerHTML = posts.length ? posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((p.caption||"(senza testo)").slice(0,40))}</td><td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join("") : '<tr><td class="py-4 text-slate-400 text-center">caricamento…</td></tr>';
+  const pill={}; topics.forEach(t=>{const k=t.Pillar||"Altro"; pill[k]=(pill[k]||0)+1;});
+  if(chCh)chCh.destroy();
+  if(Object.keys(pill).length) chCh=new Chart($("donutCh"),{type:"doughnut",data:{labels:Object.keys(pill),datasets:[{data:Object.values(pill),backgroundColor:["#2563eb","#06b6d4","#a855f7","#f59e0b","#ef4444","#94a3b8"],borderWidth:0}]},options:{cutout:"68%",plugins:{legend:{position:"right",labels:{boxWidth:8,font:{size:10}}}}}});
+  loadDeliverablesInto();
+  wireDecisioni();
 }
+async function loadDeliverablesInto(){ try{ const d=await jget("/api/deliverables"); const el=$("view").querySelector("section:last-child .space-y-2"); if(el&&d&&d.length){ el.innerHTML=d.slice(0,15).map(x=>`<div class="border-t border-slate-100 pt-2"><span class="chip bg-slate-100 text-slate-600">${esc(x.dominio||'')}</span> <b>${esc(x.titolo||'')}</b><div class="text-slate-500">${esc((x.contenuto||'').slice(0,180))}</div></div>`).join(""); } }catch(e){} }
+
+async function load(){ setHeader(); if(CUR==="marketing") return loadMarketing(); return loadGeneric(); }
 async function runAgent(){
-  const dom = document.getElementById("domsel").value;
-  const btn = event.target, old = btn.textContent;
-  btn.textContent = "⏳ sto girando…"; btn.disabled = true;
-  try{
-    const r = await jpost(`/api/agents/${dom}/run`, {});
-    alert(`Agente ${dom}: ${r.proposte||0} proposte` + (r.calendario ? `, ${r.calendario} voci calendario` : ""));
-  }catch(e){ alert("errore nel far girare l'agente"); }
-  btn.textContent = old; btn.disabled = false; boot();
+  const btn=event.target, old=btn.textContent; btn.textContent="⏳ sto girando…"; btn.disabled=true;
+  try{ const r=await jpost(`/api/agents/${CUR}/run`,{}); alert(`Agente ${CUR}: ${r.proposte||0} proposte`+(r.calendario?`, ${r.calendario} voci calendario`:"")); }
+  catch(e){ alert("errore nel far girare l'agente"); }
+  btn.textContent=old; btn.disabled=false; load();
 }
-boot();
+(async()=>{ await buildNav(); CUR=DOMAINS.includes("marketing")?"marketing":(DOMAINS[0]||"marketing"); load(); })();
 </script>
 </body>
 </html>

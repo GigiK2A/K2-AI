@@ -115,6 +115,37 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     def domini():
         return {"domini": platform.domains() if platform else []}
 
+    @app.get("/api/domain/{domain}")
+    def domain_view(domain: str) -> dict[str, Any]:
+        """Vista per-dominio: dati reali letti dai sensori dell'agente +
+        proposte (coda L1) + deliverable, tutti filtrati per dominio."""
+        if platform is None:
+            return {"error": "no platform"}
+        agent = platform.agents.get(domain)
+        if agent is None:
+            return {"error": "dominio non valido"}
+        names = set(kernel.tools.names())
+        data: dict[str, Any] = {}
+        cfg = getattr(agent, "cfg", None)
+        if cfg is not None:
+            for tool, args in cfg.sensors:
+                if tool not in names:
+                    continue
+                try:
+                    data[tool] = kernel.execute(tool, actor="cockpit", args=args).result
+                except Exception as exc:
+                    data[tool] = {"error": str(exc)}
+        proposals = [{"id": a.id, "action_key": a.action_key, "payload": a.payload}
+                     for a in kernel.approvals.pending()
+                     if a.action_key.split(".", 1)[0] == domain]
+        try:
+            deliv = [d for d in platform.deliverables() if d.get("dominio") == domain]
+        except Exception:
+            deliv = []
+        skills = list(getattr(cfg, "skill_focus", []) or []) if cfg else []
+        return {"domain": domain, "data": data, "proposals": proposals,
+                "deliverables": deliv, "skills": skills}
+
     @app.post("/api/agents/{domain}/run")
     def run_agent(domain: str, _=Depends(_require_auth)):
         if platform is None:
