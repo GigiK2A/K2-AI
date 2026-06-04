@@ -7,20 +7,20 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','ui-sans-serif','system-ui']}}}};</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','ui-sans-serif','system-ui']},colors:{brand:'#2563EB',ok:'#16A34A',violet:'#7C3AED'}}}};</script>
 <style>
-  body{background:#f4f6fb;color:#0f172a}
-  .card{background:#fff;border:1px solid #eef1f6;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.05)}
-  .navi{display:flex;align-items:center;gap:.7rem;padding:.55rem .8rem;border-radius:12px;color:#475569;font-weight:600;font-size:.9rem;cursor:pointer}
-  .navi:hover{background:#f1f5f9}.navi.active{background:#e6f6fa;color:#0891b2}
-  .navi.soon{opacity:.5}
-  .tab{padding:.5rem .15rem;color:#64748b;font-weight:600;font-size:.86rem;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
-  .tab.active{color:#0891b2;border-color:#06b6d4}
-  .chip{font-size:.62rem;font-weight:700;padding:.14rem .55rem;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
-  .real{font-size:.58rem;font-weight:700;color:#0891b2;background:#e6f6fa;border-radius:999px;padding:.08rem .45rem}
-  .hero{background:radial-gradient(120% 140% at 85% 10%,#1e3a8a 0%,#0f172a 55%,#020617 100%)}
-  .heroGrid{background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:26px 26px}
+  body{background:#f5f7fb;color:#0f172a}
+  .card{background:#fff;border:1px solid #eef1f6;border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px rgba(16,24,40,.04)}
+  .navi{display:flex;align-items:center;gap:.65rem;padding:.55rem .8rem;border-radius:10px;color:#475569;font-weight:600;font-size:.875rem;cursor:pointer}
+  .navi:hover{background:#f1f5f9}.navi.active{background:#eff4ff;color:#2563EB}
+  .navi.soon{opacity:.45}
+  .tab{padding:.5rem .15rem;color:#64748b;font-weight:600;font-size:.84rem;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  .tab.active{color:#2563EB;border-color:#2563EB}
+  .chip{font-size:.62rem;font-weight:700;padding:.14rem .55rem;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+  .real{font-size:.56rem;font-weight:700;color:#2563EB;background:#eff4ff;border-radius:999px;padding:.08rem .45rem;text-transform:uppercase;letter-spacing:.03em}
+  .up{color:#16A34A;font-weight:700;font-size:.72rem}.muted{color:#94a3b8;font-weight:600;font-size:.72rem}
+  .sec-t{font-weight:800;color:#0f172a}
   ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-thumb{background:#dde3ec;border-radius:8px}
 </style>
 </head>
@@ -29,30 +29,27 @@
 
   <aside class="w-60 shrink-0 bg-white border-r border-slate-100 flex flex-col p-4 sticky top-0 h-screen">
     <div class="flex items-center gap-2 px-2 pb-5">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white grid place-items-center font-extrabold">K</div>
-      <div><div class="font-extrabold leading-none">K2-AI</div><div class="text-[11px] text-slate-400">AI Operating System</div></div>
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white grid place-items-center font-extrabold">K</div>
+      <div><div class="font-extrabold leading-none">K2-AI</div><div class="text-[11px] text-slate-400">Operating System</div></div>
     </div>
     <nav id="nav" class="space-y-1 flex-1 overflow-auto">
       <div class="navi" data-view="overview">▦ Overview</div>
       <div class="navi" data-view="agents">✦ AI Agents</div>
-      <div data-group="domains" class="space-y-1 pt-1"></div>
-      <div class="pt-2 mt-2 border-t border-slate-100 space-y-1">
-        <div class="navi" data-view="dom:operations">▤ Projects</div>
-        <div class="navi soon" data-view="soon">▢ Documents</div>
-        <div class="navi soon" data-view="soon">⟳ Automations</div>
-        <div class="navi soon" data-view="soon">▭ Analytics</div>
-        <div class="navi soon" data-view="soon">⚙ Settings</div>
-      </div>
+      <div data-group="domains" class="space-y-1"></div>
+      <div class="text-[10px] font-bold text-slate-300 px-3 pt-3 pb-1 tracking-widest">SYSTEM</div>
+      <div class="navi" data-view="dom:operations">▤ Projects</div>
+      <div class="navi" data-view="documents">▢ Documents</div>
+      <div class="navi soon" data-view="soon">⟳ Automations</div>
+      <div class="navi" data-view="analytics">▭ Analytics</div>
+      <div class="navi soon" data-view="soon">⚙ Settings</div>
     </nav>
     <div class="card p-3 mt-3">
       <div class="text-[11px] font-bold text-slate-500 mb-2">K2-AI Core Status</div>
       <div class="space-y-1.5 text-[12px]">
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b id="cs-agents">6</b><span class="text-slate-400">Agenti attivi</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b id="cs-agents">—</b><span class="text-slate-400">Agenti attivi</span></div>
         <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-aud">—</b><span class="text-slate-400">Eventi audit</span></div>
         <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending">—</b><span class="text-slate-400">Decisioni in attesa</span></div>
       </div>
-      <div class="mt-2"><div class="text-[11px] text-slate-400 mb-1">System Health <b class="text-slate-700">98%</b></div>
-        <div class="h-1.5 rounded-full bg-slate-100"><div class="h-1.5 rounded-full bg-emerald-500" style="width:98%"></div></div></div>
     </div>
     <div class="flex items-center gap-2 px-1 pt-3">
       <div class="w-8 h-8 rounded-full bg-slate-200 grid place-items-center text-xs font-bold">LR</div>
@@ -61,29 +58,27 @@
   </aside>
 
   <div class="flex-1 min-w-0">
-    <header class="flex items-center gap-4 px-7 py-4 bg-white/70 backdrop-blur border-b border-slate-100 sticky top-0 z-10">
-      <div class="flex items-center gap-2">
-        <div id="hd-ico" class="w-8 h-8 rounded-lg bg-emerald-100 grid place-items-center">▦</div>
-        <div><div id="hd-title" class="font-extrabold leading-none flex items-center gap-2">Overview</div>
-          <div id="hd-sub" class="text-[12px] text-slate-400">tutta l'azienda in tempo reale</div></div>
-      </div>
+    <header class="flex items-center gap-4 px-7 py-4 bg-white/80 backdrop-blur border-b border-slate-100 sticky top-0 z-10">
+      <div><div id="hd-title" class="font-extrabold text-lg leading-none">Overview</div>
+        <div id="hd-sub" class="text-[12px] text-slate-400 mt-0.5">tutta l'azienda in tempo reale</div></div>
       <div class="flex-1"></div>
       <div class="hidden lg:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 w-56 text-slate-400 text-sm">🔍 Ask AIOS anything… <span class="ml-auto text-[11px] bg-white rounded px-1.5 py-0.5">⌘K</span></div>
-      <button id="btn-run" onclick="runAgent()" class="hidden text-sm font-semibold bg-emerald-600 text-white rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
-      <button onclick="load()" class="text-sm font-semibold bg-blue-600 text-white rounded-xl px-3 py-2">↻ Aggiorna</button>
+      <button id="btn-run" onclick="runAgent()" class="hidden text-sm font-semibold bg-brand text-white rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
+      <button onclick="load()" class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2">↻ Aggiorna</button>
     </header>
-
     <main id="view" class="p-7 space-y-6 max-w-[1320px]"></main>
   </div>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
-const NUM=x=>(x===undefined||x===null||x==="")?"—":x;
+const NUM=x=>(x===undefined||x===null||x===""||Number.isNaN(x))?"—":x;
 const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const eur=n=>(n==null||Number.isNaN(n))?"—":"€"+Number(n).toLocaleString("it-IT");
 async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();}
 async function jpost(u,b){return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json();}
-const PRIO=["Alta","Media","Bassa"], prioColor={Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
+const PAL=["#2563EB","#16A34A","#7C3AED","#F59E0B","#06B6D4","#EF4444","#94A3B8"];
+const PRIO=["Alta","Media","Bassa"],prioColor={Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
 const META={
   marketing:{ico:"◈",label:"Marketing",sub:"Operazioni marketing data-driven · @k2_ai.it"},
   vendite:{ico:"⊞",label:"Sales / CRM",sub:"Pipeline, lead e proposte commerciali"},
@@ -93,204 +88,252 @@ const META={
   hr:{ico:"☺",label:"HR",sub:"Persone, recruiting, onboarding e org"},
 };
 const TBL={leggi_lead:"Lead pipeline",leggi_memo_vendite:"Memo vendite",leggi_conversioni:"Conversioni K-BOT",leggi_revenue:"Eventi ricavo (Stripe)",leggi_valore_commesse:"Valore commesse",leggi_memoria_finance:"Memoria finance",leggi_commesse:"Commesse",leggi_fasi:"Fasi progetto",leggi_task_commessa:"Task commessa",leggi_documenti:"Documenti",leggi_task_operativi:"Task operativi",leggi_iscritti_newsletter:"Iscritti newsletter",leggi_consensi_kbot:"Consensi K-BOT",leggi_assegnatari:"Task assegnati"};
-let DOMAINS=[], VIEW="overview", CUR=null, chCh;
+// chart group field + KPI builders per dominio
+const CHART={vendite:["leggi_lead","status","Lead per stato"],finance:["leggi_conversioni","type","Conversioni per tipo"],operations:["leggi_task_operativi","status","Task per stato"],legal:["leggi_iscritti_newsletter","confirmed","Iscritti (confermati)"],hr:["leggi_assegnatari","status","Task per stato"]};
+let DOMAINS=[],VIEW="overview",CUR=null,charts=[];
+function killCharts(){charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];}
+function arr(v){return Array.isArray(v)?v:[];}
+function group(rows,field){const o={};arr(rows).forEach(r=>{let k=r[field];k=(k===true?"sì":k===false?"no":(k==null||k===""?"n/d":k));o[k]=(o[k]||0)+1;});return o;}
+function donut(canvasId,labels,data){const el=$(canvasId);if(!el)return;const c=new Chart(el,{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:PAL,borderWidth:0}]},options:{cutout:"66%",plugins:{legend:{position:"right",labels:{boxWidth:8,font:{size:10}}}}}});charts.push(c);}
 
 function buildNav(){
   const g=document.querySelector('[data-group="domains"]');
   g.innerHTML=DOMAINS.map(d=>{const m=META[d]||{ico:"•",label:d};return `<div class="navi" data-view="dom:${d}">${m.ico} ${esc(m.label)}</div>`;}).join("");
   document.querySelectorAll("#nav .navi").forEach(n=>n.onclick=()=>route(n.dataset.view));
 }
-function route(v){
-  if(v==="soon"){ alert("Sezione in arrivo — i dati ci sono già nei domini collegati."); return; }
-  VIEW=v; CUR=v.startsWith("dom:")?v.slice(4):null; load();
-}
-function markNav(){
-  document.querySelectorAll("#nav .navi").forEach(n=>n.classList.toggle("active",n.dataset.view===VIEW));
-}
-function setHeader(ico,title,sub,showRun){
-  $("hd-ico").textContent=ico; $("hd-title").textContent=title; $("hd-sub").textContent=sub;
-  $("btn-run").classList.toggle("hidden",!showRun);
-}
+function route(v){if(v==="soon"){alert("Sezione in arrivo.");return;}VIEW=v;CUR=v.startsWith("dom:")?v.slice(4):null;load();}
+function markNav(){document.querySelectorAll("#nav .navi").forEach(n=>n.classList.toggle("active",n.dataset.view===VIEW));}
+function setHeader(title,sub,showRun){$("hd-title").textContent=title;$("hd-sub").textContent=sub;$("btn-run").classList.toggle("hidden",!showRun);}
 
-// shared blocks ----------------------------------------------------------
-function decisioniTable(items,title){
+function kpi(label,val,sub,accent){return `<div class="card p-4"><div class="text-[12px] text-slate-400 font-semibold">${label}</div>
+  <div class="text-2xl font-extrabold mt-1 ${accent||''}">${val}</div><div class="mt-1 ${sub&&sub.real?'real':'muted'}">${sub&&sub.t?esc(sub.t):(sub||'')}</div></div>`;}
+function decisioniTable(items,title,showArea){
   const rows=items.length?items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
     return `<tr class="border-t border-slate-100 align-top">
       <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
-      <td class="py-3 pr-2"><span class="chip bg-slate-100 text-slate-500">${esc((a.action_key||"").split(".")[0])}</span></td>
-      <td class="py-3 pr-3 font-semibold max-w-[200px]">${esc(p.titolo||p.tipo||"Proposta")}</td>
-      <td class="py-3 pr-3 text-slate-500 max-w-[280px]">${esc((p.contenuto||"").slice(0,150))}</td>
+      ${showArea?`<td class="py-3 pr-2"><span class="chip bg-slate-100 text-slate-500">${esc((a.action_key||"").split(".")[0])}</span></td>`:""}
+      <td class="py-3 pr-3 font-semibold max-w-[210px]">${esc(p.titolo||p.tipo||"Proposta")}</td>
+      <td class="py-3 pr-3 text-slate-500 max-w-[300px]">${esc((p.contenuto||"").slice(0,150))}</td>
       <td class="py-3 text-right whitespace-nowrap">
-        <button class="approve bg-emerald-500 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
-        <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Rifiuta</button>
+        <button class="approve bg-ok text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
+        <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg ml-1" data-id="${a.id}">Rifiuta</button>
       </td></tr>`;}).join("")
-    :'<tr><td colspan="5" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>';
-  return `<section class="card p-5"><div class="flex items-center gap-3 mb-4"><h3 class="font-extrabold">${title||"Decisioni da prendere"}</h3>
-    <span class="chip bg-amber-100 text-amber-700">${items.length} in attesa</span><span class="real">reale · kernel AIOS</span></div>
+    :`<tr><td colspan="${showArea?5:4}" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>`;
+  return `<section class="card p-5"><div class="flex items-center gap-3 mb-4"><h3 class="sec-t">${title||"Decisioni da prendere"}</h3>
+    <span class="chip bg-amber-100 text-amber-700">${items.length} in attesa</span><span class="real">reale · kernel</span></div>
     <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-      <th class="py-2 pr-3">Priorità</th><th class="py-2 pr-2">Area</th><th class="py-2 pr-3">Decisione</th><th class="py-2 pr-3">Descrizione</th><th class="py-2 text-right">Azione</th></tr></thead>
+      <th class="py-2 pr-3">Priorità</th>${showArea?'<th class="py-2 pr-2">Area</th>':''}<th class="py-2 pr-3">Decisione</th><th class="py-2 pr-3">Descrizione</th><th class="py-2 text-right">Azione</th></tr></thead>
       <tbody>${rows}</tbody></table></div></section>`;
 }
-function deliverablesBlock(d){
-  const body=(d&&d.length)?d.slice(0,15).map(x=>`<div class="border-t border-slate-100 pt-2">
-      <span class="chip bg-slate-100 text-slate-600">${esc(x.dominio||'')}</span> <b>${esc(x.titolo||'')}</b>
-      <div class="text-slate-500">${esc((x.contenuto||'').slice(0,180))}</div></div>`).join("")
-    :'<div class="text-slate-400">Nessun deliverable ancora — approva una proposta per crearne uno.</div>';
-  return `<section class="card p-5"><div class="flex items-center gap-3 mb-3"><h3 class="font-extrabold">Deliverable approvati</h3><span class="real">reale · aios_deliverables</span></div>
-    <div class="space-y-2 text-[13px]">${body}</div></section>`;
+function recoBlock(deliv){
+  const body=(deliv&&deliv.length)?deliv.slice(0,6).map(x=>`<div class="flex gap-2 items-start"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||'')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,120))}</div></div></div>`).join("")
+    :'<div class="text-[12px] text-slate-400">Nessun deliverable — approva una proposta per generarlo.</div>';
+  return `<div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;
 }
 function wireDecisioni(){
   document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{await jpost(`/api/approvals/${b.dataset.id}/approve`,{});load();});
   document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();});
 }
-function rightSidebar(extra){
-  return `<aside class="w-full xl:w-80 shrink-0 space-y-4">
-    <div class="card p-4"><div class="flex items-center justify-between mb-3"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-      ${extra||""}</div>
-    <div class="card p-4"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">
-      <button onclick="runAgent()" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
-      <button onclick="route('overview')" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▦ Torna all'Overview</button>
-    </div></div></aside>`;
-}
 
-// OVERVIEW ---------------------------------------------------------------
+// ---------------- OVERVIEW ----------------
 async function loadOverview(){
-  setHeader("▦","Overview","tutta l'azienda in tempo reale",false); markNav();
-  let ov={},appr=[],deliv=[];
+  setHeader("Overview","tutta l'azienda in tempo reale",false);markNav();killCharts();
+  let ov={},appr=[],act=[];
   try{ov=await jget("/api/overview");}catch(e){}
   try{appr=await jget("/api/approvals");}catch(e){}
-  try{deliv=await jget("/api/deliverables");}catch(e){}
-  $("cs-aud").textContent=NUM(ov.audit_count); $("cs-pending").textContent=appr.length; $("cs-agents").textContent=DOMAINS.length;
-  // per-domain summary (parallel)
-  const summ=await Promise.all(DOMAINS.map(async d=>{try{const v=await jget("/api/domain/"+d);
-    const data=v.data||{}; const rows=Object.values(data).reduce((s,x)=>s+(Array.isArray(x)?x.length:0),0);
-    return {d,prop:(v.proposals||[]).length,src:Object.keys(data).length,rows,deliv:(v.deliverables||[]).length};
-  }catch(e){return {d,prop:0,src:0,rows:0,deliv:0};}}));
-  const cards=summ.map(s=>{const m=META[s.d]||{ico:"•",label:s.d};
-    return `<div class="card p-4 cursor-pointer hover:border-cyan-200" onclick="route('dom:${s.d}')">
-      <div class="flex items-center gap-2 mb-2"><div class="w-9 h-9 rounded-xl bg-slate-100 grid place-items-center text-lg">${m.ico}</div>
-        <div><div class="font-extrabold leading-none">${esc(m.label)}</div><div class="text-[11px] text-slate-400">${s.d==='marketing'?'agente ricco':'agente di dominio'}</div></div>
-        <span class="ml-auto chip ${s.prop?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-500'}">${s.prop} proposte</span></div>
-      <div class="grid grid-cols-3 gap-2 text-center mt-3">
-        <div><div class="text-lg font-extrabold">${s.src}</div><div class="text-[10px] text-slate-400">fonti</div></div>
-        <div><div class="text-lg font-extrabold">${s.rows}</div><div class="text-[10px] text-slate-400">righe</div></div>
-        <div><div class="text-lg font-extrabold">${s.deliv}</div><div class="text-[10px] text-slate-400">deliver.</div></div>
-      </div></div>`;}).join("");
-  const totProp=summ.reduce((a,b)=>a+b.prop,0), totRows=summ.reduce((a,b)=>a+b.rows,0);
+  try{act=await jget("/api/activity");}catch(e){}
+  $("cs-agents").textContent=DOMAINS.length;$("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=appr.length;
+  const summ=await Promise.all(DOMAINS.map(async d=>{try{const v=await jget("/api/domain/"+d);const data=v.data||{};
+    const rows=Object.values(data).reduce((s,x)=>s+arr(x).length,0);
+    let revenue=0;arr(data.leggi_conversioni).forEach(r=>revenue+=Number(r.amount_eur)||0);
+    return {d,prop:(v.proposals||[]).length,src:Object.keys(data).length,rows,deliv:(v.deliverables||[]).length,data};
+  }catch(e){return {d,prop:0,src:0,rows:0,deliv:0,data:{}};}}));
+  const get=d=>summ.find(s=>s.d===d)||{data:{},rows:0,prop:0};
+  const leads=arr(get("vendite").data.leggi_lead).length;
+  let revenue=0;arr(get("finance").data.leggi_conversioni).forEach(r=>revenue+=Number(r.amount_eur)||0);
+  const pulse=Math.min(100,Math.round((ov.automations_done||0)/Math.max(1,(ov.automations_done||0)+appr.length)*100))||0;
+  // business KPI row (reale dove possibile, — altrove)
+  const biz=[
+    kpi("Ricavi K-BOT (storico)",eur(revenue),{t:"da conversioni reali",real:1}),
+    kpi("Lead attivi",NUM(leads),{t:"pipeline_leads",real:1}),
+    kpi("Task automatizzati",NUM(ov.automations_done),{t:"azioni eseguite (audit)",real:1}),
+    kpi("Decisioni in attesa",appr.length,{t:"coda approvazioni",real:1}),
+    kpi("Ore risparmiate","—","dato non ancora tracciato"),
+  ].join("");
+  const dep=DOMAINS.map(d=>{const m=META[d]||{ico:"•",label:d};const s=get(d);
+    return `<div class="card p-4 cursor-pointer hover:border-blue-200" onclick="route('dom:${d}')">
+      <div class="flex items-center gap-2 mb-2"><span class="text-lg">${m.ico}</span><b class="text-[14px]">${esc(m.label)}</b>
+      <span class="ml-auto chip ${s.prop?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-500'}">${s.prop} prop.</span></div>
+      <div class="grid grid-cols-3 text-center gap-1"><div><div class="font-extrabold">${s.src}</div><div class="text-[10px] text-slate-400">fonti</div></div>
+      <div><div class="font-extrabold">${s.rows}</div><div class="text-[10px] text-slate-400">righe</div></div>
+      <div><div class="font-extrabold">${s.deliv}</div><div class="text-[10px] text-slate-400">deliver.</div></div></div></div>`;}).join("");
+  const EV={proposed:"ha proposto",executed:"ha eseguito",approved:"approvato",rejected:"rifiutato",blocked:"bloccato"};
+  const activity=act.length?act.slice(0,8).map(r=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2 text-[13px]">
+    <span class="w-2 h-2 rounded-full ${r.event==='executed'?'bg-emerald-500':r.event==='proposed'?'bg-blue-500':'bg-slate-300'}"></span>
+    <b>${esc(r.actor)}</b><span class="text-slate-500">${esc(EV[r.event]||r.event)}</span>
+    <span class="ml-auto chip bg-slate-100 text-slate-500">${esc((r.action_key||"").split(".")[0])}</span></div>`).join("")
+    :'<div class="py-3 text-slate-400 text-center text-[13px]">nessuna attività</div>';
+  const appNeed=appr.length?appr.slice(0,5).map(a=>{const p=a.payload||{};return `<div class="flex items-center gap-2 border-t border-slate-50 py-2 text-[13px]">
+    <span class="chip bg-slate-100 text-slate-500">${esc((a.action_key||"").split(".")[0])}</span>
+    <span class="font-semibold truncate max-w-[230px]">${esc(p.titolo||p.tipo||"Proposta")}</span>
+    <button class="approve ml-auto bg-brand text-white text-[12px] px-3 py-1 rounded-lg" data-id="${a.id}">Review</button></div>`;}).join("")
+    :'<div class="py-3 text-slate-400 text-center text-[13px]">nessuna 🎉</div>';
   $("view").innerHTML=`
-    <section class="card overflow-hidden"><div class="hero heroGrid p-6 flex flex-col md:flex-row gap-6 items-center text-white">
-      <div class="w-full md:w-44 h-32 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-6xl shrink-0">🧠</div>
-      <div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● ${DOMAINS.length} agenti attivi</span><span class="real">dati reali dagli agenti</span></div>
-        <h2 class="text-xl font-extrabold">K2-AI Operating System — tutta l'azienda</h2>
-        <p class="text-white/60 text-sm mb-4">Ogni reparto ha un agente che legge i dati reali e propone. Tu approvi (autonomia L1).</p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div><div class="text-[11px] text-white/50">Agenti</div><div class="text-2xl font-extrabold">${DOMAINS.length}</div></div>
-          <div><div class="text-[11px] text-white/50">Decisioni in attesa</div><div class="text-2xl font-extrabold">${appr.length}</div></div>
-          <div><div class="text-[11px] text-white/50">Righe lette</div><div class="text-2xl font-extrabold">${totRows}</div></div>
-          <div><div class="text-[11px] text-white/50">Eventi audit</div><div class="text-2xl font-extrabold">${NUM(ov.audit_count)}</div></div>
-        </div></div></div></section>
-    <h3 class="font-extrabold text-slate-700">Reparti</h3>
-    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">${cards}</section>
-    ${decisioniTable(appr,"Decisioni da prendere (tutti i reparti)")}
-    ${deliverablesBlock(deliv)}`;
+    <section class="card p-6"><div class="flex flex-col lg:flex-row items-center gap-6">
+      <div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-100 text-emerald-700">● ${DOMAINS.length} agenti attivi</span><span class="real">esecuzione con supervisione</span></div>
+        <h2 class="text-xl font-extrabold mb-1">Company Pulse</h2><p class="text-slate-400 text-sm mb-4">Autonomia governata L1 — gli agenti propongono, tu approvi.</p>
+        <div class="grid grid-cols-3 gap-4 max-w-md"><div><div class="text-2xl font-extrabold">${DOMAINS.length}</div><div class="text-[11px] text-slate-400">Agenti online</div></div>
+          <div><div class="text-2xl font-extrabold">${NUM(ov.automations_done)}</div><div class="text-[11px] text-slate-400">Automazioni</div></div>
+          <div><div class="text-2xl font-extrabold">${appr.length}</div><div class="text-[11px] text-slate-400">In approvazione</div></div></div></div>
+      <div class="relative w-40 h-40 shrink-0"><canvas id="gauge"></canvas><div class="absolute inset-0 grid place-items-center"><div class="text-center"><div class="text-3xl font-extrabold">${pulse}%</div><div class="text-[10px] text-slate-400">auto / totale</div></div></div></div>
+    </div></section>
+    <h3 class="sec-t">Business Overview</h3>
+    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${biz}</section>
+    <h3 class="sec-t">Department Performance</h3>
+    <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">${dep}</section>
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="card p-5"><div class="font-bold text-sm mb-2 flex items-center gap-2">Recent Activity <span class="real">reale · audit</span></div>${activity}</div>
+      <div class="card p-5"><div class="font-bold text-sm mb-2 flex items-center gap-2">Approvals Needed <span class="real">reale</span></div>${appNeed}</div>
+    </section>
+    ${decisioniTable(appr,"Decisioni da prendere (tutti i reparti)",true)}`;
+  const g=$("gauge");if(g){const c=new Chart(g,{type:"doughnut",data:{datasets:[{data:[pulse,100-pulse],backgroundColor:["#2563EB","#e8edf6"],borderWidth:0}]},options:{cutout:"80%",plugins:{legend:{display:false},tooltip:{enabled:false}}}});charts.push(c);}
   wireDecisioni();
 }
 
-// AI AGENTS --------------------------------------------------------------
+// ---------------- AI AGENTS ----------------
 async function loadAgents(){
-  setHeader("✦","AI Agents","gli agenti che fanno girare K2-AI",false); markNav();
+  setHeader("AI Agents","gli agenti che fanno girare K2-AI",false);markNav();killCharts();
+  let ov={},appr=[],act=[];
+  try{ov=await jget("/api/overview");}catch(e){}
+  try{appr=await jget("/api/approvals");}catch(e){}
+  try{act=await jget("/api/activity");}catch(e){}
+  const lastBy={};act.forEach(r=>{if(!lastBy[r.actor])lastBy[r.actor]=r;});
   const summ=await Promise.all(DOMAINS.map(async d=>{try{const v=await jget("/api/domain/"+d);return {d,v};}catch(e){return {d,v:{}};}}));
-  const cards=summ.map(({d,v})=>{const m=META[d]||{ico:"•",label:d};const skills=v.skills||[];const props=(v.proposals||[]).length;
-    return `<div class="card p-5"><div class="flex items-center gap-3 mb-3"><div class="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white grid place-items-center text-xl">${m.ico}</div>
-      <div><div class="font-extrabold flex items-center gap-2">${esc(m.label)} Agent <span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-        <div class="text-[12px] text-slate-400">${esc(m.sub)}</div></div>
-      <span class="ml-auto chip bg-amber-100 text-amber-700">${props} proposte</span></div>
-      <div class="text-[12px] text-slate-500 mb-2">Autonomia: <b>L1</b> (propone, founder approva)</div>
-      <div class="flex flex-wrap gap-1 mb-3">${skills.length?skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join(""):'<span class="text-[12px] text-slate-400">contesto da knowledge base + Founder Model</span>'}</div>
-      <button onclick="route('dom:${d}')" class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-1.5">Apri reparto →</button></div>`;}).join("");
-  $("view").innerHTML=`<section class="grid grid-cols-1 lg:grid-cols-2 gap-4">${cards}</section>`;
+  const stats=[kpi("Agenti attivi",DOMAINS.length,{t:"reali",real:1}),kpi("Automazioni",NUM(ov.automations_done),{t:"azioni eseguite",real:1}),kpi("Eventi audit",NUM(ov.audit_count),{t:"log immutabile",real:1}),kpi("Decisioni in attesa",appr.length,{t:"coda L1",real:1})].join("");
+  const rows=summ.map(({d,v})=>{const m=META[d]||{ico:"•",label:d};const props=(v.proposals||[]).length;const actor=d+"_agent";const last=lastBy[actor]||lastBy[d];
+    const activity=props?`${props} proposte in coda`:(last?`${esc(last.event)}`:"in attesa");
+    return `<tr class="border-t border-slate-100"><td class="py-3 pr-3"><div class="flex items-center gap-2"><span class="w-8 h-8 rounded-lg bg-slate-100 grid place-items-center">${m.ico}</span><b>${esc(m.label)} Agent</b></div></td>
+      <td class="py-3 pr-3 text-slate-500">${esc(m.label)}</td>
+      <td class="py-3 pr-3"><span class="chip bg-emerald-100 text-emerald-700">● Active</span></td>
+      <td class="py-3 pr-3 text-slate-500">${activity}</td>
+      <td class="py-3 pr-3"><span class="chip bg-blue-50 text-blue-700">L1</span></td>
+      <td class="py-3 text-right"><button onclick="route('dom:${d}')" class="text-[12px] font-semibold border border-slate-200 rounded-lg px-3 py-1.5">Apri →</button></td></tr>`;}).join("");
+  $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${stats}</section>
+    <section class="card p-5"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">All Agents</h3><span class="real">reale · platform</span></div>
+    <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
+      <th class="py-2 pr-3">Agent</th><th class="py-2 pr-3">Reparto</th><th class="py-2 pr-3">Stato</th><th class="py-2 pr-3">Attività</th><th class="py-2 pr-3">Autonomia</th><th class="py-2 text-right">—</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
-// DOMINIO generico -------------------------------------------------------
+// ---------------- DOMINIO ----------------
+function domainKPIs(d,data,props,deliv){
+  const src=Object.keys(data).length,rows=Object.values(data).reduce((s,x)=>s+arr(x).length,0);
+  const base={
+    vendite:()=>{const leads=arr(data.leggi_lead);const won=leads.filter(l=>String(l.status).includes("vinto")||String(l.status).includes("chiuso")).length;
+      return [kpi("Lead pipeline",leads.length,{t:"reale",real:1}),kpi("Memo",arr(data.leggi_memo_vendite).length,{t:"reale",real:1})];},
+    finance:()=>{let rev=0;arr(data.leggi_conversioni).forEach(r=>rev+=Number(r.amount_eur)||0);
+      return [kpi("Ricavi K-BOT",eur(rev),{t:"conversioni reali",real:1}),kpi("Eventi Stripe",arr(data.leggi_revenue).length,{t:"Stripe non collegato"})];},
+    operations:()=>[kpi("Commesse",arr(data.leggi_commesse).length,{t:"reale",real:1}),kpi("Task aperti",arr(data.leggi_task_operativi).length,{t:"reale",real:1})],
+    legal:()=>[kpi("Iscritti newsletter",arr(data.leggi_iscritti_newsletter).length,{t:"reale",real:1}),kpi("Profili consenso",arr(data.leggi_consensi_kbot).length,{t:"reale",real:1})],
+    hr:()=>[kpi("Task assegnati",arr(data.leggi_assegnatari).length,{t:"unico segnale reale"}),kpi("Anagrafica","—","da collegare")],
+  }[d];
+  const extra=base?base():[];
+  return [...extra,kpi("Proposte in coda",props,{t:"da approvare",real:1}),kpi("Fonti dati",src,{t:"sensori",real:1}),kpi("Deliverable",deliv,{t:"approvati",real:1})].slice(0,5).join("");
+}
 async function loadDomain(){
   const m=META[CUR]||{ico:"•",label:CUR,sub:""};
-  setHeader(m.ico,m.label+" Agent",m.sub+" · L1 (propone, tu approvi)",true); markNav();
-  if(CUR==="marketing") return loadMarketing();
-  let v={};
-  try{v=await jget("/api/domain/"+CUR);}catch(e){$("view").innerHTML='<div class="card p-6 text-red-600">Errore caricamento</div>';return;}
+  setHeader(m.label+" Agent",m.sub+" · L1 (propone, tu approvi)",true);markNav();killCharts();
+  if(CUR==="marketing")return loadMarketing();
+  let v={};try{v=await jget("/api/domain/"+CUR);}catch(e){$("view").innerHTML='<div class="card p-6 text-red-600">Errore</div>';return;}
   const data=v.data||{},props=v.proposals||[],deliv=v.deliverables||[],skills=v.skills||[];
   $("cs-pending").textContent=props.length;
-  const sensors=Object.keys(data), totRows=sensors.reduce((s,k)=>s+(Array.isArray(data[k])?data[k].length:0),0);
-  const kpis=[["Proposte AI in coda",props.length,"da approvare"],["Fonti dati",sensors.length,"sensori reali"],["Righe lette",totRows,"da Supabase"],["Deliverable",deliv.length,"approvati"]];
-  const kpiHTML=kpis.map(k=>`<div class="card p-3"><div class="text-[11px] text-slate-400">${k[0]}</div><div class="text-2xl font-extrabold mt-1">${k[1]}</div><div class="text-[11px] text-slate-400">${k[2]}</div></div>`).join("");
-  const dataHTML=sensors.length?sensors.map(s=>{const val=data[s];const n=Array.isArray(val)?val.length:(val&&val.error?"err":0);let sample="";
-    if(Array.isArray(val)&&val.length){const r=val[0];sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,38))}`).join(" · ");}
-    else if(val&&val.error){sample=`<span class="text-red-500">${esc(val.error).slice(0,80)}</span>`;}else{sample='<span class="text-slate-400">nessuna riga</span>';}
-    return `<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${n} righe</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")
-    :'<tr><td colspan="3" class="py-4 text-slate-400 text-center">Nessun sensore</td></tr>';
-  const agentStatus=`<p class="text-[12px] text-slate-400 mb-2">L'agente ${esc(m.label)} sta lavorando su:</p>
-    <ul class="space-y-1.5 text-[13px]">${sensors.map(s=>`<li>✅ ${esc(TBL[s]||s)}</li>`).join("")}<li>✅ Proposte in coda approvazione</li></ul>`;
+  const cfg=CHART[CUR];let chartHTML="";let g={};
+  if(cfg){g=group(data[cfg[0]],cfg[1]);}
+  const hasChart=cfg&&Object.keys(g).length;
+  const dataRows=Object.keys(data).map(s=>{const val=data[s];const n=arr(val).length;let sample="";const a=arr(val);
+    if(a.length){const r=a[0];sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,34))}`).join(" · ");}
+    else if(val&&val.error){sample=`<span class="text-red-500">${esc(val.error).slice(0,70)}</span>`;}else sample='<span class="text-slate-400">nessuna riga</span>';
+    return `<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${n} righe</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")||'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun sensore</td></tr>';
+  const agentStatus=`<div class="card p-4"><div class="flex items-center justify-between mb-2"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
+    <p class="text-[12px] text-slate-400 mb-2">Sta lavorando su:</p><ul class="space-y-1 text-[13px]">${Object.keys(data).map(s=>`<li>✅ ${esc(TBL[s]||s)}</li>`).join("")}<li>✅ Proposte in coda</li></ul>
+    <div class="mt-3 pt-2 border-t border-slate-50 text-[12px]"><b class="text-slate-500">Skill:</b> ${skills.length?skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join(" "):'<span class="text-slate-400">knowledge + Founder</span>'}</div></div>`;
   $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
-    <section class="card overflow-hidden"><div class="hero heroGrid p-6 flex gap-6 items-center text-white">
-      <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-4xl shrink-0">${m.ico}</div>
-      <div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● Active</span><span class="real">dati reali dall'agente</span></div>
-        <h2 class="text-xl font-extrabold">L'agente ${esc(m.label)} sta analizzando e proponendo</h2>
-        <p class="text-white/60 text-sm">${esc(m.sub)}</p></div></div></section>
-    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${kpiHTML}</section>
-    <section class="card p-5"><div class="flex items-center gap-3 mb-3"><h3 class="font-extrabold">Dati reali letti dai sensori</h3><span class="real">reale · Supabase</span></div>
-      <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Fonte</th><th class="py-1 text-center">Volume</th><th class="py-1">Esempio prima riga</th></tr></thead><tbody>${dataHTML}</tbody></table>
-      <div class="mt-4 pt-3 border-t border-slate-50 text-[12px]"><span class="font-bold text-slate-500">Skill attive:</span> ${skills.length?skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join(" "):'<span class="text-slate-400">knowledge base + Founder Model</span>'}</div></section>
+    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${domainKPIs(CUR,data,props.length,deliv.length)}</section>
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="card p-4 lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Dati reali letti dai sensori <span class="real">Supabase</span></div>
+        <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Fonte</th><th class="py-1 text-center">Volume</th><th class="py-1">Esempio</th></tr></thead><tbody>${dataRows}</tbody></table></div>
+      <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">${cfg?esc(cfg[2]):"Distribuzione"} <span class="real">reale</span></div>
+        ${hasChart?'<div class="relative h-48"><canvas id="domDonut"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px] text-center px-3">Nessun dato sufficiente per il grafico</div>'}</div></section>
     ${decisioniTable(props)}
-    ${deliverablesBlock(deliv)}
-    </div>${rightSidebar(agentStatus)}</div>`;
+    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoBlock(deliv)}
+      <div class="card p-4"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">
+        <button onclick="runAgent()" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
+        <button onclick="route('overview')" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▦ Torna all'Overview</button></div></div></aside></div>`;
+  if(hasChart)donut("domDonut",Object.keys(g),Object.values(g));
   wireDecisioni();
 }
 
-// MARKETING ricco --------------------------------------------------------
+// ---------------- MARKETING ----------------
 async function loadMarketing(){
-  let ov={},ins={},items=[];
+  killCharts();let ov={},ins={},v={};
   try{ov=await jget("/api/overview");}catch(e){}
   try{ins=await jget("/api/insights");}catch(e){}
-  try{items=(await jget("/api/domain/marketing")).proposals||[];}catch(e){}
+  try{v=await jget("/api/domain/marketing");}catch(e){}
+  const items=v.proposals||[],deliv=v.deliverables||[];
   const prof=ins.profilo||{},insg=ins.insight||{},posts=ins.post||[],servizi=ins.servizi||[],topics=ins.topics||[];
   $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=items.length;
-  const KPI=[["Follower IG",NUM(prof.followers_count),prof.username?("@"+prof.username):"agente IG"],["Reach (oggi)",NUM(insg.reach),"copertura"],["Profile views",NUM(insg.profile_views),"oggi"],["Account coinvolti",NUM(insg.accounts_engaged),"oggi"],["Proposte in coda",items.length,"da approvare"]];
-  const agentStatus=`<p class="text-[12px] text-slate-400 mb-2">Il Marketing Agent sta lavorando su:</p><ul class="space-y-1.5 text-[13px]"><li>✅ Analisi performance contenuti</li><li>✅ Insight Instagram</li><li>✅ Calendario editoriale</li><li>✅ Scoperta competitor</li><li>✅ Brand voice</li><li>✅ Proposte in coda</li></ul>`;
-  $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
-    <section class="card overflow-hidden"><div class="hero heroGrid p-6 flex flex-col md:flex-row gap-6 items-center text-white">
-      <div class="w-full md:w-44 h-32 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-6xl shrink-0">🤖</div>
-      <div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● Active</span><span class="real">dati reali dall'agente</span></div>
-        <h2 class="text-xl font-extrabold">Il Marketing Agent sta analizzando e proponendo</h2><p class="text-white/60 text-sm mb-4">Operazioni marketing data-driven · @k2_ai.it</p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4"><div><div class="text-[11px] text-white/50">Follower IG</div><div class="text-2xl font-extrabold">${NUM(prof.followers_count)}</div></div><div><div class="text-[11px] text-white/50">Post</div><div class="text-2xl font-extrabold">${NUM(prof.media_count)}</div></div><div><div class="text-[11px] text-white/50">Interazioni</div><div class="text-2xl font-extrabold">${NUM(insg.total_interactions)}</div></div><div><div class="text-[11px] text-white/50">Proposte</div><div class="text-2xl font-extrabold">${items.length}</div></div></div></div></div></section>
-    <div class="flex gap-5 border-b border-slate-100 overflow-x-auto"><div class="tab active">Overview</div><div class="tab">Content</div><div class="tab">Channels</div><div class="tab">Leads</div><div class="tab">Analytics</div><div class="tab">SEO</div><div class="tab">Social</div></div>
-    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI.map(k=>`<div class="card p-3"><div class="text-[11px] text-slate-400">${k[0]}</div><div class="text-xl font-extrabold mt-1">${k[1]}</div><div class="text-[11px] text-slate-400">${k[2]}</div></div>`).join("")}</section>
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="card p-4"><div class="font-bold text-sm mb-3">Pipeline contenuti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="pipe"></tbody></table></div>
-      <div class="card p-4"><div class="font-bold text-sm mb-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div></div>
-      <div class="card p-4"><div class="font-bold text-sm mb-3">Post IG recenti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="posts"></tbody></table></div></section>
-    ${decisioniTable(items)}${deliverablesBlock([])}
-    </div>${rightSidebar(agentStatus)}</div>`;
-  $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((s.Servizio||"").slice(0,24))}</td><td class="text-slate-400">${esc(s.Categoria||"")}</td><td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubbl.</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">caricamento…</td></tr>';
-  $("posts").innerHTML=posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((p.caption||"(senza testo)").slice(0,38))}</td><td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">caricamento…</td></tr>';
+  const KPI=[kpi("Follower IG",NUM(prof.followers_count),{t:prof.username?("@"+prof.username):"agente IG",real:1}),kpi("Post",NUM(prof.media_count),{t:"reale",real:1}),kpi("Reach (oggi)",NUM(insg.reach),"oggi"),kpi("Interazioni",NUM(insg.total_interactions),"oggi"),kpi("Proposte",items.length,{t:"da approvare",real:1})].join("");
   const pill={};topics.forEach(t=>{const k=t.Pillar||"Altro";pill[k]=(pill[k]||0)+1;});
-  if(chCh)chCh.destroy();
-  if(Object.keys(pill).length)chCh=new Chart($("donutCh"),{type:"doughnut",data:{labels:Object.keys(pill),datasets:[{data:Object.values(pill),backgroundColor:["#2563eb","#06b6d4","#a855f7","#f59e0b","#ef4444","#94a3b8"],borderWidth:0}]},options:{cutout:"68%",plugins:{legend:{position:"right",labels:{boxWidth:8,font:{size:10}}}}}});
-  marketingDeliv();
+  const agentStatus=`<div class="card p-4"><div class="flex items-center justify-between mb-2"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
+    <ul class="space-y-1 text-[13px]"><li>✅ Performance contenuti</li><li>✅ Insight Instagram</li><li>✅ Calendario editoriale</li><li>✅ Competitor</li><li>✅ Brand voice</li></ul></div>`;
+  $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
+    <div class="flex gap-5 border-b border-slate-100 overflow-x-auto"><div class="tab active">Overview</div><div class="tab">Campaigns</div><div class="tab">Content</div><div class="tab">Channels</div><div class="tab">Leads</div><div class="tab">Analytics</div><div class="tab">SEO</div></div>
+    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI}</section>
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="pipe"></tbody></table></div>
+      <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div></div>
+      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Post IG recenti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="posts"></tbody></table></div></section>
+    ${decisioniTable(items)}
+    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoBlock(deliv)}
+      <div class="card p-4"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">
+        <button onclick="runAgent()" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
+        <button onclick="route('overview')" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▦ Overview</button></div></div></aside></div>`;
+  $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((s.Servizio||"").slice(0,24))}</td><td class="text-slate-400">${esc(s.Categoria||"")}</td><td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubbl.</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">…</td></tr>';
+  $("posts").innerHTML=posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((p.caption||"(senza testo)").slice(0,36))}</td><td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">…</td></tr>';
+  if(Object.keys(pill).length)donut("donutCh",Object.keys(pill),Object.values(pill));
   wireDecisioni();
 }
-async function marketingDeliv(){try{const d=await jget("/api/deliverables");const secs=$("view").querySelectorAll("section");const el=secs[secs.length-1].querySelector(".space-y-2");if(el&&d&&d.length)el.innerHTML=d.slice(0,15).map(x=>`<div class="border-t border-slate-100 pt-2"><span class="chip bg-slate-100 text-slate-600">${esc(x.dominio||'')}</span> <b>${esc(x.titolo||'')}</b><div class="text-slate-500">${esc((x.contenuto||'').slice(0,180))}</div></div>`).join("");}catch(e){}}
+
+// ---------------- DOCUMENTS / ANALYTICS ----------------
+async function loadDocuments(){
+  setHeader("Documents","documenti delle commesse (project_documents)",false);markNav();killCharts();
+  let v={};try{v=await jget("/api/domain/operations");}catch(e){}
+  const docs=arr((v.data||{}).leggi_documenti);
+  const rows=docs.length?docs.map(d=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(d.filename||'')}</td><td class="py-2 text-slate-500">${esc(d.source||'')}</td><td class="py-2 text-slate-400 text-[12px]">${esc((d.created_at||'').slice(0,10))}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun documento</td></tr>';
+  $("view").innerHTML=`<section class="card p-5"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Documents</h3><span class="real">reale · project_documents</span></div>
+    <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">File</th><th class="py-1">Origine</th><th class="py-1">Data</th></tr></thead><tbody>${rows}</tbody></table></section>`;
+}
+async function loadAnalytics(){
+  setHeader("Analytics","snapshot e funnel K-BOT",false);markNav();killCharts();
+  let ov={};try{ov=await jget("/api/overview");}catch(e){}
+  $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    ${kpi("Eventi audit",NUM(ov.audit_count),{t:"reale",real:1})}${kpi("Automazioni",NUM(ov.automations_done),{t:"reale",real:1})}
+    ${kpi("Agenti",DOMAINS.length,{t:"reali",real:1})}${kpi("Snapshot analytics","—","tabella analytics_snapshots")}</section>
+    <section class="card p-6 text-slate-500 text-sm">Vista analytics avanzata (trend storici da <code>analytics_snapshots</code>) in arrivo. I numeri operativi reali sono nei singoli reparti.</section>`;
+}
 
 async function load(){
-  if(VIEW==="overview") return loadOverview();
-  if(VIEW==="agents") return loadAgents();
-  if(VIEW&&VIEW.startsWith("dom:")) return loadDomain();
+  if(VIEW==="overview")return loadOverview();
+  if(VIEW==="agents")return loadAgents();
+  if(VIEW==="documents")return loadDocuments();
+  if(VIEW==="analytics")return loadAnalytics();
+  if(VIEW&&VIEW.startsWith("dom:"))return loadDomain();
   return loadOverview();
 }
 async function runAgent(){
   if(!CUR){alert("Apri un reparto per far girare il suo agente.");return;}
   const btn=$("btn-run"),old=btn.textContent;btn.textContent="⏳ sto girando…";btn.disabled=true;
   try{const r=await jpost(`/api/agents/${CUR}/run`,{});alert(`Agente ${CUR}: ${r.proposte||0} proposte`+(r.calendario?`, ${r.calendario} voci calendario`:""));}
-  catch(e){alert("errore nel far girare l'agente");}
+  catch(e){alert("errore");}
   btn.textContent=old;btn.disabled=false;load();
 }
 (async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();})();

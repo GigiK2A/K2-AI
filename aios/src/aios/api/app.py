@@ -85,6 +85,14 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                 out[key] = {"error": str(exc)}
         return out
 
+    @app.get("/api/activity")
+    def activity() -> list[dict[str, Any]]:
+        recs = kernel.audit.records()
+        out = [{"seq": r.seq, "action_key": r.action_key, "event": r.event,
+                "actor": r.actor, "detail": r.detail} for r in recs]
+        out.sort(key=lambda x: x["seq"], reverse=True)
+        return out[:20]
+
     @app.get("/api/approvals")
     def approvals() -> list[dict[str, Any]]:
         return [{"id": a.id, "action_key": a.action_key, "actor": a.actor,
