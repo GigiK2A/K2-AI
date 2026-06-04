@@ -8,9 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script>
-tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','ui-sans-serif','system-ui']}}}};
-</script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','ui-sans-serif','system-ui']}}}};</script>
 <style>
   body{background:#f4f6fb;color:#0f172a}
   .card{background:#fff;border:1px solid #eef1f6;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.05)}
@@ -69,25 +67,24 @@ tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','ui-sans-serif','sys
       <div class="flex-1"></div>
       <div class="hidden lg:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 w-64 text-slate-400 text-sm">🔍 Ask AIOS anything… <span class="ml-auto text-[11px] bg-white rounded px-1.5 py-0.5">⌘K</span></div>
       <button class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2">⤓ Report</button>
-      <button class="text-sm font-semibold bg-blue-600 text-white rounded-xl px-3 py-2">⚡ Launch Automation</button>
+      <button onclick="boot()" class="text-sm font-semibold bg-blue-600 text-white rounded-xl px-3 py-2">↻ Aggiorna</button>
     </header>
 
     <main class="p-7 space-y-6 max-w-[1300px]">
       <div class="flex gap-6 flex-col xl:flex-row">
         <div class="flex-1 min-w-0 space-y-6">
 
-          <!-- HERO -->
           <section class="card overflow-hidden">
             <div class="hero heroGrid p-6 flex flex-col md:flex-row gap-6 items-center text-white">
               <div class="w-full md:w-56 h-36 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-7xl shrink-0">🤖</div>
               <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● Active</span><span class="real">dati reali</span></div>
+                <div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-400/20 text-emerald-300">● Active</span><span class="real">dati reali dall'agente</span></div>
                 <h2 class="text-xl font-extrabold">Il Marketing Agent sta analizzando e proponendo</h2>
                 <p class="text-white/60 text-sm mb-4">Operazioni marketing data-driven · profilo @k2_ai.it</p>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div><div class="text-[11px] text-white/50">Follower IG</div><div class="text-2xl font-extrabold" id="h-foll">—</div></div>
                   <div><div class="text-[11px] text-white/50">Post pubblicati</div><div class="text-2xl font-extrabold" id="h-post">—</div></div>
-                  <div><div class="text-[11px] text-white/50">Engagement</div><div class="text-2xl font-extrabold" id="h-eng">—</div></div>
+                  <div><div class="text-[11px] text-white/50">Interazioni (oggi)</div><div class="text-2xl font-extrabold" id="h-eng">—</div></div>
                   <div><div class="text-[11px] text-white/50">Proposte AI</div><div class="text-2xl font-extrabold" id="h-prop">—</div></div>
                 </div>
               </div>
@@ -145,7 +142,6 @@ tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','ui-sans-serif','sys
               <li>✅ Generazione calendario editoriale</li><li>✅ Scoperta competitor</li>
               <li>✅ Allineamento alla brand voice</li><li>✅ Proposte in coda approvazione</li>
             </ul>
-            <button class="w-full mt-3 text-sm font-semibold border border-slate-200 rounded-xl py-2">Vedi log agente</button>
           </div>
           <div class="card p-4">
             <div class="font-bold text-sm mb-3 flex items-center gap-2">Stato contenuti (servizi) <span class="real">reale</span></div>
@@ -161,126 +157,90 @@ tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','ui-sans-serif','sys
               <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">＋ Genera nuovo contenuto</button>
               <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">🔍 Analizza competitor</button>
               <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">📅 Aggiorna calendario</button>
-              <button class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">📈 Report marketing</button>
             </div>
           </div>
         </aside>
       </div>
-      <p class="text-center text-[11px] text-slate-400">K2-AI Operating System · Marketing · <b>tutti i numeri sono reali</b> (Instagram + kernel AIOS su Supabase)</p>
+      <p class="text-center text-[11px] text-slate-400">K2-AI Operating System · Marketing · ogni numero è letto live dai sensori dell'agente (Instagram + kernel su Supabase)</p>
     </main>
   </div>
 </div>
 
 <script>
-// ---- REAL data embedded (so it renders without a server). Live API overrides if served. ----
-const REAL = {
-  overview:{ followers:5, posts:5, engagement:9, audit:12, pending:5,
-             servizi_pub:2, servizi_todo:23 },
-  pillars:{ "Strategia AI":7,"Governance & Privacy":4,"Formazione Interna":3,"Automazione":1 },
-  igposts:[ ["Automatizza la contabilità e libera ore","Carosello",2],
-            ["Scopri come gli LLM facilitano la PMI","Carosello",2],
-            ["K2-AI Gazette — notizie AI della settimana","Carosello",2],
-            ["Agenti AI per email e CRM","Carosello",2],
-            ["Cosa sono gli LLM per le PMI","Carosello",1] ],
-  pipeline:[ ["Agenti AI Email & CRM","Email & CRM","usato"],["Automazioni Amministrative","Admin","usato"],
-             ["AI Legale & Contratti","Legale","da usare"],["AI Customer Service","Support","da usare"],
-             ["RAG Knowledge Base","Knowledge","da usare"] ],
-  proposals:[
-    {id:2,tipo:"fix",titolo:"Ridurre hashtag generici, aggiungere numeri concreti",contenuto:"Max 8 hashtag focalizzati (#PMI #AI #AutomazioneAI #K2AI), sempre un numero concreto nel testo (es. '5+ ore/sett recuperate', '70% email gestite').",motivo:"Competitor grandi (EY 31k follower) hanno engagement basso su contenuti soft; K2-AI vince su proposte operative con numeri."},
-    {id:3,tipo:"calendario",titolo:"Calendario editoriale 4 settimane",contenuto:"Giugno: pillar email AI (lun 10), servizio Agenti Email&CRM (mer 12), formazione prompt engineering (lun 17), Gazette n.2 (gio 20), Automazioni amministrative (lun 24).",motivo:"Calendario vuoto: si pubblica senza strategia, engagement piatto. 2 post servizi/mese + formazione + newsletter mantiene autorità."},
-    {id:4,tipo:"nuovo_tema",titolo:"3 segnali che devi delegare il task all'AI (e 2 in cui NON devi)",contenuto:"Pillar Formazione. Checklist: ripetitivo >5/sett? errore <5%? controllo umano <10min? → delega. Contro: decisioni strategiche, firma legale.",motivo:"Affronta la resistenza psicologica ('ma l'AI sbaglia') che blocca le PMI; riduce obiezioni in call discovery."},
-    {id:5,tipo:"caption",titolo:"Serie 'Ore recuperate in una PMI reale' — 3 post",contenuto:"Casi reali con numero dipendenti + ore prima/dopo: Email&CRM (PMI 8 persone, 5+ ore/sett), Amministrazione (studio 3 collab.), Customer Service (e-commerce 20 dip., -50% tempo).",motivo:"Engagement 1-2 like: caption attuali generiche. Narrativa da caso reale: le PMI 5-50 si vedono dentro."},
-    {id:6,tipo:"fix",titolo:"Link scheda nel primo commento + testare 'Save' su formazione",contenuto:"URL servizio nel primo commento (bypassa limite link IG). Post formazione con hook forte ('5 errori con ChatGPT') puntando ai Save. Stories sondaggio 2-3/sett.",motivo:"IG non ha link nei post; i Save segnalano rilevanza all'algoritmo più dei like; le stories danno insight sui prospect."}
-  ]
-};
-const PRIO=["Alta","Media","Bassa"], prioColor={Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
-
-function spark(){return `<svg viewBox="0 0 80 24" class="w-16 h-6"><polyline fill="none" stroke="#06b6d4" stroke-width="2" points="0,18 12,16 24,19 36,11 48,13 60,6 72,8 80,4"/></svg>`;}
-
 const $=id=>document.getElementById(id);
-function render(d){
-  // hero
-  $("h-foll").textContent=d.overview.followers; $("h-post").textContent=d.overview.posts;
-  $("h-eng").textContent=d.overview.engagement; $("h-prop").textContent=d.proposals.length;
-  $("cs-aud").textContent=d.overview.audit; $("cs-pending").textContent=d.overview.pending;
-  $("st-pub").textContent=d.overview.servizi_pub; $("st-tod").textContent=d.overview.servizi_todo;
+const NUM=x=>(x===undefined||x===null||x==="")?"—":x;
+async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();}
+async function jpost(u,b){return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json();}
+const PRIO=["Alta","Media","Bassa"], prioColor={Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
+function spark(){return `<svg viewBox="0 0 80 24" class="w-16 h-6"><polyline fill="none" stroke="#06b6d4" stroke-width="2" points="0,18 12,16 24,19 36,11 48,13 60,6 72,8 80,4"/></svg>`;}
+let chCh,chSt;
 
-  // KPIs (real)
-  const eng=d.overview.engagement, posts=d.overview.posts;
+async function boot(){
+  let ov={},ins={},items=[];
+  try{ov=await jget("/api/overview");}catch(e){}
+  try{ins=await jget("/api/insights");}catch(e){}
+  try{items=await jget("/api/approvals");}catch(e){}
+  const prof=ins.profilo||{}, insg=ins.insight||{}, posts=ins.post||[], servizi=ins.servizi||[], topics=ins.topics||[];
+
+  $("h-foll").textContent=NUM(prof.followers_count);
+  $("h-post").textContent=NUM(prof.media_count);
+  $("h-eng").textContent=NUM(insg.total_interactions);
+  $("h-prop").textContent=items.length;
+  $("cs-aud").textContent=NUM(ov.audit_count);
+  $("cs-pending").textContent=NUM(ov.pending_count!==undefined?ov.pending_count:items.length);
+
+  const pub=servizi.filter(s=>String(s.Stato||"").toLowerCase()==="usato").length;
+  const tod=servizi.length-pub;
+  $("st-pub").textContent=servizi.length?pub:"—";
+  $("st-tod").textContent=servizi.length?tod:"—";
+
   const KPI=[
-    ["Follower Instagram", d.overview.followers, "@k2_ai.it"],
-    ["Post pubblicati", posts, "carosello"],
-    ["Engagement totale", eng+" like", "0 commenti"],
-    ["Like medi / post", (eng/Math.max(posts,1)).toFixed(1), "ultimi "+posts],
-    ["Proposte AI in coda", d.proposals.length, "da approvare"],
+    ["Follower Instagram", NUM(prof.followers_count), prof.username?("@"+prof.username):"agente IG"],
+    ["Reach (oggi)", NUM(insg.reach), "copertura"],
+    ["Profile views", NUM(insg.profile_views), "oggi"],
+    ["Account coinvolti", NUM(insg.accounts_engaged), "oggi"],
+    ["Proposte AI in coda", items.length, "da approvare"],
   ];
-  kpirow.innerHTML=KPI.map(k=>`<div class="card p-3"><div class="text-[11px] text-slate-400">${k[0]}</div>
+  $("kpirow").innerHTML=KPI.map(k=>`<div class="card p-3"><div class="text-[11px] text-slate-400">${k[0]}</div>
     <div class="flex items-end justify-between"><div class="text-xl font-extrabold mt-1">${k[1]}</div>${spark()}</div>
     <div class="text-[11px] text-slate-400">${k[2]}</div></div>`).join("");
 
-  // pipeline
-  pipe.innerHTML=d.pipeline.map(c=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${c[0]}</td>
-    <td class="text-slate-400">${c[1]}</td><td class="text-right">${c[2]==='usato'?'<span class="text-emerald-600 text-[11px]">● pubblicato</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join("");
+  $("pipe").innerHTML = servizi.length ? servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50">
+    <td class="py-2 font-semibold">${(s.Servizio||"").slice(0,28)}</td><td class="text-slate-400">${s.Categoria||""}</td>
+    <td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubblicato</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join("")
+    : '<tr><td class="py-4 text-slate-400 text-center">caricamento dall\'agente…</td></tr>';
 
-  // posts
-  posts_el().innerHTML=d.igposts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${p[0]}</td>
-    <td class="text-slate-400 text-right">${p[2]} like</td></tr>`).join("");
+  $("posts").innerHTML = posts.length ? posts.map(p=>`<tr class="border-t border-slate-50">
+    <td class="py-2 font-semibold">${(p.caption||"(senza testo)").slice(0,42)}</td>
+    <td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join("")
+    : '<tr><td class="py-4 text-slate-400 text-center">caricamento…</td></tr>';
 
-  // donuts
-  new Chart(donutCh,{type:"doughnut",data:{labels:Object.keys(d.pillars),
-    datasets:[{data:Object.values(d.pillars),backgroundColor:["#2563eb","#06b6d4","#a855f7","#f59e0b"],borderWidth:0}]},
+  const pill={}; topics.forEach(t=>{const k=t.Pillar||"Altro"; pill[k]=(pill[k]||0)+1;});
+  if(chCh)chCh.destroy(); if(chSt)chSt.destroy();
+  if(Object.keys(pill).length) chCh=new Chart($("donutCh"),{type:"doughnut",
+    data:{labels:Object.keys(pill),datasets:[{data:Object.values(pill),backgroundColor:["#2563eb","#06b6d4","#a855f7","#f59e0b","#ef4444","#94a3b8"],borderWidth:0}]},
     options:{cutout:"68%",plugins:{legend:{position:"right",labels:{boxWidth:8,font:{size:10}}}}}});
-  new Chart(donutStato,{type:"doughnut",data:{labels:["Pubblicati","Da usare"],
-    datasets:[{data:[d.overview.servizi_pub,d.overview.servizi_todo],backgroundColor:["#06b6d4","#e2e8f0"],borderWidth:0}]},
+  chSt=new Chart($("donutStato"),{type:"doughnut",
+    data:{labels:["Pubblicati","Da usare"],datasets:[{data:[pub||0,tod||0],backgroundColor:["#06b6d4","#e2e8f0"],borderWidth:0}]},
     options:{cutout:"72%",plugins:{legend:{display:false}}}});
 
-  // decisioni
-  $("dec-count").textContent=d.proposals.length+" in attesa";
-  decisioni.innerHTML=d.proposals.map((a,i)=>{const pr=PRIO[i%3];return `<tr class="border-t border-slate-100 align-top" data-id="${a.id}">
-    <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
-    <td class="py-3 pr-3 font-semibold max-w-[190px]">${a.titolo}</td>
-    <td class="py-3 pr-3 text-slate-500 max-w-[260px]">${(a.contenuto||"").slice(0,150)}</td>
-    <td class="py-3 pr-3 text-slate-500 max-w-[230px]">${(a.motivo||"").slice(0,140)}</td>
-    <td class="py-3 text-right whitespace-nowrap">
-      <button class="approve bg-emerald-500 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
-      <button class="edit border border-slate-200 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Modifica</button>
-      <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Rifiuta</button>
-    </td></tr>`;}).join("");
-  bindButtons();
-}
-function posts_el(){return document.getElementById("posts");}
+  $("dec-count").textContent=items.length+" in attesa";
+  $("decisioni").innerHTML = items.length ? items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
+    return `<tr class="border-t border-slate-100 align-top" data-id="${a.id}">
+      <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
+      <td class="py-3 pr-3 font-semibold max-w-[190px]">${p.titolo||p.tipo||"Proposta"}</td>
+      <td class="py-3 pr-3 text-slate-500 max-w-[260px]">${(p.contenuto||"").slice(0,150)}</td>
+      <td class="py-3 pr-3 text-slate-500 max-w-[230px]">${(p.motivo||"").slice(0,140)}</td>
+      <td class="py-3 text-right whitespace-nowrap">
+        <button class="approve bg-emerald-500 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
+        <button class="edit border border-slate-200 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Modifica</button>
+        <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Rifiuta</button>
+      </td></tr>`;}).join("")
+    : '<tr><td colspan="5" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>';
 
-let LIVE=false;
-async function jget(u){const r=await fetch(u);if(!r.ok)throw 0;return r.json();}
-async function jpost(u,b){return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json();}
-
-function bindButtons(){
-  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{
-    const id=b.dataset.id;
-    if(LIVE){ await jpost(`/api/approvals/${id}/approve`,{}); boot(); }
-    else { b.closest("tr").remove(); toast("Approvata (anteprima). Collegata, scriverà su Supabase."); }
-  });
-  document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{
-    const id=b.dataset.id; const reason=prompt("Motivo del rifiuto?")||"rifiutato";
-    if(LIVE){ await jpost(`/api/approvals/${id}/reject`,{reason}); boot(); }
-    else { b.closest("tr").remove(); toast("Rifiutata (anteprima)."); }
-  });
-  document.querySelectorAll(".edit").forEach(b=>b.onclick=()=>{ prompt("Modifica titolo:"); toast("Modifica (anteprima)."); });
-}
-function toast(m){const t=document.createElement("div");t.textContent=m;
-  t.className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-2 rounded-xl shadow-lg z-50";
-  document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
-
-async function boot(){
-  // try live API; fall back to embedded real data
-  try{
-    const ov=await jget("/api/overview"); const items=await jget("/api/approvals");
-    LIVE=true;
-    const d=JSON.parse(JSON.stringify(REAL));
-    d.overview.audit=ov.audit_count; d.overview.pending=ov.pending_count;
-    d.proposals=items.map(a=>({id:a.id,...a.payload}));
-    render(d);
-  }catch(e){ LIVE=false; render(REAL); }
+  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{await jpost(`/api/approvals/${b.dataset.id}/approve`,{});boot();});
+  document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});boot();});
+  document.querySelectorAll(".edit").forEach(b=>b.onclick=async()=>{const it=items.find(x=>String(x.id)===b.dataset.id);const titolo=prompt("Titolo:",it.payload.titolo||"");if(titolo===null)return;const contenuto=prompt("Contenuto:",it.payload.contenuto||"");if(contenuto===null)return;await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{...it.payload,titolo,contenuto}});boot();});
 }
 boot();
 </script>

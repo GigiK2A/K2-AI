@@ -38,6 +38,28 @@ def create_app(kernel: Kernel) -> FastAPI:
             ],
         }
 
+    @app.get("/api/insights")
+    def insights() -> dict[str, Any]:
+        # Everything here is read THROUGH the agent's own sensor tools (kernel),
+        # never hardcoded. Each tool is L0 read-only; missing/erroring tools are skipped.
+        names = set(kernel.tools.names())
+        out: dict[str, Any] = {}
+        wanted = {
+            "profilo": ("leggi_profilo_ig", {}),
+            "insight": ("leggi_insight_ig", {}),
+            "post": ("leggi_post_ig", {"limit": 6}),
+            "servizi": ("leggi_servizi", {}),
+            "topics": ("leggi_topics", {}),
+        }
+        for key, (tool, args) in wanted.items():
+            if tool not in names:
+                continue
+            try:
+                out[key] = kernel.execute(tool, actor="cockpit", args=args).result
+            except Exception as exc:  # sensor offline / rate-limited — surface, don't crash
+                out[key] = {"error": str(exc)}
+        return out
+
     @app.get("/api/approvals")
     def approvals() -> list[dict[str, Any]]:
         return [{"id": a.id, "action_key": a.action_key, "actor": a.actor,
