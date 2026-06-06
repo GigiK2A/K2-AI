@@ -14,6 +14,10 @@ API_KEY_NEXT = os.environ.get("K2A_8E_API_KEY_NEXT")  # rotazione (membrana G6)
 # Anthropic (filiera). Senza chiave → offline deterministico (template).
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = os.environ.get("K2A_8E_MODEL", "claude-sonnet-4-5")
+# Se la chiave è presente ma la chiamata fallisce: dev=degrada offline; prod=rilancia.
+# Default true (dev). In produzione settare K2A_8E_ALLOW_OFFLINE=false.
+ALLOW_OFFLINE_FALLBACK = (os.environ.get("K2A_8E_ALLOW_OFFLINE", "true").lower()
+                          in ("1", "true", "yes"))
 
 # Asset reali (handoff Luca v2.27), vendorizzati nel repo.
 BLUEPRINTS_DIR = Path(os.environ.get("K2A_BLUEPRINTS_DIR", str(ROOT / "blueprints"))).resolve()

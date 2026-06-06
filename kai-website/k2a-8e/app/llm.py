@@ -1,29 +1,37 @@
 """Filiera — genera la PROSA delle voci attorno ai fatti già fissati.
 
-Principio cardine (8e_Phase0 §1): i FATTI (numeri, citazioni di legge) vengono
-dallo snapshot e sono INIETTATI; il modello scrive solo la prosa attorno, non
-genera fatti. Se manca la chiave Anthropic → modalità OFFLINE deterministica
-(template) così smoke test e CI girano senza rete.
+Principio cardine (8e_Phase0 §1, D-029): i FATTI (testi di legge, numeri,
+citazioni) vengono dallo snapshot e sono INIETTATI; il modello scrive solo la
+prosa attorno, non genera fatti.
 
-Prompt caching: il system prompt (regole + fatti) è marcato `cache_control` per
-abbattere i costi su generazioni ripetute della stessa filiera.
+Modalità:
+- ANTHROPIC_API_KEY presente  → Sonnet reale (prompt caching sul system).
+- chiave assente              → OFFLINE deterministico (template) — per dev/CI.
+- chiave presente MA chiamata fallisce:
+    - ALLOW_OFFLINE_FALLBACK=true  → degrada a offline (dev)
+    - ALLOW_OFFLINE_FALLBACK=false → rilancia (PROD: niente deliverable silenziosamente scadente)
+
+Ritorna ({voce_id: prosa}, meta) con meta = {mode, model?, usage?}.
 """
 from __future__ import annotations
 
+import json
 import logging
 from typing import Optional
 
-from .settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+from .settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ALLOW_OFFLINE_FALLBACK
 
 log = logging.getLogger("8e.llm")
 
 _SYSTEM = (
-    "Sei il generatore di un deliverable legale per PMI italiane (LegalBoost).\n"
+    "Sei il generatore di un deliverable legale-compliance per PMI italiane (LegalBoost).\n"
     "REGOLE ASSOLUTE:\n"
-    "- NON inventare numeri, articoli di legge o citazioni. I FATTI ti sono forniti già risolti.\n"
-    "- Scrivi prosa professionale, in italiano, attorno ai fatti forniti.\n"
-    "- Ogni riferimento normativo che usi DEVE essere tra quelli forniti nei FATTI.\n"
-    "- Tono pragmatico, diretto. Niente buzzword.\n"
+    "- NON inventare numeri, articoli di legge o citazioni. I FATTI ti sono forniti già risolti e VERBATIM.\n"
+    "- Quando una voce riguarda un fatto normativo fornito, integra il riferimento ESATTO dai FATTI "
+    "(stesso articolo/fonte), senza riscrivere il testo di legge a memoria.\n"
+    "- Ogni riferimento normativo che citi DEVE essere tra quelli nei FATTI.\n"
+    "- Tono pragmatico, diretto, per un titolare d'impresa. Niente buzzword. Niente gergo legale inutile.\n"
+    "- È orientamento, NON consulenza legale (D-034).\n"
     "- Restituisci SOLO un oggetto JSON {\"<voce_id>\": \"<testo>\", ...}, una chiave per voce richiesta."
 )
 
@@ -31,8 +39,8 @@ _SYSTEM = (
 def _facts_block(facts: dict[str, dict]) -> str:
     lines = ["FATTI DETERMINISTICI (usa SOLO questi per i riferimenti normativi):"]
     for k, v in facts.items():
-        val = str(v.get("valore", ""))[:1200]
-        lines.append(f"- [{k}] tipo={v.get('tipo')} fonte={v.get('fonte')} vigenza={v.get('vigenza')}: {val}")
+        val = str(v.get("valore", ""))[:1500]
+        lines.append(f"- [{k}] tipo={v.get('tipo')} fonte={v.get('fonte')} vigenza={v.get('vigenza')}:\n{val}")
     return "\n".join(lines)
 
 
@@ -47,12 +55,11 @@ def _voci_block(voci: list[dict]) -> str:
 
 def generate_sezioni(
     blueprint: dict, facts: dict[str, dict], inputs: dict
-) -> tuple[dict[str, str], str]:
-    """Ritorna ({voce_id: prosa}, mode). mode ∈ {anthropic, offline}."""
+) -> tuple[dict[str, str], dict]:
     voci = blueprint.get("voci", [])
 
     if not ANTHROPIC_API_KEY:
-        return _offline(voci, facts, inputs), "offline"
+        return _offline(voci, facts, inputs), {"mode": "offline", "reason": "no_api_key"}
 
     try:
         import anthropic
@@ -60,7 +67,7 @@ def generate_sezioni(
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         user = (
             f"{_facts_block(facts)}\n\n{_voci_block(voci)}\n\n"
-            f"DATI CLIENTE (input form): {inputs}\n\n"
+            f"DATI CLIENTE (input form): {json.dumps(inputs, ensure_ascii=False)}\n\n"
             "Genera ora il JSON con la prosa per ogni voce."
         )
         resp = client.messages.create(
@@ -70,21 +77,29 @@ def generate_sezioni(
             messages=[{"role": "user", "content": user}],
         )
         text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-        import json as _json
-
-        # Estrai il primo oggetto JSON dalla risposta.
         start, end = text.find("{"), text.rfind("}")
-        data = _json.loads(text[start : end + 1]) if start >= 0 else {}
-        # Garantisci una chiave per voce (fallback offline sulle mancanti).
-        out = {}
+        data = json.loads(text[start : end + 1]) if start >= 0 else {}
         off = _offline(voci, facts, inputs)
+        out = {}
         for v in voci:
             vid = v.get("id") or v.get("titolo")
             out[vid] = str(data.get(vid) or off.get(vid, "")).strip()
-        return out, "anthropic"
-    except Exception as exc:  # rete/chiave/parse → degrada a offline, non rompere
-        log.warning("filiera anthropic fallita, fallback offline: %s", exc)
-        return _offline(voci, facts, inputs), "offline"
+        usage = getattr(resp, "usage", None)
+        meta = {
+            "mode": "anthropic",
+            "model": ANTHROPIC_MODEL,
+            "usage": {
+                "input_tokens": getattr(usage, "input_tokens", None),
+                "output_tokens": getattr(usage, "output_tokens", None),
+                "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", None),
+            } if usage else None,
+        }
+        return out, meta
+    except Exception as exc:
+        log.warning("filiera anthropic fallita: %s", exc)
+        if ALLOW_OFFLINE_FALLBACK:
+            return _offline(voci, facts, inputs), {"mode": "offline", "reason": f"anthropic_error: {exc}"}
+        raise  # PROD: non consegnare un deliverable degradato in silenzio
 
 
 def _offline(voci: list[dict], facts: dict[str, dict], inputs: dict) -> dict[str, str]:
@@ -100,8 +115,8 @@ def _offline(voci: list[dict], facts: dict[str, dict], inputs: dict) -> dict[str
         titolo = v.get("titolo", vid)
         out[vid] = (
             f"[BOZZA OFFLINE] {titolo} per {azienda}. "
-            f"Analisi basata sui riferimenti normativi forniti: {fact_refs}. "
-            f"(Testo segnaposto deterministico — la prosa reale è prodotta da Sonnet "
-            f"quando ANTHROPIC_API_KEY è configurata; i FATTI restano invariati.)"
+            f"Analisi ancorata ai riferimenti normativi forniti: {fact_refs}. "
+            f"(Segnaposto deterministico — la prosa reale è prodotta da Sonnet con "
+            f"ANTHROPIC_API_KEY; i FATTI restano invariati.)"
         )
     return out

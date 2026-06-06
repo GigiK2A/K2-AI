@@ -146,7 +146,7 @@ def run(job_id: str, service_id: str, inputs: dict) -> None:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
 
         facts, citazioni = resolve(skill, inputs)
-        sezioni, mode = llm.generate_sezioni(blueprint, facts, inputs)
+        sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
 
         # Assemble (Phase-1 pilota = LegalBoost).
         deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs)
@@ -183,7 +183,7 @@ def run(job_id: str, service_id: str, inputs: dict) -> None:
                      "json_path": str(json_path), "bundle": []},
             validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS"},
             citazioni=citazioni,
-            meta={"skill": skill, "blueprint_id": bp_id, "filiera_mode": mode,
+            meta={"skill": skill, "blueprint_id": bp_id, "filiera": filiera_meta,
                   "snapshot_version": assets.snapshot_version()},
         )
     except Refuse as r:

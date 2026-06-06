@@ -77,7 +77,14 @@ Il backend kbot **replica l'architettura V2 del sito** (`kai-website/api/kbot/*.
 | `POST /api/kbot/checkout` | opzionale | Stripe Checkout session |
 | `POST /api/kbot/generate-pdf` | `x-internal-key` o `status='paid'` | Sonnet → JSON → Jinja2 → Playwright PDF |
 | `GET  /api/kbot/status` | no | Polling stato dopo checkout |
+| `POST /api/kbot/deliverables` | opzionale (ownership+paid) | Instrada un servizio generabile all'**8e** (motore `k2a-8e`); ritorna `job_id` |
+| `GET  /api/kbot/deliverables/{job_id}` | no | Polling stato job 8e (outputs/validation/citazioni) |
+| `GET  /api/kbot/engine/health` | no | Liveness motore 8e (debug) |
 | `POST /api/stripe/webhook` | firma Stripe | Marca session paid, scrive `has_paid` su user metadata, triggera generate-pdf |
+
+### Motore 8e (generazione deliverable Boost)
+
+Il K-BOT NON genera i deliverable Boost: li richiede al motore **8e** (`kai-website/k2a-8e/`, FastAPI separato su Railway) via `lib/engine.py`. Catalogo prodotti in `lib/catalog.py` (legge `app/data/catalog.json`, generato da `build_catalog.py` = catalog di Luca + overlay tag pillar). Env: `K2A_8E_BASE_URL` (dev → mock `kbot/mock-8e`), `K2A_8E_API_KEY`. Contratto: `docs/interfaccia-kbot-8e.md`.
 
 ---
 

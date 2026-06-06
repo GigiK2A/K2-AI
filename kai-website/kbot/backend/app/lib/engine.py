@@ -1,0 +1,100 @@
+"""Client per il motore 8e (membrana docs/interfaccia-kbot-8e.md §1).
+
+Il K-BOT NON genera deliverable: li richiede all'8e via questo client.
+In dev punta al MOCK (kbot/mock-8e); in prod all'8e reale (kai-website/k2a-8e su
+Railway). Swap = solo env K2A_8E_BASE_URL/K2A_8E_API_KEY.
+
+API consumate:
+  GET  /v1/catalog
+  POST /v1/deliverables            → {job_id, status, confidence} | 402 | 422 refused
+  GET  /v1/deliverables/{job_id}   → {status, outputs, validation, citazioni, ...}
+"""
+from __future__ import annotations
+
+import logging
+from typing import Any, Optional
+
+import httpx
+
+from ..settings import ENGINE_8E_BASE_URL, ENGINE_8E_API_KEY
+
+log = logging.getLogger(__name__)
+
+_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
+
+
+def _headers() -> dict:
+    h = {"Content-Type": "application/json"}
+    if ENGINE_8E_API_KEY:
+        h["Authorization"] = f"Bearer {ENGINE_8E_API_KEY}"
+    return h
+
+
+class EngineError(Exception):
+    pass
+
+
+class EngineRefused(Exception):
+    """L'8e ha rifiutato (route-or-refuse). reason ∈ out_of_catalog|low_confidence|..."""
+    def __init__(self, reason: str, message: str):
+        self.reason = reason
+        self.message = message
+        super().__init__(f"{reason}: {message}")
+
+
+class EnginePaymentRequired(Exception):
+    pass
+
+
+async def create_deliverable(
+    service_id: str, inputs: dict, entitlement_token: str, tier: Optional[str] = None
+) -> dict:
+    """POST /v1/deliverables. Ritorna {job_id, status, confidence}.
+
+    Solleva EnginePaymentRequired (402), EngineRefused (422), EngineError (altro).
+    """
+    payload: dict[str, Any] = {
+        "service_id": service_id,
+        "inputs": inputs,
+        "entitlement_token": entitlement_token,
+    }
+    if tier:
+        payload["tier"] = tier
+
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+        r = await c.post(f"{ENGINE_8E_BASE_URL}/v1/deliverables",
+                         json=payload, headers=_headers())
+
+    if r.status_code == 202:
+        return r.json()
+    if r.status_code == 402:
+        raise EnginePaymentRequired(r.json().get("service_id", service_id))
+    if r.status_code == 422:
+        body = r.json()
+        raise EngineRefused(body.get("reason", "refused"), body.get("message", ""))
+    raise EngineError(f"8e {r.status_code}: {r.text[:300]}")
+
+
+async def get_deliverable(job_id: str) -> dict:
+    """GET /v1/deliverables/{job_id}. Ritorna lo stato job."""
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+        r = await c.get(f"{ENGINE_8E_BASE_URL}/v1/deliverables/{job_id}", headers=_headers())
+    if r.status_code == 404:
+        raise EngineError("job non trovato")
+    if r.status_code != 200:
+        raise EngineError(f"8e {r.status_code}: {r.text[:300]}")
+    return r.json()
+
+
+async def get_catalog() -> dict:
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+        r = await c.get(f"{ENGINE_8E_BASE_URL}/v1/catalog", headers=_headers())
+    if r.status_code != 200:
+        raise EngineError(f"8e catalog {r.status_code}: {r.text[:200]}")
+    return r.json()
+
+
+async def health() -> dict:
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+        r = await c.get(f"{ENGINE_8E_BASE_URL}/health")
+    return r.json() if r.status_code == 200 else {"status": "down", "code": r.status_code}
