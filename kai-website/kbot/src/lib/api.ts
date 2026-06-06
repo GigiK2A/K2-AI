@@ -664,3 +664,66 @@ export async function getStatus(
   if (!res.ok) await parseErr(res, "Errore stato");
   return res.json();
 }
+
+/* -----------------------------------------------------------------
+ * Deliverable 8e (Boost) — instrada al motore 8e e polla lo stato.
+ * Vedi docs/interfaccia-kbot-8e.md + api/deliverables.py.
+ * ----------------------------------------------------------------- */
+
+export type DeliverableStatus =
+  | "routed" | "running" | "validating" | "rendered" | "refused" | "error";
+
+export interface DeliverableJob {
+  job_id: string;
+  status: DeliverableStatus;
+  outputs?: {
+    html_url?: string; pdf_url?: string; html_path?: string; pdf_path?: string;
+    bundle?: { type: string; url?: string }[];
+  } | null;
+  validation?: Record<string, unknown> | null;
+  citazioni?: { campo?: string; fonte?: string; vigenza?: string }[];
+  refusal_reason?: string | null;
+  error?: string | null;
+  meta?: Record<string, unknown> | null;
+}
+
+export async function createDeliverable(
+  sessionId: string,
+  servizioId: string,
+  inputs: Record<string, unknown>,
+  authToken?: string | null,
+): Promise<{ job_id: string; status: string }> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, servizio_id: servizioId, inputs }),
+  });
+  if (!res.ok) await parseErr(res, "Errore creazione deliverable");
+  return res.json();
+}
+
+export async function getDeliverable(jobId: string): Promise<DeliverableJob> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables/${encodeURIComponent(jobId)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) await parseErr(res, "Errore stato deliverable");
+  return res.json();
+}
+
+/** Polla finché rendered/refused/error o timeout. onTick per aggiornare la UI. */
+export async function pollDeliverable(
+  jobId: string,
+  onTick?: (job: DeliverableJob) => void,
+  opts: { intervalMs?: number; timeoutMs?: number } = {},
+): Promise<DeliverableJob> {
+  const interval = opts.intervalMs ?? 2500;
+  const timeout = opts.timeoutMs ?? 300_000;
+  const start = Date.now();
+  for (;;) {
+    const job = await getDeliverable(jobId);
+    onTick?.(job);
+    if (["rendered", "refused", "error"].includes(job.status)) return job;
+    if (Date.now() - start > timeout) return { ...job, status: "error", error: "timeout" };
+    await new Promise((r) => setTimeout(r, interval));
+  }
+}
