@@ -13,7 +13,11 @@ from aios.tools import Tool
 _SCHEMA = {"type": "object", "properties": {"proposte": {"type": "array", "items": {
     "type": "object", "properties": {
         "tipo": {"type": "string"}, "titolo": {"type": "string"},
-        "contenuto": {"type": "string"}, "motivo": {"type": "string"}},
+        "contenuto": {"type": "string"}, "motivo": {"type": "string"},
+        # Azione strutturata opzionale: eseguita SOLO all'approvazione (attuatore L1).
+        "azione": {"type": "object", "properties": {
+            "tabella": {"type": "string"}, "op": {"type": "string"},
+            "match": {"type": "object"}, "dati": {"type": "object"}}}},
     "required": ["tipo", "titolo", "contenuto", "motivo"]}}}, "required": ["proposte"]}
 
 
@@ -74,7 +78,17 @@ class DomainAgent:
                     "dominio": dominio, "tipo": payload.get("tipo"),
                     "titolo": payload.get("titolo"), "contenuto": payload.get("contenuto"),
                     "motivo": payload.get("motivo"), "stato": "approvato"})
-            return {"accettata": True, **payload}
+            out = {"accettata": True, **payload}
+            # Attuatore L1: se la proposta porta un'azione strutturata, eseguila ORA
+            # (siamo già nel path di approvazione umana). Allowlist + no delete/denaro.
+            azione = payload.get("azione")
+            if azione and self._dclient is not None:
+                try:
+                    from aios.actuator import apply_action
+                    out["attuatore"] = apply_action(self._dclient, azione)
+                except Exception as exc:
+                    out["attuatore"] = {"ok": False, "errore": str(exc)}
+            return out
 
         return Tool(name=self.cfg.tool_name, action_type=self.cfg.action, run=_run)
 
@@ -104,7 +118,25 @@ class DomainAgent:
         user = (self._context() + "\n\n# DATI REALI\n"
                 + json.dumps(data, ensure_ascii=False)[:7000]
                 + "\n\nProponi azioni concrete coprendo PIÙ funzioni diverse del reparto "
-                  "(non solo una). Max 8.")
+                  "(non solo una). Max 8.\n"
+                  "Se una proposta implica una SCRITTURA interna concreta, aggiungi il campo "
+                  '"azione": {"tabella","op":"insert|update","match"(per update),"dati"} usando '
+                  "SOLO tabelle interne (es. pipeline_leads, invoices, finance_journal, board_tasks, "
+                  "board_cost_items, aios_content_calendar, project_tasks, candidates, employees, "
+                  "legal_documents). MAI denaro (revenue/conversions/Stripe), MAI delete, MAI dati kbot. "
+                  "update richiede sempre match (es. {\"id\":\"...\"}). Se non serve scrittura, ometti 'azione'. "
+                  "L'azione verrà eseguita SOLO dopo approvazione umana.\n"
+                  "USA ESATTAMENTE QUESTE COLONNE (in 'dati'):\n"
+                  "- board_tasks: title, notes, priority(alta|media|bassa), status(todo|doing|done)\n"
+                  "- pipeline_leads: name, company, sector, status, score(1-10), next_action, pain_point, notes, email, value_eur\n"
+                  "- invoices: number, client_name, amount_eur, status(bozza|emessa|pagata|scaduta), issued_at, due_at\n"
+                  "- finance_journal: data, descrizione, conto, dare, avere, categoria\n"
+                  "- board_cost_items: name, amount_eur, frequency(monthly|quarterly|annual|one_off), category, active\n"
+                  "- aios_content_calendar: canale(instagram|blog), titolo, bozza, stato, data_programmata\n"
+                  "- project_tasks: project_id, title, status, due_date\n"
+                  "- candidates: full_name, role_applied, status, source, notes\n"
+                  "- employees: full_name, role, department, contract_type, status\n"
+                  "- legal_documents: tipo, controparte, stato, rischio, scadenza, note")
         parsed = self.llm.complete_json(system=self.cfg.system, user=user, schema=_SCHEMA)
         proposte = _as_dict_list(parsed.get("proposte"))
         ids = []

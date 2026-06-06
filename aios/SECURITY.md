@@ -9,6 +9,13 @@ Internal K2-AI platform. Cloud stack (Anthropic Claude + Supabase EU). GDPR-awar
 - **Segreti**: tutti in `aios/.env` (ignorato da git via `*.env`). **Nessun segreto nei file tracciati** (verificato con grep su `sk-ant`, `eyJhbGci`, `EAA*`, `service_role`).
 - **Iniezione**: accesso DB via PostgREST con parametri url-encoded e psycopg parametrico. Nessuna interpolazione SQL diretta.
 
+## Attuatore L1 (Approva → scrittura reale, `actuator.py`)
+- Esegue scritture su Supabase **solo dopo approvazione umana** (la coda L1 = consenso per-azione).
+- Perimetro stretto: **solo insert/update** su tabelle operative in **allowlist** (`ALLOWLIST`); **mai delete**;
+  **mai denaro** (`board_revenue_events`/`kbot_conversions`/Stripe in `BLOCKED`); mai auth/permessi; mai dati utente kbot.
+- `update` richiede sempre un `match` (niente update di massa). Azione non valida → errore tracciato, l'approvazione non crasha.
+- Verificato dal vivo: insert reale su `board_tasks` ok, `delete` rifiutato (`ActuatorError`).
+
 ## Connettori esterni (env-gated, privilegi minimi)
 - Tutti i connettori (`sources/connectors.py`) sono **readonly** (`action_type=None`) e degradano a `[]` senza credenziali: nessuna azione che muove denaro/stato.
 - Chiavi con **least-privilege**: Stripe = *restricted key read-only* (charges/balance/subscriptions read, **mai** scrittura); IMAP = *app-password* dedicata; Google (GSC/Calendar) = service account scope `*.readonly`; Telegram = bot con `callback_data` opaco (solo id approvazione) e **allowlist chat id**.

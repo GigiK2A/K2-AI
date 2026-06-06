@@ -2,8 +2,9 @@
 
 > Snapshot di avanzamento. Legenda: ✅ dati reali · 🔌 codice pronto, serve credenziale ·
 > 📝 modalità strategia (nessuna fonte dati) · ❌ non implementato.
-> **Limite trasversale a TUTTI**: gli agenti **PROPONGONO** (cap autonomia L1), **non eseguono**
-> ancora (manca l'attuatore: Approva → azione reale). Mai-automatico: soldi, firme, permessi, cancellazioni.
+> **Esecuzione**: attuatore L1 attivo (`actuator.py`) — su **Approva** gli agenti di dominio
+> (Finance, Vendite, …) scrivono DAVVERO su Supabase (insert/update in allowlist). Mai delete,
+> mai denaro, mai dati utente: quelli restano sempre manuali. Marketing usa ancora il tool proprio (attuatore in arrivo).
 
 ---
 
