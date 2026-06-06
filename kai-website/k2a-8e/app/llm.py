@@ -36,6 +36,27 @@ _SYSTEM = (
 )
 
 
+def _parse_json_object(text: str) -> dict:
+    """Estrae un oggetto JSON da una risposta LLM (gestisce ```json fences).
+
+    Tollerante: rimuove i fence, poi json.loads; se fallisce ritorna {} (il
+    chiamante riempie le voci mancanti col fallback offline).
+    """
+    t = text.strip()
+    if t.startswith("```"):
+        # rimuove ```json ... ``` o ``` ... ```
+        t = t.split("\n", 1)[1] if "\n" in t else t
+        if t.rstrip().endswith("```"):
+            t = t.rstrip()[:-3]
+    start, end = t.find("{"), t.rfind("}")
+    if start < 0 or end <= start:
+        return {}
+    try:
+        return json.loads(t[start : end + 1])
+    except json.JSONDecodeError:
+        return {}
+
+
 def _facts_block(facts: dict[str, dict]) -> str:
     lines = ["FATTI DETERMINISTICI (usa SOLO questi per i riferimenti normativi):"]
     for k, v in facts.items():
@@ -72,13 +93,14 @@ def generate_sezioni(
         )
         resp = client.messages.create(
             model=ANTHROPIC_MODEL,
-            max_tokens=4096,
+            max_tokens=8192,  # 9 voci ricche: 4096 tronca il JSON
             system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
         )
         text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-        start, end = text.find("{"), text.rfind("}")
-        data = json.loads(text[start : end + 1]) if start >= 0 else {}
+        data = _parse_json_object(text)
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            log.warning("filiera: risposta troncata (max_tokens), JSON parziale")
         off = _offline(voci, facts, inputs)
         out = {}
         for v in voci:
