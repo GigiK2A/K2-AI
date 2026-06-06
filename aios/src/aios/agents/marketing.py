@@ -15,32 +15,28 @@ PROPOSE_ACTION = ActionType("marketing", "content.proposta")
 CALENDAR_ACTION = ActionType("marketing", "calendario.voce")
 
 _SYSTEM = (
-    "Sei il direttore marketing (CMO) di K2-AI. Rispetti SEMPRE il Founder Model "
-    "(voce, priorità, regole) e i framework forniti. Non pubblichi nulla: PROPONI (L1).\n\n"
-    "Copri l'INTERO reparto marketing di una multinazionale, sulle sotto-funzioni che "
-    "hanno dati reali collegati:\n"
-    "1) Brand & posizionamento — coerenza voce/messaggi.\n"
-    "2) Content marketing — temi blog vs buyer journey, outline + H1/H2/meta.\n"
-    "3) Social media — analisi post IG uno per uno (reach/like), caption, hashtag, orari.\n"
-    "4) SEO/organico — usa i temi e i 10 pillar K2-AI: proponi title/meta, cluster, internal link.\n"
-    "5) Email/lifecycle — analizza iscritti newsletter (confermati/attivi/disiscritti) e le issue "
-    "passate: proponi oggetti A/B, sequenze nurture, pulizia lista, segmentazione.\n"
-    "6) Product marketing — dai servizi e dalla conoscenza K2-AI: posizionamento, battlecard, "
-    "messaggi per ICP, checklist lancio.\n"
-    "7) Marketing analytics — dagli snapshot (IG + funnel K-BOT): digest cross-canale, KPI "
-    "(reach, conversion rate, visite), cosa migliorare.\n"
-    "8) Market research — dalla 'voce clienti' (sessioni K-BOT: settore + dati raccolti): "
-    "estrai pain point ricorrenti e linguaggio reale da usare nei copy.\n"
-    "9) Competitive intelligence — dai competitor IG analizzati.\n"
-    "Sotto-funzioni SENZA dati collegati (NON inventare numeri, semmai proponi di attivarle): "
-    "paid ads/SEM, demand gen, PR, influencer, eventi, CRO web, budget ops.\n\n"
-    "Regole: numeri sempre, niente buzzword, ogni proposta azionabile con motivo basato su dato reale. "
-    "Se un dato manca, dillo.\n\n"
+    "Sei il direttore marketing (CMO) di K2-AI. Rispetti SEMPRE il Founder Model e i "
+    "framework forniti. Non pubblichi nulla: PROPONI (L1).\n\n"
+    "Copri l'INTERO reparto marketing di una multinazionale — 19 sotto-funzioni. "
+    "[D]=hai dati reali, usali; [S]=nessuna fonte ancora, lavora in modalità strategia e "
+    "dichiaralo (NON inventare numeri):\n"
+    "1 brand[D] · 2 content[D] · 3 social[D] · 4 seo[D] · 5 email[D] · 6 product_mkt[D] · "
+    "7 analytics[D] · 8 research[D] · 9 competitor[D] · "
+    "10 paid (ads Meta/Google, se presenti) · 11 demand_gen (pipeline da lead/funnel) · "
+    "12 automation (calendario contenuti, igiene UTM/CRM, workflow) · "
+    "13 pr (brand mentions / ufficio stampa) · 14 influencer (scouting profili in nicchia) · "
+    "15 events[S] (webinar dai gap di contenuto) · 16 cro (funnel sito/landing, se PostHog) · "
+    "17 creative[S] (brief/asset, prompt immagini) · 18 budget (costi marketing) · "
+    "19 strategy (piano trimestrale che lega le aree sopra).\n\n"
+    "Regole: copri PIÙ aree diverse (non solo i post). Numeri sempre quando hai i dati; "
+    "se una funzione è [S] o senza dati, proponi comunque l'azione strategica e scrivi "
+    "'[strategia: dati non collegati]' nel motivo. Niente buzzword. Ogni proposta azionabile.\n\n"
     "Rispondi SOLO con JSON:\n"
-    '{"proposte":[{"tipo":"brand|content|social|seo|email|product_mkt|analytics|research|competitor|fix",'
+    '{"proposte":[{"tipo":"brand|content|social|seo|email|product_mkt|analytics|research|'
+    'competitor|paid|demand_gen|automation|pr|influencer|events|cro|creative|budget|strategy|fix",'
     '"titolo":"...","contenuto":"...","motivo":"..."}],'
     '"voci_calendario":[{"canale":"instagram|blog","titolo":"...","bozza":"...","data_programmata":"YYYY-MM-DD"}]}\n'
-    "Niente testo fuori dal JSON. Copri più sotto-funzioni diverse, non solo i post."
+    "Niente testo fuori dal JSON."
 )
 _FOCUS = ["brand-voice", "content-creation", "campaign-plan", "seo-italia",
           "email-sequence", "marketing-analytics", "posizionamento-strategico"]
@@ -121,7 +117,8 @@ class MarketingAgent:
         if "leggi_calendario" in names:
             data["calendario"] = self._read("leggi_calendario")
         for opt in ("leggi_iscritti", "leggi_newsletter", "leggi_analytics", "leggi_voce_clienti",
-                    "leggi_ranking_seo", "leggi_funnel_web", "leggi_competitor_web", "leggi_ads_meta"):
+                    "leggi_ranking_seo", "leggi_funnel_web", "leggi_competitor_web", "leggi_ads_meta",
+                    "leggi_ads_google", "leggi_brand_mentions", "leggi_calendario_contenuti", "leggi_costi"):
             if opt in names:
                 try:
                     data[opt] = self._read(opt)
@@ -162,11 +159,11 @@ class MarketingAgent:
         # Prompt LEAN: Haiku con forced-JSON degrada oltre ~12k token → tenere ~9k.
         def sec(k, cap=1200):
             return json.dumps(data.get(k), ensure_ascii=False)[:cap]
-        user = (self.founder.to_prompt()
-                + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi", 1200)
-                + "\n## Temi blog\n" + sec("topics", 1000)
-                + "\n## Profilo IG\n" + sec("profilo_ig", 500)
-                + "\n## Post IG (analizza UNO PER UNO vs metriche)\n" + sec("post_ig", 1500))
+        user = (self.founder.to_prompt()[:900]
+                + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi", 900)
+                + "\n## Temi blog\n" + sec("topics", 800)
+                + "\n## Profilo IG\n" + sec("profilo_ig", 400)
+                + "\n## Post IG (analizza UNO PER UNO vs metriche)\n" + sec("post_ig", 1200))
         if "insight" in data:
             user += "\n## Insight IG\n" + sec("insight", 600)
         if "leggi_iscritti" in data:
@@ -176,7 +173,7 @@ class MarketingAgent:
         if "leggi_analytics" in data:
             user += "\n## Analytics snapshot (cross-canale)\n" + sec("leggi_analytics", 800)
         if "leggi_voce_clienti" in data:
-            user += "\n## Voce clienti (sessioni K-BOT, per research)\n" + sec("leggi_voce_clienti", 1500)
+            user += "\n## Voce clienti (sessioni K-BOT, per research)\n" + sec("leggi_voce_clienti", 1000)
         if data.get("leggi_ranking_seo"):
             user += "\n## Ranking SEO (Search Console)\n" + sec("leggi_ranking_seo", 1000)
         if data.get("leggi_funnel_web"):
@@ -184,7 +181,15 @@ class MarketingAgent:
         if data.get("leggi_competitor_web"):
             user += "\n## Competitor web\n" + sec("leggi_competitor_web", 800)
         if data.get("leggi_ads_meta"):
-            user += "\n## Ads Meta\n" + sec("leggi_ads_meta", 800)
+            user += "\n## Ads Meta (paid)\n" + sec("leggi_ads_meta", 800)
+        if data.get("leggi_ads_google"):
+            user += "\n## Ads Google (paid)\n" + sec("leggi_ads_google", 600)
+        if data.get("leggi_brand_mentions"):
+            user += "\n## Brand mentions (PR)\n" + sec("leggi_brand_mentions", 1000)
+        if data.get("leggi_calendario_contenuti"):
+            user += "\n## Calendario contenuti (automation/ops)\n" + sec("leggi_calendario_contenuti", 800)
+        if data.get("leggi_costi"):
+            user += "\n## Costi (budget)\n" + sec("leggi_costi", 600)
         if "competitor_ig" in data:
             user += "\n## Competitor (analisi)\n" + sec("competitor_ig", 1000)
         if "calendario" in data:
@@ -192,8 +197,9 @@ class MarketingAgent:
         user += self._skill_context()
         user += ("\n\nValuta i post uno per uno rispetto a reach/like, confronta coi competitor, "
                  "e proponi miglioramenti concreti (proposte) e, dove utile, voci di calendario datate. "
-                 "Copri sotto-funzioni diverse (social, seo, email, content, product_mkt, analytics, research). "
-                 "Massimo 8 proposte.")
+                 "Copri il PIÙ possibile delle 19 sotto-funzioni (incluse paid, demand_gen, "
+                 "automation, pr, influencer, events, cro, creative, budget, strategy), una proposta "
+                 "per area dove ha senso. Massimo 10 proposte.")
         schema = {"type": "object", "properties": {
             "proposte": {"type": "array", "items": {"type": "object", "properties": {
                 "tipo": {"type": "string"}, "titolo": {"type": "string"},

@@ -205,6 +205,27 @@ def _gcal():
             for e in out.get("items", [])]
 
 
+# ---------------------------------------------------------------- PR / brand mentions (free)
+def _brand_mentions():
+    q = os.environ.get("AIOS_BRAND_NAME")
+    if not q:
+        return []
+    import xml.etree.ElementTree as ET
+    url = ("https://news.google.com/rss/search?q=" + urllib.parse.quote(q) +
+           "&hl=it&gl=IT&ceid=IT:it")
+    req = urllib.request.Request(url, headers={"User-Agent": "K2AI-bot/1.0"})
+    with urllib.request.urlopen(req, timeout=12) as r:  # noqa: S310
+        raw = r.read()
+    root = ET.fromstring(raw)
+    rows = []
+    for it in root.findall(".//item")[:15]:
+        rows.append({"title": (it.findtext("title") or "")[:160],
+                     "link": it.findtext("link") or "",
+                     "source": (it.find("{*}source").text if it.find("{*}source") is not None else ""),
+                     "date": it.findtext("pubDate") or ""})
+    return rows
+
+
 # ---------------------------------------------------------------- Competitor web
 def _competitor_web():
     urls = os.environ.get("COMPETITOR_URLS", "")
@@ -234,7 +255,8 @@ def finance_connectors():
 def marketing_connectors():
     return [_ro("leggi_email_events", _resend_emails), _ro("leggi_ranking_seo", _gsc_ranking),
             _ro("leggi_funnel_web", _posthog_funnel), _ro("leggi_ads_meta", _meta_ads),
-            _ro("leggi_ads_google", _google_ads), _ro("leggi_competitor_web", _competitor_web)]
+            _ro("leggi_ads_google", _google_ads), _ro("leggi_competitor_web", _competitor_web),
+            _ro("leggi_brand_mentions", _brand_mentions)]
 
 
 def sales_connectors():
@@ -255,4 +277,5 @@ CONNECTOR_ENV = {
     "leggi_inbox": ["IMAP_HOST", "IMAP_USER", "IMAP_PASSWORD"],
     "leggi_calendario_google": ["GOOGLE_SA_JSON"],
     "leggi_competitor_web": ["COMPETITOR_URLS"],
+    "leggi_brand_mentions": ["AIOS_BRAND_NAME"],
 }

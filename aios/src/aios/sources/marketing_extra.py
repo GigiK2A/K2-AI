@@ -31,4 +31,7 @@ def marketing_extra_tools(client: Any) -> list[Tool]:
         _ro("leggi_voce_clienti", "kbot_sessions",
             {"select": "sector,collected_data,status",
              "order": "created_at.desc", "limit": "25"}, client),
+        _ro("leggi_calendario_contenuti", "aios_content_calendar",
+            {"select": "canale,titolo,stato,data_programmata,fonte_tipo",
+             "order": "created_at.desc", "limit": "50"}, client),
     ]
