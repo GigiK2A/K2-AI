@@ -33,13 +33,14 @@ def health():
 @app.get("/v1/catalog", dependencies=[Depends(require_bearer)])
 def catalog():
     services = []
-    for service_id, blueprint_id in CATALOGO_CHIUSO.items():
-        bp, src = assets.load_blueprint(blueprint_id)
+    for service_id, entry in CATALOGO_CHIUSO.items():
+        skill = entry.get("skill")
+        bp = assets.load_blueprint(skill) or {}
         services.append({
             "service_id": service_id,
-            "blueprint_id": blueprint_id,
-            "nome": (bp or {}).get("titolo", service_id),
-            "blueprint_source": src,
+            "blueprint_id": entry.get("blueprint_id"),
+            "skill": skill,
+            "nome": bp.get("pacchetto", {}).get("nome_commerciale", service_id),
         })
     return {
         "engine_version": ENGINE_VERSION,

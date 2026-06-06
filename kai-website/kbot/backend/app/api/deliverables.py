@@ -69,10 +69,11 @@ async def create(body: DeliverableBody, user: Optional[AuthUser] = Depends(optio
     if not entitlement:
         raise HTTPException(status_code=402, detail="servizio non pagato")
 
-    blueprint_service = servizio.get("blueprint_id") or body.servizioId
+    # L'8e instrada per service_id (chiave manifest = id catalog, stessa fonte
+    # k2a-catalogo); è l'8e a risolvere service_id→blueprint internamente.
     try:
         res = await engine.create_deliverable(
-            service_id=blueprint_service,
+            service_id=body.servizioId,
             inputs=body.inputs,
             entitlement_token=entitlement,
             tier=servizio.get("tipo"),
