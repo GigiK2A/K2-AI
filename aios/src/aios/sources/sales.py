@@ -17,4 +17,14 @@ def lead_tools(client: Any) -> list[Tool]:
              run=lambda **_: client.select("board_memos", {
                  "select": "subject,body,tags,created_at",
                  "order": "created_at.desc", "limit": "20"})),
+        # clienti paganti (account mgmt / customer success / upsell)
+        Tool(name="leggi_clienti", action_type=None, readonly=True,
+             run=lambda **_: client.select("kbot_conversions", {
+                 "select": "type,amount_eur,email,created_at",
+                 "order": "created_at.desc", "limit": "100"})),
+        # ricavi chiusi (contract/order + forecast vs actual)
+        Tool(name="leggi_ricavi_chiusi", action_type=None, readonly=True,
+             run=lambda **_: client.select("board_revenue_events", {
+                 "select": "amount_cents,currency,status,description,occurred_at",
+                 "order": "occurred_at.desc", "limit": "100"})),
     ]

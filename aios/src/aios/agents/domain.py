@@ -90,7 +90,7 @@ class DomainAgent:
         if self.skills:
             for n in self.cfg.skill_focus:
                 try:
-                    out += f"\n\n## SKILL: {n}\n" + self.skills.load(n)[:1500]
+                    out += f"\n\n## SKILL: {n}\n" + self.skills.load(n)[:700]
                 except KeyError:
                     pass
         return out
@@ -102,8 +102,9 @@ class DomainAgent:
             if tool in names:
                 data[tool] = self._read(tool, **args)
         user = (self._context() + "\n\n# DATI REALI\n"
-                + json.dumps(data, ensure_ascii=False)[:6000]
-                + "\n\nProponi azioni concrete per il dominio. Max 6.")
+                + json.dumps(data, ensure_ascii=False)[:7000]
+                + "\n\nProponi azioni concrete coprendo PIÙ funzioni diverse del reparto "
+                  "(non solo una). Max 8.")
         parsed = self.llm.complete_json(system=self.cfg.system, user=user, schema=_SCHEMA)
         proposte = _as_dict_list(parsed.get("proposte"))
         ids = []

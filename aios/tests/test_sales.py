@@ -8,10 +8,13 @@ from aios.sources.sales import lead_tools
 
 class FakeClient:
     def select(self, table, params):
-        assert table in ("pipeline_leads", "board_memos")
+        assert table in ("pipeline_leads", "board_memos", "kbot_conversions",
+                         "board_revenue_events")
         if table == "board_memos":
             return [{"subject": "call Acme", "body": "interessati", "tags": [],
                      "created_at": "2026-06-01"}]
+        if table in ("kbot_conversions", "board_revenue_events"):
+            return []
         return [{"id": 1, "name": "Mario Rossi", "company": "Acme", "status": "qualificato",
                  "score": 8, "next_action": None, "pain_point": "troppe email", "notes": ""}]
 
