@@ -118,7 +118,8 @@ class MarketingAgent:
             data["calendario"] = self._read("leggi_calendario")
         for opt in ("leggi_iscritti", "leggi_newsletter", "leggi_analytics", "leggi_voce_clienti",
                     "leggi_ranking_seo", "leggi_funnel_web", "leggi_competitor_web", "leggi_ads_meta",
-                    "leggi_ads_google", "leggi_brand_mentions", "leggi_calendario_contenuti", "leggi_costi"):
+                    "leggi_ads_google", "leggi_brand_mentions", "leggi_calendario_contenuti",
+                    "leggi_costi", "leggi_suite"):
             if opt in names:
                 try:
                     data[opt] = self._read(opt)
@@ -190,6 +191,8 @@ class MarketingAgent:
             user += "\n## Calendario contenuti (automation/ops)\n" + sec("leggi_calendario_contenuti", 800)
         if data.get("leggi_costi"):
             user += "\n## Costi (budget)\n" + sec("leggi_costi", 600)
+        if data.get("leggi_suite"):
+            user += "\n## Catalogo prodotti K2-AI (suite, fonte unica)\n" + sec("leggi_suite", 1200)
         if "competitor_ig" in data:
             user += "\n## Competitor (analisi)\n" + sec("competitor_ig", 1000)
         if "calendario" in data:

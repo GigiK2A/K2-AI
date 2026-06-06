@@ -42,10 +42,13 @@ CASES = [
 
 def _kernel(client, factory):
     from aios.sources.connectors import all_connectors
+    from aios.sources.domains import catalog_tools
     k = Kernel()
     for t in factory(client):
         k.register_tool(t)
     for t in all_connectors():   # i config referenziano anche sensori-connettore env-gated
+        k.register_tool(t)
+    for t in catalog_tools(client):  # catalogo prodotti condiviso (leggi_suite)
         k.register_tool(t)
     return k
 

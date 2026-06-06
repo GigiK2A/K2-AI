@@ -27,4 +27,9 @@ def lead_tools(client: Any) -> list[Tool]:
              run=lambda **_: client.select("board_revenue_events", {
                  "select": "amount_cents,currency,status,description,occurred_at",
                  "order": "occurred_at.desc", "limit": "100"})),
+        # lead generati dal K-BOT (spina dorsale: il lead del sito arriva alle vendite)
+        Tool(name="leggi_lead_kbot", action_type=None, readonly=True,
+             run=lambda **_: client.select("kbot_sessions", {
+                 "select": "nome,email,sector,status,collected_data,created_at",
+                 "status": "in.(contacted,paid)", "order": "created_at.desc", "limit": "50"})),
     ]

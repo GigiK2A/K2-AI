@@ -34,6 +34,16 @@ Connettori in `sources/connectors.py` — leggono da env, senza chiave → `[]` 
 
 Setup credenziali: `.env.example`. Deploy: `DEPLOY.md`.
 
+## Spina dorsale unica (sito ↔ K-BOT ↔ AIOS)
+Tutto legge la stessa fonte su Supabase, niente copie separate:
+- **Catalogo prodotti**: `suite_services` (20 prodotti P01-P20) = mirror condiviso del
+  catalogo canonico `kai-website/lib/kbot/services-data.json` (usato da sito + K-BOT).
+  Allineamento: `python sync_suite.py` (upsert tabella + ingest in `aios_knowledge`).
+  Sensore AIOS `leggi_suite` → marketing/vendite usano lo STESSO catalogo del sito.
+- **Lead**: il lead del K-BOT (`kbot_sessions` contacted/paid) è letto dall'agente
+  Vendite via `leggi_lead_kbot` → il lead del sito arriva alle vendite (no silos).
+- **Knowledge**: i 20 prodotti sono in `aios_knowledge` → conoscenza condivisa da tutti gli agenti.
+
 ## Run
 ```bash
 cd aios

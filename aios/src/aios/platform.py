@@ -16,7 +16,7 @@ from aios.sources.marketing_extra import marketing_extra_tools
 from aios.sources.connectors import all_connectors
 from aios.sources.sales import lead_tools
 from aios.sources.domains import (finance_tools, operations_tools,
-                                  legal_tools, hr_tools)
+                                  legal_tools, hr_tools, catalog_tools)
 from aios.sources.outputs import output_tool
 from aios.agents.marketing import MarketingAgent
 from aios.agents.domain import DomainAgent
@@ -70,7 +70,7 @@ def build_platform() -> Platform:
         k.register_tool(t)
     for t in lead_tools(client):
         k.register_tool(t)
-    for factory in (finance_tools, operations_tools, legal_tools, hr_tools):
+    for factory in (finance_tools, operations_tools, legal_tools, hr_tools, catalog_tools):
         for t in factory(client):
             k.register_tool(t)
     for t in all_connectors():          # connettori esterni env-gated (graceful [])

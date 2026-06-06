@@ -9,6 +9,7 @@ SALES_CONFIG = DomainConfig(
     tool_name="proponi_vendite",
     sensors=[("leggi_lead", {}), ("leggi_memo_vendite", {}),
              ("leggi_clienti", {}), ("leggi_ricavi_chiusi", {}),
+             ("leggi_lead_kbot", {}), ("leggi_suite", {}),
              ("leggi_inbox", {}), ("leggi_calendario_google", {})],
     system=(
         "Sei il direttore vendite (CRO) di K2-AI — sistemi AI operativi per PMI 5-50. "

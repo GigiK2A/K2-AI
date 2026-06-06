@@ -17,6 +17,16 @@ def _ro(name: str, table: str, params: dict[str, str], client: Any) -> Tool:
                 run=lambda **_: client.select(table, params))
 
 
+# ---------------------------------------------------------------- Catalogo prodotti (spina dorsale)
+def catalog_tools(client: Any) -> list[Tool]:
+    """Catalogo prodotti unico, condiviso con sito + K-BOT (tabella suite_services)."""
+    return [
+        _ro("leggi_suite", "suite_services",
+            {"select": "id,name,short_description,recommended_tier,category,target,pillar_url",
+             "order": "id.asc"}, client),
+    ]
+
+
 # ---------------------------------------------------------------- Finance
 def finance_tools(client: Any) -> list[Tool]:
     return [
