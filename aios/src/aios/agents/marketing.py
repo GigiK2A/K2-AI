@@ -120,7 +120,8 @@ class MarketingAgent:
             data["insight"] = self._read("leggi_insight_ig")
         if "leggi_calendario" in names:
             data["calendario"] = self._read("leggi_calendario")
-        for opt in ("leggi_iscritti", "leggi_newsletter", "leggi_analytics", "leggi_voce_clienti"):
+        for opt in ("leggi_iscritti", "leggi_newsletter", "leggi_analytics", "leggi_voce_clienti",
+                    "leggi_ranking_seo", "leggi_funnel_web", "leggi_competitor_web", "leggi_ads_meta"):
             if opt in names:
                 try:
                     data[opt] = self._read(opt)
@@ -176,6 +177,14 @@ class MarketingAgent:
             user += "\n## Analytics snapshot (cross-canale)\n" + sec("leggi_analytics", 800)
         if "leggi_voce_clienti" in data:
             user += "\n## Voce clienti (sessioni K-BOT, per research)\n" + sec("leggi_voce_clienti", 1500)
+        if data.get("leggi_ranking_seo"):
+            user += "\n## Ranking SEO (Search Console)\n" + sec("leggi_ranking_seo", 1000)
+        if data.get("leggi_funnel_web"):
+            user += "\n## Funnel web (PostHog)\n" + sec("leggi_funnel_web", 800)
+        if data.get("leggi_competitor_web"):
+            user += "\n## Competitor web\n" + sec("leggi_competitor_web", 800)
+        if data.get("leggi_ads_meta"):
+            user += "\n## Ads Meta\n" + sec("leggi_ads_meta", 800)
         if "competitor_ig" in data:
             user += "\n## Competitor (analisi)\n" + sec("competitor_ig", 1000)
         if "calendario" in data:

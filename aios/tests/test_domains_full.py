@@ -41,8 +41,11 @@ CASES = [
 
 
 def _kernel(client, factory):
+    from aios.sources.connectors import all_connectors
     k = Kernel()
     for t in factory(client):
+        k.register_tool(t)
+    for t in all_connectors():   # i config referenziano anche sensori-connettore env-gated
         k.register_tool(t)
     return k
 

@@ -7,7 +7,9 @@ LEGAL_CONFIG = DomainConfig(
     name="legal",
     action=ActionType("legal", "azione"),
     tool_name="proponi_legal",
-    sensors=[("leggi_iscritti_newsletter", {}), ("leggi_consensi_kbot", {})],
+    sensors=[("leggi_iscritti_newsletter", {}), ("leggi_consensi_kbot", {}),
+             ("leggi_documenti_legali", {}), ("leggi_registro_trattamenti", {}),
+             ("leggi_fornitori", {})],
     system=(
         "Sei il responsabile Legale & Compliance di K2-AI (K2A S.R.L.S., P.IVA "
         "IT03655920548, mercato italiano). Il tuo compito è PROPORRE, mai decidere né "

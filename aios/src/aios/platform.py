@@ -13,6 +13,7 @@ from aios.sources.tools import (content_tools_rest, instagram_tools,
                                 insights_tools, competitor_lookup_tool)
 from aios.sources.calendar import calendar_tools
 from aios.sources.marketing_extra import marketing_extra_tools
+from aios.sources.connectors import all_connectors
 from aios.sources.sales import lead_tools
 from aios.sources.domains import (finance_tools, operations_tools,
                                   legal_tools, hr_tools)
@@ -72,6 +73,8 @@ def build_platform() -> Platform:
     for factory in (finance_tools, operations_tools, legal_tools, hr_tools):
         for t in factory(client):
             k.register_tool(t)
+    for t in all_connectors():          # connettori esterni env-gated (graceful [])
+        k.register_tool(t)
 
     founder = default_founder_model()
     skills = SkillLibrary()

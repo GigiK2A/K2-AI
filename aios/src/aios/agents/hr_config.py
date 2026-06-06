@@ -7,7 +7,7 @@ HR_CONFIG = DomainConfig(
     name="hr",
     action=ActionType("hr", "azione"),
     tool_name="proponi_hr",
-    sensors=[("leggi_assegnatari", {})],
+    sensors=[("leggi_dipendenti", {}), ("leggi_candidati", {}), ("leggi_assegnatari", {})],
     system=(
         "Sei l'agente HR di K2-AI. Gestisci le attività legate alle persone in una PMI "
         "italiana 5-50 dipendenti. PROPONI soltanto: assunzioni e licenziamenti restano al "

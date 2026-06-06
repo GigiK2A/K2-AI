@@ -7,7 +7,8 @@ SALES_CONFIG = DomainConfig(
     name="vendite",
     action=ActionType("vendite", "azione"),
     tool_name="proponi_vendite",
-    sensors=[("leggi_lead", {}), ("leggi_memo_vendite", {})],
+    sensors=[("leggi_lead", {}), ("leggi_memo_vendite", {}),
+             ("leggi_inbox", {}), ("leggi_calendario_google", {})],
     system=(
         "Sei il responsabile vendite di K2-AI — sistemi AI operativi per PMI italiane "
         "5-50 dipendenti. Analizzi i dati reali del CRM (pipeline_leads + memo) e proponi "

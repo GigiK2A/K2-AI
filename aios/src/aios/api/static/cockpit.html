@@ -41,7 +41,7 @@
       <div class="navi" data-view="documents">▢ Documents</div>
       <div class="navi soon" data-view="soon">⟳ Automations</div>
       <div class="navi" data-view="analytics">▭ Analytics</div>
-      <div class="navi soon" data-view="soon">⚙ Settings</div>
+      <div class="navi" data-view="settings">⚙ Settings</div>
     </nav>
     <div class="card p-3 mt-3">
       <div class="text-[11px] font-bold text-slate-500 mb-2">K2-AI Core Status</div>
@@ -388,11 +388,29 @@ async function loadAnalytics(){
     <section class="card p-6 text-slate-500 text-sm">Vista analytics avanzata (trend storici da <code>analytics_snapshots</code>) in arrivo. I numeri operativi reali sono nei singoli reparti.</section>`;
 }
 
+async function loadSettings(){
+  setHeader("Settings","integrazioni e credenziali — l'unica cosa che manca per andare full",false);markNav();killCharts();
+  let items=[];try{items=await jget("/api/integrations");}catch(e){}
+  const conn=items.filter(i=>i.connesso).length;
+  const card=i=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(i.nome)}</td>
+    <td class="py-2"><span class="chip ${i.tipo==='core'?'bg-slate-100 text-slate-500':'bg-blue-50 text-blue-700'}">${esc(i.tipo)}</span></td>
+    <td class="py-2">${i.connesso?'<span class="chip bg-emerald-100 text-emerald-700">● connesso</span>':'<span class="chip bg-amber-100 text-amber-700">○ manca credenziale</span>'}</td>
+    <td class="py-2 text-slate-400 text-[11px]">${esc((i.env||[]).join(', '))}</td></tr>`;
+  $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+    ${kpi("Integrazioni connesse",conn+"/"+items.length,{t:"reale",real:1})}
+    ${kpi("Da collegare",items.length-conn,"servono solo le credenziali")}
+    ${kpi("Autonomia agenti","L1",{t:"propone, tu approvi",real:1})}</section>
+    <section class="card p-5"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Integrazioni</h3><span class="real">reale · env</span></div>
+    <p class="text-[12px] text-slate-500 mb-3">Tutto il codice è già pronto. Dove vedi "manca credenziale", basta aggiungere la chiave nel file <code>.env</code> e l'agente inizia a leggere i dati veri — nessun'altra modifica.</p>
+    <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Servizio</th><th>Tipo</th><th>Stato</th><th>Variabili env</th></tr></thead>
+    <tbody>${items.map(card).join("")||'<tr><td colspan="4" class="py-4 text-center text-slate-400">—</td></tr>'}</tbody></table></div></section>`;
+}
 async function load(){
   if(VIEW==="overview")return loadOverview();
   if(VIEW==="agents")return loadAgents();
   if(VIEW==="documents")return loadDocuments();
   if(VIEW==="analytics")return loadAnalytics();
+  if(VIEW==="settings")return loadSettings();
   if(VIEW&&VIEW.startsWith("dom:"))return loadDomain();
   return loadOverview();
 }

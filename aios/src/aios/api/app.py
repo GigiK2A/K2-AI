@@ -166,6 +166,34 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         except KeyError:
             return {"error": "dominio non valido"}
 
+    @app.get("/api/integrations")
+    def integrations() -> list[dict[str, Any]]:
+        """Stato integrazioni: quali credenziali sono presenti (connesso) o mancanti.
+        Mostra che 'l'unica cosa mancante sono le credenziali'."""
+        from aios.sources.connectors import CONNECTOR_ENV
+        core = {
+            "Supabase": ["AIOS_SUPABASE_URL", "AIOS_SUPABASE_SERVICE_KEY"],
+            "Anthropic (LLM)": ["ANTHROPIC_API_KEY"],
+            "Instagram": ["AIOS_IG_TOKEN"],
+            "Telegram": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
+            "API auth": ["AIOS_API_TOKEN"],
+        }
+        label = {
+            "leggi_stripe_ricavi": "Stripe (ricavi)", "leggi_stripe_saldo": "Stripe (saldo)",
+            "leggi_email_events": "Resend (email)", "leggi_ranking_seo": "Google Search Console",
+            "leggi_funnel_web": "PostHog", "leggi_ads_meta": "Meta Ads",
+            "leggi_ads_google": "Google Ads", "leggi_inbox": "Email inbox (IMAP)",
+            "leggi_calendario_google": "Google Calendar", "leggi_competitor_web": "Competitor web",
+        }
+        out = []
+        for name, envs in core.items():
+            out.append({"nome": name, "tipo": "core",
+                        "connesso": all(os.environ.get(e) for e in envs), "env": envs})
+        for tool, envs in CONNECTOR_ENV.items():
+            out.append({"nome": label.get(tool, tool), "tipo": "connettore",
+                        "connesso": all(os.environ.get(e) for e in envs), "env": envs})
+        return out
+
     @app.get("/api/deliverables")
     def deliverables():
         if platform is None:

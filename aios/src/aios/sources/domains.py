@@ -32,6 +32,9 @@ def finance_tools(client: Any) -> list[Tool]:
         _ro("leggi_memoria_finance", "shared_memory",
             {"select": "key,value,category", "category": "in.(finance,costi,budget,obiettivi)",
              "limit": "50"}, client),
+        _ro("leggi_costi", "board_cost_items",
+            {"select": "name,amount_eur,frequency,category,active", "active": "eq.true",
+             "order": "amount_eur.desc"}, client),
     ]
 
 
@@ -66,14 +69,26 @@ def legal_tools(client: Any) -> list[Tool]:
         _ro("leggi_consensi_kbot", "kbot_profiles",
             {"select": "email,privacy_accepted,privacy_accepted_at,terms_accepted,"
                        "marketing_accepted,marketing_accepted_at", "limit": "200"}, client),
+        _ro("leggi_documenti_legali", "legal_documents",
+            {"select": "tipo,controparte,stato,rischio,scadenza", "order": "created_at.desc",
+             "limit": "100"}, client),
+        _ro("leggi_registro_trattamenti", "privacy_registro_trattamenti",
+            {"select": "trattamento,base_giuridica,categorie_dati,retention", "limit": "100"}, client),
+        _ro("leggi_fornitori", "vendors",
+            {"select": "name,paese_hq,dpa_status,scc", "limit": "100"}, client),
     ]
 
 
 # ---------------------------------------------------------------- HR / People
 def hr_tools(client: Any) -> list[Tool]:
-    # Nessuna tabella HR dedicata: l'unico segnale reale sono i task assegnati.
-    # L'agente lo dichiara e lavora in modalità consulenza/processo.
+    # Tabelle employees/candidates create; se vuote l'agente lavora in consulenza.
     return [
+        _ro("leggi_dipendenti", "employees",
+            {"select": "full_name,role,department,contract_type,contract_end_date,"
+                       "status,weekly_capacity_hours", "limit": "200"}, client),
+        _ro("leggi_candidati", "candidates",
+            {"select": "full_name,role_applied,status,source,notes", "order": "created_at.desc",
+             "limit": "100"}, client),
         _ro("leggi_assegnatari", "tasks",
             {"select": "assigned_to,status,title,priority", "limit": "100"}, client),
     ]

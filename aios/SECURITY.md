@@ -9,6 +9,12 @@ Internal K2-AI platform. Cloud stack (Anthropic Claude + Supabase EU). GDPR-awar
 - **Segreti**: tutti in `aios/.env` (ignorato da git via `*.env`). **Nessun segreto nei file tracciati** (verificato con grep su `sk-ant`, `eyJhbGci`, `EAA*`, `service_role`).
 - **Iniezione**: accesso DB via PostgREST con parametri url-encoded e psycopg parametrico. Nessuna interpolazione SQL diretta.
 
+## Connettori esterni (env-gated, privilegi minimi)
+- Tutti i connettori (`sources/connectors.py`) sono **readonly** (`action_type=None`) e degradano a `[]` senza credenziali: nessuna azione che muove denaro/stato.
+- Chiavi con **least-privilege**: Stripe = *restricted key read-only* (charges/balance/subscriptions read, **mai** scrittura); IMAP = *app-password* dedicata; Google (GSC/Calendar) = service account scope `*.readonly`; Telegram = bot con `callback_data` opaco (solo id approvazione) e **allowlist chat id**.
+- Nuove tabelle (`board_cost_items`, `employees`, `candidates`, `legal_documents`, `privacy_registro_trattamenti`, `vendors`): **RLS attiva senza policy** → solo `service_role`.
+- Telegram bidirezionale: accetta decisioni solo da `TELEGRAM_CHAT_ID`/`TELEGRAM_ALLOWED_CHAT_IDS`; l'azione resta `resolve_approval` sul kernel (stessa del cockpit), nessun bypass dell'autonomia L1.
+
 ## DA FARE prima del deploy in produzione (HARD requirements)
 1. **Ruotare i segreti** esposti in chat durante lo sviluppo:
    - `AIOS_SUPABASE_SERVICE_KEY` → Supabase → Settings → API → rigenera

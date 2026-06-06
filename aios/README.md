@@ -23,6 +23,17 @@ Per ogni dominio è stata fatta ricerca su come le aziende compongono quel repar
 - **HR** (`hr_config.py`): recruiting, interview, onboarding, people ops, performance, training, retention, org planning — **modalità consulenza** (nessuna anagrafica dipendenti/candidati ancora connessa: lo dichiara in ogni output).
 - Framework `DomainAgent` config-driven: nuovo ambito = nuova `DomainConfig` + i suoi sensori. Sensori non-marketing in `sources/domains.py`.
 
+## Integrazioni esterne (env-gated)
+Connettori in `sources/connectors.py` — leggono da env, senza chiave → `[]` (la piattaforma gira lo stesso):
+- **Finance**: Stripe (ricavi/saldo, read-only) · costi `board_cost_items`
+- **Marketing**: Resend (email) · Google Search Console (ranking) · PostHog (funnel) · Meta/Google Ads · competitor web
+- **Vendite**: IMAP inbox (triage) · Google Calendar (meeting)
+- **HR**: `employees`/`candidates` · **Legal**: `legal_documents`/`registro_trattamenti`/`vendors`
+- **Telegram** (bidirezionale): `notify/telegram.py` + `telegram_bot.py` — invia card Approva/Rifiuta e applica la decisione al kernel (stessa azione del cockpit web).
+- Stato di ogni integrazione nel cockpit → **Settings** (`/api/integrations`): "connesso / manca credenziale".
+
+Setup credenziali: `.env.example`. Deploy: `DEPLOY.md`.
+
 ## Run
 ```bash
 cd aios

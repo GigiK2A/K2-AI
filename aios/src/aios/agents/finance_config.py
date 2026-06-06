@@ -8,7 +8,8 @@ FINANCE_CONFIG = DomainConfig(
     action=ActionType("finance", "azione"),
     tool_name="proponi_finance",
     sensors=[("leggi_conversioni", {}), ("leggi_revenue", {}),
-             ("leggi_valore_commesse", {}), ("leggi_memoria_finance", {})],
+             ("leggi_valore_commesse", {}), ("leggi_memoria_finance", {}),
+             ("leggi_costi", {}), ("leggi_stripe_ricavi", {}), ("leggi_stripe_saldo", {})],
     system=(
         "Sei l'agente Finance di K2-AI (K2A S.R.L.S., P.IVA IT03655920548). Tieni le "
         "finanze sotto controllo senza giri di parole: numeri reali, scostamenti reali, "
