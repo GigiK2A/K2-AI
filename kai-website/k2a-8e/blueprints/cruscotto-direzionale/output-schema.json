@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skill.cruscotto-direzionale/output-schema.json",
+  "title": "Cruscotto Direzionale PMI — Output Schema",
+  "description": "Schema JSON per l'output strutturato del cruscotto direzionale mensile per PMI italiane",
+  "type": "object",
+  "required": [
+    "meta",
+    "kpi_finanziaria",
+    "kpi_cliente",
+    "kpi_processi",
+    "kpi_crescita",
+    "alert",
+    "trend_12_mesi",
+    "executive_summary",
+    "files"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadati del cruscotto",
+      "required": ["mese", "anno", "azienda", "data_generazione"],
+      "properties": {
+        "mese": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12,
+          "description": "Mese di riferimento (1-12)"
+        },
+        "anno": {
+          "type": "integer",
+          "minimum": 2020,
+          "maximum": 2100,
+          "description": "Anno di riferimento"
+        },
+        "mese_label": {
+          "type": "string",
+          "description": "Nome del mese in italiano (es. Gennaio, Febbraio)",
+          "enum": [
+            "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+            "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+          ]
+        },
+        "azienda": {
+          "type": "string",
+          "description": "Ragione sociale dell'azienda"
+        },
+        "settore": {
+          "type": "string",
+          "description": "Settore di attivita (es. Servizi professionali, Manifattura, Commercio)"
+        },
+        "dimensione_organico": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Numero dipendenti/collaboratori"
+        },
+        "data_generazione": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data e ora di generazione del cruscotto (ISO 8601)"
+        },
+        "data_prossimo_aggiornamento": {
+          "type": "string",
+          "format": "date",
+          "description": "Data prevista per il prossimo aggiornamento"
+        },
+        "versione_schema": {
+          "type": "string",
+          "const": "1.0.0",
+          "description": "Versione dello schema di output"
+        }
+      },
+      "additionalProperties": false
+    },
+    "kpi_finanziaria": {
+      "type": "array",
+      "description": "KPI della prospettiva finanziaria BSC",
+      "items": {
+        "$ref": "#/$defs/kpi_item"
+      },
+      "minItems": 1
+    },
+    "kpi_cliente": {
+      "type": "array",
+      "description": "KPI della prospettiva cliente BSC",
+      "items": {
+        "$ref": "#/$defs/kpi_item"
+      },
+      "minItems": 1
+    },
+    "kpi_processi": {
+      "type": "array",
+      "description": "KPI della prospettiva processi interni BSC",
+      "items": {
+        "$ref": "#/$defs/kpi_item"
+      },
+      "minItems": 1
+    },
+    "kpi_crescita": {
+      "type": "array",
+      "description": "KPI della prospettiva crescita e apprendimento BSC",
+      "items": {
+        "$ref": "#/$defs/kpi_item"
+      },
+      "minItems": 1
+    },
+    "alert": {
+      "type": "array",
+      "description": "Lista alert attivi ordinati per priorita",
+      "items": {
+        "$ref": "#/$defs/alert_item"
+      }
+    },
+    "trend_12_mesi": {
+      "type": "object",
+      "description": "Dati storici degli ultimi 12 mesi per grafici e analisi trend",
+      "required": ["mesi", "fatturato"],
+      "properties": {
+        "mesi": {
+          "type": "array",
+          "description": "Etichette mesi (es. ['Apr 2025', 'Mag 2025', ...])",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 12
+        },
+        "fatturato": {
+          "type": "array",
+          "description": "Fatturato mensile in euro",
+          "items": { "type": "number" },
+          "minItems": 1,
+          "maxItems": 12
+        },
+        "budget": {
+          "type": "array",
+          "description": "Budget mensile in euro",
+          "items": { "type": "number" },
+          "maxItems": 12
+        },
+        "ebitda": {
+          "type": "array",
+          "description": "EBITDA mensile in euro",
+          "items": { "type": "number" },
+          "maxItems": 12
+        },
+        "cashflow": {
+          "type": "array",
+          "description": "Cash flow operativo mensile in euro",
+          "items": { "type": "number" },
+          "maxItems": 12
+        },
+        "clienti_attivi": {
+          "type": "array",
+          "description": "Numero clienti attivi per mese",
+          "items": { "type": "integer" },
+          "maxItems": 12
+        },
+        "nuovi_clienti": {
+          "type": "array",
+          "description": "Nuovi clienti per mese",
+          "items": { "type": "integer" },
+          "maxItems": 12
+        },
+        "clienti_persi": {
+          "type": "array",
+          "description": "Clienti persi per mese",
+          "items": { "type": "integer" },
+          "maxItems": 12
+        },
+        "dso": {
+          "type": "array",
+          "description": "Giorni medi incasso per mese",
+          "items": { "type": "number" },
+          "maxItems": 12
+        },
+        "posizione_cassa": {
+          "type": "array",
+          "description": "Posizione di cassa a fine mese in euro",
+          "items": { "type": "number" },
+          "maxItems": 12
+        }
+      },
+      "additionalProperties": true
+    },
+    "executive_summary": {
+      "type": "string",
+      "description": "Sintesi esecutiva dello stato dell'azienda nel mese (3-5 righe, linguaggio chiaro per il titolare)",
+      "maxLength": 2000
+    },
+    "files": {
+      "type": "object",
+      "description": "Riferimenti ai file generati",
+      "required": ["html", "xlsx", "json"],
+      "properties": {
+        "html": {
+          "type": "string",
+          "description": "Path o nome del file HTML della dashboard"
+        },
+        "xlsx": {
+          "type": "string",
+          "description": "Path o nome del file XLSX del cruscotto"
+        },
+        "json": {
+          "type": "string",
+          "description": "Path o nome del file JSON strutturato"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "kpi_item": {
+      "type": "object",
+      "description": "Singolo KPI con valore, target, semaforo e confronti",
+      "required": ["nome", "valore", "target", "semaforo"],
+      "properties": {
+        "nome": {
+          "type": "string",
+          "description": "Nome del KPI (es. 'Fatturato mensile', 'EBITDA')"
+        },
+        "codice": {
+          "type": "string",
+          "description": "Codice identificativo breve (es. 'fatturato', 'ebitda', 'dso')",
+          "pattern": "^[a-z_]+$"
+        },
+        "valore": {
+          "type": "number",
+          "description": "Valore attuale del KPI"
+        },
+        "unita": {
+          "type": "string",
+          "description": "Unita di misura (EUR, %, n., gg, ore)",
+          "enum": ["EUR", "%", "n.", "gg", "ore", "score"]
+        },
+        "target": {
+          "type": "number",
+          "description": "Valore target (da budget o benchmark)"
+        },
+        "scostamento_percentuale": {
+          "type": "number",
+          "description": "Scostamento percentuale dal target (negativo = sotto target)"
+        },
+        "semaforo": {
+          "type": "string",
+          "description": "Stato semaforo del KPI",
+          "enum": ["verde", "giallo", "rosso"]
+        },
+        "valore_mese_precedente": {
+          "type": ["number", "null"],
+          "description": "Valore del KPI nel mese precedente (null se non disponibile)"
+        },
+        "variazione_mese": {
+          "type": ["number", "null"],
+          "description": "Variazione percentuale rispetto al mese precedente"
+        },
+        "direzione_mese": {
+          "type": ["string", "null"],
+          "description": "Direzione della variazione mensile",
+          "enum": ["su", "giu", "stabile", null]
+        },
+        "valore_anno_precedente": {
+          "type": ["number", "null"],
+          "description": "Valore dello stesso mese dell'anno precedente (null se non disponibile)"
+        },
+        "variazione_anno": {
+          "type": ["number", "null"],
+          "description": "Variazione percentuale anno su anno"
+        },
+        "formula": {
+          "type": "string",
+          "description": "Formula di calcolo del KPI"
+        },
+        "fonte_dati": {
+          "type": "string",
+          "description": "Fonte dati utilizzata per il calcolo"
+        },
+        "nota": {
+          "type": "string",
+          "description": "Nota aggiuntiva o commento sul KPI"
+        },
+        "trend_3_mesi": {
+          "type": ["string", "null"],
+          "description": "Indicazione trend ultimi 3 mesi",
+          "enum": ["miglioramento", "stabile", "peggioramento", null]
+        }
+      },
+      "additionalProperties": false
+    },
+    "alert_item": {
+      "type": "object",
+      "description": "Singolo alert generato per un KPI fuori target o con trend negativo",
+      "required": ["kpi", "livello", "deviazione", "cause", "azione"],
+      "properties": {
+        "kpi": {
+          "type": "string",
+          "description": "Nome del KPI che ha generato l'alert"
+        },
+        "codice_kpi": {
+          "type": "string",
+          "description": "Codice identificativo del KPI"
+        },
+        "livello": {
+          "type": "string",
+          "description": "Livello di gravita dell'alert",
+          "enum": ["rosso", "giallo"]
+        },
+        "priorita": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Priorita dell'alert (1=sopravvivenza, 2=redditivita, 3=sostenibilita, 4=sviluppo)"
+        },
+        "tipo": {
+          "type": "string",
+          "description": "Tipo di alert",
+          "enum": ["scostamento_target", "trend_negativo", "concentrazione"]
+        },
+        "deviazione": {
+          "type": "string",
+          "description": "Descrizione della deviazione in linguaggio chiaro per il titolare"
+        },
+        "valore_attuale": {
+          "type": "number",
+          "description": "Valore attuale del KPI"
+        },
+        "valore_target": {
+          "type": "number",
+          "description": "Valore target del KPI"
+        },
+        "scostamento_percentuale": {
+          "type": "number",
+          "description": "Scostamento percentuale"
+        },
+        "cause": {
+          "type": "array",
+          "description": "Possibili cause dell'anomalia (2-3 ipotesi)",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "azione": {
+          "type": "string",
+          "description": "Azione suggerita concreta con tempistica"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

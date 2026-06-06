@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://webboost.example.com/schemas/output-v1.json",
+  "title": "WebBoost Output Schema",
+  "description": "Schema JSON dell'output strutturato dell'orchestratore flusso-webboost-pmi. Contratto API tra skill e piattaforma.",
+  "type": "object",
+  "required": ["meta", "input", "diagnosi", "keyword_map", "piano_editoriale", "roadmap", "kpi_dashboard", "files"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["skill_name", "skill_version", "schema_version", "generated_at", "client_name", "client_url"],
+      "properties": {
+        "skill_name": {"type": "string", "const": "flusso-webboost-pmi"},
+        "skill_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "schema_version": {"type": "string"},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "client_name": {"type": "string"},
+        "client_url": {"type": "string", "format": "uri"},
+        "tenant_id": {"type": ["string", "null"]},
+        "run_id": {"type": ["string", "null"]},
+        "mode": {"type": "string", "enum": ["consulenziale", "piattaforma"]}
+      }
+    },
+    "input": {
+      "type": "object",
+      "required": ["url", "settore", "area_geografica", "keywords_seed", "obiettivo"],
+      "properties": {
+        "url": {"type": "string", "format": "uri"},
+        "settore": {"type": "string"},
+        "area_geografica": {"type": "string"},
+        "keywords_seed": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 10},
+        "obiettivo": {"type": "string", "enum": ["lead_generation", "ecommerce_sales", "brand_awareness", "customer_support", "education"]},
+        "competitor": {"type": "array", "items": {"type": "string", "format": "uri"}},
+        "brand_voice_provided": {"type": "boolean"},
+        "budget_mensile_eur": {"type": ["number", "null"]}
+      }
+    },
+    "executive_summary": {
+      "type": "object",
+      "required": ["stato_attuale", "tre_leve_principali", "risultato_atteso_90gg", "investimento_stimato"],
+      "properties": {
+        "stato_attuale": {"type": "string", "maxLength": 500},
+        "tre_leve_principali": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 3,
+          "maxItems": 5
+        },
+        "risultato_atteso_90gg": {"type": "string"},
+        "investimento_stimato": {"type": "string"},
+        "seo_score": {"type": "integer", "minimum": 0, "maximum": 100}
+      }
+    },
+    "diagnosi": {
+      "type": "object",
+      "description": "Findings per area. Ogni area ha una valutazione sintetica e una lista di findings.",
+      "required": ["seo_technical", "seo_onpage", "contenuti_keyword", "ux_copy", "brand_voice"],
+      "properties": {
+        "seo_technical": {"$ref": "#/$defs/diagnosi_area"},
+        "seo_onpage": {"$ref": "#/$defs/diagnosi_area"},
+        "contenuti_keyword": {"$ref": "#/$defs/diagnosi_area"},
+        "ux_copy": {"$ref": "#/$defs/diagnosi_area"},
+        "brand_voice": {"$ref": "#/$defs/diagnosi_area"},
+        "local_seo": {"$ref": "#/$defs/diagnosi_area"}
+      }
+    },
+    "keyword_map": {
+      "type": "array",
+      "description": "Universo di keyword identificato con priorità e pagina target.",
+      "items": {
+        "type": "object",
+        "required": ["keyword", "intent", "priorita", "pagina_target"],
+        "properties": {
+          "keyword": {"type": "string"},
+          "volume_stimato": {"type": ["string", "integer"]},
+          "difficulty": {"type": "string", "enum": ["basso", "medio", "alto"]},
+          "intent": {"type": "string", "enum": ["informativo", "navigazionale", "commerciale", "transazionale"]},
+          "funnel": {"type": "string", "enum": ["TOFU", "MOFU", "BOFU"]},
+          "priorita": {"type": "string", "enum": ["P1", "P2", "P3"]},
+          "stato_attuale": {"type": "string", "description": "'non_presente' / 'pos_X' / 'top_10' ecc."},
+          "pagina_target": {"type": "string"},
+          "tipo_pagina_target": {"type": "string", "enum": ["esistente_ottimizzare", "nuova_da_creare"]},
+          "note": {"type": "string"}
+        }
+      }
+    },
+    "piano_editoriale": {
+      "type": "object",
+      "required": ["articoli"],
+      "properties": {
+        "cadenza_suggerita": {"type": "string"},
+        "orizzonte_mesi": {"type": "integer"},
+        "articoli": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "titolo", "keyword_primaria", "intent", "tipo", "data_pubblicazione_suggerita"],
+            "properties": {
+              "id": {"type": "integer"},
+              "titolo": {"type": "string"},
+              "keyword_primaria": {"type": "string"},
+              "keywords_secondarie": {"type": "array", "items": {"type": "string"}},
+              "intent": {"type": "string"},
+              "funnel": {"type": "string"},
+              "tipo": {"type": "string", "enum": ["pillar", "cluster"]},
+              "pillar_parent_id": {"type": ["integer", "null"]},
+              "lunghezza_parole_target": {"type": "integer"},
+              "struttura_h2": {"type": "array", "items": {"type": "string"}},
+              "cta_finale": {"type": "string"},
+              "data_pubblicazione_suggerita": {"type": "string"},
+              "priorita": {"type": "string"},
+              "stato": {"type": "string", "enum": ["proposto", "in_scrittura", "pronto", "pubblicato"]}
+            }
+          }
+        }
+      }
+    },
+    "articoli_pronti": {
+      "type": "array",
+      "description": "Articoli effettivamente generati con contenuto completo, pronti per pubblicazione.",
+      "items": {
+        "type": "object",
+        "required": ["titolo", "meta_description", "keyword_primaria", "markdown_body"],
+        "properties": {
+          "titolo": {"type": "string"},
+          "titolo_alternativo": {"type": "string"},
+          "meta_description": {"type": "string", "maxLength": 160},
+          "keyword_primaria": {"type": "string"},
+          "slug_url": {"type": "string"},
+          "markdown_body": {"type": "string"},
+          "internal_links_suggeriti": {"type": "array", "items": {"type": "string"}},
+          "alt_text_immagini": {"type": "array", "items": {"type": "string"}},
+          "parole": {"type": "integer"}
+        }
+      }
+    },
+    "roadmap": {
+      "type": "object",
+      "required": ["quick_wins", "struttura", "crescita"],
+      "properties": {
+        "quick_wins": {
+          "type": "array",
+          "description": "Azioni prime 2 settimane, alto impatto, sforzo rapido.",
+          "items": {"$ref": "#/$defs/azione"}
+        },
+        "struttura": {
+          "type": "array",
+          "description": "Azioni mese 2-3, fondazione.",
+          "items": {"$ref": "#/$defs/azione"}
+        },
+        "crescita": {
+          "type": "array",
+          "description": "Azioni dal mese 3+, lungo periodo.",
+          "items": {"$ref": "#/$defs/azione"}
+        }
+      }
+    },
+    "kpi_dashboard": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kpi", "baseline", "target_90gg", "strumento_misura"],
+        "properties": {
+          "kpi": {"type": "string"},
+          "baseline": {"type": ["string", "number", "null"]},
+          "target_90gg": {"type": ["string", "number"]},
+          "strumento_misura": {"type": "string"},
+          "unit": {"type": "string"}
+        }
+      }
+    },
+    "brand_voice": {
+      "type": "object",
+      "properties": {
+        "stato": {"type": "string", "enum": ["coerente", "parzialmente_coerente", "incoerente", "assente"]},
+        "tono_attuale_rilevato": {"type": "array", "items": {"type": "string"}},
+        "tono_raccomandato": {"type": "array", "items": {"type": "string"}},
+        "parole_da_usare": {"type": "array", "items": {"type": "string"}},
+        "parole_da_evitare": {"type": "array", "items": {"type": "string"}},
+        "esempio_prima_dopo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "prima": {"type": "string"},
+              "dopo": {"type": "string"},
+              "spiegazione": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "competitor_benchmark": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {"type": "string", "format": "uri"},
+          "punti_forza_seo": {"type": "array", "items": {"type": "string"}},
+          "punti_deboli": {"type": "array", "items": {"type": "string"}},
+          "keyword_dove_batterli": {"type": "array", "items": {"type": "string"}},
+          "opportunita_content": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "description": "Percorsi dei file generati (relativi alla storage del tenant o assoluti in modalità consulenziale).",
+      "properties": {
+        "report_docx": {"type": "string"},
+        "piano_editoriale_xlsx": {"type": "string"},
+        "dashboard_html": {"type": "string"},
+        "articoli_markdown": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Avvertenze sul run: dati mancanti, stime vs misure, tool non disponibili, fallback usati.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": {"type": "string", "enum": ["info", "warning", "error"]},
+          "area": {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "diagnosi_area": {
+      "type": "object",
+      "required": ["valutazione_sintetica", "findings"],
+      "properties": {
+        "valutazione_sintetica": {"type": "string", "maxLength": 300},
+        "score": {"type": "integer", "minimum": 0, "maximum": 100},
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["problema", "impatto", "sforzo", "priorita"],
+            "properties": {
+              "id": {"type": "string"},
+              "problema": {"type": "string"},
+              "esempio_concreto": {"type": "string"},
+              "perche_conta": {"type": "string"},
+              "impatto": {"type": "string", "enum": ["alto", "medio", "basso"]},
+              "sforzo": {"type": "string", "enum": ["rapido", "medio", "intenso"]},
+              "priorita": {"type": "string", "enum": ["P1", "P2", "P3", "P4"]},
+              "pagina_o_elemento": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "azione": {
+      "type": "object",
+      "required": ["titolo", "cosa_fare", "perche", "responsabile", "kpi_impattato"],
+      "properties": {
+        "id": {"type": "string"},
+        "titolo": {"type": "string"},
+        "cosa_fare": {"type": "string"},
+        "perche": {"type": "string"},
+        "responsabile": {"type": "string", "enum": ["cliente", "consulente", "dev", "copywriter", "designer"]},
+        "deadline_settimana": {"type": "integer", "minimum": 1, "maximum": 13},
+        "sforzo_ore_stimate": {"type": "number"},
+        "impatto": {"type": "string", "enum": ["alto", "medio", "basso"]},
+        "priorita": {"type": "string", "enum": ["P1", "P2", "P3"]},
+        "kpi_impattato": {"type": "string"},
+        "dipendenze": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

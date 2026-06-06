@@ -57,7 +57,7 @@ def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Res
 
     # Routing sincrono (per restituire subito refuse out_of_catalog).
     try:
-        blueprint_id, confidence = pipeline.route(body.service_id)
+        _skill, blueprint_id, confidence = pipeline.route(body.service_id)
     except pipeline.Refuse as r:
         response.status_code = 422
         return {"status": "refused", "reason": r.reason, "message": r.message}

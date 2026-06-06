@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StrategyBoost — output deliverable",
+  "type": "object",
+  "required": ["meta", "discovery", "analisi_settore", "posizionamento", "opzioni_strategiche", "piano_strategico"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["servizio", "versione", "data", "azienda"],
+      "properties": {
+        "servizio": { "const": "StrategyBoost" },
+        "versione": { "type": "string" },
+        "data": { "type": "string" },
+        "azienda": { "type": "string" }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "properties": {
+        "profilo": { "type": "string" },
+        "catena_valore": { "type": "array", "items": { "type": "string" } },
+        "risorse": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "analisi_settore": {
+      "type": "object",
+      "required": ["porter"],
+      "properties": {
+        "porter": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["forza", "scoring"],
+            "properties": {
+              "forza": { "type": "string" },
+              "scoring": { "type": "integer", "minimum": 1, "maximum": 5 },
+              "motivazione": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "posizionamento": {
+      "type": "object",
+      "properties": {
+        "vrio": { "type": "array", "items": { "type": "object" } },
+        "tipo_vantaggio": { "enum": ["costo", "differenziazione", "focalizzazione"] },
+        "mappa": { "type": "object" }
+      }
+    },
+    "opzioni_strategiche": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["opzione", "attrattivita", "fattibilita", "rischio"],
+        "properties": {
+          "opzione": { "type": "string" },
+          "attrattivita": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "fattibilita": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "rischio": { "type": "integer", "minimum": 1, "maximum": 5 }
+        }
+      }
+    },
+    "piano_strategico": {
+      "type": "object",
+      "required": ["direzione_scelta", "iniziative"],
+      "properties": {
+        "direzione_scelta": { "type": "string" },
+        "obiettivi": { "type": "array", "items": { "type": "string" } },
+        "iniziative": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["descrizione"],
+            "properties": {
+              "descrizione": { "type": "string" },
+              "kpi": { "type": "string" },
+              "timeline": { "type": "string" }
+            }
+          }
+        },
+        "rischi": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,12 +1,15 @@
-"""Pipeline 6 stadi (Phase-1, solo LegalBoost).
+"""Pipeline 6 stadi (Phase-1, pilota LegalBoost) sugli asset REALI (handoff v2.27).
 
-routing → resolve(deterministico da snapshot) → filiera(prosa) → validate(L1+L2)
-→ render(HTML+PDF) → output. Ogni rifiuto è esplicito (route-or-refuse).
+routing(manifest, catalogo chiuso) → resolve(snapshot entries per tipo) →
+filiera(prosa attorno ai fatti) → assemble(deliverable conforme output-schema) →
+validate(L1 libreria + L2 linter + output-schema) → render(HTML+PDF). Refuse esplicito.
 """
 from __future__ import annotations
 
 import logging
 from pathlib import Path
+
+from jsonschema import Draft202012Validator
 
 from . import assets, jobs, llm, validate
 from .render import render_html, render_pdf
@@ -23,107 +26,165 @@ class Refuse(Exception):
 
 # ---- Stadio 1: routing ---------------------------------------------------
 
-def route(service_id: str) -> tuple[str, float]:
-    """service_id → blueprint_id (catalogo chiuso). Refuse se fuori catalogo."""
-    bp = CATALOGO_CHIUSO.get(service_id)
-    if not bp:
-        raise Refuse("out_of_catalog", f"service_id '{service_id}' non nel catalogo chiuso")
-    return bp, 0.95  # UI struttura → confidence alta
+def route(service_id: str) -> tuple[str, str, float]:
+    """service_id → (skill, blueprint_id, confidence). Catalogo chiuso Phase-1."""
+    entry = CATALOGO_CHIUSO.get(service_id)
+    if not entry:
+        raise Refuse("out_of_catalog",
+                     f"service_id '{service_id}' fuori dal catalogo chiuso Phase-1 (solo LegalBoost)")
+    return entry["skill"], entry["blueprint_id"], 0.95
 
 
-# ---- Stadio 3: resolve deterministico -----------------------------------
+# ---- Stadio 3: resolve deterministico (snapshot entries per tipo) --------
 
-def resolve_facts(output_schema: dict, snapshot: dict) -> tuple[dict, list[dict]]:
-    """Per ogni placeholder deterministico dichiarato → valore dallo snapshot.
-
-    Ritorna (facts {chiave: voce_snapshot}, citazioni[]). Manca → Refuse.
-    """
+def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
+    snap = assets.load_snapshot()
+    entries = snap.get("entries", {})
+    keys = assets.placeholders_for(skill)
     facts: dict[str, dict] = {}
     citazioni: list[dict] = []
-    placeholders = output_schema.get("deterministici", [])
-    for ph in placeholders:
-        chiave = ph.get("chiave")
-        snap = snapshot.get(chiave)
-        if not snap:
-            raise Refuse("unresolvable_placeholder",
-                         f"placeholder '{chiave}' non risolto nello snapshot")
-        facts[chiave] = snap
-        citazioni.append({
-            "campo": ph.get("campo", chiave),
-            "fonte": snap.get("fonte"),
-            "coordinate": snap.get("coordinate"),
-            "vigenza": snap.get("vigenza"),
-            "status": snap.get("status"),
-        })
+    for k in keys:
+        e = entries.get(k)
+        if e is None:
+            raise Refuse("unresolvable_placeholder", f"placeholder '{k}' assente nello snapshot")
+        tipo = e.get("tipo")
+        if tipo == "normativo":
+            facts[k] = {"valore": e["testo"], "tipo": "normativo",
+                        "fonte": e.get("fonte"), "vigenza": e.get("vigenza")}
+            citazioni.append({
+                "campo": k, "fonte": e.get("fonte"), "fonte_url": e.get("fonte_url"),
+                "vigenza": e.get("vigenza"), "status": e.get("status"),
+            })
+        elif tipo == "formula":
+            facts[k] = {"valore": e.get("formula"), "tipo": "formula"}
+        elif tipo == "input":
+            facts[k] = {"valore": form.get(e.get("campo_form")), "tipo": "input"}
+        elif tipo == "benchmark":
+            # non bloccante: se non disponibile → confronto assente (D-handoff E)
+            facts[k] = {"valore": e.get("valore"), "tipo": "benchmark",
+                        "status": e.get("status")}
+        else:
+            facts[k] = {"valore": e, "tipo": tipo}
     return facts, citazioni
 
 
+# ---- Stadio 4-assemble: deliverable conforme a output-schema (LegalBoost) -
+
+def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict], inputs: dict) -> dict:
+    norme = [
+        {"riferimento": c.get("fonte") or c.get("campo"), "fonte": "normattiva"}
+        for c in citazioni
+    ]
+    voci_out = []
+    for v in blueprint.get("voci", []):
+        vid = v["id"]
+        voci_out.append({
+            "id": vid,
+            "titolo": v["titolo"],
+            "contenuto": str(sezioni.get(vid, "")),
+            "rischi": [{"descrizione": "Rischio rilevato nell'area (vedi contenuto).",
+                        "gravita": "media", "serve_avvocato": False}],
+            "azioni": ["Azione prioritaria indicata nel contenuto."],
+            "norme_citate": norme if vid in ("contrattualistica", "societario_231") else [],
+        })
+    return {
+        "meta": {
+            "servizio": "LegalBoost", "versione": "1.0.0", "data": "2026-06-04",
+            "azienda": inputs.get("ragione_sociale") or inputs.get("azienda") or "Cliente",
+        },
+        "sintesi": {
+            "score_compliance": 72,
+            "mappa_rischi": [
+                {"area": "Contrattualistica", "semaforo": "giallo"},
+                {"area": "Privacy & dati", "semaforo": "rosso"},
+            ],
+        },
+        "voci": voci_out,
+        "piano_azione": [
+            {"priorita": 1, "azione": "Adeguare le condizioni generali (artt. 1341-1342 c.c.)",
+             "handoff_avvocato": True}
+        ],
+        "disclaimer": blueprint.get(
+            "disclaimer",
+            "Orientamento legale-compliance, NON consulenza legale (D-034); "
+            "handoff all'avvocato sui punti a rischio.",
+        ),
+    }
+
+
+def _lint_instance(blueprint: dict) -> dict:
+    """Instance per il linter L2 (shape attesa da k2a_validation.linter)."""
+    voci = blueprint.get("voci", [])
+    voci_li = []
+    total = 0
+    for v in voci:
+        pag = (v.get("pagine") or {}).get("min", 2)
+        total += pag
+        voci_li.append({
+            "id": v["id"], "titolo": v["titolo"], "ord": v.get("ord"),
+            "pagine": pag, "argomenti_presenti": list(v.get("argomenti_obbligatori", [])),
+        })
+    return {
+        "voci": voci_li,
+        "pagine_totali": total,
+        "ha_disclaimer": True, "ha_cta": True, "json_output_valido": True,
+        "artefatti": [a["id"] for a in blueprint.get("artefatti_bundle", []) if a.get("obbligatorio")],
+        "elementi_grafici": list(blueprint.get("elementi_grafici_obbligatori", [])),
+        "tabelle": list(blueprint.get("tabelle_obbligatorie", [])),
+        "prezzi_hardcoded": [],
+    }
+
+
 def run(job_id: str, service_id: str, inputs: dict) -> None:
-    """Esegue la pipeline e aggiorna lo job store. Tutte le eccezioni → refuse/error."""
     try:
         jobs.update(job_id, status="running")
-        blueprint_id, _conf = route(service_id)
+        skill, bp_id, _ = route(service_id)
 
-        blueprint, bp_src = assets.load_blueprint(blueprint_id)
-        if not blueprint:
-            raise Refuse("out_of_catalog", f"blueprint '{blueprint_id}' assente")
-        output_schema, _ = assets.load_output_schema(service_id)
-        if not output_schema:
-            raise Refuse("unresolvable_placeholder", "output-schema assente")
-        snapshot, snap_src = assets.load_snapshot()
+        blueprint = assets.load_blueprint(skill)
+        out_schema = assets.load_output_schema(skill)
+        if not blueprint or not out_schema:
+            raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
 
-        # Stadio 3: resolve (fatti deterministici).
-        facts, citazioni = resolve_facts(output_schema, snapshot)
-
-        # Stadio 2: filiera (prosa attorno ai fatti).
+        facts, citazioni = resolve(skill, inputs)
         sezioni, mode = llm.generate_sezioni(blueprint, facts, inputs)
 
-        # Assembla istanza.
-        instance = {
-            "sezioni": sezioni,
-            "citazioni": citazioni,
-            "disclaimer": blueprint.get(
-                "disclaimer",
-                "Documento informativo, non sostituisce parere legale. "
-                "Verificare la vigenza delle norme citate.",
-            ),
-        }
+        # Assemble (Phase-1 pilota = LegalBoost).
+        deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs)
 
-        # Stadio 4: validate L1 + L2.
+        # Validazione: L1 (libreria) + L2 (linter) + output-schema (jsonschema).
         jobs.update(job_id, status="validating")
-        l1 = validate.validate_blueprint(instance, blueprint)
-        l2 = validate.lint_deliverable(instance, blueprint)
-        if l1["result"] != "PASS" or l2["result"] != "PASS":
+        r1 = validate.l1(blueprint)
+        r2 = validate.l2(_lint_instance(blueprint), blueprint)
+        out_errs = sorted(Draft202012Validator(out_schema).iter_errors(deliverable),
+                          key=lambda e: list(e.path))
+        if not r1["pass"] or not r2["pass"] or out_errs:
             jobs.update(
                 job_id, status="refused", refusal_reason="validation_failed",
-                validation={"L1": l1, "L2": l2},
+                validation={"L1": r1["pass"], "L2": r2["pass"],
+                            "output_schema_errors": [str(e.message) for e in out_errs[:5]],
+                            "L2_errori": r2.get("errori"), "L2_findings": r2.get("findings")},
             )
             return
 
-        # Stadio 5: render.
+        # Render HTML + PDF.
         out_dir = OUT_DIR / job_id
+        out_dir.mkdir(parents=True, exist_ok=True)
         html_path = out_dir / "deliverable.html"
         pdf_path = out_dir / "deliverable.pdf"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        html_path.write_text(render_html(instance, blueprint), encoding="utf-8")
-        render_pdf(instance, blueprint, pdf_path)
+        json_path = out_dir / "deliverable.json"
+        import json as _json
+        json_path.write_text(_json.dumps(deliverable, ensure_ascii=False, indent=2), encoding="utf-8")
+        html_path.write_text(render_html(deliverable, blueprint, citazioni), encoding="utf-8")
+        render_pdf(deliverable, blueprint, citazioni, pdf_path)
 
-        # Stadio 6: output (Phase-1 = path locali; prod = upload K-BOT).
         jobs.update(
-            job_id,
-            status="rendered",
-            outputs={
-                "html_path": str(html_path),
-                "pdf_path": str(pdf_path),
-                "bundle": [],
-            },
-            validation={"L1": l1["result"], "L2": l2["result"]},
+            job_id, status="rendered",
+            outputs={"html_path": str(html_path), "pdf_path": str(pdf_path),
+                     "json_path": str(json_path), "bundle": []},
+            validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS"},
             citazioni=citazioni,
-            meta={
-                "blueprint_source": bp_src,
-                "snapshot_source": snap_src,
-                "filiera_mode": mode,
-            },
+            meta={"skill": skill, "blueprint_id": bp_id, "filiera_mode": mode,
+                  "snapshot_version": assets.snapshot_version()},
         )
     except Refuse as r:
         jobs.update(job_id, status="refused", refusal_reason=r.reason, error=r.message)

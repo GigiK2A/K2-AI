@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SafetyBoost — form input",
+  "type": "object",
+  "required": ["tipo_cantiere", "localizzazione", "importo_lavori", "num_imprese"],
+  "properties": {
+    "tipo_cantiere": { "type": "string", "description": "natura dell'opera (es. ristrutturazione, nuova costruzione, Superbonus, SRB/antenna)" },
+    "localizzazione": { "type": "string", "description": "comune/indirizzo del cantiere" },
+    "durata_gg": { "type": ["integer", "null"], "minimum": 1, "description": "durata prevista in giorni" },
+    "uomini_giorno": { "type": ["integer", "null"], "minimum": 1, "description": "entità presunta (uomini-giorno)" },
+    "importo_lavori": { "type": "number", "minimum": 0, "description": "importo lavori, EUR" },
+    "num_imprese": { "type": "integer", "minimum": 1, "description": "numero imprese esecutrici presenti" },
+    "fasi_lavorative": { "type": "array", "items": { "type": "string" }, "description": "fasi previste (scavi, opere in quota, demolizioni, ...)" },
+    "rischi_speciali": { "type": "array", "items": { "type": "string", "enum": ["amianto", "spazi_confinati", "lavori_in_quota", "rischio_elettrico", "interferenze", "rf"] }, "description": "rischi specifici noti" }
+  },
+  "additionalProperties": false
+}

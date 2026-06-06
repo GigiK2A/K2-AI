@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-webboost-pmi.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost (WebBoost). Derivato dai file reali flusso-webboost-pmi/assets/template-*.md e schemas/output-schema.json. Replica il pattern del boost HostBoost.",
+  "pacchetto": {
+    "skill": "flusso-webboost-pmi",
+    "nome_commerciale": "WebBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-webboost-pmi/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": {
+    "min": 15,
+    "max": 20,
+    "target": 17
+  },
+  "artefatti_bundle": [
+    {
+      "id": "docx_report",
+      "ruolo": "principale",
+      "formato": "docx",
+      "obbligatorio": true,
+      "nota": "report executive; oggetto del blueprint"
+    },
+    {
+      "id": "xlsx_modello",
+      "ruolo": "modello vivo",
+      "formato": "xlsx",
+      "obbligatorio": true,
+      "nota": "piano editoriale 3 mesi"
+    },
+    {
+      "id": "html_dashboard",
+      "ruolo": "wow visivo",
+      "formato": "html",
+      "obbligatorio": true,
+      "nota": "dashboard KPI (Chart.js)"
+    },
+    {
+      "id": "json_output",
+      "ruolo": "dati",
+      "formato": "json",
+      "obbligatorio": true,
+      "nota": "valida contro contratto_dati"
+    }
+  ],
+  "voci": [
+    {
+      "ord": 0,
+      "id": "copertina",
+      "titolo": "Copertina",
+      "argomenti_obbligatori": [
+        "titolo WebBoost + azienda",
+        "URL analizzato",
+        "data"
+      ]
+    },
+    {
+      "ord": 1,
+      "id": "executive_summary",
+      "titolo": "Executive Summary",
+      "argomenti_obbligatori": [
+        "stato attuale (2-3 righe)",
+        "3 leve principali",
+        "risultato atteso a 90 giorni",
+        "investimento necessario"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      },
+      "funzione_psico": "picco d'apertura"
+    },
+    {
+      "ord": 2,
+      "id": "inquadramento_business",
+      "titolo": "Inquadramento del business",
+      "argomenti_obbligatori": [
+        "settore, dimensione, target",
+        "obiettivo di business",
+        "posizionamento percepito",
+        "3 competitor e punti di forza"
+      ]
+    },
+    {
+      "ord": 3,
+      "id": "diagnosi_per_area",
+      "titolo": "Diagnosi per area",
+      "argomenti_obbligatori": [
+        "SEO tecnico",
+        "SEO on-page",
+        "contenuti e keyword",
+        "UX, copy e persuasione",
+        "brand voice",
+        "local SEO (se locale)"
+      ]
+    },
+    {
+      "ord": 4,
+      "id": "keyword_map",
+      "titolo": "Keyword map",
+      "argomenti_obbligatori": [
+        "tabella 10-15 keyword prioritarie con volume/difficolta/intento"
+      ]
+    },
+    {
+      "ord": 5,
+      "id": "piano_editoriale_3mesi",
+      "titolo": "Piano editoriale 3 mesi",
+      "argomenti_obbligatori": [
+        "calendario contenuti",
+        "temi e formati"
+      ]
+    },
+    {
+      "ord": 6,
+      "id": "piano_azione_90gg",
+      "titolo": "Piano d'azione 90 giorni",
+      "argomenti_obbligatori": [
+        "matrice impatto/effort",
+        "azioni prioritarie con responsabile e tempi"
+      ]
+    },
+    {
+      "ord": 7,
+      "id": "kpi_monitorare",
+      "titolo": "KPI da monitorare",
+      "argomenti_obbligatori": [
+        "KPI con baseline e target",
+        "cadenza"
+      ]
+    },
+    {
+      "ord": 8,
+      "id": "note_metodologiche",
+      "titolo": "Note metodologiche",
+      "argomenti_obbligatori": [
+        "limiti, strumenti, fonti dei dati"
+      ]
+    },
+    {
+      "ord": 9,
+      "id": "allegati",
+      "titolo": "Allegati",
+      "argomenti_obbligatori": [
+        "materiali di supporto"
+      ]
+    },
+    {
+      "ord": 10,
+      "id": "appendice_glossario",
+      "titolo": "Appendice — Glossario",
+      "argomenti_obbligatori": [
+        "glossario termini"
+      ],
+      "funzione_psico": "autorita didattica"
+    }
+  ],
+  "elementi_grafici_obbligatori": [
+    "scatter impatto/effort azioni",
+    "grafico comparativo baseline vs target KPI"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella 10-15 keyword prioritarie",
+    "matrice impatto/effort azioni"
+  ],
+  "elementi_psico_trasversali": {
+    "doppio_registro": "sintesi per il titolare + dettaglio tecnico per chi esegue",
+    "peak_end": "picco in apertura + chiusura curata in conclusioni",
+    "concretezza_euro": "ogni impatto/costo espresso in euro",
+    "riprova_sociale_pari": "benchmark di settore/dimensione comparabili",
+    "cliente_eroe": "il titolare e il protagonista; K2-AI e il mentore tecnico"
+  },
+  "regole_validazione_linter": [
+    {
+      "id": "R01",
+      "regola": "tutti i capitoli presenti nell'ordine 'ord'",
+      "severita": "errore"
+    },
+    {
+      "id": "R02",
+      "regola": "somma pagine entro pagine_totali.min..max",
+      "severita": "errore"
+    },
+    {
+      "id": "R03",
+      "regola": "pagine per capitolo entro il rispettivo range",
+      "severita": "warning"
+    },
+    {
+      "id": "R04",
+      "regola": "ogni argomento_obbligatorio rilevabile nel capitolo corrispondente",
+      "severita": "errore"
+    },
+    {
+      "id": "R05",
+      "regola": "la sezione di sintesi iniziale (executive/premessa) entro 1 pagina",
+      "severita": "errore"
+    },
+    {
+      "id": "R06",
+      "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati",
+      "severita": "errore"
+    },
+    {
+      "id": "R07",
+      "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx",
+      "severita": "warning"
+    },
+    {
+      "id": "R08",
+      "regola": "tutte le tabelle_obbligatorie presenti nel docx",
+      "severita": "warning"
+    },
+    {
+      "id": "R09",
+      "regola": "CTA verso il passo successivo presente nel capitolo conclusioni/prossimo_passo",
+      "severita": "errore"
+    },
+    {
+      "id": "R10",
+      "regola": "disclaimer presente",
+      "severita": "errore"
+    },
+    {
+      "id": "R11",
+      "regola": "json_output valida contro contratto_dati (output-schema.json)",
+      "severita": "errore"
+    },
+    {
+      "id": "R12",
+      "regola": "nessun prezzo hard-coded: i prezzi risolti da catalogo a runtime",
+      "severita": "warning",
+      "nota": "Nodo1 prezzi"
+    }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "La presenza online va alimentata nel tempo: il passo successivo e il presidio editoriale/SEO continuativo."
+  }
+}

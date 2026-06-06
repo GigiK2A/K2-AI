@@ -49,9 +49,9 @@ def main():
         _fail(f"atteso refuse out_of_catalog, ricevuto {r.status_code} {r.json()}")
     print("service ignoto → refused out_of_catalog ok")
 
-    # happy path LegalBoost
+    # happy path LegalBoost (service_id reale dal manifest)
     r = client.post("/v1/deliverables", headers=H, json={
-        "service_id": "flusso-legalboost-pmi", "tier": "boost",
+        "service_id": "primo_parere_legale", "tier": "boost",
         "inputs": {"ragione_sociale": "Acme SRL", "tipo_contratto": "fornitura"},
         "entitlement_token": "x",
     })

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-financeboost-pmi.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost di FinanceBoost — diagnosi finanziaria e controllo di gestione PMI. docx 15-20 pp + bundle (XLSX cruscotto, dashboard HTML, JSON). Modellato sul pattern boost (Safety/Advisor).",
+  "pacchetto": {
+    "skill": "flusso-financeboost-pmi",
+    "nome_commerciale": "FinanceBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-financeboost-pmi/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": { "min": 15, "max": 20, "target": 17 },
+  "artefatti_bundle": [
+    { "id": "docx_report", "ruolo": "principale", "formato": "docx", "obbligatorio": true, "nota": "report executive diagnosi finanziaria" },
+    { "id": "xlsx_cruscotto", "ruolo": "modello vivo", "formato": "xlsx", "obbligatorio": true, "nota": "cruscotto 5 tab, formule vive" },
+    { "id": "html_dashboard", "ruolo": "wow visivo", "formato": "html", "obbligatorio": true, "nota": "5 KPI card semaforo, radar, trend (Chart.js)" },
+    { "id": "json_output", "ruolo": "dati", "formato": "json", "obbligatorio": true, "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0, "id": "copertina_incarico", "titolo": "Copertina e sintesi incarico", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["dati azienda", "periodo analisi", "score globale"] },
+    { "ord": 1, "id": "executive_summary", "titolo": "Executive summary", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["score", "semafori per area", "top azioni prioritarie"],
+      "funzione_psico": "registro titolare + picco d'apertura (peak-end)" },
+    { "ord": 2, "id": "riclassificazione_bilancio", "titolo": "Riclassificazione bilancio", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["SP a liquidita/esigibilita", "CE a valore aggiunto/margini", "comparazione 2-3 anni"] },
+    { "ord": 3, "id": "analisi_indici_trend", "titolo": "Analisi indici e trend", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["redditivita Du Pont/ROE/ROI/ROS", "liquidita CCN/CCC", "solidita D/E", "efficienza", "crescita", "ogni KPI con benchmark e semaforo"],
+      "funzione_psico": "registro tecnico + autorita dimostrata" },
+    { "ord": 4, "id": "analisi_marginalita", "titolo": "Analisi marginalita", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["margine di contribuzione", "break-even point (BEP)", "leva operativa", "margine di sicurezza"] },
+    { "ord": 5, "id": "valutazione_performance", "titolo": "Valutazione performance", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["BSC semplificata", "EVA", "ROI scomposto", "WACC"] },
+    { "ord": 6, "id": "proiezioni_scenari", "titolo": "Proiezioni e scenari", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["budget 12 mesi", "3 scenari base/ottimistico/pessimistico", "break-even temporale", "cash flow", "sensitivity"] },
+    { "ord": 7, "id": "piano_azione", "titolo": "Piano d'azione", "pagine": { "min": 1, "max": 2 },
+      "argomenti_obbligatori": ["max 5 azioni prioritarie", "impatto in euro per azione", "tempi"] },
+    { "ord": 8, "id": "conclusioni_limitazioni", "titolo": "Conclusioni e limitazioni", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["sintesi", "limitazioni dati", "gancio servizio successivo"],
+      "funzione_psico": "chiusura forte + gancio onesto al retainer" }
+  ],
+  "elementi_grafici_obbligatori": [
+    "gauge score globale",
+    "radar indici con benchmark",
+    "line chart trend ricavi/margini",
+    "waterfall scenario base"
+  ],
+  "tabelle_obbligatorie": [
+    "riclassificazione SP a liquidita/esigibilita",
+    "riclassificazione CE a valore aggiunto",
+    "tabella indici con benchmark e semaforo",
+    "tabella 3 scenari"
+  ],
+  "elementi_psico_trasversali": {
+    "executive_summary_in_apertura": "il documento-nel-documento per chi non legge il resto (cap. 1)",
+    "kpi_con_benchmark_di_pari": "ogni indice confrontato con mediana/percentile di PMI di settore e dimensione comparabili",
+    "limitazioni_dati_trasparenti": "le limitazioni dell'analisi dovute a dati mancanti sono dichiarate, mai nascoste",
+    "gancio_cross_sell": "gancio onesto verso AgevolazioniBoost/AdvisorBoost e retainer cruscotto mensile"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "ogni KPI/indice ha benchmark e semaforo nella voce analisi indici", "severita": "errore" },
+    { "id": "R02", "regola": "piano d'azione contiene al massimo 5 azioni prioritarie", "severita": "warning" },
+    { "id": "R03", "regola": "sezione limitazioni dati presente nelle conclusioni", "severita": "errore" },
+    { "id": "R04", "regola": "proiezioni con 3 scenari (base/ottimistico/pessimistico) presenti", "severita": "errore" },
+    { "id": "R05", "regola": "somma pagine entro pagine_totali.min..max", "severita": "errore" },
+    { "id": "R06", "regola": "tutte le voci presenti nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R07", "regola": "ogni argomento_obbligatorio rilevabile nella voce corrispondente", "severita": "errore" },
+    { "id": "R08", "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati", "severita": "errore" },
+    { "id": "R09", "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx", "severita": "warning" },
+    { "id": "R10", "regola": "tutte le tabelle_obbligatorie presenti nel docx", "severita": "warning" },
+    { "id": "R11", "regola": "json_output valida contro contratto_dati (output-schema.json)", "severita": "errore" },
+    { "id": "R12", "regola": "nessun prezzo hard-coded: prezzi risolti da catalogo a runtime", "severita": "warning" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "La diagnosi fotografa la salute finanziaria oggi. Il cruscotto direzionale mensile (retainer) la tiene sotto controllo nel tempo. CTA dopo il picco positivo.",
+    "nota_funnel": "tier_precedente reale = check-salute-finanziaria; tier_successivo reale = retainer cruscotto-direzionale mensile"
+  }
+}

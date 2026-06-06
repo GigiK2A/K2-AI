@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinanceBoost — output deliverable",
+  "type": "object",
+  "required": ["meta", "executive_summary", "indici", "piano_azione", "limitazioni"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["servizio", "versione", "data", "azienda"],
+      "properties": {
+        "servizio": { "const": "FinanceBoost" },
+        "versione": { "type": "string" },
+        "data": { "type": "string" },
+        "azienda": { "type": "string" }
+      }
+    },
+    "executive_summary": {
+      "type": "object",
+      "required": ["score_globale", "semafori_aree"],
+      "properties": {
+        "score_globale": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "semafori_aree": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["area", "semaforo"],
+            "properties": {
+              "area": { "type": "string" },
+              "semaforo": { "enum": ["verde", "giallo", "rosso"] }
+            }
+          }
+        },
+        "top_azioni": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "indici": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nome", "valore", "benchmark", "semaforo"],
+        "properties": {
+          "nome": { "type": "string" },
+          "valore": { "type": ["number", "string"] },
+          "benchmark": { "type": ["number", "string"] },
+          "semaforo": { "enum": ["verde", "giallo", "rosso"] },
+          "trend": { "type": "string" }
+        }
+      }
+    },
+    "scenari": {
+      "type": "array",
+      "description": "3 scenari proiezione 12 mesi",
+      "items": {
+        "type": "object",
+        "required": ["nome"],
+        "properties": {
+          "nome": { "enum": ["base", "ottimistico", "pessimistico"] },
+          "ricavi_proiettati": { "type": ["number", "null"] },
+          "ebitda_proiettato": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "piano_azione": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["priorita", "azione"],
+        "properties": {
+          "priorita": { "type": "integer", "minimum": 1 },
+          "azione": { "type": "string" },
+          "impatto_stimato": { "type": "string" },
+          "tempi": { "type": "string" }
+        }
+      }
+    },
+    "limitazioni": { "type": "string", "description": "limitazioni dell'analisi dovute a dati mancanti" }
+  },
+  "additionalProperties": false
+}

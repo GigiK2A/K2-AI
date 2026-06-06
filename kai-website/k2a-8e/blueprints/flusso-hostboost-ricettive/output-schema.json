@@ -1,0 +1,345 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/schemas/hostboost-output.json",
+  "title": "HostBoost Output Schema",
+  "description": "Schema dell'output strutturato della skill flusso-hostboost-ricettive",
+  "type": "object",
+  "required": [
+    "meta",
+    "struttura",
+    "kpi",
+    "benchmark",
+    "canali",
+    "pricing",
+    "recensioni",
+    "piano_ricavi",
+    "azioni_prioritarie",
+    "assunzioni"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["versione", "data_generazione", "slug", "modalita"],
+      "properties": {
+        "versione": { "type": "string", "const": "1.0.0" },
+        "data_generazione": { "type": "string", "format": "date-time" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+        "modalita": { "type": "string", "enum": ["consulenziale", "saas"] },
+        "job_id": { "type": ["string", "null"] }
+      }
+    },
+    "struttura": {
+      "type": "object",
+      "required": ["nome", "tipologia", "camere_totali", "regione", "zona", "giorni_apertura"],
+      "properties": {
+        "nome": { "type": "string" },
+        "tipologia": {
+          "type": "string",
+          "enum": ["agriturismo", "bb", "hotel3stelle", "hotel4stelle_boutique", "casa_vacanza", "affittacamere", "altro"]
+        },
+        "camere_totali": { "type": "integer", "minimum": 1 },
+        "regione": { "type": "string" },
+        "zona": { "type": "string", "description": "Descrizione destinazione (es. 'Langhe', 'Centro Roma', 'Costiera Amalfitana')" },
+        "indirizzo": { "type": ["string", "null"] },
+        "giorni_apertura": { "type": "integer", "minimum": 1, "maximum": 366 },
+        "stagionalita": {
+          "type": "string",
+          "enum": ["tutto_anno", "stagionale_mare", "stagionale_montagna_inv", "stagionale_montagna_doppia", "spalla_lunga"]
+        }
+      }
+    },
+    "kpi": {
+      "type": "object",
+      "required": ["annuale", "mensile"],
+      "properties": {
+        "annuale": {
+          "type": "object",
+          "required": ["adr", "occupancy", "revpar"],
+          "properties": {
+            "adr": { "type": "number", "minimum": 0 },
+            "occupancy": { "type": "number", "minimum": 0, "maximum": 1 },
+            "revpar": { "type": "number", "minimum": 0 },
+            "trevpar": { "type": ["number", "null"], "minimum": 0 },
+            "goppar": { "type": ["number", "null"] },
+            "alos": { "type": ["number", "null"], "minimum": 0 },
+            "booking_window_medio_giorni": { "type": ["number", "null"], "minimum": 0 },
+            "cancellation_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+            "yoy_revpar": { "type": ["number", "null"] },
+            "yoy_adr": { "type": ["number", "null"] },
+            "yoy_occupancy": { "type": ["number", "null"] }
+          }
+        },
+        "mensile": {
+          "type": "array",
+          "minItems": 12,
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "required": ["mese", "notti_disponibili", "notti_vendute", "ricavi_camera", "adr", "occupancy", "revpar"],
+            "properties": {
+              "mese": { "type": "string", "pattern": "^\\d{4}-\\d{2}$" },
+              "notti_disponibili": { "type": "integer", "minimum": 0 },
+              "notti_vendute": { "type": "integer", "minimum": 0 },
+              "ricavi_camera": { "type": "number", "minimum": 0 },
+              "adr": { "type": "number", "minimum": 0 },
+              "occupancy": { "type": "number", "minimum": 0, "maximum": 1 },
+              "revpar": { "type": "number", "minimum": 0 },
+              "fascia_stagionale": { "type": "string", "enum": ["bassa", "spalla", "media", "alta"] }
+            }
+          }
+        }
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "required": ["zona_tipologia", "confronto"],
+      "properties": {
+        "zona_tipologia": { "type": "string" },
+        "confronto": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["metrica", "cliente", "mediana_zona", "top_quartile", "semaforo"],
+            "properties": {
+              "metrica": { "type": "string", "enum": ["adr", "occupancy", "revpar", "quota_diretto", "quota_booking", "rating_booking"] },
+              "cliente": { "type": "number" },
+              "mediana_zona": { "type": "number" },
+              "top_quartile": { "type": "number" },
+              "bottom_quartile": { "type": ["number", "null"] },
+              "semaforo": { "type": "string", "enum": ["verde", "giallo", "rosso"] },
+              "commento": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "canali": {
+      "type": "object",
+      "required": ["mix_attuale", "mix_target", "dipendenza_ota"],
+      "properties": {
+        "mix_attuale": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["canale", "quota_notti", "quota_ricavi", "adr_lordo", "commissione_pct", "net_adr"],
+            "properties": {
+              "canale": { "type": "string" },
+              "quota_notti": { "type": "number", "minimum": 0, "maximum": 1 },
+              "quota_ricavi": { "type": "number", "minimum": 0, "maximum": 1 },
+              "adr_lordo": { "type": "number", "minimum": 0 },
+              "commissione_pct": { "type": "number", "minimum": 0, "maximum": 0.5 },
+              "net_adr": { "type": "number", "minimum": 0 },
+              "trend_yoy": { "type": ["number", "null"] }
+            }
+          }
+        },
+        "mix_target": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["canale", "quota_target", "delta_pct"],
+            "properties": {
+              "canale": { "type": "string" },
+              "quota_target": { "type": "number", "minimum": 0, "maximum": 1 },
+              "delta_pct": { "type": "number" }
+            }
+          }
+        },
+        "dipendenza_ota": {
+          "type": "object",
+          "required": ["indice", "semaforo"],
+          "properties": {
+            "indice": { "type": "number", "minimum": 0, "maximum": 1, "description": "Quota Booking+Expedia su ricavi" },
+            "semaforo": { "type": "string", "enum": ["verde", "giallo", "rosso"] },
+            "rischio_stimato_sospensione_eur": { "type": ["number", "null"] }
+          }
+        },
+        "disparity_rilevate": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "data": { "type": "string", "format": "date" },
+              "canale_a": { "type": "string" },
+              "canale_b": { "type": "string" },
+              "gap_eur": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "required": ["fasce_stagionali", "gap_identificati", "compset"],
+      "properties": {
+        "fasce_stagionali": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["fascia", "mesi", "bar_attuale", "bar_suggerita"],
+            "properties": {
+              "fascia": { "type": "string", "enum": ["bassa", "spalla", "media", "alta"] },
+              "mesi": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 12 } },
+              "bar_attuale": { "type": "number", "minimum": 0 },
+              "bar_suggerita": { "type": "number", "minimum": 0 },
+              "delta_pct": { "type": "number" }
+            }
+          }
+        },
+        "gap_identificati": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["mese", "tipologia_gap", "impatto_eur_anno"],
+            "properties": {
+              "mese": { "type": "string", "pattern": "^\\d{4}-\\d{2}$" },
+              "tipologia_gap": { "type": "string", "enum": ["prezzo_troppo_alto", "prezzo_troppo_basso", "min_stay_sbagliato", "promo_mancante"] },
+              "impatto_eur_anno": { "type": "number" },
+              "descrizione": { "type": "string" }
+            }
+          }
+        },
+        "compset": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["nome", "adr_medio"],
+            "properties": {
+              "nome": { "type": "string" },
+              "rating_booking": { "type": ["number", "null"] },
+              "stelle": { "type": ["integer", "null"] },
+              "adr_medio": { "type": "number" },
+              "posizionamento_relativo": { "type": "string", "enum": ["sotto", "in_linea", "sopra"] }
+            }
+          }
+        },
+        "calendario_365": {
+          "type": ["array", "null"],
+          "description": "Array di 365 giorni se genera_calendario_pricing disponibile"
+        }
+      }
+    },
+    "recensioni": {
+      "type": "object",
+      "required": ["rating_per_piattaforma", "temi_positivi", "temi_negativi"],
+      "properties": {
+        "rating_per_piattaforma": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["piattaforma", "rating"],
+            "properties": {
+              "piattaforma": { "type": "string", "enum": ["booking", "tripadvisor", "google", "airbnb", "altro"] },
+              "rating": { "type": "number" },
+              "scala_max": { "type": "number" },
+              "numero_recensioni": { "type": ["integer", "null"] },
+              "trend_yoy": { "type": ["number", "null"] },
+              "semaforo": { "type": "string", "enum": ["verde", "giallo", "rosso"] }
+            }
+          }
+        },
+        "temi_positivi": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["tema", "frequenza"],
+            "properties": {
+              "tema": { "type": "string" },
+              "frequenza": { "type": "number", "minimum": 0, "maximum": 1 },
+              "esempi_citazioni": { "type": "array", "items": { "type": "string" }, "maxItems": 3 }
+            }
+          }
+        },
+        "temi_negativi": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["tema", "frequenza"],
+            "properties": {
+              "tema": { "type": "string" },
+              "frequenza": { "type": "number", "minimum": 0, "maximum": 1 },
+              "esempi_citazioni": { "type": "array", "items": { "type": "string" }, "maxItems": 3 }
+            }
+          }
+        },
+        "response_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "ultima_risposta_data": { "type": ["string", "null"], "format": "date" }
+      }
+    },
+    "piano_ricavi": {
+      "type": "object",
+      "required": ["scenari"],
+      "properties": {
+        "scenari": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["nome", "revpar_atteso", "occupancy_attesa", "adr_atteso", "ricavi_camera_annuali"],
+            "properties": {
+              "nome": { "type": "string", "enum": ["pessimistico", "base", "ottimistico"] },
+              "revpar_atteso": { "type": "number", "minimum": 0 },
+              "occupancy_attesa": { "type": "number", "minimum": 0, "maximum": 1 },
+              "adr_atteso": { "type": "number", "minimum": 0 },
+              "ricavi_camera_annuali": { "type": "number", "minimum": 0 },
+              "delta_vs_attuale_pct": { "type": "number" },
+              "ipotesi": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "mix_canali_target_12m": {
+          "type": "object",
+          "properties": {
+            "diretto_target_pct": { "type": "number", "minimum": 0, "maximum": 1 },
+            "booking_target_pct": { "type": "number", "minimum": 0, "maximum": 1 },
+            "altri_ota_target_pct": { "type": "number", "minimum": 0, "maximum": 1 },
+            "risparmio_commissioni_eur_anno": { "type": "number" }
+          }
+        }
+      }
+    },
+    "azioni_prioritarie": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["priorita", "nome", "categoria", "impatto_revpar_pct", "fattibilita", "tempo_settimane"],
+        "properties": {
+          "priorita": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "nome": { "type": "string" },
+          "categoria": { "type": "string", "enum": ["pricing", "canali", "prodotto", "reputation", "marketing", "operations"] },
+          "descrizione": { "type": "string" },
+          "impatto_revpar_pct": { "type": "number" },
+          "impatto_ricavi_eur_anno": { "type": ["number", "null"] },
+          "fattibilita": { "type": "string", "enum": ["alta", "media", "bassa"] },
+          "tempo_settimane": { "type": "number", "minimum": 0 },
+          "costo_una_tantum_eur": { "type": ["number", "null"] },
+          "costo_ricorrente_eur_mese": { "type": ["number", "null"] },
+          "come_si_fa": { "type": "string" },
+          "responsabile_suggerito": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "assunzioni": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ambito", "assunzione"],
+        "properties": {
+          "ambito": { "type": "string" },
+          "assunzione": { "type": "string" },
+          "impatto_se_errata": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "dati_mancanti": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

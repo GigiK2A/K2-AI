@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LegalBoost — output deliverable",
+  "type": "object",
+  "required": ["meta", "sintesi", "voci", "piano_azione", "disclaimer"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["servizio", "versione", "data", "azienda"],
+      "properties": {
+        "servizio": { "const": "LegalBoost" },
+        "versione": { "type": "string" },
+        "data": { "type": "string" },
+        "azienda": { "type": "string" }
+      }
+    },
+    "sintesi": {
+      "type": "object",
+      "required": ["score_compliance", "mappa_rischi"],
+      "properties": {
+        "score_compliance": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "mappa_rischi": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["area", "semaforo"],
+            "properties": {
+              "area": { "type": "string" },
+              "semaforo": { "enum": ["verde", "giallo", "rosso"] }
+            }
+          }
+        }
+      }
+    },
+    "voci": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "titolo", "contenuto", "rischi", "azioni", "norme_citate"],
+        "properties": {
+          "id": { "type": "string" },
+          "titolo": { "type": "string" },
+          "contenuto": { "type": "string" },
+          "rischi": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["descrizione", "gravita", "serve_avvocato"],
+              "properties": {
+                "descrizione": { "type": "string" },
+                "gravita": { "enum": ["bassa", "media", "alta"] },
+                "norma_rif": { "type": "string" },
+                "serve_avvocato": { "type": "boolean" }
+              }
+            }
+          },
+          "azioni": { "type": "array", "items": { "type": "string" } },
+          "norme_citate": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["riferimento", "fonte"],
+              "properties": {
+                "riferimento": { "type": "string" },
+                "fonte": { "enum": ["normattiva", "eur-lex", "ccnl-route"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "piano_azione": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["priorita", "azione", "handoff_avvocato"],
+        "properties": {
+          "priorita": { "type": "integer", "minimum": 1 },
+          "azione": { "type": "string" },
+          "handoff_avvocato": { "type": "boolean" }
+        }
+      }
+    },
+    "disclaimer": { "type": "string" }
+  },
+  "additionalProperties": false
+}

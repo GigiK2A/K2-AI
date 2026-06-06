@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/deliverable-blueprint.schema.json",
+  "title": "K2-AI Deliverable Blueprint — meta-schema",
+  "description": "Grammatica unica di ogni contratto di forma dei deliverable K2-AI. Livello 1 di validazione: un blueprint e' ben formato se rispetta questo schema. Livello 2: il linter applica regole_validazione_linter al documento prodotto.",
+  "type": "object",
+  "required": ["$id", "blueprint_version", "tipo", "pacchetto", "contratto_dati", "formato_primario", "voci", "elementi_psico_trasversali", "regole_validazione_linter", "aggancio_funnel"],
+  "additionalProperties": true,
+  "properties": {
+    "$id": { "type": "string", "format": "uri" },
+    "blueprint_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "tipo": { "const": "deliverable-blueprint" },
+    "descrizione": { "type": "string" },
+    "pacchetto": {
+      "type": "object",
+      "required": ["skill", "nome_commerciale", "tier"],
+      "properties": {
+        "skill": { "type": "string" },
+        "nome_commerciale": { "type": "string" },
+        "tier": { "enum": ["check", "audit", "boost", "retainer", "custom"] },
+        "tier_schema_dati": { "type": "string" },
+        "posizione_funnel": { "type": "string" }
+      }
+    },
+    "contratto_dati": { "type": "string", "description": "path allo schema dati (output-schema.json) del pacchetto" },
+    "formato_primario": { "enum": ["html-single-page", "docx", "xlsx", "pdf", "dashboard-html"] },
+    "paginato": { "type": "boolean", "description": "derivabile dal formato; true per docx/pdf" },
+    "pagine_totali": {
+      "type": "object",
+      "description": "obbligatorio se paginato; assente per html-single-page",
+      "required": ["min", "max", "target"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 1 },
+        "max": { "type": "integer", "minimum": 1 },
+        "target": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "vincoli_formato": { "type": "object", "description": "vincoli specifici del formato (es. peso_kb_max per html)" },
+    "conteggi_attesi": {
+      "type": "object",
+      "description": "conteggi esatti attesi (VIA B, #21b-res): il linter li confronta con l'instance. Chiave assente o null -> regola non valutata (D-025). Dichiarare solo i conteggi REALMENTE fissi del dominio (range/variabili -> omettere).",
+      "properties": {
+        "card_semaforo": { "type": "integer", "minimum": 1 },
+        "criticita": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "artefatti_bundle": {
+      "type": "array",
+      "description": "presente solo per deliverable multi-file (es. Boost). Il formato_primario indica l'artefatto su cui e' scritto l'indice.",
+      "items": {
+        "type": "object",
+        "required": ["id", "ruolo", "formato", "obbligatorio"],
+        "properties": {
+          "id": { "type": "string" },
+          "ruolo": { "type": "string" },
+          "formato": { "enum": ["docx", "xlsx", "html", "json", "pdf"] },
+          "obbligatorio": { "type": "boolean" },
+          "nota": { "type": "string" }
+        }
+      }
+    },
+    "voci": {
+      "type": "array",
+      "description": "contenuto strutturale del documento: sezioni (html) o capitoli (docx). Nome unico per tutti i formati.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["ord", "id", "titolo", "argomenti_obbligatori"],
+        "properties": {
+          "ord": { "type": "integer", "minimum": 0 },
+          "id": { "type": "string" },
+          "titolo": { "type": "string" },
+          "pagine": {
+            "type": "object",
+            "description": "presente solo se il formato e' paginato",
+            "required": ["min", "max"],
+            "properties": { "min": { "type": "integer", "minimum": 0 }, "max": { "type": "integer", "minimum": 0 } }
+          },
+          "argomenti_obbligatori": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "funzione_psico": { "type": "string" },
+          "vincolo": { "type": "string" },
+          "stato": { "type": "string", "description": "annotazione es. 'DA AGGIUNGERE' per gap noti" }
+        }
+      }
+    },
+    "elementi_obbligatori": { "type": "array", "items": { "type": "string" } },
+    "elementi_grafici_obbligatori": { "type": "array", "items": { "type": "string" } },
+    "tabelle_obbligatorie": { "type": "array", "items": { "type": "string" } },
+    "elementi_psico_trasversali": {
+      "type": "object",
+      "description": "leve psico-marketing che valgono per tutto il documento",
+      "minProperties": 1
+    },
+    "regole_validazione_linter": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "regola", "severita"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^R\\d{2}$" },
+          "regola": { "type": "string" },
+          "severita": { "enum": ["errore", "warning"] },
+          "nota": { "type": "string" }
+        }
+      }
+    },
+    "aggancio_funnel": {
+      "type": "object",
+      "required": ["tier_precedente", "tier_successivo", "gancio"],
+      "properties": {
+        "tier_precedente": { "type": ["string", "null"], "enum": ["check", "audit", "boost", "retainer", "custom", null] },
+        "tier_successivo": { "type": ["string", "null"], "enum": ["check", "audit", "boost", "retainer", "custom", null] },
+        "gancio": { "type": "string" },
+        "nota_funnel": { "type": "string" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "formato_primario": { "enum": ["docx", "pdf"] } } },
+      "then": { "required": ["pagine_totali"] }
+    },
+    {
+      "if": { "properties": { "formato_primario": { "const": "html-single-page" } } },
+      "then": { "not": { "required": ["pagine_totali"] } }
+    }
+  ]
+}

@@ -1,41 +1,46 @@
-"""8e settings — env-driven, loaded once."""
+"""8e settings — env-driven, loaded once. Consuma gli asset reali (handoff v2.27)."""
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Auth backend-to-backend (il K-BOT chiama l'8e con questa chiave).
+# Auth backend-to-backend.
 API_KEY = os.environ.get("K2A_8E_API_KEY", "dev-key")
-API_KEY_NEXT = os.environ.get("K2A_8E_API_KEY_NEXT")  # rotazione zero-downtime (G6)
+API_KEY_NEXT = os.environ.get("K2A_8E_API_KEY_NEXT")  # rotazione (membrana G6)
 
-# Anthropic (filiera Sonnet). Senza chiave → modalità offline deterministica
-# (template), così smoke test e dev girano senza rete.
+# Anthropic (filiera). Senza chiave → offline deterministico (template).
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = os.environ.get("K2A_8E_MODEL", "claude-sonnet-4-5")
-ANTHROPIC_PEER_MODEL = os.environ.get("K2A_8E_PEER_MODEL", "claude-haiku-4-5")
 
-# Asset di dominio (di Luca). Se presenti, l'8e li usa; altrimenti fixture locali.
-# - K2A_SKILLS_DIR: repo k2a-skills (blueprints/<id>.blueprint.json + <id>/schemas/*)
-# - snapshot: grounding/legalboost.snapshot.json (generato da build_snapshot.py)
-SKILLS_DIR = os.environ.get("K2A_SKILLS_DIR")  # es. /path/to/k2a-skills
-FIXTURES_DIR = ROOT / "fixtures"
+# Asset reali (handoff Luca v2.27), vendorizzati nel repo.
+BLUEPRINTS_DIR = Path(os.environ.get("K2A_BLUEPRINTS_DIR", str(ROOT / "blueprints"))).resolve()
+MANIFEST_PATH = BLUEPRINTS_DIR / "manifest.json"
 SNAPSHOT_PATH = Path(
-    os.environ.get("K2A_8E_SNAPSHOT", str(ROOT / "grounding" / "legalboost.snapshot.json"))
+    os.environ.get("K2A_8E_SNAPSHOT", str(ROOT / "grounding" / "grounding-snapshot.json"))
 ).resolve()
+BOOST_PLACEHOLDERS_PATH = ROOT / "grounding" / "boost_placeholders.json"
+CATALOG_PATH = Path(os.environ.get("K2A_8E_CATALOG", str(ROOT / "catalog" / "catalog.json"))).resolve()
 
-# Output locale (Phase-1). In produzione → upload Supabase lato K-BOT (membrana G2).
 OUT_DIR = Path(os.environ.get("K2A_8E_OUT_DIR", str(ROOT / "_out"))).resolve()
+ENGINE_VERSION = os.environ.get("K2A_8E_VERSION", "0.2.0-phase1-realassets")
 
-ENGINE_VERSION = os.environ.get("K2A_8E_VERSION", "0.1.0-phase1")
+# --- Catalogo chiuso Phase-1: SOLO LegalBoost (pilota) -------------------
+# manifest mappa 15 service_id → skill. In Phase-1 sono instradabili solo i
+# service_id serviti dal blueprint LegalBoost (gli altri → out_of_catalog).
+def _manifest_services() -> dict:
+    try:
+        return json.loads(MANIFEST_PATH.read_text(encoding="utf-8")).get("services", {})
+    except Exception:
+        return {}
 
-# Catalogo chiuso: in Phase-1 solo LegalBoost è instradabile.
+
+PILOT_SKILL = "flusso-legalboost-pmi"
 CATALOGO_CHIUSO = {
-    "flusso-legalboost-pmi": "flusso-legalboost-pmi.boost",
-    "check-legale-express": "check-legale-express.check",
+    sid: v for sid, v in _manifest_services().items() if v.get("skill") == PILOT_SKILL
 }
-CONFIDENCE_REFUSE_THRESHOLD = 0.4
 
-# Timeout hard job (oltre → error). Membrana G7.
+CONFIDENCE_REFUSE_THRESHOLD = 0.4
 JOB_TIMEOUT_S = int(os.environ.get("K2A_8E_JOB_TIMEOUT", "240"))

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-legalboost-pmi.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost di LegalBoost — diagnosi e orientamento legale-compliance PMI (NON consulenza legale, D-034). 9 voci, citazioni ancorate via MCP normattiva, UE route-or-refuse. Modellato sul pattern boost (Safety).",
+  "pacchetto": {
+    "skill": "flusso-legalboost-pmi",
+    "nome_commerciale": "LegalBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-legalboost-pmi/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": { "min": 16, "max": 24, "target": 20 },
+  "artefatti_bundle": [
+    { "id": "docx_report", "ruolo": "principale", "formato": "docx", "obbligatorio": true, "nota": "report diagnosi legale-compliance" },
+    { "id": "pdf_report", "ruolo": "consegna firmata", "formato": "pdf", "obbligatorio": true, "nota": "versione PDF firmata K2-AI" },
+    { "id": "json_output", "ruolo": "dati", "formato": "json", "obbligatorio": true, "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0, "id": "sintesi_mappa_rischi", "titolo": "Sintesi e mappa rischi", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["score compliance 0-100", "cruscotto semaforico per area", "priorità top", "disclaimer di non-sostituzione (D-034)"],
+      "funzione_psico": "registro titolare + picco d'apertura; il cruscotto è l'accent" },
+    { "ord": 1, "id": "contrattualistica", "titolo": "Contrattualistica d'impresa", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["clausole critiche e condizioni generali", "clausole vessatorie (Cod. Civ. artt. 1341-1342)", "tutela del consumatore (D.Lgs 206/2005)", "rischi e azioni con riferimenti via MCP"] },
+    { "ord": 2, "id": "societario_231", "titolo": "Societario & governance / 231", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["forma e responsabilità amministratori (Cod. Civ. libro V)", "modello organizzativo 231 (D.Lgs 231/2001)", "reati presupposto rilevanti", "rischi e azioni"] },
+    { "ord": 3, "id": "privacy_dati", "titolo": "Privacy & dati (GDPR / AI Act)", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["basi giuridiche e informative (GDPR Reg. UE 2016/679 → EUR-Lex)", "registro trattamenti e DPIA", "Codice Privacy D.Lgs 196/2003", "uso AI/profilazione e AI Act Reg. UE 2024/1689 → EUR-Lex"] },
+    { "ord": 4, "id": "lavoro_sicurezza", "titolo": "Lavoro & sicurezza", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["inquadramento e obblighi (Statuto Lavoratori L. 300/1970)", "rinvio sicurezza D.Lgs 81/08", "rapporto di lavoro (Cod. Civ. libro V)", "CCNL applicabile → route-or-refuse"] },
+    { "ord": 5, "id": "antiriciclaggio_te", "titolo": "Adempimenti & antiriciclaggio / titolare effettivo", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["obblighi antiriciclaggio (D.Lgs 231/2007)", "registro titolare effettivo", "rischi e azioni"] },
+    { "ord": 6, "id": "ip_marchi", "titolo": "IP & marchi", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["tutela marchio e segni distintivi (D.Lgs 30/2005 CPI)", "diritto d'autore (L. 633/1941)", "rischi e azioni"] },
+    { "ord": 7, "id": "fiscale_orientamento", "titolo": "Fiscale-tributario (orientamento)", "pagine": { "min": 1, "max": 2 },
+      "argomenti_obbligatori": ["orientamento fiscale di massima (TUIR norma-level)", "rinvio esplicito al commercialista", "NON consulenza fiscale sul caso"],
+      "funzione_psico": "confine onesto: orientamento, non parere" },
+    { "ord": 8, "id": "piano_azione_handoff", "titolo": "Piano d'azione e quando serve l'avvocato", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["to-do prioritizzata", "per ogni rischio alto: handoff 'consulenza legale raccomandata'", "modalità di ingaggio professionista partner", "disclaimer di chiusura (D-034)"],
+      "funzione_psico": "chiusura forte (peak-end) + CTA/handoff onesto", "stato": "voce-CTA del funnel" }
+  ],
+  "elementi_grafici_obbligatori": [
+    "cruscotto semaforico rischi per area",
+    "grafico priorità/gravità rischi"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella rischi per area con gravità e norma di riferimento",
+    "tabella norme citate con fonte (normattiva/eur-lex/ccnl)"
+  ],
+  "elementi_psico_trasversali": {
+    "doppio_registro": "sintesi semaforica per il titolare + dettaglio per area con riferimenti",
+    "confine_etico": "ribadito il non-sostituire l'avvocato; handoff esplicito sui rischi alti (D-034)",
+    "concretezza": "ogni rischio ha gravità, norma di riferimento e azione",
+    "cliente_eroe": "il titolare capisce cosa rischia e cosa fare per primo, senza gergo",
+    "determinismo": "citazioni via MCP, mai a memoria; UE → EUR-Lex"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "tutte le voci presenti nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R02", "regola": "somma pagine entro pagine_totali.min..max", "severita": "errore" },
+    { "id": "R03", "regola": "pagine per voce entro il rispettivo range", "severita": "warning" },
+    { "id": "R04", "regola": "ogni argomento_obbligatorio rilevabile nella voce corrispondente", "severita": "errore" },
+    { "id": "R05", "regola": "la sintesi iniziale (mappa rischi) entro 2 pagine con cruscotto semaforico", "severita": "errore" },
+    { "id": "R06", "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati (docx+pdf+json)", "severita": "errore" },
+    { "id": "R07", "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx", "severita": "warning" },
+    { "id": "R08", "regola": "tutte le tabelle_obbligatorie presenti nel docx", "severita": "warning" },
+    { "id": "R09", "regola": "CTA/handoff verso il professionista presente nel capitolo piano d'azione", "severita": "errore" },
+    { "id": "R10", "regola": "disclaimer di non-sostituzione (D-034) presente", "severita": "errore" },
+    { "id": "R11", "regola": "json_output valida contro contratto_dati (output-schema.json)", "severita": "errore" },
+    { "id": "R12", "regola": "nessun prezzo hard-coded: prezzo (es. retainer) risolto da catalogo a runtime", "severita": "warning" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "La diagnosi dice DOVE sei a rischio. Il presidio continuativo (retainer) tiene la compliance viva nel tempo; sui punti caldi, l'avvocato partner. Handoff dopo il quadro completo."
+  }
+}

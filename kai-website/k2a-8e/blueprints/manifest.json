@@ -1,0 +1,111 @@
+{
+  "manifest_version": "1.0.0",
+  "meta_schema": "deliverable-blueprint.schema.json",
+  "services": {
+    "checkup_agevolazioni": {
+      "blueprint_id": "flusso-agevolazioni-pmi.boost",
+      "skill": "flusso-agevolazioni-pmi",
+      "blueprint": "flusso-agevolazioni-pmi/blueprint.json",
+      "output_schema": "flusso-agevolazioni-pmi/output-schema.json",
+      "form": "flusso-agevolazioni-pmi/form.json"
+    },
+    "checkup_fiscale": {
+      "blueprint_id": "flusso-fiscoboost-pmi.boost",
+      "skill": "flusso-fiscoboost-pmi",
+      "blueprint": "flusso-fiscoboost-pmi/blueprint.json",
+      "output_schema": "flusso-fiscoboost-pmi/output-schema.json",
+      "form": "flusso-fiscoboost-pmi/form.json"
+    },
+    "checkup_finanziario": {
+      "blueprint_id": "flusso-financeboost-pmi.boost",
+      "skill": "flusso-financeboost-pmi",
+      "blueprint": "flusso-financeboost-pmi/blueprint.json",
+      "output_schema": "flusso-financeboost-pmi/output-schema.json",
+      "form": "flusso-financeboost-pmi/form.json"
+    },
+    "checkup_seo": {
+      "blueprint_id": "flusso-webboost-pmi.boost",
+      "skill": "flusso-webboost-pmi",
+      "blueprint": "flusso-webboost-pmi/blueprint.json",
+      "output_schema": "flusso-webboost-pmi/output-schema.json",
+      "form": "flusso-webboost-pmi/form.json"
+    },
+    "checkup_marketing": {
+      "blueprint_id": "flusso-strategyboost-pmi.boost",
+      "skill": "flusso-strategyboost-pmi",
+      "blueprint": "flusso-strategyboost-pmi/blueprint.json",
+      "output_schema": "flusso-strategyboost-pmi/output-schema.json",
+      "form": "flusso-strategyboost-pmi/form.json"
+    },
+    "checkup_hospitality": {
+      "blueprint_id": "flusso-hostboost-ricettive.boost",
+      "skill": "flusso-hostboost-ricettive",
+      "blueprint": "flusso-hostboost-ricettive/blueprint.json",
+      "output_schema": "flusso-hostboost-ricettive/output-schema.json",
+      "form": "flusso-hostboost-ricettive/form.json"
+    },
+    "primo_parere_legale": {
+      "blueprint_id": "flusso-legalboost-pmi.boost",
+      "skill": "flusso-legalboost-pmi",
+      "blueprint": "flusso-legalboost-pmi/blueprint.json",
+      "output_schema": "flusso-legalboost-pmi/output-schema.json",
+      "form": "flusso-legalboost-pmi/form.json"
+    },
+    "checkup_advisor": {
+      "blueprint_id": "flusso-advisorboost-pmi.boost",
+      "skill": "flusso-advisorboost-pmi",
+      "blueprint": "flusso-advisorboost-pmi/blueprint.json",
+      "output_schema": "flusso-advisorboost-pmi/output-schema.json",
+      "form": "flusso-advisorboost-pmi/form.json"
+    },
+    "checkup_edilizia": {
+      "blueprint_id": "flusso-buildboost-studio.boost",
+      "skill": "flusso-buildboost-studio",
+      "blueprint": "flusso-buildboost-studio/blueprint.json",
+      "output_schema": "flusso-buildboost-studio/output-schema.json",
+      "form": "flusso-buildboost-studio/form.json"
+    },
+    "checkup_controllo": {
+      "blueprint_id": "cruscotto-direzionale.boost",
+      "skill": "cruscotto-direzionale",
+      "blueprint": "cruscotto-direzionale/blueprint.json",
+      "output_schema": "cruscotto-direzionale/output-schema.json",
+      "form": "cruscotto-direzionale/form.json"
+    },
+    "checkup_energia": {
+      "blueprint_id": "flusso-mepboost-studio.boost",
+      "skill": "flusso-mepboost-studio",
+      "blueprint": "flusso-mepboost-studio/blueprint.json",
+      "output_schema": "flusso-mepboost-studio/output-schema.json",
+      "form": "flusso-mepboost-studio/form.json"
+    },
+    "checkup_legale_triage": {
+      "blueprint_id": "flusso-legalboost-pmi.boost",
+      "skill": "flusso-legalboost-pmi",
+      "blueprint": "flusso-legalboost-pmi/blueprint.json",
+      "output_schema": "flusso-legalboost-pmi/output-schema.json",
+      "form": "flusso-legalboost-pmi/form.json"
+    },
+    "checkup_legale_review": {
+      "blueprint_id": "flusso-legalboost-pmi.boost",
+      "skill": "flusso-legalboost-pmi",
+      "blueprint": "flusso-legalboost-pmi/blueprint.json",
+      "output_schema": "flusso-legalboost-pmi/output-schema.json",
+      "form": "flusso-legalboost-pmi/form.json"
+    },
+    "checkup_legale_dd": {
+      "blueprint_id": "flusso-legalboost-pmi.boost",
+      "skill": "flusso-legalboost-pmi",
+      "blueprint": "flusso-legalboost-pmi/blueprint.json",
+      "output_schema": "flusso-legalboost-pmi/output-schema.json",
+      "form": "flusso-legalboost-pmi/form.json"
+    },
+    "checkup_sicurezza_safetyboost": {
+      "blueprint_id": "flusso-safetyboost-studio.boost",
+      "skill": "flusso-safetyboost-studio",
+      "blueprint": "flusso-safetyboost-studio/blueprint.json",
+      "output_schema": "flusso-safetyboost-studio/output-schema.json",
+      "form": "flusso-safetyboost-studio/form.json"
+    }
+  }
+}

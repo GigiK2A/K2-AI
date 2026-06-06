@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/cruscotto-direzionale.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost di ControlBoost (cruscotto-direzionale) — dashboard KPI mensile PMI con 4 prospettive Balanced Scorecard. Servizio ricorrente mensile. formato_primario dashboard-html + bundle (XLSX cruscotto, JSON). Modellato sul pattern boost.",
+  "pacchetto": {
+    "skill": "cruscotto-direzionale",
+    "nome_commerciale": "ControlBoost",
+    "tier": "boost",
+    "posizione_funnel": "destinazione checkup_controllo; servizio mensile ricorrente"
+  },
+  "contratto_dati": "cruscotto-direzionale/schemas/output-schema.json",
+  "formato_primario": "dashboard-html",
+  "paginato": false,
+  "vincoli_formato": { "self_contained": true, "dipendenze_esterne": "Chart.js embedded", "mobile_first": true, "stampabile": true },
+  "artefatti_bundle": [
+    { "id": "html_dashboard", "ruolo": "principale", "formato": "html", "obbligatorio": true, "nota": "dashboard self-contained con Chart.js; oggetto del blueprint" },
+    { "id": "xlsx_cruscotto", "ruolo": "modello vivo", "formato": "xlsx", "obbligatorio": true, "nota": "4 tab: Input Mensile, KPI Dashboard, Storico 12 mesi, Grafici" },
+    { "id": "json_output", "ruolo": "dati", "formato": "json", "obbligatorio": true, "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0, "id": "header", "titolo": "Header", "argomenti_obbligatori": ["azienda", "mese e anno di riferimento", "data generazione"] },
+    { "ord": 1, "id": "executive_summary", "titolo": "Executive summary", "argomenti_obbligatori": ["sintesi 3-5 righe stato dell'azienda nel mese", "principali criticita del mese"],
+      "funzione_psico": "registro titolare + picco d'apertura; lettura immediata" },
+    { "ord": 2, "id": "prospettiva_finanziaria", "titolo": "Prospettiva finanziaria (BSC)", "argomenti_obbligatori": ["KPI finanziari (fatturato, EBITDA, cash flow operativo, giorni medi incasso, posizione cassa)", "ogni KPI con valore, target, scostamento e semaforo", "confronto mese precedente e anno precedente"] },
+    { "ord": 3, "id": "prospettiva_cliente", "titolo": "Prospettiva cliente (BSC)", "argomenti_obbligatori": ["KPI cliente (clienti attivi, nuovi clienti, churn, fatturato medio per cliente, concentrazione top 5)", "ogni KPI con valore, target e semaforo"] },
+    { "ord": 4, "id": "prospettiva_processi", "titolo": "Prospettiva processi interni (BSC)", "argomenti_obbligatori": ["KPI processi (ore fatturabili/totali, tasso scarti, lead time, reclami)", "ogni KPI con valore, target e semaforo"] },
+    { "ord": 5, "id": "prospettiva_crescita", "titolo": "Prospettiva crescita e apprendimento (BSC)", "argomenti_obbligatori": ["KPI crescita (ore formazione, nuovi prodotti/servizi, investimenti innovazione, turnover)", "ogni KPI con valore, target e semaforo"] },
+    { "ord": 6, "id": "alert", "titolo": "Alert e azioni", "argomenti_obbligatori": ["alert per KPI rossi/gialli con descrizione deviazione", "2-3 cause probabili per alert", "azione suggerita con tempistica", "alert concentrazione clienti e trend 3 mesi"],
+      "funzione_psico": "loss aversion + azionabilita" },
+    { "ord": 7, "id": "footer", "titolo": "Footer", "argomenti_obbligatori": ["data generazione", "data prossimo aggiornamento", "contatti K2-AI", "gancio servizio continuativo"],
+      "funzione_psico": "chiusura + gancio retainer mensile" }
+  ],
+  "elementi_grafici_obbligatori": [
+    "card KPI con semaforo e freccia per ogni prospettiva",
+    "grafico trend fatturato 12 mesi (vs budget)",
+    "radar/bar per le 4 prospettive BSC"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella KPI con valore/target/scostamento/semaforo per le 4 prospettive",
+    "tabella alert con causa e azione"
+  ],
+  "elementi_psico_trasversali": {
+    "accent_unico": "un solo elemento dominante per prospettiva (semaforo/freccia)",
+    "concretezza_euro": "i KPI finanziari espressi in euro, mai in aggettivi",
+    "doppio_registro": "executive summary per il titolare + dettaglio KPI per chi opera",
+    "gancio_retainer": "servizio mensile ricorrente: il valore sta nella continuita del monitoraggio",
+    "determinismo": "ogni KPI ha formula e fonte dati; i numeri non sono inventati dal modello"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "tutte le voci presenti nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R02", "regola": "le 4 prospettive BSC (finanziaria/cliente/processi/crescita) presenti", "severita": "errore" },
+    { "id": "R03", "regola": "ogni KPI ha valore, target e semaforo", "severita": "errore" },
+    { "id": "R04", "regola": "ogni argomento_obbligatorio rilevabile nella voce corrispondente", "severita": "errore" },
+    { "id": "R05", "regola": "executive summary presente (sintesi del mese)", "severita": "errore" },
+    { "id": "R06", "regola": "ogni alert ha causa e azione", "severita": "errore" },
+    { "id": "R07", "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati (html+xlsx+json)", "severita": "errore" },
+    { "id": "R08", "regola": "tutti gli elementi_grafici_obbligatori presenti nel dashboard", "severita": "warning" },
+    { "id": "R09", "regola": "gancio al servizio continuativo presente nel footer", "severita": "errore" },
+    { "id": "R10", "regola": "json_output valida contro contratto_dati (output-schema.json)", "severita": "errore" },
+    { "id": "R11", "regola": "nessun prezzo hard-coded: prezzi risolti da catalogo a runtime", "severita": "warning" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "Il cruscotto vale finche' viene aggiornato ogni mese: il monitoraggio continuativo (retainer mensile) tiene l'azienda sotto controllo. Gancio in chiusura.",
+    "nota_funnel": "tier_precedente reale = check-salute-finanziaria; destinazione = checkup_controllo; tier_successivo = retainer mensile (il cruscotto È il servizio ricorrente)"
+  }
+}

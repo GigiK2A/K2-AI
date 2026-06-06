@@ -31,7 +31,8 @@ _SYSTEM = (
 def _facts_block(facts: dict[str, dict]) -> str:
     lines = ["FATTI DETERMINISTICI (usa SOLO questi per i riferimenti normativi):"]
     for k, v in facts.items():
-        lines.append(f"- [{k}] fonte={v.get('fonte')} vigenza={v.get('vigenza')}: {v.get('testo')}")
+        val = str(v.get("valore", ""))[:1200]
+        lines.append(f"- [{k}] tipo={v.get('tipo')} fonte={v.get('fonte')} vigenza={v.get('vigenza')}: {val}")
     return "\n".join(lines)
 
 
@@ -39,7 +40,8 @@ def _voci_block(voci: list[dict]) -> str:
     lines = ["VOCI DA SCRIVERE (una chiave JSON per id):"]
     for v in voci:
         vid = v.get("id") or v.get("titolo")
-        lines.append(f"- id={vid}: {v.get('titolo','')} — {v.get('descrizione','')}")
+        argomenti = "; ".join(v.get("argomenti_obbligatori", []))
+        lines.append(f"- id={vid}: {v.get('titolo','')} — argomenti obbligatori: {argomenti}")
     return "\n".join(lines)
 
 
@@ -88,7 +90,8 @@ def generate_sezioni(
 def _offline(voci: list[dict], facts: dict[str, dict], inputs: dict) -> dict[str, str]:
     """Template deterministico: cita i fatti senza inventarli. Per dev/CI/no-key."""
     fact_refs = "; ".join(
-        f"{v.get('fonte')} ({v.get('vigenza')})" for v in facts.values()
+        f"{v.get('fonte')} ({v.get('vigenza')})"
+        for v in facts.values() if v.get("tipo") == "normativo"
     ) or "nessun riferimento deterministico"
     azienda = inputs.get("ragione_sociale") or inputs.get("azienda") or "l'azienda"
     out: dict[str, str] = {}

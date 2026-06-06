@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BuildBoost — form input",
+  "type": "object",
+  "required": ["tipo_intervento", "comune", "destinazione_attuale"],
+  "properties": {
+    "tipo_intervento": { "type": "string", "description": "tipo intervento edilizio (ristrutturazione, ampliamento, cambio destinazione, sopraelevazione, nuova costruzione)" },
+    "comune": { "type": "string", "description": "comune dell'intervento" },
+    "indirizzo": { "type": "string" },
+    "catasto": { "type": "string", "description": "riferimenti catastali (foglio/particella/sub)" },
+    "superficie_mq": { "type": ["number", "null"], "minimum": 0 },
+    "destinazione_attuale": { "type": "string", "description": "destinazione d'uso attuale" },
+    "destinazione_progetto": { "type": ["string", "null"], "description": "destinazione d'uso di progetto (se cambia)" },
+    "vincoli_noti": { "type": "array", "items": { "type": "string", "enum": ["paesaggistico", "monumentale", "idrogeologico", "sismico", "nessuno"] }, "description": "vincoli noti sull'area" },
+    "importo_lavori_stimato": { "type": ["number", "null"], "description": "EUR" }
+  },
+  "additionalProperties": false
+}

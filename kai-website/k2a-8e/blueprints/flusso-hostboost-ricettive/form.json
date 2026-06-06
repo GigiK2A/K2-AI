@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HostBoost — form input",
+  "type": "object",
+  "required": ["nome", "tipologia", "camere_totali", "regione"],
+  "properties": {
+    "nome": { "type": "string" },
+    "tipologia": { "type": "string", "enum": ["agriturismo", "bb", "hotel3stelle", "hotel4stelle_boutique", "casa_vacanza", "affittacamere", "altro"] },
+    "camere_totali": { "type": "integer", "minimum": 1 },
+    "regione": { "type": "string" },
+    "zona": { "type": ["string", "null"], "description": "località/zona (per benchmark RevPAR di area)" },
+    "giorni_apertura": { "type": ["integer", "null"], "minimum": 1, "maximum": 366 },
+    "kpi_attuali": {
+      "type": "object",
+      "properties": {
+        "occupancy_pct": { "type": ["number", "null"] },
+        "adr_eur": { "type": ["number", "null"], "description": "tariffa media giornaliera" },
+        "revpar_eur": { "type": ["number", "null"] }
+      }
+    },
+    "canali": { "type": "array", "items": { "type": "string", "enum": ["booking", "expedia", "airbnb", "diretto", "altro"] }, "description": "canali di vendita usati" },
+    "ota_dependency_pct": { "type": ["number", "null"], "description": "quota ricavi da OTA" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-strategyboost-pmi.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost di StrategyBoost — diagnosi strategica e piano di crescita PMI. docx 15-20 pp + bundle (XLSX mappa strategica, dashboard HTML, JSON). Modellato sul pattern boost (Safety/Advisor).",
+  "pacchetto": {
+    "skill": "flusso-strategyboost-pmi",
+    "nome_commerciale": "StrategyBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-strategyboost-pmi/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": { "min": 15, "max": 20, "target": 17 },
+  "artefatti_bundle": [
+    { "id": "docx_report", "ruolo": "principale", "formato": "docx", "obbligatorio": true, "nota": "report executive diagnosi strategica" },
+    { "id": "xlsx_mappa", "ruolo": "modello vivo", "formato": "xlsx", "obbligatorio": true, "nota": "mappa strategica, 5 tab framework/scoring/piano" },
+    { "id": "html_dashboard", "ruolo": "wow visivo", "formato": "html", "obbligatorio": true, "nota": "radar 5 forze, mappa posizionamento, SWOT visual, timeline, KPI card" },
+    { "id": "json_output", "ruolo": "dati", "formato": "json", "obbligatorio": true, "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0, "id": "copertina_incarico", "titolo": "Copertina e sintesi incarico", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["dati azienda", "obiettivo", "sintesi"] },
+    { "ord": 1, "id": "discovery_aziendale", "titolo": "Discovery aziendale", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["profilo aziendale", "catena del valore", "risorse tangibili/intangibili/umane", "7S McKinsey"],
+      "funzione_psico": "discovery prima della diagnosi" },
+    { "ord": 2, "id": "analisi_settore", "titolo": "Analisi settore", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["5 Forze Porter con scoring 1-5", "dinamiche e lifecycle settore", "raggruppamenti strategici"] },
+    { "ord": 3, "id": "risorse_competenze", "titolo": "Analisi risorse e competenze", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["analisi VRIO", "core competencies", "capacita dinamiche", "gap analysis"] },
+    { "ord": 4, "id": "posizionamento", "titolo": "Posizionamento competitivo", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["catena del valore", "tipo di vantaggio competitivo", "mappa di posizionamento", "SWOT integrata"] },
+    { "ord": 5, "id": "opzioni_strategiche", "titolo": "Opzioni strategiche", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["matrice Ansoff", "integrazione verticale/alleanze", "scoring attrattivita x fattibilita x rischio", "teoria dei giochi (reazioni competitor)"] },
+    { "ord": 6, "id": "piano_strategico", "titolo": "Piano strategico", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["direzione strategica scelta", "obiettivi 1-3 anni", "5-8 iniziative prioritarie", "piano commerciale STP/4P", "rischi e mitigazioni"] },
+    { "ord": 7, "id": "conclusioni_prossimi_passi", "titolo": "Conclusioni e prossimi passi", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["sintesi", "prossimi passi", "gancio servizio successivo"],
+      "funzione_psico": "chiusura forte + gancio onesto al retainer" }
+  ],
+  "elementi_grafici_obbligatori": [
+    "radar Porter 5 forze",
+    "scatter 2D mappa posizionamento con competitor",
+    "SWOT visual",
+    "timeline piano strategico"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella 5 forze con scoring 1-5",
+    "tabella VRIO",
+    "matrice Ansoff con scoring",
+    "tabella iniziative prioritarie"
+  ],
+  "elementi_psico_trasversali": {
+    "discovery_prima_della_diagnosi": "prima si inquadra l'azienda, poi si diagnostica (cap. 1 discovery)",
+    "scoring_evidenze": "ogni giudizio strategico e ancorato a uno scoring esplicito (Porter 1-5, VRIO, 3 assi opzioni)",
+    "gancio_cross_sell": "gancio onesto verso FinanceBoost/AgevolazioniBoost e retainer",
+    "prossimi_passi_chiari": "il titolare esce con la prima mossa chiara, non con una teoria"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "le 5 Forze di Porter hanno scoring 1-5 motivato nella voce analisi settore", "severita": "errore" },
+    { "id": "R02", "regola": "analisi VRIO presente nella voce risorse e competenze", "severita": "errore" },
+    { "id": "R03", "regola": "mappa di posizionamento presente nella voce posizionamento", "severita": "errore" },
+    { "id": "R04", "regola": "opzioni strategiche con scoring su 3 assi (attrattivita/fattibilita/rischio)", "severita": "errore" },
+    { "id": "R05", "regola": "somma pagine entro pagine_totali.min..max", "severita": "errore" },
+    { "id": "R06", "regola": "tutte le voci presenti nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R07", "regola": "ogni argomento_obbligatorio rilevabile nella voce corrispondente", "severita": "errore" },
+    { "id": "R08", "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati", "severita": "errore" },
+    { "id": "R09", "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx", "severita": "warning" },
+    { "id": "R10", "regola": "tutte le tabelle_obbligatorie presenti nel docx", "severita": "warning" },
+    { "id": "R11", "regola": "json_output valida contro contratto_dati (output-schema.json)", "severita": "errore" },
+    { "id": "R12", "regola": "nessun prezzo hard-coded: prezzi risolti da catalogo a runtime", "severita": "warning" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "La diagnosi dice DOVE andare e con quali mosse. Il presidio continuativo (retainer) accompagna l'esecuzione del piano. CTA dopo il picco.",
+    "nota_funnel": "tier_precedente reale = check-competitivo-express; tier_successivo reale = retainer"
+  }
+}

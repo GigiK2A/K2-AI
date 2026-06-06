@@ -1,0 +1,5 @@
+{
+  "_nota": "INTERIM — manifest placeholder→boost. Manca da Luca: snapshot/build_snapshot.py (con manifest()) NON era nello zip consegna-luigi-v2.27. Le entries dello snapshot non dichiarano il boost di appartenenza (campo assente). Qui mappa minima ricavata da resolver_stub.py (LegalBoost) per far girare l'engine. DA SOSTITUIRE con il manifest reale appena Luca consegna build_snapshot.py.",
+  "_stato": "INCOMPLETO — solo flusso-legalboost-pmi seedato",
+  "flusso-legalboost-pmi": ["cc_1341", "cc_1342", "dlgs231_25septies"]
+}

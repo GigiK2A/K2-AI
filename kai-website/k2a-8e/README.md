@@ -1,11 +1,16 @@
-# k2a-8e — Motore di esecuzione deliverable (Phase-1 skeleton)
+# k2a-8e — Motore di esecuzione deliverable (Phase-1, asset reali v2.27)
 
-> **STATO OWNERSHIP (2026-06-04)**: engine costruito lato Luigi come **candidato**.
-> Esiste in parallelo il `PROMPT_8e_Phase1` che Code potrebbe eseguire sul Mac di
-> Luca (`~/Code/k2a-8e`). **Decisione su quale engine vince: RIMANDATA** finché non
-> arriva lo zip completo di Luca (MCP + skill + snapshot reali). Fino ad allora
-> questo serve come riferimento/mock avanzato e per sviluppare il client K-BOT
-> contro un engine fedele al contratto. NON è ancora "il" motore ufficiale.
+> **OWNERSHIP (2026-06-04, CONFERMATA)**: `CONSEGNA_LUIGI.md` v2.27 → "l'8e di
+> produzione lo costruisce Luigi". Questo È il motore ufficiale. Luca consegna gli
+> ASSET (blueprint, snapshot, libreria validazione, catalog), vendorizzati qui.
+>
+> **Asset reali integrati** (handoff v2.27): `k2a_validation/` (lib L1/L2 reale),
+> `blueprints/` (12 boost + manifest + meta-schema), `grounding/grounding-snapshot.json`
+> (v1.0.0, verbatim), `catalog/catalog.json` (76 servizi). Verifica: `docs/handoff-v2.27-verifica-e-gap.md`.
+>
+> **Phase-1 = pilota LegalBoost**: catalogo chiuso ai service_id legali; altri →
+> `out_of_catalog`. Gap aperto: manca `build_snapshot.py` di Luca (manifest
+> placeholder→boost) → `grounding/boost_placeholders.json` è INTERIM (solo LegalBoost).
 
 Implementa il design `8e_Phase0_design_API.md` e il `PROMPT_8e_Phase1` (pilota
 LegalBoost). Servizio FastAPI stateless, deployabile su Railway, contratto API =

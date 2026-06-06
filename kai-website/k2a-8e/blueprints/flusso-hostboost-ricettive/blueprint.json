@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-hostboost-ricettive.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost di HostBoost (diagnosi revenue management PMI ricettive). Derivato dai file reali: flusso-hostboost-ricettive/assets/template-report-host.md (capitoli + pagine), template-cruscotto-xlsx.md (5 tab), template-dashboard-html.md, schemas/output-schema.json. Replica il pattern del boost Advisor.",
+  "pacchetto": {
+    "skill": "flusso-hostboost-ricettive",
+    "nome_commerciale": "HostBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-hostboost-ricettive/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": { "min": 12, "max": 16, "target": 14 },
+  "artefatti_bundle": [
+    { "id": "docx_report",    "ruolo": "principale", "formato": "docx", "obbligatorio": true,  "nota": "report executive; oggetto di questo blueprint" },
+    { "id": "xlsx_cruscotto", "ruolo": "modello vivo","formato": "xlsx", "obbligatorio": true,  "nota": "5 tab: KPI storici, calendario pricing 365gg, competitive set, recensioni, sintesi" },
+    { "id": "html_dashboard", "ruolo": "wow visivo",  "formato": "html", "obbligatorio": true,  "nota": "dashboard KPI vivi (Chart.js)" },
+    { "id": "json_output",    "ruolo": "dati",        "formato": "json", "obbligatorio": true,  "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0, "id": "copertina", "titolo": "Copertina", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["titolo HostBoost + nome struttura", "sottotitolo periodo analizzato + piano 12 mesi", "data consegna", "logo K2-AI", "claim di chiusura"] },
+    { "ord": 1, "id": "executive_summary", "titolo": "Executive Summary", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["3 numeri chiave (RevPAR attuale, gap vs mediana zona, RevPAR target 12 mesi)", "diagnosi sintetica in 4 righe", "5 azioni prioritarie con impatto stimato"],
+      "funzione_psico": "registro titolare + picco d'apertura (peak-end). Leggibile da solo.",
+      "vincolo": "una sola pagina" },
+    { "ord": 2, "id": "struttura_oggi", "titolo": "La tua struttura oggi", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["dati struttura (tipologia, camere, zona, stagionalita, apertura)", "mix canali attuale con grafico a torta", "periodo analizzato e qualita dati", "assunzioni dove i dati mancavano"] },
+    { "ord": 3, "id": "performance_kpi", "titolo": "Performance e KPI", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["3 KPI core (ADR, Occupancy, RevPAR) mensili 12 mesi con grafico", "stagionalita: curva mensile, bassa/spalla/alta", "benchmark zona e segmento con semaforo per KPI", "metriche estese (ALOS, booking window, cancellation rate)"],
+      "funzione_psico": "registro tecnico + autorita dimostrata; semaforo accanto a ogni numero" },
+    { "ord": 4, "id": "distribuzione_canali", "titolo": "Distribuzione e canali", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["mix canali attuale (% notti, % ricavi, ADR lordo, commissione, Net ADR, trend)", "dipendenza OTA con quantificazione del rischio", "stato canale diretto e gap", "disparity check"] },
+    { "ord": 5, "id": "pricing_opportunita", "titolo": "Pricing e opportunita", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["logica pricing attuale (tariffe, offerte, minimum stay)", "gap pricing mese per mese con quantificazione in EUR/anno", "competitive set pricing su date campione con scatter"] },
+    { "ord": 6, "id": "recensioni_reputation", "titolo": "Recensioni e reputation", "pagine": { "min": 1, "max": 2 },
+      "argomenti_obbligatori": ["rating per piattaforma (Booking/TripAdvisor/Google/Airbnb) con trend", "top 5 temi positivi e negativi con frequenza", "response rate e gestione recensioni"],
+      "funzione_psico": "riprova sociale" },
+    { "ord": 7, "id": "piano_ricavi_12_mesi", "titolo": "Piano ricavi 12 mesi", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["3 scenari (RevPAR/Occupancy/ADR/ricavi) con grafico a barre", "calendario pricing sintesi (BAR per fascia, minimum stay)", "mix canali target con quantificazione risparmio commissioni", "5 azioni prioritarie (impatto, fattibilita, tempo, costo, come si fa)"] },
+    { "ord": 8, "id": "assunzioni_limitazioni", "titolo": "Assunzioni e limitazioni", "pagine": { "min": 0, "max": 1 },
+      "argomenti_obbligatori": ["assunzioni fatte nell'analisi", "limitazioni dovute a dati mancanti"],
+      "funzione_psico": "trasparenza (autorita onesta)" },
+    { "ord": 9, "id": "prossimo_passo", "titolo": "Prossimi passi", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["sintesi risultati attesi", "come usare il cruscotto XLSX per mantenere vivo il lavoro", "proposta retainer continuativo K2-AI HOST (prezzo risolto da catalogo)", "contatti K2-AI e come iniziare"],
+      "funzione_psico": "chiusura forte (peak-end) + gancio onesto al Retainer (Zeigarnik) + CTA unica" }
+  ],
+  "elementi_grafici_obbligatori": [
+    "grafico a torta mix canali",
+    "grafico RevPAR mensile 12 mesi",
+    "curva stagionalita occupancy e RevPAR",
+    "scatter competitive set pricing",
+    "grafico a barre 3 scenari piano ricavi"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella 3 KPI core ADR Occupancy RevPAR mensili",
+    "tabella benchmark zona con semaforo",
+    "tabella mix canali con commissioni e Net ADR",
+    "tabella gap pricing mese per mese",
+    "tabella rating recensioni per piattaforma",
+    "tabella 3 scenari piano ricavi",
+    "tabella 5 azioni prioritarie"
+  ],
+  "elementi_psico_trasversali": {
+    "doppio_registro": "executive summary per il titolare (cap.1) + dettaglio tecnico KPI (cap.2-5)",
+    "peak_end": "picco in executive summary + chiusura curata in prossimi passi",
+    "concretezza_euro": "ogni impatto e ogni gap espresso in euro, mai in aggettivi",
+    "riprova_sociale_pari": "benchmark zona+tipologia e top quartile per ogni KPI",
+    "cliente_eroe": "il titolare e il protagonista; K2-AI e il revenue manager mentore"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "tutti i capitoli presenti nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R02", "regola": "somma pagine entro pagine_totali.min..max", "severita": "errore" },
+    { "id": "R03", "regola": "pagine per capitolo entro il rispettivo range", "severita": "warning" },
+    { "id": "R04", "regola": "ogni argomento_obbligatorio rilevabile nel capitolo corrispondente", "severita": "errore" },
+    { "id": "R05", "regola": "executive_summary non supera 1 pagina", "severita": "errore" },
+    { "id": "R06", "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati", "severita": "errore" },
+    { "id": "R07", "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx", "severita": "warning" },
+    { "id": "R08", "regola": "tutte le tabelle_obbligatorie presenti nel docx", "severita": "warning" },
+    { "id": "R09", "regola": "CTA retainer presente nel capitolo prossimo_passo (conclusioni)", "severita": "errore" },
+    { "id": "R10", "regola": "disclaimer presente", "severita": "errore" },
+    { "id": "R11", "regola": "json_output valida contro contratto_dati (output-schema.json)", "severita": "errore" },
+    { "id": "R12", "regola": "nessun prezzo hard-coded: i prezzi (es. retainer) risolti da catalogo a runtime", "severita": "warning", "nota": "si lega al Nodo1 prezzi" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "Il piano ricavi vale finche qualcuno lo tiene vivo: il Retainer K2-AI HOST e chi lo presidia. CTA in chiusura, dopo il picco positivo."
+  }
+}
