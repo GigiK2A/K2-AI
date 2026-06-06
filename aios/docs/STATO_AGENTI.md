@@ -63,16 +63,16 @@
 ## Finance — 16/16 funzioni coperte (testa), esecuzione ❌
 | # | Funzione | Stato | Fonte |
 |---|---|---|---|
-| 1 | General ledger / riconciliazione | ✅ | costi + ricavi |
+| 1 | General ledger / riconciliazione | ✅ | `finance_journal` + costi/ricavi |
 | 2 | Accounts payable | ✅ | `board_cost_items` |
-| 3 | Accounts receivable / solleciti | ✅ advisory | `projects` (no tab. fatture) |
+| 3 | Accounts receivable / solleciti | ✅ | `invoices` (fatture) |
 | 4 | Treasury / cashflow / runway | ✅ | costi + pipeline |
 | 5 | FP&A / scenari | ✅ | `shared_memory` target |
 | 6 | KPI (MRR/CAC/LTV) | ✅ | conversions + leads |
 | 7 | Month-end close | ✅ checklist | tabelle disponibili |
 | 8 | Controllership / anomalie | ✅ | `board_cost_items` |
 | 9 | Tax & compliance IT | ✅ | calendario IVA/LIPE/IRPEF |
-| 10 | Payroll | 📝 | `employees` (vuota) |
+| 10 | Payroll | ✅ | `employees` (organico, vuota finché non popolata) |
 | 11 | Revenue / MRR & billing | ✅ K-BOT · 🔌 Stripe | `kbot_conversions` · Stripe |
 | 12 | Cost control / procurement | ✅ | `board_cost_items` (cap 65€) |
 | 13 | Pricing / margin | ✅ | `suite_services` tier + `projects` |

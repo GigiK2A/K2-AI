@@ -45,6 +45,14 @@ def finance_tools(client: Any) -> list[Tool]:
         _ro("leggi_costi", "board_cost_items",
             {"select": "name,amount_eur,frequency,category,active", "active": "eq.true",
              "order": "amount_eur.desc"}, client),
+        _ro("leggi_fatture", "invoices",          # accounts receivable
+            {"select": "number,client_name,amount_eur,status,issued_at,due_at,paid_at",
+             "order": "due_at.asc", "limit": "100"}, client),
+        _ro("leggi_giornale", "finance_journal",  # general ledger
+            {"select": "data,descrizione,conto,dare,avere,categoria",
+             "order": "data.desc", "limit": "100"}, client),
+        _ro("leggi_organico", "employees",        # payroll
+            {"select": "full_name,role,contract_type,status", "limit": "100"}, client),
     ]
 
 
