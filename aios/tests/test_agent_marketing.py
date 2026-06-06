@@ -98,7 +98,7 @@ def test_agent_includes_skill_menu_when_library_given():
                            skills=SkillLibrary())
     agent.run()
     system, user = llm.calls[0]
-    assert "FRAMEWORK MARKETING DISPONIBILI" in user
+    assert "FRAMEWORK (estratti)" in user
     assert "content-creation" in user  # a real skill name from the library
 
 

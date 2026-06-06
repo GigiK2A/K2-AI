@@ -12,6 +12,7 @@ from aios.sources.instagram import InstagramClient
 from aios.sources.tools import (content_tools_rest, instagram_tools,
                                 insights_tools, competitor_lookup_tool)
 from aios.sources.calendar import calendar_tools
+from aios.sources.marketing_extra import marketing_extra_tools
 from aios.sources.sales import lead_tools
 from aios.sources.domains import (finance_tools, operations_tools,
                                   legal_tools, hr_tools)
@@ -63,6 +64,8 @@ def build_platform() -> Platform:
         k.register_tool(t)
     k.register_tool(competitor_lookup_tool(ig))
     for t in calendar_tools(client):
+        k.register_tool(t)
+    for t in marketing_extra_tools(client):
         k.register_tool(t)
     for t in lead_tools(client):
         k.register_tool(t)

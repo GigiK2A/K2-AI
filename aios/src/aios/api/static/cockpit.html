@@ -281,6 +281,7 @@ async function loadMarketing(){
   try{vl=await jget("/api/domain/vendite");}catch(e){}
   MK={ov,ins,items:v.proposals||[],deliv:v.deliverables||[],prof:ins.profilo||{},insg:ins.insight||{},
      posts:ins.post||[],servizi:ins.servizi||[],topics:ins.topics||[],leads:arr((vl.data||{}).leggi_lead),
+     iscritti:ins.iscritti||[],newsletter:ins.newsletter||[],analytics:ins.analytics||[],
      tab:MK.tab||"Overview"};
   $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=MK.items.length;
   const agentStatus=`<div class="card p-4"><div class="flex items-center justify-between mb-2"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
@@ -298,7 +299,7 @@ async function loadMarketing(){
   renderMkTab();
   wireDecisioni();
 }
-const MK_TABS=["Overview","Campaigns","Content","Channels","Leads","Analytics","SEO"];
+const MK_TABS=["Overview","Campaigns","Content","Channels","Leads","Email","Analytics","SEO"];
 function emptyMk(msg){return `<section class="card p-10 text-center text-slate-400 text-sm">${esc(msg)}</section>`;}
 function renderMkTab(){
   document.querySelectorAll("#mktabs .tab").forEach(el=>el.classList.toggle("active",el.dataset.mk===MK.tab));
@@ -345,6 +346,15 @@ function renderMkTab(){
         <tbody>${leads.length?leads.map(l=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(l.name||'')}</td><td class="text-slate-500">${esc(l.company||'')}</td><td class="text-slate-400">${esc(l.channel||'')}</td><td><span class="chip bg-slate-100 text-slate-500">${esc(l.status||'')}</span></td><td class="text-right font-bold">${NUM(l.score)}</td></tr>`).join(""):'<tr><td colspan="5" class="py-4 text-center text-slate-400">nessun lead</td></tr>'}</tbody></table></div></div></section>`;
     if(Object.keys(byCh).length)donut("leadCh",Object.keys(byCh),Object.values(byCh));
   }
+  else if(MK.tab==="Email"){
+    const isc=MK.iscritti,nl=MK.newsletter;
+    const conf=isc.filter(i=>i.confirmed).length,act=isc.filter(i=>i.is_active).length,uns=isc.filter(i=>i.unsubscribed_at).length;
+    c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      ${kpi("Iscritti",isc.length,{t:"reale",real:1})}${kpi("Confermati",conf,{t:"double opt-in",real:1})}${kpi("Attivi",act,{t:"reale",real:1})}${kpi("Disiscritti",uns,{t:"reale",real:1})}</section>
+      <section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Newsletter pubblicate (${nl.length}) <span class="real">reale · newsletter_issues</span></div>
+      <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Oggetto</th><th>Slug</th><th>Data</th></tr></thead>
+      <tbody>${nl.length?nl.map(n=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(n.subject||'')}</td><td class="text-slate-400">${esc(n.slug||'')}</td><td class="text-slate-400 text-[12px]">${esc((n.published_at||'').slice(0,10))}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessuna newsletter</td></tr>'}</tbody></table></section>`;
+  }
   else if(MK.tab==="Analytics"){
     const A=[kpi("Reach (oggi)",NUM(insg.reach),"Instagram"),kpi("Profile views",NUM(insg.profile_views),"Instagram"),kpi("Account coinvolti",NUM(insg.accounts_engaged),"Instagram"),kpi("Interazioni",NUM(insg.total_interactions),"Instagram")].join("");
     c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${A}</section>
@@ -353,7 +363,10 @@ function renderMkTab(){
       <tbody>${posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2">${esc((p.caption||'(senza testo)').slice(0,50))}</td><td class="text-right">${NUM(p.like_count)}</td><td class="text-right">${NUM(p.comments_count)}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun post</td></tr>'}</tbody></table></section>`;
   }
   else if(MK.tab==="SEO"){
-    c.innerHTML=emptyMk("Nessuna fonte SEO collegata all'agente (Search Console / Ahrefs non connessi). Le keyword di prodotto sono nella tabella topics → tab Content.");
+    const t=MK.topics,byP={};t.forEach(x=>{const k=x.Pillar||"Altro";(byP[k]=byP[k]||[]).push(x);});
+    const cols=Object.keys(byP).map(k=>`<div class="card p-4"><div class="font-bold text-sm mb-2">${esc(k)} <span class="muted">${byP[k].length}</span></div><ul class="text-[12px] space-y-1">${byP[k].map(x=>`<li class="border-t border-slate-50 pt-1">${esc(x.Tema||'')}</li>`).join("")}</ul></div>`).join("");
+    c.innerHTML=`<section class="card p-4 text-[13px] text-slate-500">Cluster keyword/temi reali da <code>topics</code> (${t.length}) raggruppati per pillar. Search Console/Ahrefs non collegati → niente ranking, solo strategia cluster.</section>
+      <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">${cols||'<div class="text-slate-400">nessun topic</div>'}</section>`;
   }
 }
 

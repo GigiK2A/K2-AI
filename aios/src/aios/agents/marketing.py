@@ -15,16 +15,35 @@ PROPOSE_ACTION = ActionType("marketing", "content.proposta")
 CALENDAR_ACTION = ActionType("marketing", "calendario.voce")
 
 _SYSTEM = (
-    "Sei il responsabile marketing di K2-AI. Rispetti SEMPRE il Founder Model "
-    "(voce, priorità, regole) e i framework forniti. Non pubblichi nulla: PROPONI. "
-    "Analizza i dati reali (insight, post uno per uno, competitor, calendario) e "
-    "produci proposte concrete e, dove utile, voci di calendario.\n\n"
+    "Sei il direttore marketing (CMO) di K2-AI. Rispetti SEMPRE il Founder Model "
+    "(voce, priorità, regole) e i framework forniti. Non pubblichi nulla: PROPONI (L1).\n\n"
+    "Copri l'INTERO reparto marketing di una multinazionale, sulle sotto-funzioni che "
+    "hanno dati reali collegati:\n"
+    "1) Brand & posizionamento — coerenza voce/messaggi.\n"
+    "2) Content marketing — temi blog vs buyer journey, outline + H1/H2/meta.\n"
+    "3) Social media — analisi post IG uno per uno (reach/like), caption, hashtag, orari.\n"
+    "4) SEO/organico — usa i temi e i 10 pillar K2-AI: proponi title/meta, cluster, internal link.\n"
+    "5) Email/lifecycle — analizza iscritti newsletter (confermati/attivi/disiscritti) e le issue "
+    "passate: proponi oggetti A/B, sequenze nurture, pulizia lista, segmentazione.\n"
+    "6) Product marketing — dai servizi e dalla conoscenza K2-AI: posizionamento, battlecard, "
+    "messaggi per ICP, checklist lancio.\n"
+    "7) Marketing analytics — dagli snapshot (IG + funnel K-BOT): digest cross-canale, KPI "
+    "(reach, conversion rate, visite), cosa migliorare.\n"
+    "8) Market research — dalla 'voce clienti' (sessioni K-BOT: settore + dati raccolti): "
+    "estrai pain point ricorrenti e linguaggio reale da usare nei copy.\n"
+    "9) Competitive intelligence — dai competitor IG analizzati.\n"
+    "Sotto-funzioni SENZA dati collegati (NON inventare numeri, semmai proponi di attivarle): "
+    "paid ads/SEM, demand gen, PR, influencer, eventi, CRO web, budget ops.\n\n"
+    "Regole: numeri sempre, niente buzzword, ogni proposta azionabile con motivo basato su dato reale. "
+    "Se un dato manca, dillo.\n\n"
     "Rispondi SOLO con JSON:\n"
-    '{"proposte":[{"tipo":"nuovo_tema|caption|fix|analisi_post","titolo":"...","contenuto":"...","motivo":"..."}],'
+    '{"proposte":[{"tipo":"brand|content|social|seo|email|product_mkt|analytics|research|competitor|fix",'
+    '"titolo":"...","contenuto":"...","motivo":"..."}],'
     '"voci_calendario":[{"canale":"instagram|blog","titolo":"...","bozza":"...","data_programmata":"YYYY-MM-DD"}]}\n'
-    "Niente testo fuori dal JSON."
+    "Niente testo fuori dal JSON. Copri più sotto-funzioni diverse, non solo i post."
 )
-_FOCUS = ["brand-voice", "content-creation", "campaign-plan"]
+_FOCUS = ["brand-voice", "content-creation", "campaign-plan", "seo-italia",
+          "email-sequence", "marketing-analytics", "posizionamento-strategico"]
 
 
 @dataclass
@@ -101,6 +120,12 @@ class MarketingAgent:
             data["insight"] = self._read("leggi_insight_ig")
         if "leggi_calendario" in names:
             data["calendario"] = self._read("leggi_calendario")
+        for opt in ("leggi_iscritti", "leggi_newsletter", "leggi_analytics", "leggi_voce_clienti"):
+            if opt in names:
+                try:
+                    data[opt] = self._read(opt)
+                except Exception:
+                    pass
         if "leggi_competitor_ig" in names:
             data["competitor_ig"] = self._read("leggi_competitor_ig")
         # NB: competitor discovery consumes one extra llm.complete() call BEFORE the proposals call
@@ -119,14 +144,12 @@ class MarketingAgent:
         if not self.skills:
             return ""
         out = []
-        for n in _FOCUS:
+        for n in _FOCUS[:2]:
             try:
-                out.append(f"## SKILL: {n}\n" + self.skills.load(n)[:1500])
+                out.append(f"## SKILL: {n}\n" + self.skills.load(n)[:500])
             except KeyError:
                 pass
-        menu = "\n\n# FRAMEWORK MARKETING DISPONIBILI\n" + self.skills.menu()
-        full = ("\n\n# FRAMEWORK DA APPLICARE (testo completo)\n" + "\n\n".join(out)) if out else ""
-        return menu + full
+        return ("\n\n# FRAMEWORK (estratti)\n" + "\n\n".join(out)) if out else ""
 
     def run(self) -> MarketingResult:
         data = self._gather()
@@ -135,23 +158,33 @@ class MarketingAgent:
             self.k.policy.set_level(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
             self.k.policy.set_cap(CALENDAR_ACTION, AutonomyLevel.L1_PROPOSE)
 
-        def sec(k, cap=4000):
+        # Prompt LEAN: Haiku con forced-JSON degrada oltre ~12k token → tenere ~9k.
+        def sec(k, cap=1200):
             return json.dumps(data.get(k), ensure_ascii=False)[:cap]
         user = (self.founder.to_prompt()
-                + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi", 3000)
-                + "\n## Temi blog\n" + sec("topics", 2500)
-                + "\n## Profilo IG\n" + sec("profilo_ig")
-                + "\n## Post IG (analizza UNO PER UNO vs metriche)\n" + sec("post_ig", 3500))
+                + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi", 1200)
+                + "\n## Temi blog\n" + sec("topics", 1000)
+                + "\n## Profilo IG\n" + sec("profilo_ig", 500)
+                + "\n## Post IG (analizza UNO PER UNO vs metriche)\n" + sec("post_ig", 1500))
         if "insight" in data:
-            user += "\n## Insight IG\n" + sec("insight")
+            user += "\n## Insight IG\n" + sec("insight", 600)
+        if "leggi_iscritti" in data:
+            user += "\n## Iscritti newsletter (email/lifecycle)\n" + sec("leggi_iscritti", 800)
+        if "leggi_newsletter" in data:
+            user += "\n## Newsletter pubblicate\n" + sec("leggi_newsletter", 600)
+        if "leggi_analytics" in data:
+            user += "\n## Analytics snapshot (cross-canale)\n" + sec("leggi_analytics", 800)
+        if "leggi_voce_clienti" in data:
+            user += "\n## Voce clienti (sessioni K-BOT, per research)\n" + sec("leggi_voce_clienti", 1500)
         if "competitor_ig" in data:
-            user += "\n## Competitor (analisi)\n" + sec("competitor_ig", 3000)
+            user += "\n## Competitor (analisi)\n" + sec("competitor_ig", 1000)
         if "calendario" in data:
-            user += "\n## Calendario attuale\n" + sec("calendario", 2500)
+            user += "\n## Calendario attuale\n" + sec("calendario", 600)
         user += self._skill_context()
         user += ("\n\nValuta i post uno per uno rispetto a reach/like, confronta coi competitor, "
                  "e proponi miglioramenti concreti (proposte) e, dove utile, voci di calendario datate. "
-                 "Massimo 6 proposte.")
+                 "Copri sotto-funzioni diverse (social, seo, email, content, product_mkt, analytics, research). "
+                 "Massimo 8 proposte.")
         schema = {"type": "object", "properties": {
             "proposte": {"type": "array", "items": {"type": "object", "properties": {
                 "tipo": {"type": "string"}, "titolo": {"type": "string"},

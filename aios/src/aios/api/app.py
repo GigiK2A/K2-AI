@@ -75,6 +75,9 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "post": ("leggi_post_ig", {"limit": 6}),
             "servizi": ("leggi_servizi", {}),
             "topics": ("leggi_topics", {}),
+            "iscritti": ("leggi_iscritti", {}),
+            "newsletter": ("leggi_newsletter", {}),
+            "analytics": ("leggi_analytics", {}),
         }
         for key, (tool, args) in wanted.items():
             if tool not in names:
