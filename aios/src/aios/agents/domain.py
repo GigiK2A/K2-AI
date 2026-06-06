@@ -118,9 +118,9 @@ class DomainAgent:
     def _context(self) -> str:
         out = self.founder.to_prompt()
         if self.knowledge and self.cfg.knowledge_query:
-            hits = self.knowledge.search(self.cfg.knowledge_query, k=5)
+            hits = self.knowledge.search(self.cfg.knowledge_query, k=3)
             if hits:
-                out += "\n\n# CONOSCENZA K2-AI\n" + "\n".join(f"- {h}" for h in hits)
+                out += "\n\n# CONOSCENZA K2-AI\n" + "\n".join(f"- {h[:300]}" for h in hits)
         if self.skills:
             for n in self.cfg.skill_focus:
                 try:
@@ -149,6 +149,15 @@ class DomainAgent:
                     system=self.cfg.system,
                     user=user + "\n\nIMPORTANTE: restituisci almeno 3 proposte concrete.",
                     schema=_SCHEMA)
+                proposte = _as_dict_list(parsed.get("proposte"))
+            except Exception:
+                proposte = []
+        if not proposte:  # fallback: alcuni system prompt densi azzerano Haiku → system minimale
+            try:
+                mini = (f"Sei il responsabile {self.cfg.name} di K2-AI (PMI italiana). "
+                        "Analizza i DATI REALI e proponi almeno 4 azioni concrete e diverse, "
+                        "ognuna con tipo, titolo, contenuto, motivo.")
+                parsed = self.llm.complete_json(system=mini, user=user, schema=_SCHEMA)
                 proposte = _as_dict_list(parsed.get("proposte"))
             except Exception:
                 proposte = []

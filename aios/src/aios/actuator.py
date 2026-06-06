@@ -25,6 +25,25 @@ ALLOWLIST: dict[str, set[str]] = {
     "privacy_registro_trattamenti": {"insert"},
     "vendors": {"insert", "update"},
     "shared_memory": {"insert", "update"},
+    # Operations
+    "team_members": {"insert", "update"},
+    "change_requests": {"insert", "update"},
+    "project_tools": {"insert", "update"},
+    # Legal
+    "trademarks": {"insert", "update"},
+    "corporate_acts": {"insert", "update"},
+    "disputes": {"insert", "update"},
+    "insurance_policies": {"insert", "update"},
+    "compliance_training": {"insert", "update"},
+    "policy_register": {"insert", "update"},
+    # HR
+    "leave_requests": {"insert", "update"},
+    "performance_reviews": {"insert", "update"},
+    "skills_matrix": {"insert", "update"},
+    "training_records": {"insert", "update"},
+    "safety_compliance": {"insert", "update"},
+    "offboarding_events": {"insert", "update"},
+    "hr_analytics_snapshots": {"insert", "update"},
 }
 
 # tabelle esplicitamente vietate alla scrittura (denaro / dati utente / catalogo / auth)

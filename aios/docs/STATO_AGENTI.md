@@ -85,6 +85,28 @@
 
 ---
 
+## Operations — 15/15 funzioni (commit ricerca→replica→test)
+commessa tracking · milestone/SAL · capacity (team_members) · risk/blockers · onboarding ·
+documentation · quality/SLA · ops digest · demand forecast · process improvement ·
+knowledge mgmt · vendor · **change mgmt** (change_requests) · KPI · **asset inventory** (project_tools).
+Fonti reali: `projects`/`project_phases`/`project_tasks`/`tasks` + nuove `team_members`/`change_requests`/`project_tools`.
+
+## Legal & Compliance — 14/14 funzioni
+contratti · NDA · GDPR/registro · consensi · DPA fornitori · regulatory watch · D.Lgs 231 ·
+**marchi** · **societario** · **contenziosi** · risk/policy · **formazione compliance** · termini/AI Act · **assicurazioni**.
+Fonti: `newsletter_subscribers`/`kbot_profiles`/`legal_documents`/`registro`/`vendors` + nuove
+`trademarks`/`corporate_acts`/`disputes`/`insurance_policies`/`compliance_training`/`policy_register`.
+
+## HR & People — 16/16 funzioni
+recruiting · CV screening · interview · offer/preboarding · onboarding · people ops/scadenze ·
+payroll coord · **ferie/presenze** · performance · **skills** · engagement · comp&ben ·
+org/headcount · **HR compliance (D.Lgs 81)** · **offboarding** · **HR analytics**.
+Fonti: `employees`/`candidates`/`tasks` + nuove `leave_requests`/`performance_reviews`/`skills_matrix`/
+`training_records`/`safety_compliance`/`offboarding_events`/`hr_analytics_snapshots`.
+
+> Tutti e 6 i reparti: proposte affidabili (retry + fallback system-minimale) con azione
+> attuatore valida 100%. Tabelle nuove vuote finché non popolate (l'agente lo dichiara).
+
 ## Spina dorsale (condivisa)
 - Catalogo prodotti unico `suite_services` (20) ← `services-data.json`, letto da sito/kbot/AIOS (`sync_suite.py`).
 - Lead K-BOT visibili alle vendite (`leggi_lead_kbot`).
