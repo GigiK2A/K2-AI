@@ -102,6 +102,37 @@ def test_action_runs_only_after_approval():
     assert client.updates and client.updates[0][0] == "pipeline_leads"
 
 
+def test_ensure_action_fallback_when_missing():
+    from aios.agents.domain import _ensure_action
+    az = _ensure_action({"tipo": "x", "titolo": "Sollecita lead", "contenuto": "c", "motivo": "m"})
+    assert az["tabella"] == "board_tasks" and az["op"] == "insert"
+    assert az["dati"]["title"] == "Sollecita lead"
+
+
+def test_ensure_action_keeps_valid_llm_action():
+    from aios.agents.domain import _ensure_action
+    good = {"tabella": "pipeline_leads", "op": "update", "match": {"id": "L1"}, "dati": {"score": 9}}
+    assert _ensure_action({"titolo": "t", "azione": good}) is good
+
+
+def test_ensure_action_replaces_invalid_action():
+    from aios.agents.domain import _ensure_action
+    bad = {"tabella": "board_revenue_events", "op": "insert", "dati": {"a": 1}}
+    az = _ensure_action({"titolo": "t", "contenuto": "c", "azione": bad})
+    assert az["tabella"] == "board_tasks"  # vietata → sostituita con fallback sicuro
+
+
+def test_every_proposal_gets_valid_action_after_run():
+    from aios.actuator import validate
+    client = FakeClient()
+    # una proposta SENZA azione → deve comunque avere azione valida dopo run()
+    llm = FakeLLM(responses=['{"proposte":[{"tipo":"kpi","titolo":"Report","contenuto":"c","motivo":"m"}]}'])
+    k, agent = _agent(client, llm)
+    res = agent.run()
+    for p in res.proposals:
+        validate(p["azione"])  # non solleva = valida
+
+
 def test_invalid_action_does_not_crash_approval():
     client = FakeClient()
     llm = FakeLLM(responses=[

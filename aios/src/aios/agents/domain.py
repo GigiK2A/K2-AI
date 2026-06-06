@@ -47,6 +47,26 @@ def _as_dict_list(x) -> list[dict]:
     return [i for i in x if isinstance(i, dict)] if isinstance(x, list) else []
 
 
+def _ensure_action(p: dict) -> dict:
+    """Affidabilità attuatore: ogni proposta DEVE avere un'azione valida (allowlist).
+    Se l'LLM ne ha data una valida → la tiene; altrimenti fallback deterministico =
+    crea un task operativo (board_tasks) con titolo+contenuto. Mai dipendere dall'LLM."""
+    from aios.actuator import validate, ActuatorError
+    az = p.get("azione")
+    if isinstance(az, dict):
+        try:
+            validate(az)
+            return az
+        except ActuatorError:
+            pass
+    titolo = str(p.get("titolo") or p.get("tipo") or "Azione")[:120]
+    note = str(p.get("contenuto") or "")
+    if p.get("motivo"):
+        note = (note + " — " + str(p["motivo"]))
+    return {"tabella": "board_tasks", "op": "insert", "dati": {
+        "title": titolo, "notes": note[:1000], "priority": "media", "status": "todo"}}
+
+
 class DomainAgent:
     """Agente generico di dominio: legge i sensori configurati, applica contesto
     (Founder Model + knowledge + skill), propone, e all'approvazione scrive un
@@ -116,31 +136,25 @@ class DomainAgent:
             if tool in names:
                 data[tool] = self._read(tool, **args)
         user = (self._context() + "\n\n# DATI REALI\n"
-                + json.dumps(data, ensure_ascii=False)[:7000]
-                + "\n\nProponi azioni concrete coprendo PIÙ funzioni diverse del reparto "
-                  "(non solo una). Max 8.\n"
-                  "Se una proposta implica una SCRITTURA interna concreta, aggiungi il campo "
-                  '"azione": {"tabella","op":"insert|update","match"(per update),"dati"} usando '
-                  "SOLO tabelle interne (es. pipeline_leads, invoices, finance_journal, board_tasks, "
-                  "board_cost_items, aios_content_calendar, project_tasks, candidates, employees, "
-                  "legal_documents). MAI denaro (revenue/conversions/Stripe), MAI delete, MAI dati kbot. "
-                  "update richiede sempre match (es. {\"id\":\"...\"}). Se non serve scrittura, ometti 'azione'. "
-                  "L'azione verrà eseguita SOLO dopo approvazione umana.\n"
-                  "USA ESATTAMENTE QUESTE COLONNE (in 'dati'):\n"
-                  "- board_tasks: title, notes, priority(alta|media|bassa), status(todo|doing|done)\n"
-                  "- pipeline_leads: name, company, sector, status, score(1-10), next_action, pain_point, notes, email, value_eur\n"
-                  "- invoices: number, client_name, amount_eur, status(bozza|emessa|pagata|scaduta), issued_at, due_at\n"
-                  "- finance_journal: data, descrizione, conto, dare, avere, categoria\n"
-                  "- board_cost_items: name, amount_eur, frequency(monthly|quarterly|annual|one_off), category, active\n"
-                  "- aios_content_calendar: canale(instagram|blog), titolo, bozza, stato, data_programmata\n"
-                  "- project_tasks: project_id, title, status, due_date\n"
-                  "- candidates: full_name, role_applied, status, source, notes\n"
-                  "- employees: full_name, role, department, contract_type, status\n"
-                  "- legal_documents: tipo, controparte, stato, rischio, scadenza, note")
+                + json.dumps(data, ensure_ascii=False)[:6000]
+                + "\n\nProponi azioni concrete coprendo PIÙ funzioni diverse (non una sola). Max 8.\n"
+                  "Per ogni proposta puoi (opzionale) aggiungere 'azione':{tabella,op:insert|update,"
+                  "match,dati} su una tabella interna (es. board_tasks, pipeline_leads, invoices, "
+                  "finance_journal, board_cost_items, candidates). Se la ometti, verrà creato un task.")
         parsed = self.llm.complete_json(system=self.cfg.system, user=user, schema=_SCHEMA)
         proposte = _as_dict_list(parsed.get("proposte"))
+        if not proposte:  # affidabilità: Haiku a volte torna vuoto → un retry
+            try:
+                parsed = self.llm.complete_json(
+                    system=self.cfg.system,
+                    user=user + "\n\nIMPORTANTE: restituisci almeno 3 proposte concrete.",
+                    schema=_SCHEMA)
+                proposte = _as_dict_list(parsed.get("proposte"))
+            except Exception:
+                proposte = []
         ids = []
         for p in proposte:
+            p["azione"] = _ensure_action(p)   # affidabilità: ogni proposta ha un'azione valida
             r = self.k.execute(self.cfg.tool_name, actor=self.actor, args=p)
             if r.approval_id is not None:
                 ids.append(r.approval_id)
