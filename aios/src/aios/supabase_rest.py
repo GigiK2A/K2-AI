@@ -49,7 +49,7 @@ class SupabaseREST:
                            body=json.dumps(row))
 
     def upsert(self, table: str, row: dict[str, Any], *, on_conflict: str) -> list[dict[str, Any]]:
-        url = f"{self._base}/{table}?on_conflict={on_conflict}"
+        url = f"{self._base}/{table}?on_conflict={urllib.parse.quote(on_conflict, safe='')}"
         return self._fetch(method="POST", url=url,
                            headers=self._headers(
                                {"Prefer": "return=representation,resolution=merge-duplicates"}),

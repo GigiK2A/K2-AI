@@ -81,6 +81,9 @@ def poll_decisions(on_approve, on_reject, *, once: bool = False, max_loops: int 
     if not enabled():
         return
     allow = _allowed_chats()
+    if not allow:  # fail-closed: senza chat allowlist valida NON si ascolta
+        send_text("⚠️ TELEGRAM_CHAT_ID non valido (non numerico): canale decisioni disattivato.")
+        return
     offset = 0
     loops = 0
     while True:
@@ -100,7 +103,7 @@ def poll_decisions(on_approve, on_reject, *, once: bool = False, max_loops: int 
             if not cq:
                 continue
             chat_id = cq.get("message", {}).get("chat", {}).get("id")
-            if allow and chat_id not in allow:
+            if chat_id not in allow:   # fail-closed (allow è garantito non vuoto)
                 _answer(cq.get("id", ""), "Non autorizzato.")
                 continue
             cqd = cq.get("data", "")

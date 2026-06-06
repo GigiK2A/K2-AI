@@ -9,6 +9,23 @@ Internal K2-AI platform. Cloud stack (Anthropic Claude + Supabase EU). GDPR-awar
 - **Segreti**: tutti in `aios/.env` (ignorato da git via `*.env`). **Nessun segreto nei file tracciati** (verificato con grep su `sk-ant`, `eyJhbGci`, `EAA*`, `service_role`).
 - **Iniezione**: accesso DB via PostgREST con parametri url-encoded e psycopg parametrico. Nessuna interpolazione SQL diretta.
 
+## Audit sicurezza completo (giugno 2026) — findings risolti
+Audit su tutto il codice + Supabase advisors. Esito:
+- **API auth (HIGH)** → tutti i GET con dati/PII (`approvals`, `activity`, `insights`, `deliverables`, `integrations`, `domain`) ora richiedono bearer (env-gated come le mutazioni). Test in `test_security.py`.
+- **Token in prod (HIGH)** → `serve_cockpit.py` solleva se `AIOS_HOST` non-locale e manca `AIOS_API_TOKEN`.
+- **Telegram (HIGH)** → fail-closed: senza chat allowlist valida il canale non ascolta; controllo chat sempre attivo.
+- **SSRF competitor_web (MED)** → solo `http/https` (no `file://`/metadata).
+- **upsert on_conflict (MED)** → url-encoded.
+- **Policy tampering (MED)** → al load `level` viene clampato a `capped_at` (un DB manomesso non alza l'autonomia oltre il cap L1).
+- **Header (LOW)** → middleware aggiunge `X-Content-Type-Options/X-Frame-Options/Referrer-Policy/Cache-Control` su TUTTE le risposte.
+- **Prompt-injection (LOW)** → dati sensori racchiusi in `<dati_non_fidati>` + istruzione esplicita; l'attuatore (allowlist+no-delete+no-money+approvazione umana) resta il backstop reale.
+- Supabase advisors: `set_updated_at` search_path fissato; `handle_new_kbot_user` non più eseguibile via RPC (revoke da PUBLIC). RLS attiva su TUTTE le tabelle (nessuna pubblica).
+
+### Residui noti (basso rischio / azione manuale)
+- `pg_trgm` nello schema `public` (spostarlo può rompere indici trigram — rimandato).
+- Auth "leaked password protection" (HaveIBeenPwned): abilitare dal dashboard Supabase (1 click).
+- Report generati `kai-website/kbot/data/reports/*.html` versionati (possibili PII): aggiungere a `.gitignore` e rimuovere dal tracking (scope sito).
+
 ## Attuatore L1 (Approva → scrittura reale, `actuator.py`)
 - Esegue scritture su Supabase **solo dopo approvazione umana** (la coda L1 = consenso per-azione).
 - Perimetro stretto: **solo insert/update** su tabelle operative in **allowlist** (`ALLOWLIST`); **mai delete**;

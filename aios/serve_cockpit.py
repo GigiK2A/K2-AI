@@ -19,4 +19,9 @@ if __name__ == "__main__":
     # (mettere dietro reverse proxy HTTPS e impostare AIOS_API_TOKEN).
     host = os.environ.get("AIOS_HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", os.environ.get("AIOS_PORT", "8800")))
+    # Sicurezza: in produzione (bind non-locale) AIOS_API_TOKEN è obbligatorio,
+    # altrimenti l'auth è disabilitata e gli endpoint sono aperti.
+    if host not in ("127.0.0.1", "localhost") and not os.environ.get("AIOS_API_TOKEN"):
+        raise RuntimeError("AIOS_API_TOKEN obbligatorio quando AIOS_HOST non è locale "
+                           "(altrimenti l'API resta senza autenticazione).")
     uvicorn.run(app, host=host, port=port)

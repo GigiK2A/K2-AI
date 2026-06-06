@@ -234,6 +234,8 @@ def _competitor_web():
     import re
     rows = []
     for u in [x.strip() for x in urls.split(",") if x.strip()][:8]:
+        if urllib.parse.urlparse(u).scheme not in ("http", "https"):
+            continue   # no file://, ftp://, data:, metadata endpoints (anti-SSRF)
         try:
             req = urllib.request.Request(u, headers={"User-Agent": "K2AI-bot/1.0"})
             with urllib.request.urlopen(req, timeout=10) as r:  # noqa: S310

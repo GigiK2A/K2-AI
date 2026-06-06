@@ -85,8 +85,8 @@ def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
     if op == "insert":
         rows = client.insert(table, data)
         return {"ok": True, "tabella": table, "op": "insert", "righe": rows}
-    # update: filtri PostgREST eq.<valore>
-    filters = {k: (v if str(v).startswith(("eq.", "in.", "gte.", "lte."))
-                   else f"eq.{v}") for k, v in match.items()}
+    # update: SOLO uguaglianza esatta (eq.) per ogni chiave di match — niente operatori
+    # passthrough (in./gte./...) → impossibile un update di massa via match crafted.
+    filters = {k: f"eq.{v}" for k, v in match.items()}
     rows = client.update(table, filters, data)
     return {"ok": True, "tabella": table, "op": "update", "match": match, "righe": rows}

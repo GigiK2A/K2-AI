@@ -40,6 +40,15 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def _security_headers(request: Request, call_next):
+        resp = await call_next(request)
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        resp.headers["X-Frame-Options"] = "DENY"
+        resp.headers["Referrer-Policy"] = "no-referrer"
+        resp.headers.setdefault("Cache-Control", "no-store")
+        return resp
+
     @app.get("/", response_class=HTMLResponse)
     def root() -> HTMLResponse:
         html = (_STATIC / "cockpit.html").read_text(encoding="utf-8")
@@ -64,7 +73,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         }
 
     @app.get("/api/insights")
-    def insights() -> dict[str, Any]:
+    def insights(_=Depends(_require_auth)) -> dict[str, Any]:
         # Everything here is read THROUGH the agent's own sensor tools (kernel),
         # never hardcoded. Each tool is L0 read-only; missing/erroring tools are skipped.
         names = set(kernel.tools.names())
@@ -89,7 +98,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         return out
 
     @app.get("/api/activity")
-    def activity() -> list[dict[str, Any]]:
+    def activity(_=Depends(_require_auth)) -> list[dict[str, Any]]:
         recs = kernel.audit.records()
         out = [{"seq": r.seq, "action_key": r.action_key, "event": r.event,
                 "actor": r.actor, "detail": r.detail} for r in recs]
@@ -97,7 +106,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         return out[:20]
 
     @app.get("/api/approvals")
-    def approvals() -> list[dict[str, Any]]:
+    def approvals(_=Depends(_require_auth)) -> list[dict[str, Any]]:
         return [{"id": a.id, "action_key": a.action_key, "actor": a.actor,
                  "status": a.status.name, "payload": a.payload}
                 for a in kernel.approvals.pending()]
@@ -127,7 +136,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         return {"domini": platform.domains() if platform else []}
 
     @app.get("/api/domain/{domain}")
-    def domain_view(domain: str) -> dict[str, Any]:
+    def domain_view(domain: str, _=Depends(_require_auth)) -> dict[str, Any]:
         """Vista per-dominio: dati reali letti dai sensori dell'agente +
         proposte (coda L1) + deliverable, tutti filtrati per dominio."""
         if platform is None:
@@ -167,7 +176,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             return {"error": "dominio non valido"}
 
     @app.get("/api/integrations")
-    def integrations() -> list[dict[str, Any]]:
+    def integrations(_=Depends(_require_auth)) -> list[dict[str, Any]]:
         """Stato integrazioni: quali credenziali sono presenti (connesso) o mancanti.
         Mostra che 'l'unica cosa mancante sono le credenziali'."""
         from aios.sources.connectors import CONNECTOR_ENV
@@ -195,7 +204,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         return out
 
     @app.get("/api/deliverables")
-    def deliverables():
+    def deliverables(_=Depends(_require_auth)):
         if platform is None:
             return []
         return platform.deliverables()

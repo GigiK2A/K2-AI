@@ -36,8 +36,11 @@ class RestPolicyStateStore:
         if not rows:
             return PolicyState()
         r = rows[0]
-        return PolicyState(level=AutonomyLevel(r["level"]), streak=r["streak"],
-                           capped_at=AutonomyLevel(r["capped_at"]))
+        # Difesa: clamp level<=capped_at letto da DB (un eventuale tampering della
+        # tabella non può alzare l'autonomia oltre il cap configurato).
+        level, cap = int(r["level"]), int(r["capped_at"])
+        return PolicyState(level=AutonomyLevel(min(level, cap)), streak=r["streak"],
+                           capped_at=AutonomyLevel(cap))
 
     def save(self, action_key: str, state: PolicyState) -> None:
         self._c.upsert("aios_policy_state", {
