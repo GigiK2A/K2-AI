@@ -81,9 +81,20 @@ def _as_dict_list(x) -> list[dict]:
     return [i for i in x if isinstance(i, dict)]
 
 
-def propose_tool() -> Tool:
-    return Tool(name="proponi_marketing", action_type=PROPOSE_ACTION,
-                run=lambda **payload: {"accettata": True, **payload})
+def propose_tool(client=None) -> Tool:
+    """Tool di proposta marketing. Su approvazione, se la proposta porta un'azione
+    strutturata valida, la esegue via attuatore (allowlist, no delete/denaro)."""
+    def _run(**payload):
+        out = {"accettata": True, **payload}
+        az = payload.get("azione")
+        if az and client is not None:
+            try:
+                from aios.actuator import apply_action
+                out["attuatore"] = apply_action(client, az)
+            except Exception as exc:
+                out["attuatore"] = {"ok": False, "errore": str(exc)}
+        return out
+    return Tool(name="proponi_marketing", action_type=PROPOSE_ACTION, run=_run)
 
 
 class MarketingAgent:
@@ -96,8 +107,9 @@ class MarketingAgent:
         self.skills = skills
         self.actor = actor
         self.discover = discover_competitors
+        self._client = getattr(self.k, "_supabase", None)
         if "proponi_marketing" not in self.k.tools.names():
-            self.k.register_tool(propose_tool())
+            self.k.register_tool(propose_tool(self._client))
         self.k.policy.set_level(PROPOSE_ACTION, AutonomyLevel.L1_PROPOSE)
         self.k.policy.set_cap(PROPOSE_ACTION, AutonomyLevel.L1_PROPOSE)
         if "programma_contenuto" in self.k.tools.names():
@@ -206,7 +218,10 @@ class MarketingAgent:
         schema = {"type": "object", "properties": {
             "proposte": {"type": "array", "items": {"type": "object", "properties": {
                 "tipo": {"type": "string"}, "titolo": {"type": "string"},
-                "contenuto": {"type": "string"}, "motivo": {"type": "string"}},
+                "contenuto": {"type": "string"}, "motivo": {"type": "string"},
+                "azione": {"type": "object", "properties": {
+                    "tabella": {"type": "string"}, "op": {"type": "string"},
+                    "match": {"type": "object"}, "dati": {"type": "object"}}}},
                 "required": ["tipo", "titolo", "contenuto", "motivo"]}},
             "voci_calendario": {"type": "array", "items": {"type": "object", "properties": {
                 "canale": {"type": "string"}, "titolo": {"type": "string"},
@@ -217,7 +232,9 @@ class MarketingAgent:
         proposte = _as_dict_list(parsed.get("proposte"))
         voci = _as_dict_list(parsed.get("voci_calendario"))
         ids, cal_ids = [], []
+        from aios.agents.domain import _ensure_action
         for p in proposte:
+            p["azione"] = _ensure_action(p)   # attuatore: ogni proposta ha azione valida
             r = self.k.execute("proponi_marketing", actor=self.actor, args=p)
             if r.approval_id is not None:
                 ids.append(r.approval_id)

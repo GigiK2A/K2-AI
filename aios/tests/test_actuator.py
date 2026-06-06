@@ -133,6 +133,27 @@ def test_every_proposal_gets_valid_action_after_run():
         validate(p["azione"])  # non solleva = valida
 
 
+def test_marketing_propose_tool_executes_action():
+    from aios.agents.marketing import propose_tool
+    client = FakeClient()
+    tool = propose_tool(client)
+    out = tool.run(tipo="content", titolo="t", contenuto="c", motivo="m",
+                   azione={"tabella": "aios_content_calendar", "op": "insert",
+                           "dati": {"canale": "blog", "titolo": "x"}})
+    assert out["accettata"] and out["attuatore"]["ok"]
+    assert client.inserts and client.inserts[0][0] == "aios_content_calendar"
+
+
+def test_marketing_propose_tool_blocks_money_table():
+    from aios.agents.marketing import propose_tool
+    client = FakeClient()
+    out = propose_tool(client).run(tipo="x", titolo="t", contenuto="c", motivo="m",
+                                   azione={"tabella": "kbot_conversions", "op": "insert",
+                                           "dati": {"amount_eur": 1}})
+    assert out["attuatore"]["ok"] is False  # tabella vietata
+    assert client.inserts == []
+
+
 def test_invalid_action_does_not_crash_approval():
     client = FakeClient()
     llm = FakeLLM(responses=[
