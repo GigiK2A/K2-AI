@@ -22,7 +22,7 @@ interface Props {
   servizioId: string;
   servizioLabel?: string;
   inputs?: Record<string, unknown>;
-  authToken?: string | null;
+  getAuthToken?: () => Promise<string | null>;
 }
 
 /**
@@ -35,7 +35,7 @@ export function DeliverablePanel({
   servizioId,
   servizioLabel,
   inputs = {},
-  authToken,
+  getAuthToken,
 }: Props) {
   const [job, setJob] = useState<DeliverableJob | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,7 +46,8 @@ export function DeliverablePanel({
     setErr(null);
     setJob(null);
     try {
-      const { job_id } = await createDeliverable(sessionId, servizioId, inputs, authToken);
+      const token = getAuthToken ? await getAuthToken() : null;
+      const { job_id } = await createDeliverable(sessionId, servizioId, inputs, token);
       const final = await pollDeliverable(job_id, (j) => setJob(j));
       setJob(final);
     } catch (e) {
@@ -54,7 +55,7 @@ export function DeliverablePanel({
     } finally {
       setBusy(false);
     }
-  }, [sessionId, servizioId, inputs, authToken]);
+  }, [sessionId, servizioId, inputs, getAuthToken]);
 
   const status = job?.status;
   const pdf = job?.outputs?.pdf_url;

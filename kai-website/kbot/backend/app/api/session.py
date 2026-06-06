@@ -20,6 +20,7 @@ router = APIRouter()
 
 class CreateSessionBody(BaseModel):
     serviceId: Optional[str] = Field(default=None, alias="service_id")
+    tagPillar: Optional[str] = Field(default=None, alias="tag_pillar")
     mode: Optional[str] = None
 
     class Config:
@@ -37,6 +38,7 @@ def create_session(
         service_id=body.serviceId,
         mode=body.mode,
         user_id=user.id if user else None,
+        tag_pillar=body.tagPillar,
     )
     track_server(
         distinct_id=row["id"],

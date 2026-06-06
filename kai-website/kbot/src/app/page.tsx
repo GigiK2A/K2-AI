@@ -8,6 +8,7 @@ import { Composer } from "@/components/chat/Composer";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
 import { InsightPanel } from "@/components/insights/InsightPanel";
+import { DeliverablePanel } from "@/components/report/DeliverablePanel";
 import {
   sendMessage,
   streamMessage,
@@ -184,16 +185,24 @@ export default function HomePage() {
   }, [authLoading, isSignedIn]);
 
   /* Cross-bot bridge: when arriving from suite-ai widget with ?continue=<id>,
-     adopt that session id instead of creating a new one. Stripped after read
-     so a refresh doesn't keep forcing the bridge. */
+     adopt that session id instead of creating a new one. Also picks up the
+     pillar tag (scenario C) from ?tag= or sessionStorage["kbot.tag_pillar"]
+     set by the site (js/kbot-tag.js) → la sessione nasce col contesto del
+     pillar e il backend calcola il boost suggerito. Stripped after read. */
   useEffect(() => {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     const carry = url.searchParams.get("continue") || url.searchParams.get("kbot_session");
-    if (!carry) return;
-    void ensureSession({ mode: "report", adopt: carry });
+    let tag = url.searchParams.get("tag");
+    if (!tag) {
+      try { tag = sessionStorage.getItem("kbot.tag_pillar"); } catch { tag = null; }
+    }
+    if (!carry && !tag) return;
+    void ensureSession({ mode: "report", adopt: carry ?? undefined, tagPillar: tag ?? undefined });
     url.searchParams.delete("continue");
     url.searchParams.delete("kbot_session");
+    url.searchParams.delete("tag");
+    try { sessionStorage.removeItem("kbot.tag_pillar"); } catch { /* ignore */ }
     window.history.replaceState({}, "", url.toString());
   }, [ensureSession]);
 
@@ -741,6 +750,16 @@ export default function HomePage() {
                 Le tue conversazioni vengono salvate sul tuo account. I documenti generati
                 restano disponibili in dashboard.
               </p>
+            )}
+            {/* Scenario C: dopo il Check pagato, se il pillar ha un boost
+                suggerito, proponi la generazione del Boost via 8e. */}
+            {hasPaid && kbotSession?.boostSuggerito && (
+              <DeliverablePanel
+                sessionId={kbotSession.id}
+                servizioId={kbotSession.boostSuggerito}
+                servizioLabel={kbotSession.boostSuggeritoLabel ?? undefined}
+                getAuthToken={getToken}
+              />
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}
             <div ref={messagesEndRef} />

@@ -22,6 +22,9 @@ export type Mode = "lead" | "report";
 export interface KbotSession {
   id: string;
   serviceId: string | null;
+  tagPillar?: string | null;
+  boostSuggerito?: string | null;
+  boostSuggeritoLabel?: string | null;
   mode: Mode;
   messages: KbotMessage[];
   extractedData: Record<string, unknown>;
@@ -103,6 +106,7 @@ async function parseErr(res: Response, fallback: string): Promise<never> {
 
 export async function createSession(opts: {
   serviceId?: string;
+  tagPillar?: string | null;
   mode?: Mode;
   authToken?: string | null;
 } = {}): Promise<KbotSession> {
@@ -111,6 +115,7 @@ export async function createSession(opts: {
     headers: { "Content-Type": "application/json", ...authHeaders(opts.authToken) },
     body: JSON.stringify({
       service_id: opts.serviceId,
+      tag_pillar: opts.tagPillar ?? undefined,
       mode: opts.mode ?? "report",
     }),
   });

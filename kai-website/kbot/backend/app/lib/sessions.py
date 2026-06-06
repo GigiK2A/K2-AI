@@ -30,7 +30,18 @@ def _coerce_mode(value: Optional[str]) -> str:
     return "lead" if str(value or "").lower() == "lead" else "report"
 
 
-def create_session(*, service_id: Optional[str], mode: Optional[str], user_id: Optional[str]) -> dict:
+def _normalize_tag(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    v = str(value).strip().upper()
+    import re
+    return v if re.fullmatch(r"P[0-9]{2}", v) else None
+
+
+def create_session(
+    *, service_id: Optional[str], mode: Optional[str], user_id: Optional[str],
+    tag_pillar: Optional[str] = None,
+) -> dict:
     # Service-id NOT defaulted: prevents biasing the LLM toward one specific
     # analysis type (was: P12 'AI Consulenza Strategica' → made K-BOT start
     # every cold conversation as a strategic/financial diagnosis even when
@@ -44,6 +55,19 @@ def create_session(*, service_id: Optional[str], mode: Optional[str], user_id: O
     collected_data: dict = {"mode": resolved_mode, "extractedData": {}}
     if sid:
         collected_data["service_id"] = sid
+
+    # Scenario C: tag pillar SEO dal sito → contesto + boost suggerito (catalog).
+    tag = _normalize_tag(tag_pillar)
+    if tag:
+        collected_data["tag_pillar"] = tag
+        try:
+            from . import catalog
+            boost = catalog.boost_per_tag(tag)
+            if boost:
+                collected_data["boost_suggerito"] = boost["id"]
+                collected_data["boost_suggerito_label"] = boost.get("label")
+        except Exception:
+            pass  # mai bloccare la creazione sessione per il catalogo
 
     row = {
         "step": 1,
@@ -152,6 +176,9 @@ def public_session(session: dict) -> dict:
     return {
         "id": session.get("id"),
         "serviceId": collected.get("service_id"),
+        "tagPillar": collected.get("tag_pillar"),
+        "boostSuggerito": collected.get("boost_suggerito"),
+        "boostSuggeritoLabel": collected.get("boost_suggerito_label"),
         "mode": collected.get("mode") or "report",
         "messages": session.get("messages") or [],
         "extractedData": collected.get("extractedData") or {},
