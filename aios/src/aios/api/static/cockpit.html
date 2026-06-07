@@ -169,18 +169,18 @@ function setHeader(title,sub,showRun){$("hd-title").textContent=title;$("hd-sub"
 function kpi(label,val,sub,accent){return `<div class="card lift p-4 fu"><div class="text-[12px] text-slate-400 font-semibold">${label}</div>
   <div class="text-2xl font-extrabold kpiv mt-1 ${accent||''}">${val}</div><div class="mt-1 ${sub&&sub.real?'real':'muted'}">${sub&&sub.t?esc(sub.t):(sub||'')}</div></div>`;}
 // KPI premium con icona + sparkline
-function mkpi(icon,label,val,sub,subcol,pts){return `<div class="card lift p-4 fu">
-  <div class="flex items-center gap-2 mb-1"><span class="w-7 h-7 rounded-lg bg-blue-50 grid place-items-center text-[14px]">${icon}</span><span class="text-[12px] text-slate-400 font-semibold">${esc(label)}</span></div>
-  <div class="flex items-end justify-between gap-2"><div class="text-[26px] font-extrabold kpiv leading-none">${val}</div><div class="opacity-90">${spark(pts||[5,6,6,7,8,8,9,10])}</div></div>
+function mkpi(icon,label,val,sub,subcol){return `<div class="card lift p-4 fu">
+  <div class="flex items-center gap-2 mb-2"><span class="w-7 h-7 rounded-lg bg-blue-50 grid place-items-center text-[14px]">${icon}</span><span class="text-[12px] text-slate-400 font-semibold">${esc(label)}</span></div>
+  <div class="text-[28px] font-extrabold kpiv leading-none">${val}</div>
   <div class="mt-2 text-[11px] font-bold ${subcol||'text-slate-400'}">${sub||''}</div></div>`;}
 // Agent Status con avatar robot + checklist + uptime
 function agentStatusCard(checks,uptime){return `<div class="card p-4 fu"><div class="flex items-center justify-between mb-3"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-50 text-emerald-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 align-middle"></span>active</span></div>
   <div class="flex gap-3 items-start"><ul class="space-y-1.5 text-[13px] flex-1">${checks.map(c=>`<li class="flex items-center gap-2"><span class="text-emerald-500">✓</span><span class="truncate">${esc(c)}</span></li>`).join("")}</ul>
   <div class="ava shrink-0" style="width:60px;height:60px">${robotSVG(true)}</div></div>
-  ${uptime?`<div class="mt-3 pt-2 border-t border-slate-50 text-[12px] text-emerald-600 font-semibold">Uptime ${uptime}</div>`:""}</div>`;}
+  ${uptime?`<div class="mt-3 pt-2 border-t border-slate-50 text-[12px] text-emerald-600 font-semibold">${esc(uptime)}</div>`:""}</div>`;}
 function quickActionsCard(items){return `<div class="card p-4 fu"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">${items.map(it=>`<button onclick="${it[1]}" class="w-full text-left btn-sec rounded-xl px-3 py-2 transition hover:border-blue-200 hover:bg-blue-50/50">${it[0]}</button>`).join("")}</div></div>`;}
 function recoCard(deliv){const body=(deliv&&deliv.length)?deliv.slice(0,5).map(x=>`<div class="flex gap-2 items-start"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||'')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,110))}</div></div></div>`).join("")
-  :`<div class="text-[12px] text-slate-400">Nessun deliverable — una proposta per generarlo.</div><div class="mt-2 opacity-80">${spark([4,5,5,6,6,7,7,8])}</div>`;
+  :`<div class="text-[12px] text-slate-400">Nessun deliverable ancora — approva una proposta per generarne uno.</div>`;
   return `<div class="card p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;}
 // Card decisione con approfondimento (full=true → testo completo nel modal)
 function decCard(a,i,full){const p=a.payload||{};const pr=p._prio||PRIO[i%3];
@@ -210,7 +210,9 @@ function decTable(items,title,count){
 function openDecisioni(title){
   let el=document.getElementById("decModal");
   if(!el){el=document.createElement("div");el.id="decModal";el.className="dmodal";document.body.appendChild(el);}
-  const cards=DEC_ITEMS.length?DEC_ITEMS.map((a,i)=>decCard(a,i,true)).join(""):'<div class="py-10 text-center text-slate-400">Nessuna decisione 🎉</div>';
+  const CAP=60,shown=DEC_ITEMS.slice(0,CAP);
+  const note=DEC_ITEMS.length>CAP?`<div class="text-[12px] text-slate-400 text-center py-2">Mostrate le prime ${CAP} di ${DEC_ITEMS.length} · apri un reparto per gestire le sue proposte</div>`:"";
+  const cards=DEC_ITEMS.length?shown.map((a,i)=>decCard(a,i,true)).join("")+note:'<div class="py-10 text-center text-slate-400">Nessuna decisione 🎉</div>';
   el.innerHTML=`<div class="dmodal-bg" onclick="closeDecisioni()"></div>
     <div class="dmodal-panel">
       <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -265,48 +267,38 @@ async function runAll(){const btn=$("runall");if(btn){btn.disabled=true;btn.text
 
 async function loadOverview(){
   setHeader("Overview","tutta l'azienda in tempo reale",false);markNav();killCharts();
-  const KPI=[
-    ["Ricavi K-BOT (storico)","€84,200","+18.2%",1,[5,6,6,8,7,9,10,12]],
-    ["Lead attivi","126","+32.0%",1,[4,5,5,6,8,9,11,13]],
-    ["Task automatizzati","1,284","+15.6%",1,[6,7,7,9,9,11,12,13]],
-    ["Decisioni in attesa","7","+2 vs ieri",1,[3,4,3,5,4,6,5,7]],
-    ["Ore risparmiate","312h","+18.6%",1,[5,6,8,7,10,11,13,14]],
-  ].map(k=>`<div class="card lift p-4 fu"><div class="text-[12px] text-slate-400 font-semibold">${k[0]}</div>
-    <div class="flex items-end justify-between mt-1.5 gap-2"><div class="text-[26px] font-extrabold kpiv leading-none">${k[1]}</div>${spark(k[4])}</div>
-    <div class="mt-2 text-[11px] font-bold ${k[3]?'text-emerald-600':'text-amber-600'}">${k[2]} <span class="text-slate-400 font-medium">${k[2].includes('ieri')?'':'vs mese scorso'}</span></div></div>`).join("");
-
-  const DEPT=[["marketing",4,8,3,[5,6,6,8,7,9,8,10]],["vendite",6,12,5,[4,6,7,6,9,10,12,13]],["finance",5,9,4,[6,6,7,8,7,9,9,10]],
-    ["operations",7,14,6,[5,7,8,9,11,12,13,14]],["legal",3,6,2,[2,3,3,4,4,5,5,6]],["hr",5,9,4,[4,5,5,6,7,7,8,9]]];
-  const dep=DEPT.map(([d,f,ri,de,pts])=>{const m=META[d]||{ico:"•",label:d};
+  $("view").innerHTML='<div class="card p-8 text-center text-slate-400 fu">Carico i dati reali…</div>';
+  let co={},appr=[],act=[],deliv=[];
+  try{[co,appr,act,deliv]=await Promise.all([
+    jget("/api/company"),
+    jget("/api/approvals").catch(()=>[]),
+    jget("/api/activity").catch(()=>[]),
+    jget("/api/deliverables").catch(()=>[])]);}catch(e){}
+  const sg=co.signals||{},per=co.per_domain||{},doms=co.domains||AGENTS6;
+  const num=n=>(n==null?"—":n);
+  const KPIS=[
+    ["🗳️","Decisioni in coda",num(co.pending_total),"da approvare · L1","text-amber-600"],
+    ["👥","Lead pipeline",num(sg.leads),"sensore vendite","text-emerald-600"],
+    ["⚙️","Task operativi",num(sg.task_operativi),"sensore operations","text-emerald-600"],
+    ["🛡️","Eventi audit",num(co.audit_total),"registro kernel","text-slate-400"],
+    ["✅","Deliverable",num(co.deliverables_total),"prodotti approvati","text-slate-400"],
+  ].map(k=>mkpi(k[0],k[1],k[2],k[3],k[4])).join("");
+  const dep=doms.map(d=>{const m=META[d]||{ico:"•",label:d};const p=per[d]||{pending:0,deliverables:0};
     return `<div class="card lift p-4 fu cursor-pointer" onclick="route('dom:${d}')">
       <div class="flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[13px]">${m.ico}</span>
         <b class="text-[13px] leading-tight">${esc(m.label)}</b><span class="ml-auto chip bg-emerald-50 text-emerald-600">attivo</span></div>
-      <div class="statline flex items-center gap-3 flex-wrap text-[12px] mb-2">
-        <span><b class="kpiv">${f}</b> <span class="text-slate-400">fonti</span></span>
-        <span><b class="kpiv">${righe(ri)}</b></span>
-        <span><b class="kpiv">${de}</b> <span class="text-slate-400">deliver.</span></span></div>
-      <div class="opacity-90">${spark(pts)}</div></div>`;}).join("");
-
-  const ACT=[["Finance Agent","ha completato il report cashflow mensile","2 min fa","bg-emerald-500"],
-    ["Marketing Agent","ha lanciato campagna LinkedIn","15 min fa","bg-blue-500"],
-    ["Operations Agent","ha ottimizzato 3 workflow","27 min fa","bg-blue-500"]];
-  const activity=ACT.map(a=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2.5 text-[13px]">
-    <span class="w-2 h-2 rounded-full ${a[3]}"></span><b>${a[0]}</b><span class="text-slate-500">${a[1]}</span>
-    <span class="ml-auto text-slate-400 text-[12px]">${a[2]}</span></div>`).join("");
-
-  const APP=[["Revisione budget campagna Q2","Marketing","Alta","text-red-500"],
-    ["Validazione previsione finanziaria","Finance","Alta","text-red-500"],
-    ["Contratto fornitore cloud","Legal","Media","text-amber-500"]];
-  const appNeed=APP.map(a=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2.5 text-[13px]">
-    <span class="${a[3]}">●</span><span class="font-semibold truncate flex-1">${a[0]}</span>
-    <span class="text-slate-400 text-[12px] w-20">${a[1]}</span><span class="text-slate-400 text-[12px] w-24">${a[2]} priorità</span>
-    <button class="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg">Approva</button></div>`).join("");
-
-  const DEC_OV=[
-    {payload:{_prio:"Alta",area:"Marketing",tipo:"budget",titolo:"Aumentare budget campagna LinkedIn",contenuto:"L'agente ha rilevato un CPL in calo (-31%) sulla campagna LinkedIn 'Agenti AI per studi tecnici' con CTR 2.4× sopra la media account. Propone di spostare €1.500 dal budget Meta (in saturazione) a LinkedIn per le prossime 2 settimane, mantenendo lo stesso creativo vincente.",motivo:"Finestra di performance alta e duratura; ogni giorno di ritardo lascia lead sul tavolo a un costo per lead più basso del solito.",impatto:"+€18.400 Revenue stimato · +22% Lead qualificati · scadenza: oggi"}},
-    {payload:{_prio:"Media",area:"Finance",tipo:"forecast",titolo:"Validare forecast Q2",contenuto:"Il forecast Q2 è stato ricalcolato con lo scenario ottimizzato: include il pipeline vendite ponderato per probabilità e i ricavi ricorrenti K-BOT. Scostamento +9% rispetto alla versione conservativa. Richiede validazione prima di entrare nel report al CdA.",motivo:"Allinea le aspettative finanziarie ai dati reali della pipeline; evita di sotto-stimare la cassa disponibile per gli investimenti H2.",impatto:"+€12.700 Revenue · +15% Margine previsto · scadenza: 1 giorno"}},
-    {payload:{_prio:"Bassa",area:"Operations",tipo:"workflow",titolo:"Nuovo workflow approvazione spese",contenuto:"Automazione proposta per il ciclo di approvazione spese: instradamento automatico per soglia di importo, promemoria e raccolta firme. Riduce i passaggi manuali da 6 a 2 e i tempi di ciclo medi.",motivo:"Le spese sotto i €500 non hanno bisogno di doppia approvazione; liberano tempo del team senza ridurre il controllo.",impatto:"-2,4h per ciclo · +18% Efficienza · scadenza: 3 giorni"}}];
-
+      <div class="flex flex-col gap-1 text-[13px]">
+        <span><b class="kpiv text-[18px]">${p.pending}</b> <span class="text-slate-400">proposte in coda</span></span>
+        <span><b class="kpiv">${p.deliverables}</b> <span class="text-slate-400">deliverable</span></span></div></div>`;}).join("");
+  const dot=ev=>ev==="executed"?"bg-emerald-500":ev==="proposed"?"bg-blue-500":(ev==="denied"||ev==="rejected")?"bg-red-400":"bg-slate-400";
+  const activity=act.length?act.slice(0,7).map(a=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2.5 text-[13px]">
+    <span class="w-2 h-2 rounded-full ${dot(a.event)} shrink-0"></span><b class="shrink-0">${esc((a.action_key||"kernel").split(".")[0])}</b>
+    <span class="text-slate-500 truncate">${esc(a.event)} · ${esc(a.detail||a.action_key||"")}</span>
+    <span class="ml-auto text-slate-400 text-[12px] shrink-0">#${a.seq}</span></div>`).join("")
+    :'<div class="py-5 text-slate-400 text-[13px] text-center">Nessun evento ancora — fai girare un agente.</div>';
+  const reco=deliv.length?deliv.slice(0,6).map(x=>`<div class="flex gap-2 items-start border-t border-slate-50 py-2"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||x.tipo||'Deliverable')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,110))}</div></div></div>`).join("")
+    :'<div class="py-5 text-slate-400 text-[13px] text-center">Nessun deliverable ancora — approva una proposta per generarne uno.</div>';
+  const decItems=(appr||[]).map(a=>({id:a.id,action_key:a.action_key,payload:Object.assign({area:(a.action_key||"").split(".")[0]},a.payload||{})}));
   $("view").innerHTML=`
     <section class="heroWrap fu"><div class="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
       <div class="scene xl:col-span-2 p-4">
@@ -322,79 +314,78 @@ async function loadOverview(){
       </div>
       <div class="glass rounded-2xl p-5 grid place-items-center text-center">
         <div>
-          <div class="flex items-center justify-center gap-2 mb-2"><span class="chip bg-emerald-100 text-emerald-700">● 6 attivi</span><span class="chip bg-blue-50 text-blue-700">L1 · supervisione</span></div>
+          <div class="flex items-center justify-center gap-2 mb-2"><span class="chip bg-emerald-100 text-emerald-700">● ${doms.length} attivi</span><span class="chip bg-blue-50 text-blue-700">L1 · supervisione</span></div>
           <h2 class="text-[20px] font-extrabold tracking-tight">Company Pulse</h2>
           <p class="text-slate-500 text-[12px] mb-2">gli agenti propongono, tu approvi</p>
-          <div class="relative grid place-items-center">${donutSVG(92)}<div class="absolute inset-0 grid place-items-center"><div><div class="text-[26px] font-extrabold kpiv leading-none">92%</div><div class="text-[10px] text-slate-400">auto / totale</div></div></div></div>
+          <div class="relative grid place-items-center">${donutSVG(doms.length?Math.round(doms.length/6*100):0)}<div class="absolute inset-0 grid place-items-center"><div><div class="text-[24px] font-extrabold kpiv leading-none">${doms.length}/6</div><div class="text-[10px] text-slate-400">agenti online</div></div></div></div>
           <div class="grid grid-cols-3 gap-3 mt-3">
-            <div><div class="text-[18px] font-extrabold kpiv" id="cp-online">6</div><div class="text-[10px] text-slate-400">online</div></div>
-            <div><div class="text-[18px] font-extrabold kpiv" id="cp-auto">42</div><div class="text-[10px] text-slate-400">automaz.</div></div>
-            <div><div class="text-[18px] font-extrabold kpiv" id="cp-appr">7</div><div class="text-[10px] text-slate-400">in appr.</div></div></div>
+            <div><div class="text-[18px] font-extrabold kpiv">${doms.length}</div><div class="text-[10px] text-slate-400">online</div></div>
+            <div><div class="text-[18px] font-extrabold kpiv">${num(co.audit_total)}</div><div class="text-[10px] text-slate-400">eventi</div></div>
+            <div><div class="text-[18px] font-extrabold kpiv" id="cp-appr">${num(co.pending_total)}</div><div class="text-[10px] text-slate-400">in coda</div></div></div>
         </div>
       </div>
     </div></section>
-    <h3 class="sec-t">Business Overview</h3>
-    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI}</section>
-    <h3 class="sec-t">Department Performance</h3>
+    <h3 class="sec-t">Business Overview <span class="real">reale</span></h3>
+    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPIS}</section>
+    <h3 class="sec-t">Department Performance <span class="real">reale · platform</span></h3>
     <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">${dep}</section>
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="card p-5 fu"><div class="font-bold text-sm mb-1 flex items-center gap-2">Attività recenti <span class="real">reale · audit</span></div>${activity}
         <a onclick="route('agents')" class="inline-block mt-3 text-[13px] font-semibold text-brand cursor-pointer">Vai a tutte le attività →</a></div>
-      <div class="card p-5 fu"><div class="font-bold text-sm mb-1 flex items-center gap-2">Approvazioni necessarie <span class="real">reale</span></div>${appNeed}
-        <a class="inline-block mt-3 text-[13px] font-semibold text-brand cursor-pointer">Vai a tutte le approvazioni →</a></div>
+      <div class="card p-5 fu"><div class="font-bold text-sm mb-1 flex items-center gap-2">Deliverable recenti <span class="real">reale</span></div>${reco}</div>
     </section>
-    ${decTable(DEC_OV,"Decisioni da prendere (tutti i reparti)")}`;
+    ${decTable(decItems,"Decisioni da prendere (tutti i reparti)")}`;
   renderStations();
   const rb=$("runall");if(rb)rb.onclick=runAll;
+  wireDecisioni();
 }
 
 // ---------------- AI AGENTS (premium) ----------------
-function akpi(label,val,delta,pos,ring,pts){
-  const right=ring?`<div class="relative w-12 h-12 shrink-0">${donutMini(ring.pct,ring.col)}<div class="absolute inset-0 grid place-items-center text-[13px]">${ring.ico}</div></div>`:`<div class="opacity-90">${spark(pts)}</div>`;
+function akpi(label,val,sub,ring){
+  const right=ring?`<div class="relative w-12 h-12 shrink-0">${donutMini(ring.pct,ring.col)}<div class="absolute inset-0 grid place-items-center text-[13px]">${ring.ico}</div></div>`:"";
   return `<div class="card lift p-4 fu"><div class="flex items-center justify-between gap-2">
-    <div><div class="text-[12px] text-slate-400 font-semibold">${label}</div><div class="text-[26px] font-extrabold kpiv leading-none mt-1">${val}</div></div>${right}</div>
-    <div class="mt-2 text-[11px] font-bold ${pos?'text-emerald-600':'text-amber-600'}">${pos?'▲':'▼'} ${delta} <span class="text-slate-400 font-medium">vs ieri</span></div></div>`;}
+    <div><div class="text-[12px] text-slate-400 font-semibold">${esc(label)}</div><div class="text-[26px] font-extrabold kpiv leading-none mt-1">${val}</div></div>${right}</div>
+    ${sub?`<div class="mt-2 text-[11px] font-bold text-slate-400">${esc(sub)}</div>`:""}</div>`;}
 function donutMini(pct,col){col=col||"#16A34A";const r=20,c=2*Math.PI*r,o=c*(1-pct/100);
   return `<svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="${r}" fill="none" stroke="#eef2f7" stroke-width="5"/><circle cx="24" cy="24" r="${r}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" transform="rotate(-90 24 24)" style="--o:${o.toFixed(1)};stroke-dasharray:${c.toFixed(1)};stroke-dashoffset:${c.toFixed(1)};animation:ringfill 1.2s cubic-bezier(.2,.7,.2,1) .2s forwards"/></svg>`;}
 
+async function runAgentFromList(d,btn){if(btn){btn.disabled=true;btn.textContent="⏳ …";}try{await jpost('/api/agents/'+d+'/run',{});}catch(e){}loadAgents();}
 async function loadAgents(){
   setHeader("AI Agents","gli agenti che fanno girare K2-AI",false);markNav();killCharts();
+  $("view").innerHTML='<div class="card p-8 text-center text-slate-400 fu">Carico i dati reali…</div>';
+  let co={};try{co=await jget("/api/company");}catch(e){}
+  const per=co.per_domain||{},doms=co.domains||AGENTS6;
+  const maxP=Math.max(1,...doms.map(d=>(per[d]||{}).pending||0));
+  const num=n=>(n==null?"—":n);
   const KP=`
-    ${akpi("Agenti attivi","6","20%",1,{pct:100,col:"#16A34A",ico:"🤖"})}
-    ${akpi("Automazioni","42","18%",1,null,[5,6,6,8,7,9,10,12])}
-    ${akpi("Eventi audit","1000","12%",1,{pct:92,col:"#16A34A",ico:"🛡"})}
-    ${akpi("Decisioni in attesa","311","5%",0,{pct:34,col:"#F59E0B",ico:"⏳"})}`;
-  const AG=[
-    ["marketing","Marketing","Analisi campagne & crescita",52,78,"2 min fa"],
-    ["vendite","Sales / CRM","Pipeline & opportunità",53,64,"3 min fa"],
-    ["finance","Finance","Analisi finanziaria & forecast",77,82,"5 min fa"],
-    ["operations","Operations","Workflow & processi",51,71,"4 min fa"],
-    ["legal","Legal & Compliance","Contratti & compliance",36,56,"6 min fa"],
-    ["hr","HR","Persone & cultura",42,68,"3 min fa"]];
-  const rows=AG.map(([d,rep,sub,props,prog,ago])=>{const m=META[d]||{ico:"•"};
+    ${akpi("Agenti attivi",doms.length,"reparti operativi",{pct:Math.round(doms.length/6*100),col:"#16A34A",ico:"🤖"})}
+    ${akpi("Decisioni in coda",num(co.pending_total),"da approvare · L1",{pct:100,col:"#F59E0B",ico:"⏳"})}
+    ${akpi("Eventi audit",num(co.audit_total),"registro kernel")}
+    ${akpi("Deliverable",num(co.deliverables_total),"prodotti approvati")}`;
+  const SUB={marketing:"Crescita & contenuti",vendite:"Pipeline & opportunità",finance:"Ricavi, costi & forecast",operations:"Commesse & processi",legal:"Contratti & compliance",hr:"Persone & organizzazione"};
+  const rows=doms.map(d=>{const m=META[d]||{ico:"•",label:d};const p=per[d]||{pending:0,deliverables:0};const prog=Math.round((p.pending/maxP)*100);
     return `<tr class="arow border-t border-slate-100 align-middle">
       <td class="py-3 pr-3"><div class="flex items-center gap-3"><div class="ava">${robotSVG(true)}</div>
-        <div><div class="font-bold text-[13.5px] leading-tight">${esc(rep)} Agent</div><div class="text-[11px] text-slate-400">${esc(sub)}</div></div></div></td>
-      <td class="py-3 pr-3"><div class="flex items-center gap-2 text-slate-600"><span class="text-[13px]">${m.ico}</span><span class="text-[12px]">${esc(rep)}</span></div></td>
-      <td class="py-3 pr-3"><div class="flex items-center gap-1.5"><span class="dot-done"></span><span class="chip bg-emerald-50 text-emerald-700">active</span></div><div class="text-[10px] text-slate-400 mt-0.5 ml-0.5">Operativo</div></td>
-      <td class="py-3 pr-3 min-w-[170px]"><div class="text-[12px] text-slate-600 mb-1">${props} proposte in coda</div>
-        <div class="flex items-center gap-2"><div class="pbar flex-1"><div class="pfill" style="width:${prog}%"></div></div><span class="text-[11px] font-bold text-slate-500">${prog}%</span></div></td>
-      <td class="py-3 pr-3"><span class="chip bg-blue-50 text-blue-700">L1</span><div class="text-[10px] text-slate-400 mt-0.5">Assistito</div></td>
-      <td class="py-3 pr-3 whitespace-nowrap"><div class="text-[12px] text-slate-600">${ago}</div><div class="flex items-center gap-1 text-[10px] text-emerald-600 mt-0.5"><span class="dot-run"></span>In esecuzione</div></td>
+        <div><div class="font-bold text-[13.5px] leading-tight">${esc(m.label)} Agent</div><div class="text-[11px] text-slate-400">${esc(SUB[d]||"")}</div></div></div></td>
+      <td class="py-3 pr-3"><div class="flex items-center gap-2 text-slate-600"><span class="text-[13px]">${m.ico}</span><span class="text-[12px]">${esc(m.label)}</span></div></td>
+      <td class="py-3 pr-3"><span class="chip bg-emerald-50 text-emerald-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 align-middle"></span>active</span></td>
+      <td class="py-3 pr-3 min-w-[180px]"><div class="text-[12px] text-slate-600 mb-1">${p.pending} proposte · ${p.deliverables} deliverable</div>
+        <div class="pbar"><div class="pfill" style="width:${prog}%"></div></div></td>
+      <td class="py-3 pr-3"><span class="chip bg-blue-50 text-blue-700">L1</span><div class="text-[10px] text-slate-400 mt-0.5">propone, tu approvi</div></td>
       <td class="py-3 text-right whitespace-nowrap"><button onclick="route('dom:${d}')" class="btn-sec text-[12px] font-semibold px-3 py-1.5 rounded-lg">Apri →</button>
-        <button class="btn-sec text-[12px] px-2 py-1.5 rounded-lg ml-1">⋮</button></td></tr>`;}).join("");
+        <button onclick="runAgentFromList('${d}',this)" class="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg ml-1">▶ Fai girare</button></td></tr>`;}).join("");
   const INFO=[
-    ["🛡","bg-blue-50","Sicurezza & Controllo","Tutti gli agenti operano con guardrail e supervisione umana L1."],
-    ["🧠","bg-emerald-50","Autonomia Assistita","Livello di autonomia L1: gli agenti propongono, tu approvi."],
-    ["🗓","bg-violet-50","Audit & Tracciabilità","Ogni azione è loggata e verificabile nel registro eventi."],
-    ["📈","bg-amber-50","Performance Globale","Gli agenti hanno completato il 94% delle attività con successo."]];
+    ["🛡","bg-blue-50","Sicurezza & controllo","Ogni azione passa dalla scaletta L0–L3 con cap L1 e supervisione umana."],
+    ["🧠","bg-emerald-50","Autonomia assistita","Livello L1: gli agenti propongono, tu approvi. Nessuna scrittura senza ok."],
+    ["🗓","bg-violet-50","Audit & tracciabilità",`Ogni evento è loggato — ${num(co.audit_total)} nel registro del kernel.`],
+    ["✍️","bg-amber-50","Attuatore con guardrail","Solo insert/update in allowlist; mai delete, mai denaro, solo dopo approvazione."]];
   const info=INFO.map(c=>`<div class="card lift p-4 fu"><div class="w-10 h-10 rounded-xl ${c[1]} grid place-items-center text-[18px] mb-2">${c[0]}</div>
     <div class="font-bold text-[13px] mb-1">${esc(c[2])}</div><div class="text-[12px] text-slate-500 leading-snug">${esc(c[3])}</div></div>`).join("");
   $("view").innerHTML=`
     <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${KP}</section>
     <section class="card p-5 fu"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Tutti gli Agenti</h3><span class="real">reale · platform</span></div>
       <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-        <th class="py-2 pr-3">Agente</th><th class="py-2 pr-3">Reparto</th><th class="py-2 pr-3">Stato</th><th class="py-2 pr-3">Attività in corso</th><th class="py-2 pr-3">Autonomia</th><th class="py-2 pr-3">Ultimo aggiornamento</th><th class="py-2 text-right">Azioni</th></tr></thead>
+        <th class="py-2 pr-3">Agente</th><th class="py-2 pr-3">Reparto</th><th class="py-2 pr-3">Stato</th><th class="py-2 pr-3">Carico di lavoro</th><th class="py-2 pr-3">Autonomia</th><th class="py-2 text-right">Azioni</th></tr></thead>
         <tbody>${rows}</tbody></table></div></section>
     <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${info}</section>`;
 }
@@ -430,6 +421,32 @@ function domainKPIs(d,data,props,deliv){
   const cards=[...PER,["✈️","Proposte in coda",props,"da approvare","text-amber-600"],["🗄️","Fonti attive",src,"sensori","text-emerald-600"],["✅","Deliverable",deliv,"approvati","text-slate-400"]].slice(0,5);
   return cards.map(c=>mkpi(c[0],c[1],c[2],c[3],c[4])).join("");
 }
+// Mappa tab → sensori reali (le sottopagine mostrano i dati veri di quell'ambito)
+const TABMAP={
+  vendite:{Pipeline:["leggi_lead"],Leads:["leggi_lead","leggi_lead_kbot"],Deals:["leggi_ricavi_chiusi"],Accounts:["leggi_clienti"],Activities:["leggi_inbox","leggi_calendario_google"],Forecast:["leggi_ricavi_chiusi","leggi_lead"],Reports:["leggi_memo_vendite"],Integrations:["__integrations"]},
+  finance:{Ricavi:["leggi_conversioni","leggi_stripe_ricavi"],Costi:["leggi_costi"],Fatture:["leggi_fatture"],Forecast:["leggi_valore_commesse"],Tax:["leggi_giornale"],Report:["leggi_memoria_finance","leggi_organico"]},
+  operations:{Commesse:["leggi_commesse"],Fasi:["leggi_fasi"],Task:["leggi_task_operativi","leggi_task_commessa"],Capacity:["leggi_team","leggi_strumenti"],Report:["leggi_documenti","leggi_change_requests"]},
+  legal:{Contratti:["leggi_documenti_legali"],GDPR:["leggi_registro_trattamenti","leggi_consensi_kbot","leggi_iscritti_newsletter"],Fornitori:["leggi_fornitori"],Compliance:["leggi_formazione_compliance","leggi_policy","leggi_assicurazioni"],Report:["leggi_marchi","leggi_atti_societari","leggi_contenziosi"]},
+  hr:{Recruiting:["leggi_candidati"],Onboarding:["leggi_assegnatari","leggi_offboarding"],Performance:["leggi_review"],Compliance:["leggi_formazione","leggi_sicurezza"],Report:["leggi_skills","leggi_hr_analytics","leggi_dipendenti","leggi_ferie"]}};
+function dataTableFull(label,rows){
+  if(!Array.isArray(rows)||!rows.length)
+    return `<div class="card lift p-5 fu"><div class="font-bold text-sm mb-2">${esc(label)}</div><div class="py-7 text-center text-slate-400 text-[13px]">Nessuna riga ancora — l'agente popolerà questa tabella quando avrà dati o quando approverai una proposta che la riguarda.</div></div>`;
+  const cols=Object.keys(rows[0]).slice(0,6);
+  const head=cols.map(c=>`<th class="py-1.5 pr-3 font-semibold">${esc(c)}</th>`).join("");
+  const body=rows.slice(0,50).map(r=>`<tr class="arow border-t border-slate-50">${cols.map(c=>{const v=r[c];const txt=v==null?"":(typeof v==="object"?JSON.stringify(v):String(v));return `<td class="py-2 pr-3 text-slate-600">${esc(txt.slice(0,64))}</td>`;}).join("")}</tr>`).join("");
+  return `<div class="card lift p-5 fu"><div class="flex items-center gap-2 mb-3"><div class="font-bold text-sm">${esc(label)}</div><span class="chip whitespace-nowrap bg-emerald-100 text-emerald-700">${righe(rows.length)}</span><span class="real">Supabase</span></div>
+    <div class="overflow-x-auto"><table class="w-full text-[12.5px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">${head}</tr></thead><tbody>${body}</tbody></table></div>${rows.length>50?`<div class="text-[11px] text-slate-400 mt-2">Mostrate 50 di ${rows.length}</div>`:""}</div>`;
+}
+function integrationsGrid(items){
+  if(!items||!items.length)return '<div class="card p-6 text-center text-slate-400 fu">Nessuna integrazione configurata.</div>';
+  const card=it=>`<div class="card lift p-4 fu flex items-center gap-3">
+    <span class="w-9 h-9 rounded-lg ${it.connesso?'bg-emerald-50':'bg-slate-50'} grid place-items-center text-[16px]">${it.connesso?'✅':'🔌'}</span>
+    <div class="min-w-0 flex-1"><div class="font-bold text-[13px] truncate">${esc(it.nome)}</div><div class="text-[11px] text-slate-400">${esc(it.tipo)}</div></div>
+    <span class="chip whitespace-nowrap ${it.connesso?'bg-emerald-100 text-emerald-700':'bg-amber-50 text-amber-700'}">${it.connesso?'connesso':'credenziali mancanti'}</span></div>`;
+  const on=items.filter(i=>i.connesso).length;
+  return `<div class="card p-3 fu mb-3 flex items-center gap-2 text-[13px]"><b>${on}/${items.length}</b> <span class="text-slate-500">integrazioni connesse · le altre richiedono solo le credenziali nel file <code>.env</code></span></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${items.map(card).join("")}</div>`;
+}
 async function loadDomain(){
   const m=META[CUR]||{ico:"•",label:CUR,sub:""};
   setHeader(m.label+" Agent",m.sub+" · L1 (propone, tu approvi)",true);markNav();killCharts();
@@ -437,17 +454,27 @@ async function loadDomain(){
   let v={};try{v=await jget("/api/domain/"+CUR);}catch(e){$("view").innerHTML='<div class="card p-6 text-red-600">Errore</div>';return;}
   const data=v.data||{},props=v.proposals||[],deliv=v.deliverables||[],skills=v.skills||[];
   $("cs-pending").textContent=props.length;
+  const onlineSrc=Object.values(data).filter(x=>Array.isArray(x)&&x.length).length,totSrc=Object.keys(data).length;
   const checks=Object.keys(data).map(s=>TBL[s]||s).slice(0,9);if(!checks.length)checks.push("Knowledge base","Founder Model");
-  const sidebar=agentStatusCard(checks,"99.8%")
+  const sidebar=agentStatusCard(checks,onlineSrc+"/"+totSrc+" fonti dati attive")
     +(skills.length?`<div class="card p-3 fu"><div class="text-[11px] font-bold text-slate-500 mb-2">Skill attive</div><div class="flex flex-wrap gap-1">${skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join("")}</div></div>`:"")
     +recoCard(deliv)+quickActionsCard(DQUICK[CUR]||[["▶ Fai girare l'agente","runAgent()"],["▦ Torna all'Overview","route('overview')"]]);
   const tabs=DTABS[CUR];
   const tabsBar=tabs?`<div id="dtabs" class="flex gap-5 border-b border-slate-100 overflow-x-auto">${tabs.map(t=>`<div class="tab ${t===DTAB?'active':''}" data-dt="${esc(t)}">${esc(t)}</div>`).join("")}</div>`:"";
-  let content,hasChart=false,g={};
+  let content,hasChart=false,g={},tabKeys=null;
   if(DTAB!=="Overview"){
-    content=`<section class="card p-12 text-center fu"><div class="w-12 h-12 rounded-2xl bg-blue-50 grid place-items-center text-[20px] mx-auto mb-3">${m.ico}</div>
-      <div class="text-[15px] font-bold mb-1">${esc(DTAB)}</div>
-      <div class="text-slate-400 text-[13px] max-w-md mx-auto">Vista dedicata in arrivo. I dati reali di questo ambito sono già letti dai sensori dell'agente e visibili nella tab <b>Overview</b>.</div></section>`;
+    tabKeys=(TABMAP[CUR]||{})[DTAB]||[];
+    if(tabKeys[0]==="__integrations"){
+      content=`<div id="tabInteg"><div class="card p-8 text-center text-slate-400 fu">Carico integrazioni…</div></div>`;
+    } else if(tabKeys.length){
+      content=`<div class="space-y-4"><div class="text-[12px] text-slate-400">Dati reali dell'ambito <b>${esc(DTAB)}</b>, letti dai sensori dell'agente.</div>`
+        +tabKeys.map(k=>dataTableFull(TBL[k]||k,data[k])).join("")
+        +`${decTable(props,"Decisioni di "+esc(DTAB))}</div>`;
+    } else {
+      content=`<section class="card p-12 text-center fu"><div class="w-12 h-12 rounded-2xl bg-blue-50 grid place-items-center text-[20px] mx-auto mb-3">${m.ico}</div>
+        <div class="text-[15px] font-bold mb-1">${esc(DTAB)}</div>
+        <div class="text-slate-400 text-[13px] max-w-md mx-auto">Nessun sensore dedicato a questo ambito. I dati reali sono nella tab <b>Overview</b>.</div></section>`;
+    }
   } else {
     const cfg=CHART[CUR];if(cfg)g=group(data[cfg[0]],cfg[1]);hasChart=cfg&&Object.keys(g).length;
     const total=Object.values(g).reduce((s,n)=>s+n,0);
@@ -468,10 +495,12 @@ async function loadDomain(){
   $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">${tabsBar}${content}</div>
     <aside class="w-full xl:w-80 shrink-0 space-y-4">${sidebar}</aside></div>`;
   if(tabs)document.querySelectorAll("#dtabs .tab").forEach(el=>el.onclick=()=>{DTAB=el.dataset.dt;loadDomain();});
-  if(DTAB==="Overview"){
-    if(hasChart){const c=new Chart($("domDonut"),{type:"doughnut",data:{labels:Object.keys(g),datasets:[{data:Object.values(g),backgroundColor:PAL,borderWidth:0}]},options:{cutout:"70%",plugins:{legend:{display:false},tooltip:{enabled:false}}}});charts.push(c);}
-    wireDecisioni();
+  if(DTAB==="Overview"&&hasChart){const c=new Chart($("domDonut"),{type:"doughnut",data:{labels:Object.keys(g),datasets:[{data:Object.values(g),backgroundColor:PAL,borderWidth:0}]},options:{cutout:"70%",plugins:{legend:{display:false},tooltip:{enabled:false}}}});charts.push(c);}
+  if(tabKeys&&tabKeys[0]==="__integrations"){
+    jget("/api/integrations").then(items=>{const el=$("tabInteg");if(el)el.innerHTML=integrationsGrid(items);})
+      .catch(()=>{const el=$("tabInteg");if(el)el.innerHTML='<div class="card p-6 text-red-600">Errore nel caricamento integrazioni</div>';});
   }
+  wireDecisioni();
 }
 
 // ---------------- MARKETING ----------------
@@ -486,7 +515,7 @@ async function loadMarketing(){
      iscritti:ins.iscritti||[],newsletter:ins.newsletter||[],analytics:ins.analytics||[],
      tab:MK.tab||"Overview"};
   $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=MK.items.length;
-  const rightCol=agentStatusCard(["Performance contenuti","Insight Instagram","Calendario editoriale","Competitor","Brand voice","Monitoraggio trend"],"99.8%")
+  const rightCol=agentStatusCard(["Performance contenuti","Insight Instagram","Calendario editoriale","Competitor","Brand voice","Monitoraggio trend"],(MK.posts.length||0)+" post · "+(MK.servizi.length||0)+" servizi letti")
     +recoCard(MK.deliv)
     +quickActionsCard([["▶ Fai girare l'agente","runAgent()"],["+ Nuova campagna","route('dom:marketing')"],["🗓 Genera calendario editoriale","runAgent()"],["📈 Analizza performance","MK.tab='Analytics';renderMkTab()"],["🔍 Analizza competitor","runAgent()"]]);
   const tabsBar=MK_TABS.map(t=>`<div class="tab ${t===MK.tab?'active':''}" data-mk="${t}">${t}</div>`).join("");

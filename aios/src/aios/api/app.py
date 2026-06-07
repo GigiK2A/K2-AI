@@ -212,4 +212,54 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             return []
         return platform.deliverables()
 
+    @app.get("/api/company")
+    def company(_=Depends(_require_auth)) -> dict[str, Any]:
+        """Aggregati REALI per Overview/Agenti: coda decisioni, audit, deliverable,
+        per-dominio + alcuni segnali letti dai sensori. Nessun dato inventato."""
+        pending = kernel.approvals.pending()
+        records = kernel.audit.records()
+        executed = sum(1 for r in records if r.event == "executed")
+        domains = platform.domains() if platform else []
+        per = {d: {"pending": 0, "deliverables": 0} for d in domains}
+        for a in pending:
+            d = a.action_key.split(".", 1)[0]
+            if d in per:
+                per[d]["pending"] += 1
+        try:
+            deliv = platform.deliverables() if platform else []
+        except Exception:
+            deliv = []
+        for x in deliv:
+            d = x.get("dominio")
+            if d in per:
+                per[d]["deliverables"] += 1
+        names = set(kernel.tools.names())
+
+        def _count(tool: str) -> int | None:
+            if tool not in names:
+                return None
+            try:
+                r = kernel.execute(tool, actor="cockpit", args={}).result
+                return len(r) if isinstance(r, list) else None
+            except Exception:
+                return None
+
+        signals = {
+            "leads": _count("leggi_lead"),
+            "conversioni": _count("leggi_conversioni"),
+            "iscritti": _count("leggi_iscritti_newsletter"),
+            "commesse": _count("leggi_commesse"),
+            "task_operativi": _count("leggi_task_operativi"),
+            "clienti": _count("leggi_clienti"),
+        }
+        return {
+            "pending_total": len(pending),
+            "audit_total": len(records),
+            "executed_total": executed,
+            "deliverables_total": len(deliv),
+            "domains": domains,
+            "per_domain": per,
+            "signals": signals,
+        }
+
     return app
