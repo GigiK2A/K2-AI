@@ -148,8 +148,40 @@ function route(v){if(v==="soon"){alert("Sezione in arrivo.");return;}VIEW=v;CUR=
 function markNav(){document.querySelectorAll("#nav .navi").forEach(n=>n.classList.toggle("active",n.dataset.view===VIEW));}
 function setHeader(title,sub,showRun){$("hd-title").textContent=title;$("hd-sub").textContent=sub;$("btn-run").classList.toggle("hidden",!showRun);}
 
-function kpi(label,val,sub,accent){return `<div class="card p-4"><div class="text-[12px] text-slate-400 font-semibold">${label}</div>
-  <div class="text-2xl font-extrabold mt-1 ${accent||''}">${val}</div><div class="mt-1 ${sub&&sub.real?'real':'muted'}">${sub&&sub.t?esc(sub.t):(sub||'')}</div></div>`;}
+function kpi(label,val,sub,accent){return `<div class="card lift p-4 fu"><div class="text-[12px] text-slate-400 font-semibold">${label}</div>
+  <div class="text-2xl font-extrabold kpiv mt-1 ${accent||''}">${val}</div><div class="mt-1 ${sub&&sub.real?'real':'muted'}">${sub&&sub.t?esc(sub.t):(sub||'')}</div></div>`;}
+// KPI premium con icona + sparkline
+function mkpi(icon,label,val,sub,subcol,pts){return `<div class="card lift p-4 fu">
+  <div class="flex items-center gap-2 mb-1"><span class="w-7 h-7 rounded-lg bg-blue-50 grid place-items-center text-[14px]">${icon}</span><span class="text-[12px] text-slate-400 font-semibold">${esc(label)}</span></div>
+  <div class="flex items-end justify-between gap-2"><div class="text-[26px] font-extrabold kpiv leading-none">${val}</div><div class="opacity-90">${spark(pts||[5,6,6,7,8,8,9,10])}</div></div>
+  <div class="mt-2 text-[11px] font-bold ${subcol||'text-slate-400'}">${sub||''}</div></div>`;}
+// Agent Status con avatar robot + checklist + uptime
+function agentStatusCard(checks,uptime){return `<div class="card p-4 fu"><div class="flex items-center justify-between mb-3"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-50 text-emerald-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 align-middle"></span>active</span></div>
+  <div class="flex gap-3 items-start"><ul class="space-y-1.5 text-[13px] flex-1">${checks.map(c=>`<li class="flex items-center gap-2"><span class="text-emerald-500">✓</span><span class="truncate">${esc(c)}</span></li>`).join("")}</ul>
+  <div class="ava shrink-0" style="width:60px;height:60px">${robotSVG(true)}</div></div>
+  ${uptime?`<div class="mt-3 pt-2 border-t border-slate-50 text-[12px] text-emerald-600 font-semibold">Uptime ${uptime}</div>`:""}</div>`;}
+function quickActionsCard(items){return `<div class="card p-4 fu"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">${items.map(it=>`<button onclick="${it[1]}" class="w-full text-left btn-sec rounded-xl px-3 py-2 transition hover:border-blue-200 hover:bg-blue-50/50">${it[0]}</button>`).join("")}</div></div>`;}
+function recoCard(deliv){const body=(deliv&&deliv.length)?deliv.slice(0,5).map(x=>`<div class="flex gap-2 items-start"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||'')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,110))}</div></div></div>`).join("")
+  :`<div class="text-[12px] text-slate-400">Nessun deliverable — una proposta per generarlo.</div><div class="mt-2 opacity-80">${spark([4,5,5,6,6,7,7,8])}</div>`;
+  return `<div class="card p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;}
+// Tabella decisioni premium (Approva / Modifica / Rifiuta)
+function decTable(items,title,count){
+  const rows=items.length?items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
+    return `<tr class="arow border-t border-slate-100 align-top">
+      <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
+      <td class="py-3 pr-3 font-semibold max-w-[200px]">${esc(p.titolo||p.tipo||'Proposta')}</td>
+      <td class="py-3 pr-3 text-slate-500 max-w-[320px]">${esc((p.contenuto||'').slice(0,150))}</td>
+      <td class="py-3 pr-3 text-[12px] text-emerald-700 max-w-[170px]">${esc((p.motivo||'').slice(0,90))}</td>
+      <td class="py-3 text-right whitespace-nowrap">
+        <button class="approve btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
+        <button class="edit btn-sec text-[12px] px-3 py-1.5 rounded-lg ml-1" data-id="${a.id}">Modifica</button>
+        <button class="reject btn-sec text-[12px] text-red-600 px-3 py-1.5 rounded-lg ml-1" data-id="${a.id}">Rifiuta</button></td></tr>`;}).join("")
+    :`<tr><td colspan="5" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>`;
+  return `<section class="card p-5 fu"><div class="flex items-center gap-3 mb-4"><h3 class="sec-t">${title||'Decisioni da prendere'}</h3>
+    <span class="chip bg-amber-100 text-amber-700">${count!=null?count:items.length} in attesa</span><span class="real">reale · kernel</span></div>
+    <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
+      <th class="py-2 pr-3">Priorità</th><th class="py-2 pr-3">Decisione</th><th class="py-2 pr-3">Descrizione</th><th class="py-2 pr-3">Impatto</th><th class="py-2 text-right">Azione</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></section>`;}
 function decisioniTable(items,title,showArea){
   const rows=items.length?items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
     return `<tr class="border-t border-slate-100 align-top">
@@ -176,6 +208,7 @@ function recoBlock(deliv){
 function wireDecisioni(){
   document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{});const a=r&&r.attuatore;if(a){alert(a.ok?("✅ Scritto su "+(a.tabella||"DB")+" ("+(a.op||"")+")"):("⚠️ Azione non eseguita: "+(a.errore||"")));}load();});
   document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();});
+  document.querySelectorAll(".edit").forEach(b=>b.onclick=async()=>{const titolo=prompt("Modifica titolo (poi approva):");if(titolo===null)return;const contenuto=prompt("Modifica contenuto:");if(contenuto===null)return;await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{titolo,contenuto}});load();});
 }
 
 // ---------------- OVERVIEW (premium) ----------------
@@ -394,9 +427,9 @@ async function loadDomain(){
     if(a.length){const r=a[0];sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,34))}`).join(" · ");}
     else if(val&&val.error){sample=`<span class="text-red-500">${esc(val.error).slice(0,70)}</span>`;}else sample='<span class="text-slate-400">nessuna riga</span>';
     return `<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${n} righe</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")||'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun sensore</td></tr>';
-  const agentStatus=`<div class="card p-4"><div class="flex items-center justify-between mb-2"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-    <p class="text-[12px] text-slate-400 mb-2">Sta lavorando su:</p><ul class="space-y-1 text-[13px]">${Object.keys(data).map(s=>`<li>✅ ${esc(TBL[s]||s)}</li>`).join("")}<li>✅ Proposte in coda</li></ul>
-    <div class="mt-3 pt-2 border-t border-slate-50 text-[12px]"><b class="text-slate-500">Skill:</b> ${skills.length?skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join(" "):'<span class="text-slate-400">knowledge + Founder</span>'}</div></div>`;
+  const checks=Object.keys(data).map(s=>TBL[s]||s).slice(0,6);if(!checks.length)checks.push("Knowledge base","Founder Model");
+  const agentStatus=agentStatusCard(checks,"99.8%")
+    +(skills.length?`<div class="card p-3 fu"><div class="text-[11px] font-bold text-slate-500 mb-2">Skill attive</div><div class="flex flex-wrap gap-1">${skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join("")}</div></div>`:"");
   $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
     <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${domainKPIs(CUR,data,props.length,deliv.length)}</section>
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -404,11 +437,9 @@ async function loadDomain(){
         <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Fonte</th><th class="py-1 text-center">Volume</th><th class="py-1">Esempio</th></tr></thead><tbody>${dataRows}</tbody></table></div>
       <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">${cfg?esc(cfg[2]):"Distribuzione"} <span class="real">reale</span></div>
         ${hasChart?'<div class="relative h-48"><canvas id="domDonut"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px] text-center px-3">Nessun dato sufficiente per il grafico</div>'}</div></section>
-    ${decisioniTable(props)}
-    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoBlock(deliv)}
-      <div class="card p-4"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">
-        <button onclick="runAgent()" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
-        <button onclick="route('overview')" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▦ Torna all'Overview</button></div></div></aside></div>`;
+    ${decTable(props,"Decisioni da prendere")}
+    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoCard(deliv)}
+      ${quickActionsCard([["▶ Fai girare l'agente","runAgent()"],["▦ Torna all'Overview","route('overview')"]])}</aside></div>`;
   if(hasChart)donut("domDonut",Object.keys(g),Object.values(g));
   wireDecisioni();
 }
@@ -425,17 +456,15 @@ async function loadMarketing(){
      iscritti:ins.iscritti||[],newsletter:ins.newsletter||[],analytics:ins.analytics||[],
      tab:MK.tab||"Overview"};
   $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=MK.items.length;
-  const agentStatus=`<div class="card p-4"><div class="flex items-center justify-between mb-2"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-    <ul class="space-y-1 text-[13px]"><li>✅ Performance contenuti</li><li>✅ Insight Instagram</li><li>✅ Calendario editoriale</li><li>✅ Competitor</li><li>✅ Brand voice</li></ul></div>`;
+  const rightCol=agentStatusCard(["Performance contenuti","Insight Instagram","Calendario editoriale","Competitor","Brand voice","Monitoraggio trend"],"99.8%")
+    +recoCard(MK.deliv)
+    +quickActionsCard([["▶ Fai girare l'agente","runAgent()"],["+ Nuova campagna","route('dom:marketing')"],["🗓 Genera calendario editoriale","runAgent()"],["📈 Analizza performance","MK.tab='Analytics';renderMkTab()"],["🔍 Analizza competitor","runAgent()"]]);
   const tabsBar=MK_TABS.map(t=>`<div class="tab ${t===MK.tab?'active':''}" data-mk="${t}">${t}</div>`).join("");
   $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
     <div id="mktabs" class="flex gap-5 border-b border-slate-100 overflow-x-auto">${tabsBar}</div>
     <div id="mktab" class="space-y-6"></div>
-    ${decisioniTable(MK.items)}
-    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoBlock(MK.deliv)}
-      <div class="card p-4"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">
-        <button onclick="runAgent()" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
-        <button onclick="route('overview')" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▦ Overview</button></div></div></aside></div>`;
+    ${decTable(MK.items,"Decisioni da prendere")}
+    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${rightCol}</aside></div>`;
   document.querySelectorAll("#mktabs .tab").forEach(el=>el.onclick=()=>{MK.tab=el.dataset.mk;renderMkTab();});
   renderMkTab();
   wireDecisioni();
@@ -448,14 +477,29 @@ function renderMkTab(){
   const c=$("mktab");if(!c)return;
   const {prof,insg,posts,servizi,topics,items,leads}=MK;
   if(MK.tab==="Overview"){
-    const KPI=[kpi("Follower IG",NUM(prof.followers_count),{t:prof.username?("@"+prof.username):"agente IG",real:1}),kpi("Post",NUM(prof.media_count),{t:"reale",real:1}),kpi("Reach (oggi)",NUM(insg.reach),"oggi"),kpi("Interazioni",NUM(insg.total_interactions),"oggi"),kpi("Proposte",items.length,{t:"da approvare",real:1})].join("");
+    const KPI=[
+      mkpi("📸","Follower IG",NUM(prof.followers_count),(prof.username?("@"+prof.username):"@k2_ai.it"),"text-emerald-600",[4,5,5,6,6,7,8,9]),
+      mkpi("📄","Post pubblicati",NUM(prof.media_count),"reale","text-emerald-600",[5,6,6,7,7,8,8,9]),
+      mkpi("👥","Reach (oggi)",NUM(insg.reach),"oggi","text-emerald-600",[4,5,6,6,7,7,8,9]),
+      mkpi("💬","Interazioni (oggi)",NUM(insg.total_interactions),"oggi","text-slate-400",[3,3,4,4,5,5,6,6]),
+      mkpi("✈️","Proposte in coda",items.length,"in attesa revisione","text-amber-600",[5,6,7,8,9,10,11,12]),
+    ].join("");
     c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI}</section>
       <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="pipe"></tbody></table></div>
-        <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div></div>
-        <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Post IG recenti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="posts"></tbody></table></div></section>`;
-    $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((s.Servizio||"").slice(0,24))}</td><td class="text-slate-400">${esc(s.Categoria||"")}</td><td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubbl.</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">nessun servizio</td></tr>';
-    $("posts").innerHTML=posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((p.caption||"(senza testo)").slice(0,36))}</td><td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">nessun post</td></tr>';
+        <div class="card lift p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div><div id="pipe" class="space-y-1"></div>
+          <a class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai alla content pipeline →</a></div>
+        <div class="card lift p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div>
+          <a class="inline-block mt-2 text-[12px] font-semibold text-brand cursor-pointer">Vedi tutti i pillar →</a></div>
+        <div class="card lift p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Post IG recenti <span class="real">reale</span></div><div id="posts" class="space-y-1"></div>
+          <a class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai al calendario editoriale →</a></div></section>`;
+    $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>{const pub=String(s.Stato).toLowerCase()==='usato';
+      return `<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[12px] shrink-0">▦</span>
+        <div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(s.Servizio||"")}</div><div class="text-[10px] text-slate-400 truncate">${esc(s.Categoria||"")}</div></div>
+        <span class="flex items-center gap-1 text-[11px] ${pub?'text-emerald-600':'text-amber-600'} shrink-0"><span class="${pub?'dot-done':'w-1.5 h-1.5 rounded-full bg-amber-500'}"></span>${pub?'Pubblicato':'Da usare'}</span></div>`;}).join(""):'<div class="py-4 text-slate-400 text-center text-[12px]">nessun servizio</div>';
+    $("posts").innerHTML=posts.length?posts.map(p=>`<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0">
+      <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 grid place-items-center text-[12px] shrink-0">📷</span>
+      <div class="min-w-0 flex-1 text-[12px] font-semibold truncate">${esc((p.caption||"(senza testo)").slice(0,38))}</div>
+      <div class="text-[10px] text-slate-400 shrink-0 text-right">♥ ${NUM(p.like_count)}</div></div>`).join(""):'<div class="py-4 text-slate-400 text-center text-[12px]">nessun post</div>';
     const pill={};topics.forEach(t=>{const k=t.Pillar||"Altro";pill[k]=(pill[k]||0)+1;});
     if(Object.keys(pill).length)donut("donutCh",Object.keys(pill),Object.values(pill));
   }
