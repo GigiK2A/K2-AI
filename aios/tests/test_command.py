@@ -145,16 +145,17 @@ def test_ddl_guard_blocks_destructive():
             pass
 
 
-def test_ddl_internal_executes_via_chat(monkeypatch):
-    monkeypatch.delenv("AIOS_DB_DSN", raising=False)  # niente DSN → no-op tracciato
+def test_ddl_needs_confirm_then_executes(monkeypatch):
+    monkeypatch.delenv("AIOS_DB_DSN", raising=False)  # niente DSN → no-op tracciato al confirm
     plan = {"valutazione": "aggiungo colonna", "fattibile": True, "risposta": "ok",
             "azioni": [{"descrizione": "aggiungi colonna audit", "azione": {
                 "tipo": "ddl", "sql": "ALTER TABLE kbot_profiles ADD COLUMN audit_trail jsonb"}}]}
     r, client = _router(plan)
     res = r.handle("modifica lo schema di kbot_profiles aggiungendo audit_trail")
-    # interno → eseguito subito (ma senza DSN l'attuatore ritorna ok False, non blocca)
-    assert res.fattibile and len(res.eseguite) == 1 and not res.da_confermare
-    assert res.eseguite[0]["esito"]["ok"] is False  # AIOS_DB_DSN non configurato
+    # schema → MAI auto: la fa lei ma sotto conferma esplicita
+    assert res.fattibile and not res.eseguite and len(res.da_confermare) == 1
+    out = r.confirm(res.da_confermare[0]["id"])
+    assert out["tipo"] == "interna" and out["ok"] is False  # AIOS_DB_DSN non configurato
 
 
 def test_n8n_manage_delete_refused():

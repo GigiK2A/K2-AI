@@ -30,7 +30,7 @@ Audit su tutto il codice + Supabase advisors. Esito:
 - Esegue scritture su Supabase **solo dopo input umano** (Approva nel cockpit, o comando dell'owner via chat autenticata). L'input umano È il consenso.
 - **Interno completo (scelta owner, giugno 2026):** tutte le tabelle operative interne sono scrivibili **incluse denaro e dati personali** (`board_revenue_events`, `kbot_conversions`, `kbot_profiles`, `kbot_conversations`).
 - **Resta vietato (BLOCKED) il piano di controllo**: `aios_audit`, `aios_policy_state` (i guardrail/autonomia stessi), `board_users`/`board_sessions`/`kbot_sessions` (auth/sessioni), `suite_services` (catalogo pubblico). Mai **delete** su nessuna tabella. `update` richiede sempre un `match`.
-- **DDL (modifica schema)**: solo **non distruttivo** (`ALTER … ADD`, `CREATE TABLE/INDEX`); mai `DROP`/`TRUNCATE`/`CASCADE`; una sola statement; via `AIOS_DB_DSN` (senza DSN → no-op tracciato).
+- **DDL (modifica schema)**: la esegue l'AI ma **sempre sotto approvazione esplicita** (Approva nel cockpit / Conferma in chat — **mai automatico**). Solo **non distruttivo** (`ALTER … ADD`, `CREATE TABLE/INDEX`); mai `DROP`/`TRUNCATE`/`CASCADE`; una sola statement; via `AIOS_DB_DSN` (senza DSN → no-op tracciato).
 - Azione fuori perimetro → errore tracciato, l'approvazione non crasha. Backstop testato in `test_actuator.py`/`test_command.py`.
 
 ## Chat a istruzioni (CommandRouter — `command.py`)

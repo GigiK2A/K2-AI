@@ -164,7 +164,7 @@ class CommandRouter:
         if az.get("tipo") == "ddl" or az.get("sql"):
             try:
                 validate_ddl(str(az.get("sql", "")))
-                return "internal_auto"   # schema interno: esegue (guardato, no distruttivo)
+                return "internal_confirm"   # schema: la fa LEI, ma sotto tua conferma esplicita
             except ActuatorError:
                 return "forbidden"
         try:
