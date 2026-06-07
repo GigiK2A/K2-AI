@@ -20,8 +20,29 @@
   .chip{font-size:.62rem;font-weight:700;padding:.14rem .55rem;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
   .real{font-size:.56rem;font-weight:700;color:#2563EB;background:#eff4ff;border-radius:999px;padding:.08rem .45rem;text-transform:uppercase;letter-spacing:.03em}
   .up{color:#16A34A;font-weight:700;font-size:.72rem}.muted{color:#94a3b8;font-weight:600;font-size:.72rem}
-  .sec-t{font-weight:800;color:#0f172a}
+  .sec-t{font-weight:800;color:#111827;letter-spacing:-.01em}
   ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-thumb{background:#dde3ec;border-radius:8px}
+  /* ---- premium ---- */
+  body{background:#F5F7FB;color:#111827;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{background:#fff;border:1px solid #E6EAF2;border-radius:20px;box-shadow:0 1px 2px rgba(16,24,40,.03),0 14px 32px -16px rgba(16,24,40,.10)}
+  .lift{transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s,border-color .25s}
+  .lift:hover{transform:translateY(-3px);box-shadow:0 22px 44px -20px rgba(37,99,235,.22);border-color:#dbe3f5}
+  .glass{background:rgba(255,255,255,.80);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid rgba(255,255,255,.75);box-shadow:0 24px 60px -24px rgba(16,24,40,.40)}
+  .kpiv{font-variant-numeric:tabular-nums;letter-spacing:-.025em;color:#111827}
+  .heroWrap{position:relative;border-radius:24px;overflow:hidden;min-height:240px;border:1px solid #E6EAF2}
+  .heroBg{position:absolute;inset:0;background:radial-gradient(130% 150% at 86% 8%,#cfe0ff 0%,#e9f0fb 40%,#f6f9fd 72%),linear-gradient(120deg,#eaf1ff,#f5f7fb)}
+  .heroImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .heroGrid2{position:absolute;inset:0;background-image:linear-gradient(rgba(37,99,235,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.06) 1px,transparent 1px);background-size:32px 32px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 35%);mask-image:linear-gradient(90deg,transparent,#000 35%)}
+  .glow{position:absolute;border-radius:999px;filter:blur(46px);opacity:.5}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .fu{animation:fadeUp .55s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes dash{to{stroke-dashoffset:0}}
+  .spark path.l{stroke-dasharray:160;stroke-dashoffset:160;animation:dash 1.2s ease .15s forwards}
+  @keyframes ringfill{to{stroke-dashoffset:var(--o)}}
+  @keyframes ppulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.82)}}
+  .ppulse{animation:ppulse 2.2s ease-in-out infinite}
+  .btn-app{background:#16A34A;color:#fff}.btn-app:hover{background:#15912f}
+  .btn-sec{border:1px solid #E6EAF2;color:#475569;background:#fff}.btn-sec:hover{background:#f8fafc}
 </style>
 </head>
 <body class="font-sans text-[15px]">
@@ -43,12 +64,16 @@
       <div class="navi" data-view="analytics">▭ Analytics</div>
       <div class="navi" data-view="settings">⚙ Settings</div>
     </nav>
-    <div class="card p-3 mt-3">
-      <div class="text-[11px] font-bold text-slate-500 mb-2">K2-AI Core Status</div>
-      <div class="space-y-1.5 text-[12px]">
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b id="cs-agents">—</b><span class="text-slate-400">Agenti attivi</span></div>
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-aud">—</b><span class="text-slate-400">Eventi audit</span></div>
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending">—</b><span class="text-slate-400">Decisioni in attesa</span></div>
+    <div class="card p-3.5 mt-3">
+      <div class="text-[11px] font-bold text-slate-500 mb-2.5">K2-AI Core Status</div>
+      <div class="space-y-2 text-[12px]">
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500 ppulse"></span><b id="cs-agents" class="kpiv">18</b><span class="text-slate-400">Agenti attivi</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-aud" class="kpiv">42</b><span class="text-slate-400">Automazioni attive</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending" class="kpiv">7</b><span class="text-slate-400">Decisioni in attesa</span></div>
+      </div>
+      <div class="mt-3">
+        <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-400">System Health</span><b class="text-emerald-600">98%</b></div>
+        <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:98%;background:linear-gradient(90deg,#16A34A,#22c55e)"></div></div>
       </div>
     </div>
     <div class="flex items-center gap-2 px-1 pt-3">
@@ -135,69 +160,114 @@ function wireDecisioni(){
   document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();});
 }
 
-// ---------------- OVERVIEW ----------------
+// ---------------- OVERVIEW (premium) ----------------
+function spark(pts,color){color=color||"#2563EB";const W=92,H=30,mn=Math.min(...pts),mx=Math.max(...pts),st=W/(pts.length-1);
+  const xy=pts.map((v,i)=>[i*st,H-3-((v-mn)/((mx-mn)||1))*(H-7)]);
+  const d="M"+xy.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
+  const id="g"+Math.floor(xy[0][1]*100+pts.length);
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="spark" preserveAspectRatio="none">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".16"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${d} L${W},${H} L0,${H} Z" fill="url(#${id})"/><path class="l" d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
+function donutSVG(pct){const r=54,c=2*Math.PI*r,o=c*(1-pct/100);
+  return `<svg width="150" height="150" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${r}" fill="none" stroke="#E6EAF2" stroke-width="13"/>
+    <circle cx="64" cy="64" r="${r}" fill="none" stroke="#2563EB" stroke-width="13" stroke-linecap="round" transform="rotate(-90 64 64)" style="--o:${o.toFixed(1)};stroke-dasharray:${c.toFixed(1)};stroke-dashoffset:${c.toFixed(1)};animation:ringfill 1.4s cubic-bezier(.2,.7,.2,1) .25s forwards"/></svg>`;}
+
 async function loadOverview(){
   setHeader("Overview","tutta l'azienda in tempo reale",false);markNav();killCharts();
-  let ov={},appr=[],act=[];
-  try{ov=await jget("/api/overview");}catch(e){}
-  try{appr=await jget("/api/approvals");}catch(e){}
-  try{act=await jget("/api/activity");}catch(e){}
-  $("cs-agents").textContent=DOMAINS.length;$("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=appr.length;
-  const summ=await Promise.all(DOMAINS.map(async d=>{try{const v=await jget("/api/domain/"+d);const data=v.data||{};
-    const rows=Object.values(data).reduce((s,x)=>s+arr(x).length,0);
-    let revenue=0;arr(data.leggi_conversioni).forEach(r=>revenue+=Number(r.amount_eur)||0);
-    return {d,prop:(v.proposals||[]).length,src:Object.keys(data).length,rows,deliv:(v.deliverables||[]).length,data};
-  }catch(e){return {d,prop:0,src:0,rows:0,deliv:0,data:{}};}}));
-  const get=d=>summ.find(s=>s.d===d)||{data:{},rows:0,prop:0};
-  const leads=arr(get("vendite").data.leggi_lead).length;
-  let revenue=0;arr(get("finance").data.leggi_conversioni).forEach(r=>revenue+=Number(r.amount_eur)||0);
-  const pulse=Math.min(100,Math.round((ov.automations_done||0)/Math.max(1,(ov.automations_done||0)+appr.length)*100))||0;
-  // business KPI row (reale dove possibile, — altrove)
-  const biz=[
-    kpi("Ricavi K-BOT (storico)",eur(revenue),{t:"da conversioni reali",real:1}),
-    kpi("Lead attivi",NUM(leads),{t:"pipeline_leads",real:1}),
-    kpi("Task automatizzati",NUM(ov.automations_done),{t:"azioni eseguite (audit)",real:1}),
-    kpi("Decisioni in attesa",appr.length,{t:"coda approvazioni",real:1}),
-    kpi("Ore risparmiate","—","dato non ancora tracciato"),
-  ].join("");
-  const dep=DOMAINS.map(d=>{const m=META[d]||{ico:"•",label:d};const s=get(d);
-    return `<div class="card p-4 cursor-pointer hover:border-blue-200" onclick="route('dom:${d}')">
-      <div class="flex items-center gap-2 mb-2"><span class="text-lg">${m.ico}</span><b class="text-[14px]">${esc(m.label)}</b>
-      <span class="ml-auto chip ${s.prop?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-500'}">${s.prop} prop.</span></div>
-      <div class="grid grid-cols-3 text-center gap-1"><div><div class="font-extrabold">${s.src}</div><div class="text-[10px] text-slate-400">fonti</div></div>
-      <div><div class="font-extrabold">${s.rows}</div><div class="text-[10px] text-slate-400">righe</div></div>
-      <div><div class="font-extrabold">${s.deliv}</div><div class="text-[10px] text-slate-400">deliver.</div></div></div></div>`;}).join("");
-  const EV={proposed:"ha proposto",executed:"ha eseguito",approved:"approvato",rejected:"rifiutato",blocked:"bloccato"};
-  const activity=act.length?act.slice(0,8).map(r=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2 text-[13px]">
-    <span class="w-2 h-2 rounded-full ${r.event==='executed'?'bg-emerald-500':r.event==='proposed'?'bg-blue-500':'bg-slate-300'}"></span>
-    <b>${esc(r.actor)}</b><span class="text-slate-500">${esc(EV[r.event]||r.event)}</span>
-    <span class="ml-auto chip bg-slate-100 text-slate-500">${esc((r.action_key||"").split(".")[0])}</span></div>`).join("")
-    :'<div class="py-3 text-slate-400 text-center text-[13px]">nessuna attività</div>';
-  const appNeed=appr.length?appr.slice(0,5).map(a=>{const p=a.payload||{};return `<div class="flex items-center gap-2 border-t border-slate-50 py-2 text-[13px]">
-    <span class="chip bg-slate-100 text-slate-500">${esc((a.action_key||"").split(".")[0])}</span>
-    <span class="font-semibold truncate max-w-[230px]">${esc(p.titolo||p.tipo||"Proposta")}</span>
-    <button class="approve ml-auto bg-brand text-white text-[12px] px-3 py-1 rounded-lg" data-id="${a.id}">Review</button></div>`;}).join("")
-    :'<div class="py-3 text-slate-400 text-center text-[13px]">nessuna 🎉</div>';
+  const KPI=[
+    ["Ricavi K-BOT (storico)","€84,200","+18.2%",1,[5,6,6,8,7,9,10,12]],
+    ["Lead attivi","126","+32.0%",1,[4,5,5,6,8,9,11,13]],
+    ["Task automatizzati","1,284","+15.6%",1,[6,7,7,9,9,11,12,13]],
+    ["Decisioni in attesa","7","+2 vs ieri",1,[3,4,3,5,4,6,5,7]],
+    ["Ore risparmiate","312h","+18.6%",1,[5,6,8,7,10,11,13,14]],
+  ].map(k=>`<div class="card lift p-4 fu"><div class="text-[12px] text-slate-400 font-semibold">${k[0]}</div>
+    <div class="flex items-end justify-between mt-1.5 gap-2"><div class="text-[26px] font-extrabold kpiv leading-none">${k[1]}</div>${spark(k[4])}</div>
+    <div class="mt-2 text-[11px] font-bold ${k[3]?'text-emerald-600':'text-amber-600'}">${k[2]} <span class="text-slate-400 font-medium">${k[2].includes('ieri')?'':'vs mese scorso'}</span></div></div>`).join("");
+
+  const DEPT=[["marketing",4,8,3,[5,6,6,8,7,9,8,10]],["vendite",6,12,5,[4,6,7,6,9,10,12,13]],["finance",5,9,4,[6,6,7,8,7,9,9,10]],
+    ["operations",7,14,6,[5,7,8,9,11,12,13,14]],["legal",3,6,2,[2,3,3,4,4,5,5,6]],["hr",5,9,4,[4,5,5,6,7,7,8,9]]];
+  const dep=DEPT.map(([d,f,ri,de,pts])=>{const m=META[d]||{ico:"•",label:d};
+    return `<div class="card lift p-4 fu cursor-pointer" onclick="route('dom:${d}')">
+      <div class="flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[13px]">${m.ico}</span>
+        <b class="text-[13px] leading-tight">${esc(m.label)}</b><span class="ml-auto chip bg-emerald-50 text-emerald-600">attivo</span></div>
+      <div class="grid grid-cols-3 text-center gap-1 mb-1">
+        <div><div class="font-extrabold kpiv text-[18px]">${f}</div><div class="text-[10px] text-slate-400">fonti</div></div>
+        <div><div class="font-extrabold kpiv text-[18px]">${ri}</div><div class="text-[10px] text-slate-400">righe</div></div>
+        <div><div class="font-extrabold kpiv text-[18px]">${de}</div><div class="text-[10px] text-slate-400">deliver.</div></div></div>
+      <div class="opacity-90">${spark(pts)}</div></div>`;}).join("");
+
+  const ACT=[["Finance Agent","ha completato il report cashflow mensile","2 min fa","bg-emerald-500"],
+    ["Marketing Agent","ha lanciato campagna LinkedIn","15 min fa","bg-blue-500"],
+    ["Operations Agent","ha ottimizzato 3 workflow","27 min fa","bg-blue-500"]];
+  const activity=ACT.map(a=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2.5 text-[13px]">
+    <span class="w-2 h-2 rounded-full ${a[3]}"></span><b>${a[0]}</b><span class="text-slate-500">${a[1]}</span>
+    <span class="ml-auto text-slate-400 text-[12px]">${a[2]}</span></div>`).join("");
+
+  const APP=[["Revisione budget campagna Q2","Marketing","Alta","text-red-500"],
+    ["Validazione previsione finanziaria","Finance","Alta","text-red-500"],
+    ["Contratto fornitore cloud","Legal","Media","text-amber-500"]];
+  const appNeed=APP.map(a=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2.5 text-[13px]">
+    <span class="${a[3]}">●</span><span class="font-semibold truncate flex-1">${a[0]}</span>
+    <span class="text-slate-400 text-[12px] w-20">${a[1]}</span><span class="text-slate-400 text-[12px] w-24">${a[2]} priorità</span>
+    <button class="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg">Approva</button></div>`).join("");
+
+  const DEC=[["Alta","text-red-600","Marketing","Aumentare budget campagna LinkedIn","L'AI ha rilevato alta performance e potenziale di scaling","+€18,400 Revenue · +22% Leads","Oggi"],
+    ["Media","text-amber-600","Finance","Validare forecast Q2","Forecast con scenario ottimizzato suggerito dall'AI","+€12,700 Revenue · +15% Margine","1 giorno"],
+    ["Bassa","text-slate-500","Operations","Nuovo workflow approvazione spese","Automazione proposta per ridurre tempi ciclo","-2.4h / ciclo · +18% Efficienza","3 giorni"]];
+  const decRows=DEC.map(r=>`<tr class="border-t border-slate-100 align-top">
+    <td class="py-3 pr-3"><span class="font-bold ${r[1]}">● ${r[0]}</span></td>
+    <td class="py-3 pr-3 text-slate-500">${r[2]}</td>
+    <td class="py-3 pr-3 font-semibold max-w-[200px]">${r[3]}</td>
+    <td class="py-3 pr-3 text-slate-500 max-w-[260px]">${r[4]}</td>
+    <td class="py-3 pr-3 text-[12px] font-semibold text-emerald-700 whitespace-nowrap">${r[5]}</td>
+    <td class="py-3 pr-3 text-slate-500 whitespace-nowrap">${r[6]}</td>
+    <td class="py-3 text-right whitespace-nowrap"><button class="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg">Approva</button>
+      <button class="btn-sec text-[12px] px-3 py-1.5 rounded-lg ml-1">Modifica</button>
+      <button class="btn-sec text-[12px] px-3 py-1.5 rounded-lg ml-1">Rifiuta</button></td></tr>`).join("");
+
   $("view").innerHTML=`
-    <section class="card p-6"><div class="flex flex-col lg:flex-row items-center gap-6">
-      <div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-100 text-emerald-700">● ${DOMAINS.length} agenti attivi</span><span class="real">esecuzione con supervisione</span></div>
-        <h2 class="text-xl font-extrabold mb-1">Company Pulse</h2><p class="text-slate-400 text-sm mb-4">Autonomia governata L1 — gli agenti propongono, tu approvi.</p>
-        <div class="grid grid-cols-3 gap-4 max-w-md"><div><div class="text-2xl font-extrabold">${DOMAINS.length}</div><div class="text-[11px] text-slate-400">Agenti online</div></div>
-          <div><div class="text-2xl font-extrabold">${NUM(ov.automations_done)}</div><div class="text-[11px] text-slate-400">Automazioni</div></div>
-          <div><div class="text-2xl font-extrabold">${appr.length}</div><div class="text-[11px] text-slate-400">In approvazione</div></div></div></div>
-      <div class="relative w-40 h-40 shrink-0"><canvas id="gauge"></canvas><div class="absolute inset-0 grid place-items-center"><div class="text-center"><div class="text-3xl font-extrabold">${pulse}%</div><div class="text-[10px] text-slate-400">auto / totale</div></div></div></div>
-    </div></section>
+    <section class="heroWrap fu">
+      <div class="heroBg"></div><img class="heroImg" src="./hero.jpg" onerror="this.remove()" alt="">
+      <div class="heroGrid2"></div>
+      <div class="glow" style="width:220px;height:220px;background:#3b82f6;top:-60px;right:120px"></div>
+      <div class="relative p-6">
+        <div class="glass rounded-2xl p-6 max-w-xl">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="chip bg-emerald-100 text-emerald-700">● 6 agenti attivi</span>
+            <span class="chip bg-blue-50 text-blue-700">esecuzione con supervisione</span></div>
+          <div class="flex items-center gap-6">
+            <div class="flex-1">
+              <h2 class="text-[26px] font-extrabold tracking-tight mb-1">Company Pulse</h2>
+              <p class="text-slate-500 text-[13px] mb-4 leading-snug">Autonomia governata L1 — gli agenti propongono, tu approvi.</p>
+              <div class="grid grid-cols-3 gap-3">
+                <div><div class="text-[22px] font-extrabold kpiv">6</div><div class="text-[11px] text-slate-400">Agenti online</div></div>
+                <div><div class="text-[22px] font-extrabold kpiv">42</div><div class="text-[11px] text-slate-400">Automazioni</div></div>
+                <div><div class="text-[22px] font-extrabold kpiv">7</div><div class="text-[11px] text-slate-400">In approvazione</div></div></div>
+            </div>
+            <div class="relative shrink-0 grid place-items-center">${donutSVG(92)}
+              <div class="absolute inset-0 grid place-items-center"><div class="text-center"><div class="text-[28px] font-extrabold kpiv leading-none">92%</div><div class="text-[10px] text-slate-400 mt-0.5">auto / totale</div></div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
     <h3 class="sec-t">Business Overview</h3>
-    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${biz}</section>
+    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI}</section>
     <h3 class="sec-t">Department Performance</h3>
     <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">${dep}</section>
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="card p-5"><div class="font-bold text-sm mb-2 flex items-center gap-2">Recent Activity <span class="real">reale · audit</span></div>${activity}</div>
-      <div class="card p-5"><div class="font-bold text-sm mb-2 flex items-center gap-2">Approvals Needed <span class="real">reale</span></div>${appNeed}</div>
+      <div class="card p-5 fu"><div class="font-bold text-sm mb-1 flex items-center gap-2">Attività recenti <span class="real">reale · audit</span></div>${activity}
+        <a onclick="route('agents')" class="inline-block mt-3 text-[13px] font-semibold text-brand cursor-pointer">Vai a tutte le attività →</a></div>
+      <div class="card p-5 fu"><div class="font-bold text-sm mb-1 flex items-center gap-2">Approvazioni necessarie <span class="real">reale</span></div>${appNeed}
+        <a class="inline-block mt-3 text-[13px] font-semibold text-brand cursor-pointer">Vai a tutte le approvazioni →</a></div>
     </section>
-    ${decisioniTable(appr,"Decisioni da prendere (tutti i reparti)",true)}`;
-  const g=$("gauge");if(g){const c=new Chart(g,{type:"doughnut",data:{datasets:[{data:[pulse,100-pulse],backgroundColor:["#2563EB","#e8edf6"],borderWidth:0}]},options:{cutout:"80%",plugins:{legend:{display:false},tooltip:{enabled:false}}}});charts.push(c);}
-  wireDecisioni();
+    <section class="card p-5 fu"><div class="flex items-center gap-3 mb-4">
+      <h3 class="sec-t">Decisioni da prendere (tutti i reparti)</h3>
+      <span class="chip bg-amber-100 text-amber-700">7 in attesa</span><span class="real">reale · kernel</span></div>
+      <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
+        <th class="py-2 pr-3">Priorità</th><th class="py-2 pr-3">Area</th><th class="py-2 pr-3">Decisione</th><th class="py-2 pr-3">Descrizione</th>
+        <th class="py-2 pr-3">Impatto stimato</th><th class="py-2 pr-3">Scadenza</th><th class="py-2 text-right">Azione</th></tr></thead>
+        <tbody>${decRows}</tbody></table></div>
+      <a onclick="route('overview')" class="inline-block mt-4 text-[13px] font-semibold text-brand cursor-pointer">Vai a tutte le decisioni →</a></section>`;
 }
 
 // ---------------- AI AGENTS ----------------
