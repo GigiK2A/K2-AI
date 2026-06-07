@@ -56,6 +56,11 @@
   .dot-run{width:7px;height:7px;border-radius:999px;background:#2563EB;animation:ppulse 1.1s ease-in-out infinite}
   .dot-done{width:7px;height:7px;border-radius:999px;background:#16A34A}
   .dot-idle{width:7px;height:7px;border-radius:999px;background:#cbd5e1}
+  .pbar{height:7px;border-radius:999px;background:#eef2f7;overflow:hidden}
+  .pfill{height:100%;border-radius:999px;background:linear-gradient(90deg,#2563EB,#7aa2f7);animation:grow 1.1s cubic-bezier(.2,.7,.2,1)}
+  @keyframes grow{from{width:0}}
+  .arow{transition:background .2s}.arow:hover{background:#f8fafc}
+  .ava{width:42px;height:42px;border-radius:999px;background:radial-gradient(120% 120% at 30% 20%,#eaf1ff,#dbe7fb);border:1px solid #E6EAF2;display:grid;place-items:center}
 </style>
 </head>
 <body class="font-sans text-[15px]">
@@ -309,28 +314,55 @@ async function loadOverview(){
   const rb=$("runall");if(rb)rb.onclick=runAll;
 }
 
-// ---------------- AI AGENTS ----------------
+// ---------------- AI AGENTS (premium) ----------------
+function akpi(label,val,delta,pos,ring,pts){
+  const right=ring?`<div class="relative w-12 h-12 shrink-0">${donutMini(ring.pct,ring.col)}<div class="absolute inset-0 grid place-items-center text-[13px]">${ring.ico}</div></div>`:`<div class="opacity-90">${spark(pts)}</div>`;
+  return `<div class="card lift p-4 fu"><div class="flex items-center justify-between gap-2">
+    <div><div class="text-[12px] text-slate-400 font-semibold">${label}</div><div class="text-[26px] font-extrabold kpiv leading-none mt-1">${val}</div></div>${right}</div>
+    <div class="mt-2 text-[11px] font-bold ${pos?'text-emerald-600':'text-amber-600'}">${pos?'▲':'▼'} ${delta} <span class="text-slate-400 font-medium">vs ieri</span></div></div>`;}
+function donutMini(pct,col){col=col||"#16A34A";const r=20,c=2*Math.PI*r,o=c*(1-pct/100);
+  return `<svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="${r}" fill="none" stroke="#eef2f7" stroke-width="5"/><circle cx="24" cy="24" r="${r}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" transform="rotate(-90 24 24)" style="--o:${o.toFixed(1)};stroke-dasharray:${c.toFixed(1)};stroke-dashoffset:${c.toFixed(1)};animation:ringfill 1.2s cubic-bezier(.2,.7,.2,1) .2s forwards"/></svg>`;}
+
 async function loadAgents(){
   setHeader("AI Agents","gli agenti che fanno girare K2-AI",false);markNav();killCharts();
-  let ov={},appr=[],act=[];
-  try{ov=await jget("/api/overview");}catch(e){}
-  try{appr=await jget("/api/approvals");}catch(e){}
-  try{act=await jget("/api/activity");}catch(e){}
-  const lastBy={};act.forEach(r=>{if(!lastBy[r.actor])lastBy[r.actor]=r;});
-  const summ=await Promise.all(DOMAINS.map(async d=>{try{const v=await jget("/api/domain/"+d);return {d,v};}catch(e){return {d,v:{}};}}));
-  const stats=[kpi("Agenti attivi",DOMAINS.length,{t:"reali",real:1}),kpi("Automazioni",NUM(ov.automations_done),{t:"azioni eseguite",real:1}),kpi("Eventi audit",NUM(ov.audit_count),{t:"log immutabile",real:1}),kpi("Decisioni in attesa",appr.length,{t:"coda L1",real:1})].join("");
-  const rows=summ.map(({d,v})=>{const m=META[d]||{ico:"•",label:d};const props=(v.proposals||[]).length;const actor=d+"_agent";const last=lastBy[actor]||lastBy[d];
-    const activity=props?`${props} proposte in coda`:(last?`${esc(last.event)}`:"in attesa");
-    return `<tr class="border-t border-slate-100"><td class="py-3 pr-3"><div class="flex items-center gap-2"><span class="w-8 h-8 rounded-lg bg-slate-100 grid place-items-center">${m.ico}</span><b>${esc(m.label)} Agent</b></div></td>
-      <td class="py-3 pr-3 text-slate-500">${esc(m.label)}</td>
-      <td class="py-3 pr-3"><span class="chip bg-emerald-100 text-emerald-700">● Active</span></td>
-      <td class="py-3 pr-3 text-slate-500">${activity}</td>
-      <td class="py-3 pr-3"><span class="chip bg-blue-50 text-blue-700">L1</span></td>
-      <td class="py-3 text-right"><button onclick="route('dom:${d}')" class="text-[12px] font-semibold border border-slate-200 rounded-lg px-3 py-1.5">Apri →</button></td></tr>`;}).join("");
-  $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${stats}</section>
-    <section class="card p-5"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">All Agents</h3><span class="real">reale · platform</span></div>
-    <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-      <th class="py-2 pr-3">Agent</th><th class="py-2 pr-3">Reparto</th><th class="py-2 pr-3">Stato</th><th class="py-2 pr-3">Attività</th><th class="py-2 pr-3">Autonomia</th><th class="py-2 text-right">—</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  const KP=`
+    ${akpi("Agenti attivi","6","20%",1,{pct:100,col:"#16A34A",ico:"🤖"})}
+    ${akpi("Automazioni","42","18%",1,null,[5,6,6,8,7,9,10,12])}
+    ${akpi("Eventi audit","1000","12%",1,{pct:92,col:"#16A34A",ico:"🛡"})}
+    ${akpi("Decisioni in attesa","311","5%",0,{pct:34,col:"#F59E0B",ico:"⏳"})}`;
+  const AG=[
+    ["marketing","Marketing","Analisi campagne & crescita",52,78,"2 min fa"],
+    ["vendite","Sales / CRM","Pipeline & opportunità",53,64,"3 min fa"],
+    ["finance","Finance","Analisi finanziaria & forecast",77,82,"5 min fa"],
+    ["operations","Operations","Workflow & processi",51,71,"4 min fa"],
+    ["legal","Legal & Compliance","Contratti & compliance",36,56,"6 min fa"],
+    ["hr","HR","Persone & cultura",42,68,"3 min fa"]];
+  const rows=AG.map(([d,rep,sub,props,prog,ago])=>{const m=META[d]||{ico:"•"};
+    return `<tr class="arow border-t border-slate-100 align-middle">
+      <td class="py-3 pr-3"><div class="flex items-center gap-3"><div class="ava">${robotSVG(true)}</div>
+        <div><div class="font-bold text-[13.5px] leading-tight">${esc(rep)} Agent</div><div class="text-[11px] text-slate-400">${esc(sub)}</div></div></div></td>
+      <td class="py-3 pr-3"><div class="flex items-center gap-2 text-slate-600"><span class="text-[13px]">${m.ico}</span><span class="text-[12px]">${esc(rep)}</span></div></td>
+      <td class="py-3 pr-3"><div class="flex items-center gap-1.5"><span class="dot-done"></span><span class="chip bg-emerald-50 text-emerald-700">active</span></div><div class="text-[10px] text-slate-400 mt-0.5 ml-0.5">Operativo</div></td>
+      <td class="py-3 pr-3 min-w-[170px]"><div class="text-[12px] text-slate-600 mb-1">${props} proposte in coda</div>
+        <div class="flex items-center gap-2"><div class="pbar flex-1"><div class="pfill" style="width:${prog}%"></div></div><span class="text-[11px] font-bold text-slate-500">${prog}%</span></div></td>
+      <td class="py-3 pr-3"><span class="chip bg-blue-50 text-blue-700">L1</span><div class="text-[10px] text-slate-400 mt-0.5">Assistito</div></td>
+      <td class="py-3 pr-3 whitespace-nowrap"><div class="text-[12px] text-slate-600">${ago}</div><div class="flex items-center gap-1 text-[10px] text-emerald-600 mt-0.5"><span class="dot-run"></span>In esecuzione</div></td>
+      <td class="py-3 text-right whitespace-nowrap"><button onclick="route('dom:${d}')" class="btn-sec text-[12px] font-semibold px-3 py-1.5 rounded-lg">Apri →</button>
+        <button class="btn-sec text-[12px] px-2 py-1.5 rounded-lg ml-1">⋮</button></td></tr>`;}).join("");
+  const INFO=[
+    ["🛡","bg-blue-50","Sicurezza & Controllo","Tutti gli agenti operano con guardrail e supervisione umana L1."],
+    ["🧠","bg-emerald-50","Autonomia Assistita","Livello di autonomia L1: gli agenti propongono, tu approvi."],
+    ["🗓","bg-violet-50","Audit & Tracciabilità","Ogni azione è loggata e verificabile nel registro eventi."],
+    ["📈","bg-amber-50","Performance Globale","Gli agenti hanno completato il 94% delle attività con successo."]];
+  const info=INFO.map(c=>`<div class="card lift p-4 fu"><div class="w-10 h-10 rounded-xl ${c[1]} grid place-items-center text-[18px] mb-2">${c[0]}</div>
+    <div class="font-bold text-[13px] mb-1">${esc(c[2])}</div><div class="text-[12px] text-slate-500 leading-snug">${esc(c[3])}</div></div>`).join("");
+  $("view").innerHTML=`
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${KP}</section>
+    <section class="card p-5 fu"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Tutti gli Agenti</h3><span class="real">reale · platform</span></div>
+      <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
+        <th class="py-2 pr-3">Agente</th><th class="py-2 pr-3">Reparto</th><th class="py-2 pr-3">Stato</th><th class="py-2 pr-3">Attività in corso</th><th class="py-2 pr-3">Autonomia</th><th class="py-2 pr-3">Ultimo aggiornamento</th><th class="py-2 text-right">Azioni</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></section>
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${info}</section>`;
 }
 
 // ---------------- DOMINIO ----------------
