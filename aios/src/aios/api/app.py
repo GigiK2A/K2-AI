@@ -38,6 +38,10 @@ class ConfirmBody(BaseModel):
     id: int
 
 
+class ProspectBody(BaseModel):
+    n: int = 5
+
+
 def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     app = FastAPI(title="K2-AI Operating System")
 
@@ -95,6 +99,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "iscritti": ("leggi_iscritti", {}),
             "newsletter": ("leggi_newsletter", {}),
             "analytics": ("leggi_analytics", {}),
+            "prospects": ("leggi_prospects", {}),
         }
         for key, (tool, args) in wanted.items():
             if tool not in names:
@@ -285,5 +290,41 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         if platform is None or getattr(platform, "commands", None) is None:
             return {"ok": False, "errore": "non disponibile"}
         return platform.commands.confirm(body.id, actor="cockpit")
+
+    @app.post("/api/marketing/prospect")
+    def marketing_prospect(body: ProspectBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """Cerca PMI in target (web), le qualifica, salva i qualificati con BOZZA.
+        La bozza NON viene inviata: resta in marketing_prospects da rivedere."""
+        if platform is None or getattr(platform, "prospector", None) is None:
+            return {"errore": "prospecting non disponibile", "prospects": []}
+        n = max(1, min(int(body.n or 5), 10))
+        try:
+            found = platform.prospector.find(n)
+        except Exception as exc:
+            return {"errore": str(exc)[:200], "prospects": []}
+        from aios.actuator import apply_action
+        from aios.prospecting import Prospector
+        client = kernel._supabase
+        salvati, out = 0, []
+        for p in found:
+            qualified = bool(p.get("in_target")) and int(p.get("fit_score") or 0) >= 60
+            rec = {"company": p.get("company"), "sector": p.get("sector"),
+                   "fit_score": p.get("fit_score"), "fit_reason": p.get("fit_reason"),
+                   "contact_email": p.get("contact_email"), "in_target": p.get("in_target"),
+                   "qualificato": qualified, "draft_subject": p.get("draft_subject"),
+                   "draft_body": p.get("draft_body")}
+            if qualified:
+                try:
+                    apply_action(client, {"tabella": "marketing_prospects", "op": "insert",
+                                          "dati": Prospector.to_row(p)})
+                    salvati += 1
+                    rec["salvato"] = True
+                    kernel.audit.append(action_key="marketing.prospect", event="executed",
+                                        actor="cockpit", detail={"company": p.get("company")})
+                except Exception as exc:
+                    rec["salvato"] = False
+                    rec["errore"] = str(exc)[:120]
+            out.append(rec)
+        return {"trovati": len(found), "salvati": salvati, "prospects": out}
 
     return app

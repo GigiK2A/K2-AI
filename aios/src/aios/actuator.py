@@ -24,6 +24,7 @@ ALLOWLIST: dict[str, set[str]] = {
     "board_cost_items": {"insert", "update"},
     "board_tasks": {"insert", "update"},
     "aios_content_calendar": {"insert", "update"},
+    "marketing_prospects": {"insert", "update"},
     "project_tasks": {"insert", "update"},
     "project_phases": {"update"},
     "candidates": {"insert", "update"},

@@ -20,6 +20,7 @@ from aios.sources.domains import (finance_tools, operations_tools,
 from aios.sources.outputs import output_tool
 from aios.sources.n8n import n8n_tool, n8n_workflows_tool
 from aios.command import CommandRouter
+from aios.prospecting import Prospector, prospects_tool
 from aios.agents.marketing import MarketingAgent
 from aios.agents.domain import DomainAgent
 from aios.agents.sales_config import SALES_CONFIG
@@ -80,6 +81,7 @@ def build_platform() -> Platform:
         k.register_tool(t)
     k.register_tool(n8n_tool())         # braccio esecutore esterno (env-gated)
     k.register_tool(n8n_workflows_tool())  # sensore: elenco workflow n8n (readonly)
+    k.register_tool(prospects_tool(client))  # sensore: prospect marketing (readonly)
     from aios.sources.n8n import N8N_ACTION
     from aios.autonomy import AutonomyLevel as _AL
     k.policy.set_level(N8N_ACTION, _AL.L1_PROPOSE)   # esterno: mai autonomo
@@ -106,4 +108,12 @@ def build_platform() -> Platform:
     }
     platform = Platform(k, agents)
     platform.commands = CommandRouter(platform, llm, llm_strong)   # chat a istruzioni
+    # Prospecting: ricerca web (Sonnet + web search) → qualifica → bozza (mai inviata)
+    llm_web = AnthropicLLM(model="claude-sonnet-4-6", max_tokens=4096, enable_web_search=True)
+    def _suite():
+        try:
+            return k.execute("leggi_suite", actor="prospector", args={}).result
+        except Exception:
+            return []
+    platform.prospector = Prospector(llm_web, llm_strong, founder, suite_reader=_suite)
     return platform

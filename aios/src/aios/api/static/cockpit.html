@@ -542,11 +542,11 @@ async function loadMarketing(){
   MK={ov,ins,items:v.proposals||[],deliv:v.deliverables||[],prof:ins.profilo||{},insg:ins.insight||{},
      posts:ins.post||[],servizi:ins.servizi||[],topics:ins.topics||[],leads:arr((vl.data||{}).leggi_lead),
      iscritti:ins.iscritti||[],newsletter:ins.newsletter||[],analytics:ins.analytics||[],
-     tab:MK.tab||"Overview"};
+     prospects:arr(ins.prospects),tab:MK.tab||"Overview"};
   $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=MK.items.length;
   const rightCol=agentStatusCard(["Performance contenuti","Insight Instagram","Calendario editoriale","Competitor","Brand voice","Monitoraggio trend"],(MK.posts.length||0)+" post · "+(MK.servizi.length||0)+" servizi letti")
     +recoCard(MK.deliv)
-    +quickActionsCard([["▶ Fai girare l'agente","runAgent()"],["+ Nuova campagna","route('dom:marketing')"],["🗓 Genera calendario editoriale","runAgent()"],["📈 Analizza performance","MK.tab='Analytics';renderMkTab()"],["🔍 Analizza competitor","runAgent()"]]);
+    +quickActionsCard([["🔎 Cerca nuovi clienti (bozze)","prospectClienti()"],["▶ Fai girare l'agente","runAgent()"],["+ Nuova campagna","route('dom:marketing')"],["🗓 Genera calendario editoriale","runAgent()"],["📈 Analizza performance","MK.tab='Analytics';renderMkTab()"]]);
   const tabsBar=MK_TABS.map(t=>`<div class="tab ${t===MK.tab?'active':''}" data-mk="${t}">${t}</div>`).join("");
   $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
     <div id="mktabs" class="flex gap-5 border-b border-slate-100 overflow-x-auto">${tabsBar}</div>
@@ -557,8 +557,20 @@ async function loadMarketing(){
   renderMkTab();
   wireDecisioni();
 }
-const MK_TABS=["Overview","Campaigns","Content","Channels","Leads","Email","Analytics","SEO"];
+const MK_TABS=["Overview","Prospect","Campaigns","Content","Channels","Leads","Email","Analytics","SEO"];
 function emptyMk(msg){return `<section class="card p-10 text-center text-slate-400 text-sm">${esc(msg)}</section>`;}
+let PROSPECT_BUSY=false;
+async function prospectClienti(){
+  if(PROSPECT_BUSY)return;
+  if(!confirm("Cerco PMI in target sul web, le valuto e preparo delle BOZZE (non invio nulla). Procedo?"))return;
+  PROSPECT_BUSY=true;
+  alert("Ricerca avviata — può richiedere ~30s. Premi OK e attendi il risultato.");
+  let r={};try{r=await jpost("/api/marketing/prospect",{n:5});}catch(e){r={errore:"rete/timeout"};}
+  PROSPECT_BUSY=false;
+  if(r.errore){alert("Errore: "+r.errore);return;}
+  alert(`Trovati ${r.trovati||0} · qualificati e salvati ${r.salvati||0}. Apro i prospect (con le bozze).`);
+  MK.tab="Prospect";loadMarketing();
+}
 function renderMkTab(){
   document.querySelectorAll("#mktabs .tab").forEach(el=>el.classList.toggle("active",el.dataset.mk===MK.tab));
   killCharts();
@@ -590,6 +602,26 @@ function renderMkTab(){
       <div class="text-[10px] text-slate-400 shrink-0 text-right">♥ ${NUM(p.like_count)}</div></div>`).join(""):'<div class="py-4 text-slate-400 text-center text-[12px]">nessun post</div>';
     const pill={};topics.forEach(t=>{const k=t.Pillar||"Altro";pill[k]=(pill[k]||0)+1;});
     if(Object.keys(pill).length)donut("donutCh",Object.keys(pill),Object.values(pill));
+  }
+  else if(MK.tab==="Prospect"){
+    const ps=MK.prospects||[];const q=ps.filter(p=>(Number(p.fit_score)||0)>=60).length;
+    const card=p=>`<div class="dcard rounded-xl border border-slate-100 p-4">
+      <div class="flex items-center justify-between gap-2 mb-1"><div class="font-bold text-[14px]">${esc(p.company||'')}</div>
+        <span class="chip whitespace-nowrap ${(Number(p.fit_score)||0)>=60?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">fit ${NUM(p.fit_score)}</span></div>
+      <div class="text-[12px] text-slate-500 mb-1">${esc(p.sector||'')}${p.website?' · '+esc(p.website):''}</div>
+      <div class="text-[12px] text-slate-600 mb-2">${esc((p.fit_reason||'').slice(0,200))}</div>
+      <div class="text-[12px] mb-2">✉ ${p.contact_email?esc(p.contact_email):'<span class="text-amber-600">mail da trovare</span>'} ${p.contact_role?'<span class="text-slate-400">('+esc(p.contact_role)+')</span>':''}</div>
+      ${p.draft_body?`<details class="text-[12px]"><summary class="cursor-pointer font-semibold text-brand">Bozza di contatto (non inviata)</summary><div class="mt-1 text-slate-500"><b>${esc(p.draft_subject||'')}</b><div class="whitespace-pre-wrap mt-1">${esc(p.draft_body)}</div></div></details>`:''}
+      <div class="mt-2"><span class="chip bg-slate-100 text-slate-500">${esc(p.status||'nuovo')}</span></div></div>`;
+    c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      ${mkpi("🔎","Prospect",ps.length,"trovati","text-emerald-600")}
+      ${mkpi("✅","Qualificati",q,"fit ≥ 60","text-emerald-600")}
+      ${mkpi("✉️","Con mail",ps.filter(p=>p.contact_email).length,"contattabili","text-emerald-600")}
+      ${mkpi("📝","Bozze",ps.filter(p=>p.draft_body).length,"da rivedere","text-slate-400")}</section>
+      <section class="card lift p-5 fu"><div class="flex items-center gap-3 mb-3 flex-wrap"><h3 class="sec-t">Prospect PMI</h3><span class="real">reale · web + qualifica AI</span>
+        <button onclick="prospectClienti()" class="ml-auto btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg">🔎 Cerca nuovi</button></div>
+        <p class="text-[12px] text-slate-500 mb-3">L'AI cerca PMI in target, le valuta (no fuffa), trova la mail e prepara una <b>bozza</b> di contatto. La bozza <b>non viene inviata</b>: la rivedi tu.</p>
+        ${ps.length?`<div class="space-y-3">${ps.map(card).join("")}</div>`:'<div class="py-8 text-center text-slate-400 text-[13px]">Nessun prospect ancora — premi “Cerca nuovi”.</div>'}</section>`;
   }
   else if(MK.tab==="Campaigns"){
     c.innerHTML=items.length?`<section class="card lift p-5 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Contenuti / campagne proposti <span class="real">coda L1</span></div>
