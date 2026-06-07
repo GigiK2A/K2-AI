@@ -85,6 +85,15 @@
   .cmsg.me{align-self:flex-end;background:#2563EB;color:#fff;border-bottom-right-radius:4px}
   .cmsg.ai{align-self:flex-start;background:#fff;border:1px solid #E6EAF2;border-bottom-left-radius:4px}
   .cmsg .ok{color:#16A34A;font-weight:700}.cmsg .warn{color:#D97706;font-weight:700}.cmsg .bad{color:#DC2626;font-weight:700}
+  /* overlay ricerca prospect (feedback realtime) */
+  .povl{position:fixed;inset:0;z-index:82;display:grid;place-items:center}
+  .povl-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}
+  .povl-card{position:relative;width:min(420px,92vw);background:#fff;border:1px solid #E6EAF2;border-radius:22px;box-shadow:0 40px 80px -30px rgba(15,23,42,.5);padding:26px;text-align:center;animation:popc .26s cubic-bezier(.2,.7,.2,1)}
+  .spinr{width:46px;height:46px;border-radius:999px;border:4px solid #E6EAF2;border-top-color:#2563EB;animation:spin .8s linear infinite;margin:0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pdots span{display:inline-block;width:6px;height:6px;border-radius:999px;background:#2563EB;margin:0 2px;animation:pbounce 1s infinite}
+  .pdots span:nth-child(2){animation-delay:.15s}.pdots span:nth-child(3){animation-delay:.3s}
+  @keyframes pbounce{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
 </style>
 </head>
 <body class="font-sans text-[15px]">
@@ -560,16 +569,41 @@ async function loadMarketing(){
 const MK_TABS=["Overview","Prospect","Campaigns","Content","Channels","Leads","Email","Analytics","SEO"];
 function emptyMk(msg){return `<section class="card p-10 text-center text-slate-400 text-sm">${esc(msg)}</section>`;}
 let PROSPECT_BUSY=false;
+function closeProspect(){const el=$("prospectOverlay");if(el)el.remove();}
 async function prospectClienti(){
   if(PROSPECT_BUSY)return;
-  if(!confirm("Cerco PMI in target sul web, le valuto e preparo delle BOZZE (non invio nulla). Procedo?"))return;
+  if(!confirm("Cerco PMI in target sul web, le valuto e preparo BOZZE (non invio nulla). Procedo?"))return;
   PROSPECT_BUSY=true;
-  alert("Ricerca avviata — può richiedere ~30s. Premi OK e attendi il risultato.");
-  let r={};try{r=await jpost("/api/marketing/prospect",{n:5});}catch(e){r={errore:"rete/timeout"};}
-  PROSPECT_BUSY=false;
-  if(r.errore){alert("Errore: "+r.errore);return;}
-  alert(`Trovati ${r.trovati||0} · qualificati e salvati ${r.salvati||0}. Apro i prospect (con le bozze).`);
-  MK.tab="Prospect";loadMarketing();
+  const PHASES=["Cerco PMI in target sul web…","Valuto il fit (scarto la fuffa)…",
+                "Cerco le email di contatto…","Preparo le bozze di contatto…"];
+  let el=document.getElementById("prospectOverlay");
+  if(!el){el=document.createElement("div");el.id="prospectOverlay";el.className="povl";document.body.appendChild(el);}
+  el.innerHTML=`<div class="povl-bg"></div><div class="povl-card">
+    <div class="spinr"></div>
+    <div class="mt-4 font-extrabold text-[15px]">Ricerca clienti in corso</div>
+    <div class="mt-1 text-[13px] text-slate-500" id="povl-phase">${esc(PHASES[0])}</div>
+    <div class="mt-3 text-[12px] text-slate-400">⏱ <span id="povl-sec">0</span>s · l'AI sta lavorando davvero
+      <span class="pdots"><span></span><span></span><span></span></span></div></div>`;
+  let sec=0,i=0;
+  const tick=setInterval(()=>{sec++;const s=document.getElementById("povl-sec");if(s)s.textContent=sec;
+    if(sec%4===0){i=(i+1)%PHASES.length;const p=document.getElementById("povl-phase");if(p)p.textContent=PHASES[i];}},1000);
+  let r={},failed=false;
+  try{r=await jpost("/api/marketing/prospect",{n:5});}catch(e){failed=true;}
+  clearInterval(tick);PROSPECT_BUSY=false;
+  if(!document.getElementById("prospectOverlay"))return;  // chiuso nel frattempo
+  if(failed||(r&&r.errore)){
+    el.innerHTML=`<div class="povl-bg" onclick="closeProspect()"></div><div class="povl-card">
+      <div class="text-[34px]">⚠️</div>
+      <div class="mt-2 font-extrabold text-[15px] text-red-600">Ricerca non riuscita</div>
+      <div class="mt-1 text-[13px] text-slate-500">${esc((r&&r.errore)||"Errore di rete o timeout.")}</div>
+      <div class="mt-1 text-[11px] text-slate-400">dopo ${sec}s</div>
+      <button onclick="closeProspect()" class="mt-4 btn-sec px-4 py-2 rounded-lg text-[13px] font-semibold">Chiudi</button></div>`;
+    return;}
+  el.innerHTML=`<div class="povl-bg" onclick="closeProspect()"></div><div class="povl-card">
+    <div class="text-[34px]">✅</div>
+    <div class="mt-2 font-extrabold text-[15px]">Ricerca completata</div>
+    <div class="mt-1 text-[13px] text-slate-500">Trovati <b>${r.trovati||0}</b> · qualificati e salvati <b>${r.salvati||0}</b> (con bozza), in ${sec}s.</div>
+    <button onclick="closeProspect();MK.tab='Prospect';loadMarketing();" class="mt-4 btn-app px-4 py-2 rounded-lg text-[13px] font-semibold">Vedi i prospect</button></div>`;
 }
 function renderMkTab(){
   document.querySelectorAll("#mktabs .tab").forEach(el=>el.classList.toggle("active",el.dataset.mk===MK.tab));
