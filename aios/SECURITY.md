@@ -26,12 +26,12 @@ Audit su tutto il codice + Supabase advisors. Esito:
 - Auth "leaked password protection" (HaveIBeenPwned): abilitare dal dashboard Supabase (1 click).
 - Report generati `kai-website/kbot/data/reports/*.html` versionati (possibili PII): aggiungere a `.gitignore` e rimuovere dal tracking (scope sito).
 
-## Attuatore L1 (Approva → scrittura reale, `actuator.py`)
-- Esegue scritture su Supabase **solo dopo approvazione umana** (la coda L1 = consenso per-azione).
-- Perimetro stretto: **solo insert/update** su tabelle operative in **allowlist** (`ALLOWLIST`); **mai delete**;
-  **mai denaro** (`board_revenue_events`/`kbot_conversions`/Stripe in `BLOCKED`); mai auth/permessi; mai dati utente kbot.
-- `update` richiede sempre un `match` (niente update di massa). Azione non valida → errore tracciato, l'approvazione non crasha.
-- Verificato dal vivo: insert reale su `board_tasks` ok, `delete` rifiutato (`ActuatorError`).
+## Attuatore L1 (Approva/comando → scrittura reale, `actuator.py`)
+- Esegue scritture su Supabase **solo dopo input umano** (Approva nel cockpit, o comando dell'owner via chat autenticata). L'input umano È il consenso.
+- **Interno completo (scelta owner, giugno 2026):** tutte le tabelle operative interne sono scrivibili **incluse denaro e dati personali** (`board_revenue_events`, `kbot_conversions`, `kbot_profiles`, `kbot_conversations`).
+- **Resta vietato (BLOCKED) il piano di controllo**: `aios_audit`, `aios_policy_state` (i guardrail/autonomia stessi), `board_users`/`board_sessions`/`kbot_sessions` (auth/sessioni), `suite_services` (catalogo pubblico). Mai **delete** su nessuna tabella. `update` richiede sempre un `match`.
+- **DDL (modifica schema)**: solo **non distruttivo** (`ALTER … ADD`, `CREATE TABLE/INDEX`); mai `DROP`/`TRUNCATE`/`CASCADE`; una sola statement; via `AIOS_DB_DSN` (senza DSN → no-op tracciato).
+- Azione fuori perimetro → errore tracciato, l'approvazione non crasha. Backstop testato in `test_actuator.py`/`test_command.py`.
 
 ## Chat a istruzioni (CommandRouter — `command.py`)
 - Canali: cockpit (bearer auth) e Telegram (chat id in allowlist, fail-closed). Un'istruzione vale solo dal canale autenticato dell'owner.

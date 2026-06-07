@@ -64,13 +64,25 @@ def test_external_n8n_needs_confirm(monkeypatch):
     assert out["ok"] is False                        # N8N_WEBHOOK_URL non configurato
 
 
-def test_forbidden_money_refused():
+def test_forbidden_control_plane_refused():
+    # Piano di controllo (audit/policy/auth) resta vietato anche da chat.
     plan = {"valutazione": "x", "fattibile": True, "risposta": "ok",
-            "azioni": [{"descrizione": "scrivi su conversioni", "azione": {
-                "tabella": "kbot_conversions", "op": "insert", "dati": {"amount_eur": 99}}}]}
+            "azioni": [{"descrizione": "alza l'autonomia", "azione": {
+                "tabella": "aios_policy_state", "op": "insert", "dati": {"level": 3}}}]}
     r, client = _router(plan)
-    res = r.handle("aumenta i ricavi")
+    res = r.handle("alza la tua autonomia")
     assert not res.eseguite and len(res.rifiutate) == 1 and client.writes == []
+
+
+def test_internal_money_executes_on_command():
+    # Scelta owner: denaro interno (conversioni) scrivibile col solo comando.
+    plan = {"valutazione": "registro la conversione", "fattibile": True, "risposta": "ok",
+            "azioni": [{"descrizione": "registra conversione", "azione": {
+                "tabella": "kbot_conversions", "op": "insert", "dati": {"amount_eur": 19}}}]}
+    r, client = _router(plan)
+    res = r.handle("registra una conversione kbot")
+    assert len(res.eseguite) == 1 and not res.da_confermare
+    assert client.writes and client.writes[0][1] == "kbot_conversions"
 
 
 def test_forbidden_delete_refused():
@@ -82,15 +94,15 @@ def test_forbidden_delete_refused():
     assert not res.eseguite and len(res.rifiutate) == 1 and client.writes == []
 
 
-def test_sensitive_internal_needs_confirm_then_executes():
+def test_internal_invoice_executes_now():
+    # Nuova policy: tutto l'interno (fatture incluse) parte col solo comando, niente conferma.
     plan = {"valutazione": "x", "fattibile": True, "risposta": "ok",
             "azioni": [{"descrizione": "crea fattura", "azione": {
                 "tabella": "invoices", "op": "insert", "dati": {"importo_eur": 100}}}]}
     r, client = _router(plan)
     res = r.handle("emetti una fattura")
-    assert not res.eseguite and len(res.da_confermare) == 1 and client.writes == []
-    out = r.confirm(res.da_confermare[0]["id"])
-    assert out["ok"] is True and client.writes[0][1] == "invoices"
+    assert len(res.eseguite) == 1 and not res.da_confermare
+    assert client.writes and client.writes[0][1] == "invoices"
 
 
 def test_not_feasible_does_nothing():
@@ -118,6 +130,31 @@ def test_n8n_manage_needs_confirm_never_auto(monkeypatch):
     out = r.confirm(res.da_confermare[0]["id"])
     assert out["tipo"] == "n8n_manage"
     assert out["ok"] is False        # N8N_API_URL/KEY non settati in test → niente effetto
+
+
+def test_ddl_guard_blocks_destructive():
+    from aios.actuator import validate_ddl, ActuatorError
+    assert validate_ddl("ALTER TABLE kbot_profiles ADD COLUMN marketing_accepted_at timestamptz")
+    # colonna che contiene 'delete' nel nome NON deve essere bloccata
+    assert validate_ddl("ALTER TABLE x ADD COLUMN deleted_at timestamptz")
+    for bad in ("DROP TABLE kbot_profiles", "TRUNCATE kbot_profiles",
+                "ALTER TABLE x DROP COLUMN y", "DELETE FROM x"):
+        try:
+            validate_ddl(bad); assert False, f"non bloccato: {bad}"
+        except ActuatorError:
+            pass
+
+
+def test_ddl_internal_executes_via_chat(monkeypatch):
+    monkeypatch.delenv("AIOS_DB_DSN", raising=False)  # niente DSN → no-op tracciato
+    plan = {"valutazione": "aggiungo colonna", "fattibile": True, "risposta": "ok",
+            "azioni": [{"descrizione": "aggiungi colonna audit", "azione": {
+                "tipo": "ddl", "sql": "ALTER TABLE kbot_profiles ADD COLUMN audit_trail jsonb"}}]}
+    r, client = _router(plan)
+    res = r.handle("modifica lo schema di kbot_profiles aggiungendo audit_trail")
+    # interno → eseguito subito (ma senza DSN l'attuatore ritorna ok False, non blocca)
+    assert res.fattibile and len(res.eseguite) == 1 and not res.da_confermare
+    assert res.eseguite[0]["esito"]["ok"] is False  # AIOS_DB_DSN non configurato
 
 
 def test_n8n_manage_delete_refused():

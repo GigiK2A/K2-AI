@@ -89,6 +89,8 @@ def build_platform() -> Platform:
     skills = SkillLibrary()
     knowledge = KnowledgeStore(client)
     llm = AnthropicLLM(max_tokens=4096)
+    # Sonnet per i casi delicati (schema DB / codice / workflow) via CommandRouter
+    llm_strong = AnthropicLLM(model="claude-sonnet-4-6", max_tokens=8192)
 
     def _domain(cfg):
         return DomainAgent(kernel=k, llm=llm, founder=founder, config=cfg,
@@ -103,5 +105,5 @@ def build_platform() -> Platform:
         "hr": _domain(HR_CONFIG),
     }
     platform = Platform(k, agents)
-    platform.commands = CommandRouter(platform, llm)   # chat a istruzioni
+    platform.commands = CommandRouter(platform, llm, llm_strong)   # chat a istruzioni
     return platform

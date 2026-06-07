@@ -7,7 +7,14 @@ Ogni scrittura passa di qui e ritorna un esito tracciabile (audit).
 """
 from __future__ import annotations
 
+import os
+import re
 from typing import Any
+
+# DDL consentito: solo modifiche NON distruttive (aggiungere, mai togliere/svuotare).
+_DDL_OK_START = ("alter table", "create table", "create index", "create unique index",
+                 "comment on", "create or replace view", "create view", "create schema")
+_DDL_FORBIDDEN = re.compile(r"\b(drop|truncate|cascade)\b", re.IGNORECASE)
 
 # tabella -> operazioni consentite. Nessuna 'delete' è mai consentita.
 ALLOWLIST: dict[str, set[str]] = {
@@ -44,12 +51,18 @@ ALLOWLIST: dict[str, set[str]] = {
     "safety_compliance": {"insert", "update"},
     "offboarding_events": {"insert", "update"},
     "hr_analytics_snapshots": {"insert", "update"},
+    # Interno completo (scelta owner): anche denaro e dati personali si scrivono su Approva.
+    "board_revenue_events": {"insert", "update"},
+    "kbot_conversions": {"insert", "update"},
+    "kbot_profiles": {"insert", "update"},
+    "kbot_conversations": {"insert", "update"},
 }
 
-# tabelle esplicitamente vietate alla scrittura (denaro / dati utente / catalogo / auth)
-BLOCKED = {"board_revenue_events", "kbot_conversions", "kbot_sessions", "kbot_profiles",
-           "kbot_conversations", "suite_services", "aios_audit", "aios_policy_state",
-           "board_users", "board_sessions"}
+# Resta vietato SOLO il piano di controllo: audit/policy (i guardrail stessi), auth/sessioni
+# (rischio takeover) e il catalogo pubblico (suite_services, letto dal sito = quasi-esterno).
+# Mai delete su NESSUNA tabella. Questi non sono "dati operativi interni": sono il meccanismo.
+BLOCKED = {"aios_audit", "aios_policy_state", "board_users", "board_sessions",
+           "kbot_sessions", "suite_services"}
 
 
 class ActuatorError(RuntimeError):
@@ -79,8 +92,45 @@ def validate(action: dict[str, Any]) -> tuple[str, str, dict, dict]:
     return table, op, match, data
 
 
+def validate_ddl(sql: str) -> str:
+    """Consente solo DDL NON distruttivo, una sola statement. Solleva altrimenti."""
+    s = (sql or "").strip()
+    if not s:
+        raise ActuatorError("SQL vuoto")
+    body = s.rstrip(";").strip()
+    if ";" in body:
+        raise ActuatorError("una sola statement per volta")
+    low = body.lower()
+    if not low.startswith(_DDL_OK_START):
+        raise ActuatorError("consentito solo ALTER/CREATE non distruttivo (mai DROP/DELETE)")
+    if _DDL_FORBIDDEN.search(low):
+        raise ActuatorError("DDL distruttivo vietato (drop/truncate/cascade)")
+    return body
+
+
+def apply_ddl(sql: str) -> dict[str, Any]:
+    """Esegue una modifica di schema NON distruttiva via psycopg. Env: AIOS_DB_DSN
+    (connection string Postgres/Supabase). Senza DSN → niente effetto (configurare)."""
+    body = validate_ddl(sql)
+    dsn = os.environ.get("AIOS_DB_DSN", "").strip()
+    if not dsn:
+        return {"ok": False, "errore": "AIOS_DB_DSN non configurato (serve la connection string Postgres)",
+                "sql": body[:200]}
+    try:
+        import psycopg
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute(body)  # solo DDL non distruttivo (validato sopra)
+        return {"ok": True, "op": "ddl", "sql": body[:200]}
+    except Exception as exc:
+        return {"ok": False, "errore": str(exc)[:200], "sql": body[:200]}
+
+
 def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
-    """Esegue l'azione validata su Supabase. Ritorna {ok, tabella, op, ...}."""
+    """Esegue l'azione su Supabase. DDL (tipo='ddl'|chiave 'sql') → modifica schema
+    guardata; altrimenti insert/update di righe su tabella allowlist."""
+    if isinstance(action, dict) and (action.get("tipo") == "ddl" or action.get("sql")):
+        return apply_ddl(str(action.get("sql", "")))
     table, op, match, data = validate(action)
     if op == "insert":
         rows = client.insert(table, data)
