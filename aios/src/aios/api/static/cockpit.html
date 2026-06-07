@@ -61,6 +61,15 @@
   @keyframes grow{from{width:0}}
   .arow{transition:background .2s}.arow:hover{background:#f8fafc}
   .ava{width:42px;height:42px;border-radius:999px;background:radial-gradient(120% 120% at 30% 20%,#eaf1ff,#dbe7fb);border:1px solid #E6EAF2;display:grid;place-items:center}
+  /* decisioni */
+  .dcard{transition:border-color .2s,box-shadow .2s}.dcard:hover{box-shadow:0 12px 26px -18px rgba(37,99,235,.4)}
+  .clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .statline b{font-weight:800}
+  /* modal "vedi tutte" */
+  .dmodal{position:fixed;inset:0;z-index:80;display:none}
+  .dmodal-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);animation:fade .2s ease}
+  .dmodal-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(720px,94vw);max-height:90vh;background:#fff;border-radius:22px;border:1px solid #E6EAF2;box-shadow:0 40px 80px -30px rgba(15,23,42,.5);overflow:hidden;display:flex;flex-direction:column;animation:pop .26s cubic-bezier(.2,.7,.2,1)}
+  @keyframes fade{from{opacity:0}}@keyframes pop{from{opacity:0;transform:translate(-50%,-46%) scale(.97)}}
 </style>
 </head>
 <body class="font-sans text-[15px]">
@@ -122,6 +131,8 @@ async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return
 async function jpost(u,b){return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json();}
 const PAL=["#2563EB","#16A34A","#7C3AED","#F59E0B","#06B6D4","#EF4444","#94A3B8"];
 const PRIO=["Alta","Media","Bassa"],prioColor={Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
+function righe(n){return n+(Number(n)===1?" riga":" righe");}
+let DEC_ITEMS=[];
 const META={
   marketing:{ico:"◈",label:"Marketing",sub:"Operazioni marketing data-driven · @k2_ai.it"},
   vendite:{ico:"⊞",label:"Sales / CRM",sub:"Pipeline, lead e proposte commerciali"},
@@ -171,51 +182,50 @@ function quickActionsCard(items){return `<div class="card p-4 fu"><div class="fo
 function recoCard(deliv){const body=(deliv&&deliv.length)?deliv.slice(0,5).map(x=>`<div class="flex gap-2 items-start"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||'')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,110))}</div></div></div>`).join("")
   :`<div class="text-[12px] text-slate-400">Nessun deliverable — una proposta per generarlo.</div><div class="mt-2 opacity-80">${spark([4,5,5,6,6,7,7,8])}</div>`;
   return `<div class="card p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;}
-// Tabella decisioni premium (Approva / Modifica / Rifiuta)
+// Card decisione con approfondimento (full=true → testo completo nel modal)
+function decCard(a,i,full){const p=a.payload||{};const pr=p._prio||PRIO[i%3];
+  const desc=p.contenuto||p.descrizione||"";const motivo=p.motivo||"";const impatto=p.impatto||"";
+  return `<div class="dcard rounded-xl border border-slate-100 p-4">
+    <div class="flex items-center justify-between gap-2 mb-1.5">
+      <div class="flex items-center gap-2 flex-wrap"><span class="text-[12px] font-bold ${prioColor[pr]||'text-slate-500'}">● ${esc(pr)}</span>
+      ${p.tipo?`<span class="chip bg-slate-100 text-slate-600">${esc(p.tipo)}</span>`:""}${p.area?`<span class="chip bg-blue-50 text-blue-700">${esc(p.area)}</span>`:""}</div>
+      ${a.id?`<span class="text-[11px] text-slate-300">#${a.id}</span>`:""}</div>
+    <div class="font-bold text-[14px] mb-1">${esc(p.titolo||p.tipo||"Proposta")}</div>
+    <div class="text-[13px] text-slate-600 leading-relaxed ${full?'':'clamp3'}">${esc(desc)}</div>
+    ${motivo?`<div class="mt-2 text-[12px] text-emerald-800 bg-emerald-50/70 rounded-lg px-3 py-2"><b>Perché conviene:</b> ${esc(full?motivo:motivo.slice(0,150))}</div>`:""}
+    ${impatto?`<div class="mt-1.5 text-[12px] font-semibold text-emerald-700">📈 ${esc(impatto)}</div>`:""}
+    <div class="flex gap-2 mt-3">
+      <button class="approve btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
+      <button class="edit btn-sec text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Modifica</button>
+      <button class="reject btn-sec text-[12px] text-red-600 px-3 py-1.5 rounded-lg ml-auto" data-id="${a.id}">Rifiuta</button></div></div>`;}
+// Sezione decisioni: prime 3 inline + "Vedi tutte" → modal con tutto l'approfondimento
 function decTable(items,title,count){
-  const rows=items.length?items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
-    return `<tr class="arow border-t border-slate-100 align-top">
-      <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
-      <td class="py-3 pr-3 font-semibold max-w-[200px]">${esc(p.titolo||p.tipo||'Proposta')}</td>
-      <td class="py-3 pr-3 text-slate-500 max-w-[320px]">${esc((p.contenuto||'').slice(0,150))}</td>
-      <td class="py-3 pr-3 text-[12px] text-emerald-700 max-w-[170px]">${esc((p.motivo||'').slice(0,90))}</td>
-      <td class="py-3 text-right whitespace-nowrap">
-        <button class="approve btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
-        <button class="edit btn-sec text-[12px] px-3 py-1.5 rounded-lg ml-1" data-id="${a.id}">Modifica</button>
-        <button class="reject btn-sec text-[12px] text-red-600 px-3 py-1.5 rounded-lg ml-1" data-id="${a.id}">Rifiuta</button></td></tr>`;}).join("")
-    :`<tr><td colspan="5" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>`;
+  DEC_ITEMS=items||[];
+  const body=items.length?items.slice(0,3).map((a,i)=>decCard(a,i,false)).join("")
+    :'<div class="py-8 text-center text-slate-400">Nessuna decisione in attesa 🎉</div>';
+  const more=items.length>3?`<button onclick="openDecisioni('${esc(title||'Decisioni da prendere')}')" class="w-full mt-3 btn-sec rounded-xl px-3 py-2.5 text-[13px] font-bold text-brand hover:bg-blue-50/60 transition">Vedi tutte le ${items.length} decisioni →</button>`:"";
   return `<section class="card p-5 fu"><div class="flex items-center gap-3 mb-4"><h3 class="sec-t">${title||'Decisioni da prendere'}</h3>
     <span class="chip bg-amber-100 text-amber-700">${count!=null?count:items.length} in attesa</span><span class="real">reale · kernel</span></div>
-    <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-      <th class="py-2 pr-3">Priorità</th><th class="py-2 pr-3">Decisione</th><th class="py-2 pr-3">Descrizione</th><th class="py-2 pr-3">Impatto</th><th class="py-2 text-right">Azione</th></tr></thead>
-      <tbody>${rows}</tbody></table></div></section>`;}
-function decisioniTable(items,title,showArea){
-  const rows=items.length?items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
-    return `<tr class="border-t border-slate-100 align-top">
-      <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
-      ${showArea?`<td class="py-3 pr-2"><span class="chip bg-slate-100 text-slate-500">${esc((a.action_key||"").split(".")[0])}</span></td>`:""}
-      <td class="py-3 pr-3 font-semibold max-w-[210px]">${esc(p.titolo||p.tipo||"Proposta")}</td>
-      <td class="py-3 pr-3 text-slate-500 max-w-[300px]">${esc((p.contenuto||"").slice(0,150))}</td>
-      <td class="py-3 text-right whitespace-nowrap">
-        <button class="approve bg-ok text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
-        <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg ml-1" data-id="${a.id}">Rifiuta</button>
-      </td></tr>`;}).join("")
-    :`<tr><td colspan="${showArea?5:4}" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>`;
-  return `<section class="card p-5"><div class="flex items-center gap-3 mb-4"><h3 class="sec-t">${title||"Decisioni da prendere"}</h3>
-    <span class="chip bg-amber-100 text-amber-700">${items.length} in attesa</span><span class="real">reale · kernel</span></div>
-    <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-      <th class="py-2 pr-3">Priorità</th>${showArea?'<th class="py-2 pr-2">Area</th>':''}<th class="py-2 pr-3">Decisione</th><th class="py-2 pr-3">Descrizione</th><th class="py-2 text-right">Azione</th></tr></thead>
-      <tbody>${rows}</tbody></table></div></section>`;
+    <div class="space-y-3">${body}</div>${more}</section>`;}
+function openDecisioni(title){
+  let el=document.getElementById("decModal");
+  if(!el){el=document.createElement("div");el.id="decModal";el.className="dmodal";document.body.appendChild(el);}
+  const cards=DEC_ITEMS.length?DEC_ITEMS.map((a,i)=>decCard(a,i,true)).join(""):'<div class="py-10 text-center text-slate-400">Nessuna decisione 🎉</div>';
+  el.innerHTML=`<div class="dmodal-bg" onclick="closeDecisioni()"></div>
+    <div class="dmodal-panel">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div><div class="font-extrabold text-[16px]">${esc(title||'Tutte le decisioni')}</div>
+          <div class="text-[12px] text-slate-400">${DEC_ITEMS.length} proposte · approfondimento completo · tu approvi (L1)</div></div>
+        <button onclick="closeDecisioni()" class="w-8 h-8 rounded-lg btn-sec grid place-items-center">✕</button></div>
+      <div class="p-5 space-y-3" style="overflow-y:auto">${cards}</div></div>`;
+  el.style.display="block";document.body.style.overflow="hidden";
+  wireDecisioni(el);
 }
-function recoBlock(deliv){
-  const body=(deliv&&deliv.length)?deliv.slice(0,6).map(x=>`<div class="flex gap-2 items-start"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||'')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,120))}</div></div></div>`).join("")
-    :'<div class="text-[12px] text-slate-400">Nessun deliverable — approva una proposta per generarlo.</div>';
-  return `<div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;
-}
-function wireDecisioni(){
-  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{});const a=r&&r.attuatore;if(a){alert(a.ok?("✅ Scritto su "+(a.tabella||"DB")+" ("+(a.op||"")+")"):("⚠️ Azione non eseguita: "+(a.errore||"")));}load();});
-  document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();});
-  document.querySelectorAll(".edit").forEach(b=>b.onclick=async()=>{const titolo=prompt("Modifica titolo (poi approva):");if(titolo===null)return;const contenuto=prompt("Modifica contenuto:");if(contenuto===null)return;await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{titolo,contenuto}});load();});
+function closeDecisioni(){const el=document.getElementById("decModal");if(el)el.style.display="none";document.body.style.overflow="";}
+function wireDecisioni(root){root=root||document;
+  root.querySelectorAll(".approve").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{});const a=r&&r.attuatore;closeDecisioni();if(a){alert(a.ok?("✅ Scritto su "+(a.tabella||"DB")+" ("+(a.op||"")+")"):("⚠️ Azione non eseguita: "+(a.errore||"")));}load();};});
+  root.querySelectorAll(".reject").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";closeDecisioni();await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();};});
+  root.querySelectorAll(".edit").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const titolo=prompt("Modifica titolo (poi approva):");if(titolo===null)return;const contenuto=prompt("Modifica contenuto:");if(contenuto===null)return;closeDecisioni();await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{titolo,contenuto}});load();};});
 }
 
 // ---------------- OVERVIEW (premium) ----------------
@@ -271,10 +281,10 @@ async function loadOverview(){
     return `<div class="card lift p-4 fu cursor-pointer" onclick="route('dom:${d}')">
       <div class="flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[13px]">${m.ico}</span>
         <b class="text-[13px] leading-tight">${esc(m.label)}</b><span class="ml-auto chip bg-emerald-50 text-emerald-600">attivo</span></div>
-      <div class="grid grid-cols-3 text-center gap-1 mb-1">
-        <div><div class="font-extrabold kpiv text-[18px]">${f}</div><div class="text-[10px] text-slate-400">fonti</div></div>
-        <div><div class="font-extrabold kpiv text-[18px]">${ri}</div><div class="text-[10px] text-slate-400">righe</div></div>
-        <div><div class="font-extrabold kpiv text-[18px]">${de}</div><div class="text-[10px] text-slate-400">deliver.</div></div></div>
+      <div class="statline flex items-center gap-3 flex-wrap text-[12px] mb-2">
+        <span><b class="kpiv">${f}</b> <span class="text-slate-400">fonti</span></span>
+        <span><b class="kpiv">${righe(ri)}</b></span>
+        <span><b class="kpiv">${de}</b> <span class="text-slate-400">deliver.</span></span></div>
       <div class="opacity-90">${spark(pts)}</div></div>`;}).join("");
 
   const ACT=[["Finance Agent","ha completato il report cashflow mensile","2 min fa","bg-emerald-500"],
@@ -292,19 +302,10 @@ async function loadOverview(){
     <span class="text-slate-400 text-[12px] w-20">${a[1]}</span><span class="text-slate-400 text-[12px] w-24">${a[2]} priorità</span>
     <button class="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg">Approva</button></div>`).join("");
 
-  const DEC=[["Alta","text-red-600","Marketing","Aumentare budget campagna LinkedIn","L'AI ha rilevato alta performance e potenziale di scaling","+€18,400 Revenue · +22% Leads","Oggi"],
-    ["Media","text-amber-600","Finance","Validare forecast Q2","Forecast con scenario ottimizzato suggerito dall'AI","+€12,700 Revenue · +15% Margine","1 giorno"],
-    ["Bassa","text-slate-500","Operations","Nuovo workflow approvazione spese","Automazione proposta per ridurre tempi ciclo","-2.4h / ciclo · +18% Efficienza","3 giorni"]];
-  const decRows=DEC.map(r=>`<tr class="border-t border-slate-100 align-top">
-    <td class="py-3 pr-3"><span class="font-bold ${r[1]}">● ${r[0]}</span></td>
-    <td class="py-3 pr-3 text-slate-500">${r[2]}</td>
-    <td class="py-3 pr-3 font-semibold max-w-[200px]">${r[3]}</td>
-    <td class="py-3 pr-3 text-slate-500 max-w-[260px]">${r[4]}</td>
-    <td class="py-3 pr-3 text-[12px] font-semibold text-emerald-700 whitespace-nowrap">${r[5]}</td>
-    <td class="py-3 pr-3 text-slate-500 whitespace-nowrap">${r[6]}</td>
-    <td class="py-3 text-right whitespace-nowrap"><button class="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg">Approva</button>
-      <button class="btn-sec text-[12px] px-3 py-1.5 rounded-lg ml-1">Modifica</button>
-      <button class="btn-sec text-[12px] px-3 py-1.5 rounded-lg ml-1">Rifiuta</button></td></tr>`).join("");
+  const DEC_OV=[
+    {payload:{_prio:"Alta",area:"Marketing",tipo:"budget",titolo:"Aumentare budget campagna LinkedIn",contenuto:"L'agente ha rilevato un CPL in calo (-31%) sulla campagna LinkedIn 'Agenti AI per studi tecnici' con CTR 2.4× sopra la media account. Propone di spostare €1.500 dal budget Meta (in saturazione) a LinkedIn per le prossime 2 settimane, mantenendo lo stesso creativo vincente.",motivo:"Finestra di performance alta e duratura; ogni giorno di ritardo lascia lead sul tavolo a un costo per lead più basso del solito.",impatto:"+€18.400 Revenue stimato · +22% Lead qualificati · scadenza: oggi"}},
+    {payload:{_prio:"Media",area:"Finance",tipo:"forecast",titolo:"Validare forecast Q2",contenuto:"Il forecast Q2 è stato ricalcolato con lo scenario ottimizzato: include il pipeline vendite ponderato per probabilità e i ricavi ricorrenti K-BOT. Scostamento +9% rispetto alla versione conservativa. Richiede validazione prima di entrare nel report al CdA.",motivo:"Allinea le aspettative finanziarie ai dati reali della pipeline; evita di sotto-stimare la cassa disponibile per gli investimenti H2.",impatto:"+€12.700 Revenue · +15% Margine previsto · scadenza: 1 giorno"}},
+    {payload:{_prio:"Bassa",area:"Operations",tipo:"workflow",titolo:"Nuovo workflow approvazione spese",contenuto:"Automazione proposta per il ciclo di approvazione spese: instradamento automatico per soglia di importo, promemoria e raccolta firme. Riduce i passaggi manuali da 6 a 2 e i tempi di ciclo medi.",motivo:"Le spese sotto i €500 non hanno bisogno di doppia approvazione; liberano tempo del team senza ridurre il controllo.",impatto:"-2,4h per ciclo · +18% Efficienza · scadenza: 3 giorni"}}];
 
   $("view").innerHTML=`
     <section class="heroWrap fu"><div class="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
@@ -342,14 +343,7 @@ async function loadOverview(){
       <div class="card p-5 fu"><div class="font-bold text-sm mb-1 flex items-center gap-2">Approvazioni necessarie <span class="real">reale</span></div>${appNeed}
         <a class="inline-block mt-3 text-[13px] font-semibold text-brand cursor-pointer">Vai a tutte le approvazioni →</a></div>
     </section>
-    <section class="card p-5 fu"><div class="flex items-center gap-3 mb-4">
-      <h3 class="sec-t">Decisioni da prendere (tutti i reparti)</h3>
-      <span class="chip bg-amber-100 text-amber-700">7 in attesa</span><span class="real">reale · kernel</span></div>
-      <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-        <th class="py-2 pr-3">Priorità</th><th class="py-2 pr-3">Area</th><th class="py-2 pr-3">Decisione</th><th class="py-2 pr-3">Descrizione</th>
-        <th class="py-2 pr-3">Impatto stimato</th><th class="py-2 pr-3">Scadenza</th><th class="py-2 text-right">Azione</th></tr></thead>
-        <tbody>${decRows}</tbody></table></div>
-      <a onclick="route('overview')" class="inline-block mt-4 text-[13px] font-semibold text-brand cursor-pointer">Vai a tutte le decisioni →</a></section>`;
+    ${decTable(DEC_OV,"Decisioni da prendere (tutti i reparti)")}`;
   renderStations();
   const rb=$("runall");if(rb)rb.onclick=runAll;
 }
@@ -461,7 +455,7 @@ async function loadDomain(){
     const dataRows=Object.keys(data).map(s=>{const val=data[s];const n=arr(val).length;let sample="";const a=arr(val);
       if(a.length){const r=a[0];sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,34))}`).join(" · ");}
       else if(val&&val.error){sample=`<span class="text-red-500">${esc(val.error).slice(0,70)}</span>`;}else sample='<span class="text-slate-400">nessuna riga</span>';
-      return `<tr class="arow border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${n} righe</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")||'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun sensore</td></tr>';
+      return `<tr class="arow border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip whitespace-nowrap ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${righe(n)}</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")||'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun sensore</td></tr>';
     content=`<section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${domainKPIs(CUR,data,props.length,deliv.length)}</section>
       <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="card lift p-4 fu lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Dati reali letti dai sensori <span class="real">Supabase</span></div>
