@@ -487,11 +487,11 @@ function renderMkTab(){
     c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI}</section>
       <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="card lift p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div><div id="pipe" class="space-y-1"></div>
-          <a class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai alla content pipeline →</a></div>
+          <a onclick="MK.tab='Content';renderMkTab()" class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai alla content pipeline →</a></div>
         <div class="card lift p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div>
-          <a class="inline-block mt-2 text-[12px] font-semibold text-brand cursor-pointer">Vedi tutti i pillar →</a></div>
+          <a onclick="MK.tab='SEO';renderMkTab()" class="inline-block mt-2 text-[12px] font-semibold text-brand cursor-pointer">Vedi tutti i pillar →</a></div>
         <div class="card lift p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Post IG recenti <span class="real">reale</span></div><div id="posts" class="space-y-1"></div>
-          <a class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai al calendario editoriale →</a></div></section>`;
+          <a onclick="MK.tab='Content';renderMkTab()" class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai al calendario editoriale →</a></div></section>`;
     $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>{const pub=String(s.Stato).toLowerCase()==='usato';
       return `<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[12px] shrink-0">▦</span>
         <div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(s.Servizio||"")}</div><div class="text-[10px] text-slate-400 truncate">${esc(s.Categoria||"")}</div></div>
@@ -504,53 +504,54 @@ function renderMkTab(){
     if(Object.keys(pill).length)donut("donutCh",Object.keys(pill),Object.values(pill));
   }
   else if(MK.tab==="Campaigns"){
-    c.innerHTML=items.length?`<section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Contenuti / campagne proposti dall'agente <span class="real">reale · coda L1</span></div>
-      <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Tipo</th><th class="py-1">Titolo</th><th class="py-1">Contenuto</th></tr></thead>
-      <tbody>${items.map(a=>{const p=a.payload||{};return `<tr class="border-t border-slate-50"><td class="py-2"><span class="chip bg-slate-100 text-slate-500">${esc(p.tipo||'')}</span></td><td class="py-2 font-semibold">${esc(p.titolo||'')}</td><td class="py-2 text-slate-500 text-[12px]">${esc((p.contenuto||'').slice(0,90))}</td></tr>`;}).join("")}</tbody></table></section>`
-      :emptyMk("Nessuna campagna/contenuto proposto. Premi ▶ Fai girare l'agente per generarne.");
+    c.innerHTML=items.length?`<section class="card lift p-5 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Contenuti / campagne proposti <span class="real">coda L1</span></div>
+      <div class="space-y-1">${items.map(a=>{const p=a.payload||{};return `<div class="flex items-start gap-3 border-t border-slate-50 first:border-0 py-2.5">
+        <span class="w-8 h-8 rounded-lg bg-blue-50 grid place-items-center text-[12px] shrink-0">✦</span>
+        <div class="min-w-0 flex-1"><div class="font-semibold text-[13px] truncate">${esc(p.titolo||'')}</div><div class="text-[12px] text-slate-500 truncate">${esc((p.contenuto||'').slice(0,120))}</div></div>
+        <span class="chip bg-slate-100 text-slate-500 shrink-0">${esc(p.tipo||'')}</span></div>`;}).join("")}</div></section>`
+      :emptyMk("Nessuna campagna proposta. Premi ▶ Fai girare l'agente per generarne.");
   }
   else if(MK.tab==="Content"){
     c.innerHTML=`<section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Servizi (${servizi.length}) <span class="real">reale · tabella servizi</span></div>
-        <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><tbody>${servizi.length?servizi.map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(s.Servizio||'')}</td><td class="text-slate-400">${esc(s.Categoria||'')}</td><td class="text-right text-[11px] ${String(s.Stato).toLowerCase()==='usato'?'text-emerald-600':'text-amber-600'}">● ${esc(s.Stato||'')}</td></tr>`).join(""):'<tr><td class="py-4 text-center text-slate-400">nessun servizio</td></tr>'}</tbody></table></div></div>
-      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Temi / topics (${topics.length}) <span class="real">reale · tabella topics</span></div>
-        <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><tbody>${topics.length?topics.map(t=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(t.Tema||'')}</td><td class="text-slate-400 text-[11px]">${esc(t.Pillar||'')}</td></tr>`).join(""):'<tr><td class="py-4 text-center text-slate-400">nessun topic</td></tr>'}</tbody></table></div></div></section>`;
+      <div class="card lift p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Servizi (${servizi.length}) <span class="real">tabella servizi</span></div>
+        <div class="max-h-96 overflow-auto space-y-1">${servizi.length?servizi.map(s=>{const pub=String(s.Stato).toLowerCase()==='usato';return `<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[11px] shrink-0">▦</span><div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(s.Servizio||'')}</div><div class="text-[10px] text-slate-400 truncate">${esc(s.Categoria||'')}</div></div><span class="text-[11px] ${pub?'text-emerald-600':'text-amber-600'} shrink-0">● ${esc(s.Stato||'')}</span></div>`;}).join(""):'<div class="py-4 text-center text-slate-400 text-[12px]">nessun servizio</div>'}</div></div>
+      <div class="card lift p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Temi / topics (${topics.length}) <span class="real">tabella topics</span></div>
+        <div class="max-h-96 overflow-auto space-y-1">${topics.length?topics.map(t=>`<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-violet-50 grid place-items-center text-[11px] shrink-0">◷</span><div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(t.Tema||'')}</div><div class="text-[10px] text-slate-400">${esc(t.Pillar||'')}</div></div></div>`).join(""):'<div class="py-4 text-center text-slate-400 text-[12px]">nessun topic</div>'}</div></div></section>`;
   }
   else if(MK.tab==="Channels"){
-    const igRows=[["Follower",NUM(prof.followers_count)],["Post pubblicati",NUM(prof.media_count)],["Reach (oggi)",NUM(insg.reach)],["Profile views",NUM(insg.profile_views)],["Account coinvolti",NUM(insg.accounts_engaged)],["Interazioni",NUM(insg.total_interactions)]];
-    c.innerHTML=`<section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Instagram ${prof.username?('· @'+esc(prof.username)):''} <span class="real">reale · Graph API</span></div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">${igRows.map(r=>`<div><div class="text-[11px] text-slate-400">${r[0]}</div><div class="text-xl font-extrabold">${r[1]}</div></div>`).join("")}</div></section>
-      <section class="card p-5 text-slate-500 text-sm">Altri canali (LinkedIn, Email, YouTube): non ancora collegati. Solo Instagram è connesso all'agente.</section>`;
+    const C=[["📸","Follower",NUM(prof.followers_count)],["📄","Post",NUM(prof.media_count)],["👥","Reach (oggi)",NUM(insg.reach)],["👁","Profile views",NUM(insg.profile_views)],["🤝","Account coinvolti",NUM(insg.accounts_engaged)],["💬","Interazioni",NUM(insg.total_interactions)]];
+    c.innerHTML=`<section class="card lift p-5 fu"><div class="font-bold text-sm mb-4 flex items-center gap-2">Instagram ${prof.username?('· @'+esc(prof.username)):''} <span class="real">Graph API</span></div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">${C.map(r=>`<div class="flex items-center gap-2"><span class="w-9 h-9 rounded-lg bg-blue-50 grid place-items-center">${r[0]}</span><div><div class="text-[11px] text-slate-400">${r[1]}</div><div class="text-[20px] font-extrabold kpiv">${r[2]}</div></div></div>`).join("")}</div></section>
+      <section class="card p-5 fu text-slate-500 text-[13px]">Altri canali (LinkedIn, Email, YouTube): non ancora collegati. Solo Instagram è connesso all'agente.</section>`;
   }
   else if(MK.tab==="Leads"){
     const byCh={};leads.forEach(l=>{const k=l.channel||"n/d";byCh[k]=(byCh[k]||0)+1;});
     c.innerHTML=`<section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Lead per canale <span class="real">reale</span></div>${Object.keys(byCh).length?'<div class="relative h-48"><canvas id="leadCh"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px]">nessun lead</div>'}</div>
-      <div class="card p-4 lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Lead (${leads.length}) <span class="real">reale · pipeline_leads</span></div>
+      <div class="card lift p-4 fu"><div class="font-bold text-sm mb-2 flex items-center gap-2">Lead per canale <span class="real">reale</span></div>${Object.keys(byCh).length?'<div class="relative h-48"><canvas id="leadCh"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px]">nessun lead</div>'}</div>
+      <div class="card lift p-4 fu lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Lead (${leads.length}) <span class="real">pipeline_leads</span></div>
         <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Nome</th><th>Azienda</th><th>Canale</th><th>Stato</th><th class="text-right">Score</th></tr></thead>
-        <tbody>${leads.length?leads.map(l=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(l.name||'')}</td><td class="text-slate-500">${esc(l.company||'')}</td><td class="text-slate-400">${esc(l.channel||'')}</td><td><span class="chip bg-slate-100 text-slate-500">${esc(l.status||'')}</span></td><td class="text-right font-bold">${NUM(l.score)}</td></tr>`).join(""):'<tr><td colspan="5" class="py-4 text-center text-slate-400">nessun lead</td></tr>'}</tbody></table></div></div></section>`;
+        <tbody>${leads.length?leads.map(l=>`<tr class="arow border-t border-slate-50"><td class="py-2 font-semibold">${esc(l.name||'')}</td><td class="text-slate-500">${esc(l.company||'')}</td><td class="text-slate-400">${esc(l.channel||'')}</td><td><span class="chip bg-slate-100 text-slate-500">${esc(l.status||'')}</span></td><td class="text-right font-bold">${NUM(l.score)}</td></tr>`).join(""):'<tr><td colspan="5" class="py-4 text-center text-slate-400">nessun lead</td></tr>'}</tbody></table></div></div></section>`;
     if(Object.keys(byCh).length)donut("leadCh",Object.keys(byCh),Object.values(byCh));
   }
   else if(MK.tab==="Email"){
     const isc=MK.iscritti,nl=MK.newsletter;
     const conf=isc.filter(i=>i.confirmed).length,act=isc.filter(i=>i.is_active).length,uns=isc.filter(i=>i.unsubscribed_at).length;
     c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      ${kpi("Iscritti",isc.length,{t:"reale",real:1})}${kpi("Confermati",conf,{t:"double opt-in",real:1})}${kpi("Attivi",act,{t:"reale",real:1})}${kpi("Disiscritti",uns,{t:"reale",real:1})}</section>
-      <section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Newsletter pubblicate (${nl.length}) <span class="real">reale · newsletter_issues</span></div>
-      <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Oggetto</th><th>Slug</th><th>Data</th></tr></thead>
-      <tbody>${nl.length?nl.map(n=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(n.subject||'')}</td><td class="text-slate-400">${esc(n.slug||'')}</td><td class="text-slate-400 text-[12px]">${esc((n.published_at||'').slice(0,10))}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessuna newsletter</td></tr>'}</tbody></table></section>`;
+      ${mkpi("📧","Iscritti",isc.length,"reale","text-emerald-600")}${mkpi("✅","Confermati",conf,"double opt-in","text-emerald-600")}${mkpi("🟢","Attivi",act,"reale","text-emerald-600")}${mkpi("🚫","Disiscritti",uns,"reale","text-slate-400")}</section>
+      <section class="card lift p-5 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Newsletter pubblicate (${nl.length}) <span class="real">newsletter_issues</span></div>
+      <div class="space-y-1">${nl.length?nl.map(n=>`<div class="flex items-center gap-2 py-2 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-blue-50 grid place-items-center text-[11px] shrink-0">✉</span><div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(n.subject||'')}</div><div class="text-[10px] text-slate-400 truncate">${esc(n.slug||'')}</div></div><span class="text-[10px] text-slate-400 shrink-0">${esc((n.published_at||'').slice(0,10))}</span></div>`).join(""):'<div class="py-4 text-center text-slate-400 text-[12px]">nessuna newsletter</div>'}</div></section>`;
   }
   else if(MK.tab==="Analytics"){
-    const A=[kpi("Reach (oggi)",NUM(insg.reach),"Instagram"),kpi("Profile views",NUM(insg.profile_views),"Instagram"),kpi("Account coinvolti",NUM(insg.accounts_engaged),"Instagram"),kpi("Interazioni",NUM(insg.total_interactions),"Instagram")].join("");
+    const A=[mkpi("👥","Reach (oggi)",NUM(insg.reach),"Instagram","text-emerald-600"),mkpi("👁","Profile views",NUM(insg.profile_views),"Instagram","text-emerald-600"),mkpi("🤝","Account coinvolti",NUM(insg.accounts_engaged),"Instagram","text-emerald-600"),mkpi("💬","Interazioni",NUM(insg.total_interactions),"Instagram","text-slate-400")].join("");
     c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${A}</section>
-      <section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Engagement per post <span class="real">reale</span></div>
+      <section class="card lift p-5 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Engagement per post <span class="real">reale</span></div>
       <table class="w-full text-[12px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Post</th><th class="text-right">Like</th><th class="text-right">Commenti</th></tr></thead>
-      <tbody>${posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2">${esc((p.caption||'(senza testo)').slice(0,50))}</td><td class="text-right">${NUM(p.like_count)}</td><td class="text-right">${NUM(p.comments_count)}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun post</td></tr>'}</tbody></table></section>`;
+      <tbody>${posts.length?posts.map(p=>`<tr class="arow border-t border-slate-50"><td class="py-2">${esc((p.caption||'(senza testo)').slice(0,50))}</td><td class="text-right">${NUM(p.like_count)}</td><td class="text-right">${NUM(p.comments_count)}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun post</td></tr>'}</tbody></table></section>`;
   }
   else if(MK.tab==="SEO"){
     const t=MK.topics,byP={};t.forEach(x=>{const k=x.Pillar||"Altro";(byP[k]=byP[k]||[]).push(x);});
-    const cols=Object.keys(byP).map(k=>`<div class="card p-4"><div class="font-bold text-sm mb-2">${esc(k)} <span class="muted">${byP[k].length}</span></div><ul class="text-[12px] space-y-1">${byP[k].map(x=>`<li class="border-t border-slate-50 pt-1">${esc(x.Tema||'')}</li>`).join("")}</ul></div>`).join("");
-    c.innerHTML=`<section class="card p-4 text-[13px] text-slate-500">Cluster keyword/temi reali da <code>topics</code> (${t.length}) raggruppati per pillar. Search Console/Ahrefs non collegati → niente ranking, solo strategia cluster.</section>
+    const cols=Object.keys(byP).map(k=>`<div class="card lift p-4 fu"><div class="font-bold text-sm mb-2 flex items-center justify-between">${esc(k)} <span class="chip bg-slate-100 text-slate-500">${byP[k].length}</span></div><ul class="text-[12px] space-y-1">${byP[k].map(x=>`<li class="border-t border-slate-50 pt-1.5 mt-1">${esc(x.Tema||'')}</li>`).join("")}</ul></div>`).join("");
+    c.innerHTML=`<section class="card p-4 fu text-[13px] text-slate-500">Cluster keyword/temi reali da <code>topics</code> (${t.length}) per pillar. Search Console/Ahrefs non collegati → solo strategia cluster.</section>
       <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">${cols||'<div class="text-slate-400">nessun topic</div>'}</section>`;
   }
 }
