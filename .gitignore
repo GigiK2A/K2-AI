@@ -62,3 +62,6 @@ ai-board-link
 aios/.venv/
 __pycache__/
 .pytest_cache/
+
+# K-BOT generated reports (PII, non versionare)
+kai-website/kbot/data/reports/

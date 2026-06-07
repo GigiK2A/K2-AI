@@ -131,7 +131,7 @@ function recoBlock(deliv){
   return `<div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;
 }
 function wireDecisioni(){
-  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{await jpost(`/api/approvals/${b.dataset.id}/approve`,{});load();});
+  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{});const a=r&&r.attuatore;if(a){alert(a.ok?("✅ Scritto su "+(a.tabella||"DB")+" ("+(a.op||"")+")"):("⚠️ Azione non eseguita: "+(a.errore||"")));}load();});
   document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();});
 }
 

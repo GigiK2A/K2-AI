@@ -119,7 +119,10 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     ) -> dict[str, Any]:
         res = kernel.resolve_approval(approval_id, approve=True,
                                       edited_payload=body.edited_payload)
-        return {"outcome": res.outcome.name}
+        out = {"outcome": res.outcome.name}
+        if isinstance(res.result, dict) and "attuatore" in res.result:
+            out["attuatore"] = res.result["attuatore"]   # esito scrittura reale
+        return out
 
     @app.post("/api/approvals/{approval_id}/reject")
     def reject(
