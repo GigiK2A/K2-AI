@@ -127,12 +127,114 @@ def apply_ddl(sql: str) -> dict[str, Any]:
         return {"ok": False, "errore": str(exc)[:200], "sql": body[:200]}
 
 
+# ---- Robustezza: l'LLM a volte inventa nomi colonna/valori → 400 da PostgREST.
+# Mappiamo i sinonimi alle colonne reali, scartiamo le colonne inesistenti (ripiegate
+# in un campo note se c'è) e normalizziamo i valori enum. Schema reale per tabella:
+_SCHEMA: dict[str, set[str]] = {
+    "board_tasks": {"lead_id", "title", "notes", "priority", "status", "due_at", "position"},
+    "board_cost_items": {"name", "amount_eur", "frequency", "category", "active"},
+    "pipeline_leads": {"name", "company", "sector", "channel", "pain_point", "offer_fit",
+                       "status", "score", "next_action", "next_action_date", "notes",
+                       "email", "value_eur", "expected_close_date", "last_contact_at"},
+    "invoices": {"number", "client_name", "project_id", "amount_eur", "status",
+                 "issued_at", "due_at", "paid_at"},
+    "finance_journal": {"data", "descrizione", "conto", "dare", "avere", "categoria", "riferimento"},
+    "project_tasks": {"project_id", "title", "status", "due_date", "completed_at"},
+    "project_phases": {"project_id", "name", "status", "phase_order", "date_completed", "date_estimated"},
+    "candidates": {"full_name", "role_applied", "status", "source", "cv_url", "notes"},
+    "employees": {"full_name", "role", "department", "hire_date", "contract_type",
+                  "contract_end_date", "status", "weekly_capacity_hours"},
+    "legal_documents": {"tipo", "controparte", "stato", "rischio", "scadenza", "file_url", "note"},
+    "vendors": {"name", "paese_hq", "dpa_status", "dpa_signed_at", "scc", "note"},
+    "team_members": {"name", "role", "weekly_capacity_hours", "cost_per_hour", "active"},
+    "change_requests": {"project_id", "requested_by", "description", "impact_days", "impact_eur", "status"},
+    "project_tools": {"project_id", "tool_name", "licence_cost_monthly", "renewal_date"},
+    "trademarks": {"name", "type", "nice_classes", "jurisdiction", "filing_no", "expiry_date", "status"},
+    "corporate_acts": {"tipo", "data", "oggetto", "delibere", "signed_at"},
+    "disputes": {"controparte", "tipo", "claim_amount", "status", "next_deadline",
+                 "prescription_date", "notes"},
+    "insurance_policies": {"tipo", "insurer", "premium_annual", "coverage_amount", "expiry_date", "notes"},
+    "compliance_training": {"person_email", "training_type", "completed_at", "expires_at"},
+    "policy_register": {"policy_name", "version", "effective_date", "review_due_date", "owner"},
+    "leave_requests": {"employee_id", "type", "date_start", "date_end", "status", "days"},
+    "performance_reviews": {"employee_id", "period", "reviewer", "score", "notes", "next_actions"},
+    "skills_matrix": {"employee_id", "skill", "level", "target_level"},
+    "training_records": {"employee_id", "course", "provider", "cost_eur", "completed_at"},
+    "safety_compliance": {"obligation", "last_done", "due_date", "responsible", "status"},
+    "offboarding_events": {"employee_id", "termination_date", "reason", "tfr_amount_eur", "equipment_returned"},
+    "hr_analytics_snapshots": {"period", "headcount", "turnover_rate", "avg_time_to_hire_days",
+                               "cost_per_hire_eur", "absenteeism_pct"},
+    "marketing_prospects": {"company", "website", "sector", "fit_score", "fit_reason",
+                            "contact_email", "contact_role", "email_source", "draft_subject",
+                            "draft_body", "status"},
+    "aios_content_calendar": {"canale", "titolo", "bozza", "stato", "data_programmata",
+                              "fonte_tipo", "fonte_id", "note"},
+    "shared_memory": {"key", "value", "category", "updated_by"},
+    "privacy_registro_trattamenti": {"trattamento", "base_giuridica", "categorie_dati",
+                                     "retention", "responsabile", "note"},
+}
+_NOTE_COLS = ("notes", "note", "descrizione", "fit_reason", "pain_point")
+_SYN: dict[str, tuple[str, ...]] = {
+    "title": ("task", "titolo", "oggetto", "attivita", "compito", "azione"),
+    "name": ("nome", "azienda", "ragione_sociale", "voce", "servizio", "societa", "cliente"),
+    "full_name": ("nome", "name", "nominativo", "candidato"),
+    "company": ("azienda", "societa", "ragione_sociale"),
+    "client_name": ("cliente", "azienda", "company"),
+    "notes": ("motivo", "descrizione", "description", "dettagli", "dettaglio", "nota", "commento"),
+    "note": ("motivo", "descrizione", "dettagli", "nota", "commento"),
+    "descrizione": ("description", "desc", "dettagli", "motivo"),
+    "description": ("descrizione", "desc", "dettagli", "motivo"),
+    "amount_eur": ("importo", "importo_eur", "amount", "budget_mese", "budget", "costo",
+                   "valore", "value_eur", "importo_totale"),
+    "status": ("stato",), "priority": ("priorita",), "email": ("mail", "e_mail"),
+    "sector": ("settore",),
+}
+_PRIORITY = {"alta": "alta", "high": "alta", "critical": "alta", "urgent": "alta", "urgente": "alta",
+             "p1": "alta", "media": "media", "medium": "media", "normal": "media", "normale": "media",
+             "p2": "media", "bassa": "bassa", "low": "bassa", "p3": "bassa"}
+_ENUM = {"board_tasks": {"priority": {"alta", "media", "bassa"},
+                         "status": {"todo", "doing", "done", "cancelled"}}}
+
+
+def _sanitize(table: str, data: dict, op: str = "insert") -> dict:
+    """Adatta i dati alle colonne/valori reali della tabella (l'LLM ne inventa)."""
+    cols = _SCHEMA.get(table)
+    if not cols or not isinstance(data, dict):
+        return data
+    d = dict(data)
+    for canon, aliases in _SYN.items():          # sinonimi → colonna canonica
+        if canon in cols and not d.get(canon):
+            for a in aliases:
+                if a in d and d[a] not in (None, ""):
+                    d[canon] = d.pop(a)
+                    break
+    known = {k: v for k, v in d.items() if k in cols}
+    extra = {k: v for k, v in d.items() if k not in cols}
+    note_col = next((c for c in _NOTE_COLS if c in cols), None)
+    if extra and note_col:                        # gli extra non vanno persi
+        txt = "; ".join(f"{k}: {v}" for k, v in extra.items() if v not in (None, "", [], {}))
+        if txt:
+            known[note_col] = ((str(known[note_col]) + " — ") if known.get(note_col) else "") + txt
+    for col, allowed in _ENUM.get(table, {}).items():   # valori enum validi (o default DB)
+        if col in known:
+            v = str(known[col]).strip().lower()
+            if col == "priority":
+                v = _PRIORITY.get(v, v)
+            known[col] = v if v in allowed else known.pop(col)
+    if op == "insert" and "title" in cols and not known.get("title"):
+        known["title"] = str(known.get(note_col) if note_col else "Attività")[:160] or "Attività"
+    if not known:
+        raise ActuatorError(f"nessuna colonna valida per {table}")
+    return known
+
+
 def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
     """Esegue l'azione su Supabase. DDL (tipo='ddl'|chiave 'sql') → modifica schema
     guardata; altrimenti insert/update di righe su tabella allowlist."""
     if isinstance(action, dict) and (action.get("tipo") == "ddl" or action.get("sql")):
         return apply_ddl(str(action.get("sql", "")))
     table, op, match, data = validate(action)
+    data = _sanitize(table, data, op)
     if op == "insert":
         rows = client.insert(table, data)
         return {"ok": True, "tabella": table, "op": "insert", "righe": rows}

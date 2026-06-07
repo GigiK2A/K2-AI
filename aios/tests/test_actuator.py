@@ -68,6 +68,30 @@ def test_op_not_allowed_on_table():
 
 
 # ---- apply_action ----
+def test_sanitize_board_tasks_bad_columns_and_enum():
+    # L'LLM inventa colonne (task/motivo/scadenza) e priorità 'high' → ora non 400.
+    c = FakeClient()
+    out = apply_action(c, {"tabella": "board_tasks", "op": "insert", "dati": {
+        "task": "Controlla Stripe", "motivo": "webhook giù", "priority": "high",
+        "scadenza": "48h", "assegnato": "dev"}})
+    assert out["ok"]
+    t, row = c.inserts[0]
+    assert t == "board_tasks" and row["title"] == "Controlla Stripe"   # task→title
+    assert row["priority"] == "alta"                                    # high→alta (enum)
+    assert "webhook" in row["notes"] and "scadenza:" in row["notes"]    # motivo→notes + extra
+    assert "task" not in row and "scadenza" not in row                  # colonne inventate via
+
+
+def test_sanitize_board_cost_items_maps_and_drops():
+    c = FakeClient()
+    out = apply_action(c, {"tabella": "board_cost_items", "op": "insert", "dati": {
+        "voce": "Cloud", "budget_mese": 65, "status": "x", "descrizione": "vercel"}})
+    assert out["ok"]
+    t, row = c.inserts[0]
+    assert row["name"] == "Cloud" and row["amount_eur"] == 65
+    assert "status" not in row and "voce" not in row   # nessuna note col → extra droppati
+
+
 def test_apply_insert():
     c = FakeClient()
     out = apply_action(c, {"tabella": "board_tasks", "op": "insert", "dati": {"title": "x"}})
