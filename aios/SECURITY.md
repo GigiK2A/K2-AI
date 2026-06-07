@@ -33,6 +33,16 @@ Audit su tutto il codice + Supabase advisors. Esito:
 - `update` richiede sempre un `match` (niente update di massa). Azione non valida → errore tracciato, l'approvazione non crasha.
 - Verificato dal vivo: insert reale su `board_tasks` ok, `delete` rifiutato (`ActuatorError`).
 
+## Chat a istruzioni (CommandRouter — `command.py`)
+- Canali: cockpit (bearer auth) e Telegram (chat id in allowlist, fail-closed). Un'istruzione vale solo dal canale autenticato dell'owner.
+- Flusso: l'istruzione viene valutata dall'LLM sui dati reali; poi ogni azione è classificata e:
+  - **interna sicura** (tabella allowlist reversibile) → eseguita SUBITO (l'istruzione dell'owner È l'autorizzazione, come da regola "le scritture da me possono essere fatte");
+  - **interna sensibile** (denaro/persone/legale/dati personali: `invoices`, `finance_journal`, `employees`, `candidates`, `legal_documents`, ...) → messa in **conferma**;
+  - **esterna** (n8n/pubblicazioni) → messa in **conferma**;
+  - **fuori perimetro** (non-allowlist, delete, tabelle denaro `BLOCKED`) → **rifiutata**.
+- Backstop reale: ogni scrittura passa comunque da `actuator.validate` (allowlist + no delete + no denaro). Qualunque cosa proponga l'LLM fuori perimetro viene bloccata. Ogni esecuzione è tracciata in audit. Test: `test_command.py`.
+- n8n (`sources/n8n.py`): azione esterna `integrazioni.n8n.esegui`, **cap L1** (mai autonoma), env-gated `N8N_WEBHOOK_URL` (solo http/https, header firma opzionale `N8N_WEBHOOK_TOKEN`). Senza URL degrada a "non configurato" (nessun side-effect).
+
 ## Connettori esterni (env-gated, privilegi minimi)
 - Tutti i connettori (`sources/connectors.py`) sono **readonly** (`action_type=None`) e degradano a `[]` senza credenziali: nessuna azione che muove denaro/stato.
 - Chiavi con **least-privilege**: Stripe = *restricted key read-only* (charges/balance/subscriptions read, **mai** scrittura); IMAP = *app-password* dedicata; Google (GSC/Calendar) = service account scope `*.readonly`; Telegram = bot con `callback_data` opaco (solo id approvazione) e **allowlist chat id**.

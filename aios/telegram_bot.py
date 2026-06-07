@@ -29,8 +29,23 @@ def main() -> None:
     def on_reject(aid):
         k.resolve_approval(int(aid), approve=False, reason="rifiutato via Telegram")
 
+    def on_text(text):
+        # Istruzione in linguaggio naturale → valuta ed esegue (interne subito,
+        # esterne/sensibili come bottoni di conferma). Stesso CommandRouter del cockpit.
+        if platform.commands is None:
+            telegram.send_text("Comandi non disponibili.")
+            return
+        res = platform.commands.handle(text, actor="telegram")
+        telegram.send_command_card(res.to_dict())
+
+    def on_confirm(token):
+        out = platform.commands.confirm(int(token), actor="telegram")
+        telegram.send_text("✅ Eseguito." if out.get("ok") else
+                           f"⚠️ Non eseguito: {out.get('errore') or (out.get('esito') or {}).get('errore','')}")
+
+    telegram.send_text("💬 Puoi anche scrivermi un'istruzione (es. \"allunga le caption delle bozze\").")
     print("In ascolto su Telegram (Ctrl-C per uscire)…")
-    telegram.poll_decisions(on_approve, on_reject)
+    telegram.poll_decisions(on_approve, on_reject, on_text=on_text, on_confirm=on_confirm)
 
 
 if __name__ == "__main__":

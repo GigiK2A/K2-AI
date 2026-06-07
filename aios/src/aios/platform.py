@@ -18,6 +18,8 @@ from aios.sources.sales import lead_tools
 from aios.sources.domains import (finance_tools, operations_tools,
                                   legal_tools, hr_tools, catalog_tools)
 from aios.sources.outputs import output_tool
+from aios.sources.n8n import n8n_tool
+from aios.command import CommandRouter
 from aios.agents.marketing import MarketingAgent
 from aios.agents.domain import DomainAgent
 from aios.agents.sales_config import SALES_CONFIG
@@ -30,9 +32,10 @@ from aios.agents.hr_config import HR_CONFIG
 class Platform:
     """K2-OS: kernel condiviso + sensori + conoscenza + agenti di dominio."""
 
-    def __init__(self, kernel: Kernel, agents: dict[str, Any]) -> None:
+    def __init__(self, kernel: Kernel, agents: dict[str, Any], commands: Any = None) -> None:
         self.kernel = kernel
         self.agents = agents
+        self.commands = commands   # CommandRouter (chat a istruzioni), impostato dopo
 
     def domains(self) -> list[str]:
         return list(self.agents)
@@ -75,6 +78,11 @@ def build_platform() -> Platform:
             k.register_tool(t)
     for t in all_connectors():          # connettori esterni env-gated (graceful [])
         k.register_tool(t)
+    k.register_tool(n8n_tool())         # braccio esecutore esterno (env-gated)
+    from aios.sources.n8n import N8N_ACTION
+    from aios.autonomy import AutonomyLevel as _AL
+    k.policy.set_level(N8N_ACTION, _AL.L1_PROPOSE)   # esterno: mai autonomo
+    k.policy.set_cap(N8N_ACTION, _AL.L1_PROPOSE)
 
     founder = default_founder_model()
     skills = SkillLibrary()
@@ -93,4 +101,6 @@ def build_platform() -> Platform:
         "legal": _domain(LEGAL_CONFIG),
         "hr": _domain(HR_CONFIG),
     }
-    return Platform(k, agents)
+    platform = Platform(k, agents)
+    platform.commands = CommandRouter(platform, llm)   # chat a istruzioni
+    return platform

@@ -70,6 +70,21 @@
   .dmodal-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);animation:fade .2s ease}
   .dmodal-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(720px,94vw);max-height:90vh;background:#fff;border-radius:22px;border:1px solid #E6EAF2;box-shadow:0 40px 80px -30px rgba(15,23,42,.5);overflow:hidden;display:flex;flex-direction:column;animation:pop .26s cubic-bezier(.2,.7,.2,1)}
   @keyframes fade{from{opacity:0}}@keyframes pop{from{opacity:0;transform:translate(-50%,-46%) scale(.97)}}
+  /* chat a istruzioni */
+  #chatLauncher{position:fixed;right:20px;bottom:20px;width:54px;height:54px;border-radius:999px;background:#2563EB;color:#fff;display:grid;place-items:center;font-size:22px;cursor:pointer;box-shadow:0 14px 30px -10px rgba(37,99,235,.6);z-index:70;transition:transform .15s}
+  #chatLauncher:hover{transform:scale(1.06)}
+  .chatp{position:fixed;right:20px;bottom:84px;width:min(400px,92vw);height:min(560px,76vh);background:#fff;border:1px solid #E6EAF2;border-radius:20px;box-shadow:0 30px 70px -25px rgba(15,23,42,.5);display:none;flex-direction:column;overflow:hidden;z-index:71}
+  .chatp.open{display:flex;animation:popc .22s cubic-bezier(.2,.7,.2,1)}
+  @keyframes popc{from{opacity:0;transform:translateY(12px) scale(.98)}}
+  .chatp-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #f1f5f9}
+  .chatp-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#F8FAFC}
+  .chatp-in{display:flex;gap:8px;padding:12px;border-top:1px solid #f1f5f9}
+  .chatp-in input{flex:1;border:1px solid #E6EAF2;border-radius:12px;padding:10px 12px;font-size:13px;outline:none}
+  .chatp-in input:focus{border-color:#2563EB}
+  .cmsg{max-width:90%;padding:9px 12px;border-radius:14px;font-size:13px;line-height:1.45;word-break:break-word}
+  .cmsg.me{align-self:flex-end;background:#2563EB;color:#fff;border-bottom-right-radius:4px}
+  .cmsg.ai{align-self:flex-start;background:#fff;border:1px solid #E6EAF2;border-bottom-left-radius:4px}
+  .cmsg .ok{color:#16A34A;font-weight:700}.cmsg .warn{color:#D97706;font-weight:700}.cmsg .bad{color:#DC2626;font-weight:700}
 </style>
 </head>
 <body class="font-sans text-[15px]">
@@ -119,6 +134,20 @@
       <button onclick="load()" class="text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2">↻ Aggiorna</button>
     </header>
     <main id="view" class="p-7 space-y-6 max-w-[1320px]"></main>
+  </div>
+</div>
+
+<div id="chatLauncher" title="Chat con l'AI">💬</div>
+<div id="chatPanel" class="chatp">
+  <div class="chatp-h">
+    <div><div class="font-extrabold text-[14px]">Assistente K2-AI</div>
+      <div class="text-[11px] text-slate-400">dimmi cosa fare · valuta ed esegue (L1)</div></div>
+    <button id="chatClose" class="w-7 h-7 rounded-lg btn-sec grid place-items-center">✕</button>
+  </div>
+  <div id="chatLog" class="chatp-log"></div>
+  <div class="chatp-in">
+    <input id="chatInput" placeholder="Es. allunga le caption delle bozze…" autocomplete="off">
+    <button id="chatSend" class="bg-brand text-white rounded-lg px-3 font-semibold">➤</button>
   </div>
 </div>
 
@@ -666,7 +695,41 @@ async function runAgent(){
   catch(e){alert("errore");}
   btn.textContent=old;btn.disabled=false;load();
 }
-(async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();})();
+// ---------------- CHAT A ISTRUZIONI ----------------
+let CHAT_BUSY=false;
+function chatMsg(html,who){const log=$("chatLog");const d=document.createElement("div");d.className="cmsg "+who;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
+function chatOpen(){$("chatPanel").classList.add("open");$("chatInput").focus();
+  if(!$("chatLog").dataset.greeted){$("chatLog").dataset.greeted="1";
+    chatMsg("Ciao! Dimmi cosa vuoi fare — valuto sui dati reali e, se è corretto, lo faccio. Le azioni interne sicure partono subito; quelle esterne (n8n/pubblicazioni) te le faccio confermare.","ai");}}
+function chatClose(){$("chatPanel").classList.remove("open");}
+function renderCmd(r){
+  let h="";
+  if(r.valutazione)h+=`<div class="text-slate-500 text-[12px] mb-1">${esc(r.valutazione)}</div>`;
+  if(r.risposta)h+=`<div class="mb-1">${esc(r.risposta)}</div>`;
+  if(!r.fattibile&&!((r.eseguite||[]).length)&&!((r.da_confermare||[]).length))h+=`<div class="warn">Non eseguito.</div>`;
+  (r.eseguite||[]).forEach(e=>{h+=`<div class="ok">✓ Fatto: ${esc(e.descrizione)} <span class="text-slate-400 text-[11px]">(${esc(e.tabella||"")} ${esc(e.op||"")})</span></div>`;});
+  (r.rifiutate||[]).forEach(x=>{h+=`<div class="bad">✕ Rifiutato: ${esc(x.descrizione)} <span class="text-slate-400 text-[11px]">${esc(x.motivo||"")}</span></div>`;});
+  const d=chatMsg(h||"(nessuna azione)","ai");
+  (r.da_confermare||[]).forEach(c=>{
+    const w=document.createElement("div");w.className="mt-2";
+    w.innerHTML=`<div class="warn">⚠ Da confermare: ${esc(c.descrizione)} <span class="text-slate-400 text-[11px]">${esc(c.tipo||"")}</span></div>`;
+    const b=document.createElement("button");b.className="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg mt-1";b.textContent="Conferma ed esegui";
+    b.onclick=async()=>{b.disabled=true;b.textContent="…";let o={};try{o=await jpost("/api/command/confirm",{id:c.id});}catch(e){o={ok:false,errore:"rete"};}
+      const okc=o.ok;b.outerHTML=okc?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||(o.esito&&o.esito.errore)||"non eseguito"))+'</span>');load();};
+    w.appendChild(b);d.appendChild(w);
+  });
+  load();
+}
+async function chatSend(){
+  if(CHAT_BUSY)return;const inp=$("chatInput");const t=(inp.value||"").trim();if(!t)return;
+  inp.value="";chatMsg(esc(t),"me");CHAT_BUSY=true;
+  const thinking=chatMsg("<span class='text-slate-400'>…sto valutando sui dati reali</span>","ai");
+  let r={};try{r=await jpost("/api/command",{text:t});}catch(e){r={risposta:"Errore di rete.",fattibile:false};}
+  thinking.remove();renderCmd(r);CHAT_BUSY=false;$("chatInput").focus();
+}
+function wireChat(){const L=$("chatLauncher");if(!L)return;L.onclick=chatOpen;$("chatClose").onclick=chatClose;$("chatSend").onclick=chatSend;
+  $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")chatSend();});}
+(async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();wireChat();})();
 </script>
 </body>
 </html>

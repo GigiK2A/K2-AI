@@ -30,6 +30,14 @@ class ResolveBody(BaseModel):
     reason: str | None = None
 
 
+class CommandBody(BaseModel):
+    text: str
+
+
+class ConfirmBody(BaseModel):
+    id: int
+
+
 def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     app = FastAPI(title="K2-AI Operating System")
 
@@ -188,6 +196,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "Anthropic (LLM)": ["ANTHROPIC_API_KEY"],
             "Instagram": ["AIOS_IG_TOKEN"],
             "Telegram": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
+            "n8n (esecutore esterno)": ["N8N_WEBHOOK_URL"],
             "API auth": ["AIOS_API_TOKEN"],
         }
         label = {
@@ -261,5 +270,19 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "per_domain": per,
             "signals": signals,
         }
+
+    @app.post("/api/command")
+    def command(body: CommandBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """Chat a istruzioni: valuta e — interne subito, esterne/sensibili in conferma — esegue."""
+        if platform is None or getattr(platform, "commands", None) is None:
+            return {"fattibile": False, "risposta": "Comandi non disponibili.",
+                    "valutazione": "", "eseguite": [], "da_confermare": [], "rifiutate": []}
+        return platform.commands.handle(body.text, actor="cockpit").to_dict()
+
+    @app.post("/api/command/confirm")
+    def command_confirm(body: ConfirmBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        if platform is None or getattr(platform, "commands", None) is None:
+            return {"ok": False, "errore": "non disponibile"}
+        return platform.commands.confirm(body.id, actor="cockpit")
 
     return app
