@@ -130,9 +130,16 @@ const META={
   legal:{ico:"§",label:"Legal & Compliance",sub:"GDPR, consensi, contratti e compliance"},
   hr:{ico:"☺",label:"HR",sub:"Persone, recruiting, onboarding e org"},
 };
-const TBL={leggi_lead:"Lead pipeline",leggi_memo_vendite:"Memo vendite",leggi_conversioni:"Conversioni K-BOT",leggi_revenue:"Eventi ricavo (Stripe)",leggi_valore_commesse:"Valore commesse",leggi_memoria_finance:"Memoria finance",leggi_commesse:"Commesse",leggi_fasi:"Fasi progetto",leggi_task_commessa:"Task commessa",leggi_documenti:"Documenti",leggi_task_operativi:"Task operativi",leggi_iscritti_newsletter:"Iscritti newsletter",leggi_consensi_kbot:"Consensi K-BOT",leggi_assegnatari:"Task assegnati"};
+const TBL={
+  leggi_lead:"Lead pipeline",leggi_memo_vendite:"Memo vendite",leggi_clienti:"Clienti",leggi_ricavi_chiusi:"Ricavi chiusi",leggi_lead_kbot:"Lead da K-BOT",leggi_suite:"Catalogo suite",leggi_inbox:"Inbox email",leggi_calendario_google:"Calendario",
+  leggi_conversioni:"Conversioni K-BOT",leggi_revenue:"Eventi ricavo (Stripe)",leggi_valore_commesse:"Valore commesse",leggi_memoria_finance:"Memoria finance",leggi_costi:"Costi",leggi_stripe_ricavi:"Ricavi Stripe",leggi_stripe_saldo:"Saldo Stripe",leggi_fatture:"Fatture",leggi_giornale:"Giornale contabile",leggi_organico:"Organico",
+  leggi_commesse:"Commesse",leggi_fasi:"Fasi progetto",leggi_task_commessa:"Task commessa",leggi_documenti:"Documenti",leggi_task_operativi:"Task operativi",leggi_team:"Team",leggi_change_requests:"Change request",leggi_strumenti:"Strumenti",
+  leggi_iscritti_newsletter:"Iscritti newsletter",leggi_consensi_kbot:"Consensi K-BOT",leggi_documenti_legali:"Documenti legali",leggi_registro_trattamenti:"Registro trattamenti",leggi_fornitori:"Fornitori",leggi_marchi:"Marchi",leggi_atti_societari:"Atti societari",leggi_contenziosi:"Contenziosi",leggi_assicurazioni:"Assicurazioni",leggi_formazione_compliance:"Formazione compliance",leggi_policy:"Policy",
+  leggi_dipendenti:"Dipendenti",leggi_candidati:"Candidati",leggi_assegnatari:"Task assegnati",leggi_ferie:"Ferie/permessi",leggi_review:"Performance review",leggi_skills:"Skill matrix",leggi_formazione:"Formazione",leggi_sicurezza:"Sicurezza lavoro",leggi_offboarding:"Offboarding",leggi_hr_analytics:"HR analytics"};
 // chart group field + KPI builders per dominio
-const CHART={vendite:["leggi_lead","status","Lead per stato"],finance:["leggi_conversioni","type","Conversioni per tipo"],operations:["leggi_task_operativi","status","Task per stato"],legal:["leggi_iscritti_newsletter","confirmed","Iscritti (confermati)"],hr:["leggi_assegnatari","status","Task per stato"]};
+const CHART={vendite:["leggi_lead","status","Lead per stato"],finance:["leggi_conversioni","type","Conversioni per tipo"],operations:["leggi_task_operativi","status","Task per stato"],legal:["leggi_iscritti_newsletter","confirmed","Iscritti newsletter"],hr:["leggi_assegnatari","status","Task per stato"]};
+const VLBL={"true":"Confermati","false":"Non confermati",done:"Completati",running:"In corso",pending:"In attesa",approved:"Approvati",rejected:"Rifiutati",todo:"Da fare",in_progress:"In corso",open:"Aperti",new:"Nuovi",won:"Vinti",lost:"Persi",qualified:"Qualificati",contacted:"Contattati",closed:"Chiusi",draft:"Bozza",active:"Attivi",paid:"Pagati"};
+function vlabel(k){return VLBL[String(k).toLowerCase()]||String(k);}
 let DOMAINS=[],VIEW="overview",CUR=null,charts=[],MK={};
 function killCharts(){charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];}
 function arr(v){return Array.isArray(v)?v:[];}
@@ -144,7 +151,7 @@ function buildNav(){
   g.innerHTML=DOMAINS.map(d=>{const m=META[d]||{ico:"•",label:d};return `<div class="navi" data-view="dom:${d}">${m.ico} ${esc(m.label)}</div>`;}).join("");
   document.querySelectorAll("#nav .navi").forEach(n=>n.onclick=()=>route(n.dataset.view));
 }
-function route(v){if(v==="soon"){alert("Sezione in arrivo.");return;}VIEW=v;CUR=v.startsWith("dom:")?v.slice(4):null;load();}
+function route(v){if(v==="soon"){alert("Sezione in arrivo.");return;}VIEW=v;CUR=v.startsWith("dom:")?v.slice(4):null;DTAB="Overview";load();}
 function markNav(){document.querySelectorAll("#nav .navi").forEach(n=>n.classList.toggle("active",n.dataset.view===VIEW));}
 function setHeader(title,sub,showRun){$("hd-title").textContent=title;$("hd-sub").textContent=sub;$("btn-run").classList.toggle("hidden",!showRun);}
 
@@ -399,19 +406,35 @@ async function loadAgents(){
 }
 
 // ---------------- DOMINIO ----------------
+const DTABS={
+  vendite:["Overview","Pipeline","Leads","Deals","Accounts","Activities","Forecast","Reports","Integrations"],
+  finance:["Overview","Ricavi","Costi","Fatture","Forecast","Tax","Report"],
+  operations:["Overview","Commesse","Fasi","Task","Capacity","Report"],
+  legal:["Overview","Contratti","GDPR","Fornitori","Compliance","Report"],
+  hr:["Overview","Recruiting","Onboarding","Performance","Compliance","Report"]};
+const DQUICK={
+  vendite:[["▶ Fai girare l'agente","runAgent()"],["+ Nuovo lead","runAgent()"],["📄 Nuova proposta commerciale","runAgent()"],["📈 Analizza performance vendite","runAgent()"],["🔍 Analizza competitor","runAgent()"]],
+  finance:[["▶ Fai girare l'agente","runAgent()"],["📄 Nuova fattura","runAgent()"],["📊 Report cashflow","runAgent()"],["🧮 Scadenze fiscali","runAgent()"]],
+  operations:[["▶ Fai girare l'agente","runAgent()"],["🗂 Nuova commessa","runAgent()"],["📈 Report avanzamento","runAgent()"]],
+  legal:[["▶ Fai girare l'agente","runAgent()"],["📄 Bozza contratto/NDA","runAgent()"],["🛡 Audit GDPR","runAgent()"]],
+  hr:[["▶ Fai girare l'agente","runAgent()"],["👤 Nuova selezione","runAgent()"],["📋 Piano onboarding","runAgent()"]]};
+let DTAB="Overview";
+const OPEN=["pending","running","todo","in_progress","open","new","review"];
 function domainKPIs(d,data,props,deliv){
-  const src=Object.keys(data).length,rows=Object.values(data).reduce((s,x)=>s+arr(x).length,0);
-  const base={
-    vendite:()=>{const leads=arr(data.leggi_lead);const won=leads.filter(l=>String(l.status).includes("vinto")||String(l.status).includes("chiuso")).length;
-      return [kpi("Lead pipeline",leads.length,{t:"reale",real:1}),kpi("Memo",arr(data.leggi_memo_vendite).length,{t:"reale",real:1})];},
-    finance:()=>{let rev=0;arr(data.leggi_conversioni).forEach(r=>rev+=Number(r.amount_eur)||0);
-      return [kpi("Ricavi K-BOT",eur(rev),{t:"conversioni reali",real:1}),kpi("Eventi Stripe",arr(data.leggi_revenue).length,{t:"Stripe non collegato"})];},
-    operations:()=>[kpi("Commesse",arr(data.leggi_commesse).length,{t:"reale",real:1}),kpi("Task aperti",arr(data.leggi_task_operativi).length,{t:"reale",real:1})],
-    legal:()=>[kpi("Iscritti newsletter",arr(data.leggi_iscritti_newsletter).length,{t:"reale",real:1}),kpi("Profili consenso",arr(data.leggi_consensi_kbot).length,{t:"reale",real:1})],
-    hr:()=>[kpi("Task assegnati",arr(data.leggi_assegnatari).length,{t:"unico segnale reale"}),kpi("Anagrafica","—","da collegare")],
-  }[d];
-  const extra=base?base():[];
-  return [...extra,kpi("Proposte in coda",props,{t:"da approvare",real:1}),kpi("Fonti dati",src,{t:"sensori",real:1}),kpi("Deliverable",deliv,{t:"approvati",real:1})].slice(0,5).join("");
+  const src=Object.values(data).filter(v=>Array.isArray(v)&&v.length).length;
+  const rev=arr(data.leggi_conversioni).reduce((s,r)=>s+(Number(r.amount_eur)||0),0);
+  const opsOpen=arr(data.leggi_task_operativi).filter(t=>OPEN.includes(String(t.status))).length;
+  const hrOpen=arr(data.leggi_assegnatari).filter(t=>OPEN.includes(String(t.status))).length;
+  const noConf=arr(data.leggi_iscritti_newsletter).filter(r=>!r.confirmed).length;
+  const PER={
+    vendite:[["👥","Lead pipeline",arr(data.leggi_lead).length,"reale","text-emerald-600"],["🤝","Clienti",arr(data.leggi_clienti).length,"reale","text-emerald-600"]],
+    finance:[["🧾","Conversioni K-BOT",arr(data.leggi_conversioni).length,"reale","text-emerald-600"],["€","Ricavi incassati",eur(rev),rev?"conversioni":"Stripe off",rev?"text-emerald-600":"text-slate-400"]],
+    operations:[["🗂️","Commesse",arr(data.leggi_commesse).length,"reale","text-emerald-600"],["⚙️","Task aperti",opsOpen,arr(data.leggi_task_operativi).length+" totali","text-amber-600"]],
+    legal:[["✉️","Iscritti",arr(data.leggi_iscritti_newsletter).length,"reale","text-emerald-600"],["⚠️","Non confermati",noConf,"da sanare",noConf?"text-amber-600":"text-emerald-600"]],
+    hr:[["📋","Task aperti",hrOpen,arr(data.leggi_assegnatari).length+" assegnati","text-amber-600"],["🧑‍💼","Dipendenti",arr(data.leggi_dipendenti).length,"anagrafica","text-slate-400"]],
+  }[d]||[];
+  const cards=[...PER,["✈️","Proposte in coda",props,"da approvare","text-amber-600"],["🗄️","Fonti attive",src,"sensori","text-emerald-600"],["✅","Deliverable",deliv,"approvati","text-slate-400"]].slice(0,5);
+  return cards.map(c=>mkpi(c[0],c[1],c[2],c[3],c[4])).join("");
 }
 async function loadDomain(){
   const m=META[CUR]||{ico:"•",label:CUR,sub:""};
@@ -420,28 +443,41 @@ async function loadDomain(){
   let v={};try{v=await jget("/api/domain/"+CUR);}catch(e){$("view").innerHTML='<div class="card p-6 text-red-600">Errore</div>';return;}
   const data=v.data||{},props=v.proposals||[],deliv=v.deliverables||[],skills=v.skills||[];
   $("cs-pending").textContent=props.length;
-  const cfg=CHART[CUR];let chartHTML="";let g={};
-  if(cfg){g=group(data[cfg[0]],cfg[1]);}
-  const hasChart=cfg&&Object.keys(g).length;
-  const dataRows=Object.keys(data).map(s=>{const val=data[s];const n=arr(val).length;let sample="";const a=arr(val);
-    if(a.length){const r=a[0];sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,34))}`).join(" · ");}
-    else if(val&&val.error){sample=`<span class="text-red-500">${esc(val.error).slice(0,70)}</span>`;}else sample='<span class="text-slate-400">nessuna riga</span>';
-    return `<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${n} righe</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")||'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun sensore</td></tr>';
-  const checks=Object.keys(data).map(s=>TBL[s]||s).slice(0,6);if(!checks.length)checks.push("Knowledge base","Founder Model");
-  const agentStatus=agentStatusCard(checks,"99.8%")
-    +(skills.length?`<div class="card p-3 fu"><div class="text-[11px] font-bold text-slate-500 mb-2">Skill attive</div><div class="flex flex-wrap gap-1">${skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join("")}</div></div>`:"");
-  $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
-    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${domainKPIs(CUR,data,props.length,deliv.length)}</section>
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="card p-4 lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Dati reali letti dai sensori <span class="real">Supabase</span></div>
-        <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Fonte</th><th class="py-1 text-center">Volume</th><th class="py-1">Esempio</th></tr></thead><tbody>${dataRows}</tbody></table></div>
-      <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">${cfg?esc(cfg[2]):"Distribuzione"} <span class="real">reale</span></div>
-        ${hasChart?'<div class="relative h-48"><canvas id="domDonut"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px] text-center px-3">Nessun dato sufficiente per il grafico</div>'}</div></section>
-    ${decTable(props,"Decisioni da prendere")}
-    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoCard(deliv)}
-      ${quickActionsCard([["▶ Fai girare l'agente","runAgent()"],["▦ Torna all'Overview","route('overview')"]])}</aside></div>`;
-  if(hasChart)donut("domDonut",Object.keys(g),Object.values(g));
-  wireDecisioni();
+  const checks=Object.keys(data).map(s=>TBL[s]||s).slice(0,9);if(!checks.length)checks.push("Knowledge base","Founder Model");
+  const sidebar=agentStatusCard(checks,"99.8%")
+    +(skills.length?`<div class="card p-3 fu"><div class="text-[11px] font-bold text-slate-500 mb-2">Skill attive</div><div class="flex flex-wrap gap-1">${skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join("")}</div></div>`:"")
+    +recoCard(deliv)+quickActionsCard(DQUICK[CUR]||[["▶ Fai girare l'agente","runAgent()"],["▦ Torna all'Overview","route('overview')"]]);
+  const tabs=DTABS[CUR];
+  const tabsBar=tabs?`<div id="dtabs" class="flex gap-5 border-b border-slate-100 overflow-x-auto">${tabs.map(t=>`<div class="tab ${t===DTAB?'active':''}" data-dt="${esc(t)}">${esc(t)}</div>`).join("")}</div>`:"";
+  let content,hasChart=false,g={};
+  if(DTAB!=="Overview"){
+    content=`<section class="card p-12 text-center fu"><div class="w-12 h-12 rounded-2xl bg-blue-50 grid place-items-center text-[20px] mx-auto mb-3">${m.ico}</div>
+      <div class="text-[15px] font-bold mb-1">${esc(DTAB)}</div>
+      <div class="text-slate-400 text-[13px] max-w-md mx-auto">Vista dedicata in arrivo. I dati reali di questo ambito sono già letti dai sensori dell'agente e visibili nella tab <b>Overview</b>.</div></section>`;
+  } else {
+    const cfg=CHART[CUR];if(cfg)g=group(data[cfg[0]],cfg[1]);hasChart=cfg&&Object.keys(g).length;
+    const total=Object.values(g).reduce((s,n)=>s+n,0);
+    const legend=Object.keys(g).map((k,i)=>`<div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${PAL[i%PAL.length]}"></span><span class="flex-1 truncate">${esc(vlabel(k))}</span><span class="font-bold">${g[k]}</span><span class="text-slate-400 w-9 text-right">${total?Math.round(g[k]/total*100):0}%</span></div>`).join("");
+    const dataRows=Object.keys(data).map(s=>{const val=data[s];const n=arr(val).length;let sample="";const a=arr(val);
+      if(a.length){const r=a[0];sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,34))}`).join(" · ");}
+      else if(val&&val.error){sample=`<span class="text-red-500">${esc(val.error).slice(0,70)}</span>`;}else sample='<span class="text-slate-400">nessuna riga</span>';
+      return `<tr class="arow border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${n} righe</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")||'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun sensore</td></tr>';
+    content=`<section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${domainKPIs(CUR,data,props.length,deliv.length)}</section>
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="card lift p-4 fu lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Dati reali letti dai sensori <span class="real">Supabase</span></div>
+          <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Fonte</th><th class="py-1 text-center">Volume</th><th class="py-1">Esempio</th></tr></thead><tbody>${dataRows}</tbody></table>
+          <a onclick="route('analytics')" class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai a tutte le fonti dati →</a></div>
+        <div class="card lift p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">${cfg?esc(cfg[2]):"Distribuzione"} <span class="real">reale</span></div>
+          ${hasChart?`<div class="flex items-center gap-3"><div class="relative w-32 h-32 shrink-0"><canvas id="domDonut"></canvas><div class="absolute inset-0 grid place-items-center"><div class="text-center"><div class="text-[20px] font-extrabold kpiv leading-none">${total}</div><div class="text-[10px] text-slate-400">totali</div></div></div></div><div class="flex-1 space-y-1.5 text-[12px]">${legend}</div></div>`:'<div class="h-40 grid place-items-center text-slate-400 text-[12px] text-center px-3">Nessun dato sufficiente per il grafico</div>'}</div></section>
+      ${decTable(props,"Decisioni da prendere")}`;
+  }
+  $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">${tabsBar}${content}</div>
+    <aside class="w-full xl:w-80 shrink-0 space-y-4">${sidebar}</aside></div>`;
+  if(tabs)document.querySelectorAll("#dtabs .tab").forEach(el=>el.onclick=()=>{DTAB=el.dataset.dt;loadDomain();});
+  if(DTAB==="Overview"){
+    if(hasChart){const c=new Chart($("domDonut"),{type:"doughnut",data:{labels:Object.keys(g),datasets:[{data:Object.values(g),backgroundColor:PAL,borderWidth:0}]},options:{cutout:"70%",plugins:{legend:{display:false},tooltip:{enabled:false}}}});charts.push(c);}
+    wireDecisioni();
+  }
 }
 
 // ---------------- MARKETING ----------------
