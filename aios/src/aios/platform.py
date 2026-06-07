@@ -18,7 +18,7 @@ from aios.sources.sales import lead_tools
 from aios.sources.domains import (finance_tools, operations_tools,
                                   legal_tools, hr_tools, catalog_tools)
 from aios.sources.outputs import output_tool
-from aios.sources.n8n import n8n_tool
+from aios.sources.n8n import n8n_tool, n8n_workflows_tool
 from aios.command import CommandRouter
 from aios.agents.marketing import MarketingAgent
 from aios.agents.domain import DomainAgent
@@ -79,6 +79,7 @@ def build_platform() -> Platform:
     for t in all_connectors():          # connettori esterni env-gated (graceful [])
         k.register_tool(t)
     k.register_tool(n8n_tool())         # braccio esecutore esterno (env-gated)
+    k.register_tool(n8n_workflows_tool())  # sensore: elenco workflow n8n (readonly)
     from aios.sources.n8n import N8N_ACTION
     from aios.autonomy import AutonomyLevel as _AL
     k.policy.set_level(N8N_ACTION, _AL.L1_PROPOSE)   # esterno: mai autonomo

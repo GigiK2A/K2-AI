@@ -42,6 +42,7 @@ Audit su tutto il codice + Supabase advisors. Esito:
   - **fuori perimetro** (non-allowlist, delete, tabelle denaro `BLOCKED`) → **rifiutata**.
 - Backstop reale: ogni scrittura passa comunque da `actuator.validate` (allowlist + no delete + no denaro). Qualunque cosa proponga l'LLM fuori perimetro viene bloccata. Ogni esecuzione è tracciata in audit. Test: `test_command.py`.
 - n8n (`sources/n8n.py`): azione esterna `integrazioni.n8n.esegui`, **cap L1** (mai autonoma), env-gated `N8N_WEBHOOK_URL` (solo http/https, header firma opzionale `N8N_WEBHOOK_TOKEN`). Senza URL degrada a "non configurato" (nessun side-effect).
+- **Gestione workflow n8n** (Public API, `N8N_API_URL`+`N8N_API_KEY`): lettura workflow = sensore readonly; modifica (`create/update/activate/deactivate`) = **sempre in conferma** dalla chat (mai automatica). **DELETE non esposta** (nessuna cancellazione di workflow). Senza API degrada a "non configurato".
 
 ## Connettori esterni (env-gated, privilegi minimi)
 - Tutti i connettori (`sources/connectors.py`) sono **readonly** (`action_type=None`) e degradano a `[]` senza credenziali: nessuna azione che muove denaro/stato.

@@ -50,7 +50,8 @@ def test_internal_safe_executes_now():
     assert client.writes[0][1] == "aios_content_calendar"
 
 
-def test_external_n8n_needs_confirm():
+def test_external_n8n_needs_confirm(monkeypatch):
+    monkeypatch.delenv("N8N_WEBHOOK_URL", raising=False)   # test ermetico
     plan = {"valutazione": "serve pubblicare", "fattibile": True, "risposta": "ok",
             "azioni": [{"descrizione": "pubblica su IG", "esterna": True,
                         "n8n": {"workflow": "publish_ig", "payload": {"x": 1}}}]}
@@ -60,7 +61,7 @@ def test_external_n8n_needs_confirm():
     assert client.writes == []                      # niente eseguito senza conferma
     out = r.confirm(res.da_confermare[0]["id"])
     assert out["tipo"] == "n8n"                      # confermato -> tentato n8n
-    assert out["ok"] is False                        # N8N_WEBHOOK_URL non settato in test
+    assert out["ok"] is False                        # N8N_WEBHOOK_URL non configurato
 
 
 def test_forbidden_money_refused():
@@ -103,3 +104,26 @@ def test_not_feasible_does_nothing():
 def test_confirm_unknown_token():
     r, _ = _router({"valutazione": "", "fattibile": True, "risposta": "", "azioni": []})
     assert r.confirm(999)["ok"] is False
+
+
+def test_n8n_manage_needs_confirm_never_auto(monkeypatch):
+    monkeypatch.delenv("N8N_API_URL", raising=False)       # test ermetico
+    monkeypatch.delenv("N8N_API_KEY", raising=False)
+    plan = {"valutazione": "modifico l'automazione", "fattibile": True, "risposta": "ok",
+            "azioni": [{"descrizione": "aggiorna workflow IG", "n8n_manage": {
+                "op": "update", "workflow_id": "abc", "definition": {"name": "x", "nodes": []}}}]}
+    r, client = _router(plan)
+    res = r.handle("modifica il workflow n8n che pubblica i post")
+    assert not res.eseguite and len(res.da_confermare) == 1 and client.writes == []
+    out = r.confirm(res.da_confermare[0]["id"])
+    assert out["tipo"] == "n8n_manage"
+    assert out["ok"] is False        # N8N_API_URL/KEY non settati in test → niente effetto
+
+
+def test_n8n_manage_delete_refused():
+    plan = {"valutazione": "x", "fattibile": True, "risposta": "ok",
+            "azioni": [{"descrizione": "elimina workflow", "n8n_manage": {
+                "op": "delete", "workflow_id": "abc"}}]}
+    r, client = _router(plan)
+    res = r.handle("cancella il workflow n8n")
+    assert not res.eseguite and not res.da_confermare and len(res.rifiutate) == 1

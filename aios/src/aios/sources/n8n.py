@@ -54,3 +54,79 @@ def n8n_tool() -> Tool:
     def _run(workflow: str = "default", payload: dict | None = None, **_) -> dict:
         return trigger_n8n(workflow, payload or {})
     return Tool(name="esegui_n8n", action_type=N8N_ACTION, run=_run)
+
+
+# ----------------------------------------------------------------------------
+# GESTIONE WORKFLOW via n8n Public API (lettura + modifica). Env-gated:
+#   N8N_API_URL  es: https://<host>/api/v1
+#   N8N_API_KEY  (Settings → n8n API → Create API Key)
+# Le SCRITTURE (create/update/activate/deactivate) passano dal perimetro: l'AI
+# propone, l'umano conferma. DELETE non e' esposta (mai cancellazione automatica).
+# ----------------------------------------------------------------------------
+def n8n_api_enabled() -> bool:
+    return bool(os.environ.get("N8N_API_URL") and os.environ.get("N8N_API_KEY"))
+
+
+def _api(method: str, path: str, body: dict | None = None, timeout: int = 25) -> dict[str, Any]:
+    base = os.environ.get("N8N_API_URL", "").strip().rstrip("/")
+    key = os.environ.get("N8N_API_KEY", "").strip()
+    if not base or not key:
+        return {"ok": False, "errore": "n8n API non configurata (N8N_API_URL/N8N_API_KEY)"}
+    if urlparse(base).scheme not in ("http", "https"):
+        return {"ok": False, "errore": "N8N_API_URL non valido (solo http/https)"}
+    url = base + path
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    headers = {"X-N8N-API-KEY": key, "Accept": "application/json"}
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
+            raw = r.read().decode("utf-8", "replace")
+        return {"ok": True, "data": json.loads(raw) if raw else {}}
+    except Exception as exc:
+        return {"ok": False, "errore": str(exc)[:200]}
+
+
+def list_workflows() -> list[dict[str, Any]]:
+    """Sola lettura: id, nome, attivo dei workflow su n8n (per dare contesto all'AI)."""
+    r = _api("GET", "/workflows")
+    if not r.get("ok"):
+        return []
+    items = (r.get("data") or {}).get("data") or r.get("data") or []
+    out = []
+    for w in items if isinstance(items, list) else []:
+        out.append({"id": w.get("id"), "name": w.get("name"),
+                    "active": w.get("active"), "nodes": len(w.get("nodes") or [])})
+    return out
+
+
+def get_workflow(workflow_id: str) -> dict[str, Any]:
+    r = _api("GET", f"/workflows/{workflow_id}")
+    return r.get("data", {}) if r.get("ok") else r
+
+
+def manage_workflow(op: str, *, workflow_id: str | None = None,
+                    definition: dict | None = None) -> dict[str, Any]:
+    """Esegue una modifica ai workflow. op: create|update|activate|deactivate.
+    DELETE non e' permessa. Usata SOLO dopo conferma umana (perimetro chat)."""
+    op = (op or "").lower()
+    if op == "create":
+        if not isinstance(definition, dict):
+            return {"ok": False, "errore": "definition mancante"}
+        return _api("POST", "/workflows", definition)
+    if op == "update":
+        if not workflow_id or not isinstance(definition, dict):
+            return {"ok": False, "errore": "workflow_id o definition mancante"}
+        return _api("PUT", f"/workflows/{workflow_id}", definition)
+    if op in ("activate", "deactivate"):
+        if not workflow_id:
+            return {"ok": False, "errore": "workflow_id mancante"}
+        return _api("POST", f"/workflows/{workflow_id}/{op}")
+    return {"ok": False, "errore": f"operazione '{op}' non permessa (mai delete)"}
+
+
+def n8n_workflows_tool() -> Tool:
+    """Sensore readonly: elenco workflow n8n (degrada a [] senza API)."""
+    return Tool(name="leggi_n8n_workflows", action_type=None, readonly=True,
+                run=lambda **_: list_workflows())

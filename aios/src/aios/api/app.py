@@ -197,6 +197,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "Instagram": ["AIOS_IG_TOKEN"],
             "Telegram": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
             "n8n (esecutore esterno)": ["N8N_WEBHOOK_URL"],
+            "n8n API (gestione workflow)": ["N8N_API_URL", "N8N_API_KEY"],
             "API auth": ["AIOS_API_TOKEN"],
         }
         label = {
