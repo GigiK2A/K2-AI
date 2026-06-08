@@ -221,8 +221,13 @@ def generate_conforming(output_schema: dict, blueprint: dict, facts: dict[str, d
             f"{_facts_block(facts)}\n\nDATI CLIENTE: {_json.dumps(inputs, ensure_ascii=False)}\n\n"
             "Genera ora il JSON conforme."
         )
+        # schemi complessi (es. AdvisorBoost 15 sezioni) richiedono più spazio +
+        # istruzione di concisione per non troncare.
+        n_props = len(compact["properties"])
+        maxtok = 16000 if n_props > 8 else 12000
+        sysmsg += "\n- CONCISIONE: testi brevi e densi; per le liste max 5-6 elementi salvo necessità."
         resp = client.messages.create(
-            model=ANTHROPIC_MODEL, max_tokens=12000,
+            model=ANTHROPIC_MODEL, max_tokens=maxtok,
             system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
         )
