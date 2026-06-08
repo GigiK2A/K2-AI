@@ -751,13 +751,15 @@ export default function HomePage() {
                 restano disponibili in dashboard.
               </p>
             )}
-            {/* Scenario C: dopo il Check pagato, se il pillar ha un boost
-                suggerito, proponi la generazione del Boost via 8e. */}
-            {hasPaid && kbotSession?.boostSuggerito && (
+            {/* Scenario C + gate W8: se il pillar ha un boost suggerito, mostra
+                il pannello. Non pagato → anteprima gratuita; pagato → documento. */}
+            {kbotSession?.boostSuggerito && (
               <DeliverablePanel
                 sessionId={kbotSession.id}
                 servizioId={kbotSession.boostSuggerito}
                 servizioLabel={kbotSession.boostSuggeritoLabel ?? undefined}
+                hasPaid={hasPaid}
+                onUnlock={startCheckoutFromUI}
                 getAuthToken={getToken}
               />
             )}

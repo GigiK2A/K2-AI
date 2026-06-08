@@ -18,6 +18,11 @@ class DeliverableBody(BaseModel):
     tier: Optional[str] = None
     inputs: dict = Field(default_factory=dict)
     entitlement_token: Optional[str] = None
+    # Gate di erogazione (handoff W8): il LIVELLO è deciso dal gate stateful nel
+    # K-BOT backend (registrazione/contatore/pagamento), l'8e lo riceve e compone
+    # di conseguenza. PREVIEW = assaggio (score + criticità #1 + resto nascosto);
+    # FULL = documento completo + file. Default FULL (retrocompat).
+    auth_level: str = "FULL"
 
 
 @app.get("/health")
@@ -51,8 +56,14 @@ def catalog():
 
 @app.post("/v1/deliverables", status_code=202, dependencies=[Depends(require_bearer)])
 def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Response):
-    # Entitlement: Phase-1 controlla solo presenza (verifica JWT reale = G1).
-    if not body.entitlement_token:
+    auth_level = (body.auth_level or "FULL").upper()
+    if auth_level not in ("PREVIEW", "FULL"):
+        raise HTTPException(status_code=400, detail="auth_level ∈ {PREVIEW, FULL}")
+
+    # FULL richiede entitlement (il gate documento nel K-BOT l'ha verificato e
+    # rilasciato il token). PREVIEW è gratis entro quota: il gate preview nel
+    # K-BOT ha già verificato registrazione + contatore → niente token.
+    if auth_level == "FULL" and not body.entitlement_token:
         response.status_code = 402
         return {"status": "payment_required", "service_id": body.service_id}
 
@@ -64,8 +75,8 @@ def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Res
         return {"status": "refused", "reason": r.reason, "message": r.message}
 
     job_id = jobs.create(body.service_id, blueprint_id, confidence)
-    bg.add_task(pipeline.run, job_id, body.service_id, body.inputs)
-    return {"job_id": job_id, "status": "routed",
+    bg.add_task(pipeline.run, job_id, body.service_id, body.inputs, auth_level)
+    return {"job_id": job_id, "status": "routed", "auth_level": auth_level,
             "routed_blueprint": blueprint_id, "confidence": confidence}
 
 

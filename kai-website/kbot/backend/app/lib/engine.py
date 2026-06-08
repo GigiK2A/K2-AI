@@ -47,17 +47,22 @@ class EnginePaymentRequired(Exception):
 
 
 async def create_deliverable(
-    service_id: str, inputs: dict, entitlement_token: str, tier: Optional[str] = None
+    service_id: str, inputs: dict, entitlement_token: Optional[str] = None,
+    tier: Optional[str] = None, auth_level: str = "FULL",
 ) -> dict:
-    """POST /v1/deliverables. Ritorna {job_id, status, confidence}.
+    """POST /v1/deliverables. Ritorna {job_id, status, auth_level, confidence}.
 
-    Solleva EnginePaymentRequired (402), EngineRefused (422), EngineError (altro).
+    auth_level FULL → serve entitlement_token (gate documento); PREVIEW → gratis
+    entro quota (gate preview già verificato dal chiamante). Solleva
+    EnginePaymentRequired (402), EngineRefused (422), EngineError (altro).
     """
     payload: dict[str, Any] = {
         "service_id": service_id,
         "inputs": inputs,
-        "entitlement_token": entitlement_token,
+        "auth_level": auth_level,
     }
+    if entitlement_token:
+        payload["entitlement_token"] = entitlement_token
     if tier:
         payload["tier"] = tier
 

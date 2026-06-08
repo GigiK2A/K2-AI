@@ -678,12 +678,20 @@ export async function getStatus(
 export type DeliverableStatus =
   | "routed" | "running" | "validating" | "rendered" | "refused" | "error";
 
+export interface DeliverablePreview {
+  score?: number;
+  criticita_1?: { area?: string; descrizione?: string; gravita?: string };
+  altre_aree?: string[];
+  cta?: string;
+}
+
 export interface DeliverableJob {
   job_id: string;
   status: DeliverableStatus;
   outputs?: {
     html_url?: string; pdf_url?: string; html_path?: string; pdf_path?: string;
     bundle?: { type: string; url?: string }[];
+    preview?: DeliverablePreview;
   } | null;
   validation?: Record<string, unknown> | null;
   citazioni?: { campo?: string; fonte?: string; vigenza?: string }[];
@@ -704,6 +712,27 @@ export async function createDeliverable(
     body: JSON.stringify({ session_id: sessionId, servizio_id: servizioId, inputs }),
   });
   if (!res.ok) await parseErr(res, "Errore creazione deliverable");
+  return res.json();
+}
+
+/** Anteprima gratuita (gate W8): richiede login, consuma 1 delle 2 preview/mese.
+ *  409 con reason "preview_quota_exhausted" se quota finita. */
+export async function createPreview(
+  sessionId: string,
+  servizioId: string,
+  inputs: Record<string, unknown>,
+  authToken?: string | null,
+): Promise<{ job_id: string; status: string; preview_count?: number; preview_limit?: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, servizio_id: servizioId, inputs }),
+  });
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.detail?.message || "Anteprime gratuite esaurite per il mese.");
+  }
+  if (!res.ok) await parseErr(res, "Errore anteprima");
   return res.json();
 }
 

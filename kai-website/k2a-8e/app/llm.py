@@ -124,6 +124,60 @@ def generate_sezioni(
         raise  # PROD: non consegnare un deliverable degradato in silenzio
 
 
+def generate_preview(blueprint: dict, facts: dict[str, dict], inputs: dict) -> dict:
+    """Compone SOLO l'assaggio: score + criticità #1 reale. NON il documento.
+
+    Gate W8: a PREVIEW l'LLM compone solo questo (niente contenuto completo →
+    nessun leak). Le altre aree restano titoli senza contenuto (gestite dalla
+    pipeline). Ritorna {score:int, criticita_1:{area,descrizione,gravita}, mode}.
+    """
+    voci = blueprint.get("voci", [])
+    prima = voci[1] if len(voci) > 1 else (voci[0] if voci else {})
+    area = prima.get("titolo", "Area principale")
+
+    if not ANTHROPIC_API_KEY:
+        return {
+            "score": 68,
+            "criticita_1": {
+                "area": area,
+                "descrizione": f"[ANTEPRIMA] Rilevata una criticità prioritaria in «{area}». "
+                               f"Il documento completo dettaglia rischi, norme e azioni.",
+                "gravita": "media",
+            },
+            "mode": "offline",
+        }
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        sysmsg = (
+            "Genera l'ASSAGGIO (preview) di una diagnosi PMI: un punteggio di sintesi "
+            "0-100 e la criticità #1 reale e azionabile. NON scrivere il documento completo. "
+            "Usa SOLO i fatti forniti per eventuali riferimenti. "
+            "Rispondi SOLO JSON: {\"score\": <int>, \"criticita_1\": {\"area\": <str>, "
+            "\"descrizione\": <str ~2 frasi>, \"gravita\": \"bassa|media|alta\"}}."
+        )
+        user = f"{_facts_block(facts)}\n\nArea prioritaria: {area}\nDati cliente: {json.dumps(inputs, ensure_ascii=False)}"
+        resp = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=600,
+            system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        data = _parse_json_object(text)
+        if data.get("score") is not None and data.get("criticita_1"):
+            data["mode"] = "anthropic"
+            return data
+    except Exception as exc:
+        log.warning("preview anthropic fallita: %s", exc)
+    return {
+        "score": 68,
+        "criticita_1": {"area": area,
+                        "descrizione": f"Criticità prioritaria rilevata in «{area}».",
+                        "gravita": "media"},
+        "mode": "offline",
+    }
+
+
 def _offline(voci: list[dict], facts: dict[str, dict], inputs: dict) -> dict[str, str]:
     """Template deterministico: cita i fatti senza inventarli. Per dev/CI/no-key."""
     fact_refs = "; ".join(

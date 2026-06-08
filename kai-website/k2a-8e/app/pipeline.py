@@ -135,7 +135,7 @@ def _lint_instance(blueprint: dict) -> dict:
     }
 
 
-def run(job_id: str, service_id: str, inputs: dict) -> None:
+def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") -> None:
     try:
         jobs.update(job_id, status="running")
         skill, bp_id, _ = route(service_id)
@@ -146,6 +146,28 @@ def run(job_id: str, service_id: str, inputs: dict) -> None:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
 
         facts, citazioni = resolve(skill, inputs)
+
+        # PREVIEW (gate W8): compone SOLO l'assaggio, niente documento/file/leak.
+        if auth_level == "PREVIEW":
+            prev = llm.generate_preview(blueprint, facts, inputs)
+            # voci[0]=sintesi, voci[1]=criticità#1 mostrata → altre = voci[2:] (solo titoli)
+            altre = [v.get("titolo") for v in blueprint.get("voci", [])][2:]
+            jobs.update(
+                job_id, status="rendered",
+                outputs={"preview": {
+                    "score": prev.get("score"),
+                    "criticita_1": prev.get("criticita_1"),
+                    "altre_aree": altre,            # solo titoli, contenuto NASCOSTO
+                    "cta": "Sblocca il documento completo",
+                }, "pdf_url": None, "bundle": []},
+                validation={"auth_level": "PREVIEW"},
+                citazioni=[],
+                meta={"skill": skill, "blueprint_id": bp_id, "auth_level": "PREVIEW",
+                      "filiera": {"mode": prev.get("mode")},
+                      "snapshot_version": assets.snapshot_version()},
+            )
+            return
+
         sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
 
         # Assemble (Phase-1 pilota = LegalBoost).
@@ -183,8 +205,8 @@ def run(job_id: str, service_id: str, inputs: dict) -> None:
                      "json_path": str(json_path), "bundle": []},
             validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS"},
             citazioni=citazioni,
-            meta={"skill": skill, "blueprint_id": bp_id, "filiera": filiera_meta,
-                  "snapshot_version": assets.snapshot_version()},
+            meta={"skill": skill, "blueprint_id": bp_id, "auth_level": "FULL",
+                  "filiera": filiera_meta, "snapshot_version": assets.snapshot_version()},
         )
     except Refuse as r:
         jobs.update(job_id, status="refused", refusal_reason=r.reason, error=r.message)
