@@ -189,6 +189,40 @@ def generate_deliverable_legal(
         return None, {"mode": "offline", "reason": str(exc)}
 
 
+def generate_structured_meta(blueprint: dict, facts: dict[str, dict], inputs: dict) -> Optional[dict]:
+    """Chiamata COMPATTA: score + mappa_rischi + per-voce {rischi,azioni} (NO prosa
+    lunga → niente troncamento). La prosa `contenuto` arriva da generate_sezioni.
+    Ritorna {score, mappa_rischi, voci_meta:{vid:{rischi,azioni}}} o None.
+    """
+    if not ANTHROPIC_API_KEY:
+        return None
+    voci = blueprint.get("voci", [])
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        voci_spec = "\n".join(f"- {v['id']}: {v['titolo']} ({'; '.join(v.get('argomenti_obbligatori', [])[:3])})" for v in voci)
+        sysmsg = (
+            "Produci SOLO i metadati strutturati di una diagnosi legale-compliance PMI "
+            "(NON la prosa). Conciso. Rispondi SOLO JSON: {\"score\": int 0-100, "
+            "\"mappa_rischi\": [{\"area\": str, \"semaforo\": \"verde|giallo|rosso\"}], "
+            "\"voci_meta\": {\"<id>\": {\"rischi\": [{\"descrizione\": str breve, "
+            "\"gravita\": \"bassa|media|alta\", \"serve_avvocato\": bool}], \"azioni\": [str breve]}}}."
+        )
+        user = f"Voci:\n{voci_spec}\n\nDati: {json.dumps(inputs, ensure_ascii=False)}\nUna entry voci_meta per id."
+        resp = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=4096,
+            system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        data = _parse_json_object(text)
+        if data.get("score") is not None and data.get("voci_meta"):
+            return data
+    except Exception as exc:
+        log.warning("structured_meta fallita: %s", exc)
+    return None
+
+
 def generate_preview(blueprint: dict, facts: dict[str, dict], inputs: dict) -> dict:
     """Compone SOLO l'assaggio: score + criticità #1 reale. NON il documento.
 

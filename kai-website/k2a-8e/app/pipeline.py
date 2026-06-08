@@ -70,20 +70,32 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
 
 # ---- Stadio 4-assemble: deliverable conforme a output-schema (LegalBoost) -
 
-def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict], inputs: dict) -> dict:
+def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
+                        inputs: dict, meta_struct: dict | None = None) -> dict:
     norme = [
         {"riferimento": c.get("fonte") or c.get("campo"), "fonte": "normattiva"}
         for c in citazioni
     ]
+    voci_meta = (meta_struct or {}).get("voci_meta", {})
+
+    def _grav(g: str) -> str:
+        return g if g in ("bassa", "media", "alta") else "media"
+
     voci_out = []
     for v in blueprint.get("voci", []):
         vid = v["id"]
         argomenti = v.get("argomenti_obbligatori", [])
-        # rischi/azioni derivati dagli argomenti obbligatori della voce (no placeholder generico)
-        rischi = [{"descrizione": f"Verificare: {a}.", "gravita": "media", "serve_avvocato": False}
-                  for a in argomenti[:2]] or [{"descrizione": f"Analisi area «{v['titolo']}».",
-                                               "gravita": "media", "serve_avvocato": False}]
-        azioni = [f"Approfondire «{a}»." for a in argomenti[:3]] or ["Approfondire l'area."]
+        vm = voci_meta.get(vid) or {}
+        # rischi/azioni: dal meta strutturato (LLM) se presente, altrimenti dalle argomenti
+        rischi = [{"descrizione": str(r.get("descrizione", "")), "gravita": _grav(r.get("gravita", "media")),
+                   "serve_avvocato": bool(r.get("serve_avvocato", False))}
+                  for r in vm.get("rischi", []) if r.get("descrizione")]
+        if not rischi:
+            rischi = [{"descrizione": f"Verificare: {a}.", "gravita": "media", "serve_avvocato": False}
+                      for a in argomenti[:2]] or [{"descrizione": f"Analisi area «{v['titolo']}».",
+                                                   "gravita": "media", "serve_avvocato": False}]
+        azioni = [str(a) for a in vm.get("azioni", []) if a] or \
+                 [f"Approfondire «{a}»." for a in argomenti[:3]] or ["Approfondire l'area."]
         voci_out.append({
             "id": vid,
             "titolo": v["titolo"],
@@ -92,18 +104,21 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict], i
             "azioni": azioni,
             "norme_citate": norme if vid in ("contrattualistica", "societario_231") else [],
         })
+
+    mappa = (meta_struct or {}).get("mappa_rischi")
+    if not (isinstance(mappa, list) and mappa and all(
+            m.get("semaforo") in ("verde", "giallo", "rosso") for m in mappa)):
+        mappa = [{"area": "Contrattualistica", "semaforo": "giallo"},
+                 {"area": "Privacy & dati", "semaforo": "rosso"}]
+    score = (meta_struct or {}).get("score")
+    if not isinstance(score, int) or not (0 <= score <= 100):
+        score = 72
     return {
         "meta": {
-            "servizio": "LegalBoost", "versione": "1.0.0", "data": "2026-06-04",
+            "servizio": "LegalBoost", "versione": "1.0.0", "data": "2026-06-08",
             "azienda": inputs.get("ragione_sociale") or inputs.get("azienda") or "Cliente",
         },
-        "sintesi": {
-            "score_compliance": 72,
-            "mappa_rischi": [
-                {"area": "Contrattualistica", "semaforo": "giallo"},
-                {"area": "Privacy & dati", "semaforo": "rosso"},
-            ],
-        },
+        "sintesi": {"score_compliance": score, "mappa_rischi": mappa},
         "voci": voci_out,
         "piano_azione": [
             {"priorita": 1, "azione": "Adeguare le condizioni generali (artt. 1341-1342 c.c.)",
@@ -173,19 +188,15 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             )
             return
 
-        # Generazione STRUTTURATA reale (corposità: rischi/azioni/score veri),
-        # conforme a output-schema. Fallback all'assembly deterministico se
-        # offline o JSON incompleto.
-        deliverable, filiera_meta = llm.generate_deliverable_legal(blueprint, out_schema, facts, inputs)
-        if not deliverable:
-            sezioni, fm2 = llm.generate_sezioni(blueprint, facts, inputs)
-            deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs)
-            filiera_meta = {**filiera_meta, **fm2, "assembly": "deterministic"}
-        else:
-            filiera_meta = {**filiera_meta, "assembly": "structured"}
-            # garantisci che le citazioni deterministiche restino quelle dello snapshot
-            if not deliverable.get("voci"):
-                deliverable = assemble_legalboost(blueprint, {}, citazioni, inputs)
+        # Corposità HYBRID (evita troncamento del JSON monolitico):
+        #  (1) prosa ricca per voce  → generate_sezioni (~6k token, grounded)
+        #  (2) metadati strutturati  → generate_structured_meta (compatto)
+        # poi assemblati; i campi mancanti cadono sul deterministico (argomenti voce).
+        sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
+        meta_struct = llm.generate_structured_meta(blueprint, facts, inputs)
+        deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs, meta_struct)
+        filiera_meta = {**filiera_meta, "assembly": "hybrid" if meta_struct else "prose+deterministic",
+                        "structured_meta": bool(meta_struct)}
 
         # Validazione: L1 (libreria) + L2 (linter) + output-schema (jsonschema).
         jobs.update(job_id, status="validating")
