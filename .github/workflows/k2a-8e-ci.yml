@@ -27,6 +27,8 @@ jobs:
         run: python tests/smoke_test.py
       - name: Resolve + L1 su tutti gli 11 boost
         run: python tests/test_all_boosts.py
+      - name: Security suite
+        run: K2A_ENTITLEMENT_SECRET=ci-secret-32bytes-minimum-length! python tests/security_test.py
       - name: Coverage snapshot (no placeholder normativo irrisolto)
         run: |
           python - <<'PY'

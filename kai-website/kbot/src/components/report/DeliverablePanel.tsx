@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createDeliverable,
   createPreview,
+  getDeliverableForm,
   pollDeliverable,
+  startBoostCheckout,
+  type DeliverableFormField,
   type DeliverableJob,
   type DeliverableStatus,
 } from "@/lib/api";
@@ -47,6 +50,34 @@ export function DeliverablePanel({
   const [job, setJob] = useState<DeliverableJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [campi, setCampi] = useState<DeliverableFormField[]>([]);
+  const [form, setForm] = useState<Record<string, unknown>>({});
+
+  // Carica i campi richiesti dal deliverable (form.json del blueprint via 8e).
+  useEffect(() => {
+    let alive = true;
+    getDeliverableForm(servizioId)
+      .then((r) => alive && setCampi(r.campi || []))
+      .catch(() => alive && setCampi([]));
+    return () => {
+      alive = false;
+    };
+  }, [servizioId]);
+
+  const setField = (id: string, value: unknown) =>
+    setForm((f) => ({ ...f, [id]: value }));
+
+  // Sblocco: checkout col prezzo del Boost (dal catalogo), non i 19€ del report.
+  const unlock = useCallback(async () => {
+    try {
+      const token = getAuthToken ? await getAuthToken() : null;
+      const url = await startBoostCheckout(sessionId, servizioId, token);
+      if (url) window.location.href = url;
+      else onUnlock?.();
+    } catch {
+      onUnlock?.();
+    }
+  }, [sessionId, servizioId, getAuthToken, onUnlock]);
 
   const run = useCallback(
     async (level: "preview" | "full") => {
@@ -55,10 +86,11 @@ export function DeliverablePanel({
       setJob(null);
       try {
         const token = getAuthToken ? await getAuthToken() : null;
+        const merged = { ...inputs, ...form };
         const { job_id } =
           level === "preview"
-            ? await createPreview(sessionId, servizioId, inputs, token)
-            : await createDeliverable(sessionId, servizioId, inputs, token);
+            ? await createPreview(sessionId, servizioId, merged, token)
+            : await createDeliverable(sessionId, servizioId, merged, token);
         const final = await pollDeliverable(job_id, (j) => setJob(j));
         setJob(final);
       } catch (e) {
@@ -67,7 +99,7 @@ export function DeliverablePanel({
         setBusy(false);
       }
     },
-    [sessionId, servizioId, inputs, getAuthToken],
+    [sessionId, servizioId, inputs, form, getAuthToken],
   );
 
   const status = job?.status;
@@ -95,6 +127,41 @@ export function DeliverablePanel({
           </button>
         )}
       </div>
+
+      {/* Campi richiesti dal deliverable (raccolti prima di generare). */}
+      {!busy && status !== "rendered" && campi.length > 0 && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {campi.map((cmp) => (
+            <label key={cmp.id} className="text-sm">
+              <span className="text-neutral-600 dark:text-neutral-300">
+                {cmp.label}{cmp.obbligatorio ? " *" : ""}
+              </span>
+              {cmp.enum ? (
+                <select
+                  className="mt-1 w-full rounded border border-neutral-300 bg-transparent px-2 py-1 text-sm dark:border-neutral-600"
+                  value={String(form[cmp.id] ?? "")}
+                  onChange={(e) => setField(cmp.id, e.target.value)}
+                >
+                  <option value="">—</option>
+                  {cmp.enum.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={cmp.tipo === "integer" || cmp.tipo === "number" ? "number" : "text"}
+                  className="mt-1 w-full rounded border border-neutral-300 bg-transparent px-2 py-1 text-sm dark:border-neutral-600"
+                  value={String(form[cmp.id] ?? "")}
+                  onChange={(e) =>
+                    setField(cmp.id, cmp.tipo === "integer" || cmp.tipo === "number"
+                      ? Number(e.target.value) : e.target.value)
+                  }
+                />
+              )}
+            </label>
+          ))}
+        </div>
+      )}
 
       {inProgress && (
         <div className="mt-4 flex items-center gap-3 text-sm text-neutral-600 dark:text-neutral-300">
@@ -133,7 +200,7 @@ export function DeliverablePanel({
             </div>
           ) : null}
           <button
-            onClick={onUnlock}
+            onClick={unlock}
             className="mt-2 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
           >
             {preview.cta ?? "Sblocca il documento completo"} →

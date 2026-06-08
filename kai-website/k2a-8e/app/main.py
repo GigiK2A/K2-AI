@@ -27,11 +27,20 @@ class DeliverableBody(BaseModel):
 
 @app.get("/health")
 def health():
+    from .settings import ENTITLEMENT_SECRET, ANTHROPIC_API_KEY
+    warnings = []
+    if not ENTITLEMENT_SECRET:
+        warnings.append("K2A_ENTITLEMENT_SECRET non configurato → entitlement permissivo (NON per produzione)")
+    if not ANTHROPIC_API_KEY:
+        warnings.append("ANTHROPIC_API_KEY non configurato → filiera offline (deliverable segnaposto)")
     return {
         "status": "ok",
         "version": ENGINE_VERSION,
         "snapshot_version": assets.snapshot_version(),
         "phase": "1",
+        "entitlement": "enforced" if ENTITLEMENT_SECRET else "permissive",
+        "filiera": "anthropic" if ANTHROPIC_API_KEY else "offline",
+        "warnings": warnings,
     }
 
 
@@ -52,6 +61,34 @@ def catalog():
         "grounding_snapshot_version": assets.snapshot_version(),
         "services": services,
     }
+
+
+@app.get("/v1/form/{service_id}", dependencies=[Depends(require_bearer)])
+def get_form(service_id: str):
+    """Campi form (form.json) che il deliverable richiede — il K-BOT li usa per
+    raccogliere gli input dal cliente prima della generazione."""
+    skill = assets.service_to_skill(service_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="service_id sconosciuto")
+    form = assets.load_form(skill) or {}
+    # form.json reale = JSON Schema (properties + required); ritorniamo i campi
+    # in forma normalizzata per il frontend.
+    props = form.get("properties", {})
+    required = set(form.get("required", []))
+    campi = []
+    for name, spec in props.items():
+        t = spec.get("type")
+        t = t[0] if isinstance(t, list) else t
+        campi.append({
+            "id": name,
+            "label": spec.get("description") or name.replace("_", " ").capitalize(),
+            "tipo": t,
+            "enum": spec.get("enum"),
+            "items_enum": (spec.get("items") or {}).get("enum"),
+            "obbligatorio": name in required,
+        })
+    return {"service_id": service_id, "skill": skill, "title": form.get("title"),
+            "campi": campi, "schema": form}
 
 
 @app.post("/v1/deliverables", status_code=202, dependencies=[Depends(require_bearer)])

@@ -13,7 +13,7 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
-from ..lib import sessions
+from ..lib import sessions, catalog
 from ..lib.auth import AuthUser, optional_user
 from ..settings import (
     FRONTEND_URL,
@@ -29,6 +29,15 @@ log = logging.getLogger(__name__)
 
 class CheckoutBody(BaseModel):
     sessionId: str = Field(..., alias="session_id")
+    email: Optional[EmailStr] = None
+
+    class Config:
+        populate_by_name = True
+
+
+class BoostCheckoutBody(BaseModel):
+    sessionId: str = Field(..., alias="session_id")
+    servizioId: str = Field(..., alias="servizio_id")
     email: Optional[EmailStr] = None
 
     class Config:
@@ -107,3 +116,58 @@ def checkout(body: CheckoutBody, user: Optional[AuthUser] = Depends(optional_use
         {"stripe_session_id": checkout_session.id},
     )
     return {"checkout_url": checkout_session.url}
+
+
+@router.post("/checkout/boost")
+def checkout_boost(body: BoostCheckoutBody, user: Optional[AuthUser] = Depends(optional_user)):
+    """Checkout per un Boost: prezzo DAL CATALOGO (mai hardcoded). Il webhook usa
+    `servizio_id` nei metadata per registrare l'acquisto e abilitare il documento."""
+    session = sessions.get_session(body.sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    owner = session.get("user_id")
+    if owner and (not user or user.id != owner):
+        raise HTTPException(status_code=403, detail="not your session")
+
+    servizio = catalog.get_servizio(body.servizioId)
+    if not servizio:
+        raise HTTPException(status_code=404, detail="servizio non a catalogo")
+    prezzo_cents = int(servizio.get("prezzo_eur", 0)) * 100
+    if prezzo_cents <= 0:
+        raise HTTPException(status_code=409, detail="prezzo servizio non valido")
+
+    sclient = _stripe_client()
+    email = (body.email or (user.email if user else None) or session.get("email") or "").strip() or None
+    return_base = FRONTEND_URL or SITE_URL
+    success_token = secrets.token_urlsafe(24)
+    sessions.update_session(body.sessionId, {"success_token": success_token})
+    success_url = f"{return_base}/?kbot_paid=1&t={success_token}&cs={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{return_base}/?kbot_cancelled=1&t={success_token}"
+
+    try:
+        checkout_session = sclient.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            client_reference_id=body.sessionId,
+            metadata={"kbot_session_id": body.sessionId, "servizio_id": body.servizioId},
+            customer_email=email,
+            line_items=[{
+                "quantity": 1,
+                "price_data": {
+                    "currency": "eur",
+                    "unit_amount": prezzo_cents,
+                    "product_data": {
+                        "name": servizio.get("label", body.servizioId),
+                        "description": servizio.get("prodotto_commerciale") or "Deliverable K2-AI",
+                    },
+                },
+            }],
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+    except stripe.error.StripeError as exc:
+        log.exception("Stripe error (boost)")
+        raise HTTPException(status_code=502, detail=f"stripe error: {exc.user_message or str(exc)}")
+
+    sessions.update_session(body.sessionId, {"stripe_session_id": checkout_session.id})
+    return {"checkout_url": checkout_session.url, "prezzo_eur": servizio.get("prezzo_eur")}

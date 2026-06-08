@@ -170,6 +170,18 @@ async def status(job_id: str):
         raise HTTPException(status_code=502, detail=str(e))
 
 
+@router.get("/deliverables/form/{servizio_id}")
+async def deliverable_form(servizio_id: str):
+    """Campi che il deliverable richiede — il frontend li mostra per raccogliere
+    gli input del cliente prima di generare."""
+    if not catalog.is_8e_generabile(servizio_id):
+        raise HTTPException(status_code=409, detail="servizio non generabile via 8e")
+    try:
+        return await engine.get_form(servizio_id)
+    except engine.EngineError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @router.get("/engine/health")
 async def engine_health():
     return await engine.health()

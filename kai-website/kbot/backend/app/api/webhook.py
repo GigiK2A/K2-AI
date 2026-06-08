@@ -68,11 +68,38 @@ async def stripe_webhook(
         log.warning("Webhook for unknown session %s", kbot_session_id)
         return {"ok": True, "skipped": "unknown session"}
 
+    email = obj.get("customer_email") or session.get("email")
+
+    # --- Boost (deliverable 8e): metadata.servizio_id presente ---------------
+    # Marca paid (sblocca l'entitlement per il documento completo) + registra
+    # l'acquisto. NON genera il report 19€.
+    servizio_id = metadata.get("servizio_id")
+    if servizio_id:
+        sessions.update_session(kbot_session_id, {
+            "email": email, "stripe_session_id": obj.get("id"),
+            "paid_at": datetime.now(timezone.utc).isoformat(), "status": "paid",
+        })
+        try:
+            from ..lib import catalog
+            servizio = catalog.get_servizio(servizio_id) or {}
+            get_admin_client().table("kbot_purchases").insert({
+                "user_id": session.get("user_id"),
+                "kbot_session_id": kbot_session_id,
+                "servizio_id": servizio_id,
+                "servizio_tipo": servizio.get("tipo") or "servizio",
+                "prezzo_pagato_cents": obj.get("amount_total") or 0,
+                "stripe_session_id": obj.get("id"),
+                "status": "paid",
+                "catalog_version": str(catalog.catalog_version()),
+            }).execute()
+        except Exception as exc:
+            log.warning("Failed to record kbot_purchases: %s", exc)
+        return {"ok": True, "boost": servizio_id}
+
     # Idempotency: skip if already paid or pdf already generated.
     if session.get("status") == "paid" or session.get("pdf_url"):
         return {"ok": True, "skipped": "already processed"}
 
-    email = obj.get("customer_email") or session.get("email")
     sessions.update_session(
         kbot_session_id,
         {

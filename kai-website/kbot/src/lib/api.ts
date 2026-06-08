@@ -715,6 +715,43 @@ export async function createDeliverable(
   return res.json();
 }
 
+/** Checkout per un Boost: prezzo dal catalogo (non i 19€ del report). */
+export async function startBoostCheckout(
+  sessionId: string,
+  servizioId: string,
+  authToken?: string | null,
+  email?: string,
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/kbot/checkout/boost`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, servizio_id: servizioId, email }),
+  });
+  if (!res.ok) await parseErr(res, "Errore checkout boost");
+  const data = await res.json();
+  return data.checkout_url as string;
+}
+
+export interface DeliverableFormField {
+  id: string;
+  label: string;
+  tipo?: string;
+  enum?: string[] | null;
+  items_enum?: string[] | null;
+  obbligatorio?: boolean;
+}
+
+/** Campi che il deliverable richiede (dal blueprint form.json via 8e). */
+export async function getDeliverableForm(
+  servizioId: string,
+): Promise<{ service_id: string; title?: string; campi: DeliverableFormField[] }> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables/form/${encodeURIComponent(servizioId)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) await parseErr(res, "Errore form deliverable");
+  return res.json();
+}
+
 /** Anteprima gratuita (gate W8): richiede login, consuma 1 delle 2 preview/mese.
  *  409 con reason "preview_quota_exhausted" se quota finita. */
 export async function createPreview(

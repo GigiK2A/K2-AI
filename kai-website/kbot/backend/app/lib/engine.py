@@ -91,6 +91,17 @@ async def get_deliverable(job_id: str) -> dict:
     return r.json()
 
 
+async def get_form(service_id: str) -> dict:
+    """Campi form richiesti dal deliverable (per raccolta input lato K-BOT)."""
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+        r = await c.get(f"{ENGINE_8E_BASE_URL}/v1/form/{service_id}", headers=_headers())
+    if r.status_code == 404:
+        raise EngineError("servizio sconosciuto")
+    if r.status_code != 200:
+        raise EngineError(f"8e form {r.status_code}: {r.text[:200]}")
+    return r.json()
+
+
 async def get_catalog() -> dict:
     async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
         r = await c.get(f"{ENGINE_8E_BASE_URL}/v1/catalog", headers=_headers())
