@@ -30,8 +30,9 @@ _SYSTEM = (
     "- Quando una voce riguarda un fatto normativo fornito, integra il riferimento ESATTO dai FATTI "
     "(stesso articolo/fonte), senza riscrivere il testo di legge a memoria.\n"
     "- Ogni riferimento normativo che citi DEVE essere tra quelli nei FATTI.\n"
-    "- Tono pragmatico, diretto, per un titolare d'impresa. Niente buzzword. Niente gergo legale inutile.\n"
-    "- LUNGHEZZA: massimo ~110 parole per voce (2 paragrafi brevi). Conciso ma concreto.\n"
+    "- Tono autorevole e chiaro per un titolare d'impresa. Niente buzzword né gergo inutile.\n"
+    "- Analisi SPECIFICA per questa azienda (usa i dati cliente: settore, dimensione, e-commerce, ecc.).\n"
+    "- LUNGHEZZA: ~110-140 parole per voce, dense e concrete (implicazioni operative, non teoria).\n"
     "- È orientamento, NON consulenza legale (D-034).\n"
     "- Restituisci SOLO un oggetto JSON {\"<voce_id>\": \"<testo>\", ...}, una chiave per voce richiesta."
 )
@@ -209,12 +210,21 @@ def generate_conforming(output_schema: dict, blueprint: dict, facts: dict[str, d
                    "required": output_schema.get("required", []),
                    "properties": output_schema.get("properties", {})}
         sysmsg = (
-            "Sei l'estensore di un deliverable professionale per PMI italiane. Produci un "
-            "oggetto JSON CONFORME allo schema fornito (tutti i campi required, tipi corretti, "
-            "enum rispettati). REGOLE: non inventare numeri/citazioni di legge — usa i FATTI "
-            "verbatim forniti dove servono riferimenti normativi o valori; testo conciso e "
-            "concreto, italiano, per un titolare d'impresa; è orientamento, non consulenza "
-            "(D-034/D-036). Rispondi SOLO con il JSON, niente altro."
+            "Sei un consulente senior che redige un deliverable PROFESSIONALE e PREMIUM per "
+            "una PMI italiana (documento che il cliente paga). Produci un oggetto JSON CONFORME "
+            "allo schema fornito (tutti i campi required, tipi corretti, enum rispettati).\n"
+            "QUALITÀ ATTESA:\n"
+            "- Analisi CONCRETA e SPECIFICA per QUESTA azienda: usa i DATI CLIENTE forniti "
+            "(settore, dimensione, regime, ecc.) — niente generalità copia-incolla.\n"
+            "- Ogni sezione di prosa: densa e sostanziale, con implicazioni operative e, dove "
+            "ha senso, quantificazioni o stime (range, percentuali, soglie).\n"
+            "- Rischi e azioni concreti e prioritizzati, non ovvietà.\n"
+            "- NON inventare numeri/citazioni di legge: usa i FATTI verbatim forniti per i "
+            "riferimenti normativi e i valori deterministici. Se un dato manca, dichiaralo "
+            "(es. 'dato non disponibile') invece di inventarlo.\n"
+            "- Tono autorevole ma chiaro per un titolare d'impresa. È orientamento, non "
+            "consulenza (D-034/D-036).\n"
+            "Rispondi SOLO con il JSON, niente altro."
         )
         user = (
             f"SCHEMA (conformati esattamente):\n{_json.dumps(compact, ensure_ascii=False)[:6000]}\n\n"
