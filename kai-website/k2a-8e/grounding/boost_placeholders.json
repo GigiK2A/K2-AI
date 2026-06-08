@@ -1,5 +1,83 @@
 {
-  "_nota": "INTERIM — manifest placeholder→boost. Manca da Luca: snapshot/build_snapshot.py (con manifest()) NON era nello zip consegna-luigi-v2.27. Le entries dello snapshot non dichiarano il boost di appartenenza (campo assente). Qui mappa minima ricavata da resolver_stub.py (LegalBoost) per far girare l'engine. DA SOSTITUIRE con il manifest reale appena Luca consegna build_snapshot.py.",
-  "_stato": "INCOMPLETO — solo flusso-legalboost-pmi seedato",
-  "flusso-legalboost-pmi": ["cc_1341", "cc_1342", "dlgs231_25septies"]
+  "_nota": "REALE — estratto da k2a-skills/snapshot/build_snapshot.py manifest() (repo Luca, accesso 2026-06-08). Sostituisce l_interim. 57 chiavi / 11 boost (LegalBoost incluso).",
+  "_fonte": "inglucarossi73/k2a-skills snapshot/build_snapshot.py",
+  "cruscotto-direzionale": [
+    "ctrl_cashflow",
+    "ctrl_churn",
+    "ctrl_dso",
+    "ctrl_ebitda",
+    "ctrl_scost",
+    "in_mese"
+  ],
+  "flusso-advisorboost-pmi": [
+    "dcf",
+    "multipli_ev",
+    "wacc"
+  ],
+  "flusso-buildboost-studio": [
+    "dpr380_10",
+    "dpr380_22",
+    "dpr380_24",
+    "dpr380_3",
+    "in_intervento"
+  ],
+  "flusso-financeboost-pmi": [
+    "benchmark_settore",
+    "ccc",
+    "ccn",
+    "current_ratio",
+    "de",
+    "ebitda_margin",
+    "in_bilanci",
+    "in_settore",
+    "quick_ratio",
+    "roe",
+    "roi",
+    "ros"
+  ],
+  "flusso-fiscoboost-pmi": [
+    "in_regime",
+    "iva_16",
+    "iva_19",
+    "ravvedimento_13",
+    "tuir_102",
+    "tuir_109",
+    "tuir_11",
+    "tuir_83",
+    "tuir_96"
+  ],
+  "flusso-hostboost-ricettive": [
+    "adr",
+    "goppar",
+    "in_struttura",
+    "occupancy",
+    "revpar",
+    "revpar_zona"
+  ],
+  "flusso-legalboost-pmi": [
+    "cc_1341",
+    "cc_1342",
+    "dlgs231_25septies"
+  ],
+  "flusso-mepboost-studio": [
+    "dm37_15",
+    "dm37_5",
+    "dm37_6",
+    "dm37_7",
+    "in_edificio"
+  ],
+  "flusso-safetyboost-studio": [
+    "cp_437",
+    "cp_451",
+    "cp_589",
+    "cp_590",
+    "in_cantiere"
+  ],
+  "flusso-strategyboost-pmi": [
+    "in_competitor"
+  ],
+  "flusso-webboost-pmi": [
+    "in_url",
+    "keyword_dataset"
+  ]
 }

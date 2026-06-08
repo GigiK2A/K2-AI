@@ -1,6 +1,6 @@
 {
   "snapshot_version": "1.0.0",
-  "generated_at": "2026-06-04T13:18:01Z",
+  "generated_at": "2026-06-07T09:25:53Z",
   "boosts": [
     "flusso-fiscoboost-pmi",
     "flusso-agevolazioni-pmi",
@@ -322,26 +322,26 @@
     },
     "benchmark_settore": {
       "tipo": "benchmark",
-      "fonte": "benchmark-italia-business",
-      "descrizione": "Indici medi/percentili per settore-dimensione (Cerved/ISTAT)",
-      "status": "da_strutturare"
+      "fonte": "benchmark-italia-business/references/finanza.md",
+      "descrizione": "EV/EBITDA + P/E mediani e percentili 25-75 per settore (fonte: Borsa Italiana 2024 / Refinitiv / Damodaran)",
+      "status": "disponibile"
     },
     "multipli_ev": {
       "tipo": "benchmark",
       "fonte": "k2a-quant/lookup_multiples",
-      "descrizione": "Multipli EV/EBITDA per settore",
-      "status": "da_strutturare"
+      "descrizione": "Multipli EV/EBITDA, EV/Sales, P/E, beta_unlevered per 20 settori (fonte: Damodaran NYU Stern, Western Europe)",
+      "status": "disponibile"
     },
     "revpar_zona": {
       "tipo": "benchmark",
       "fonte": "k2a-catalogo/metriche_hospitality",
-      "descrizione": "RevPAR/ADR mediano di zona",
+      "descrizione": "RevPAR/ADR mediano DI ZONA — non in KB (hospitality_benchmark ha solo soglie generiche occupazione/GOP, no dato zonale)",
       "status": "da_strutturare"
     },
     "keyword_dataset": {
       "tipo": "benchmark",
       "fonte": "provider SEO esterno",
-      "descrizione": "Volume/difficolta keyword",
+      "descrizione": "Volume/difficolta keyword — nessuna fonte interna (richiede provider SEO esterno: Keyword Planner/SEMrush/Ahrefs)",
       "status": "da_strutturare"
     },
     "in_settore": {
@@ -407,20 +407,8 @@
   },
   "coverage": {
     "declared": 57,
-    "resolved": 53,
+    "resolved": 55,
     "gaps": [
-      {
-        "key": "benchmark_settore",
-        "boost": "flusso-financeboost-pmi",
-        "tipo": "benchmark",
-        "motivo": "dataset non strutturato"
-      },
-      {
-        "key": "multipli_ev",
-        "boost": "flusso-advisorboost-pmi",
-        "tipo": "benchmark",
-        "motivo": "dataset non strutturato"
-      },
       {
         "key": "revpar_zona",
         "boost": "flusso-hostboost-ricettive",
