@@ -134,19 +134,20 @@ def cover_band(canvas, title: str, azienda: str, sottotitolo: str = ""):
     except Exception:
         pass
 
+    # Titolo + azienda a sinistra (il logo, in alto a destra, è l'unico marchio).
     canvas.setFillColor(ACCENT)
-    canvas.setFont("Helvetica-Bold", 9)
-    canvas.drawString(MARGIN, PAGE_H - 13 * mm, "K2-AI")
+    canvas.setFont("Helvetica-Bold", 8.5)
+    canvas.drawString(MARGIN, PAGE_H - 14 * mm, "DIAGNOSI K2-AI")
     canvas.setFillColor(colors.white)
-    canvas.setFont("Helvetica-Bold", 22)
-    canvas.drawString(MARGIN, PAGE_H - 27 * mm, title[:42])
+    canvas.setFont("Helvetica-Bold", 24)
+    canvas.drawString(MARGIN, PAGE_H - 28 * mm, title[:40])
     canvas.setFillColor(colors.HexColor("#9fb3ad"))
     canvas.setFont("Helvetica", 12)
     if azienda:
-        canvas.drawString(MARGIN, PAGE_H - 35 * mm, azienda[:60])
+        canvas.drawString(MARGIN, PAGE_H - 36 * mm, azienda[:60])
     if sottotitolo:
-        canvas.setFont("Helvetica", 8.5)
-        canvas.drawString(MARGIN, PAGE_H - 40 * mm, sottotitolo[:90])
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(MARGIN, PAGE_H - 41 * mm, sottotitolo[:90])
 
 
 def footer(canvas, doc, brand="K2-AI · documento riservato"):

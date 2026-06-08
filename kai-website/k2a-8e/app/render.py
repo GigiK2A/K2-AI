@@ -54,26 +54,25 @@ def _doc_titolo(deliverable: dict, blueprint: dict) -> tuple[str, str]:
 
 
 def _build_pdf(pdf_path: Path, titolo: str, azienda: str, sottotitolo: str, story: list) -> None:
-    from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Spacer
+    from reportlab.platypus import SimpleDocTemplate, Spacer
     from reportlab.lib.units import mm
     from .styling import MARGIN, PAGE_W, PAGE_H, cover_band, footer
 
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
-    frame = Frame(MARGIN, 18 * mm, PAGE_W - 2 * MARGIN, PAGE_H - 18 * mm - 22 * mm, id="body")
 
     def on_first(canvas, doc):
-        cover_band(canvas, titolo, azienda, sottotitolo)
+        cover_band(canvas, titolo, azienda, sottotitolo)  # banda copertina SOLO pag.1
         footer(canvas, doc)
 
-    doc = BaseDocTemplate(str(pdf_path), pagesize=(PAGE_W, PAGE_H),
-                          leftMargin=MARGIN, rightMargin=MARGIN, topMargin=18 * mm, bottomMargin=22 * mm)
-    doc.addPageTemplates([
-        PageTemplate(id="first", frames=[frame], onPage=on_first),
-        PageTemplate(id="later", frames=[frame], onPage=footer),
-    ])
-    # prima pagina: spazio per la banda copertina (46mm dall'alto)
-    story = [Spacer(1, 32 * mm)] + story
-    doc.build(story)
+    def on_later(canvas, doc):
+        footer(canvas, doc)  # pagine successive: solo footer, niente banda
+
+    doc = SimpleDocTemplate(str(pdf_path), pagesize=(PAGE_W, PAGE_H),
+                            leftMargin=MARGIN, rightMargin=MARGIN,
+                            topMargin=20 * mm, bottomMargin=22 * mm)
+    # spazio per la banda copertina (52mm) consumato SOLO sulla prima pagina
+    story = [Spacer(1, 34 * mm)] + story
+    doc.build(story, onFirstPage=on_first, onLaterPages=on_later)
 
 
 def _fonti_block(citazioni: list[dict], S: dict) -> list:
