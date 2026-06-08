@@ -31,6 +31,8 @@ jobs:
         run: K2A_ENTITLEMENT_SECRET=ci-secret-32bytes-minimum-length! python tests/security_test.py
       - name: Render premium su tutti i 12 schemi
         run: pip install pdfplumber >/dev/null 2>&1; python tests/test_render_all.py
+      - name: Generazione profonda per-sezione (client Anthropic mock, no crediti)
+        run: python tests/test_deep_mock.py
       - name: Coverage snapshot (no placeholder normativo irrisolto)
         run: |
           python - <<'PY'

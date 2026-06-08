@@ -193,24 +193,106 @@ def generate_deliverable_legal(
         return None, {"mode": "offline", "reason": str(exc)}
 
 
-def _fill_meta(sub: dict, inputs: dict, servizio: str) -> dict:
-    """Compila deterministicamente la sezione meta/metadata (no LLM)."""
-    props = sub.get("properties", {})
-    out = {}
+def _pat_value(pat: str) -> str:
+    """Valore minimo che soddisfa i pattern ricorrenti negli schemi meta."""
+    table = {
+        r"^\d{11}$": "12345678901",
+        r"^\d{4}-\d{2}$": "2026-06",
+        r"^\d{4}-\d{2}-\d{2}$": "2026-06-08",
+        r"^\d+\.\d+\.\d+$": "1.0.0",
+    }
+    if pat in table:
+        return table[pat]
+    if "\\." in pat and "\\d" in pat:  # versione semver-like generica
+        return "1.0.0"
+    return "0000000000" if "\\d" in pat else "esempio"
+
+
+def _det_string(key: str, schema: dict, inputs: dict, servizio: str) -> str:
     az = inputs.get("ragione_sociale") or inputs.get("azienda") or "Cliente"
-    for k in props:
-        kl = k.lower()
-        if "azienda" in kl or "cliente" in kl:
-            out[k] = az
-        elif "servizio" in kl or "nome" in kl or "title" in kl:
-            out[k] = servizio
-        elif "version" in kl:
-            out[k] = "1.0.0"
-        elif "data" in kl or "date" in kl:
-            out[k] = "2026"
-        elif "codice" in kl or "code" in kl or "id" in kl:
-            out[k] = "K2AI-2026"
-    return out
+    if "const" in schema:
+        return schema["const"]
+    if "enum" in schema:
+        return schema["enum"][0]
+    if schema.get("pattern"):
+        return _pat_value(schema["pattern"])
+    fmt = schema.get("format")
+    if fmt == "date":
+        return "2026-06-08"
+    if fmt == "date-time":
+        return "2026-06-08T00:00:00Z"
+    kl = (key or "").lower()
+    if any(w in kl for w in ("azienda", "cliente", "committente", "client")):
+        return az
+    if "settore" in kl and inputs.get("settore"):
+        return str(inputs["settore"])
+    if any(w in kl for w in ("skill", "servizio", "nome", "title", "titolo", "report")):
+        return servizio
+    if "version" in kl:
+        return "1.0.0"
+    if "slug" in kl:
+        return "k2ai-2026"
+    if any(w in kl for w in ("data", "date", "generated", "emiss")):
+        return "2026-06-08"
+    if any(w in kl for w in ("codice", "code", "id")):
+        return "K2AI-2026"
+    s = servizio
+    if "maxLength" in schema:
+        s = s[: schema["maxLength"]]
+    if "minLength" in schema and len(s) < schema["minLength"]:
+        s = s + "x" * (schema["minLength"] - len(s))
+    return s
+
+
+def _det_sample(schema: dict, root: dict, inputs: dict, servizio: str, key: str = "") -> object:
+    """Campione deterministico schema-valido (no LLM): risolve $ref, rispetta
+    const/enum/required/type. Override semantici sui campi stringa (azienda,
+    servizio, data…). Usato per compilare meta/metadata in modo SEMPRE conforme.
+    """
+    if "$ref" in schema:
+        ref = schema["$ref"]
+        if ref.startswith("#/$defs/"):
+            schema = root.get("$defs", {}).get(ref.split("/")[-1], {})
+    if "const" in schema:
+        return schema["const"]
+    if "enum" in schema:
+        return schema["enum"][0]
+    t = schema.get("type")
+    if isinstance(t, list):
+        t = t[0]
+    if t == "object":
+        props = schema.get("properties", {})
+        return {k: _det_sample(v, root, inputs, servizio, k) for k, v in props.items()}
+    if t == "array":
+        it = schema.get("items", {"type": "string"})
+        n = max(1, schema.get("minItems", 1))
+        if "maxItems" in schema:
+            n = min(n, schema["maxItems"])
+        return [_det_sample(it, root, inputs, servizio, key) for _ in range(n)]
+    if t in ("integer", "number"):
+        kl = (key or "").lower()
+        if any(w in kl for w in ("organico", "dipendent", "dimensione", "addett")):
+            for ik in ("dipendenti", "organico", "addetti", "numero_dipendenti"):
+                if isinstance(inputs.get(ik), (int, float)):
+                    return inputs[ik]
+        v = 2026 if ("anno" in kl or "year" in kl) else 1
+        if "minimum" in schema:
+            v = max(v, schema["minimum"])
+        if "maximum" in schema:
+            v = min(v, schema["maximum"])
+        return v
+    if t == "boolean":
+        return False
+    if t == "null":
+        return None
+    return _det_string(key, schema, inputs, servizio)
+
+
+def _fill_meta(sub: dict, inputs: dict, servizio: str, root: dict | None = None) -> dict:
+    """Compila deterministicamente meta/metadata, SEMPRE conforme al sotto-schema
+    (required, const, type). Mai delegato all'LLM → niente refuse per meta."""
+    out = _det_sample(sub, root or sub, inputs, servizio, "meta")
+    return out if isinstance(out, dict) else {}
 
 
 def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[str, dict],
@@ -240,15 +322,25 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
 
     facts_blk = _facts_block(facts)
     cli = json.dumps(inputs, ensure_ascii=False)
+    # $defs vive nella RADICE: va propagato sia al modello (così vede la forma dei
+    # $ref) sia al validatore della singola sezione (altrimenti '#/$defs/...' non
+    # risolve → PointerToNowhere → refuse erroneo su ogni schema con $defs).
+    root_defs = output_schema.get("$defs")
 
     for name, sub in props.items():
         if name in ("meta", "metadata"):
-            result[name] = _fill_meta(sub, inputs, servizio)
+            result[name] = _fill_meta(sub, inputs, servizio, output_schema)
             continue
         sub_compact = {"type": sub.get("type", "object")}
         for kk in ("properties", "required", "items", "enum"):
             if kk in sub:
                 sub_compact[kk] = sub[kk]
+        if root_defs:
+            sub_compact["$defs"] = root_defs
+        # schema usato per validare la sezione: stesso sub + $defs della radice
+        sub_val = dict(sub)
+        if root_defs and "$defs" not in sub_val:
+            sub_val["$defs"] = root_defs
         sysmsg = (
             f"Sei un consulente senior che redige la sezione «{_human(name)}» di un "
             f"deliverable {servizio} PREMIUM per una PMI italiana. Profondità da report "
@@ -277,8 +369,8 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
             val = _parse_section(text, sub.get("type"))
             usage = getattr(resp, "usage", None)
             tot_out += getattr(usage, "output_tokens", 0) or 0
-            # valida la sezione contro il sotto-schema
-            errs = list(Draft202012Validator(sub).iter_errors(val)) if val is not None else [1]
+            # valida la sezione contro il sotto-schema (con $defs della radice)
+            errs = list(Draft202012Validator(sub_val).iter_errors(val)) if val is not None else [1]
             if errs:
                 if name in required:
                     log.warning("sezione required '%s' non conforme: %s", name, errs[:1])
