@@ -205,12 +205,15 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             filiera_meta = {**filiera_meta, "assembly": "hybrid" if meta_struct else "prose+deterministic",
                             "structured_meta": bool(meta_struct)}
         else:
-            # Altri boost: generatore GENERICO schema-driven (mai consegnare invalido).
-            deliverable, filiera_meta = llm.generate_conforming(out_schema, blueprint, facts, inputs)
+            # Altri boost: generazione PROFONDA per-sezione (profondità tipo report
+            # consulenziale). Fallback alla singola chiamata, poi refuse se invalido.
+            deliverable, filiera_meta = llm.generate_deliverable_deep(out_schema, blueprint, facts, inputs)
+            if not deliverable:
+                deliverable, fm2 = llm.generate_conforming(out_schema, blueprint, facts, inputs)
+                filiera_meta = {**filiera_meta, **fm2, "assembly": "generic-fallback"}
             if not deliverable:
                 raise Refuse("validation_failed",
                              "generazione non disponibile (offline o incompleta) per questo boost")
-            filiera_meta = {**filiera_meta, "assembly": "generic"}
 
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo

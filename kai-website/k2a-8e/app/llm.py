@@ -31,8 +31,10 @@ _SYSTEM = (
     "(stesso articolo/fonte), senza riscrivere il testo di legge a memoria.\n"
     "- Ogni riferimento normativo che citi DEVE essere tra quelli nei FATTI.\n"
     "- Tono autorevole e chiaro per un titolare d'impresa. Niente buzzword né gergo inutile.\n"
-    "- Analisi SPECIFICA per questa azienda (usa i dati cliente: settore, dimensione, e-commerce, ecc.).\n"
-    "- LUNGHEZZA: ~110-140 parole per voce, dense e concrete (implicazioni operative, non teoria).\n"
+    "- Analisi SPECIFICA e APPROFONDITA per questa azienda (usa i dati cliente: settore, "
+    "dimensione, e-commerce, ecc.). Profondità da report consulenziale.\n"
+    "- LUNGHEZZA: ~180-240 parole per voce, su più paragrafi: inquadramento, rischio concreto "
+    "per QUESTA azienda, implicazioni operative, cosa fare. Non riassunti generici.\n"
     "- È orientamento, NON consulenza legale (D-034).\n"
     "- Restituisci SOLO un oggetto JSON {\"<voce_id>\": \"<testo>\", ...}, una chiave per voce richiesta."
 )
@@ -189,6 +191,148 @@ def generate_deliverable_legal(
     except Exception as exc:
         log.warning("deliverable strutturato fallito: %s", exc)
         return None, {"mode": "offline", "reason": str(exc)}
+
+
+def _fill_meta(sub: dict, inputs: dict, servizio: str) -> dict:
+    """Compila deterministicamente la sezione meta/metadata (no LLM)."""
+    props = sub.get("properties", {})
+    out = {}
+    az = inputs.get("ragione_sociale") or inputs.get("azienda") or "Cliente"
+    for k in props:
+        kl = k.lower()
+        if "azienda" in kl or "cliente" in kl:
+            out[k] = az
+        elif "servizio" in kl or "nome" in kl or "title" in kl:
+            out[k] = servizio
+        elif "version" in kl:
+            out[k] = "1.0.0"
+        elif "data" in kl or "date" in kl:
+            out[k] = "2026"
+        elif "codice" in kl or "code" in kl or "id" in kl:
+            out[k] = "K2AI-2026"
+    return out
+
+
+def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[str, dict],
+                              inputs: dict) -> tuple[Optional[dict], dict]:
+    """Generazione PROFONDA per-sezione: ogni sezione top-level dell'output-schema
+    è generata con una chiamata Sonnet DEDICATA e ricca (niente troncamento del
+    JSON monolitico → profondità tipo report consulenziale 8-12 pagine).
+
+    meta/metadata → compilati deterministicamente. Sezioni di contenuto → chiamata
+    focalizzata, validata contro il sotto-schema. Una sezione required che fallisce
+    → l'intero deliverable refuse (mai consegnare invalido).
+    """
+    if not ANTHROPIC_API_KEY:
+        return None, {"mode": "offline"}
+    from jsonschema import Draft202012Validator
+    servizio = blueprint.get("pacchetto", {}).get("nome_commerciale", "Deliverable K2-AI")
+    props = output_schema.get("properties", {})
+    required = set(output_schema.get("required", list(props)))
+    result: dict = {}
+    sezioni_gen = 0
+    tot_out = 0
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    except Exception as exc:
+        return None, {"mode": "offline", "reason": str(exc)}
+
+    facts_blk = _facts_block(facts)
+    cli = json.dumps(inputs, ensure_ascii=False)
+
+    for name, sub in props.items():
+        if name in ("meta", "metadata"):
+            result[name] = _fill_meta(sub, inputs, servizio)
+            continue
+        sub_compact = {"type": sub.get("type", "object")}
+        for kk in ("properties", "required", "items", "enum"):
+            if kk in sub:
+                sub_compact[kk] = sub[kk]
+        sysmsg = (
+            f"Sei un consulente senior che redige la sezione «{_human(name)}» di un "
+            f"deliverable {servizio} PREMIUM per una PMI italiana. Profondità da report "
+            "professionale (questo è UN capitolo di un documento da 8-12 pagine).\n"
+            "REGOLE:\n"
+            "- Conformati ESATTAMENTE al sotto-schema JSON (campi required, tipi, enum).\n"
+            "- Per i campi di prosa/analisi: scrivi in MODO APPROFONDITO e specifico — più "
+            "paragrafi, ragionamento, implicazioni operative, esempi concreti, e dove ha "
+            "senso quantificazioni/stime (range, %, soglie). Densità da consulente, non riassunti.\n"
+            "- Usa i DATI CLIENTE (settore, dimensione, regime, ecc.): analisi su MISURA.\n"
+            "- NON inventare numeri o citazioni di legge: usa i FATTI verbatim. Dato mancante "
+            "→ dichiaralo, non inventarlo.\n"
+            "- È orientamento professionale, non consulenza vincolante (D-034/D-036).\n"
+            "Rispondi SOLO con il JSON della sezione."
+        )
+        user = (f"SOTTO-SCHEMA della sezione «{name}»:\n{json.dumps(sub_compact, ensure_ascii=False)[:4000]}\n\n"
+                f"{facts_blk}\n\nDATI CLIENTE: {cli}\n\nGenera la sezione «{name}», approfondita.")
+        try:
+            resp = client.messages.create(
+                model=ANTHROPIC_MODEL, max_tokens=8000,
+                system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
+                messages=[{"role": "user", "content": user}],
+            )
+            text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+            # la sezione può essere oggetto, lista o scalare → parse robusto
+            val = _parse_section(text, sub.get("type"))
+            usage = getattr(resp, "usage", None)
+            tot_out += getattr(usage, "output_tokens", 0) or 0
+            # valida la sezione contro il sotto-schema
+            errs = list(Draft202012Validator(sub).iter_errors(val)) if val is not None else [1]
+            if errs:
+                if name in required:
+                    log.warning("sezione required '%s' non conforme: %s", name, errs[:1])
+                    return None, {"mode": "anthropic", "warning": f"sezione_{name}_invalida"}
+                continue  # sezione opzionale non conforme → skip
+            result[name] = val
+            sezioni_gen += 1
+        except Exception as exc:
+            if name in required:
+                log.warning("sezione required '%s' fallita: %s", name, exc)
+                if not ALLOW_OFFLINE_FALLBACK:
+                    raise
+                return None, {"mode": "anthropic", "reason": str(exc)}
+            continue
+
+    # validazione finale dell'intero deliverable
+    full_errs = list(Draft202012Validator(output_schema).iter_errors(result))
+    if full_errs:
+        return None, {"mode": "anthropic", "warning": "deliverable_non_conforme",
+                      "errors": [str(e.message) for e in full_errs[:3]]}
+    return result, {"mode": "anthropic", "model": ANTHROPIC_MODEL, "assembly": "deep",
+                    "sezioni": sezioni_gen, "output_tokens": tot_out}
+
+
+def _human(s: str) -> str:
+    return str(s).replace("_", " ")
+
+
+def _parse_section(text: str, tipo):
+    """Estrae il valore di una sezione (oggetto/lista/scalare) dalla risposta."""
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.split("\n", 1)[1] if "\n" in t else t
+        if t.rstrip().endswith("```"):
+            t = t.rstrip()[:-3]
+    t = t.strip()
+    # prova oggetto
+    if "{" in t and (tipo == "object" or tipo is None):
+        s, e = t.find("{"), t.rfind("}")
+        if 0 <= s < e:
+            try:
+                return json.loads(t[s:e + 1])
+            except json.JSONDecodeError:
+                pass
+    # prova lista
+    if "[" in t and (tipo == "array" or tipo is None):
+        s, e = t.find("["), t.rfind("]")
+        if 0 <= s < e:
+            try:
+                return json.loads(t[s:e + 1])
+            except json.JSONDecodeError:
+                pass
+    # scalare: rimuovi virgolette
+    return t.strip().strip('"')
 
 
 def generate_conforming(output_schema: dict, blueprint: dict, facts: dict[str, dict],
