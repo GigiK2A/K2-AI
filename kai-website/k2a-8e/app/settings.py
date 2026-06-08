@@ -44,10 +44,19 @@ def _manifest_services() -> dict:
         return {}
 
 
+# Catalogo chiuso = TUTTI i 15 service_id del manifest (12 boost). LegalBoost +
+# FiscoBoost usano l'assembly dedicato (voci-shape); gli altri il generatore
+# generico schema-driven. Restringibile via K2A_8E_PILOT_ONLY=1 (solo LegalBoost).
 PILOT_SKILL = "flusso-legalboost-pmi"
+_PILOT_ONLY = os.environ.get("K2A_8E_PILOT_ONLY", "0") in ("1", "true", "yes")
 CATALOGO_CHIUSO = {
-    sid: v for sid, v in _manifest_services().items() if v.get("skill") == PILOT_SKILL
+    sid: v for sid, v in _manifest_services().items()
+    if (not _PILOT_ONLY) or v.get("skill") == PILOT_SKILL
 }
+# Skill con assembly DEDICATO (hybrid prosa+meta, output-schema specifico).
+# Solo LegalBoost: gli altri 11 (FiscoBoost incluso) hanno schemi diversi →
+# generatore generico schema-driven.
+VOCI_SHAPE_SKILLS = {"flusso-legalboost-pmi"}
 
 CONFIDENCE_REFUSE_THRESHOLD = 0.4
 JOB_TIMEOUT_S = int(os.environ.get("K2A_8E_JOB_TIMEOUT", "240"))

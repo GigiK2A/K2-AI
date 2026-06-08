@@ -31,6 +31,7 @@ _SYSTEM = (
     "(stesso articolo/fonte), senza riscrivere il testo di legge a memoria.\n"
     "- Ogni riferimento normativo che citi DEVE essere tra quelli nei FATTI.\n"
     "- Tono pragmatico, diretto, per un titolare d'impresa. Niente buzzword. Niente gergo legale inutile.\n"
+    "- LUNGHEZZA: massimo ~110 parole per voce (2 paragrafi brevi). Conciso ma concreto.\n"
     "- È orientamento, NON consulenza legale (D-034).\n"
     "- Restituisci SOLO un oggetto JSON {\"<voce_id>\": \"<testo>\", ...}, una chiave per voce richiesta."
 )
@@ -186,6 +187,55 @@ def generate_deliverable_legal(
                       "output_tokens": getattr(usage, "output_tokens", None)}
     except Exception as exc:
         log.warning("deliverable strutturato fallito: %s", exc)
+        return None, {"mode": "offline", "reason": str(exc)}
+
+
+def generate_conforming(output_schema: dict, blueprint: dict, facts: dict[str, dict],
+                        inputs: dict) -> tuple[Optional[dict], dict]:
+    """Generatore GENERICO schema-driven: produce un deliverable JSON conforme a
+    QUALSIASI output-schema (per i boost senza assembly dedicato). I FATTI
+    deterministici (verbatim) vanno iniettati e usati senza inventare. Ritorna
+    (deliverable|None, meta). Il chiamante valida contro lo schema; se None o
+    invalido → refuse (mai consegnare invalido).
+    """
+    if not ANTHROPIC_API_KEY:
+        return None, {"mode": "offline"}
+    import json as _json
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        # schema compatto (solo properties + required, niente $schema/title verbosi)
+        compact = {"type": "object",
+                   "required": output_schema.get("required", []),
+                   "properties": output_schema.get("properties", {})}
+        sysmsg = (
+            "Sei l'estensore di un deliverable professionale per PMI italiane. Produci un "
+            "oggetto JSON CONFORME allo schema fornito (tutti i campi required, tipi corretti, "
+            "enum rispettati). REGOLE: non inventare numeri/citazioni di legge — usa i FATTI "
+            "verbatim forniti dove servono riferimenti normativi o valori; testo conciso e "
+            "concreto, italiano, per un titolare d'impresa; è orientamento, non consulenza "
+            "(D-034/D-036). Rispondi SOLO con il JSON, niente altro."
+        )
+        user = (
+            f"SCHEMA (conformati esattamente):\n{_json.dumps(compact, ensure_ascii=False)[:6000]}\n\n"
+            f"{_facts_block(facts)}\n\nDATI CLIENTE: {_json.dumps(inputs, ensure_ascii=False)}\n\n"
+            "Genera ora il JSON conforme."
+        )
+        resp = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=12000,
+            system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        truncated = getattr(resp, "stop_reason", None) == "max_tokens"
+        data = _parse_json_object(text)
+        if truncated or not data:
+            return None, {"mode": "anthropic", "warning": "troncato_o_vuoto"}
+        usage = getattr(resp, "usage", None)
+        return data, {"mode": "anthropic", "model": ANTHROPIC_MODEL,
+                      "output_tokens": getattr(usage, "output_tokens", None)}
+    except Exception as exc:
+        log.warning("generate_conforming fallita: %s", exc)
         return None, {"mode": "offline", "reason": str(exc)}
 
 

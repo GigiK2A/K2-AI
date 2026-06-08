@@ -49,10 +49,17 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
             raise Refuse("unresolvable_placeholder", f"placeholder '{k}' assente nello snapshot")
         tipo = e.get("tipo")
         if tipo == "normativo":
-            facts[k] = {"valore": e["testo"], "tipo": "normativo",
-                        "fonte": e.get("fonte"), "vigenza": e.get("vigenza")}
+            # Riferimento leggibile dal titolo verbatim (es. "# Art. 1341 Codice
+            # Civile — ...") invece del campo interno (override_locale).
+            testo = e.get("testo", "")
+            first = testo.lstrip("# ").split("\n", 1)[0].strip() if testo else k
+            riferimento = first.split("—")[0].strip() if "—" in first else first
+            facts[k] = {"valore": testo, "tipo": "normativo",
+                        "fonte": e.get("fonte"), "vigenza": e.get("vigenza"),
+                        "riferimento": riferimento}
             citazioni.append({
-                "campo": k, "fonte": e.get("fonte"), "fonte_url": e.get("fonte_url"),
+                "campo": k, "riferimento": riferimento,
+                "fonte": e.get("fonte"), "fonte_url": e.get("fonte_url"),
                 "vigenza": e.get("vigenza"), "status": e.get("status"),
             })
         elif tipo == "formula":
@@ -73,7 +80,7 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
 def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
                         inputs: dict, meta_struct: dict | None = None) -> dict:
     norme = [
-        {"riferimento": c.get("fonte") or c.get("campo"), "fonte": "normattiva"}
+        {"riferimento": c.get("riferimento") or c.get("campo"), "fonte": "normattiva"}
         for c in citazioni
     ]
     voci_meta = (meta_struct or {}).get("voci_meta", {})
@@ -188,20 +195,29 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             )
             return
 
-        # Corposità HYBRID (evita troncamento del JSON monolitico):
-        #  (1) prosa ricca per voce  → generate_sezioni (~6k token, grounded)
-        #  (2) metadati strutturati  → generate_structured_meta (compatto)
-        # poi assemblati; i campi mancanti cadono sul deterministico (argomenti voce).
-        sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
-        meta_struct = llm.generate_structured_meta(blueprint, facts, inputs)
-        deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs, meta_struct)
-        filiera_meta = {**filiera_meta, "assembly": "hybrid" if meta_struct else "prose+deterministic",
-                        "structured_meta": bool(meta_struct)}
+        from .settings import VOCI_SHAPE_SKILLS
+        generic = skill not in VOCI_SHAPE_SKILLS
+        if not generic:
+            # Voci-shape (LegalBoost/FiscoBoost): HYBRID prosa + meta strutturato.
+            sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
+            meta_struct = llm.generate_structured_meta(blueprint, facts, inputs)
+            deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs, meta_struct)
+            filiera_meta = {**filiera_meta, "assembly": "hybrid" if meta_struct else "prose+deterministic",
+                            "structured_meta": bool(meta_struct)}
+        else:
+            # Altri boost: generatore GENERICO schema-driven (mai consegnare invalido).
+            deliverable, filiera_meta = llm.generate_conforming(out_schema, blueprint, facts, inputs)
+            if not deliverable:
+                raise Refuse("validation_failed",
+                             "generazione non disponibile (offline o incompleta) per questo boost")
+            filiera_meta = {**filiera_meta, "assembly": "generic"}
 
-        # Validazione: L1 (libreria) + L2 (linter) + output-schema (jsonschema).
+        # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
+        # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
+        # schema.
         jobs.update(job_id, status="validating")
         r1 = validate.l1(blueprint)
-        r2 = validate.l2(_lint_instance(blueprint), blueprint)
+        r2 = {"pass": True} if generic else validate.l2(_lint_instance(blueprint), blueprint)
         out_errs = sorted(Draft202012Validator(out_schema).iter_errors(deliverable),
                           key=lambda e: list(e.path))
         if not r1["pass"] or not r2["pass"] or out_errs:
@@ -221,8 +237,14 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         json_path = out_dir / "deliverable.json"
         import json as _json
         json_path.write_text(_json.dumps(deliverable, ensure_ascii=False, indent=2), encoding="utf-8")
-        html_path.write_text(render_html(deliverable, blueprint, citazioni), encoding="utf-8")
-        render_pdf(deliverable, blueprint, citazioni, pdf_path)
+        if generic:
+            from .render import render_generic_pdf
+            html_path.write_text("<pre>" + _json.dumps(deliverable, ensure_ascii=False, indent=2) + "</pre>",
+                                 encoding="utf-8")
+            render_generic_pdf(deliverable, blueprint, citazioni, pdf_path)
+        else:
+            html_path.write_text(render_html(deliverable, blueprint, citazioni), encoding="utf-8")
+            render_pdf(deliverable, blueprint, citazioni, pdf_path)
 
         jobs.update(
             job_id, status="rendered",
