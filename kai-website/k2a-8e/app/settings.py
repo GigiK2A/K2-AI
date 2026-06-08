@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parent.parent
 API_KEY = os.environ.get("K2A_8E_API_KEY", "dev-key")
 API_KEY_NEXT = os.environ.get("K2A_8E_API_KEY_NEXT")  # rotazione (membrana G6)
 
+# Entitlement JWT (membrana G1) — segreto condiviso col K-BOT (HS256).
+ENTITLEMENT_SECRET = os.environ.get("K2A_ENTITLEMENT_SECRET")
+
 # Anthropic (filiera). Senza chiave → offline deterministico (template).
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = os.environ.get("K2A_8E_MODEL", "claude-sonnet-4-5")
@@ -48,3 +51,7 @@ CATALOGO_CHIUSO = {
 
 CONFIDENCE_REFUSE_THRESHOLD = 0.4
 JOB_TIMEOUT_S = int(os.environ.get("K2A_8E_JOB_TIMEOUT", "240"))
+
+# Rate-limit per chiave Bearer su /v1/deliverables (anti-abuse). 0 = disattivo.
+RL_MAX = int(os.environ.get("K2A_8E_RL_MAX", "30"))
+RL_WINDOW_S = int(os.environ.get("K2A_8E_RL_WINDOW", "60"))

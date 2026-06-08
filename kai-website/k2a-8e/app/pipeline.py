@@ -78,13 +78,18 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict], i
     voci_out = []
     for v in blueprint.get("voci", []):
         vid = v["id"]
+        argomenti = v.get("argomenti_obbligatori", [])
+        # rischi/azioni derivati dagli argomenti obbligatori della voce (no placeholder generico)
+        rischi = [{"descrizione": f"Verificare: {a}.", "gravita": "media", "serve_avvocato": False}
+                  for a in argomenti[:2]] or [{"descrizione": f"Analisi area «{v['titolo']}».",
+                                               "gravita": "media", "serve_avvocato": False}]
+        azioni = [f"Approfondire «{a}»." for a in argomenti[:3]] or ["Approfondire l'area."]
         voci_out.append({
             "id": vid,
             "titolo": v["titolo"],
             "contenuto": str(sezioni.get(vid, "")),
-            "rischi": [{"descrizione": "Rischio rilevato nell'area (vedi contenuto).",
-                        "gravita": "media", "serve_avvocato": False}],
-            "azioni": ["Azione prioritaria indicata nel contenuto."],
+            "rischi": rischi,
+            "azioni": azioni,
             "norme_citate": norme if vid in ("contrattualistica", "societario_231") else [],
         })
     return {
@@ -168,10 +173,19 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             )
             return
 
-        sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
-
-        # Assemble (Phase-1 pilota = LegalBoost).
-        deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs)
+        # Generazione STRUTTURATA reale (corposità: rischi/azioni/score veri),
+        # conforme a output-schema. Fallback all'assembly deterministico se
+        # offline o JSON incompleto.
+        deliverable, filiera_meta = llm.generate_deliverable_legal(blueprint, out_schema, facts, inputs)
+        if not deliverable:
+            sezioni, fm2 = llm.generate_sezioni(blueprint, facts, inputs)
+            deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs)
+            filiera_meta = {**filiera_meta, **fm2, "assembly": "deterministic"}
+        else:
+            filiera_meta = {**filiera_meta, "assembly": "structured"}
+            # garantisci che le citazioni deterministiche restino quelle dello snapshot
+            if not deliverable.get("voci"):
+                deliverable = assemble_legalboost(blueprint, {}, citazioni, inputs)
 
         # Validazione: L1 (libreria) + L2 (linter) + output-schema (jsonschema).
         jobs.update(job_id, status="validating")

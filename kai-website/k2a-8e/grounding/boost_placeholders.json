@@ -1,6 +1,6 @@
 {
-  "_nota": "REALE — estratto da k2a-skills/snapshot/build_snapshot.py manifest() (repo Luca, accesso 2026-06-08). Sostituisce l_interim. 57 chiavi / 11 boost (LegalBoost incluso).",
-  "_fonte": "inglucarossi73/k2a-skills snapshot/build_snapshot.py",
+  "_nota": "Generato da sync_assets.sh (k2a-skills/snapshot/build_snapshot.py manifest()).",
+  "_fonte": "inglucarossi73/k2a-skills",
   "cruscotto-direzionale": [
     "ctrl_cashflow",
     "ctrl_churn",

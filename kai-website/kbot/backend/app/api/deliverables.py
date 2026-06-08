@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from ..lib import engine, sessions, catalog
+from ..lib import engine, sessions, catalog, entitlement
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..lib.supabase_admin import get_admin_client
 
@@ -43,15 +43,19 @@ def _check_ownership(session: dict, user: Optional[AuthUser]) -> None:
         raise HTTPException(status_code=403, detail="not your session")
 
 
-def _mint_entitlement(session: dict, servizio_id: str) -> Optional[str]:
-    """Phase-1: entitlement placeholder se il servizio risulta pagato.
-
-    TODO (G1): sostituire con JWT firmato {sub,service_id,tier,jti,exp} verificato
-    stateless dall'8e. Vedi docs/interfaccia-kbot-8e.md §9.
-    """
-    if session.get("status") == "paid":
-        return f"phase1-{session.get('id')}-{servizio_id}"
-    return None
+def _mint_entitlement(session: dict, servizio_id: str, tier: Optional[str] = None) -> Optional[str]:
+    """Entitlement JWT (G1) se il servizio risulta pagato. Firmato HS256, verificato
+    stateless dall'8e. Fallback al placeholder solo se il segreto non è configurato
+    (dev senza K2A_ENTITLEMENT_SECRET)."""
+    if session.get("status") != "paid":
+        return None
+    token = entitlement.mint(
+        user_id=session.get("user_id"),
+        service_id=servizio_id,
+        tier=tier,
+        session_id=str(session.get("id")),
+    )
+    return token or f"dev-unsigned-{session.get('id')}-{servizio_id}"
 
 
 @router.post("/deliverables")
@@ -70,8 +74,8 @@ async def create(body: DeliverableBody, user: Optional[AuthUser] = Depends(optio
         raise HTTPException(status_code=409,
                             detail="servizio non generabile via 8e (high-touch)")
 
-    entitlement = _mint_entitlement(session, body.servizioId)
-    if not entitlement:
+    entitlement_token = _mint_entitlement(session, body.servizioId, tier=servizio.get("tipo"))
+    if not entitlement_token:
         raise HTTPException(status_code=402, detail="servizio non pagato")
 
     # L'8e instrada per service_id (chiave manifest = id catalog, stessa fonte
@@ -80,7 +84,7 @@ async def create(body: DeliverableBody, user: Optional[AuthUser] = Depends(optio
         res = await engine.create_deliverable(
             service_id=body.servizioId,
             inputs=body.inputs,
-            entitlement_token=entitlement,
+            entitlement_token=entitlement_token,
             tier=servizio.get("tipo"),
             auth_level="FULL",
         )

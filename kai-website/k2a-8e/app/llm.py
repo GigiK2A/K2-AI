@@ -124,6 +124,71 @@ def generate_sezioni(
         raise  # PROD: non consegnare un deliverable degradato in silenzio
 
 
+_SYSTEM_LEGAL_FULL = (
+    "Sei l'estensore di un deliverable legale-compliance per PMI italiane (LegalBoost).\n"
+    "Produci un documento COMPLETO e CORPOSO, conforme allo schema JSON richiesto.\n"
+    "REGOLE ASSOLUTE:\n"
+    "- NON inventare numeri/articoli/citazioni: i FATTI normativi ti sono forniti VERBATIM.\n"
+    "- Ogni `norme_citate.riferimento` deve corrispondere a un fatto fornito; `fonte` ∈ {normattiva}.\n"
+    "- Per ogni voce: contenuto ricco (≥2 paragrafi), rischi concreti con gravità, azioni operative.\n"
+    "- È orientamento, NON consulenza legale (D-034).\n"
+    "- Rispondi SOLO con l'oggetto JSON conforme allo schema, niente altro."
+)
+
+
+def generate_deliverable_legal(
+    blueprint: dict, out_schema: dict, facts: dict[str, dict], inputs: dict
+) -> tuple[Optional[dict], dict]:
+    """Genera il deliverable LegalBoost STRUTTURATO conforme a output-schema.
+
+    Ritorna (deliverable|None, meta). Se None → il chiamante usa l'assembly
+    deterministico di fallback. Garantisce corposità: rischi/azioni/score reali,
+    non placeholder.
+    """
+    voci = blueprint.get("voci", [])
+    if not ANTHROPIC_API_KEY:
+        return None, {"mode": "offline"}
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        voci_spec = "\n".join(
+            f"- id={v['id']} titolo=«{v['titolo']}» argomenti: {'; '.join(v.get('argomenti_obbligatori', []))}"
+            for v in voci
+        )
+        user = (
+            f"{_facts_block(facts)}\n\nVOCI (una per id, in ordine):\n{voci_spec}\n\n"
+            f"DATI CLIENTE: {json.dumps(inputs, ensure_ascii=False)}\n\n"
+            "Genera il JSON conforme allo schema: meta{servizio,versione,data,azienda}, "
+            "sintesi{score_compliance(int 0-100), mappa_rischi[{area,semaforo:verde|giallo|rosso}]}, "
+            "voci[{id,titolo,contenuto,rischi[{descrizione,gravita:bassa|media|alta,serve_avvocato:bool}],"
+            "azioni[str],norme_citate[{riferimento,fonte:normattiva}]}], "
+            "piano_azione[{priorita:int,azione,handoff_avvocato:bool}], disclaimer."
+        )
+        resp = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=16000,  # doc completo 9 voci ricche
+            system=[{"type": "text", "text": _SYSTEM_LEGAL_FULL, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        truncated = getattr(resp, "stop_reason", None) == "max_tokens"
+        data = _parse_json_object(text)
+        if truncated or not data.get("voci"):
+            log.warning("deliverable strutturato troncato/incompleto → fallback")
+            return None, {"mode": "anthropic", "warning": "json_incompleto_o_troncato"}
+        # forza meta.azienda dall'input + disclaimer del blueprint se assente
+        data.setdefault("meta", {})["azienda"] = inputs.get("ragione_sociale") or data.get("meta", {}).get("azienda", "Cliente")
+        data["meta"].setdefault("servizio", "LegalBoost")
+        data["meta"].setdefault("versione", "1.0.0")
+        data["meta"].setdefault("data", "2026-06-08")
+        data.setdefault("disclaimer", blueprint.get("disclaimer", "Orientamento legale, non consulenza (D-034)."))
+        usage = getattr(resp, "usage", None)
+        return data, {"mode": "anthropic", "model": ANTHROPIC_MODEL,
+                      "output_tokens": getattr(usage, "output_tokens", None)}
+    except Exception as exc:
+        log.warning("deliverable strutturato fallito: %s", exc)
+        return None, {"mode": "offline", "reason": str(exc)}
+
+
 def generate_preview(blueprint: dict, facts: dict[str, dict], inputs: dict) -> dict:
     """Compone SOLO l'assaggio: score + criticità #1 reale. NON il documento.
 

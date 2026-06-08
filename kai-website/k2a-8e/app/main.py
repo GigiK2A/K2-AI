@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Response
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
-from . import assets, jobs, pipeline
+from . import assets, jobs, pipeline, entitlement, ratelimit
 from .auth import require_bearer
 from .settings import CATALOGO_CHIUSO, ENGINE_VERSION
 
@@ -55,17 +55,21 @@ def catalog():
 
 
 @app.post("/v1/deliverables", status_code=202, dependencies=[Depends(require_bearer)])
-def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Response):
+def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Response,
+                       authorization: str = Header(default="")):
+    ratelimit.check(authorization[-16:] or "anon")  # per-chiave
     auth_level = (body.auth_level or "FULL").upper()
     if auth_level not in ("PREVIEW", "FULL"):
         raise HTTPException(status_code=400, detail="auth_level ∈ {PREVIEW, FULL}")
 
-    # FULL richiede entitlement (il gate documento nel K-BOT l'ha verificato e
-    # rilasciato il token). PREVIEW è gratis entro quota: il gate preview nel
-    # K-BOT ha già verificato registrazione + contatore → niente token.
-    if auth_level == "FULL" and not body.entitlement_token:
-        response.status_code = 402
-        return {"status": "payment_required", "service_id": body.service_id}
+    # FULL richiede entitlement VALIDO (JWT firmato dal K-BOT, G1). PREVIEW è
+    # gratis entro quota: il gate preview nel K-BOT ha già verificato.
+    if auth_level == "FULL":
+        ok, reason = entitlement.verify(body.entitlement_token, body.service_id)
+        if not ok:
+            response.status_code = 402
+            return {"status": "payment_required", "service_id": body.service_id,
+                    "reason": reason}
 
     # Routing sincrono (per restituire subito refuse out_of_catalog).
     try:

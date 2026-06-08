@@ -90,6 +90,10 @@ CATALOG_PATH = Path(
 ENGINE_8E_BASE_URL = _env("K2A_8E_BASE_URL", default="http://localhost:8800")
 ENGINE_8E_API_KEY = _env("K2A_8E_API_KEY")  # Bearer backend-to-backend
 
+# Entitlement JWT (membrana G1) — segreto condiviso K-BOT↔8e (HS256).
+ENTITLEMENT_SECRET = _env("K2A_ENTITLEMENT_SECRET")
+ENTITLEMENT_TTL_S = int(_env("K2A_ENTITLEMENT_TTL", default="900") or "900")  # 15 min
+
 # Prompt size limits, mirroring api/kbot/_shared.ts.
 CHAT_SYSTEM_MAX_CHARS = int(_env("CHAT_SYSTEM_MAX_CHARS", default="26000") or "26000")
 PDF_SYSTEM_MAX_CHARS = int(_env("PDF_SYSTEM_MAX_CHARS", default="55000") or "55000")

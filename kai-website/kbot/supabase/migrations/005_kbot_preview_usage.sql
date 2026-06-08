@@ -21,9 +21,14 @@ CREATE POLICY kbot_preview_usage_select_own ON kbot_preview_usage
 
 -- Incremento atomico con cap. Ritorna il nuovo count se < limite, NULL se la
 -- quota è esaurita (il backend interpreta NULL come "invita al documento").
+-- Hardening (advisor): search_path fisso + EXECUTE solo a service_role (il
+-- backend la chiama; vietata via /rest/v1/rpc ad anon/authenticated, altrimenti
+-- un utente potrebbe manipolare il contatore altrui con p_user/p_limit arbitrari).
 CREATE OR REPLACE FUNCTION kbot_preview_consume(p_user UUID, p_ym TEXT, p_limit INT)
 RETURNS INT
-LANGUAGE plpgsql SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 DECLARE new_count INT;
 BEGIN
   INSERT INTO kbot_preview_usage(user_id, year_month, count)
@@ -34,3 +39,6 @@ BEGIN
   RETURNING count INTO new_count;
   RETURN new_count;
 END $$;
+
+REVOKE ALL ON FUNCTION kbot_preview_consume(UUID, TEXT, INT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION kbot_preview_consume(UUID, TEXT, INT) TO service_role;
