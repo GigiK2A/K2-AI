@@ -108,25 +108,45 @@ def html_escape(s) -> str:
     return _h.escape(str(s if s is not None else ""))
 
 
+import os
+DARK = colors.HexColor("#0d0f12")
+_LOGO = os.path.join(os.path.dirname(__file__), "..", "assets", "logo-k2ai.png")
+
+
 def cover_band(canvas, title: str, azienda: str, sottotitolo: str = ""):
-    """Banda colorata in alto sulla prima pagina."""
-    h = 42 * mm
-    canvas.setFillColor(PRIMARY)
+    """Banda scura in alto (si fonde col logo K2-AI) + accento teal + logo ufficiale."""
+    h = 46 * mm
+    canvas.setFillColor(DARK)
     canvas.rect(0, PAGE_H - h, PAGE_W, h, stroke=0, fill=1)
     canvas.setFillColor(ACCENT)
     canvas.rect(0, PAGE_H - h, PAGE_W, 2.5 * mm, stroke=0, fill=1)
-    canvas.setFillColor(colors.white)
+
+    # Logo ufficiale (sfondo nero → si fonde nella banda scura), in alto a destra.
+    try:
+        from reportlab.lib.utils import ImageReader
+        if os.path.exists(_LOGO):
+            logo = ImageReader(_LOGO)
+            iw, ih = logo.getSize()
+            lh = 22 * mm
+            lw = lh * iw / ih
+            canvas.drawImage(logo, PAGE_W - MARGIN - lw, PAGE_H - 30 * mm, width=lw, height=lh,
+                             mask=[0, 12, 0, 12, 0, 12])  # rende il nero ~trasparente
+    except Exception:
+        pass
+
+    canvas.setFillColor(ACCENT)
     canvas.setFont("Helvetica-Bold", 9)
-    canvas.drawString(MARGIN, PAGE_H - 12 * mm, "K2-AI")
-    canvas.setFont("Helvetica-Bold", 23)
-    canvas.drawString(MARGIN, PAGE_H - 26 * mm, title[:46])
-    canvas.setFillColor(colors.HexColor("#d7f0ea"))
+    canvas.drawString(MARGIN, PAGE_H - 13 * mm, "K2-AI")
+    canvas.setFillColor(colors.white)
+    canvas.setFont("Helvetica-Bold", 22)
+    canvas.drawString(MARGIN, PAGE_H - 27 * mm, title[:42])
+    canvas.setFillColor(colors.HexColor("#9fb3ad"))
     canvas.setFont("Helvetica", 12)
     if azienda:
-        canvas.drawString(MARGIN, PAGE_H - 34 * mm, azienda[:60])
+        canvas.drawString(MARGIN, PAGE_H - 35 * mm, azienda[:60])
     if sottotitolo:
         canvas.setFont("Helvetica", 8.5)
-        canvas.drawString(MARGIN, PAGE_H - 39 * mm, sottotitolo[:90])
+        canvas.drawString(MARGIN, PAGE_H - 40 * mm, sottotitolo[:90])
 
 
 def footer(canvas, doc, brand="K2-AI · documento riservato"):

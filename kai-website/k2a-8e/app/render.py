@@ -71,8 +71,8 @@ def _build_pdf(pdf_path: Path, titolo: str, azienda: str, sottotitolo: str, stor
         PageTemplate(id="first", frames=[frame], onPage=on_first),
         PageTemplate(id="later", frames=[frame], onPage=footer),
     ])
-    # prima pagina: spazio per la banda copertina (42mm dall'alto)
-    story = [Spacer(1, 28 * mm)] + story
+    # prima pagina: spazio per la banda copertina (46mm dall'alto)
+    story = [Spacer(1, 32 * mm)] + story
     doc.build(story)
 
 
