@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Optional
 
 from .settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ALLOW_OFFLINE_FALLBACK
@@ -440,16 +441,45 @@ def _human(s: str) -> str:
     return str(s).replace("_", " ")
 
 
+def _repair_pattern(val: str, pat: str) -> str:
+    """Rende `val` conforme al pattern regex (best-effort), così la generazione
+    non fallisce la validazione per pattern (es. codici ^[a-z_]+$, P.IVA, mese)."""
+    try:
+        if re.search(pat, val):
+            return val
+    except re.error:
+        return val
+    pv = _pat_value(pat)  # pattern noti (P.IVA, YYYY-MM, semver, ...)
+    try:
+        if re.search(pat, pv):
+            return pv
+    except re.error:
+        pass
+    low = (val or "").lower()
+    if pat == r"^[a-z_]+$":
+        return re.sub(r"[^a-z_]", "_", low).strip("_") or "voce"
+    if "a-z0-9-" in pat:  # slug-like, eventuale {1,40}
+        return (re.sub(r"[^a-z0-9-]", "-", low).strip("-") or "voce")[:40]
+    return pv
+
+
 def _clamp_to_schema(val, schema: dict, root: dict):
-    """Rete di sicurezza: porta `val` entro i vincoli maxLength/maxItems dello
-    schema (taglio a confine di parola), così la generazione profonda non fa mai
-    fallire la validazione per sforamento di lunghezza. Risolve i $ref."""
+    """Rete di sicurezza: porta `val` entro i vincoli dello schema (maxLength,
+    maxItems, min/max numerico, **pattern**, **minItems**), così la generazione
+    profonda non fa mai fallire la validazione per uno scostamento formale.
+    Risolve i $ref. La profondità resta nei campi liberi."""
     if isinstance(schema, dict) and "$ref" in schema:
         ref = schema["$ref"]
         if ref.startswith("#/$defs/"):
             schema = root.get("$defs", {}).get(ref.split("/")[-1], {})
     if not isinstance(schema, dict):
         return val
+    # const: il valore DEVE essere esattamente quello → forzalo
+    if "const" in schema:
+        return schema["const"]
+    # enum: valore fuori dall'insieme chiuso → primo valido (rete di sicurezza)
+    if "enum" in schema and isinstance(schema["enum"], list) and val not in schema["enum"]:
+        return schema["enum"][0]
     t = schema.get("type")
     if isinstance(t, list):
         t = t[0]
@@ -460,19 +490,30 @@ def _clamp_to_schema(val, schema: dict, root: dict):
         if isinstance(schema.get("minimum"), (int, float)) and val < schema["minimum"]:
             val = schema["minimum"]
         return val
-    if isinstance(val, str) and isinstance(schema.get("maxLength"), int) and len(val) > schema["maxLength"]:
-        m = schema["maxLength"]
-        cut = val[: m - 1]
-        sp = cut.rfind(" ")
-        if sp > m * 0.6:
-            cut = cut[:sp]
-        return cut.rstrip(" ,;:.-") + "…"
+    if isinstance(val, str):
+        pat = schema.get("pattern")
+        if pat:
+            val = _repair_pattern(val, pat)
+        m = schema.get("maxLength")
+        if isinstance(m, int) and len(val) > m:
+            cut = val[: m - 1]
+            sp = cut.rfind(" ")
+            if sp > m * 0.6:
+                cut = cut[:sp]
+            val = cut.rstrip(" ,;:.-") + "…"
+        return val
     if isinstance(val, dict) and t == "object":
         props = schema.get("properties", {})
         return {k: (_clamp_to_schema(v, props[k], root) if k in props else v) for k, v in val.items()}
     if isinstance(val, list) and t == "array":
         items = schema.get("items", {"type": "string"})
         out = [_clamp_to_schema(v, items, root) for v in val]
+        # minItems: array required sotto-dimensionato → pad con item deterministici
+        # schema-validi (rete di sicurezza; il modello di norma rispetta minItems)
+        mi = schema.get("minItems")
+        if isinstance(mi, int) and len(out) < mi:
+            while len(out) < mi:
+                out.append(_clamp_to_schema(_det_sample(items, root, {}, "K2-AI", ""), items, root))
         if isinstance(schema.get("maxItems"), int):
             out = out[: schema["maxItems"]]
         return out

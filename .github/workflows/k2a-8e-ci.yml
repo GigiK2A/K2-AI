@@ -33,6 +33,8 @@ jobs:
         run: pip install pdfplumber >/dev/null 2>&1; python tests/test_render_all.py
       - name: Generazione profonda per-sezione (client Anthropic mock, no crediti)
         run: python tests/test_deep_mock.py
+      - name: Clamp avversariale su tutti i 12 schemi (pattern/minItems/enum/const/num)
+        run: python tests/test_clamp_adversarial.py
       - name: Coverage snapshot (no placeholder normativo irrisolto)
         run: |
           python - <<'PY'
