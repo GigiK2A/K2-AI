@@ -84,6 +84,8 @@ Il backend kbot **replica l'architettura V2 del sito** (`kai-website/api/kbot/*.
 | `POST /api/kbot/checkout/credits` | obbligatoria | Acquisto pacchetto crediti (49/199/499€, una-tantum) |
 | `GET  /api/kbot/billing/me` | obbligatoria | Stato billing: piano + saldo crediti + modello |
 | `POST /api/kbot/billing/consume` | obbligatoria | Consuma crediti per un Check express (402 se insufficienti) |
+| `GET  /api/kbot/checks` | no | Elenco Check express deterministici disponibili (calcolo locale) |
+| `POST /api/kbot/check/{service_id}` | (gate crediti a monte) | Esegue un Check express (strato Consumo) — calcolo puro via MCP `k2a-agevolazioni` vendorizzato in `backend/vendor/`, no LLM/corpus. 15 servizi: de_minimis, nuova_sabatini, credito_rd, cumulabilita, bancabilita, riclassifica, crisi, transizione_5_0, {hospitality,ristorazione,retail,ecommerce,benessere}_kpi, seo_onpage, marketing_metriche |
 | `POST /api/stripe/webhook` | firma Stripe | Marca session paid + abbonamenti/crediti (subscription/invoice.paid/deleted) + triggera generate-pdf |
 
 ### Layer pagamenti (abbonamenti + crediti)

@@ -1,0 +1,25 @@
+{
+  "_fonte": "Best practice SEO on-page (Google Search Essentials, linee guida su title/meta/heading) + indice di leggibilità Gulpease (Lucisano-Piemontese, 1988) per l'italiano.",
+  "_data_validita": "2026-05-22",
+  "_disclaimer": "Soglie ORIENTATIVE di prassi SEO, non regole ufficiali di ranking: i motori non pubblicano pesi. Output = screening tecnico on-page, non garanzia di posizionamento.",
+  "soglie": {
+    "title_len": {"label": "Lunghezza title (caratteri)", "ottimo": [50, 60], "buono": [35, 65], "peso": 14},
+    "meta_len": {"label": "Lunghezza meta description (caratteri)", "ottimo": [120, 158], "buono": [80, 165], "peso": 12},
+    "densita_keyword_pct": {"label": "Densità keyword (%)", "ottimo": [0.5, 2.5], "buono": [0.3, 3.5], "peso": 14},
+    "gulpease": {"label": "Leggibilità (indice Gulpease)", "direzione": "alto_meglio", "ottimo": 60, "buono": 50, "attenzione": 40, "peso": 16}
+  },
+  "booleani": {
+    "keyword_nel_title": {"label": "Keyword presente nel title", "peso": 12},
+    "keyword_nel_meta": {"label": "Keyword presente nella meta description", "peso": 8},
+    "keyword_in_h1": {"label": "Keyword presente in un H1", "peso": 10},
+    "un_solo_h1": {"label": "Esattamente un tag H1", "peso": 6},
+    "copertura_alt_ok": {"label": "Copertura attributi alt immagini ≥ 90%", "peso": 8}
+  },
+  "gulpease_bande": "≥80 licenza elementare · ≥60 licenza media · ≥40 licenza superiore · <40 difficile",
+  "rating_bande": [
+    {"min_score": 80, "classe": "A", "giudizio": "On-page ottimizzata", "colore": "verde"},
+    {"min_score": 60, "classe": "B", "giudizio": "Buona, margini di miglioramento", "colore": "verde_chiaro"},
+    {"min_score": 40, "classe": "C", "giudizio": "Da migliorare", "colore": "giallo"},
+    {"min_score": 0, "classe": "D", "giudizio": "Critica", "colore": "rosso"}
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "$schema": "k2ai-schema-documentale-v1",
+  "livello": "D4",
+  "nome": "Boost Settoriale",
+  "fascia_prezzo_tipica_eur": [690, 2500],
+  "pagine_min": 20,
+  "pagine_max": 25,
+  "pagine_target": 23,
+  "indice_id": "D",
+  "masterplan_ref": "v2.0 §4.4",
+  "servizi_che_lo_usano_nel_catalogo": [
+    "checkup_hospitality",
+    "checkup_seo",
+    "checkup_ristorazione",
+    "checkup_retail",
+    "checkup_ecommerce",
+    "checkup_benessere",
+    "checkup_marketing",
+    "checkup_agevolazioni",
+    "checkup_fiscale",
+    "checkup_finanziario",
+    "checkup_advisor",
+    "checkup_edilizia",
+    "checkup_controllo",
+    "checkup_energia",
+    "checkup_compliance",
+    "checkup_legale_triage",
+    "checkup_legale_review",
+    "checkup_legale_dd",
+    "checkup_hr",
+    "checkup_data",
+    "checkup_ux",
+    "linea_a_discovery",
+    "linea_a_pilot",
+    "linea_a_build",
+    "checkup_sicurezza_safetyboost",
+    "checkup_sicurezza_audit_base",
+    "checkup_sicurezza_audit_completo",
+    "checkup_sicurezza_dvr_base",
+    "checkup_sicurezza_dvr_completo",
+    "checkup_sicurezza_sanzioni_base",
+    "checkup_sicurezza_sanzioni_completo",
+    "checkup_sicurezza_responsabilita_base",
+    "checkup_sicurezza_responsabilita_completo",
+    "checkup_sicurezza_completo"
+  ],
+  "nota_strategica": "Tutti i Boost rispettano stesso formato output D4 ma hanno prezzi differenziati (690-2.500€) in funzione della complessità di analisi. Il livello documentale è standard di qualità, non fascia di prezzo.",
+  "sezioni": [
+    {"ordine": 1, "titolo": "Copertina professionale", "pagine": 1},
+    {
+      "ordine": 2,
+      "titolo": "Executive Summary",
+      "pagine": 1,
+      "elementi_obbligatori": ["score globale", "5 punti chiave numerici", "verdetto in 3 righe", "raccomandazione strategica"]
+    },
+    {"ordine": 3, "titolo": "Indice dettagliato + glossario essenziale", "pagine": 1},
+    {
+      "ordine": 4,
+      "titolo": "Metodologia e perimetro",
+      "pagine": 2,
+      "elementi_obbligatori": ["cosa analizzato", "su che dati", "limiti dichiarati"]
+    },
+    {
+      "ordine": 5,
+      "titolo": "Profilo del cliente",
+      "pagine": 3,
+      "elementi_obbligatori": ["snapshot quantitativo", "posizionamento competitivo (mappa)", "punti forza/debolezza"]
+    },
+    {
+      "ordine": 6,
+      "titolo": "Analisi dominio primario (settoriale)",
+      "pagine": 4,
+      "elementi_obbligatori": ["tabelle dense", "grafici a piena pagina", "KPI settoriali specifici"]
+    },
+    {"ordine": 7, "titolo": "Analisi dominio secondario", "pagine": 3},
+    {
+      "ordine": 8,
+      "titolo": "DIAGNOSI STRATEGICA",
+      "pagine": 3,
+      "ruolo_psicologico": "PEAK emotivo (peak-end rule)",
+      "elementi_obbligatori": ["3 criticità top con root cause", "3 opportunità top con potenziale economico", "mappa rischio/impatto", "frase forte di sintesi"]
+    },
+    {
+      "ordine": 9,
+      "titolo": "Piano d'azione 12-24 mesi",
+      "pagine": 3,
+      "elementi_obbligatori": ["10-15 azioni in Gantt", "responsabili, scadenze, KPI", "stima costo/beneficio", "cruscotto KPI da monitorare"]
+    },
+    {
+      "ordine": 10,
+      "titolo": "ROI e business case",
+      "pagine": 1,
+      "elementi_obbligatori": ["investimento totale stimato", "ritorno atteso 12/24/36 mesi", "payback period", "3 scenari pessimistico/base/ottimistico"]
+    },
+    {
+      "ordine": 11,
+      "titolo": "Fonti e normativa",
+      "pagine": 1,
+      "elementi_obbligatori": ["bibliografia con link", "estratti normativi rilevanti", "versione motore MCP + tools chiamati"]
+    },
+    {"ordine": 12, "titolo": "Metodologia approfondita + disclaimer", "pagine": 1},
+    {
+      "ordine": 13,
+      "titolo": "PROSSIMO PASSO CON K2-AI",
+      "pagine": 1,
+      "ruolo_psicologico": "END emotivo (peak-end rule, proposta retainer L4)",
+      "elementi_obbligatori": ["3 opzioni: autonomia / retainer / custom", "contatto diretto", "CTA finale verso retainer"]
+    }
+  ],
+  "tono": "consulenziale denso, narrazione ricca, dati a supporto",
+  "test_qualita": [
+    "pagine totali tra 20 e 25",
+    "sezione Diagnosi Strategica presente (peak)",
+    "sezione Prossimo Passo K2-AI presente (end)",
+    "ROI con 3 scenari",
+    "almeno 10 azioni in piano",
+    "presenza fonti normative da MCP",
+    "presenza firma machine-readable"
+  ]
+}
