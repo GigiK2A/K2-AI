@@ -732,6 +732,65 @@ export async function startBoostCheckout(
   return data.checkout_url as string;
 }
 
+// ===== Billing: abbonamenti + crediti =====
+export interface BillingStatus {
+  plan: "free" | "pro" | "business";
+  label: string;
+  crediti: number;
+  crediti_mese: number;
+  sconto_boost_pct: number;
+  servizi_eseguibili: boolean;
+}
+
+export async function getBilling(authToken: string): Promise<BillingStatus> {
+  const res = await fetch(`${API_BASE}/api/kbot/billing/me`, {
+    headers: { ...authHeaders(authToken) },
+  });
+  if (!res.ok) await parseErr(res, "Errore stato abbonamento");
+  return (await res.json()) as BillingStatus;
+}
+
+export async function startSubscriptionCheckout(
+  plan: "pro" | "business",
+  authToken: string,
+  email?: string,
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/kbot/checkout/subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ plan, email }),
+  });
+  if (!res.ok) await parseErr(res, "Errore checkout abbonamento");
+  return (await res.json()).checkout_url as string;
+}
+
+export async function startCreditsCheckout(
+  prezzoEur: 49 | 199 | 499,
+  authToken: string,
+  email?: string,
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/kbot/checkout/credits`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ prezzo_eur: prezzoEur, email }),
+  });
+  if (!res.ok) await parseErr(res, "Errore acquisto crediti");
+  return (await res.json()).checkout_url as string;
+}
+
+export async function consumeCredits(
+  servizioId: string,
+  authToken: string,
+): Promise<{ ok: boolean; saldo: number; costo: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/billing/consume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ servizio_id: servizioId }),
+  });
+  if (!res.ok) await parseErr(res, "Crediti insufficienti");
+  return await res.json();
+}
+
 export interface DeliverableFormField {
   id: string;
   label: string;

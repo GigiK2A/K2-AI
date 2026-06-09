@@ -80,7 +80,15 @@ Il backend kbot **replica l'architettura V2 del sito** (`kai-website/api/kbot/*.
 | `POST /api/kbot/deliverables` | opzionale (ownership+paid) | Instrada un servizio generabile all'**8e** (motore `k2a-8e`); ritorna `job_id` |
 | `GET  /api/kbot/deliverables/{job_id}` | no | Polling stato job 8e (outputs/validation/citazioni) |
 | `GET  /api/kbot/engine/health` | no | Liveness motore 8e (debug) |
-| `POST /api/stripe/webhook` | firma Stripe | Marca session paid, scrive `has_paid` su user metadata, triggera generate-pdf |
+| `POST /api/kbot/checkout/subscription` | obbligatoria | Abbonamento ricorrente Pro/Business (Stripe `mode=subscription`) |
+| `POST /api/kbot/checkout/credits` | obbligatoria | Acquisto pacchetto crediti (49/199/499€, una-tantum) |
+| `GET  /api/kbot/billing/me` | obbligatoria | Stato billing: piano + saldo crediti + modello |
+| `POST /api/kbot/billing/consume` | obbligatoria | Consuma crediti per un Check express (402 se insufficienti) |
+| `POST /api/stripe/webhook` | firma Stripe | Marca session paid + abbonamenti/crediti (subscription/invoice.paid/deleted) + triggera generate-pdf |
+
+### Layer pagamenti (abbonamenti + crediti)
+
+Modello in `catalogo_documenti.json` (k2a-catalogo): **Free / Pro 49€-50cr / Business 149€-200cr**, 1 cr = 1€. I **crediti** pagano i Check express (strato Consumo); i **Boost** restano a prezzo (sconto abbonato −10%/−20%), MAI a crediti. Codice: `lib/billing.py` (logica pura), `lib/billing_store.py` (I/O Supabase: tabelle `kbot_subscriptions` + `kbot_credit_ledger`, RPC `kbot_credit_balance/consume/grant` — migration `supabase/migrations/006`). Frontend: `getBilling`/`startSubscriptionCheckout`/`startCreditsCheckout`/`consumeCredits` in `lib/api.ts`.
 
 ### Motore 8e (generazione deliverable Boost)
 
