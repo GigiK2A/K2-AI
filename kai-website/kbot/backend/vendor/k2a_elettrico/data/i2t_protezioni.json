@@ -1,0 +1,56 @@
+{
+  "ABB_Tmax_XT": {
+    "_disclaimer": "Valori orientativi cataloghi ABB Tmax XT serie standard. Verificare sempre con curva I²t aggiornata del datasheet costruttore prima dell'asseverazione.",
+    "MCCB_T1_160A_Icu25": {
+      "In_A": 160, "Icu_kA": 25, "tipo": "MCCB",
+      "I2t_letthrough_kA2s": {
+        "10": 80, "25": 250
+      }
+    },
+    "MCCB_T3_250A_Icu36": {
+      "In_A": 250, "Icu_kA": 36, "tipo": "MCCB",
+      "I2t_letthrough_kA2s": {
+        "10": 120, "25": 380, "36": 700
+      }
+    },
+    "MCCB_T6_630A_Icu65": {
+      "In_A": 630, "Icu_kA": 65, "tipo": "MCCB",
+      "I2t_letthrough_kA2s": {
+        "25": 600, "50": 2200, "65": 3500
+      }
+    },
+    "ACB_E2_1600A_Icw65": {
+      "In_A": 1600, "Icu_kA": 65, "Icw_kA": 65, "tipo": "ACB",
+      "I2t_letthrough_kA2s": {
+        "_note": "ACB con Icw declared: per Icc < Icw l'energia passante = Icc²·t (no cut-off significativo)",
+        "65": 4225000
+      }
+    },
+    "ACB_E2_2000A_Icw65": {
+      "In_A": 2000, "Icu_kA": 65, "Icw_kA": 65, "tipo": "ACB",
+      "I2t_letthrough_kA2s": {
+        "_note": "ACB con Icw declared",
+        "65": 4225000
+      }
+    }
+  },
+  "Schneider_Compact_NSX": {
+    "_disclaimer": "Valori orientativi cataloghi Schneider Compact NSX. Verificare con datasheet costruttore.",
+    "MCCB_NSX100B_Icu25": {
+      "In_A": 100, "Icu_kA": 25, "tipo": "MCCB",
+      "I2t_letthrough_kA2s": {"10": 60, "25": 220}
+    },
+    "MCCB_NSX160B_Icu25": {
+      "In_A": 160, "Icu_kA": 25, "tipo": "MCCB",
+      "I2t_letthrough_kA2s": {"10": 80, "25": 260}
+    },
+    "MCCB_NSX250B_Icu36": {
+      "In_A": 250, "Icu_kA": 36, "tipo": "MCCB",
+      "I2t_letthrough_kA2s": {"10": 130, "25": 400, "36": 720}
+    },
+    "MCCB_NSX630N_Icu65": {
+      "In_A": 630, "Icu_kA": 65, "tipo": "MCCB",
+      "I2t_letthrough_kA2s": {"25": 650, "50": 2400, "65": 3700}
+    }
+  }
+}

@@ -28,6 +28,7 @@ from .api import (
     deliverables,
     billing_api,
     checks,
+    compute,
 )
 from .lib.analytics import track_server
 from .lib.limiter import limiter
@@ -100,4 +101,5 @@ app.include_router(export.router, prefix="/api/kbot", tags=["export"])
 app.include_router(deliverables.router, prefix="/api/kbot", tags=["deliverables"])
 app.include_router(billing_api.router, prefix="/api/kbot", tags=["billing"])
 app.include_router(checks.router, prefix="/api/kbot", tags=["checks"])
+app.include_router(compute.router, prefix="/api/kbot", tags=["compute"])
 app.include_router(webhook.router, prefix="/api", tags=["webhook"])

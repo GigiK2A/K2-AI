@@ -86,6 +86,13 @@ Il backend kbot **replica l'architettura V2 del sito** (`kai-website/api/kbot/*.
 | `POST /api/kbot/billing/consume` | obbligatoria | Consuma crediti per un Check express (402 se insufficienti) |
 | `GET  /api/kbot/checks` | no | Elenco Check express deterministici disponibili (calcolo locale) |
 | `POST /api/kbot/check/{service_id}` | (gate crediti a monte) | Esegue un Check express (strato Consumo) — calcolo puro via MCP `k2a-agevolazioni` vendorizzato in `backend/vendor/`, no LLM/corpus. 15 servizi: de_minimis, nuova_sabatini, credito_rd, cumulabilita, bancabilita, riclassifica, crisi, transizione_5_0, {hospitality,ristorazione,retail,ecommerce,benessere}_kpi, seo_onpage, marketing_metriche |
+| `GET  /api/kbot/tools` | no | Catalogo dei ~135 tool a CALCOLO dell'ecosistema MCP (auto-discovery su `backend/vendor/`). Domini: agevolazioni, finanza (quant), elettrico (CEI 64-8), strutturale (NTC 2018), norme-tecniche |
+| `GET  /api/kbot/tool/{tool_id}/schema` | no | Schema input JSON di un tool |
+| `POST /api/kbot/tool/{tool_id}` | (gate a monte) | Esegue un tool a calcolo deterministico (es. `finanza/dcf.compute_dcf`, `strutturale/check_anchor.check_anchor_en1992_4`). Pydantic in→out, no LLM. I tool sono i mattoni dietro i Boost/Check |
+
+### Compute layer (MCP ecosistema vendorizzati)
+
+`backend/vendor/` contiene i package a calcolo degli MCP di Luca (`k2a_agevolazioni`, `k2a_quant`, `k2a_elettrico`, `vs_strutturale`, `k2a_norme_tecniche`). Sono DETERMINISTICI (no LLM, no corpus normativo). `app/api/compute.py` li auto-scopre e li espone come tool. Servono i servizi a calcolo (Consumo) e alimentano i Boost a documento. NB: il testo di legge verbatim (LegalBoost/FiscoBoost) NON è qui — vive nel corpus `normattiva_ai` sulla macchina di Luca, esposto dal suo `normattiva-mcp`.
 | `POST /api/stripe/webhook` | firma Stripe | Marca session paid + abbonamenti/crediti (subscription/invoice.paid/deleted) + triggera generate-pdf |
 
 ### Layer pagamenti (abbonamenti + crediti)
