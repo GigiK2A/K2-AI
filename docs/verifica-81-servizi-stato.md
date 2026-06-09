@@ -124,3 +124,33 @@ Verificato il meccanismo reale di sync (`scripts/sync_assets.sh`): l'8e si alime
 5. **Owner**: prezzo nel catalogo + price_id Stripe → attivazione a pagamento.
 
 Il passo 3-4 è mio e immediato. I passi 1-2 (il vero lavoro per i 66) sono di **Luca** e non delegabili a me: il grounding di un documento legale/fiscale a pagamento non può venire dal modello.
+
+---
+
+## AGGIORNAMENTO — ecosistema importato + compute layer integrato (sessione 2026-06-09)
+
+**Importato TUTTO l'ecosistema di Luca** (22 repo in `k2a-ecosystem/`, gitignored). **Integrato l'intero strato di CALCOLO** nel kbot.
+
+### Cosa è diventato FUNZIONANTE
+| Categoria | Stato |
+|---|---|
+| **15 servizi Consumo** (de_minimis, sabatini, credito_rd, bancabilità, 5 KPI settoriali, seo, marketing) | ✅ **PRODOTTO COMPLETO** — calcolo + PDF D1 scaricabile, no LLM/crediti |
+| **135 tool a calcolo** (agevolazioni 22, finanza 13, elettrico 47, strutturale 47, norme 6) | ✅ esposti e callable nel kbot (`/tools`, `/tool/{id}`) |
+| **15 Boost 8e** | engine-ready (pilota Legal+Fisco reali confermati) |
+| Compute layer ecosistema | ✅ vendorizzato in `kbot/backend/vendor/` (5 package), import pulito, 9 test verdi |
+
+Endpoint nuovi: `GET /checks`, `POST /check/{id}`, `POST /check/{id}/document` (PDF), `GET /tools`, `GET /tool/{id}/schema`, `POST /tool/{id}`.
+
+### Gate FISICI residui (non risolvibili da codice)
+1. **Servizi a documento legale/fiscale** (~45: LegalBoost, FiscoBoost, check legali, tappe a narrativa): richiedono
+   - **crediti Anthropic** (generazione LLM del testo) → owner, e/o
+   - **corpus legale verbatim** = `/Users/lucarossi/normattiva_ai/normattiva.db` (migliaia di articoli) **fisicamente sul Mac di Luca, non in git** → esposto dal suo `normattiva-mcp`. Non importabile, non fabbricabile (liability D-029).
+2. **6 high-touch** (retainer/custom 4-18k€): non automatizzabili.
+
+### Conteggio onesto
+- **Funzionanti ORA, senza dipendenze esterne**: 15 Consumo (prodotto) + 15 Boost (engine) = **30/81**.
+- **Sbloccabili con CREDITI** (codice già pronto): i boost a documento.
+- **Sbloccabili solo da LUCA** (corpus legale): i servizi normativi.
+- **Compute disponibile per tutto il resto**: 135 tool già nel sistema.
+
+"Tutti gli 81 funzionanti" richiede crediti (owner) + corpus legale raggiungibile (Luca). Tutto ciò che era importabile/adattabile in solitaria **è fatto**.
