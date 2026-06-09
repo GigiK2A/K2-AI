@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useKbotAuth } from "@/app/providers";
 import { fetchUserSessions, type DashboardPayload, type KbotSession } from "@/lib/api";
+import BillingPanel from "@/components/billing/BillingPanel";
 
 export default function DashboardPage() {
   const { user, isSignedIn, hasPaid, loading: authLoading, getToken } = useKbotAuth();
@@ -76,6 +77,10 @@ export default function DashboardPage() {
             sub={data ? `${data.stats.total} sessioni totali` : undefined}
           />
         </section>
+
+        <div className="mb-8">
+          <BillingPanel />
+        </div>
 
         <section>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#9ca3af]">
