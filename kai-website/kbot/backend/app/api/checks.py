@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 # vendor/ in path per importare il package compute di Luca senza installarlo
@@ -119,3 +120,24 @@ def run_check(service_id: str, body: CheckBody) -> dict:
     result = out.model_dump(mode="json") if isinstance(out, BaseModel) else out
     return {"service_id": service_id, "strato": "consumo", "deterministico": True,
             "result": result}
+
+
+@router.post("/check/{service_id}/document")
+def run_check_document(service_id: str, body: CheckBody) -> Response:
+    """Esegue il check e ritorna il PDF deliverable D1 (deterministico, no LLM)."""
+    meta = _REGISTRY.get(service_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"check '{service_id}' non disponibile")
+    try:
+        inp = meta["input_model"](**body.inputs)
+        out = meta["fn"](inp)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"calcolo/input non valido: {exc}")
+    result = out.model_dump(mode="json") if isinstance(out, BaseModel) else out
+    from ..lib.check_renderer import render_check_pdf
+    label = service_id.replace("_", " ").title()
+    pdf = render_check_pdf(service_id, label, body.inputs, result)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{service_id}.pdf"'})

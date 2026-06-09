@@ -41,3 +41,11 @@ def test_input_invalido_422():
 if __name__ == "__main__":
     test_list_checks(); test_de_minimis_calcolo(); test_check_inesistente_404(); test_input_invalido_422()
     print("CHECKS TEST PASS (4/4)")
+
+
+def test_check_document_pdf():
+    body = {"inputs": {"aiuti_ricevuti": [{"importo_eur": 120000, "data_concessione": "2024-03-01", "descrizione": "x"}], "settore": "generale"}}
+    r = c.post("/api/kbot/check/de_minimis/document", json=body)
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content[:5] == b"%PDF-" and len(r.content) > 5000
