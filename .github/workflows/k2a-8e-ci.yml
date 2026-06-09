@@ -35,6 +35,8 @@ jobs:
         run: python tests/test_deep_mock.py
       - name: Clamp avversariale su tutti i 12 schemi (pattern/minItems/enum/const/num)
         run: python tests/test_clamp_adversarial.py
+      - name: Freshness-gate snapshot (testo normativo non stale vs leggi note)
+        run: python tests/test_freshness_gate.py
       - name: Coverage snapshot (no placeholder normativo irrisolto)
         run: |
           python - <<'PY'

@@ -1,0 +1,68 @@
+{
+  "_doc": "Freshness-gate (D-047 esteso al testo normativo): per ogni entry normativo soggetta a riforma recente, almeno UNA evidenza testuale deve essere presente nel verbatim dello snapshot. Se assente → l'entry è stale rispetto a una legge nota → CI fallisce (hard) o warn (soft). Aggiornare quando emergono nuove riforme. Verificato contro KB Normattiva via MCP (lato Luca) il 2026-06-09.",
+  "rules": [
+    {
+      "key": "tuir_11",
+      "law": "L. 199/2025 (IRPEF 3 scaglioni 23/33/43 dal 1/1/2026)",
+      "effective": "2026-01-01",
+      "severity": "hard",
+      "evidence_any": ["33 per cento", "((33 per cento))"],
+      "stale_markers": ["35 per cento", "quattro scaglioni"],
+      "note": "Vigente: 23% fino 28k, 33% 28-50k, 43% oltre 50k. Stale se mostra 23/35/43 o 4 scaglioni."
+    },
+    {
+      "key": "ravvedimento_13",
+      "law": "D.Lgs. 87/2024 (riforma sanzioni, violazioni dal 1/9/2024)",
+      "effective": "2024-09-01",
+      "severity": "hard",
+      "evidence_any": ["D.Lgs. 14 giugno 2024, n. 87", "n. 87", "b-quater"],
+      "stale_markers": [],
+      "note": "Post-riforma: nuove lett. b-bis..b-quater, commi 2-bis/2-ter."
+    },
+    {
+      "key": "tuir_83",
+      "law": "D.Lgs. 192/2024 (revisione IRES/redditi d'impresa)",
+      "effective": "2024-12-01",
+      "severity": "soft",
+      "evidence_any": ["192", "2024"],
+      "stale_markers": [],
+      "note": "Confermare verbatim post-riforma nel prossimo refresh (QA Luca, 2026-06-09)."
+    },
+    {
+      "key": "tuir_96",
+      "law": "D.Lgs. 192/2024 (interessi passivi / ROL 30%)",
+      "effective": "2024-12-01",
+      "severity": "soft",
+      "evidence_any": ["30 per cento", "ROL", "risultato operativo lordo"],
+      "stale_markers": [],
+      "note": "Il cuore (30% ROL) regge; confermare nel refresh."
+    },
+    {
+      "key": "tuir_109",
+      "law": "D.Lgs. 192/2024 (norme generali componenti reddito d'impresa)",
+      "effective": "2024-12-01",
+      "severity": "soft",
+      "evidence_any": ["competenza", "certa l'esistenza"],
+      "stale_markers": [],
+      "note": "Confermare verbatim post-riforma nel prossimo refresh."
+    },
+    {
+      "key": "cp_589",
+      "law": "Aggravante infortuni sul lavoro (art. 589 co.2 c.p.)",
+      "effective": "2016-03-25",
+      "severity": "hard",
+      "evidence_any": ["prevenzione degli infortuni", "infortuni sul lavoro"],
+      "stale_markers": [],
+      "note": "Per SafetyBoost serve il comma aggravato, non solo la fattispecie base."
+    },
+    {
+      "key": "cp_590",
+      "law": "Aggravante infortuni sul lavoro (art. 590 co.3 c.p.)",
+      "effective": "2016-03-25",
+      "severity": "hard",
+      "evidence_any": ["infortuni sul lavoro", "prevenzione degli infortuni", "igiene del lavoro"],
+      "stale_markers": [],
+      "note": "Per SafetyBoost serve il comma aggravato."
+    }
+  ]
+}
