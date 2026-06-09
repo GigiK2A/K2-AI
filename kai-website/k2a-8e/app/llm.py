@@ -97,7 +97,8 @@ def generate_sezioni(
         )
         resp = client.messages.create(
             model=ANTHROPIC_MODEL,
-            max_tokens=8192,  # 9 voci ricche: 4096 tronca il JSON
+            # 9 voci a 180-240 parole + rischi/azioni: 8192 tronca → bozze offline.
+            max_tokens=16000,
             system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
         )
@@ -214,6 +215,9 @@ def _det_string(key: str, schema: dict, inputs: dict, servizio: str) -> str:
         return schema["const"]
     if "enum" in schema:
         return schema["enum"][0]
+    # echo diretto del form: se la chiave combacia con un input stringa, usalo
+    if key and isinstance(inputs.get(key), str) and inputs[key]:
+        return inputs[key]
     if schema.get("pattern"):
         return _pat_value(schema["pattern"])
     fmt = schema.get("format")
@@ -271,6 +275,8 @@ def _det_sample(schema: dict, root: dict, inputs: dict, servizio: str, key: str 
         return [_det_sample(it, root, inputs, servizio, key) for _ in range(n)]
     if t in ("integer", "number"):
         kl = (key or "").lower()
+        if isinstance(inputs.get(key), (int, float)) and not isinstance(inputs.get(key), bool):
+            return inputs[key]
         if any(w in kl for w in ("organico", "dipendent", "dimensione", "addett")):
             for ik in ("dipendenti", "organico", "addetti", "numero_dipendenti"):
                 if isinstance(inputs.get(ik), (int, float)):
@@ -327,9 +333,13 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     # risolve → PointerToNowhere → refuse erroneo su ogni schema con $defs).
     root_defs = output_schema.get("$defs")
 
+    # Sezioni STRUTTURALI (non analitiche): compilate deterministicamente, mai
+    # via LLM. 'input' è l'echo del form cliente; 'files' è il manifest dei file
+    # generati; 'meta' i metadati. Mandarle a Sonnet → hallucinazione/refuse.
+    structural = ("meta", "metadata", "input", "files", "file", "allegati")
     for name, sub in props.items():
-        if name in ("meta", "metadata"):
-            result[name] = _fill_meta(sub, inputs, servizio, output_schema)
+        if name in structural:
+            result[name] = _det_sample(sub, output_schema, inputs, servizio, name)
             continue
         sub_compact = {"type": sub.get("type", "object")}
         for kk in ("properties", "required", "items", "enum"):
@@ -351,6 +361,9 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
             "paragrafi, ragionamento, implicazioni operative, esempi concreti, e dove ha "
             "senso quantificazioni/stime (range, %, soglie). Densità da consulente, non riassunti.\n"
             "- Usa i DATI CLIENTE (settore, dimensione, regime, ecc.): analisi su MISURA.\n"
+            "- RISPETTA i vincoli dello schema: campi con maxLength/maxItems restano "
+            "sintetici (sono riepiloghi); la PROFONDITÀ va nei campi descrittivi senza limiti "
+            "e nelle liste di findings/voci. Non sforare i limiti di lunghezza.\n"
             "- NON inventare numeri o citazioni di legge: usa i FATTI verbatim. Dato mancante "
             "→ dichiaralo, non inventarlo.\n"
             "- È orientamento professionale, non consulenza vincolante (D-034/D-036).\n"
@@ -358,15 +371,31 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         )
         user = (f"SOTTO-SCHEMA della sezione «{name}»:\n{json.dumps(sub_compact, ensure_ascii=False)[:4000]}\n\n"
                 f"{facts_blk}\n\nDATI CLIENTE: {cli}\n\nGenera la sezione «{name}», approfondita.")
+        # max_tokens adattivo: sezioni "pesanti" (array, oggetti con molte aree o
+        # $ref multipli) possono produrre molto JSON → cap alto per non troncare.
+        # Sonnet 4.5 regge fino a 64k output. Sezioni leggere → cap contenuto.
+        sub_json = json.dumps(sub)
+        heavy = (sub.get("type") == "array"
+                 or sub_json.count("$ref") >= 2
+                 or sub_json.count('"type": "array"') >= 2
+                 or len(sub.get("properties", {})) >= 5)
+        maxtok = 32000 if heavy else 16000
         try:
-            resp = client.messages.create(
-                model=ANTHROPIC_MODEL, max_tokens=8000,
-                system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
-                messages=[{"role": "user", "content": user}],
-            )
+            # streaming OBBLIGATORIO sopra ~16k token (l'SDK rifiuta non-streaming
+            # per richieste che possono superare i 10 min). Usato sempre nel deep.
+            sys_blk = [{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}]
+            msgs = [{"role": "user", "content": user}]
+            with client.messages.stream(model=ANTHROPIC_MODEL, max_tokens=maxtok,
+                                        system=sys_blk, messages=msgs) as stream:
+                resp = stream.get_final_message()
+            if getattr(resp, "stop_reason", None) == "max_tokens":
+                log.warning("sezione '%s' troncata a max_tokens=%d", name, maxtok)
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
             # la sezione può essere oggetto, lista o scalare → parse robusto
             val = _parse_section(text, sub.get("type"))
+            # rete di sicurezza: rientra nei vincoli maxLength/maxItems
+            if val is not None:
+                val = _clamp_to_schema(val, sub_val, output_schema)
             usage = getattr(resp, "usage", None)
             tot_out += getattr(usage, "output_tokens", 0) or 0
             # valida la sezione contro il sotto-schema (con $defs della radice)
@@ -397,6 +426,38 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
 
 def _human(s: str) -> str:
     return str(s).replace("_", " ")
+
+
+def _clamp_to_schema(val, schema: dict, root: dict):
+    """Rete di sicurezza: porta `val` entro i vincoli maxLength/maxItems dello
+    schema (taglio a confine di parola), così la generazione profonda non fa mai
+    fallire la validazione per sforamento di lunghezza. Risolve i $ref."""
+    if isinstance(schema, dict) and "$ref" in schema:
+        ref = schema["$ref"]
+        if ref.startswith("#/$defs/"):
+            schema = root.get("$defs", {}).get(ref.split("/")[-1], {})
+    if not isinstance(schema, dict):
+        return val
+    t = schema.get("type")
+    if isinstance(t, list):
+        t = t[0]
+    if isinstance(val, str) and isinstance(schema.get("maxLength"), int) and len(val) > schema["maxLength"]:
+        m = schema["maxLength"]
+        cut = val[: m - 1]
+        sp = cut.rfind(" ")
+        if sp > m * 0.6:
+            cut = cut[:sp]
+        return cut.rstrip(" ,;:.-") + "…"
+    if isinstance(val, dict) and t == "object":
+        props = schema.get("properties", {})
+        return {k: (_clamp_to_schema(v, props[k], root) if k in props else v) for k, v in val.items()}
+    if isinstance(val, list) and t == "array":
+        items = schema.get("items", {"type": "string"})
+        out = [_clamp_to_schema(v, items, root) for v in val]
+        if isinstance(schema.get("maxItems"), int):
+            out = out[: schema["maxItems"]]
+        return out
+    return val
 
 
 def _parse_section(text: str, tipo):

@@ -107,12 +107,31 @@ def _install_fake(make_text):
     """Inietta un modulo 'anthropic' finto. make_text(name, sub)->str."""
     fake = types.ModuleType("anthropic")
 
+    class _Stream:
+        def __init__(self, resp):
+            self._r = resp
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def get_final_message(self):
+            return self._r
+
     class _Messages:
-        def create(self, **kw):
+        def _resp_for(self, kw):
             user = kw["messages"][0]["content"]
             name = _section_name(user)
             sub = fake._SCHEMA["properties"].get(name, {})
             return _Resp(make_text(name, sub))
+
+        def create(self, **kw):
+            return self._resp_for(kw)
+
+        def stream(self, **kw):
+            return _Stream(self._resp_for(kw))
 
     class _Anthropic:
         def __init__(self, api_key=None):
