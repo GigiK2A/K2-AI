@@ -13,8 +13,8 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
-from ..lib import sessions, catalog
-from ..lib.auth import AuthUser, optional_user
+from ..lib import sessions, catalog, billing, billing_store
+from ..lib.auth import AuthUser, optional_user, require_user
 from ..settings import (
     FRONTEND_URL,
     REPORT_PRICE_EUR_CENTS,
@@ -132,9 +132,13 @@ def checkout_boost(body: BoostCheckoutBody, user: Optional[AuthUser] = Depends(o
     servizio = catalog.get_servizio(body.servizioId)
     if not servizio:
         raise HTTPException(status_code=404, detail="servizio non a catalogo")
-    prezzo_cents = int(servizio.get("prezzo_eur", 0)) * 100
-    if prezzo_cents <= 0:
+    prezzo_base = int(servizio.get("prezzo_eur", 0))
+    if prezzo_base <= 0:
         raise HTTPException(status_code=409, detail="prezzo servizio non valido")
+    # Sconto abbonato (leva L3): -10% Pro / -20% Business. Senza login = pieno.
+    plan = billing_store.get_plan(user.id) if user else "free"
+    prezzo_scontato = billing.prezzo_boost_scontato(prezzo_base, plan)
+    prezzo_cents = prezzo_scontato * 100
 
     sclient = _stripe_client()
     email = (body.email or (user.email if user else None) or session.get("email") or "").strip() or None
@@ -149,7 +153,8 @@ def checkout_boost(body: BoostCheckoutBody, user: Optional[AuthUser] = Depends(o
             mode="payment",
             payment_method_types=["card"],
             client_reference_id=body.sessionId,
-            metadata={"kbot_session_id": body.sessionId, "servizio_id": body.servizioId},
+            metadata={"kbot_session_id": body.sessionId, "servizio_id": body.servizioId,
+                      "plan": plan, "prezzo_base_eur": str(prezzo_base)},
             customer_email=email,
             line_items=[{
                 "quantity": 1,
@@ -170,4 +175,93 @@ def checkout_boost(body: BoostCheckoutBody, user: Optional[AuthUser] = Depends(o
         raise HTTPException(status_code=502, detail=f"stripe error: {exc.user_message or str(exc)}")
 
     sessions.update_session(body.sessionId, {"stripe_session_id": checkout_session.id})
-    return {"checkout_url": checkout_session.url, "prezzo_eur": servizio.get("prezzo_eur")}
+    return {"checkout_url": checkout_session.url, "prezzo_eur": prezzo_scontato,
+            "prezzo_base_eur": prezzo_base, "plan": plan,
+            "sconto_pct": billing.sconto_boost_pct(plan)}
+
+
+# ============================ Abbonamenti (ricorrente) ======================
+class SubscriptionCheckoutBody(BaseModel):
+    plan: str  # 'pro' | 'business'
+    email: Optional[EmailStr] = None
+
+
+@router.post("/checkout/subscription")
+def checkout_subscription(body: SubscriptionCheckoutBody, user: AuthUser = Depends(require_user)):
+    """Abbonamento ricorrente mensile (Pro/Business). Crediti mensili e sconti
+    boost gestiti dal webhook su `customer.subscription` / invoice."""
+    p = billing.piano(body.plan)
+    if body.plan not in ("pro", "business") or p["prezzo_mese_eur"] <= 0:
+        raise HTTPException(status_code=400, detail="piano non valido")
+    sclient = _stripe_client()
+    email = (body.email or user.email or "").strip() or None
+    return_base = FRONTEND_URL or SITE_URL
+    try:
+        cs = sclient.checkout.Session.create(
+            mode="subscription",
+            payment_method_types=["card"],
+            client_reference_id=user.id,
+            metadata={"user_id": user.id, "plan": body.plan, "kind": "subscription"},
+            subscription_data={"metadata": {"user_id": user.id, "plan": body.plan}},
+            customer_email=email,
+            line_items=[{
+                "quantity": 1,
+                "price_data": {
+                    "currency": "eur",
+                    "recurring": {"interval": "month"},
+                    "unit_amount": p["prezzo_mese_eur"] * 100,
+                    "product_data": {"name": f"K2-AI {p['label']}",
+                                     "description": f"{p['crediti_mese']} crediti/mese · -{p['sconto_boost_pct']}% sui Boost"},
+                },
+            }],
+            success_url=f"{return_base}/app/dashboard?sub=1",
+            cancel_url=f"{return_base}/app/dashboard?sub=cancelled",
+        )
+    except stripe.error.StripeError as exc:
+        log.exception("Stripe error (subscription)")
+        raise HTTPException(status_code=502, detail=f"stripe error: {exc.user_message or str(exc)}")
+    return {"checkout_url": cs.url, "plan": body.plan, "prezzo_mese_eur": p["prezzo_mese_eur"]}
+
+
+# ============================ Pacchetti crediti ============================
+class CreditsCheckoutBody(BaseModel):
+    prezzoEur: int = Field(..., alias="prezzo_eur")  # 49 | 199 | 499
+    email: Optional[EmailStr] = None
+
+    class Config:
+        populate_by_name = True
+
+
+@router.post("/checkout/credits")
+def checkout_credits(body: CreditsCheckoutBody, user: AuthUser = Depends(require_user)):
+    """Acquisto pacchetto crediti una-tantum. I crediti pagano i Check express."""
+    pack = billing.pacchetto_crediti(body.prezzoEur)
+    if not pack:
+        raise HTTPException(status_code=400, detail="pacchetto crediti inesistente")
+    sclient = _stripe_client()
+    email = (body.email or user.email or "").strip() or None
+    return_base = FRONTEND_URL or SITE_URL
+    try:
+        cs = sclient.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            client_reference_id=user.id,
+            metadata={"user_id": user.id, "kind": "credits",
+                      "crediti": str(pack["crediti"]), "prezzo_eur": str(pack["prezzo_eur"])},
+            customer_email=email,
+            line_items=[{
+                "quantity": 1,
+                "price_data": {
+                    "currency": "eur",
+                    "unit_amount": pack["prezzo_eur"] * 100,
+                    "product_data": {"name": f"{pack['crediti']} crediti K2-AI",
+                                     "description": "Crediti per i Check express (1 cr = 1€)."},
+                },
+            }],
+            success_url=f"{return_base}/app/dashboard?credits=1",
+            cancel_url=f"{return_base}/app/dashboard?credits=cancelled",
+        )
+    except stripe.error.StripeError as exc:
+        log.exception("Stripe error (credits)")
+        raise HTTPException(status_code=502, detail=f"stripe error: {exc.user_message or str(exc)}")
+    return {"checkout_url": cs.url, "crediti": pack["crediti"], "prezzo_eur": pack["prezzo_eur"]}

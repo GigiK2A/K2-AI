@@ -50,7 +50,8 @@ async def stripe_webhook(
         log.warning("Stripe signature verification failed: %s", exc)
         raise HTTPException(status_code=400, detail="invalid signature")
 
-    if event["type"] != "checkout.session.completed":
+    handled = ("checkout.session.completed", "invoice.paid", "customer.subscription.deleted")
+    if event["type"] not in handled:
         return {"ok": True, "ignored": event["type"]}
 
     # Stripe SDK >=10 restituisce StripeObject che NON è dict subclass: .get()
@@ -58,6 +59,49 @@ async def stripe_webhook(
     raw_obj = event["data"]["object"]
     obj = raw_obj.to_dict() if hasattr(raw_obj, "to_dict") else dict(raw_obj)
     metadata = obj.get("metadata") or {}
+
+    # === Abbonamenti & crediti (non legati a una kbot session) ===============
+    from ..lib import billing, billing_store
+
+    # Rinnovo mensile abbonamento → riaccredita i crediti del piano.
+    if event["type"] == "invoice.paid":
+        sub_meta = (obj.get("subscription_details") or {}).get("metadata") or {}
+        uid = sub_meta.get("user_id") or metadata.get("user_id")
+        plan = sub_meta.get("plan") or metadata.get("plan")
+        if uid and plan:
+            billing_store.upsert_subscription(uid, plan, "active",
+                                              stripe_subscription_id=obj.get("subscription"))
+            billing_store.grant_monthly_plan_credits(uid, plan)
+            return {"ok": True, "renewal": plan, "user": uid}
+        return {"ok": True, "skipped": "invoice without sub metadata"}
+
+    # Disdetta abbonamento → torna free.
+    if event["type"] == "customer.subscription.deleted":
+        uid = metadata.get("user_id")
+        if uid:
+            billing_store.upsert_subscription(uid, "free", "canceled",
+                                              stripe_subscription_id=obj.get("id"))
+            return {"ok": True, "canceled": uid}
+        return {"ok": True, "skipped": "sub deleted without user_id"}
+
+    kind = metadata.get("kind")
+    uid = metadata.get("user_id") or obj.get("client_reference_id")
+    # Primo pagamento abbonamento.
+    if kind == "subscription" and uid:
+        plan = metadata.get("plan", "pro")
+        billing_store.upsert_subscription(uid, plan, "active",
+                                          stripe_customer_id=obj.get("customer"),
+                                          stripe_subscription_id=obj.get("subscription"))
+        billing_store.grant_monthly_plan_credits(uid, plan)
+        return {"ok": True, "subscription": plan, "user": uid}
+    # Acquisto pacchetto crediti.
+    if kind == "credits" and uid:
+        crediti = int(metadata.get("crediti") or 0)
+        if crediti > 0:
+            # crediti extra (pacchetto) scadono a 365gg (leva L2)
+            billing_store.grant_credits(uid, crediti, reason="package",
+                                        ref=metadata.get("prezzo_eur"), expires_days=365)
+        return {"ok": True, "credits": crediti, "user": uid}
     kbot_session_id = obj.get("client_reference_id") or metadata.get("kbot_session_id")
     if not kbot_session_id:
         log.warning("Webhook missing kbot_session_id")
