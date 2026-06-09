@@ -337,6 +337,7 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     # via LLM. 'input' è l'echo del form cliente; 'files' è il manifest dei file
     # generati; 'meta' i metadati. Mandarle a Sonnet → hallucinazione/refuse.
     structural = ("meta", "metadata", "input", "files", "file", "allegati")
+    analytical = []  # (name, sub, sub_val, sysmsg, user, maxtok)
     for name, sub in props.items():
         if name in structural:
             result[name] = _det_sample(sub, output_schema, inputs, servizio, name)
@@ -367,6 +368,8 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
             "- NON inventare numeri o citazioni di legge: usa i FATTI verbatim. Dato mancante "
             "→ dichiaralo, non inventarlo.\n"
             "- È orientamento professionale, non consulenza vincolante (D-034/D-036).\n"
+            "- JSON STRETTAMENTE VALIDO: le virgolette dentro le stringhe vanno con \\\". "
+            "Non inserire virgolette non-escaped né parentesi con virgolette dentro i valori.\n"
             "Rispondi SOLO con il JSON della sezione."
         )
         user = (f"SOTTO-SCHEMA della sezione «{name}»:\n{json.dumps(sub_compact, ensure_ascii=False)[:4000]}\n\n"
@@ -380,9 +383,14 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
                  or sub_json.count('"type": "array"') >= 2
                  or len(sub.get("properties", {})) >= 5)
         maxtok = 32000 if heavy else 16000
+        analytical.append((name, sub, sub_val, sysmsg, user, maxtok))
+
+    def _gen_section(item):
+        """Genera UNA sezione (thread-safe). Ritorna (name, val|None, invalido?, tok)."""
+        name, sub, sub_val, sysmsg, user, maxtok = item
         try:
             # streaming OBBLIGATORIO sopra ~16k token (l'SDK rifiuta non-streaming
-            # per richieste che possono superare i 10 min). Usato sempre nel deep.
+            # per richieste che possono superare i 10 min).
             sys_blk = [{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}]
             msgs = [{"role": "user", "content": user}]
             with client.messages.stream(model=ANTHROPIC_MODEL, max_tokens=maxtok,
@@ -391,29 +399,33 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
             if getattr(resp, "stop_reason", None) == "max_tokens":
                 log.warning("sezione '%s' troncata a max_tokens=%d", name, maxtok)
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-            # la sezione può essere oggetto, lista o scalare → parse robusto
-            val = _parse_section(text, sub.get("type"))
-            # rete di sicurezza: rientra nei vincoli maxLength/maxItems
-            if val is not None:
+            val = _parse_section(text, sub.get("type"))  # oggetto/lista/scalare
+            if val is not None:  # rete di sicurezza maxLength/maxItems
                 val = _clamp_to_schema(val, sub_val, output_schema)
             usage = getattr(resp, "usage", None)
-            tot_out += getattr(usage, "output_tokens", 0) or 0
-            # valida la sezione contro il sotto-schema (con $defs della radice)
+            tok = getattr(usage, "output_tokens", 0) or 0
             errs = list(Draft202012Validator(sub_val).iter_errors(val)) if val is not None else [1]
             if errs:
+                log.warning("sezione '%s' non conforme: %s", name, errs[:1])
+                return name, None, True, tok
+            return name, val, False, tok
+        except Exception as exc:
+            log.warning("sezione '%s' fallita: %s", name, exc)
+            return name, None, True, 0
+
+    # Sezioni INDIPENDENTI → generate in PARALLELO: il tempo totale ≈ sezione più
+    # lenta, non la somma (SEO 7 sezioni: da ~15 min a ~4 min).
+    from concurrent.futures import ThreadPoolExecutor
+    workers = min(6, len(analytical)) or 1
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for name, val, invalido, tok in ex.map(_gen_section, analytical):
+            tot_out += tok
+            if invalido:
                 if name in required:
-                    log.warning("sezione required '%s' non conforme: %s", name, errs[:1])
                     return None, {"mode": "anthropic", "warning": f"sezione_{name}_invalida"}
                 continue  # sezione opzionale non conforme → skip
             result[name] = val
             sezioni_gen += 1
-        except Exception as exc:
-            if name in required:
-                log.warning("sezione required '%s' fallita: %s", name, exc)
-                if not ALLOW_OFFLINE_FALLBACK:
-                    raise
-                return None, {"mode": "anthropic", "reason": str(exc)}
-            continue
 
     # validazione finale dell'intero deliverable
     full_errs = list(Draft202012Validator(output_schema).iter_errors(result))
@@ -441,6 +453,13 @@ def _clamp_to_schema(val, schema: dict, root: dict):
     t = schema.get("type")
     if isinstance(t, list):
         t = t[0]
+    # numeri: rientra nel range minimum/maximum
+    if isinstance(val, (int, float)) and not isinstance(val, bool):
+        if isinstance(schema.get("maximum"), (int, float)) and val > schema["maximum"]:
+            val = schema["maximum"]
+        if isinstance(schema.get("minimum"), (int, float)) and val < schema["minimum"]:
+            val = schema["minimum"]
+        return val
     if isinstance(val, str) and isinstance(schema.get("maxLength"), int) and len(val) > schema["maxLength"]:
         m = schema["maxLength"]
         cut = val[: m - 1]
