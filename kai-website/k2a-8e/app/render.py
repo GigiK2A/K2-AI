@@ -89,6 +89,31 @@ def _fonti(citazioni, S):
     return out
 
 
+def _testi_normativi(citazioni, S):
+    """Appendice DETERMINISTICA: stampa il testo normativo VERBATIM dallo snapshot
+    (non rielaborato dal modello). Garanzia anti-liability: il lettore vede gli
+    articoli esatti, ancorati alla fonte ufficiale."""
+    norm = [c for c in citazioni if c.get("testo")]
+    if not norm:
+        return []
+    out = [Spacer(1, 6), _Heading("Testi normativi (verbatim)", S["h2"], "testi_normativi")]
+    for c in norm:
+        t = str(c.get("testo", ""))
+        lines = t.split("\n")
+        head = lines[0].lstrip("# ").strip() if lines else (c.get("riferimento") or "")
+        body = "\n".join(lines[1:]).strip() or t
+        body = body.replace("**", "")
+        if len(body) > 2200:  # appendice leggibile: estratto generoso
+            body = body[:2200].rstrip() + " […]"
+        out.append(Paragraph(f'<b>{html.escape(head)}</b>', S["body"]))
+        out.append(Paragraph(html.escape(body).replace("\n", "<br/>"), S["small"]))
+        out.append(Spacer(1, 4))
+    out.append(Paragraph(
+        "<i>Testi riportati verbatim dalla fonte normativa (snapshot di grounding "
+        "K2-AI), non rielaborati né riassunti dal modello.</i>", S["small"]))
+    return out
+
+
 def _disclaimer(deliverable, blueprint, S):
     disc = deliverable.get("disclaimer") or blueprint.get("disclaimer")
     if not disc:
@@ -153,6 +178,7 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
 
     if citazioni:
         story += _fonti(citazioni, S)
+        story += _testi_normativi(citazioni, S)
     story += _disclaimer(deliverable, blueprint, S)
     _build(pdf_path, titolo, azienda, "Diagnosi legale-compliance", titolo, story)
 
@@ -242,6 +268,7 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
 
     if citazioni:
         story += _fonti(citazioni, S)
+        story += _testi_normativi(citazioni, S)
     story += _disclaimer(deliverable, blueprint, S)
     _build(pdf_path, titolo, azienda, "Diagnosi professionale", titolo, story)
 

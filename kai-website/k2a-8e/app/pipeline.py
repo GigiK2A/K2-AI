@@ -61,6 +61,7 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
                 "campo": k, "riferimento": riferimento,
                 "fonte": e.get("fonte"), "fonte_url": e.get("fonte_url"),
                 "vigenza": e.get("vigenza"), "status": e.get("status"),
+                "testo": testo,  # verbatim dallo snapshot → appendice deterministica
             })
         elif tipo == "formula":
             facts[k] = {"valore": e.get("formula"), "tipo": "formula"}

@@ -42,7 +42,9 @@ def sample(schema: dict):
 def main() -> int:
     man = assets.manifest()
     skills = sorted({v["skill"] for v in man.values()})
-    cit = [{"riferimento": "Art. 1 esempio", "fonte": "override_locale", "vigenza": "2026"}]
+    cit = [{"riferimento": "Art. 1 esempio", "fonte": "override_locale", "vigenza": "2026",
+            "testo": "# Art. 1 esempio — Titolo di prova\n\nCorpo verbatim dell'articolo "
+                     "di esempio, per esercitare l'appendice 'Testi normativi (verbatim)'."}]
     ok = 0
     fail = []
     for skill in skills:
