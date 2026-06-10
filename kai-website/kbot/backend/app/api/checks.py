@@ -15,9 +15,12 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
+
+from ..lib.auth import AuthUser, require_user
+from ..lib.limiter import limiter
 
 # vendor/ in path per importare il package compute di Luca senza installarlo
 _VENDOR = Path(__file__).resolve().parents[2] / "vendor"
@@ -82,7 +85,8 @@ _REGISTRY = _build_registry()
 
 
 @router.get("/checks")
-def list_checks() -> dict:
+@limiter.limit("30/minute")
+def list_checks(request: Request, user: AuthUser = Depends(require_user)) -> dict:
     """Elenco dei check express disponibili (calcolo locale, no LLM/crediti AI)."""
     return {
         "checks": [
@@ -101,7 +105,9 @@ class CheckBody(BaseModel):
 
 
 @router.post("/check/{service_id}")
-def run_check(service_id: str, body: CheckBody) -> dict:
+@limiter.limit("20/minute")
+def run_check(request: Request, service_id: str, body: CheckBody,
+              user: AuthUser = Depends(require_user)) -> dict:
     """Esegue un check express deterministico. Valida gli input contro il modello
     Pydantic del tool, calcola, ritorna l'output strutturato. Nessun LLM."""
     meta = _REGISTRY.get(service_id)
@@ -123,7 +129,9 @@ def run_check(service_id: str, body: CheckBody) -> dict:
 
 
 @router.post("/check/{service_id}/document")
-def run_check_document(service_id: str, body: CheckBody) -> Response:
+@limiter.limit("10/minute")
+def run_check_document(request: Request, service_id: str, body: CheckBody,
+                       user: AuthUser = Depends(require_user)) -> Response:
     """Esegue il check e ritorna il PDF deliverable D1 (deterministico, no LLM)."""
     meta = _REGISTRY.get(service_id)
     if not meta:

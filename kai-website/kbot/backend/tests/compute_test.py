@@ -8,6 +8,8 @@ for k, v in {"NEXT_PUBLIC_SUPABASE_URL": "https://x.supabase.co", "SUPABASE_SERV
     os.environ.setdefault(k, v)
 from fastapi.testclient import TestClient
 from app.main import app
+from app.lib.auth import require_user, AuthUser
+app.dependency_overrides[require_user] = lambda: AuthUser(id="test-user", email="t@t.it", has_paid=True, raw={})
 c = TestClient(app)
 
 

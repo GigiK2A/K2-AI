@@ -18,8 +18,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+
+from ..lib.auth import AuthUser, require_user
+from ..lib.limiter import limiter
 
 _VENDOR = Path(__file__).resolve().parents[2] / "vendor"
 if str(_VENDOR) not in sys.path:
@@ -73,7 +76,9 @@ _REGISTRY = _discover()
 
 
 @router.get("/tools")
-def list_tools(dominio: str | None = None) -> dict:
+@limiter.limit("30/minute")
+def list_tools(request: Request, dominio: str | None = None,
+               user: AuthUser = Depends(require_user)) -> dict:
     """Catalogo dei tool a calcolo disponibili nell'ecosistema (no LLM/crediti)."""
     from collections import Counter
     items = [
@@ -87,7 +92,8 @@ def list_tools(dominio: str | None = None) -> dict:
 
 
 @router.get("/tool/{tool_id:path}/schema")
-def tool_schema(tool_id: str) -> dict:
+@limiter.limit("60/minute")
+def tool_schema(request: Request, tool_id: str, user: AuthUser = Depends(require_user)) -> dict:
     m = _REGISTRY.get(tool_id)
     if not m:
         raise HTTPException(status_code=404, detail=f"tool '{tool_id}' inesistente")
@@ -99,7 +105,9 @@ class ToolBody(BaseModel):
 
 
 @router.post("/tool/{tool_id:path}")
-def run_tool(tool_id: str, body: ToolBody) -> dict:
+@limiter.limit("20/minute")
+def run_tool(request: Request, tool_id: str, body: ToolBody,
+             user: AuthUser = Depends(require_user)) -> dict:
     """Esegue un tool a calcolo deterministico dell'ecosistema."""
     m = _REGISTRY.get(tool_id)
     if not m:
