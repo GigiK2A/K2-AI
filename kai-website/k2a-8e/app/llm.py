@@ -20,7 +20,8 @@ import logging
 import re
 from typing import Optional
 
-from .settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ALLOW_OFFLINE_FALLBACK
+from .settings import (ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ANTHROPIC_MODEL_LIGHT,
+                       ALLOW_OFFLINE_FALLBACK)
 
 log = logging.getLogger("8e.llm")
 
@@ -358,7 +359,7 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     # via LLM. 'input' è l'echo del form cliente; 'files' è il manifest dei file
     # generati; 'meta' i metadati. Mandarle a Sonnet → hallucinazione/refuse.
     structural = ("meta", "metadata", "input", "files", "file", "allegati")
-    analytical = []  # (name, sub, sub_val, sysmsg, user, maxtok)
+    analytical = []  # (name, sub, sub_compact_json, sub_val, user, maxtok, light)
     for name, sub in props.items():
         if name in structural:
             result[name] = _det_sample(sub, output_schema, inputs, servizio, name)
@@ -373,67 +374,103 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         sub_val = dict(sub)
         if root_defs and "$defs" not in sub_val:
             sub_val["$defs"] = root_defs
+        sub_compact_json = json.dumps(sub_compact, ensure_ascii=False)
         user = (f"Genera la sezione «{name}» del deliverable. SOTTO-SCHEMA:\n"
-                f"{json.dumps(sub_compact, ensure_ascii=False)[:4000]}\n\n"
+                f"{sub_compact_json[:4000]}\n\n"
                 "Rispondi SOLO con il JSON della sezione — contenuto diretto, NON incartato "
                 f"nella chiave «{name}».")
-        # max_tokens è un CEILING (paghi solo i token generati): lo teniamo alto per
-        # NON troncare; il costo/lunghezza reale è controllato dalla concisione nel
-        # system ("~90 parole per voce"). Sezioni "pesanti" → ceiling più alto.
+        # max_tokens è un CEILING (paghi solo i token generati): alto per NON troncare;
+        # il costo reale lo controlla la concisione nel system. Sezioni "pesanti" → cap alto.
         sub_json = json.dumps(sub)
         heavy = (sub.get("type") == "array"
                  or "$ref" in sub_json
                  or sub_json.count('"type": "array"') >= 1
                  or len(sub.get("properties", {})) >= 4)
         maxtok = 32000 if heavy else 20000
-        analytical.append((name, sub, sub_val, user, maxtok))
+        light = _is_light_section(sub)  # tiering: sezioni meccaniche → modello economico
+        analytical.append((name, sub, sub_compact_json, sub_val, user, maxtok, light))
+
+    stats = {"cache_read": 0, "input": 0, "repairs": 0}
+
+    def _call(model, sys_text, user_text, maxtok):
+        """Una chiamata streaming. Traccia input/cache. Ritorna (text, resp, out_tok)."""
+        sys_blk = [{"type": "text", "text": sys_text, "cache_control": {"type": "ephemeral"}}]
+        with client.messages.stream(model=model, max_tokens=maxtok, system=sys_blk,
+                                    messages=[{"role": "user", "content": user_text}]) as stream:
+            resp = stream.get_final_message()
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        u = getattr(resp, "usage", None)
+        if u:
+            stats["cache_read"] += getattr(u, "cache_read_input_tokens", 0) or 0
+            stats["input"] += getattr(u, "input_tokens", 0) or 0
+        return text, resp, (getattr(u, "output_tokens", 0) or 0) if u else 0
+
+    def _coerce(text, sub, sub_val, name):
+        """parse → unwrap doppio-incarto → clamp ai vincoli."""
+        val = _parse_section(text, sub.get("type"))
+        if (isinstance(val, dict) and len(val) == 1 and name in val
+                and isinstance(val[name], (dict, list))):
+            val = val[name]
+        if val is not None:
+            val = _clamp_to_schema(val, sub_val, output_schema)
+        return val
 
     def _gen_section(item):
-        """Genera UNA sezione (thread-safe). Ritorna (name, val|None, invalido?, tok)."""
-        name, sub, sub_val, user, maxtok = item
+        """Genera UNA sezione (thread-safe). Su errore di validazione tenta UNA
+        riparazione mirata (mini-chiamata) invece di far fallire l'intero documento."""
+        name, sub, sub_compact_json, sub_val, user, maxtok, light = item
+        model = ANTHROPIC_MODEL_LIGHT if light else ANTHROPIC_MODEL
         try:
-            # SYSTEM cached condiviso (facts_system) + user variabile. streaming
-            # OBBLIGATORIO sopra ~16k token.
-            sys_blk = [{"type": "text", "text": facts_system, "cache_control": {"type": "ephemeral"}}]
-            msgs = [{"role": "user", "content": user}]
-            with client.messages.stream(model=ANTHROPIC_MODEL, max_tokens=maxtok,
-                                        system=sys_blk, messages=msgs) as stream:
-                resp = stream.get_final_message()
+            text, resp, tok = _call(model, facts_system, user, maxtok)
             if getattr(resp, "stop_reason", None) == "max_tokens":
                 log.warning("sezione '%s' troncata a max_tokens=%d", name, maxtok)
-            text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-            val = _parse_section(text, sub.get("type"))  # oggetto/lista/scalare
-            # UNWRAP doppio-incarto: il modello a volte restituisce {"<nome>": {...}}
-            # invece del contenuto diretto → scarta il guscio.
-            if (isinstance(val, dict) and len(val) == 1 and name in val
-                    and isinstance(val[name], (dict, list))):
-                val = val[name]
-            if val is not None:  # rete di sicurezza maxLength/maxItems
-                val = _clamp_to_schema(val, sub_val, output_schema)
-            usage = getattr(resp, "usage", None)
-            tok = getattr(usage, "output_tokens", 0) or 0
+            val = _coerce(text, sub, sub_val, name)
             errs = list(Draft202012Validator(sub_val).iter_errors(val)) if val is not None else [1]
-            if errs:
-                log.warning("sezione '%s' non conforme: %s", name, errs[:1])
-                return name, None, True, tok
-            return name, val, False, tok
+            if not errs:
+                return name, val, False, tok
+            # FAIL-FAST REPAIR: correggi il JSON invalido con una mini-chiamata
+            # (input = JSON rotto + errori) invece di rigenerare tutto/fallback monolitico.
+            stats["repairs"] += 1
+            emsgs = ([str(e.message) for e in errs[:3]]
+                     if not (len(errs) == 1 and errs[0] == 1) else ["JSON non parsabile/assente"])
+            rep_user = (f"Questo JSON per la sezione «{name}» NON è conforme.\n"
+                        f"Errori: {emsgs}\nSOTTO-SCHEMA:\n{sub_compact_json[:3000]}\n\n"
+                        f"Correggi e restituisci SOLO il JSON valido (contenuto diretto, "
+                        f"non incartato):\n{text[:8000]}")
+            rtext, _, rtok = _call(model,
+                                   "Sei un validatore JSON. Correggi il JSON perché sia conforme "
+                                   "al sotto-schema dato. Rispondi SOLO con il JSON corretto.",
+                                   rep_user, min(maxtok, 16000))
+            rval = _coerce(rtext, sub, sub_val, name)
+            rerrs = list(Draft202012Validator(sub_val).iter_errors(rval)) if rval is not None else [1]
+            if not rerrs:
+                return name, rval, False, tok + rtok
+            log.warning("sezione '%s' non conforme anche dopo repair: %s", name, rerrs[:1])
+            return name, None, True, tok + rtok
         except Exception as exc:
             log.warning("sezione '%s' fallita: %s", name, exc)
             return name, None, True, 0
 
-    # Sezioni INDIPENDENTI → generate in PARALLELO: il tempo totale ≈ sezione più
-    # lenta, non la somma (SEO 7 sezioni: da ~15 min a ~4 min).
+    # WARM-UP cache: genera la PRIMA sezione DA SOLA → scrive il prompt-cache; le altre
+    # in PARALLELO lo riusano a ~0,1× (chiamate parallele "a freddo" non condividono la
+    # cache: ognuna ri-paga i fatti). Tempo ≈ 1 sezione + max(restanti).
     from concurrent.futures import ThreadPoolExecutor
-    workers = min(6, len(analytical)) or 1
-    with ThreadPoolExecutor(max_workers=workers) as ex:
-        for name, val, invalido, tok in ex.map(_gen_section, analytical):
-            tot_out += tok
-            if invalido:
-                if name in required:
-                    return None, {"mode": "anthropic", "warning": f"sezione_{name}_invalida"}
-                continue  # sezione opzionale non conforme → skip
-            result[name] = val
-            sezioni_gen += 1
+    rows = []
+    if analytical:
+        rows.append(_gen_section(analytical[0]))
+        rest = analytical[1:]
+        if rest:
+            with ThreadPoolExecutor(max_workers=min(6, len(rest))) as ex:
+                rows.extend(ex.map(_gen_section, rest))
+
+    for name, val, invalido, tok in rows:
+        tot_out += tok
+        if invalido:
+            if name in required:
+                return None, {"mode": "anthropic", "warning": f"sezione_{name}_invalida"}
+            continue  # sezione opzionale non conforme → skip
+        result[name] = val
+        sezioni_gen += 1
 
     # validazione finale dell'intero deliverable
     full_errs = list(Draft202012Validator(output_schema).iter_errors(result))
@@ -441,11 +478,40 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         return None, {"mode": "anthropic", "warning": "deliverable_non_conforme",
                       "errors": [str(e.message) for e in full_errs[:3]]}
     return result, {"mode": "anthropic", "model": ANTHROPIC_MODEL, "assembly": "deep",
-                    "sezioni": sezioni_gen, "output_tokens": tot_out}
+                    "sezioni": sezioni_gen, "output_tokens": tot_out,
+                    "cache_read_tokens": stats["cache_read"], "input_tokens": stats["input"],
+                    "repairs": stats["repairs"]}
 
 
 def _human(s: str) -> str:
     return str(s).replace("_", " ")
+
+
+_SCALAR = ("string", "number", "integer", "boolean")
+
+
+def _is_light_section(sub: dict) -> bool:
+    """True se la sezione è MECCANICA (liste di scalari, o oggetti/array di oggetti a
+    soli campi scalari brevi): candidata al modello 'light' per il tiering di costo.
+    Le sezioni con prosa/analisi (campi testo lunghi, nested) NON sono mai light, così
+    l'analisi core resta sempre sul modello pieno."""
+    t = sub.get("type")
+    if t == "array":
+        items = sub.get("items", {}) or {}
+        it = items.get("type")
+        if it in _SCALAR:
+            return True
+        if it == "object":
+            props = items.get("properties", {})
+            return bool(props) and len(props) <= 4 and all(
+                p.get("type") in _SCALAR and p.get("maxLength", 0) <= 120
+                for p in props.values())
+        return False
+    if t == "object":
+        props = sub.get("properties", {})
+        return bool(props) and len(props) <= 3 and all(
+            p.get("type") in _SCALAR for p in props.values())
+    return False
 
 
 def _repair_pattern(val: str, pat: str) -> str:

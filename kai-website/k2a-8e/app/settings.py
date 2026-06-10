@@ -17,6 +17,10 @@ ENTITLEMENT_SECRET = os.environ.get("K2A_ENTITLEMENT_SECRET")
 # Anthropic (filiera). Senza chiave → offline deterministico (template).
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = os.environ.get("K2A_8E_MODEL", "claude-sonnet-4-5")
+# Modello "light" per sezioni meccaniche (liste/kpi/scalari): tiering di costo.
+# Default = stesso modello → tiering DISATTIVO finché non si setta un modello più
+# economico (es. claude-haiku-4-5). L'analisi core resta sempre su MODEL.
+ANTHROPIC_MODEL_LIGHT = os.environ.get("K2A_8E_MODEL_LIGHT", ANTHROPIC_MODEL)
 # Se la chiave è presente ma la chiamata fallisce: dev=degrada offline; prod=rilancia.
 # Default true (dev). In produzione settare K2A_8E_ALLOW_OFFLINE=false.
 ALLOW_OFFLINE_FALLBACK = (os.environ.get("K2A_8E_ALLOW_OFFLINE", "true").lower()
