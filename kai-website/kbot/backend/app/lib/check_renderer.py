@@ -5,6 +5,7 @@ Rende i 15 servizi "consumo" prodotti veri (non solo JSON). Brand K2-AI (logo + 
 """
 from __future__ import annotations
 
+import html
 import io
 from datetime import date
 from pathlib import Path
@@ -52,17 +53,19 @@ def _styles() -> dict:
 
 
 def _human(k: str) -> str:
-    return str(k).replace("_", " ").replace("pct", "%").strip().capitalize()
+    return html.escape(str(k).replace("_", " ").replace("pct", "%").strip().capitalize())
 
 
 def _fmt(v: Any) -> str:
+    # ESCAPE: i valori finiscono in reportlab Paragraph (mini-markup XML). Senza
+    # escape, un input utente con '<' o '&' romperebbe il parser o inietterebbe markup.
     if isinstance(v, bool):
         return "Sì" if v else "No"
     if isinstance(v, float):
         return f"{v:,.2f}".replace(",", "·").replace(".", ",").replace("·", ".")
     if isinstance(v, int):
         return f"{v:,}".replace(",", ".")
-    return str(v)
+    return html.escape(str(v))
 
 
 def _kv_table(d: dict, S: dict, content_w: float) -> Table:

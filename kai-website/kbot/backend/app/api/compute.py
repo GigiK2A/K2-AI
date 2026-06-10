@@ -40,10 +40,32 @@ VENDOR_PACKAGES = {
 }
 
 
+# SICUREZZA: campi-input che indicano scrittura/lettura su filesystem. I tool che
+# li espongono (generatori excel/docx/dxf/cad) NON vanno esposti via HTTP: un input
+# come output_path="/app/app/main.py" = scrittura file arbitraria sul server.
+# L'endpoint compute espone SOLO calcolo puro (in→out strutturato).
+_FS_FIELD_HINTS = ("path", "dir", "file", "output", "dest", "folder", "percorso")
+
+
+def _writes_filesystem(model: type) -> bool:
+    try:
+        fields = getattr(model, "model_fields", {})
+    except Exception:
+        return True  # in dubbio → escludi
+    for fname in fields:
+        fl = fname.lower()
+        if any(h in fl for h in _FS_FIELD_HINTS):
+            return True
+    return False
+
+
 def _discover() -> dict[str, dict[str, Any]]:
     """Scansiona i package vendorizzati e mappa tool_id → metadati. tool_id =
-    '<dominio>/<modulo>.<funzione>'. Solo funzioni con 1 parametro BaseModel."""
+    '<dominio>/<modulo>.<funzione>'. Solo funzioni con 1 parametro BaseModel di
+    CALCOLO PURO: i tool che scrivono file (campo path/output nell'input) sono
+    ESCLUSI (rischio scrittura arbitraria)."""
     reg: dict[str, dict[str, Any]] = {}
+    excluded = 0
     for pkg_name, dominio in VENDOR_PACKAGES.items():
         try:
             pkg = __import__(pkg_name, fromlist=["x"])
@@ -66,9 +88,15 @@ def _discover() -> dict[str, dict[str, Any]]:
                 params = list(sig.parameters.values())
                 if (len(params) == 1 and inspect.isclass(params[0].annotation)
                         and issubclass(params[0].annotation, BaseModel)):
+                    if _writes_filesystem(params[0].annotation):
+                        excluded += 1
+                        continue  # tool di I/O su file → non esporre
                     tool_id = f"{dominio}/{mi.name}.{fn_name}"
                     reg[tool_id] = {"fn": fn, "input_model": params[0].annotation,
                                     "dominio": dominio, "module": mi.name, "fn_name": fn_name}
+    if excluded:
+        import logging
+        logging.getLogger(__name__).info("compute: esclusi %d tool con I/O su file", excluded)
     return reg
 
 
