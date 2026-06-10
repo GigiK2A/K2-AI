@@ -13,6 +13,11 @@ API_KEY_NEXT = os.environ.get("K2A_8E_API_KEY_NEXT")  # rotazione (membrana G6)
 
 # Entitlement JWT (membrana G1) — segreto condiviso col K-BOT (HS256).
 ENTITLEMENT_SECRET = os.environ.get("K2A_ENTITLEMENT_SECRET")
+# Senza segreto: di default FAIL-CLOSED (rifiuta) per non bypassare il pagamento in
+# produzione per misconfig. Solo con K2A_8E_ENTITLEMENT_DEV=true si accetta in modo
+# permissivo (dev/test).
+ENTITLEMENT_DEV = (os.environ.get("K2A_8E_ENTITLEMENT_DEV", "false").lower()
+                   in ("1", "true", "yes"))
 
 # Anthropic (filiera). Senza chiave → offline deterministico (template).
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")

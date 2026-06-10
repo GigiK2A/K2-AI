@@ -12,7 +12,13 @@ os.environ.setdefault("K2A_ENTITLEMENT_SECRET", "ci-secret-32bytes-minimum-lengt
 from fastapi.testclient import TestClient
 from app.main import app
 from app.lib.auth import require_user, AuthUser
+from app.api import checks as _checks
 app.dependency_overrides[require_user] = lambda: AuthUser(id="test-user", email="t@t.it", has_paid=True, raw={})
+# Mock degli INTERNI del billing (Supabase non reale): così il gate vero _consuma_crediti
+# gira ma con piano abilitato + credito sufficiente. Il costo viene dal catalogo sorgente.
+_checks.billing.puo_eseguire_servizi = lambda plan: True
+_checks.billing_store.get_plan = lambda uid: "pro"
+_checks.billing_store.consume_credits = lambda *a, **k: (True, 999)
 
 c = TestClient(app)
 
@@ -51,3 +57,21 @@ def test_check_document_pdf():
     assert r.status_code == 200
     assert r.headers["content-type"] == "application/pdf"
     assert r.content[:5] == b"%PDF-" and len(r.content) > 5000
+
+
+def test_credit_gate_402_insufficiente():
+    """Crediti insufficienti → 402, e il calcolo NON viene eseguito."""
+    orig = _checks.billing_store.consume_credits
+    _checks.billing_store.consume_credits = lambda *a, **k: (False, 0)
+    try:
+        body = {"inputs": {"aiuti_ricevuti": [], "settore": "generale"}}
+        r = c.post("/api/kbot/check/de_minimis", json=body)
+        assert r.status_code == 402, r.status_code
+    finally:
+        _checks.billing_store.consume_credits = orig
+
+
+def test_costo_dal_catalogo_sorgente():
+    """Il costo crediti dei check è risolto dalla fonte vendorizzata."""
+    costi = _checks._load_costi()
+    assert costi.get("de_minimis") == 49 and costi.get("hospitality_kpi") == 49

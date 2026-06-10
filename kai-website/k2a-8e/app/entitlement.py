@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from .settings import ENTITLEMENT_SECRET
+from .settings import ENTITLEMENT_SECRET, ENTITLEMENT_DEV
 
 log = logging.getLogger("8e.entitlement")
 
@@ -20,8 +20,12 @@ def verify(token: Optional[str], service_id: str) -> tuple[bool, str]:
         return False, "missing"
 
     if not ENTITLEMENT_SECRET:
-        # Dev senza segreto: accetta token non vuoto (permissivo).
-        return True, "dev-no-secret"
+        # FAIL-CLOSED: senza segreto si RIFIUTA (altrimenti una misconfig in prod
+        # bypassa il pagamento). Permissivo solo con opt-in esplicito K2A_8E_ENTITLEMENT_DEV.
+        if ENTITLEMENT_DEV:
+            return True, "dev-no-secret"
+        log.error("K2A_ENTITLEMENT_SECRET non configurato e non in dev → entitlement RIFIUTATO")
+        return False, "not_configured"
 
     try:
         import jwt

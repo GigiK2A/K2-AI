@@ -13,8 +13,10 @@ aggiunge compaiono senza modifiche al codice.
 from __future__ import annotations
 
 import inspect
+import os
 import pkgutil
 import sys
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FTimeout
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +31,24 @@ if str(_VENDOR) not in sys.path:
     sys.path.insert(0, str(_VENDOR))
 
 router = APIRouter()
+
+# Anti-DoS: pool dedicato (cap globale di calcoli concorrenti) + timeout per richiesta.
+# I tool sono deterministici e veloci; il timeout limita un input patologico.
+_COMPUTE_TIMEOUT_S = int(os.environ.get("KBOT_COMPUTE_TIMEOUT_S", "30"))
+_TOOL_POOL = ThreadPoolExecutor(max_workers=int(os.environ.get("KBOT_COMPUTE_WORKERS", "4")))
+
+
+def run_tool_safely(fn, inp):
+    """Esegue un tool di calcolo con timeout. 504 se sfora; 500 su errore di calcolo."""
+    fut = _TOOL_POOL.submit(fn, inp)
+    try:
+        return fut.result(timeout=_COMPUTE_TIMEOUT_S)
+    except _FTimeout:
+        raise HTTPException(status_code=504, detail="calcolo: timeout (input troppo oneroso)")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"calcolo fallito: {exc}")
 
 # package vendorizzati → dominio
 VENDOR_PACKAGES = {
@@ -144,9 +164,6 @@ def run_tool(request: Request, tool_id: str, body: ToolBody,
         inp = m["input_model"](**body.inputs)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"input non valido: {exc}")
-    try:
-        out = m["fn"](inp)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"calcolo fallito: {exc}")
+    out = run_tool_safely(m["fn"], inp)  # timeout + cap concorrenza
     result = out.model_dump(mode="json") if isinstance(out, BaseModel) else out
     return {"tool_id": tool_id, "dominio": m["dominio"], "deterministico": True, "result": result}

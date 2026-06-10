@@ -9,9 +9,14 @@ ASSERT (dal PROMPT_8e_Phase1 §6):
 """
 from __future__ import annotations
 
+import os
 import sys
 import time
 from pathlib import Path
+
+# Test dev/offline (nessun ENTITLEMENT_SECRET): abilita la permissività esplicita.
+# In prod l'entitlement è fail-closed di default (vedi app/entitlement.py).
+os.environ.setdefault("K2A_8E_ENTITLEMENT_DEV", "true")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

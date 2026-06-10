@@ -21,6 +21,8 @@ from pydantic import BaseModel
 
 from ..lib.auth import AuthUser, require_user
 from ..lib.limiter import limiter
+from ..lib import billing, billing_store
+from .compute import run_tool_safely
 
 # vendor/ in path per importare il package compute di Luca senza installarlo
 _VENDOR = Path(__file__).resolve().parents[2] / "vendor"
@@ -28,6 +30,43 @@ if str(_VENDOR) not in sys.path:
     sys.path.insert(0, str(_VENDOR))
 
 router = APIRouter()
+
+# Costo crediti dei Check (strato Consumo): dalla fonte di verità catalogo_documenti.json
+# vendorizzata (la catalog.json generata l'ha persa). Cache a primo uso.
+import json as _json
+_SRC_CATALOG = _VENDOR / "k2a_agevolazioni" / "data" / "catalogo_documenti.json"
+_COSTI: dict[str, int] = {}
+
+
+def _load_costi() -> dict[str, int]:
+    if _COSTI:
+        return _COSTI
+    try:
+        tipi = _json.loads(_SRC_CATALOG.read_text(encoding="utf-8")).get("tipi", {})
+        for sid, t in tipi.items():
+            if t.get("strato") == "consumo" and t.get("costo_crediti") is not None:
+                _COSTI[sid] = int(t["costo_crediti"])
+    except Exception:
+        pass
+    return _COSTI
+
+
+def _consuma_crediti(service_id: str, user: AuthUser) -> int:
+    """Gate crediti server-side: piano abilitato + saldo sufficiente. 402/403 se no.
+    Ritorna il saldo residuo. Idempotenza/no-doppio-addebito è responsabilità del flusso
+    frontend (una chiamata per acquisto)."""
+    if not billing.puo_eseguire_servizi(billing_store.get_plan(user.id)):
+        raise HTTPException(status_code=403,
+                            detail="piano Free: i servizi non sono eseguibili. Passa a Pro.")
+    costo = _load_costi().get(service_id)
+    if not costo:  # servizio non a crediti o costo ignoto → non eseguire a vuoto
+        raise HTTPException(status_code=409,
+                            detail=f"costo crediti non determinato per '{service_id}'")
+    ok, saldo = billing_store.consume_credits(user.id, costo, reason="check", ref=service_id)
+    if not ok:
+        raise HTTPException(status_code=402,
+                            detail={"error": "insufficient_credits", "saldo": saldo, "costo": costo})
+    return saldo
 
 # service_id del catalogo (strato consumo) → nome modulo nel package agevolazioni
 SERVICE_TO_MODULE = {
@@ -115,17 +154,16 @@ def run_check(request: Request, service_id: str, body: CheckBody,
         raise HTTPException(status_code=404,
                             detail=f"check '{service_id}' non disponibile (calcolo). "
                                    f"Disponibili: {sorted(_REGISTRY)}")
+    # valida l'input PRIMA di addebitare i crediti
     try:
         inp = meta["input_model"](**body.inputs)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"input non valido: {exc}")
-    try:
-        out = meta["fn"](inp)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"calcolo fallito: {exc}")
+    saldo = _consuma_crediti(service_id, user)  # gate crediti server-side (402/403)
+    out = run_tool_safely(meta["fn"], inp)  # timeout + cap concorrenza
     result = out.model_dump(mode="json") if isinstance(out, BaseModel) else out
     return {"service_id": service_id, "strato": "consumo", "deterministico": True,
-            "result": result}
+            "saldo_crediti": saldo, "result": result}
 
 
 @router.post("/check/{service_id}/document")
@@ -138,11 +176,10 @@ def run_check_document(request: Request, service_id: str, body: CheckBody,
         raise HTTPException(status_code=404, detail=f"check '{service_id}' non disponibile")
     try:
         inp = meta["input_model"](**body.inputs)
-        out = meta["fn"](inp)
-    except HTTPException:
-        raise
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"calcolo/input non valido: {exc}")
+        raise HTTPException(status_code=422, detail=f"input non valido: {exc}")
+    _consuma_crediti(service_id, user)  # gate crediti server-side (402/403)
+    out = run_tool_safely(meta["fn"], inp)  # timeout + cap concorrenza
     result = out.model_dump(mode="json") if isinstance(out, BaseModel) else out
     from ..lib.check_renderer import render_check_pdf
     label = service_id.replace("_", " ").title()
