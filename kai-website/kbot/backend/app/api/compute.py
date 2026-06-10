@@ -56,8 +56,13 @@ VENDOR_PACKAGES = {
     "k2a_quant": "finanza",
     "k2a_elettrico": "elettrico",
     "vs_strutturale": "strutturale",
-    "k2a_norme_tecniche": "norme-tecniche",
+    # 'k2a_norme_tecniche' ESCLUSO: text-retrieval che richiede il DB legale (non
+    # spedito nel kbot) → 500 garantito. Non è calcolo puro.
 }
+
+# Moduli con dipendenze da DATI non spediti nel kbot (DB/template) → escludi:
+# i tool ritornerebbero sempre 500. (verificato con lo smoke di tutti i tool)
+_EXCLUDE_MODULES = {"tools_final"}  # vs_strutturale: legge file template assenti
 
 
 # SICUREZZA: campi-input che indicano scrittura/lettura su filesystem. I tool che
@@ -92,7 +97,7 @@ def _discover() -> dict[str, dict[str, Any]]:
         except Exception:
             continue
         for mi in pkgutil.iter_modules(pkg.__path__):
-            if mi.name in ("server", "__main__"):
+            if mi.name in ("server", "__main__") or mi.name in _EXCLUDE_MODULES:
                 continue
             try:
                 mod = __import__(f"{pkg_name}.{mi.name}", fromlist=["x"])

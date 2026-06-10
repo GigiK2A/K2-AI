@@ -15,9 +15,9 @@ c = TestClient(app)
 
 def test_tools_listed():
     j = c.get("/api/kbot/tools").json()
-    assert j["count"] >= 120
-    # tutti i domini presenti
-    for d in ("agevolazioni", "finanza", "elettrico", "strutturale", "norme-tecniche"):
+    assert j["count"] >= 110
+    # domini di CALCOLO presenti (norme-tecniche escluso: text-retrieval, serve DB)
+    for d in ("agevolazioni", "finanza", "elettrico", "strutturale"):
         assert d in j["per_dominio"]
 
 
