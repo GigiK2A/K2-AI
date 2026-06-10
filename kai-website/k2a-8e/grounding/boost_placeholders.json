@@ -79,5 +79,12 @@
   "flusso-webboost-pmi": [
     "in_url",
     "keyword_dataset"
-  ]
+  ],
+  "check-fiscale-express": [],
+  "check-pmi-express": [],
+  "check-salute-finanziaria": [],
+  "check-edilizia-express": [],
+  "check-impianti-express": [],
+  "check-legale-express": [],
+  "check-sicurezza-express": []
 }

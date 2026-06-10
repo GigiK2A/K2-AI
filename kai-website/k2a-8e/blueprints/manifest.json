@@ -106,6 +106,49 @@
       "blueprint": "flusso-safetyboost-studio/blueprint.json",
       "output_schema": "flusso-safetyboost-studio/output-schema.json",
       "form": "flusso-safetyboost-studio/form.json"
+    },
+    "check_fiscale_express": {
+      "blueprint_id": "https://k2-ai.it/blueprints/check-fiscale-express.check.blueprint.json",
+      "skill": "check-fiscale-express",
+      "blueprint": "check-fiscale-express/blueprint.json",
+      "output_schema": "check-fiscale-express/output-schema.json",
+      "form": "check-fiscale-express/form.json"
+    },
+    "check_pmi_express": {
+      "blueprint_id": "https://k2-ai.it/blueprints/check-pmi-express.check.blueprint.json",
+      "skill": "check-pmi-express",
+      "blueprint": "check-pmi-express/blueprint.json",
+      "output_schema": "check-pmi-express/output-schema.json"
+    },
+    "check_salute_finanziaria": {
+      "blueprint_id": "https://k2-ai.it/blueprints/check-salute-finanziaria.check.blueprint.json",
+      "skill": "check-salute-finanziaria",
+      "blueprint": "check-salute-finanziaria/blueprint.json",
+      "output_schema": "check-salute-finanziaria/output-schema.json"
+    },
+    "check_edilizia_express": {
+      "blueprint_id": "https://k2-ai.it/blueprints/check-edilizia-express.check.blueprint.json",
+      "skill": "check-edilizia-express",
+      "blueprint": "check-edilizia-express/blueprint.json",
+      "output_schema": "check-edilizia-express/output-schema.json"
+    },
+    "check_impianti_express": {
+      "blueprint_id": "https://k2-ai.it/blueprints/check-impianti-express.check.blueprint.json",
+      "skill": "check-impianti-express",
+      "blueprint": "check-impianti-express/blueprint.json",
+      "output_schema": "check-impianti-express/output-schema.json"
+    },
+    "check_legale_express": {
+      "blueprint_id": "https://k2-ai.it/blueprints/check-legale-express.check.blueprint.json",
+      "skill": "check-legale-express",
+      "blueprint": "check-legale-express/blueprint.json",
+      "output_schema": "check-legale-express/output-schema.json"
+    },
+    "check_sicurezza_express": {
+      "blueprint_id": "https://k2-ai.it/blueprints/check-sicurezza-express.check.blueprint.json",
+      "skill": "check-sicurezza-express",
+      "blueprint": "check-sicurezza-express/blueprint.json",
+      "output_schema": "check-sicurezza-express/output-schema.json"
     }
   }
 }

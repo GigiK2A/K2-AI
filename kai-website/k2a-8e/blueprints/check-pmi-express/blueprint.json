@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/check-pmi-express.check.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Check Express del percorso Advisor. Formato HTML single-page. Ingresso del funnel: deve dare una vittoria reale e aprire il gradino sopra senza frustrare.",
+  "pacchetto": {
+    "skill": "check-pmi-express",
+    "nome_commerciale": "Check PMI Express",
+    "tier": "check",
+    "posizione_funnel": "ingresso / lead magnet"
+  },
+  "contratto_dati": "check-pmi-express/schemas/output-schema.json",
+  "formato_primario": "html-single-page",
+  "paginato": false,
+  "vincoli_formato": {
+    "peso_kb_max": 80,
+    "mobile_first": true,
+    "dipendenze_esterne": "nessuna (SVG/CSS/JS vanilla)",
+    "tempo_caricamento_s_max": 1,
+    "stampabile_pagine_a4": "2-3"
+  },
+  "voci": [
+    {
+      "ord": 0,
+      "id": "header",
+      "titolo": "Header",
+      "argomenti_obbligatori": [
+        "logo K2-AI",
+        "titolo con nome azienda",
+        "data"
+      ]
+    },
+    {
+      "ord": 1,
+      "id": "hero_score",
+      "titolo": "Hero score",
+      "argomenti_obbligatori": [
+        "gauge 0-100",
+        "giudizio testuale (Eccellente..Critico)",
+        "sintesi diagnosi in 1 riga",
+        "alert CCII se score < 45"
+      ],
+      "funzione_psico": "information gap (perche' questo score?) + picco visivo (Von Restorff: il gauge e' l'unico accent). Above the fold su mobile."
+    },
+    {
+      "ord": 2,
+      "id": "semafori_6",
+      "titolo": "6 dimensioni",
+      "argomenti_obbligatori": [
+        "redditualita",
+        "solidita",
+        "liquidita",
+        "crescita",
+        "posizionamento",
+        "dipendenza clienti"
+      ],
+      "vincolo": "esattamente 6 card, ognuna con semaforo + valore + benchmark di pari + commento",
+      "funzione_psico": "riprova sociale di pari (benchmark settore/dimensione) + semaforo prima del numero"
+    },
+    {
+      "ord": 3,
+      "id": "top_3_criticita",
+      "titolo": "Le 3 cose su cui agire subito",
+      "argomenti_obbligatori": [
+        "3 criticita collegate alle dimensioni peggiori",
+        "per ciascuna: prima mossa entro 30 giorni"
+      ],
+      "funzione_psico": "loss aversion (cosa rischi) + reciprocita (la prima mossa e' un regalo vero, utile da solo)"
+    },
+    {
+      "ord": 4,
+      "id": "cta",
+      "titolo": "CTA verso il tier successivo",
+      "argomenti_obbligatori": [
+        "headline orientata al desiderio (dove andare)",
+        "cosa include il tier sopra (max 3 bullet)",
+        "prezzo risolto da catalogo (NON hardcoded)",
+        "CTA unica (call gratuita)",
+        "fallback email"
+      ],
+      "funzione_psico": "gancio onesto (information gap): 'questo e' il COSA, sopra trovi il PERCHE' e la soluzione'. CTA unica (Hick's law)."
+    },
+    {
+      "ord": 5,
+      "id": "dettagli_tecnici",
+      "titolo": "Dettagli e metodologia (collapsable)",
+      "argomenti_obbligatori": [
+        "dati input usati",
+        "fonte benchmark",
+        "metodologia scoring",
+        "limiti dichiarati",
+        "disclaimer"
+      ],
+      "funzione_psico": "frizione buona: chi vuole approfondire trova tutto, gli altri non sono appesantiti"
+    },
+    {
+      "ord": 6,
+      "id": "footer",
+      "titolo": "Footer",
+      "argomenti_obbligatori": [
+        "data generazione",
+        "versione skill",
+        "contatti K2-AI",
+        "disclaimer breve"
+      ]
+    }
+  ],
+  "elementi_obbligatori": [
+    "gauge SVG 0-100 a 3 zone",
+    "6 card semaforo",
+    "3 card criticita",
+    "banner CTA"
+  ],
+  "elementi_psico_trasversali": {
+    "scala_del_valore": "mini-mappa 'sei qui': VEDERE -> capire -> risolvere -> presidiare, con VEDERE evidenziato",
+    "accent_unico": "il gauge e' l'unico elemento dominante della prima schermata",
+    "concretezza_euro": "ogni criticita quantifica l'impatto/rischio in euro dove possibile",
+    "cliente_eroe": "seconda persona singolare, tono diretto, zero gergo business school",
+    "etica": "diagnosi reale e utile da sola: niente teaser frustrante"
+  },
+  "regole_validazione_linter": [
+    {
+      "id": "R01",
+      "regola": "tutte le 7 sezioni di struttura_canonica presenti nell'ordine 'ord'",
+      "severita": "errore"
+    },
+    {
+      "id": "R02",
+      "regola": "esattamente 6 card semaforo con i fattori/dimensioni del dominio",
+      "severita": "errore"
+    },
+    {
+      "id": "R03",
+      "regola": "esattamente 3 card criticita/priorita del dominio",
+      "severita": "errore"
+    },
+    {
+      "id": "R04",
+      "regola": "gauge 0-100 presente con giudizio testuale coerente",
+      "severita": "errore"
+    },
+    {
+      "id": "R05",
+      "regola": "CTA unica verso il tier successivo presente",
+      "severita": "errore"
+    },
+    {
+      "id": "R06",
+      "regola": "peso file <= 80 KB e nessuna dipendenza esterna",
+      "severita": "warning"
+    },
+    {
+      "id": "R07",
+      "regola": "disclaimer presente (hero/footer/dettagli)",
+      "severita": "errore"
+    },
+    {
+      "id": "R08",
+      "regola": "json_output valida contro contratto_dati",
+      "severita": "errore"
+    },
+    {
+      "id": "R09",
+      "regola": "nessun prezzo hard-coded: prezzo del tier sopra risolto da catalogo a runtime",
+      "severita": "warning",
+      "nota": "il template oggi riporta 49/gratuito hard-coded -> da sostituire con id-catalogo (Nodo1)"
+    },
+    {
+      "id": "R10",
+      "regola": "tono: nessun termine gergale da business school in lista nera",
+      "severita": "warning"
+    }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": null,
+    "tier_successivo": "boost",
+    "nota_funnel": "Oggi la CTA punta direttamente ad AdvisorBoost (boost). Vedi LEGGIMI: decidere se inserire l'Audit come gradino intermedio o lasciare il salto check->boost.",
+    "gancio": "Questa pagella e' il COSA. Il passo sopra ti da' il PERCHE' e la rotta. CTA dopo il picco (peak-end)."
+  },
+  "conteggi_attesi": {
+    "card_semaforo": 6,
+    "criticita": 3
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/schemas/check-pmi-express/output-schema.json",
+  "title": "Check PMI Express — Output strutturato",
+  "description": "Schema JSON del deliverable Check PMI Express: pagellino strategico-finanziario rapido per PMI italiane.",
+  "type": "object",
+  "required": ["meta", "azienda", "input_utente", "dimensioni", "score", "criticita", "cta"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["skill", "versione", "data_generazione", "tier"],
+      "properties": {
+        "skill": {"const": "check-pmi-express"},
+        "versione": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "data_generazione": {"type": "string", "format": "date"},
+        "tier": {"enum": ["gratuito", "premium_49eur"]},
+        "slug": {"type": "string", "pattern": "^[a-z0-9-]+$"}
+      }
+    },
+    "azienda": {
+      "type": "object",
+      "required": ["denominazione", "settore", "regione", "fatturato_eur", "utile_netto_eur", "dipendenti", "anno_fondazione"],
+      "properties": {
+        "denominazione": {"type": "string"},
+        "settore": {"type": "string"},
+        "sotto_settore": {"type": "string"},
+        "regione": {"type": "string"},
+        "provincia": {"type": "string"},
+        "fatturato_eur": {"type": "number", "minimum": 0},
+        "fatturato_anno_precedente_eur": {"type": ["number", "null"], "minimum": 0},
+        "utile_netto_eur": {"type": "number"},
+        "pfn_eur": {"type": ["number", "null"], "description": "PFN positiva = debito netto; negativa = cassa netta"},
+        "dipendenti": {"type": "integer", "minimum": 1, "maximum": 50},
+        "fascia_dimensionale": {"enum": ["micro", "piccola_bassa", "piccola_alta", "media"]},
+        "anno_fondazione": {"type": "integer", "minimum": 1800},
+        "eta_anni": {"type": "integer", "minimum": 0},
+        "competitor_dichiarati": {"type": "array", "items": {"type": "string"}},
+        "concentrazione_primo_cliente_perc": {"type": ["number", "null"], "minimum": 0, "maximum": 100}
+      }
+    },
+    "input_utente": {
+      "type": "object",
+      "description": "Traccia esatta dei dati forniti dal titolare vs stimati dal sistema",
+      "required": ["completezza", "dati_stimati"],
+      "properties": {
+        "completezza": {"type": "integer", "minimum": 0, "maximum": 100, "description": "% dei 12 input forniti direttamente"},
+        "dati_stimati": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["campo", "valore_stimato", "metodo"],
+            "properties": {
+              "campo": {"type": "string"},
+              "valore_stimato": {},
+              "metodo": {"type": "string", "description": "come e stato stimato (proxy, media settore, etc.)"}
+            }
+          }
+        }
+      }
+    },
+    "kpi_derivati": {
+      "type": "object",
+      "description": "KPI calcolati dai dati input",
+      "properties": {
+        "ebitda_stimato_eur": {"type": "number"},
+        "ebitda_margin_stimato": {"type": "number"},
+        "margine_netto": {"type": "number"},
+        "pfn_ebitda": {"type": ["number", "null"]},
+        "ricavi_per_dipendente_eur": {"type": "number"},
+        "cagr_1anno": {"type": ["number", "null"]}
+      }
+    },
+    "dimensioni": {
+      "type": "object",
+      "required": ["redditualita", "solidita", "liquidita", "crescita", "posizionamento", "dipendenza_clienti"],
+      "properties": {
+        "redditualita": {"$ref": "#/$defs/dimensione"},
+        "solidita": {"$ref": "#/$defs/dimensione"},
+        "liquidita": {"$ref": "#/$defs/dimensione"},
+        "crescita": {"$ref": "#/$defs/dimensione"},
+        "posizionamento": {"$ref": "#/$defs/dimensione"},
+        "dipendenza_clienti": {"$ref": "#/$defs/dimensione"}
+      }
+    },
+    "score": {
+      "type": "object",
+      "required": ["globale", "giudizio", "breakdown"],
+      "properties": {
+        "globale": {"type": "integer", "minimum": 0, "maximum": 100},
+        "giudizio": {"enum": ["Eccellente", "Buono", "Sufficiente", "Preoccupante", "Critico"]},
+        "sintesi_una_riga": {"type": "string", "maxLength": 150},
+        "breakdown": {
+          "type": "object",
+          "description": "Contributo di ogni dimensione al punteggio globale",
+          "required": ["redditualita", "solidita", "liquidita", "crescita", "posizionamento", "dipendenza_clienti"],
+          "properties": {
+            "redditualita": {"$ref": "#/$defs/contributo_dimensione"},
+            "solidita": {"$ref": "#/$defs/contributo_dimensione"},
+            "liquidita": {"$ref": "#/$defs/contributo_dimensione"},
+            "crescita": {"$ref": "#/$defs/contributo_dimensione"},
+            "posizionamento": {"$ref": "#/$defs/contributo_dimensione"},
+            "dipendenza_clienti": {"$ref": "#/$defs/contributo_dimensione"}
+          }
+        }
+      }
+    },
+    "alert_ccii": {
+      "type": "object",
+      "description": "Alert Codice Crisi Impresa e Insolvenza (se score < 45 e segnali presenti)",
+      "properties": {
+        "attivo": {"type": "boolean"},
+        "segnali_rilevati": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "PN_negativo_dichiarato",
+              "utile_netto_negativo_multianno",
+              "ritardi_pagamento_dichiarati",
+              "PFN_EBITDA_oltre_6",
+              "banche_revocano_credito"
+            ]
+          }
+        },
+        "raccomandazione": {"type": "string"}
+      }
+    },
+    "criticita": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "description": "Le 3 dimensioni con score piu basso, con azione 30 giorni",
+      "items": {
+        "type": "object",
+        "required": ["rank", "dimensione_origine", "titolo", "sintesi", "azione_30_giorni", "urgenza"],
+        "properties": {
+          "rank": {"type": "integer", "minimum": 1, "maximum": 3},
+          "dimensione_origine": {"enum": ["redditualita", "solidita", "liquidita", "crescita", "posizionamento", "dipendenza_clienti"]},
+          "titolo": {"type": "string", "minLength": 10, "maxLength": 80},
+          "sintesi": {"type": "string", "minLength": 40, "maxLength": 400},
+          "azione_30_giorni": {"type": "string", "minLength": 20, "maxLength": 300},
+          "urgenza": {"enum": ["alta", "media"]},
+          "impatto_stimato": {"type": "string"}
+        }
+      }
+    },
+    "cta": {
+      "type": "object",
+      "required": ["prodotto_suggerito", "prezzo_da_eur"],
+      "properties": {
+        "prodotto_suggerito": {"const": "flusso-advisorboost-pmi"},
+        "prezzo_da_eur": {"type": "number", "minimum": 1999, "maximum": 3999},
+        "tier_suggerito": {"enum": ["light", "standard", "pro"]},
+        "motivo_suggerimento": {"type": "string"},
+        "link_calendly": {"type": "string", "format": "uri"},
+        "link_landing": {"type": "string", "format": "uri"}
+      }
+    },
+    "file_generati": {
+      "type": "object",
+      "properties": {
+        "html_pagella": {"type": "string"},
+        "json_output": {"type": "string"}
+      }
+    },
+    "disclaimer": {"type": "string"},
+    "metodologia": {
+      "type": "object",
+      "properties": {
+        "fonti_benchmark": {"type": "array", "items": {"type": "string"}},
+        "limiti_dichiarati": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "$defs": {
+    "dimensione": {
+      "type": "object",
+      "required": ["semaforo", "valore", "benchmark", "commento"],
+      "properties": {
+        "semaforo": {"enum": ["verde", "giallo", "rosso", "neutro"]},
+        "valore": {"type": "string", "description": "Valore misurato con unita di misura (es: 'EBITDA margin 8.5%')"},
+        "valore_numerico": {"type": ["number", "null"]},
+        "benchmark": {"type": "string", "description": "Benchmark settore con range (es: 'mediana 10-15%')"},
+        "commento": {"type": "string", "minLength": 20, "maxLength": 250},
+        "sub_indicatori": {
+          "type": "array",
+          "description": "Per dimensioni composite (es: posizionamento)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nome": {"type": "string"},
+              "valore": {"type": "string"},
+              "semaforo": {"enum": ["verde", "giallo", "rosso"]}
+            }
+          }
+        }
+      }
+    },
+    "contributo_dimensione": {
+      "type": "object",
+      "required": ["peso", "punti_semaforo", "punti_pesati"],
+      "properties": {
+        "peso": {"type": "number", "minimum": 0, "maximum": 1},
+        "punti_semaforo": {"type": "number", "enum": [0, 1.5, 3]},
+        "punti_pesati": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}

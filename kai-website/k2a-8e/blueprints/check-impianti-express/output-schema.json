@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "check-impianti-express-output",
+  "title": "Output check-impianti-express",
+  "description": "Schema di output per la pagella impiantistica rapida generata dalla skill check-impianti-express",
+  "type": "object",
+  "required": ["meta", "score_globale", "fascia", "fattori", "top_5_criticita", "cta_upsell", "files"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["skill_name", "version", "generated_at", "tipo_edificio", "anno_impianti"],
+      "properties": {
+        "skill_name": {
+          "type": "string",
+          "const": "check-impianti-express"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tipo_edificio": {
+          "type": "string",
+          "enum": ["residenziale", "commerciale", "industriale", "terziario"]
+        },
+        "anno_impianti": {
+          "type": "integer",
+          "minimum": 1950,
+          "maximum": 2030
+        },
+        "potenza_kw": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sistema_riscaldamento": {
+          "type": "string"
+        },
+        "classe_energetica": {
+          "type": "string",
+          "enum": ["A4", "A3", "A2", "A1", "B", "C", "D", "E", "F", "G", "non_nota"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "score_globale": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "fascia": {
+      "type": "string",
+      "enum": ["Critico", "Insufficiente", "Sufficiente", "Buono", "Eccellente"]
+    },
+    "fattori": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["nome", "peso", "score", "semaforo", "descrizione_cliente"],
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "peso": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "semaforo": {
+            "type": "string",
+            "enum": ["verde", "giallo", "rosso"]
+          },
+          "descrizione_cliente": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "top_5_criticita": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["fattore", "impatto_stimato", "azione_suggerita"],
+        "properties": {
+          "fattore": {
+            "type": "string"
+          },
+          "impatto_stimato": {
+            "type": "string"
+          },
+          "azione_suggerita": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cta_upsell": {
+      "type": "object",
+      "required": ["servizio", "messaggio"],
+      "properties": {
+        "servizio": {
+          "type": "string",
+          "examples": ["Audit Impiantistico Completo", "Diagnosi Energetica"]
+        },
+        "messaggio": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "object",
+      "required": ["html_report", "json_report"],
+      "properties": {
+        "html_report": {
+          "type": "string"
+        },
+        "json_report": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

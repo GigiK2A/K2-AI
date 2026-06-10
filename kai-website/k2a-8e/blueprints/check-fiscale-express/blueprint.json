@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/check-fiscale-express.check.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del Check Fiscale Express (pagellino fiscale-tributario PMI). html-single-page, ingresso del funnel FiscoBoost (tripwire 19 EUR). Orientamento, NON consulenza fiscale (D-036). Gemello di check-legale-express.",
+  "pacchetto": {
+    "skill": "check-fiscale-express",
+    "nome_commerciale": "Check Fiscale Express",
+    "tier": "check",
+    "posizione_funnel": "ingresso / tripwire 19 EUR"
+  },
+  "contratto_dati": "check-fiscale-express/schemas/output-schema.json",
+  "formato_primario": "html-single-page",
+  "paginato": false,
+  "vincoli_formato": { "peso_kb_max": 80, "mobile_first": true, "dipendenze_esterne": "nessuna (SVG/CSS/JS vanilla)", "tempo_caricamento_s_max": 1, "stampabile_pagine_a4": "2-3" },
+  "voci": [
+    { "ord": 0, "id": "header", "titolo": "Header", "argomenti_obbligatori": ["logo K2-AI", "titolo con nome azienda", "data"] },
+    { "ord": 1, "id": "hero_score", "titolo": "Hero score", "argomenti_obbligatori": ["gauge 0-100", "giudizio testuale (fascia)", "sintesi diagnosi in 1 riga"],
+      "funzione_psico": "information gap + picco visivo; gauge above the fold" },
+    { "ord": 2, "id": "semafori_6", "titolo": "6 aree fiscali", "argomenti_obbligatori": ["Regime fiscale", "Imposte dirette", "IVA e adempimenti", "Agevolazioni e crediti non sfruttati", "Deduzioni/detrazioni", "Compliance e rischio"],
+      "vincolo": "esattamente 6 card, ognuna con semaforo + commento",
+      "funzione_psico": "riprova sociale + semaforo prima del giudizio" },
+    { "ord": 3, "id": "top_3_criticita", "titolo": "Le 3 criticita su cui agire", "argomenti_obbligatori": ["3 criticita collegate alle aree peggiori", "per ciascuna: prima mossa pratica", "flag 'serve commercialista' dove rilevante"],
+      "funzione_psico": "loss aversion + handoff onesto" },
+    { "ord": 4, "id": "cta", "titolo": "CTA verso il tier successivo", "argomenti_obbligatori": ["headline orientata al desiderio", "cosa include FiscoBoost (max 3 bullet)", "prezzo risolto da catalogo (NON hardcoded)", "CTA unica (call gratuita)", "fallback email"],
+      "funzione_psico": "gancio onesto: questo e il COSA, sopra la diagnosi completa. CTA unica (Hick's law)." },
+    { "ord": 5, "id": "dettagli_tecnici", "titolo": "Dettagli e metodologia (collapsable)", "argomenti_obbligatori": ["dati input usati", "metodologia scoring", "limiti dichiarati", "disclaimer di non-sostituzione (D-036)"],
+      "funzione_psico": "frizione buona" },
+    { "ord": 6, "id": "footer", "titolo": "Footer", "argomenti_obbligatori": ["data generazione", "versione skill", "contatti K2-AI", "disclaimer breve"] }
+  ],
+  "elementi_obbligatori": ["gauge SVG 0-100 a 3 zone", "6 card semaforo aree", "3 card criticita", "banner CTA"],
+  "elementi_psico_trasversali": {
+    "scala_del_valore": "mini-mappa 'sei qui': VEDERE -> capire -> risolvere -> presidiare, con VEDERE evidenziato",
+    "accent_unico": "il gauge e l'unico elemento dominante della prima schermata",
+    "confine_etico": "orientamento, non consulenza; punti rossi -> commercialista (D-036); solo lecito",
+    "cliente_eroe": "seconda persona singolare, tono diretto, zero gergo tributario",
+    "etica": "diagnosi reale e utile da sola: niente teaser frustrante"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "score 0-100 presente con gauge e giudizio testuale coerente", "severita": "errore" },
+    { "id": "R02", "regola": "esattamente 6 card semaforo con le 6 aree attese", "severita": "errore" },
+    { "id": "R03", "regola": "esattamente 3 criticita (top_3)", "severita": "errore" },
+    { "id": "R04", "regola": "CTA unica verso il tier successivo presente", "severita": "errore" },
+    { "id": "R05", "regola": "nessuna consulenza personalizzata: solo orientamento, disclaimer non-sostituzione presente (confine D-036)", "severita": "errore" },
+    { "id": "R06", "regola": "peso file <= 80 KB e nessuna dipendenza esterna", "severita": "warning" },
+    { "id": "R07", "regola": "json_output valida contro contratto_dati", "severita": "errore" },
+    { "id": "R08", "regola": "nessun prezzo hard-coded: prezzo del tier sopra risolto da catalogo a runtime", "severita": "warning" },
+    { "id": "R09", "regola": "tono: nessun termine gergale tributario non spiegato", "severita": "warning" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": null,
+    "tier_successivo": "boost",
+    "gancio": "Questa pagella e il COSA. FiscoBoost ti da la diagnosi completa e il piano d'azione fiscale. CTA dopo il picco (peak-end)."
+  },
+  "conteggi_attesi": { "card_semaforo": 6, "criticita": 3 }
+}

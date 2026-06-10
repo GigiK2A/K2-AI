@@ -574,6 +574,11 @@ def _clamp_to_schema(val, schema: dict, root: dict):
             if sp > m * 0.6:
                 cut = cut[:sp]
             val = cut.rstrip(" ,;:.-") + "…"
+        ml = schema.get("minLength")
+        if isinstance(ml, int) and len(val) < ml and not pat:
+            val = (val + " — da dettagliare").ljust(ml)[:max(ml, len(val))]
+            if len(val) < ml:
+                val = val.ljust(ml)
         return val
     if isinstance(val, dict) and t == "object":
         props = schema.get("properties", {})
@@ -617,8 +622,23 @@ def _parse_section(text: str, tipo):
                 return json.loads(t[s:e + 1])
             except json.JSONDecodeError:
                 pass
-    # scalare: rimuovi virgolette
-    return t.strip().strip('"')
+    # scalare: rimuovi virgolette e COERCISCI al tipo dichiarato (una sezione
+    # top-level può essere integer/number/boolean, es. score_globale → altrimenti
+    # resterebbe stringa "62" e fallirebbe la validazione).
+    s = t.strip().strip('"').strip()
+    if tipo == "integer":
+        try:
+            return int(float(s))
+        except (ValueError, TypeError):
+            return s
+    if tipo == "number":
+        try:
+            return float(s)
+        except (ValueError, TypeError):
+            return s
+    if tipo == "boolean":
+        return s.lower() in ("true", "1", "si", "sì", "yes", "vero")
+    return s
 
 
 def generate_conforming(output_schema: dict, blueprint: dict, facts: dict[str, dict],
