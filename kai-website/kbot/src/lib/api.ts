@@ -791,6 +791,82 @@ export async function consumeCredits(
   return await res.json();
 }
 
+// ---- Check express (strato Consumo, calcolo deterministico) ----------------
+
+export interface CheckMeta {
+  service_id: string;
+  tool: string;
+  module: string;
+  input_schema: Record<string, unknown>;
+}
+
+/** Elenco dei Check express disponibili (calcolo locale, gate crediti). */
+export async function listChecks(authToken: string): Promise<{ checks: CheckMeta[]; count: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/checks`, {
+    headers: { ...authHeaders(authToken) },
+    cache: "no-store",
+  });
+  if (!res.ok) await parseErr(res, "Impossibile leggere i check");
+  return await res.json();
+}
+
+/** Esegue un Check express → risultato strutturato (consuma crediti). */
+export async function runCheck(
+  serviceId: string,
+  inputs: Record<string, unknown>,
+  authToken: string,
+): Promise<{ service_id: string; result: unknown; saldo_crediti: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/check/${encodeURIComponent(serviceId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ inputs }),
+  });
+  if (!res.ok) await parseErr(res, "Check non riuscito");
+  return await res.json();
+}
+
+/** Esegue un Check express e scarica il PDF D1 (consuma crediti). */
+export async function getCheckDocument(
+  serviceId: string,
+  inputs: Record<string, unknown>,
+  authToken: string,
+): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/api/kbot/check/${encodeURIComponent(serviceId)}/document`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ inputs }),
+  });
+  if (!res.ok) await parseErr(res, "Generazione documento non riuscita");
+  return await res.blob();
+}
+
+/** Catalogo dei tool a calcolo dell'ecosistema (auth richiesta). */
+export async function listComputeTools(
+  authToken: string,
+  dominio?: string,
+): Promise<{ tools: { tool_id: string; dominio: string; tool: string }[]; count: number }> {
+  const url = new URL(`${API_BASE}/api/kbot/tools`);
+  if (dominio) url.searchParams.set("dominio", dominio);
+  const res = await fetch(url.toString(), { headers: { ...authHeaders(authToken) }, cache: "no-store" });
+  if (!res.ok) await parseErr(res, "Impossibile leggere i tool");
+  return await res.json();
+}
+
+/** Esegue un tool a calcolo deterministico dell'ecosistema. */
+export async function runComputeTool(
+  toolId: string,
+  inputs: Record<string, unknown>,
+  authToken: string,
+): Promise<{ tool_id: string; result: unknown }> {
+  const res = await fetch(`${API_BASE}/api/kbot/tool/${toolId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ inputs }),
+  });
+  if (!res.ok) await parseErr(res, "Calcolo non riuscito");
+  return await res.json();
+}
+
 export interface DeliverableFormField {
   id: string;
   label: string;
