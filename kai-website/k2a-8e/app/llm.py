@@ -334,6 +334,26 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     # risolve → PointerToNowhere → refuse erroneo su ogni schema con $defs).
     root_defs = output_schema.get("$defs")
 
+    # Blocco SYSTEM condiviso e CACHED: regole + fatti + dati cliente sono identici
+    # per ogni sezione → cache_control li fa ri-pagare UNA volta sola invece di ×N
+    # (taglio input ~50-70% su doc multi-sezione). La parte variabile (sezione +
+    # sotto-schema) va nel messaggio user.
+    facts_system = (
+        f"Sei un consulente senior che redige le sezioni di un deliverable {servizio} "
+        "PREMIUM per una PMI italiana (documento da 8-12 pagine).\n"
+        "REGOLE (per OGNI sezione):\n"
+        "- Conformati ESATTAMENTE al sotto-schema JSON fornito (required, tipi, enum).\n"
+        "- Restituisci SOLO il CONTENUTO della sezione, NON incartato nel suo nome: "
+        "direttamente {...} o [...], MAI {\"<nome_sezione>\": {...}}.\n"
+        "- Prosa approfondita ma DENSA: ragionamento + implicazioni operative + numeri "
+        "dove servono. Ogni voce di lista/analisi: max ~90 parole, niente riempitivo.\n"
+        "- Usa i DATI CLIENTE (settore, dimensione, regime). NON inventare numeri o "
+        "citazioni di legge: usa i FATTI verbatim; dato mancante → dichiaralo.\n"
+        "- Rispetta maxLength/maxItems. JSON STRETTAMENTE VALIDO (virgolette interne con \\\").\n"
+        "- Orientamento professionale, non consulenza vincolante (D-034/D-036).\n\n"
+        f"{facts_blk}\n\nDATI CLIENTE: {cli}"
+    )
+
     # Sezioni STRUTTURALI (non analitiche): compilate deterministicamente, mai
     # via LLM. 'input' è l'echo del form cliente; 'files' è il manifest dei file
     # generati; 'meta' i metadati. Mandarle a Sonnet → hallucinazione/refuse.
@@ -353,46 +373,28 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         sub_val = dict(sub)
         if root_defs and "$defs" not in sub_val:
             sub_val["$defs"] = root_defs
-        sysmsg = (
-            f"Sei un consulente senior che redige la sezione «{_human(name)}» di un "
-            f"deliverable {servizio} PREMIUM per una PMI italiana. Profondità da report "
-            "professionale (questo è UN capitolo di un documento da 8-12 pagine).\n"
-            "REGOLE:\n"
-            "- Conformati ESATTAMENTE al sotto-schema JSON (campi required, tipi, enum).\n"
-            "- Per i campi di prosa/analisi: scrivi in MODO APPROFONDITO e specifico — più "
-            "paragrafi, ragionamento, implicazioni operative, esempi concreti, e dove ha "
-            "senso quantificazioni/stime (range, %, soglie). Densità da consulente, non riassunti.\n"
-            "- Usa i DATI CLIENTE (settore, dimensione, regime, ecc.): analisi su MISURA.\n"
-            "- RISPETTA i vincoli dello schema: campi con maxLength/maxItems restano "
-            "sintetici (sono riepiloghi); la PROFONDITÀ va nei campi descrittivi senza limiti "
-            "e nelle liste di findings/voci. Non sforare i limiti di lunghezza.\n"
-            "- NON inventare numeri o citazioni di legge: usa i FATTI verbatim. Dato mancante "
-            "→ dichiaralo, non inventarlo.\n"
-            "- È orientamento professionale, non consulenza vincolante (D-034/D-036).\n"
-            "- JSON STRETTAMENTE VALIDO: le virgolette dentro le stringhe vanno con \\\". "
-            "Non inserire virgolette non-escaped né parentesi con virgolette dentro i valori.\n"
-            "Rispondi SOLO con il JSON della sezione."
-        )
-        user = (f"SOTTO-SCHEMA della sezione «{name}»:\n{json.dumps(sub_compact, ensure_ascii=False)[:4000]}\n\n"
-                f"{facts_blk}\n\nDATI CLIENTE: {cli}\n\nGenera la sezione «{name}», approfondita.")
-        # max_tokens adattivo: sezioni "pesanti" (array, oggetti con molte aree o
-        # $ref multipli) possono produrre molto JSON → cap alto per non troncare.
-        # Sonnet 4.5 regge fino a 64k output. Sezioni leggere → cap contenuto.
+        user = (f"Genera la sezione «{name}» del deliverable. SOTTO-SCHEMA:\n"
+                f"{json.dumps(sub_compact, ensure_ascii=False)[:4000]}\n\n"
+                "Rispondi SOLO con il JSON della sezione — contenuto diretto, NON incartato "
+                f"nella chiave «{name}».")
+        # max_tokens è un CEILING (paghi solo i token generati): lo teniamo alto per
+        # NON troncare; il costo/lunghezza reale è controllato dalla concisione nel
+        # system ("~90 parole per voce"). Sezioni "pesanti" → ceiling più alto.
         sub_json = json.dumps(sub)
         heavy = (sub.get("type") == "array"
-                 or sub_json.count("$ref") >= 2
-                 or sub_json.count('"type": "array"') >= 2
-                 or len(sub.get("properties", {})) >= 5)
-        maxtok = 32000 if heavy else 16000
-        analytical.append((name, sub, sub_val, sysmsg, user, maxtok))
+                 or "$ref" in sub_json
+                 or sub_json.count('"type": "array"') >= 1
+                 or len(sub.get("properties", {})) >= 4)
+        maxtok = 32000 if heavy else 20000
+        analytical.append((name, sub, sub_val, user, maxtok))
 
     def _gen_section(item):
         """Genera UNA sezione (thread-safe). Ritorna (name, val|None, invalido?, tok)."""
-        name, sub, sub_val, sysmsg, user, maxtok = item
+        name, sub, sub_val, user, maxtok = item
         try:
-            # streaming OBBLIGATORIO sopra ~16k token (l'SDK rifiuta non-streaming
-            # per richieste che possono superare i 10 min).
-            sys_blk = [{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}]
+            # SYSTEM cached condiviso (facts_system) + user variabile. streaming
+            # OBBLIGATORIO sopra ~16k token.
+            sys_blk = [{"type": "text", "text": facts_system, "cache_control": {"type": "ephemeral"}}]
             msgs = [{"role": "user", "content": user}]
             with client.messages.stream(model=ANTHROPIC_MODEL, max_tokens=maxtok,
                                         system=sys_blk, messages=msgs) as stream:
@@ -401,6 +403,11 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
                 log.warning("sezione '%s' troncata a max_tokens=%d", name, maxtok)
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
             val = _parse_section(text, sub.get("type"))  # oggetto/lista/scalare
+            # UNWRAP doppio-incarto: il modello a volte restituisce {"<nome>": {...}}
+            # invece del contenuto diretto → scarta il guscio.
+            if (isinstance(val, dict) and len(val) == 1 and name in val
+                    and isinstance(val[name], (dict, list))):
+                val = val[name]
             if val is not None:  # rete di sicurezza maxLength/maxItems
                 val = _clamp_to_schema(val, sub_val, output_schema)
             usage = getattr(resp, "usage", None)
