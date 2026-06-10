@@ -22,7 +22,7 @@ from typing import Optional
 PIANI: dict[str, dict] = {
     "free":     {"label": "Free",     "prezzo_mese_eur": 0,   "crediti_mese": 0,   "sconto_boost_pct": 0,  "utenti": 1, "servizi_eseguibili": False},
     "pro":      {"label": "Pro",      "prezzo_mese_eur": 49,  "crediti_mese": 50,  "sconto_boost_pct": 10, "utenti": 1, "servizi_eseguibili": True},
-    "business": {"label": "Studio",   "prezzo_mese_eur": 149, "crediti_mese": 200, "sconto_boost_pct": 20, "utenti": 3, "servizi_eseguibili": True},
+    "business": {"label": "Business",   "prezzo_mese_eur": 149, "crediti_mese": 200, "sconto_boost_pct": 20, "utenti": 3, "servizi_eseguibili": True},
 }
 VALORE_CREDITO_EUR = 1
 INATTIVITA_MAX_MESI = 12
