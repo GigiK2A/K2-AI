@@ -11,10 +11,15 @@ Postura di base **solida**: SSRF, CORS, webhook, entitlement JWT e dispatch dina
 | # | Severità | Stato | Titolo |
 |---|---|---|---|
 | 1 | 🔴 ALTA | ✅ FIXATO | Endpoint compute/checks senza auth né rate-limit |
-| 2 | 🟠 MEDIA | ⚠️ APERTO | Entitlement 8e fail-OPEN se segreto mancante |
+| 2 | 🟠 MEDIA | ✅ FIXATO | Entitlement 8e fail-OPEN se segreto mancante → ora fail-closed |
 | 3 | 🔴 ALTA | ✅ FIXATO | Endpoint generico /tool espone generatori che scrivono file (write arbitrario) |
 | 4 | 🟡 BASSA | ✅ FIXATO | Markup injection nel renderer PDF (reportlab) |
-| 5-8 | ℹ️ INFO | nota | tool non funzionali esposti, dead code, DoS-depth, SQL |
+| R2 | 🟠 MEDIA | ✅ FIXATO | Check eseguibili gratis da utente autenticato → gate crediti server-side |
+| R3 | 🟡 BASSA | ✅ FIXATO | Dead code vendor (legge .env) + generatori file → potati |
+| R4 | 🟡 BASSA | ✅ FIXATO | DoS-depth → timeout per-richiesta + cap concorrenza |
+| 5,8 | ℹ️ INFO | nota | tool norme non funzionali (no DB); SQL da verificare a DB presente |
+
+**Tutte le vulnerabilità trovate sono state risolte e testate. Commit: `b4f57ad`, `f86f747`, `829d304`.**
 
 ---
 
