@@ -19,10 +19,20 @@ from __future__ import annotations
 from typing import Optional
 
 # --- modello costante allineato alla fonte (catalogo_documenti.json) ---------
+# Fedele al catalogo sorgente di Luca (catalogo_documenti.json → abbonamenti.piani):
+# label e feature INCLUDE comprese. La differenziazione non è solo nei crediti.
 PIANI: dict[str, dict] = {
-    "free":     {"label": "Free",     "prezzo_mese_eur": 0,   "crediti_mese": 0,   "sconto_boost_pct": 0,  "utenti": 1, "servizi_eseguibili": False},
-    "pro":      {"label": "Pro",      "prezzo_mese_eur": 49,  "crediti_mese": 50,  "sconto_boost_pct": 10, "utenti": 1, "servizi_eseguibili": True},
-    "business": {"label": "Business",   "prezzo_mese_eur": 149, "crediti_mese": 200, "sconto_boost_pct": 20, "utenti": 3, "servizi_eseguibili": True},
+    "free": {"label": "Account gratuito", "prezzo_mese_eur": 0, "crediti_mese": 0,
+             "sconto_boost_pct": 0, "utenti": 1, "servizi_eseguibili": False,
+             "include": ["Registrazione", "Vetrina servizi", "Documenti di esempio (statici)"]},
+    "pro": {"label": "Pro", "prezzo_mese_eur": 49, "crediti_mese": 50,
+            "sconto_boost_pct": 10, "utenti": 1, "servizi_eseguibili": True,
+            "include": ["Utility: memo→testo, calendario/Drive, traduttore", "50 crediti/mese",
+                        "-10% sui Boost", "Area personale e storico"]},
+    "business": {"label": "Studio", "prezzo_mese_eur": 149, "crediti_mese": 200,
+                 "sconto_boost_pct": 20, "utenti": 3, "servizi_eseguibili": True,
+                 "include": ["Tutto Pro", "200 crediti/mese", "3 utenti", "-20% sui Boost",
+                             "Priorità di elaborazione"]},
 }
 VALORE_CREDITO_EUR = 1
 INATTIVITA_MAX_MESI = 12
