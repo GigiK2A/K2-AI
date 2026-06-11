@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .. import settings
-from ..lib import engine, sessions, catalog, entitlement
+from ..lib import engine, sessions, catalog, entitlement, autofill
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..lib.storage import upload_pdf
 from ..lib.supabase_admin import get_admin_client
@@ -118,6 +118,71 @@ async def create(body: DeliverableBody, user: Optional[AuthUser] = Depends(optio
     except Exception:
         log.warning("persist deliverable job fallita (non bloccante)", exc_info=True)
     return res
+
+
+class AutoBody(BaseModel):
+    sessionId: str = Field(..., alias="session_id")
+    servizioId: Optional[str] = Field(default=None, alias="servizio_id")
+
+    class Config:
+        populate_by_name = True
+
+
+@router.post("/deliverables/auto")
+async def auto_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(optional_user)):
+    """Genera il documento SENZA form: il boost è quello già instradato dalla chat
+    (o ridedotto dal caso), e gli input 8e sono AUTO-COMPILATI dalla conversazione
+    e dai file/bilanci caricati. È il flusso 'chiedi → raccogli → genera. Punto.'."""
+    session = sessions.get_session(body.sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    _check_ownership(session, user)
+
+    collected = dict(session.get("collected_data") or {})
+    servizio_id = body.servizioId or collected.get("boost_suggerito")
+    if not servizio_id:
+        # ridedotto dal riepilogo/estratto della conversazione
+        summary = {**(collected.get("extractedData") or {}), **collected}
+        sug = catalog.suggest_boost(summary)
+        servizio_id = sug["id"] if sug else None
+    if not servizio_id or not catalog.is_8e_generabile(servizio_id):
+        raise HTTPException(status_code=409, detail="nessun documento generabile per questa conversazione")
+    servizio = catalog.get_servizio(servizio_id)
+
+    # Campi richiesti dal boost → auto-compilazione dai dati della conversazione.
+    try:
+        form = await engine.get_form(servizio_id)
+        campi = form.get("campi") or []
+    except engine.EngineError:
+        campi = []
+    inputs = autofill.extract_inputs(session, campi)
+
+    entitlement_token = _mint_entitlement(session, servizio_id, tier=servizio.get("tipo"))
+    if not entitlement_token:
+        raise HTTPException(status_code=402, detail="servizio non pagato")
+
+    try:
+        res = await engine.create_deliverable(
+            service_id=servizio_id, inputs=inputs,
+            entitlement_token=entitlement_token, tier=servizio.get("tipo"), auth_level="FULL",
+        )
+    except engine.EnginePaymentRequired:
+        raise HTTPException(status_code=402, detail="entitlement rifiutato dall'8e")
+    except engine.EngineRefused as r:
+        raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})
+    except engine.EngineError as e:
+        log.warning("8e error: %s", e)
+        raise HTTPException(status_code=502, detail="motore non disponibile")
+
+    try:
+        collected["deliverable_job_id"] = res.get("job_id")
+        collected["deliverable_service"] = servizio_id
+        collected["deliverable_label"] = servizio.get("label")
+        sessions.update_session(body.sessionId, {"collected_data": collected})
+    except Exception:
+        log.warning("persist deliverable job (auto) fallita (non bloccante)", exc_info=True)
+
+    return {**res, "servizio_id": servizio_id, "label": servizio.get("label")}
 
 
 # --- Gate Preview (W8): gratis, max 2/mese, utente registrato -------------

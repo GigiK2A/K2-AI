@@ -8,7 +8,7 @@ import { Composer } from "@/components/chat/Composer";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
 import { InsightPanel } from "@/components/insights/InsightPanel";
-import { DeliverablePanel } from "@/components/report/DeliverablePanel";
+import { ReportGenerator } from "@/components/report/ReportGenerator";
 import {
   sendMessage,
   streamMessage,
@@ -779,17 +779,11 @@ export default function HomePage() {
                 restano disponibili in dashboard.
               </p>
             )}
-            {/* Scenario C + gate W8: se il pillar ha un boost suggerito, mostra
-                il pannello. Non pagato → anteprima gratuita; pagato → documento. */}
+            {/* Flusso ufficiale: quando il bot ha raccolto abbastanza (boost
+                instradato), UN bottone genera il report. Niente form da riempire:
+                gli input 8e sono auto-compilati dalla conversazione e dai file. */}
             {kbotSession?.id && (kbotSession.boostSuggerito || suggestedBoost) && (
-              <DeliverablePanel
-                sessionId={kbotSession.id}
-                servizioId={kbotSession.boostSuggerito ?? suggestedBoost!.id}
-                servizioLabel={kbotSession.boostSuggeritoLabel ?? suggestedBoost?.label ?? undefined}
-                hasPaid={hasPaid}
-                onUnlock={startCheckoutFromUI}
-                getAuthToken={getToken}
-              />
+              <ReportGenerator sessionId={kbotSession.id} getAuthToken={getToken} />
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}
             <div ref={messagesEndRef} />
