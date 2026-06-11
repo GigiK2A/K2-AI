@@ -105,6 +105,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "newsletter": ("leggi_newsletter", {}),
             "analytics": ("leggi_analytics", {}),
             "prospects": ("leggi_prospects", {}),
+            "competitor_trovati": ("leggi_competitor_trovati", {}),
         }
         for key, (tool, args) in wanted.items():
             if tool not in names:
@@ -331,6 +332,38 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                     rec["errore"] = str(exc)[:120]
             out.append(rec)
         return {"trovati": len(found), "salvati": salvati, "prospects": out}
+
+    @app.post("/api/marketing/competitors")
+    def marketing_competitors(body: ProspectBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """L'agente cerca da solo i competitor italiani (web), li profila e li salva.
+        Nessun URL fornito dall'umano: li trova l'AI. Dati readonly per il cockpit."""
+        if platform is None or getattr(platform, "competitor_scout", None) is None:
+            return {"errore": "competitor scout non disponibile", "competitors": []}
+        n = max(1, min(int(body.n or 6), 12))
+        try:
+            found = platform.competitor_scout.find(n)
+        except Exception as exc:
+            return {"errore": str(exc)[:200], "competitors": []}
+        from aios.actuator import apply_action
+        from aios.competitor_scout import CompetitorScout
+        client = kernel._supabase
+        salvati, out = 0, []
+        for c in found:
+            rec = {"name": c.get("name"), "website": c.get("website"),
+                   "offering": c.get("offering"), "positioning": c.get("positioning"),
+                   "threat": c.get("threat"), "differentiation": c.get("differentiation")}
+            try:
+                apply_action(client, {"tabella": "marketing_competitors", "op": "insert",
+                                      "dati": CompetitorScout.to_row(c)})
+                salvati += 1
+                rec["salvato"] = True
+                kernel.audit.append(action_key="marketing.competitor", event="executed",
+                                    actor="cockpit", detail={"name": c.get("name")})
+            except Exception as exc:
+                rec["salvato"] = False
+                rec["errore"] = str(exc)[:120]
+            out.append(rec)
+        return {"trovati": len(found), "salvati": salvati, "competitors": out}
 
     @app.get("/api/conversations")
     def conversations(_=Depends(_require_auth)) -> list[dict[str, Any]]:

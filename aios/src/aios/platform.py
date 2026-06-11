@@ -85,6 +85,8 @@ def build_platform() -> Platform:
     k.register_tool(n8n_tool())         # braccio esecutore esterno (env-gated)
     k.register_tool(n8n_workflows_tool())  # sensore: elenco workflow n8n (readonly)
     k.register_tool(prospects_tool(client))  # sensore: prospect marketing (readonly)
+    from aios.competitor_scout import competitors_tool
+    k.register_tool(competitors_tool(client))  # sensore: competitor trovati (readonly)
     # leggi_inbox via tabella alimentata da n8n (Outlook OAuth) — override dell'IMAP,
     # che il tenant MFA/Conditional Access blocca. Degrada a [] se la tabella è vuota.
     def _inbox_table():
@@ -130,6 +132,8 @@ def build_platform() -> Platform:
         except Exception:
             return []
     platform.prospector = Prospector(llm_web, llm_strong, founder, suite_reader=_suite)
+    from aios.competitor_scout import CompetitorScout
+    platform.competitor_scout = CompetitorScout(llm_web, llm_strong, founder, suite_reader=_suite)
     from aios.conversation import ConversationManager
     platform._founder = founder
     platform.conversations = ConversationManager(platform, llm_strong)  # email L1 assistito
