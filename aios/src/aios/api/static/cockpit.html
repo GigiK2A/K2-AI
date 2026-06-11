@@ -552,7 +552,7 @@ async function loadMarketing(){
   MK={ov,ins,items:v.proposals||[],deliv:v.deliverables||[],prof:ins.profilo||{},insg:ins.insight||{},
      posts:ins.post||[],servizi:ins.servizi||[],topics:ins.topics||[],leads:arr((vl.data||{}).leggi_lead),
      iscritti:ins.iscritti||[],newsletter:ins.newsletter||[],analytics:ins.analytics||[],
-     prospects:arr(ins.prospects),competitors:arr(ins.competitor_trovati),tab:MK.tab||"Overview"};
+     prospects:arr(ins.prospects),competitors:arr(ins.competitor_trovati),ranking:arr(ins.ranking_seo),tab:MK.tab||"Overview"};
   $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=MK.items.length;
   const rightCol=agentStatusCard(["Performance contenuti","Insight Instagram","Calendario editoriale","Competitor","Brand voice","Monitoraggio trend"],(MK.posts.length||0)+" post · "+(MK.servizi.length||0)+" servizi letti")
     +recoCard(MK.deliv)
@@ -764,7 +764,19 @@ function renderMkTab(){
   else if(MK.tab==="SEO"){
     const t=MK.topics,byP={};t.forEach(x=>{const k=x.Pillar||"Altro";(byP[k]=byP[k]||[]).push(x);});
     const cols=Object.keys(byP).map(k=>`<div class="card lift p-4 fu"><div class="font-bold text-sm mb-2 flex items-center justify-between">${esc(k)} <span class="chip bg-slate-100 text-slate-500">${byP[k].length}</span></div><ul class="text-[12px] space-y-1">${byP[k].map(x=>`<li class="border-t border-slate-50 pt-1.5 mt-1">${esc(x.Tema||'')}</li>`).join("")}</ul></div>`).join("");
-    c.innerHTML=`<section class="card p-4 fu text-[13px] text-slate-500">Cluster keyword/temi reali da <code>topics</code> (${t.length}) per pillar. Search Console/Ahrefs non collegati → solo strategia cluster.</section>
+    const rk=MK.ranking||[];
+    const tc=v=>(Number(v)||0)<=10?'text-emerald-600':(Number(v)||0)<=20?'text-amber-600':'text-slate-500';
+    const gsc=rk.length?`<section class="card lift p-5 fu"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Ranking Google (ultimi 30g)</h3><span class="real">reale · Search Console</span></div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          ${mkpi("👆","Click",NUM(rk.reduce((s,r)=>s+(Number(r.clicks)||0),0)),"30g","text-emerald-600")}
+          ${mkpi("👁","Impression",NUM(rk.reduce((s,r)=>s+(Number(r.impressions)||0),0)),"30g","text-slate-400")}
+          ${mkpi("🔑","Query",rk.length,"in ranking","text-emerald-600")}
+          ${mkpi("📍","Pos. media",(rk.reduce((s,r)=>s+(Number(r.position)||0),0)/rk.length).toFixed(1),"più bassa = meglio","text-slate-400")}</div>
+        <div class="overflow-x-auto"><table class="w-full text-[12px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Query</th><th>Click</th><th>Impr.</th><th>CTR</th><th>Pos.</th></tr></thead>
+        <tbody>${rk.slice(0,30).map(r=>`<tr class="border-t border-slate-50"><td class="py-1.5 font-semibold">${esc(r.query||'')}</td><td>${NUM(r.clicks)}</td><td class="text-slate-500">${NUM(r.impressions)}</td><td class="text-slate-500">${((Number(r.ctr)||0)*100).toFixed(1)}%</td><td class="font-semibold ${tc(r.position)}">${(Number(r.position)||0).toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`
+      :`<section class="card p-4 fu text-[13px] text-slate-500">Cluster keyword/temi reali da <code>topics</code> (${t.length}) per pillar. <b>Google Search Console non ancora collegato</b> → aggiungi <code>GSC_SERVICE_ACCOUNT_JSON</code> e <code>GSC_SITE_URL</code> nel <code>.env</code> e qui compaiono click, impression e posizioni reali.</section>`;
+    c.innerHTML=`${gsc}
+      <section class="card p-4 fu text-[13px] text-slate-500 mt-4">Strategia cluster keyword/temi per pillar da <code>topics</code> (${t.length}).</section>
       <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">${cols||'<div class="text-slate-400">nessun topic</div>'}</section>`;
   }
 }

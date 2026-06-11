@@ -106,6 +106,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "analytics": ("leggi_analytics", {}),
             "prospects": ("leggi_prospects", {}),
             "competitor_trovati": ("leggi_competitor_trovati", {}),
+            "ranking_seo": ("leggi_ranking_seo", {}),
         }
         for key, (tool, args) in wanted.items():
             if tool not in names:
