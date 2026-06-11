@@ -910,6 +910,20 @@ export async function getDeliverableForm(
   return res.json();
 }
 
+export interface BoostCatalogItem {
+  id: string;
+  label: string;
+  ambito?: string;
+}
+
+/** Elenco dei documenti (boost) generabili via 8e — per il selettore nel pannello. */
+export async function listBoostCatalog(): Promise<BoostCatalogItem[]> {
+  const res = await fetch(`${API_BASE}/api/kbot/boost-catalog`, { cache: "no-store" });
+  if (!res.ok) return [];
+  const j = await res.json().catch(() => ({ servizi: [] }));
+  return j.servizi ?? [];
+}
+
 /** Anteprima gratuita (gate W8): richiede login, consuma 1 delle 2 preview/mese.
  *  409 con reason "preview_quota_exhausted" se quota finita. */
 export async function createPreview(

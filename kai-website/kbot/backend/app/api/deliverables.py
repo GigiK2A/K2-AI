@@ -278,3 +278,20 @@ async def deliverable_form(servizio_id: str):
 @router.get("/engine/health")
 async def engine_health():
     return await engine.health()
+
+
+@router.get("/boost-catalog")
+def boost_catalog():
+    """Elenco dei servizi generabili via 8e (per il selettore nel pannello: se il
+    routing automatico sbaglia, l'utente sceglie il documento giusto)."""
+    items = []
+    for s in catalog.lista_servizi():
+        sid = s.get("id")
+        if sid and catalog.is_8e_generabile(sid):
+            items.append({
+                "id": sid,
+                "label": s.get("label") or sid,
+                "ambito": s.get("ambito") or s.get("tipo") or "",
+            })
+    items.sort(key=lambda x: x["label"])
+    return {"servizi": items}

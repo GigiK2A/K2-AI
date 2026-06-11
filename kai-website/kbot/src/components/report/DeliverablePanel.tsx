@@ -6,9 +6,11 @@ import {
   createDeliverable,
   createPreview,
   getDeliverableForm,
+  listBoostCatalog,
   pollDeliverable,
   saveDeliverable,
   startBoostCheckout,
+  type BoostCatalogItem,
   type DeliverableFormField,
   type DeliverableJob,
   type DeliverableStatus,
@@ -60,17 +62,36 @@ export function DeliverablePanel({
   const [savedPdfUrl, setSavedPdfUrl] = useState<string | null>(null);
   const [campi, setCampi] = useState<DeliverableFormField[]>([]);
   const [form, setForm] = useState<Record<string, unknown>>({});
+  // Documento attivo: parte da quello suggerito dal routing, ma l'utente può
+  // cambiarlo dal selettore se il routing automatico ha sbagliato.
+  const [activeServizio, setActiveServizio] = useState(servizioId);
+  const [catalogList, setCatalogList] = useState<BoostCatalogItem[]>([]);
 
-  // Carica i campi richiesti dal deliverable (form.json del blueprint via 8e).
+  // Se il routing propone un nuovo boost, allinea la selezione.
+  useEffect(() => setActiveServizio(servizioId), [servizioId]);
+
+  // Catalogo dei documenti generabili (per il selettore).
   useEffect(() => {
     let alive = true;
-    getDeliverableForm(servizioId)
+    listBoostCatalog().then((l) => alive && setCatalogList(l)).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // Carica i campi richiesti dal documento attivo (form.json del blueprint via 8e).
+  // Cambiando documento si azzerano form e risultato precedenti.
+  useEffect(() => {
+    let alive = true;
+    setForm({});
+    setJob(null);
+    setSavedPdfUrl(null);
+    setErr(null);
+    getDeliverableForm(activeServizio)
       .then((r) => alive && setCampi(r.campi || []))
       .catch(() => alive && setCampi([]));
     return () => {
       alive = false;
     };
-  }, [servizioId]);
+  }, [activeServizio]);
 
   const setField = (id: string, value: unknown) =>
     setForm((f) => ({ ...f, [id]: value }));
@@ -79,13 +100,13 @@ export function DeliverablePanel({
   const unlock = useCallback(async () => {
     try {
       const token = getAuthToken ? await getAuthToken() : null;
-      const url = await startBoostCheckout(sessionId, servizioId, token);
+      const url = await startBoostCheckout(sessionId, activeServizio, token);
       if (url) window.location.href = url;
       else onUnlock?.();
     } catch {
       onUnlock?.();
     }
-  }, [sessionId, servizioId, getAuthToken, onUnlock]);
+  }, [sessionId, activeServizio, getAuthToken, onUnlock]);
 
   const run = useCallback(
     async (level: "preview" | "full") => {
@@ -97,8 +118,8 @@ export function DeliverablePanel({
         const merged = { ...inputs, ...form };
         const { job_id } =
           level === "preview"
-            ? await createPreview(sessionId, servizioId, merged, token)
-            : await createDeliverable(sessionId, servizioId, merged, token);
+            ? await createPreview(sessionId, activeServizio, merged, token)
+            : await createDeliverable(sessionId, activeServizio, merged, token);
         const final = await pollDeliverable(job_id, (j) => setJob(j));
         setJob(final);
         // Documento pronto → rendilo duraturo (Storage + dashboard/storico).
@@ -112,9 +133,11 @@ export function DeliverablePanel({
         setBusy(false);
       }
     },
-    [sessionId, servizioId, inputs, form, getAuthToken],
+    [sessionId, activeServizio, inputs, form, getAuthToken],
   );
 
+  const activeLabel =
+    catalogList.find((c) => c.id === activeServizio)?.label ?? servizioLabel ?? "Documento";
   const status = job?.status;
   const preview = job?.outputs?.preview;
   // Download: preferisci l'URL durevole su Storage (savedPdfUrl); fallback al
@@ -128,9 +151,26 @@ export function DeliverablePanel({
   return (
     <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold">{servizioLabel ?? "Deliverable"}</h3>
-          <p className="text-sm text-neutral-500">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold">{activeLabel}</h3>
+          {/* Selettore documento: se il routing automatico ha scelto il boost
+              sbagliato, l'utente cambia qui tra tutti i documenti generabili. */}
+          {catalogList.length > 0 && (
+            <label className="mt-1 block text-xs text-neutral-500">
+              Documento da generare
+              <select
+                className="mt-1 block w-full max-w-md rounded border border-neutral-300 bg-transparent px-2 py-1 text-sm text-neutral-800 dark:border-neutral-600 dark:text-neutral-100"
+                value={activeServizio}
+                disabled={busy}
+                onChange={(e) => setActiveServizio(e.target.value)}
+              >
+                {catalogList.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <p className="mt-2 text-sm text-neutral-500">
             {effectivePaid
               ? "Report professionale fondato su fonti verificate."
               : "Anteprima gratuita: punteggio e criticità prioritaria."}
