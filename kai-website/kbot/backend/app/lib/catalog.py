@@ -168,8 +168,11 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
     (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione"), "checkup_advisor"),
 ]
 
-# Default quando nessuna keyword combacia: diagnosi strategico-operativa generica.
-_BOOST_DEFAULT = "checkup_advisor"
+# Default quando nessuna keyword combacia: ControlBoost (cruscotto direzionale),
+# generico e robusto. NB: ex checkup_advisor, ma AdvisorBoost ha lo schema più
+# stringente (12 sezioni, campi numerici obbligatori) e fallisce la validazione
+# più spesso → non adatto come fallback finché non viene irrobustito.
+_BOOST_DEFAULT = "checkup_controllo"
 
 
 def suggest_boost(summary: Optional[dict]) -> Optional[dict]:
