@@ -106,8 +106,10 @@ TEXT = colors.HexColor("#1A1A1A")        # nero testo principale
 TEXT_DEEP = colors.HexColor("#0A0A0A")   # nero titoli
 PRIMARY = TEXT_DEEP
 PRIMARY_LIGHT = TEXT_MUTED
-GOLD = colors.HexColor("#C9A84C")        # oro accento (4 posti soli)
-GOLD_LIGHT = colors.HexColor("#E2C97E")
+# Accento allineato al DESIGN SYSTEM UNICO K2-AI (teal premium #00BFA6), ex oro.
+# Coerenza famiglia: stesso accento dei report 8e (boost) e dei check D1.
+GOLD = colors.HexColor("#00BFA6")        # teal premium (accento famiglia unica)
+GOLD_LIGHT = colors.HexColor("#7FDED1")  # teal chiaro (riempimenti tenui)
 ACCENT = GOLD
 ACCENT_WARM = colors.HexColor("#D4821A") # ambra warning
 RED = colors.HexColor("#C0392B")          # rosso alert / criticità
@@ -387,8 +389,9 @@ def _badge_pill(label: str, variant: str = "neutral") -> Table:
         "neutral": (SURFACE_2, TEXT_SOFT, BORDER),
     }
     bg, fg, brd = palette.get(variant.lower(), palette["neutral"])
-    icon_map = {"ok": "●", "success": "●", "warning": "⚠", "alert": "✕", "critical": "✕", "info": "ⓘ", "neutral": "●"}
-    icon = icon_map.get(variant.lower(), "●")
+    # Solo glifi presenti in Helvetica standard: "•" sì; ●⚠✕ⓘ rendono tofu.
+    icon_map = {"ok": "•", "success": "•", "warning": "•", "alert": "•", "critical": "•", "info": "•", "neutral": "•"}
+    icon = icon_map.get(variant.lower(), "•")
     style = ParagraphStyle(
         "pill_text", fontName="Helvetica-Bold", fontSize=8.5, leading=10,
         textColor=fg, alignment=TA_LEFT,
@@ -514,7 +517,9 @@ def _render_executive_summary(block: dict, s: Dict[str, ParagraphStyle]) -> List
     # Bug v13/v14: pill stretto e 3-col tagliavano "Fondamenta Tecniche Solide".
     badges = block.get("badges") or []
     if badges:
-        icon_map = {"ok": "●", "success": "●", "warning": "■", "alert": "✕", "critical": "✕", "neutral": "▸", "info": "◆"}
+        # NB: usare solo glifi presenti in DMSans. ●■✕▸◆ rendono come tofu (□);
+        # "•" (U+2022) sì. La variante è comunicata dal COLORE, non dalla forma.
+        icon_map = {"ok": "•", "success": "•", "warning": "•", "alert": "•", "critical": "•", "neutral": "•", "info": "•"}
         color_map = {"ok": GREEN, "success": GREEN, "warning": ACCENT_WARM, "alert": RED, "critical": RED, "neutral": TEXT_MUTED, "info": INFO}
         badge_style = ParagraphStyle(
             "badge_line", parent=s["body"],
@@ -528,7 +533,7 @@ def _render_executive_summary(block: dict, s: Dict[str, ParagraphStyle]) -> List
             variant = (b.get("variant") or "neutral").lower()
             label = _clean_inline(b.get("label") or "")
             desc = _clean_inline(b.get("description") or "")
-            icon = icon_map.get(variant, "▸")
+            icon = icon_map.get(variant, "•")
             color = color_map.get(variant, TEXT_MUTED)
             if desc:
                 html = (
@@ -782,7 +787,7 @@ def _bullet_paragraph(text: str, style: ParagraphStyle) -> Paragraph:
     """Bullet point oro + testo body. Uso • (U+2022) per visibilità reale —
     · (U+00B7 middle dot) renderizzava troppo piccolo in DM Mono."""
     return _safe_paragraph(
-        f'<font color="#C9A84C" size="11"><b>•</b></font>&nbsp;&nbsp;{_clean_inline(text)}',
+        f'<font color="#00BFA6" size="11"><b>•</b></font>&nbsp;&nbsp;{_clean_inline(text)}',
         style,
     )
 
@@ -885,7 +890,7 @@ def _render_action_list(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowa
             f"EFFORT {effort.upper()}" if effort else None,
         ]))
         # Titolo: '01. Title' su una riga, syne semibold
-        num_label = f'<font color="#C9A84C">{i:02d}.</font>&nbsp;&nbsp;{_clean_inline(title)}'
+        num_label = f'<font color="#00BFA6">{i:02d}.</font>&nbsp;&nbsp;{_clean_inline(title)}'
         flows.append(_safe_paragraph(num_label, s["sprint_title"]))
         if meta:
             flows.append(_safe_paragraph(meta, s["sprint_meta"]))
@@ -1241,22 +1246,25 @@ def _wrap_text(text: str, max_chars: int) -> List[str]:
 
 _TWO_SIDE_TYPES = {"two_column", "narrative_split", "conclusions"}
 
+# Fallback DOMINIO-NEUTRO: vale per qualsiasi verticale (ingegneria, legale,
+# fiscale, hospitality, ...). NON usare gergo SEO (GSC, keyword, on-page): il
+# K-BOT serve tutti i settori, non solo il marketing.
 _CONCLUSIONS_FALLBACK_HTML = (
-    "<p>I dati raccolti in sessione non sono stati sufficienti a generare conclusioni "
-    "specifiche. Prossimi passi consigliati:</p>"
+    "<p>I dati raccolti in sessione non sono ancora sufficienti per conclusioni "
+    "dettagliate. Prossimi passi consigliati:</p>"
     "<ol>"
-    "<li>Fornire dati di baseline (GSC, Analytics) per ancorare proiezioni reali.</li>"
-    "<li>Identificare 2-3 priorità operative.</li>"
-    "<li>Verificare KPI a 30/60/90 giorni con strumenti dedicati.</li>"
+    "<li>Raccogliere i dati di baseline del processo (volumi, tempi e costi attuali).</li>"
+    "<li>Identificare 2-3 priorità operative ad alto impatto.</li>"
+    "<li>Verificare i risultati a 30/60/90 giorni con indicatori misurabili.</li>"
     "</ol>"
 )
 
 _CONCLUSIONS_RIGHT_FALLBACK = {
     "heading": "3 azioni immediate (settimana 1)",
     "milestones": [
-        {"label": "Audit dati", "tone": "neutral", "items": ["Collega Google Search Console", "Esporta keyword/posizioni"]},
-        {"label": "Quick win", "tone": "warning", "items": ["Identifica 3 quick win on-page"]},
-        {"label": "KPI 30/60/90", "tone": "neutral", "items": ["Definisci 3 KPI con baseline esplicita"]},
+        {"label": "Raccolta dati", "tone": "neutral", "items": ["Definire le metriche di partenza (volumi, tempi, costi)", "Centralizzare le fonti dati rilevanti"]},
+        {"label": "Primo intervento", "tone": "warning", "items": ["Selezionare 1 processo pilota ad alto impatto"]},
+        {"label": "Misurazione 30/60/90", "tone": "neutral", "items": ["Definire 2-3 KPI con baseline esplicita"]},
     ],
 }
 
@@ -1374,8 +1382,9 @@ def render_pdf(analysis: Dict[str, Any], *, session_id: str) -> bytes:
     footer.setdefault("line1", f"Report generato il {today} · Stime basate su skill verticali K2-AI")
     footer.setdefault("code", code_default)
     footer.setdefault("disclaimer",
-        "Le stime di traffico, volume keyword e proiezioni sono basate su benchmark di mercato. "
-        "I dati reali possono variare. Verificare con Google Search Console e strumenti di analisi dedicati."
+        "Le stime e le proiezioni contenute nel report sono basate sui dati forniti in sessione "
+        "e su benchmark di mercato. I valori reali possono variare in base al contesto specifico. "
+        "Si raccomanda una verifica con i dati gestionali interni prima di decisioni operative."
     )
 
     doc = BaseDocTemplate(
