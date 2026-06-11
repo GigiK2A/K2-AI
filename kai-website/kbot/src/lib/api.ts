@@ -947,11 +947,22 @@ export async function pollDeliverable(
   const interval = opts.intervalMs ?? 2500;
   const timeout = opts.timeoutMs ?? 300_000;
   const start = Date.now();
+  let lastJob: DeliverableJob | null = null;
   for (;;) {
-    const job = await getDeliverable(jobId);
-    onTick?.(job);
-    if (["rendered", "refused", "error"].includes(job.status)) return job;
-    if (Date.now() - start > timeout) return { ...job, status: "error", error: "timeout" };
+    try {
+      const job = await getDeliverable(jobId);
+      lastJob = job;
+      onTick?.(job);
+      if (["rendered", "refused", "error"].includes(job.status)) return job;
+    } catch {
+      // Errore transitorio (429 rate-limit, blip di rete): NON fatale durante il
+      // polling. La generazione 8e dura minuti → riprova fino al timeout.
+    }
+    if (Date.now() - start > timeout) {
+      return lastJob
+        ? { ...lastJob, status: "error", error: "timeout" }
+        : ({ job_id: jobId, status: "error", error: "timeout" } as DeliverableJob);
+    }
     await new Promise((r) => setTimeout(r, interval));
   }
 }

@@ -2631,7 +2631,17 @@ const server = http.createServer((req, res) => {
     // under /api/kbot/* is anonymous LLM/PDF work — cap at 20 req/min/IP.
     if (rawPath !== '/api/stripe/webhook') {
       const ip = clientIp(req);
-      const check = checkRateLimit('kbot:ip', ip, 20, 60_000);
+      // Il polling di stato (GET deliverables/{job_id}, status) è una lettura
+      // cheap e frequente per natura: durante una generazione 8e lunga (minuti)
+      // il frontend polla ogni ~2s e supererebbe 20/min, scattando l'anti-abuse.
+      // Cap generoso separato per il polling; tutto il resto (LLM/PDF, POST) a 20/min.
+      const isStatusPoll = req.method === 'GET' && (
+        /^\/api\/kbot\/deliverables\/[^/]+$/.test(rawPath) ||
+        rawPath.startsWith('/api/kbot/status')
+      );
+      const check = isStatusPoll
+        ? checkRateLimit('kbot-poll:ip', ip, 240, 60_000)
+        : checkRateLimit('kbot:ip', ip, 20, 60_000);
       if (!check.ok) {
         sendRateLimited(res, rawPath, { key: ip, bucket: 'ip', resetAt: check.resetAt });
         return;
