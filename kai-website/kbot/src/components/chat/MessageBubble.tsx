@@ -133,14 +133,15 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Report-ready CTA: in fase free, genera direttamente il PDF (no checkout). */}
-        {message.reportReady && !message.reportPdfUrl && (
+        {/* Report-ready CTA conversazionale. In DEMO_MODE è nascosta: il documento
+            viene generato dal motore 8e tramite il DeliverablePanel (selettore catalogo). */}
+        {message.reportReady && !message.reportPdfUrl && !DEMO_MODE && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
-              onClick={message.hasPaid && !DEMO_MODE ? onCheckout : onGeneratePdf}
+              onClick={message.hasPaid ? onCheckout : onGeneratePdf}
               className="inline-flex rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-black hover:opacity-90"
             >
-              {DEMO_MODE ? "Genera il report PDF (demo)" : "Genera il report PDF"}
+              Genera il report PDF
             </button>
             <span className="text-xs text-[var(--text-muted)]">
               Documento di ~9 pagine con KPI, piano d&apos;azione e roadmap.
