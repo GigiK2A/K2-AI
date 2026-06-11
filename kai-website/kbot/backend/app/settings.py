@@ -54,6 +54,12 @@ FRONTEND_URL = _env("FRONTEND_URL", default="http://localhost:3000")
 SITE_URL = _env("NEXT_PUBLIC_SITE_URL", "SITE_URL", default="https://www.k2-ai.it")
 INTERNAL_API_KEY = _env("INTERNAL_API_KEY")
 
+# DEMO MODE backend: consente la generazione 8e (Boost) SENZA pagamento, mintando
+# comunque l'entitlement. Per le demo ai clienti. Default OFF → in produzione il
+# gate "servizio non pagato" resta intatto. Va abbinato a K2A_8E_ENTITLEMENT_DEV=true
+# sul motore 8e (che accetta il token dev). Vedi deliverables._mint_entitlement.
+KBOT_DEMO_MODE = (_env("KBOT_DEMO_MODE", default="0") or "0").lower() in ("1", "true", "yes")
+
 # Default to k2-ai.it production origins. Never default to "*" with credentials.
 # Override via KBOT_CORS_ORIGINS env var (comma-separated) for dev/staging.
 _DEFAULT_CORS = ",".join([

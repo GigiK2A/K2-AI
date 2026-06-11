@@ -114,6 +114,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [composer, setComposer] = useState("");
   const [usedSkills, setUsedSkills] = useState<string[]>([]);
+  // Boost suggerito dal routing chat→catalogo (selettore): popolato da res.session
+  // a fine conversazione, fa comparire il DeliverablePanel generato via 8e.
+  const [suggestedBoost, setSuggestedBoost] = useState<{ id: string; label?: string } | null>(null);
   const [error, setError] = useState("");
   const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<
@@ -568,6 +571,13 @@ export default function HomePage() {
             (res.session?.extractedData as { used_skills?: string[] } | undefined)
               ?.used_skills ?? [];
           setUsedSkills(skills);
+          // Selettore di catalogo: il backend ha pre-scelto il Boost 8e → mostra il pannello.
+          const sess = res.session as
+            | { boostSuggerito?: string; boostSuggeritoLabel?: string }
+            | undefined;
+          if (sess?.boostSuggerito) {
+            setSuggestedBoost({ id: sess.boostSuggerito, label: sess.boostSuggeritoLabel });
+          }
           patchStub({
             content: res.message,
             reportReady: res.nextAction === "show_summary",
@@ -753,11 +763,11 @@ export default function HomePage() {
             )}
             {/* Scenario C + gate W8: se il pillar ha un boost suggerito, mostra
                 il pannello. Non pagato → anteprima gratuita; pagato → documento. */}
-            {kbotSession?.boostSuggerito && (
+            {kbotSession?.id && (kbotSession.boostSuggerito || suggestedBoost) && (
               <DeliverablePanel
                 sessionId={kbotSession.id}
-                servizioId={kbotSession.boostSuggerito}
-                servizioLabel={kbotSession.boostSuggeritoLabel ?? undefined}
+                servizioId={kbotSession.boostSuggerito ?? suggestedBoost!.id}
+                servizioLabel={kbotSession.boostSuggeritoLabel ?? suggestedBoost?.label ?? undefined}
                 hasPaid={hasPaid}
                 onUnlock={startCheckoutFromUI}
                 getAuthToken={getToken}

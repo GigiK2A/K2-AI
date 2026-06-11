@@ -12,6 +12,9 @@ import {
   type DeliverableStatus,
 } from "@/lib/api";
 
+/** Demo: tratta come pagato → genera il documento full via 8e senza checkout. */
+const DEMO_MODE = process.env.NEXT_PUBLIC_KBOT_DEMO_MODE === "1";
+
 const STATUS_LABEL: Record<DeliverableStatus, string> = {
   routed: "In coda…",
   running: "Generazione in corso…",
@@ -47,6 +50,8 @@ export function DeliverablePanel({
   onUnlock,
   getAuthToken,
 }: Props) {
+  // In demo si genera sempre il documento completo (8e), mai checkout.
+  const effectivePaid = hasPaid || DEMO_MODE;
   const [job, setJob] = useState<DeliverableJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -113,17 +118,17 @@ export function DeliverablePanel({
         <div>
           <h3 className="font-semibold">{servizioLabel ?? "Deliverable"}</h3>
           <p className="text-sm text-neutral-500">
-            {hasPaid
+            {effectivePaid
               ? "Report professionale fondato su fonti verificate."
               : "Anteprima gratuita: punteggio e criticità prioritaria."}
           </p>
         </div>
         {!busy && status !== "rendered" && (
           <button
-            onClick={() => run(hasPaid ? "full" : "preview")}
+            onClick={() => run(effectivePaid ? "full" : "preview")}
             className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
           >
-            {hasPaid ? "Genera documento" : "Anteprima gratuita"}
+            {effectivePaid ? "Genera documento" : "Anteprima gratuita"}
           </button>
         )}
       </div>
@@ -200,10 +205,10 @@ export function DeliverablePanel({
             </div>
           ) : null}
           <button
-            onClick={unlock}
+            onClick={DEMO_MODE ? () => run("full") : unlock}
             className="mt-2 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
           >
-            {preview.cta ?? "Sblocca il documento completo"} →
+            {DEMO_MODE ? "Genera il documento completo (demo)" : `${preview.cta ?? "Sblocca il documento completo"} →`}
           </button>
         </div>
       )}

@@ -161,9 +161,11 @@ def create_deliverable(
         blueprint = guess
 
     if blueprint is None:
-        response.status_code = 422
-        return {"status": "refused", "reason": "out_of_catalog",
-                "message": f"nessun blueprint per service_id '{body.service_id}'"}
+        # Il vero 8e instrada per service_id del catalog (manifest keyed = checkup_*,
+        # check_*_express, ...). Il mock NON ha l'elenco completo: simula qualunque
+        # service_id plausibile con un blueprint generico (la refuse esplicita resta
+        # su service_id == "force-refuse", gestita sopra).
+        blueprint = f"{body.service_id}.generic"
 
     job_id = "job_" + uuid.uuid4().hex[:12]
     _JOBS[job_id] = {

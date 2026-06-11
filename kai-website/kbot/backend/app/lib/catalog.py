@@ -142,3 +142,55 @@ def check_per_tag(tag: str) -> Optional[dict]:
 
 def boost_per_tag(tag: str) -> Optional[dict]:
     return servizio_per_tag(tag, kind="boost_primario")
+
+
+# ---- Selettore di catalogo: conversazione → Boost 8e ---------------------
+# Mappa keyword → servizio_id (tutti 8e-generabili). Primo match vince. I domini
+# specifici (legale, fiscale, edilizia, energia, sicurezza...) PRIMA dei generici
+# (controllo, marketing, strategia), così "due diligence M&A" non finisce su
+# StrategyBoost. È il routing deterministico che trasforma il K-BOT in un
+# selettore del catalogo di Luca: a fine conversazione propone il deliverable.
+_BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
+    (("due diligence", "m&a", "acquisizion", "fusione"), "checkup_legale_dd"),
+    (("contratt", "nda", "clausol", "contract review", "review legale"), "checkup_legale_review"),
+    (("legale", "avvocat", "causa", "contenzioso", "parere legale", "diffida"), "primo_parere_legale"),
+    (("fiscal", "iva", "tribut", "tasse", "imposte", "f24", "dichiarazione dei redditi"), "checkup_fiscale"),
+    (("agevolazion", "bando", "contribut", "incentiv", "sabatini", "credito d'imposta", "finanza agevolata"), "checkup_agevolazioni"),
+    (("edilizi", "permesso di costruire", "scia", "cila", "urbanistic", "titolo edilizio"), "checkup_edilizia"),
+    (("energ", "efficientamento", "ege", "diagnosi energetica", "fotovoltaic", "impianti termici"), "checkup_energia"),
+    (("sicurezz", "dvr", "antincendio", "81/08", "rspp", "infortun"), "checkup_sicurezza_safetyboost"),
+    (("hotel", "ricettiv", "ristorant", "hospitality", "struttura ricettiva", "albergo", "b&b"), "checkup_hospitality"),
+    (("seo", "sito web", "posizionamento organico", "keyword", "traffico organico", "reputazione online", "sentiment"), "checkup_seo"),
+    (("bilanci", "finanziar", "cash flow", "liquidità", "bancabil", "margini", "solvibil", "rating", "investiment", "roi", "payback"), "checkup_finanziario"),
+    (("controllo di gestione", "kpi", "cruscotto", "reporting direzionale", "monitoraggio"), "checkup_controllo"),
+    (("marketing", "brand", "campagn", "funnel", "social", "lead generation", "studio di mercato", "competitor", "benchmark"), "checkup_marketing"),
+    (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione"), "checkup_advisor"),
+]
+
+# Default quando nessuna keyword combacia: diagnosi strategico-operativa generica.
+_BOOST_DEFAULT = "checkup_advisor"
+
+
+def suggest_boost(summary: Optional[dict]) -> Optional[dict]:
+    """Dal riepilogo conversazione → il Boost 8e più adatto (selettore catalogo).
+
+    Deterministico (keyword match, primo vince) con default generico. Ritorna il
+    servizio dict se 8e-generabile, altrimenti il primo Boost generabile a
+    catalogo, altrimenti None. Mai solleva: il routing non deve bloccare la chat.
+    """
+    summary = summary or {}
+    text = " ".join(
+        str(summary.get(k) or "")
+        for k in ("reportType", "objective", "businessType", "scope", "notes")
+    ).lower()
+    chosen = _BOOST_DEFAULT
+    for keys, sid in _BOOST_KEYWORDS:
+        if any(k in text for k in keys):
+            chosen = sid
+            break
+    if not is_8e_generabile(chosen):
+        chosen = next(
+            (s["id"] for s in load_catalog().get("servizi", []) if is_8e_generabile(s["id"])),
+            None,
+        )
+    return get_servizio(chosen)

@@ -195,6 +195,17 @@ async def post_message(
         )
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
+        # Selettore di catalogo: a fine conversazione pre-seleziona il Boost 8e da
+        # generare (non sovrascrive un boost già suggerito da tag pillar del sito).
+        if not collected.get("boost_suggerito"):
+            try:
+                from ..lib import catalog as _catalog
+                _boost = _catalog.suggest_boost(summary)
+                if _boost:
+                    collected["boost_suggerito"] = _boost["id"]
+                    collected["boost_suggerito_label"] = _boost.get("label")
+            except Exception:
+                pass  # il routing non deve mai bloccare la chat
 
     # Always expose the skills used in this turn so the UI can render them.
     existing_extracted = dict(collected.get("extractedData") or {})
@@ -277,6 +288,17 @@ def _persist_assistant_turn(
         )
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
+        # Selettore di catalogo: a fine conversazione pre-seleziona il Boost 8e da
+        # generare (non sovrascrive un boost già suggerito da tag pillar del sito).
+        if not collected.get("boost_suggerito"):
+            try:
+                from ..lib import catalog as _catalog
+                _boost = _catalog.suggest_boost(summary)
+                if _boost:
+                    collected["boost_suggerito"] = _boost["id"]
+                    collected["boost_suggerito_label"] = _boost.get("label")
+            except Exception:
+                pass  # il routing non deve mai bloccare la chat
 
     # Always expose skills used in this turn so the UI panel can render them
     # (mirror of the non-streaming branch — era assente nello stream).
