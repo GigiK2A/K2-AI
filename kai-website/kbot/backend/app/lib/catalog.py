@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -184,8 +185,10 @@ def suggest_boost(summary: Optional[dict]) -> Optional[dict]:
         for k in ("reportType", "objective", "businessType", "scope", "notes")
     ).lower()
     chosen = _BOOST_DEFAULT
+    # Match a CONFINE DI PAROLA (\b a inizio keyword), non per sottostringa: evita
+    # falsi positivi tipo "nda" dentro "azie​ndale" → LegalBoost su un bilancio.
     for keys, sid in _BOOST_KEYWORDS:
-        if any(k in text for k in keys):
+        if any(re.search(r"\b" + re.escape(k), text) for k in keys):
             chosen = sid
             break
     if not is_8e_generabile(chosen):
