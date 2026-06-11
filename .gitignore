@@ -7,7 +7,6 @@
 aios/.secrets/
 *service-account*.json
 *service_account*.json
-*gsc*.json
 
 # Video e file binari grandi
 *.mp4

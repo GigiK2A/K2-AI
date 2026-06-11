@@ -1,0 +1,99 @@
+{
+  "name": "K2-AI · Google Search Console → seo_rankings",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "days", "triggerAtHour": 6 } ] }
+      },
+      "id": "aaaa1111-1111-4111-8111-aaaaaaaaaaaa",
+      "name": "Ogni giorno 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "s1", "name": "site", "value": "https://www.k2-ai.it/", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bbbb2222-2222-4222-8222-bbbbbbbbbbbb",
+      "name": "Config (sito GSC)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/webmasters/v3/sites/{{ encodeURIComponent($json.site) }}/searchAnalytics/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"startDate\": \"{{ $today.minus({days: 33}).toFormat('yyyy-MM-dd') }}\",\n  \"endDate\": \"{{ $today.minus({days: 3}).toFormat('yyyy-MM-dd') }}\",\n  \"dimensions\": [\"query\"],\n  \"rowLimit\": 100\n}",
+        "options": {}
+      },
+      "id": "cccc3333-3333-4333-8333-cccccccccccc",
+      "name": "GSC · searchAnalytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [820, 300],
+      "credentials": {
+        "googleOAuth2Api": { "id": "REPLACE_ME", "name": "Google OAuth2 (GSC)" }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "rows",
+        "options": {}
+      },
+      "id": "dddd4444-4444-4444-8444-dddddddddddd",
+      "name": "Una riga per query",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "seo_rankings",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "query",       "fieldValue": "={{ $json.keys[0] }}" },
+            { "fieldId": "clicks",      "fieldValue": "={{ $json.clicks }}" },
+            { "fieldId": "impressions", "fieldValue": "={{ $json.impressions }}" },
+            { "fieldId": "ctr",         "fieldValue": "={{ $json.ctr }}" },
+            { "fieldId": "position",    "fieldValue": "={{ $json.position }}" },
+            { "fieldId": "site",        "fieldValue": "={{ $('Config (sito GSC)').item.json.site }}" },
+            { "fieldId": "fetched_on",  "fieldValue": "={{ $today.toFormat('yyyy-MM-dd') }}" }
+          ]
+        }
+      },
+      "id": "eeee5555-5555-4555-8555-eeeeeeeeeeee",
+      "name": "Supabase · seo_rankings",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1260, 300],
+      "credentials": {
+        "supabaseApi": { "id": "REPLACE_ME", "name": "Supabase K2-AI" }
+      }
+    }
+  ],
+  "connections": {
+    "Ogni giorno 06:00": { "main": [[{ "node": "Config (sito GSC)", "type": "main", "index": 0 }]] },
+    "Config (sito GSC)": { "main": [[{ "node": "GSC · searchAnalytics", "type": "main", "index": 0 }]] },
+    "GSC · searchAnalytics": { "main": [[{ "node": "Una riga per query", "type": "main", "index": 0 }]] },
+    "Una riga per query": { "main": [[{ "node": "Supabase · seo_rankings", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {
+    "note": "GSC via OAUTH (niente chiave service account, bloccata dalla policy org). Ogni giorno chiama Search Console (ultimi ~30g, dimensione 'query') e scrive in public.seo_rankings; l'AIOS legge l'ultimo batch (fetched_on max). SETUP: 1) Google Cloud > Credenziali > crea 'ID client OAuth' tipo Web, redirect URI = https://k2-ai-n8n2-production.up.railway.app/rest/oauth2-credential/callback ; abilita 'Google Search Console API' e nella schermata consenso aggiungi te come utente di test, scope https://www.googleapis.com/auth/webmasters.readonly . 2) In n8n crea credenziale 'Google OAuth2 API' con quel clientId/secret e quello scope, premi 'Connect my account' e fai il consenso. 3) Aggancia quella cred al nodo GSC e la cred Supabase (host https://uiuvwzrmrdqbfajguuab.supabase.co + Service Role) al nodo Supabase. 4) In 'Config (sito GSC)' metti il site ESATTO: proprieta 'Dominio' -> sc-domain:k2-ai.it ; proprieta 'Prefisso URL' -> https://www.k2-ai.it/ . 5) ATTIVA. Test: esegui a mano una volta, poi nel cockpit Marketing > SEO compaiono click/impression/posizioni."
+  }
+}

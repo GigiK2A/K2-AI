@@ -79,8 +79,8 @@ def build_platform() -> Platform:
         for t in factory(client):
             k.register_tool(t)
     for t in all_connectors():          # connettori esterni env-gated (graceful [])
-        if t.name == "leggi_inbox":
-            continue                    # sostituito sotto: posta via tabella inbox_messages (n8n)
+        if t.name in ("leggi_inbox", "leggi_ranking_seo"):
+            continue                    # sostituiti sotto: posta + ranking SEO via tabella (n8n)
         k.register_tool(t)
     k.register_tool(n8n_tool())         # braccio esecutore esterno (env-gated)
     k.register_tool(n8n_workflows_tool())  # sensore: elenco workflow n8n (readonly)
@@ -98,6 +98,36 @@ def build_platform() -> Platform:
             return []
     k.register_tool(Tool(name="leggi_inbox", action_type=None, readonly=True,
                          run=lambda **_: _inbox_table()))
+    # leggi_ranking_seo via tabella alimentata da n8n (Google OAuth), perché la policy
+    # org blocca le chiavi service account. Legge l'ultimo batch (fetched_on max),
+    # dedup per query; fallback alla chiamata GSC diretta se un giorno colleghi la SA.
+    from aios.sources.connectors import _gsc_ranking
+    def _ranking_table():
+        try:
+            last = client.select("seo_rankings",
+                                 {"select": "fetched_on", "order": "fetched_on.desc", "limit": "1"})
+            if last:
+                fa = last[0].get("fetched_on")
+                rows = client.select("seo_rankings",
+                                     {"select": "*", "fetched_on": f"eq.{fa}",
+                                      "order": "clicks.desc", "limit": "200"})
+                seen, out = set(), []
+                for r in rows:
+                    q = r.get("query")
+                    if q in seen:
+                        continue
+                    seen.add(q)
+                    out.append(r)
+                if out:
+                    return out
+        except Exception:
+            pass
+        try:
+            return _gsc_ranking()        # fallback diretto (vuoto senza credenziali SA)
+        except Exception:
+            return []
+    k.register_tool(Tool(name="leggi_ranking_seo", action_type=None, readonly=True,
+                         run=lambda **_: _ranking_table()))
     from aios.sources.n8n import N8N_ACTION
     from aios.autonomy import AutonomyLevel as _AL
     k.policy.set_level(N8N_ACTION, _AL.L1_PROPOSE)   # esterno: mai autonomo
