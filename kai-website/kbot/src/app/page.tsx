@@ -222,7 +222,7 @@ export default function HomePage() {
 
   /* Per-conversation backend session: each sidebar conv must talk to its OWN
      kbot_sessions row, otherwise switching/creating conversations leaks
-     uploaded_files + analyzed_urls across topics (Juventus + k2-ai.it mix). */
+     uploaded_files + analyzed_urls across topics (es. un bilancio + un sito web). */
   useEffect(() => {
     // Il boost suggerito appartiene alla CONVERSAZIONE: senza questo reset il
     // pannello della chat precedente "rimaneva appiccicato" e compariva subito

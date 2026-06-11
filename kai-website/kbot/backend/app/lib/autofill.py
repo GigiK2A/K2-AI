@@ -81,7 +81,7 @@ def extract_inputs(session: dict, campi: list[dict]) -> dict:
         "- Usa SOLO informazioni presenti nel contesto. Se un campo non è deducibile, "
         "OMETTI la chiave (non inventare, non mettere placeholder).\n"
         "- Numeri SEMPRE in cifre intere, senza separatori di migliaia né valuta "
-        "(es. 394600000, non '394,6M').\n"
+        "(es. 1500000, non '1,5M').\n"
         "- Per i campi con valori ammessi (enum) usa ESATTAMENTE uno di quelli.\n"
         "- Per i campi 'array' (es. bilanci, competitor) restituisci una lista.\n"
         "- Rispondi SOLO con un oggetto JSON {campo: valore}, niente altro testo."
