@@ -165,7 +165,10 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
     (("bilanci", "finanziar", "cash flow", "liquidità", "bancabil", "margini", "solvibil", "rating", "investiment", "roi", "payback"), "checkup_finanziario"),
     (("controllo di gestione", "kpi", "cruscotto", "reporting direzionale", "monitoraggio"), "checkup_controllo"),
     (("marketing", "brand", "campagn", "funnel", "social", "lead generation", "studio di mercato", "competitor", "benchmark"), "checkup_marketing"),
-    (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione"), "checkup_advisor"),
+    # NB: ex checkup_advisor, ma AdvisorBoost fallisce la validazione (schema
+    # numerico stringente) → instrado su ControlBoost finché non è irrobustito.
+    # AdvisorBoost resta scegliibile a mano dal selettore del pannello.
+    (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione", "due diligence", "acquisizion", "acquist"), "checkup_controllo"),
 ]
 
 # Default quando nessuna keyword combacia: ControlBoost (cruscotto direzionale),

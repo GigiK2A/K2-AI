@@ -197,7 +197,10 @@ async def post_message(
         collected["analysis_ready"] = True
         # Selettore di catalogo: a fine conversazione pre-seleziona il Boost 8e da
         # generare (non sovrascrive un boost già suggerito da tag pillar del sito).
-        if not collected.get("boost_suggerito"):
+        # Mostra il pannello (boost_suggerito) solo dopo qualche scambio reale, non
+        # al 1° messaggio: il bot a volte emette il riepilogo troppo presto.
+        _user_turns = sum(1 for _m in (merged_messages or []) if isinstance(_m, dict) and _m.get("role") == "user")
+        if not collected.get("boost_suggerito") and _user_turns >= 3:
             try:
                 from ..lib import catalog as _catalog
                 _boost = _catalog.suggest_boost(summary)
@@ -290,7 +293,10 @@ def _persist_assistant_turn(
         collected["analysis_ready"] = True
         # Selettore di catalogo: a fine conversazione pre-seleziona il Boost 8e da
         # generare (non sovrascrive un boost già suggerito da tag pillar del sito).
-        if not collected.get("boost_suggerito"):
+        # Mostra il pannello (boost_suggerito) solo dopo qualche scambio reale, non
+        # al 1° messaggio: il bot a volte emette il riepilogo troppo presto.
+        _user_turns = sum(1 for _m in (merged_messages or []) if isinstance(_m, dict) and _m.get("role") == "user")
+        if not collected.get("boost_suggerito") and _user_turns >= 3:
             try:
                 from ..lib import catalog as _catalog
                 _boost = _catalog.suggest_boost(summary)
