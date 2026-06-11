@@ -89,8 +89,9 @@ def build_platform() -> Platform:
     # che il tenant MFA/Conditional Access blocca. Degrada a [] se la tabella è vuota.
     def _inbox_table():
         try:
-            return client.select("inbox_messages",
-                                 {"select": "*", "order": "received_at.desc", "limit": "30"})
+            return client.select("email_messages",
+                                 {"select": "*", "direction": "eq.in",
+                                  "order": "received_at.desc", "limit": "30"})
         except Exception:
             return []
     k.register_tool(Tool(name="leggi_inbox", action_type=None, readonly=True,
@@ -129,4 +130,7 @@ def build_platform() -> Platform:
         except Exception:
             return []
     platform.prospector = Prospector(llm_web, llm_strong, founder, suite_reader=_suite)
+    from aios.conversation import ConversationManager
+    platform._founder = founder
+    platform.conversations = ConversationManager(platform, llm_strong)  # email L1 assistito
     return platform

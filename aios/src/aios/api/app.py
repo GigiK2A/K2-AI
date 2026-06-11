@@ -42,6 +42,11 @@ class ProspectBody(BaseModel):
     n: int = 5
 
 
+class SendDraftBody(BaseModel):
+    subject: str | None = None
+    body: str | None = None
+
+
 def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     app = FastAPI(title="K2-AI Operating System")
 
@@ -326,5 +331,39 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                     rec["errore"] = str(exc)[:120]
             out.append(rec)
         return {"trovati": len(found), "salvati": salvati, "prospects": out}
+
+    @app.get("/api/conversations")
+    def conversations(_=Depends(_require_auth)) -> list[dict[str, Any]]:
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return []
+        try:
+            return platform.conversations.threads()
+        except Exception:
+            return []
+
+    @app.post("/api/conversations/draft")
+    def conversations_draft(body: ProspectBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """Genera le BOZZE di risposta per i thread con l'ultima mail del cliente."""
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return {"errore": "non disponibile"}
+        return platform.conversations.draft_replies(limit=max(1, min(int(body.n or 5), 10)))
+
+    @app.post("/api/conversations/{draft_id}/send")
+    def conversations_send(draft_id: str, body: SendDraftBody | None = None,
+                           _=Depends(_require_auth)) -> dict[str, Any]:
+        """Invia la bozza approvata (esterno via n8n). Il clic Approva È l'autorizzazione.
+        Body opzionale {subject, body} per inviare la versione corretta (Modifica)."""
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return {"ok": False, "errore": "non disponibile"}
+        ov = None
+        if body is not None and (body.subject or body.body):
+            ov = {"subject": body.subject, "body": body.body}
+        return platform.conversations.send(draft_id, actor="cockpit", override=ov)
+
+    @app.post("/api/conversations/{draft_id}/discard")
+    def conversations_discard(draft_id: str, _=Depends(_require_auth)) -> dict[str, Any]:
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return {"ok": False, "errore": "non disponibile"}
+        return platform.conversations.discard(draft_id)
 
     return app

@@ -110,6 +110,7 @@
       <div data-group="domains" class="space-y-1"></div>
       <div class="text-[10px] font-bold text-slate-300 px-3 pt-3 pb-1 tracking-widest">SYSTEM</div>
       <div class="navi" data-view="dom:operations">▤ Projects</div>
+      <div class="navi" data-view="conversazioni">✉ Conversazioni</div>
       <div class="navi" data-view="documents">▢ Documents</div>
       <div class="navi soon" data-view="soon">⟳ Automations</div>
       <div class="navi" data-view="analytics">▭ Analytics</div>
@@ -745,9 +746,77 @@ async function loadSettings(){
     <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Servizio</th><th>Tipo</th><th>Stato</th><th>Variabili env</th></tr></thead>
     <tbody>${items.map(card).join("")||'<tr><td colspan="4" class="py-4 text-center text-slate-400">—</td></tr>'}</tbody></table></div></section>`;
 }
+async function loadConversazioni(){
+  setHeader("Conversazioni","email clienti — l'agente prepara la risposta, tu approvi l'invio",false);markNav();killCharts();
+  $("view").innerHTML='<section class="card p-6 text-slate-400 text-sm">Carico i thread…</section>';
+  let th=[];try{th=await jget("/api/conversations");}catch(e){}
+  th=arr(th);
+  const daRisp=th.filter(t=>t.da_rispondere&&!t.bozza).length;
+  const pronte=th.filter(t=>t.bozza).length;
+  const revis=th.filter(t=>t.needs_human).length;
+  const badge=t=>{
+    if(t.needs_human)return '<span class="chip bg-amber-100 text-amber-700">⚠ rivedere</span>';
+    if(t.bozza)return '<span class="chip bg-blue-50 text-blue-700">bozza pronta</span>';
+    if(t.da_rispondere)return '<span class="chip bg-rose-50 text-rose-600">da rispondere</span>';
+    if(t.stato==="inviato")return '<span class="chip bg-emerald-100 text-emerald-700">● inviata</span>';
+    return '<span class="chip bg-slate-100 text-slate-500">'+esc(t.stato||'—')+'</span>';};
+  const card=t=>{
+    const b=t.bozza;
+    let block;
+    if(b){
+      block=`<div class="mt-3 rounded-xl border ${t.needs_human?'border-amber-300 bg-amber-50/40':'border-blue-100 bg-blue-50/30'} p-3">
+        <div class="text-[11px] font-bold ${t.needs_human?'text-amber-700':'text-blue-700'} mb-1.5">✎ Bozza dell'agente${t.needs_human?' · caso delicato, rivedi prima di inviare':''}</div>
+        <input id="cv-sub-${b.id}" value="${esc(b.subject||('Re: '+t.oggetto))}" class="w-full text-[13px] font-semibold border border-slate-200 rounded-lg px-2 py-1.5 mb-2"/>
+        <textarea id="cv-body-${b.id}" rows="6" class="w-full text-[13px] border border-slate-200 rounded-lg px-2 py-1.5 leading-relaxed">${esc(b.body||'')}</textarea>
+        <div class="flex gap-2 mt-2">
+          <button onclick="convSend('${b.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[12px] font-semibold hover:bg-emerald-700">✓ Approva e invia</button>
+          <button onclick="convDiscard('${b.id}')" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-[12px] font-semibold hover:bg-slate-200">Rifiuta</button>
+          <span class="text-[11px] text-slate-400 self-center">l'invio è reale (Outlook via n8n) e parte solo ora</span>
+        </div></div>`;
+    }else if(t.da_rispondere){
+      block=`<div class="mt-3"><button onclick="convDraftAll(this)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700">✎ Genera bozze di risposta</button></div>`;
+    }else{
+      block=`<div class="mt-2 text-[12px] text-slate-400">nessuna azione — ${esc(t.stato||'in attesa')}</div>`;
+    }
+    return `<div class="card p-4">
+      <div class="flex items-center justify-between gap-3 mb-1.5">
+        <div class="min-w-0"><b class="text-[14px]">${esc(t.cliente||'(sconosciuto)')}</b>
+          <span class="text-slate-400 text-[12px]">· ${esc(t.email||'')}</span></div>${badge(t)}</div>
+      <div class="text-[12px] font-semibold text-slate-600">${esc(t.oggetto||'(senza oggetto)')}</div>
+      <div class="mt-2 text-[13px] text-slate-600 bg-slate-50 rounded-xl px-3 py-2 whitespace-pre-wrap">${esc((t.ultimo_in||'').slice(0,600))||'<span class="text-slate-300">—</span>'}</div>
+      ${block}</div>`;};
+  $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      ${kpi("Thread",th.length,{t:"reale · email_messages",real:1})}
+      ${kpi("Da rispondere",daRisp,daRisp?"attendono una bozza":"tutto gestito")}
+      ${kpi("Bozze pronte",pronte,"da approvare")}
+      ${kpi("Da rivedere",revis,{t:revis?"casi delicati":"nessuno",real:revis>0})}</section>
+    <section class="card p-4 mb-3 flex items-center justify-between gap-3">
+      <div class="text-[12px] text-slate-500">L'agente legge la posta (Outlook via n8n), prepara la risposta e te la mette qui. <b>Niente parte senza il tuo Approva.</b></div>
+      <button onclick="convDraftAll(this)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700 whitespace-nowrap">✎ Genera bozze (${daRisp})</button>
+    </section>
+    <section class="space-y-3">${th.length?th.map(card).join(""):'<div class="card p-6 text-center text-slate-400 text-sm">Nessuna email. Quando il workflow n8n porta la posta in <code>email_messages</code>, i thread compaiono qui.</div>'}</section>`;
+}
+async function convDraftAll(btn){
+  if(btn){btn.disabled=true;btn.textContent="Genero…";}
+  try{await jpost("/api/conversations/draft",{n:5});}catch(e){alert("Errore generazione bozze");}
+  loadConversazioni();
+}
+async function convSend(id){
+  const sub=($("cv-sub-"+id)||{}).value, body=($("cv-body-"+id)||{}).value;
+  if(!confirm("Inviare questa risposta al cliente? Parte una email reale via Outlook."))return;
+  const r=await jpost("/api/conversations/"+id+"/send",{subject:sub,body:body});
+  if(r&&r.ok){loadConversazioni();}
+  else{alert("Invio non riuscito: "+((r&&r.errore)||"n8n non configurato o errore"));}
+}
+async function convDiscard(id){
+  if(!confirm("Scartare questa bozza?"))return;
+  try{await jpost("/api/conversations/"+id+"/discard",{});}catch(e){}
+  loadConversazioni();
+}
 async function load(){
   if(VIEW==="overview")return loadOverview();
   if(VIEW==="agents")return loadAgents();
+  if(VIEW==="conversazioni")return loadConversazioni();
   if(VIEW==="documents")return loadDocuments();
   if(VIEW==="analytics")return loadAnalytics();
   if(VIEW==="settings")return loadSettings();

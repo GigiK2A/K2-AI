@@ -1,5 +1,5 @@
 {
-  "name": "K2-AI · Outlook → inbox_messages",
+  "name": "K2-AI · Outlook → email_messages (in)",
   "nodes": [
     {
       "parameters": {
@@ -18,22 +18,27 @@
     {
       "parameters": {
         "operation": "create",
-        "tableId": "inbox_messages",
+        "tableId": "email_messages",
         "dataToSend": "defineBelow",
         "fieldsUi": {
           "fieldValues": [
-            { "fieldId": "message_id",   "fieldValue": "={{ $json.id }}" },
-            { "fieldId": "from_email",   "fieldValue": "={{ $json.from.emailAddress.address }}" },
-            { "fieldId": "from_name",    "fieldValue": "={{ $json.from.emailAddress.name }}" },
-            { "fieldId": "subject",      "fieldValue": "={{ $json.subject }}" },
-            { "fieldId": "body_preview", "fieldValue": "={{ $json.bodyPreview }}" },
-            { "fieldId": "received_at",  "fieldValue": "={{ $json.receivedDateTime }}" },
-            { "fieldId": "is_read",      "fieldValue": "={{ $json.isRead }}" }
+            { "fieldId": "conversation_id", "fieldValue": "={{ $json.conversationId }}" },
+            { "fieldId": "message_id",      "fieldValue": "={{ $json.id }}" },
+            { "fieldId": "direction",       "fieldValue": "in" },
+            { "fieldId": "from_email",      "fieldValue": "={{ $json.from.emailAddress.address }}" },
+            { "fieldId": "from_name",       "fieldValue": "={{ $json.from.emailAddress.name }}" },
+            { "fieldId": "to_email",        "fieldValue": "={{ ($json.toRecipients && $json.toRecipients[0]) ? $json.toRecipients[0].emailAddress.address : '' }}" },
+            { "fieldId": "subject",         "fieldValue": "={{ $json.subject }}" },
+            { "fieldId": "body",            "fieldValue": "={{ ($json.body && $json.body.content) ? $json.body.content : $json.bodyPreview }}" },
+            { "fieldId": "body_preview",    "fieldValue": "={{ $json.bodyPreview }}" },
+            { "fieldId": "status",          "fieldValue": "ricevuto" },
+            { "fieldId": "received_at",     "fieldValue": "={{ $json.receivedDateTime }}" },
+            { "fieldId": "is_read",         "fieldValue": "={{ $json.isRead }}" }
           ]
         }
       },
       "id": "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb",
-      "name": "Supabase · inbox_messages",
+      "name": "Supabase · email_messages",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [640, 300],
@@ -44,13 +49,13 @@
   ],
   "connections": {
     "Outlook · nuova mail": {
-      "main": [[{ "node": "Supabase · inbox_messages", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Supabase · email_messages", "type": "main", "index": 0 }]]
     }
   },
   "active": false,
   "settings": { "executionOrder": "v1" },
   "pinData": {},
   "meta": {
-    "note": "Outlook (OAuth, ok con MFA) → riga in public.inbox_messages. Dopo import: aggancia le 2 credenziali (Microsoft Outlook OAuth2 + Supabase con Host https://uiuvwzrmrdqbfajguuab.supabase.co e Service Role secret), poi ATTIVA. L'AIOS legge la tabella come leggi_inbox. Nota: message_id è UNIQUE → se vedi errori 'duplicate', il trigger ha ripreso una mail già presa, è innocuo."
+    "note": "INBOUND. Outlook (OAuth, ok con MFA) -> riga in public.email_messages con direction='in' e conversation_id (per raggruppare i thread). L'AIOS legge questa tabella come leggi_inbox e l'agente prepara la bozza di risposta nel cockpit (Conversazioni). Dopo import: aggancia le 2 credenziali (Microsoft Outlook OAuth2 + Supabase host https://uiuvwzrmrdqbfajguuab.supabase.co + Service Role secret), poi ATTIVA. message_id e UNIQUE -> eventuali errori 'duplicate' sono innocui (mail gia presa). L'invio della risposta e nell'altro workflow (k2ai, ramo send_email)."
   }
 }
