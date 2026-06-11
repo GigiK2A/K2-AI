@@ -15,7 +15,10 @@ from typing import Optional
 
 from datetime import datetime, timezone
 
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .. import settings
@@ -181,6 +184,27 @@ async def status(job_id: str):
         return await engine.get_deliverable(job_id)
     except engine.EngineError as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+@router.get("/deliverables/{job_id}/pdf")
+async def deliverable_pdf(job_id: str):
+    """Serve il PDF del deliverable generato dal motore 8e. Nel container unico 8e
+    e backend kbot condividono il filesystem → il PDF si legge dal path locale
+    prodotto dal 8e. Nessuna auth: job_id opaco, come lo status poll."""
+    try:
+        job = await engine.get_deliverable(job_id)
+    except engine.EngineError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    if job.get("status") != "rendered":
+        raise HTTPException(status_code=409, detail="documento non ancora pronto")
+    pdf_path = (job.get("outputs") or {}).get("pdf_path")
+    if not pdf_path or not os.path.isfile(pdf_path):
+        raise HTTPException(status_code=404, detail="pdf non disponibile")
+    # Sicurezza: solo file sotto la out-dir del motore 8e (niente path traversal).
+    out_root = os.path.realpath(os.environ.get("K2A_8E_OUT_DIR", "/tmp/8e_out"))
+    if not os.path.realpath(pdf_path).startswith(out_root + os.sep):
+        raise HTTPException(status_code=403, detail="percorso non consentito")
+    return FileResponse(pdf_path, media_type="application/pdf", filename="report-k2ai.pdf")
 
 
 @router.get("/deliverables/form/{servizio_id}")

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  API_BASE,
   createDeliverable,
   createPreview,
   getDeliverableForm,
@@ -109,7 +110,11 @@ export function DeliverablePanel({
 
   const status = job?.status;
   const preview = job?.outputs?.preview;
-  const pdf = job?.outputs?.pdf_url;
+  // Il PDF è servito dal backend kbot (legge il file prodotto dal 8e nel container).
+  // outputs.pdf_url è null (il 8e scrive su filesystem locale, non un URL pubblico).
+  const pdf = job?.job_id
+    ? `${API_BASE}/api/kbot/deliverables/${encodeURIComponent(job.job_id)}/pdf`
+    : undefined;
   const inProgress = busy && status !== "rendered" && status !== "refused" && status !== "error";
 
   return (
