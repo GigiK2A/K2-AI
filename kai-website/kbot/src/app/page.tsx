@@ -224,6 +224,10 @@ export default function HomePage() {
      kbot_sessions row, otherwise switching/creating conversations leaks
      uploaded_files + analyzed_urls across topics (Juventus + k2-ai.it mix). */
   useEffect(() => {
+    // Il boost suggerito appartiene alla CONVERSAZIONE: senza questo reset il
+    // pannello della chat precedente "rimaneva appiccicato" e compariva subito
+    // (col boost sbagliato) al 1° messaggio della chat nuova.
+    setSuggestedBoost(null);
     const convSid = activeConversation.kbotSessionId ?? null;
     const liveSid = kbotSession?.id ?? null;
     if (convSid && convSid !== liveSid) {
