@@ -397,6 +397,28 @@ export async function downloadMessageExport(
   triggerBlobDownload(blob, filename);
 }
 
+/**
+ * Download the full PAID deliverable (the generated report) as an Excel file.
+ * Re-renders the analysis JSON persisted by generate-pdf — data tables and
+ * editorial calendars become real spreadsheet sheets. Gated: paid or test_mode.
+ */
+export async function downloadDeliverableXlsx(
+  sessionId: string,
+  opts: { authToken?: string | null; testMode?: boolean } = {},
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/kbot/render-deliverable-xlsx`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(opts.authToken) },
+    body: JSON.stringify({ session_id: sessionId, test_mode: opts.testMode ?? false }),
+  });
+  if (!res.ok) await parseErr(res, "Errore export Excel");
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? `k2ai-report-${sessionId.slice(0, 8)}.xlsx`;
+  triggerBlobDownload(blob, filename);
+}
+
 export function downloadMarkdown(sessionId: string, content: string): void {
   const stamp = new Date()
     .toISOString()

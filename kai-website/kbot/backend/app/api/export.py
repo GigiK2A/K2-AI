@@ -15,13 +15,15 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
 from ..lib.auth import AuthUser, optional_user
 from ..lib.pdf_renderer import _html_to_pdf_bytes  # reuse Playwright path
+from ..lib.xlsx_renderer import render_xlsx
+from ..settings import INTERNAL_API_KEY
 import asyncio
 import concurrent.futures
 
@@ -289,3 +291,65 @@ def _markdown_to_docx(doc, md: str) -> None:
             continue
         para_buf.append(line)
     flush_para()
+
+
+# ---------------------------------------------------------------------------
+# Deliverable export — the full PAID report (`{meta, blocks[]}` JSON persisted
+# on the session by generate-pdf) re-rendered to Excel. Gated like generate-pdf:
+# internal key, or the session must be paid (test_mode allowed pre-payment).
+# ---------------------------------------------------------------------------
+
+
+class DeliverableBody(BaseModel):
+    sessionId: str = Field(..., alias="session_id")
+    testMode: bool = Field(default=False, alias="test_mode")
+
+    class Config:
+        populate_by_name = True
+
+
+def _gate_deliverable(
+    session: dict,
+    user: Optional[AuthUser],
+    x_internal_key: Optional[str],
+    test_mode: bool,
+) -> None:
+    if INTERNAL_API_KEY and x_internal_key == INTERNAL_API_KEY:
+        return
+    owner = session.get("user_id")
+    if owner and (not user or user.id != owner):
+        raise HTTPException(status_code=403, detail="not your session")
+    if not test_mode and session.get("status") != "paid":
+        raise HTTPException(status_code=402, detail="payment required")
+
+
+@router.post("/render-deliverable-xlsx")
+def render_deliverable_xlsx(
+    body: DeliverableBody,
+    user: Optional[AuthUser] = Depends(optional_user),
+    x_internal_key: Optional[str] = Header(default=None),
+):
+    session = sessions.get_session(body.sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    _gate_deliverable(session, user, x_internal_key, body.testMode)
+
+    analysis = (session.get("collected_data") or {}).get("analysis_json")
+    if not analysis:
+        raise HTTPException(
+            status_code=409,
+            detail="Report non ancora generato: genera prima il report, poi scaricalo in Excel.",
+        )
+
+    try:
+        data = render_xlsx(analysis)
+    except Exception:
+        log.exception("xlsx render failed")
+        raise HTTPException(status_code=500, detail="Excel render failed")
+
+    filename = _filename(body.sessionId, "xlsx")
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

@@ -496,7 +496,9 @@ def test_extract_summary_invalid_json_returns_none():
 def test_cold_start_prompt_says_no_service_picked():
     p = build_system_prompt_v2([], {"collected_data": {}})
     assert "SERVIZIO NON ANCORA SELEZIONATO" in p
-    assert "tipo di analisi" in p.lower() or "TIPO di analisi" in p
+    # Il prompt cold-start chiede che tipo di analisi/deliverable serve (wording
+    # aggiornato dalla direzione "deliverable", ex "tipo di analisi").
+    assert "analisi" in p.lower() or "deliverable" in p.lower()
 
 
 def test_picked_service_prompt():

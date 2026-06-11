@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-05-26",
+  "updated_at": "2026-06-10",
   "description": "Scaletta blog + IG K2-AI. Source of truth unica per blog autopilot e n8n IG.",
   "rows": [
     {
@@ -13,9 +13,9 @@
       "url": "https://www.k2-ai.it/suite-ai/agenti-email-crm.html",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "",
-      "blog_pubblicato": "",
-      "blog_url": ""
+      "blog_slug": "agenti-ai-email-crm-pmi",
+      "blog_pubblicato": "2026-05-27",
+      "blog_url": "/blog/agenti-ai-email-crm-pmi"
     },
     {
       "row": 3,
@@ -27,9 +27,9 @@
       "url": "https://www.k2-ai.it/suite-ai/automazioni-amministrative.html",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "",
-      "blog_pubblicato": "",
-      "blog_url": ""
+      "blog_slug": "automazioni-amministrative-ore-recuperate",
+      "blog_pubblicato": "2026-06-03",
+      "blog_url": "/blog/automazioni-amministrative-ore-recuperate"
     },
     {
       "row": 4,
@@ -41,9 +41,9 @@
       "url": "https://www.k2-ai.it/suite-ai/ai-legale-contratti.html",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "",
-      "blog_pubblicato": "",
-      "blog_url": ""
+      "blog_slug": "ai-legale-contratti-nda-4-minuti",
+      "blog_pubblicato": "2026-06-10",
+      "blog_url": "/blog/ai-legale-contratti-nda-4-minuti"
     },
     {
       "row": 5,

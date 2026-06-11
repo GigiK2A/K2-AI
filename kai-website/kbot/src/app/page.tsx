@@ -15,6 +15,7 @@ import {
   uploadFiles,
   startCheckout,
   generatePdfStream,
+  downloadDeliverableXlsx,
   getSession,
   fetchUrl,
   listConversations,
@@ -44,7 +45,7 @@ const REPORT_SUGGESTIONS = [
 ];
 
 const WELCOME_MESSAGE =
-  "Benvenuto. Sono K-BOT, l'analista K2-AI. Insieme produciamo un report operativo concreto sul tuo caso. Per partire, dimmi che tipo di analisi vuoi: operativa, marketing, SEO, bilancio, fattibilità tecnica, oppure descrivi liberamente il tuo problema.\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il report. Dettagli su /privacy.html._";
+  "Benvenuto. Sono K-BOT, l'analista K2-AI. Insieme produciamo il deliverable che ti serve: un'analisi/report (operativa, marketing, SEO, bilancio, fattibilità) oppure un documento operativo (calendario editoriale, piano contenuti, checklist, tabella Excel). Per partire, dimmi cosa ti preparo — o descrivi liberamente il tuo caso.\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il documento. Dettagli su /privacy.html._";
 
 function LoginFirstScreen() {
   return (
@@ -488,7 +489,7 @@ export default function HomePage() {
         const confirmMsg: ChatMessage = {
           id: uid("msg"),
           role: "assistant",
-          content: `Ho analizzato **${result.title || url}** — il contenuto è disponibile per la nostra conversazione. Cosa vuoi sapere?`,
+          content: `Ho letto **${result.title || url}** ✓ — l'ho aggiunto al contesto. Vai pure avanti con la tua richiesta, lo tengo presente.`,
           ts: Date.now(),
         };
         updateMessages([...activeConversation.messages, confirmMsg]);
@@ -738,6 +739,19 @@ export default function HomePage() {
                   message={{ ...m, hasPaid }}
                   onCheckout={startCheckoutFromUI}
                   onGeneratePdf={() => generateReportPdfFromUI(m.id)}
+                  onDownloadXlsx={async () => {
+                    const sid = kbotSession?.id;
+                    if (!sid) return;
+                    try {
+                      const token = await getToken();
+                      await downloadDeliverableXlsx(sid, {
+                        authToken: token ?? null,
+                        testMode: !hasPaid,
+                      });
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Errore export Excel");
+                    }
+                  }}
                   onFollowUp={handleFollowUpClick}
                   getAuthToken={getToken}
                   messageIndex={idx}

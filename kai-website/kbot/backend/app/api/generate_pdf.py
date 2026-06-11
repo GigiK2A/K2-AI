@@ -112,8 +112,11 @@ def generate_pdf(
         log.exception("Storage upload failed")
         raise HTTPException(status_code=500, detail=f"storage upload failed: {exc}")
 
-    # 4. Persist URL + status.
-    patch = {"pdf_url": public_url}
+    # 4. Persist URL + status + the analysis JSON, so the same paid deliverable
+    #    can be re-rendered to Excel/Word later without another LLM call.
+    collected = dict(session.get("collected_data") or {})
+    collected["analysis_json"] = analysis
+    patch = {"pdf_url": public_url, "collected_data": collected}
     if not body.testMode:
         patch["status"] = "paid"
         patch["paid_at"] = datetime.now(timezone.utc).isoformat()
@@ -253,7 +256,9 @@ async def generate_pdf_stream(
             yield _sse({"stage": "error", "progress": 0, "error": f"upload: {exc}"})
             return
 
-        patch = {"pdf_url": public_url}
+        collected = dict(session.get("collected_data") or {})
+        collected["analysis_json"] = analysis
+        patch = {"pdf_url": public_url, "collected_data": collected}
         if not body.testMode:
             patch["status"] = "paid"
             patch["paid_at"] = datetime.now(timezone.utc).isoformat()
