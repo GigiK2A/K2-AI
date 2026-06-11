@@ -8,6 +8,15 @@ import { prettyTime } from "@/lib/utils";
 
 const CITATION_RE = /\(pag\.\s*(\d+)\)/gi;
 
+/**
+ * DEMO MODE: quando NEXT_PUBLIC_KBOT_DEMO_MODE === "1" il report PDF viene
+ * generato SEMPRE in modo gratuito (test_mode lato backend), senza checkout
+ * Stripe, indipendentemente da hasPaid. Serve per le demo ai clienti.
+ * Default OFF → in produzione il comportamento a pagamento resta invariato.
+ * NB: NEXT_PUBLIC_* è inlinato a build-time → richiede rebuild del frontend.
+ */
+const DEMO_MODE = process.env.NEXT_PUBLIC_KBOT_DEMO_MODE === "1";
+
 /** Riconosce "(pag. N)" e li mostra come chip cliccabili (styling only per ora). */
 function renderWithCitations(text: string) {
   if (!text) return text;
@@ -128,10 +137,10 @@ export function MessageBubble({
         {message.reportReady && !message.reportPdfUrl && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
-              onClick={message.hasPaid ? onCheckout : onGeneratePdf}
+              onClick={message.hasPaid && !DEMO_MODE ? onCheckout : onGeneratePdf}
               className="inline-flex rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-black hover:opacity-90"
             >
-              Genera il report PDF
+              {DEMO_MODE ? "Genera il report PDF (demo)" : "Genera il report PDF"}
             </button>
             <span className="text-xs text-[var(--text-muted)]">
               Documento di ~9 pagine con KPI, piano d&apos;azione e roadmap.

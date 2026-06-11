@@ -44,7 +44,7 @@ const REPORT_SUGGESTIONS = [
 ];
 
 const WELCOME_MESSAGE =
-  "Benvenuto. Sono K-BOT, l'analista K2-AI. Insieme produciamo un report operativo concreto sul tuo caso. Per partire, dimmi che tipo di analisi vuoi: operativa, marketing, SEO, bilancio, fattibilità tecnica, oppure descrivi liberamente il tuo problema.\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il report. Dettagli su /privacy._";
+  "Benvenuto. Sono K-BOT, l'analista K2-AI. Insieme produciamo un report operativo concreto sul tuo caso. Per partire, dimmi che tipo di analisi vuoi: operativa, marketing, SEO, bilancio, fattibilità tecnica, oppure descrivi liberamente il tuo problema.\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il report. Dettagli su /privacy.html._";
 
 function LoginFirstScreen() {
   return (
