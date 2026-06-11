@@ -121,6 +121,26 @@ I **crediti** pagano i Check express; i **Boost** restano a prezzo (mai a credit
 
 ---
 
+## 6-bis. Motore unico 8e + demo mode (aggiornamento 11 giu)
+
+In **demo mode** la chat non genera più col renderer conversazionale: instrada al **Boost giusto del catalogo** (selettore) e lo genera col **motore 8e** (profondo, validato, con citazioni). Dopo qualche domanda compare il pannello del documento; "Genera il documento completo (demo)" → 8e → PDF, **senza pagamento**.
+
+**Env da impostare per la demo** (tutto OFF/assente = produzione invariata):
+
+| Dove | Variabile | Valore |
+|---|---|---|
+| Backend kbot | `KBOT_DEMO_MODE` | `1` |
+| Backend kbot | `K2A_8E_BASE_URL` | URL del motore 8e (Railway o `http://localhost:8800`) |
+| Backend kbot | `K2A_8E_API_KEY` | stesso Bearer del motore 8e |
+| Backend kbot | `ANTHROPIC_API_KEY` | la chiave |
+| Motore 8e | `K2A_8E_ENTITLEMENT_DEV` | `true` (accetta il token demo) |
+| Motore 8e | `K2A_8E_API_KEY` | stesso Bearer |
+| Motore 8e | `ANTHROPIC_API_KEY` | la chiave (generazione profonda) |
+| Frontend kbot | `NEXT_PUBLIC_KBOT_DEMO_MODE` | `1` + **rebuild** |
+| Frontend kbot | `NEXT_PUBLIC_API_BASE_URL` | URL del backend kbot |
+
+> Verificato: wiring chat→8e end-to-end sul mock, motore 8e reale fa boot (22 servizi, entitlement permissive). NON ancora fatto un giro di generazione 8e reale con la chiave (costa crediti) → fare 1 dry-run.
+
 ## 7. Checklist pre-demo (5 minuti prima)
 
 - [ ] Frontend K-BOT su `/app/` parte e fa login Supabase
