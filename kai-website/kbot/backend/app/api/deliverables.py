@@ -48,9 +48,10 @@ def _mint_entitlement(session: dict, servizio_id: str, tier: Optional[str] = Non
     """Entitlement JWT (G1) se il servizio risulta pagato. Firmato HS256, verificato
     stateless dall'8e. Fallback al placeholder solo se il segreto non è configurato
     (dev senza K2A_ENTITLEMENT_SECRET)."""
-    # DEMO MODE: in demo si genera anche senza pagamento (token comunque mintato;
-    # l'8e con K2A_8E_ENTITLEMENT_DEV=true lo accetta). Produzione: gate invariato.
-    if session.get("status") != "paid" and not settings.KBOT_DEMO_MODE:
+    # FREE MODE (K-BOT ufficiale senza paywall): genera anche senza pagamento
+    # (token comunque mintato; l'8e con K2A_8E_ENTITLEMENT_DEV=true lo accetta).
+    # Con KBOT_FREE_MODE=0 il gate "servizio non pagato" torna attivo.
+    if session.get("status") != "paid" and not settings.KBOT_FREE_MODE:
         return None
     token = entitlement.mint(
         user_id=session.get("user_id"),

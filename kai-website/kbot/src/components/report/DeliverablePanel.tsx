@@ -12,8 +12,8 @@ import {
   type DeliverableStatus,
 } from "@/lib/api";
 
-/** Demo: tratta come pagato → genera il documento full via 8e senza checkout. */
-const DEMO_MODE = process.env.NEXT_PUBLIC_KBOT_DEMO_MODE === "1";
+/** Free mode (K-BOT ufficiale): tratta come pagato → genera il documento full via 8e, no checkout. */
+const FREE_MODE = process.env.NEXT_PUBLIC_KBOT_FREE_MODE === "1";
 
 const STATUS_LABEL: Record<DeliverableStatus, string> = {
   routed: "In coda…",
@@ -51,7 +51,7 @@ export function DeliverablePanel({
   getAuthToken,
 }: Props) {
   // In demo si genera sempre il documento completo (8e), mai checkout.
-  const effectivePaid = hasPaid || DEMO_MODE;
+  const effectivePaid = hasPaid || FREE_MODE;
   const [job, setJob] = useState<DeliverableJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -205,10 +205,10 @@ export function DeliverablePanel({
             </div>
           ) : null}
           <button
-            onClick={DEMO_MODE ? () => run("full") : unlock}
+            onClick={FREE_MODE ? () => run("full") : unlock}
             className="mt-2 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
           >
-            {DEMO_MODE ? "Genera il documento completo (demo)" : `${preview.cta ?? "Sblocca il documento completo"} →`}
+            {FREE_MODE ? "Genera il documento completo" : `${preview.cta ?? "Sblocca il documento completo"} →`}
           </button>
         </div>
       )}

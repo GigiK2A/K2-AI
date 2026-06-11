@@ -9,13 +9,12 @@ import { prettyTime } from "@/lib/utils";
 const CITATION_RE = /\(pag\.\s*(\d+)\)/gi;
 
 /**
- * DEMO MODE: quando NEXT_PUBLIC_KBOT_DEMO_MODE === "1" il report PDF viene
- * generato SEMPRE in modo gratuito (test_mode lato backend), senza checkout
- * Stripe, indipendentemente da hasPaid. Serve per le demo ai clienti.
- * Default OFF → in produzione il comportamento a pagamento resta invariato.
+ * FREE MODE (K-BOT ufficiale senza paywall): quando NEXT_PUBLIC_KBOT_FREE_MODE
+ * === "1" il documento è prodotto dal motore 8e (DeliverablePanel) e la CTA del
+ * report conversazionale viene nascosta, così c'è un solo percorso di generazione.
  * NB: NEXT_PUBLIC_* è inlinato a build-time → richiede rebuild del frontend.
  */
-const DEMO_MODE = process.env.NEXT_PUBLIC_KBOT_DEMO_MODE === "1";
+const FREE_MODE = process.env.NEXT_PUBLIC_KBOT_FREE_MODE === "1";
 
 /** Riconosce "(pag. N)" e li mostra come chip cliccabili (styling only per ora). */
 function renderWithCitations(text: string) {
@@ -133,9 +132,9 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Report-ready CTA conversazionale. In DEMO_MODE è nascosta: il documento
+        {/* Report-ready CTA conversazionale. In FREE_MODE è nascosta: il documento
             viene generato dal motore 8e tramite il DeliverablePanel (selettore catalogo). */}
-        {message.reportReady && !message.reportPdfUrl && !DEMO_MODE && (
+        {message.reportReady && !message.reportPdfUrl && !FREE_MODE && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={message.hasPaid ? onCheckout : onGeneratePdf}
