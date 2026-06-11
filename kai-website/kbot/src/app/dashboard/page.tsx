@@ -159,7 +159,7 @@ function SessionRow({ session }: { session: KbotSession }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">
-            {session.summary || lastUserMsg || `Sessione ${session.id.slice(0, 8)}`}
+            {session.deliverableLabel || session.summary || lastUserMsg || `Sessione ${session.id.slice(0, 8)}`}
           </p>
           <p className="mt-1 text-xs text-[#6b7280]">
             {date} · {time} · {session.serviceId ?? "—"}

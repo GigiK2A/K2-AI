@@ -25,6 +25,7 @@ export interface KbotSession {
   tagPillar?: string | null;
   boostSuggerito?: string | null;
   boostSuggeritoLabel?: string | null;
+  deliverableLabel?: string | null;
   mode: Mode;
   messages: KbotMessage[];
   extractedData: Record<string, unknown>;
@@ -936,6 +937,23 @@ export async function getDeliverable(jobId: string): Promise<DeliverableJob> {
   });
   if (!res.ok) await parseErr(res, "Errore stato deliverable");
   return res.json();
+}
+
+/** Rende duraturo il deliverable: lo carica su Storage e lo lega alla sessione
+ * (→ compare in dashboard/storico). Ritorna l'URL durevole del PDF. */
+export async function saveDeliverable(
+  sessionId: string,
+  jobId: string,
+  authToken?: string | null,
+): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, job_id: jobId }),
+  });
+  if (!res.ok) return null; // best-effort: il download dal /pdf resta comunque
+  const j = await res.json().catch(() => ({}));
+  return j.pdf_url ?? null;
 }
 
 /** Polla finché rendered/refused/error o timeout. onTick per aggiornare la UI. */

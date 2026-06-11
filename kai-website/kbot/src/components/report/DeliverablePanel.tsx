@@ -7,6 +7,7 @@ import {
   createPreview,
   getDeliverableForm,
   pollDeliverable,
+  saveDeliverable,
   startBoostCheckout,
   type DeliverableFormField,
   type DeliverableJob,
@@ -56,6 +57,7 @@ export function DeliverablePanel({
   const [job, setJob] = useState<DeliverableJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [savedPdfUrl, setSavedPdfUrl] = useState<string | null>(null);
   const [campi, setCampi] = useState<DeliverableFormField[]>([]);
   const [form, setForm] = useState<Record<string, unknown>>({});
 
@@ -99,6 +101,11 @@ export function DeliverablePanel({
             : await createDeliverable(sessionId, servizioId, merged, token);
         const final = await pollDeliverable(job_id, (j) => setJob(j));
         setJob(final);
+        // Documento pronto → rendilo duraturo (Storage + dashboard/storico).
+        if (final.status === "rendered" && level === "full") {
+          const url = await saveDeliverable(sessionId, job_id, token);
+          if (url) setSavedPdfUrl(url);
+        }
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Errore");
       } finally {
@@ -110,11 +117,12 @@ export function DeliverablePanel({
 
   const status = job?.status;
   const preview = job?.outputs?.preview;
-  // Il PDF è servito dal backend kbot (legge il file prodotto dal 8e nel container).
-  // outputs.pdf_url è null (il 8e scrive su filesystem locale, non un URL pubblico).
-  const pdf = job?.job_id
-    ? `${API_BASE}/api/kbot/deliverables/${encodeURIComponent(job.job_id)}/pdf`
-    : undefined;
+  // Download: preferisci l'URL durevole su Storage (savedPdfUrl); fallback al
+  // file effimero servito dal backend (8e scrive in /tmp, pdf_url resta null).
+  const pdf = savedPdfUrl
+    ?? (job?.job_id
+      ? `${API_BASE}/api/kbot/deliverables/${encodeURIComponent(job.job_id)}/pdf`
+      : undefined);
   const inProgress = busy && status !== "rendered" && status !== "refused" && status !== "error";
 
   return (

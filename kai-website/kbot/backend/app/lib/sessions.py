@@ -179,6 +179,7 @@ def public_session(session: dict) -> dict:
         "tagPillar": collected.get("tag_pillar"),
         "boostSuggerito": collected.get("boost_suggerito"),
         "boostSuggeritoLabel": collected.get("boost_suggerito_label"),
+        "deliverableLabel": collected.get("deliverable_label"),
         "mode": collected.get("mode") or "report",
         "messages": session.get("messages") or [],
         "extractedData": collected.get("extractedData") or {},

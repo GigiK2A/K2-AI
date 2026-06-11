@@ -24,7 +24,9 @@ from pydantic import BaseModel, Field
 from .. import settings
 from ..lib import engine, sessions, catalog, entitlement
 from ..lib.auth import AuthUser, optional_user, require_user
+from ..lib.storage import upload_pdf
 from ..lib.supabase_admin import get_admin_client
+from ..settings import STORAGE_REPORTS_BUCKET
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -205,6 +207,60 @@ async def deliverable_pdf(job_id: str):
     if not os.path.realpath(pdf_path).startswith(out_root + os.sep):
         raise HTTPException(status_code=403, detail="percorso non consentito")
     return FileResponse(pdf_path, media_type="application/pdf", filename="report-k2ai.pdf")
+
+
+class SaveDeliverableBody(BaseModel):
+    sessionId: str = Field(..., alias="session_id")
+    jobId: str = Field(..., alias="job_id")
+
+    class Config:
+        populate_by_name = True
+
+
+@router.post("/deliverables/save")
+async def save_deliverable(body: SaveDeliverableBody,
+                           user: Optional[AuthUser] = Depends(optional_user)):
+    """Rende DURATURO il deliverable 8e: carica il PDF (effimero in /tmp) su
+    Supabase Storage e lo lega alla sessione → compare in dashboard/storico.
+    Idempotente: se già salvato per questo job, ritorna l'URL esistente."""
+    session = sessions.get_session(body.sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    _check_ownership(session, user)
+
+    collected = dict(session.get("collected_data") or {})
+    if collected.get("deliverable_saved_job") == body.jobId and session.get("pdf_url"):
+        return {"pdf_url": session["pdf_url"], "cached": True}
+
+    try:
+        job = await engine.get_deliverable(body.jobId)
+    except engine.EngineError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    if job.get("status") != "rendered":
+        raise HTTPException(status_code=409, detail="documento non ancora pronto")
+    pdf_path = (job.get("outputs") or {}).get("pdf_path")
+    if not pdf_path or not os.path.isfile(pdf_path):
+        raise HTTPException(status_code=404, detail="pdf non disponibile")
+    out_root = os.path.realpath(os.environ.get("K2A_8E_OUT_DIR", "/tmp/8e_out"))
+    if not os.path.realpath(pdf_path).startswith(out_root + os.sep):
+        raise HTTPException(status_code=403, detail="percorso non consentito")
+
+    with open(pdf_path, "rb") as f:
+        content = f.read()
+    public_url = upload_pdf(
+        bucket=STORAGE_REPORTS_BUCKET,
+        path=f"deliverables/{body.sessionId}/{body.jobId}.pdf",
+        content=content,
+    )
+    # Label leggibile del servizio per la dashboard/storico.
+    servizio_id = collected.get("deliverable_service") or ""
+    servizio = catalog.get_servizio(servizio_id) if servizio_id else None
+    collected["deliverable_saved_job"] = body.jobId
+    collected["deliverable_pdf_url"] = public_url
+    if servizio:
+        collected["deliverable_label"] = servizio.get("label")
+    sessions.update_session(body.sessionId, {"pdf_url": public_url, "collected_data": collected})
+    return {"pdf_url": public_url}
 
 
 @router.get("/deliverables/form/{servizio_id}")
