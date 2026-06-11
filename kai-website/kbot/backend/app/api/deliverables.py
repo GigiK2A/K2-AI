@@ -100,9 +100,18 @@ async def create(body: DeliverableBody, user: Optional[AuthUser] = Depends(optio
         log.warning("8e error: %s", e)
         raise HTTPException(status_code=502, detail="motore non disponibile")
 
-    # Persisti il job sulla sessione per il polling successivo.
-    sessions.update_session(body.sessionId, {"deliverable_job_id": res.get("job_id"),
-                                             "deliverable_service": body.servizioId})
+    # Persisti il job dentro collected_data (JSONB esistente), NON come colonne
+    # top-level: deliverable_job_id/deliverable_service NON esistono come colonne
+    # di kbot_sessions → un update con quei nomi darebbe 500. Il polling usa
+    # comunque il job_id dalla response, non dalla sessione. Best-effort: un
+    # fallimento di persistenza non deve far fallire la generazione già avviata.
+    try:
+        collected = dict(session.get("collected_data") or {})
+        collected["deliverable_job_id"] = res.get("job_id")
+        collected["deliverable_service"] = body.servizioId
+        sessions.update_session(body.sessionId, {"collected_data": collected})
+    except Exception:
+        log.warning("persist deliverable job fallita (non bloccante)", exc_info=True)
     return res
 
 
