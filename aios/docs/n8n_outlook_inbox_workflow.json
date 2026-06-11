@@ -1,0 +1,56 @@
+{
+  "name": "K2-AI · Outlook → inbox_messages",
+  "nodes": [
+    {
+      "parameters": {
+        "event": "messageReceived",
+        "options": {}
+      },
+      "id": "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+      "name": "Outlook · nuova mail",
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [380, 300],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": { "id": "REPLACE_ME", "name": "Microsoft Outlook account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "inbox_messages",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "message_id",   "fieldValue": "={{ $json.id }}" },
+            { "fieldId": "from_email",   "fieldValue": "={{ $json.from.emailAddress.address }}" },
+            { "fieldId": "from_name",    "fieldValue": "={{ $json.from.emailAddress.name }}" },
+            { "fieldId": "subject",      "fieldValue": "={{ $json.subject }}" },
+            { "fieldId": "body_preview", "fieldValue": "={{ $json.bodyPreview }}" },
+            { "fieldId": "received_at",  "fieldValue": "={{ $json.receivedDateTime }}" },
+            { "fieldId": "is_read",      "fieldValue": "={{ $json.isRead }}" }
+          ]
+        }
+      },
+      "id": "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb",
+      "name": "Supabase · inbox_messages",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [640, 300],
+      "credentials": {
+        "supabaseApi": { "id": "REPLACE_ME", "name": "Supabase K2-AI" }
+      }
+    }
+  ],
+  "connections": {
+    "Outlook · nuova mail": {
+      "main": [[{ "node": "Supabase · inbox_messages", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {
+    "note": "Outlook (OAuth, ok con MFA) → riga in public.inbox_messages. Dopo import: aggancia le 2 credenziali (Microsoft Outlook OAuth2 + Supabase con Host https://uiuvwzrmrdqbfajguuab.supabase.co e Service Role secret), poi ATTIVA. L'AIOS legge la tabella come leggi_inbox. Nota: message_id è UNIQUE → se vedi errori 'duplicate', il trigger ha ripreso una mail già presa, è innocuo."
+  }
+}
