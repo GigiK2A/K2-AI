@@ -25,14 +25,14 @@
             { "fieldId": "conversation_id", "fieldValue": "={{ $json.conversationId }}" },
             { "fieldId": "message_id",      "fieldValue": "={{ $json.id }}" },
             { "fieldId": "direction",       "fieldValue": "in" },
-            { "fieldId": "from_email",      "fieldValue": "={{ $json.from.emailAddress.address }}" },
-            { "fieldId": "from_name",       "fieldValue": "={{ $json.from.emailAddress.name }}" },
-            { "fieldId": "to_email",        "fieldValue": "={{ ($json.toRecipients && $json.toRecipients[0]) ? $json.toRecipients[0].emailAddress.address : '' }}" },
+            { "fieldId": "from_email",      "fieldValue": "={{ ($json.from && $json.from.emailAddress) ? $json.from.emailAddress.address : $json.from }}" },
+            { "fieldId": "from_name",       "fieldValue": "={{ ($json.from && $json.from.emailAddress) ? $json.from.emailAddress.name : $json.from }}" },
+            { "fieldId": "to_email",        "fieldValue": "={{ ($json.toRecipients && $json.toRecipients[0]) ? $json.toRecipients[0].emailAddress.address : $json.to }}" },
             { "fieldId": "subject",         "fieldValue": "={{ $json.subject }}" },
             { "fieldId": "body",            "fieldValue": "={{ ($json.body && $json.body.content) ? $json.body.content : $json.bodyPreview }}" },
             { "fieldId": "body_preview",    "fieldValue": "={{ $json.bodyPreview }}" },
             { "fieldId": "status",          "fieldValue": "ricevuto" },
-            { "fieldId": "received_at",     "fieldValue": "={{ $json.receivedDateTime }}" },
+            { "fieldId": "received_at",     "fieldValue": "={{ $json.receivedDateTime || $now }}" },
             { "fieldId": "is_read",         "fieldValue": "={{ $json.isRead }}" }
           ]
         }
