@@ -945,7 +945,9 @@ export async function pollDeliverable(
   opts: { intervalMs?: number; timeoutMs?: number } = {},
 ): Promise<DeliverableJob> {
   const interval = opts.intervalMs ?? 2500;
-  const timeout = opts.timeoutMs ?? 300_000;
+  // La generazione 8e profonda (16 pagine, per-sezione) dura ~5 min; su prod
+  // può essere più lenta. Timeout generoso (10 min) per non fallire a metà.
+  const timeout = opts.timeoutMs ?? 600_000;
   const start = Date.now();
   let lastJob: DeliverableJob | null = null;
   for (;;) {
