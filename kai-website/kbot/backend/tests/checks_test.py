@@ -6,21 +6,34 @@ os.environ.setdefault("NEXT_PUBLIC_SUPABASE_URL", "https://x.supabase.co")
 os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "x")
 os.environ.setdefault("ANTHROPIC_API_KEY", "x")
 os.environ.setdefault("STRIPE_SECRET_KEY", "x")
-os.environ.setdefault("INTERNAL_API_KEY", "x")
 os.environ.setdefault("K2A_ENTITLEMENT_SECRET", "ci-secret-32bytes-minimum-length!")
 
+import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.lib.auth import require_user, AuthUser
 from app.api import checks as _checks
 app.dependency_overrides[require_user] = lambda: AuthUser(id="test-user", email="t@t.it", has_paid=True, raw={})
-# Mock degli INTERNI del billing (Supabase non reale): così il gate vero _consuma_crediti
-# gira ma con piano abilitato + credito sufficiente. Il costo viene dal catalogo sorgente.
-_checks.billing.puo_eseguire_servizi = lambda plan: True
-_checks.billing_store.get_plan = lambda uid: "pro"
-_checks.billing_store.consume_credits = lambda *a, **k: (True, 999)
 
 c = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _billing_ok():
+    """Mock ISOLATO del billing (Supabase non reale): piano abilitato + credito ok.
+    Ripristina dopo ogni test → niente contaminazione di test_billing/webhook."""
+    o1 = _checks.billing.puo_eseguire_servizi
+    o2 = _checks.billing_store.get_plan
+    o3 = _checks.billing_store.consume_credits
+    _checks.billing.puo_eseguire_servizi = lambda plan: True
+    _checks.billing_store.get_plan = lambda uid: "pro"
+    _checks.billing_store.consume_credits = lambda *a, **k: (True, 999)
+    try:
+        yield
+    finally:
+        _checks.billing.puo_eseguire_servizi = o1
+        _checks.billing_store.get_plan = o2
+        _checks.billing_store.consume_credits = o3
 
 
 def test_list_checks():
