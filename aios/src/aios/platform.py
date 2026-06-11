@@ -21,6 +21,7 @@ from aios.sources.outputs import output_tool
 from aios.sources.n8n import n8n_tool, n8n_workflows_tool
 from aios.command import CommandRouter
 from aios.prospecting import Prospector, prospects_tool
+from aios.tools import Tool
 from aios.agents.marketing import MarketingAgent
 from aios.agents.domain import DomainAgent
 from aios.agents.sales_config import SALES_CONFIG
@@ -78,10 +79,22 @@ def build_platform() -> Platform:
         for t in factory(client):
             k.register_tool(t)
     for t in all_connectors():          # connettori esterni env-gated (graceful [])
+        if t.name == "leggi_inbox":
+            continue                    # sostituito sotto: posta via tabella inbox_messages (n8n)
         k.register_tool(t)
     k.register_tool(n8n_tool())         # braccio esecutore esterno (env-gated)
     k.register_tool(n8n_workflows_tool())  # sensore: elenco workflow n8n (readonly)
     k.register_tool(prospects_tool(client))  # sensore: prospect marketing (readonly)
+    # leggi_inbox via tabella alimentata da n8n (Outlook OAuth) — override dell'IMAP,
+    # che il tenant MFA/Conditional Access blocca. Degrada a [] se la tabella è vuota.
+    def _inbox_table():
+        try:
+            return client.select("inbox_messages",
+                                 {"select": "*", "order": "received_at.desc", "limit": "30"})
+        except Exception:
+            return []
+    k.register_tool(Tool(name="leggi_inbox", action_type=None, readonly=True,
+                         run=lambda **_: _inbox_table()))
     from aios.sources.n8n import N8N_ACTION
     from aios.autonomy import AutonomyLevel as _AL
     k.policy.set_level(N8N_ACTION, _AL.L1_PROPOSE)   # esterno: mai autonomo
