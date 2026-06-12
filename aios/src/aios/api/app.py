@@ -30,6 +30,23 @@ class ResolveBody(BaseModel):
     reason: str | None = None
 
 
+class CommandBody(BaseModel):
+    text: str
+
+
+class ConfirmBody(BaseModel):
+    id: int
+
+
+class ProspectBody(BaseModel):
+    n: int = 5
+
+
+class SendDraftBody(BaseModel):
+    subject: str | None = None
+    body: str | None = None
+
+
 def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     app = FastAPI(title="K2-AI Operating System")
 
@@ -87,6 +104,10 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "iscritti": ("leggi_iscritti", {}),
             "newsletter": ("leggi_newsletter", {}),
             "analytics": ("leggi_analytics", {}),
+            "prospects": ("leggi_prospects", {}),
+            "competitor_trovati": ("leggi_competitor_trovati", {}),
+            "ranking_seo": ("leggi_ranking_seo", {}),
+            "funnel_web": ("leggi_funnel_web", {}),
         }
         for key, (tool, args) in wanted.items():
             if tool not in names:
@@ -188,6 +209,8 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "Anthropic (LLM)": ["ANTHROPIC_API_KEY"],
             "Instagram": ["AIOS_IG_TOKEN"],
             "Telegram": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
+            "n8n (esecutore esterno)": ["N8N_WEBHOOK_URL"],
+            "n8n API (gestione workflow)": ["N8N_API_URL", "N8N_API_KEY"],
             "API auth": ["AIOS_API_TOKEN"],
         }
         label = {
@@ -211,5 +234,171 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         if platform is None:
             return []
         return platform.deliverables()
+
+    @app.get("/api/company")
+    def company(_=Depends(_require_auth)) -> dict[str, Any]:
+        """Aggregati REALI per Overview/Agenti: coda decisioni, audit, deliverable,
+        per-dominio + alcuni segnali letti dai sensori. Nessun dato inventato."""
+        pending = kernel.approvals.pending()
+        records = kernel.audit.records()
+        executed = sum(1 for r in records if r.event == "executed")
+        domains = platform.domains() if platform else []
+        per = {d: {"pending": 0, "deliverables": 0} for d in domains}
+        for a in pending:
+            d = a.action_key.split(".", 1)[0]
+            if d in per:
+                per[d]["pending"] += 1
+        try:
+            deliv = platform.deliverables() if platform else []
+        except Exception:
+            deliv = []
+        for x in deliv:
+            d = x.get("dominio")
+            if d in per:
+                per[d]["deliverables"] += 1
+        names = set(kernel.tools.names())
+
+        def _count(tool: str) -> int | None:
+            if tool not in names:
+                return None
+            try:
+                r = kernel.execute(tool, actor="cockpit", args={}).result
+                return len(r) if isinstance(r, list) else None
+            except Exception:
+                return None
+
+        signals = {
+            "leads": _count("leggi_lead"),
+            "conversioni": _count("leggi_conversioni"),
+            "iscritti": _count("leggi_iscritti_newsletter"),
+            "commesse": _count("leggi_commesse"),
+            "task_operativi": _count("leggi_task_operativi"),
+            "clienti": _count("leggi_clienti"),
+        }
+        return {
+            "pending_total": len(pending),
+            "audit_total": len(records),
+            "executed_total": executed,
+            "deliverables_total": len(deliv),
+            "domains": domains,
+            "per_domain": per,
+            "signals": signals,
+        }
+
+    @app.post("/api/command")
+    def command(body: CommandBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """Chat a istruzioni: valuta e — interne subito, esterne/sensibili in conferma — esegue."""
+        if platform is None or getattr(platform, "commands", None) is None:
+            return {"fattibile": False, "risposta": "Comandi non disponibili.",
+                    "valutazione": "", "eseguite": [], "da_confermare": [], "rifiutate": []}
+        return platform.commands.handle(body.text, actor="cockpit").to_dict()
+
+    @app.post("/api/command/confirm")
+    def command_confirm(body: ConfirmBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        if platform is None or getattr(platform, "commands", None) is None:
+            return {"ok": False, "errore": "non disponibile"}
+        return platform.commands.confirm(body.id, actor="cockpit")
+
+    @app.post("/api/marketing/prospect")
+    def marketing_prospect(body: ProspectBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """Cerca PMI in target (web), le qualifica, salva i qualificati con BOZZA.
+        La bozza NON viene inviata: resta in marketing_prospects da rivedere."""
+        if platform is None or getattr(platform, "prospector", None) is None:
+            return {"errore": "prospecting non disponibile", "prospects": []}
+        n = max(1, min(int(body.n or 5), 10))
+        try:
+            found = platform.prospector.find(n)
+        except Exception as exc:
+            return {"errore": str(exc)[:200], "prospects": []}
+        from aios.actuator import apply_action
+        from aios.prospecting import Prospector
+        client = kernel._supabase
+        salvati, out = 0, []
+        for p in found:
+            qualified = bool(p.get("in_target")) and int(p.get("fit_score") or 0) >= 60
+            rec = {"company": p.get("company"), "sector": p.get("sector"),
+                   "fit_score": p.get("fit_score"), "fit_reason": p.get("fit_reason"),
+                   "contact_email": p.get("contact_email"), "in_target": p.get("in_target"),
+                   "qualificato": qualified, "draft_subject": p.get("draft_subject"),
+                   "draft_body": p.get("draft_body")}
+            if qualified:
+                try:
+                    apply_action(client, {"tabella": "marketing_prospects", "op": "insert",
+                                          "dati": Prospector.to_row(p)})
+                    salvati += 1
+                    rec["salvato"] = True
+                    kernel.audit.append(action_key="marketing.prospect", event="executed",
+                                        actor="cockpit", detail={"company": p.get("company")})
+                except Exception as exc:
+                    rec["salvato"] = False
+                    rec["errore"] = str(exc)[:120]
+            out.append(rec)
+        return {"trovati": len(found), "salvati": salvati, "prospects": out}
+
+    @app.post("/api/marketing/competitors")
+    def marketing_competitors(body: ProspectBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """L'agente cerca da solo i competitor italiani (web), li profila e li salva.
+        Nessun URL fornito dall'umano: li trova l'AI. Dati readonly per il cockpit."""
+        if platform is None or getattr(platform, "competitor_scout", None) is None:
+            return {"errore": "competitor scout non disponibile", "competitors": []}
+        n = max(1, min(int(body.n or 6), 12))
+        try:
+            found = platform.competitor_scout.find(n)
+        except Exception as exc:
+            return {"errore": str(exc)[:200], "competitors": []}
+        from aios.actuator import apply_action
+        from aios.competitor_scout import CompetitorScout
+        client = kernel._supabase
+        salvati, out = 0, []
+        for c in found:
+            rec = {"name": c.get("name"), "website": c.get("website"),
+                   "offering": c.get("offering"), "positioning": c.get("positioning"),
+                   "threat": c.get("threat"), "differentiation": c.get("differentiation")}
+            try:
+                apply_action(client, {"tabella": "marketing_competitors", "op": "insert",
+                                      "dati": CompetitorScout.to_row(c)})
+                salvati += 1
+                rec["salvato"] = True
+                kernel.audit.append(action_key="marketing.competitor", event="executed",
+                                    actor="cockpit", detail={"name": c.get("name")})
+            except Exception as exc:
+                rec["salvato"] = False
+                rec["errore"] = str(exc)[:120]
+            out.append(rec)
+        return {"trovati": len(found), "salvati": salvati, "competitors": out}
+
+    @app.get("/api/conversations")
+    def conversations(_=Depends(_require_auth)) -> list[dict[str, Any]]:
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return []
+        try:
+            return platform.conversations.threads()
+        except Exception:
+            return []
+
+    @app.post("/api/conversations/draft")
+    def conversations_draft(body: ProspectBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """Genera le BOZZE di risposta per i thread con l'ultima mail del cliente."""
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return {"errore": "non disponibile"}
+        return platform.conversations.draft_replies(limit=max(1, min(int(body.n or 5), 10)))
+
+    @app.post("/api/conversations/{draft_id}/send")
+    def conversations_send(draft_id: str, body: SendDraftBody | None = None,
+                           _=Depends(_require_auth)) -> dict[str, Any]:
+        """Invia la bozza approvata (esterno via n8n). Il clic Approva È l'autorizzazione.
+        Body opzionale {subject, body} per inviare la versione corretta (Modifica)."""
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return {"ok": False, "errore": "non disponibile"}
+        ov = None
+        if body is not None and (body.subject or body.body):
+            ov = {"subject": body.subject, "body": body.body}
+        return platform.conversations.send(draft_id, actor="cockpit", override=ov)
+
+    @app.post("/api/conversations/{draft_id}/discard")
+    def conversations_discard(draft_id: str, _=Depends(_require_auth)) -> dict[str, Any]:
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return {"ok": False, "errore": "non disponibile"}
+        return platform.conversations.discard(draft_id)
 
     return app

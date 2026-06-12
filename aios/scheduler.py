@@ -16,6 +16,13 @@ def run_all() -> dict:
             results[domain] = platform.run(domain)
         except Exception as exc:  # one domain failing must not stop the others
             results[domain] = {"error": str(exc)}
+    # Bozze di risposta alle mail nuove (L1): preparate, mai inviate senza approvazione
+    conv = getattr(platform, "conversations", None)
+    if conv is not None:
+        try:
+            results["email"] = conv.draft_replies(limit=5)
+        except Exception as exc:
+            results["email"] = {"error": str(exc)}
     # Notifica Telegram delle decisioni in coda (no-op se Telegram non configurato)
     if telegram.enabled():
         try:

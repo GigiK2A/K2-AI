@@ -20,8 +20,80 @@
   .chip{font-size:.62rem;font-weight:700;padding:.14rem .55rem;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
   .real{font-size:.56rem;font-weight:700;color:#2563EB;background:#eff4ff;border-radius:999px;padding:.08rem .45rem;text-transform:uppercase;letter-spacing:.03em}
   .up{color:#16A34A;font-weight:700;font-size:.72rem}.muted{color:#94a3b8;font-weight:600;font-size:.72rem}
-  .sec-t{font-weight:800;color:#0f172a}
+  .sec-t{font-weight:800;color:#111827;letter-spacing:-.01em}
   ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-thumb{background:#dde3ec;border-radius:8px}
+  /* ---- premium ---- */
+  body{background:#F5F7FB;color:#111827;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{background:#fff;border:1px solid #E6EAF2;border-radius:20px;box-shadow:0 1px 2px rgba(16,24,40,.03),0 14px 32px -16px rgba(16,24,40,.10)}
+  .lift{transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s,border-color .25s}
+  .lift:hover{transform:translateY(-3px);box-shadow:0 22px 44px -20px rgba(37,99,235,.22);border-color:#dbe3f5}
+  .glass{background:rgba(255,255,255,.80);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid rgba(255,255,255,.75);box-shadow:0 24px 60px -24px rgba(16,24,40,.40)}
+  .kpiv{font-variant-numeric:tabular-nums;letter-spacing:-.025em;color:#111827}
+  .heroWrap{position:relative;border-radius:24px;overflow:hidden;min-height:240px;border:1px solid #E6EAF2}
+  .heroBg{position:absolute;inset:0;background:radial-gradient(130% 150% at 86% 8%,#cfe0ff 0%,#e9f0fb 40%,#f6f9fd 72%),linear-gradient(120deg,#eaf1ff,#f5f7fb)}
+  .heroImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .heroGrid2{position:absolute;inset:0;background-image:linear-gradient(rgba(37,99,235,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.06) 1px,transparent 1px);background-size:32px 32px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 35%);mask-image:linear-gradient(90deg,transparent,#000 35%)}
+  .glow{position:absolute;border-radius:999px;filter:blur(46px);opacity:.5}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .fu{animation:fadeUp .55s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes dash{to{stroke-dashoffset:0}}
+  .spark path.l{stroke-dasharray:160;stroke-dashoffset:160;animation:dash 1.2s ease .15s forwards}
+  @keyframes ringfill{to{stroke-dashoffset:var(--o)}}
+  @keyframes ppulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.82)}}
+  .ppulse{animation:ppulse 2.2s ease-in-out infinite}
+  .btn-app{background:#16A34A;color:#fff}.btn-app:hover{background:#15912f}
+  .btn-sec{border:1px solid #E6EAF2;color:#475569;background:#fff}.btn-sec:hover{background:#f8fafc}
+  /* live agent scene */
+  .scene{position:relative;border-radius:20px;overflow:hidden;background:
+    radial-gradient(120% 130% at 85% 0%,#dbe8ff 0%,#eef3fb 45%,#f6f9fd 75%);border:1px solid #E6EAF2}
+  .stz{background:rgba(255,255,255,.72);backdrop-filter:blur(8px);border:1px solid #E6EAF2;border-radius:14px;padding:10px 11px;transition:all .35s cubic-bezier(.2,.7,.2,1)}
+  .stz.run{border-color:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.18),0 14px 28px -16px rgba(37,99,235,.5)}
+  .stz.done{border-color:#16A34A33;box-shadow:0 10px 24px -16px rgba(22,163,74,.4)}
+  .stz.queue{opacity:.6}
+  .scr{height:24px;border-radius:7px;background:linear-gradient(180deg,#f1f5ff,#fff);border:1px solid #eef2f7;overflow:hidden}
+  @keyframes flow{0%{transform:translateX(-30%)}100%{transform:translateX(130%)}}
+  .stz.run .scr::after{content:"";display:block;height:100%;width:30%;background:linear-gradient(90deg,transparent,rgba(37,99,235,.35),transparent);animation:flow 1.1s linear infinite}
+  .dot-run{width:7px;height:7px;border-radius:999px;background:#2563EB;animation:ppulse 1.1s ease-in-out infinite}
+  .dot-done{width:7px;height:7px;border-radius:999px;background:#16A34A}
+  .dot-idle{width:7px;height:7px;border-radius:999px;background:#cbd5e1}
+  .pbar{height:7px;border-radius:999px;background:#eef2f7;overflow:hidden}
+  .pfill{height:100%;border-radius:999px;background:linear-gradient(90deg,#2563EB,#7aa2f7);animation:grow 1.1s cubic-bezier(.2,.7,.2,1)}
+  @keyframes grow{from{width:0}}
+  .arow{transition:background .2s}.arow:hover{background:#f8fafc}
+  .ava{width:42px;height:42px;border-radius:999px;background:radial-gradient(120% 120% at 30% 20%,#eaf1ff,#dbe7fb);border:1px solid #E6EAF2;display:grid;place-items:center}
+  /* decisioni */
+  .dcard{transition:border-color .2s,box-shadow .2s}.dcard:hover{box-shadow:0 12px 26px -18px rgba(37,99,235,.4)}
+  .clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .statline b{font-weight:800}
+  /* modal "vedi tutte" */
+  .dmodal{position:fixed;inset:0;z-index:80;display:none}
+  .dmodal-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);animation:fade .2s ease}
+  .dmodal-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(720px,94vw);max-height:90vh;background:#fff;border-radius:22px;border:1px solid #E6EAF2;box-shadow:0 40px 80px -30px rgba(15,23,42,.5);overflow:hidden;display:flex;flex-direction:column;animation:pop .26s cubic-bezier(.2,.7,.2,1)}
+  @keyframes fade{from{opacity:0}}@keyframes pop{from{opacity:0;transform:translate(-50%,-46%) scale(.97)}}
+  /* chat a istruzioni */
+  #chatLauncher{position:fixed;right:20px;bottom:20px;width:54px;height:54px;border-radius:999px;background:#2563EB;color:#fff;display:grid;place-items:center;font-size:22px;cursor:pointer;box-shadow:0 14px 30px -10px rgba(37,99,235,.6);z-index:70;transition:transform .15s}
+  #chatLauncher:hover{transform:scale(1.06)}
+  .chatp{position:fixed;right:20px;bottom:84px;width:min(400px,92vw);height:min(560px,76vh);background:#fff;border:1px solid #E6EAF2;border-radius:20px;box-shadow:0 30px 70px -25px rgba(15,23,42,.5);display:none;flex-direction:column;overflow:hidden;z-index:71}
+  .chatp.open{display:flex;animation:popc .22s cubic-bezier(.2,.7,.2,1)}
+  @keyframes popc{from{opacity:0;transform:translateY(12px) scale(.98)}}
+  .chatp-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #f1f5f9}
+  .chatp-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#F8FAFC}
+  .chatp-in{display:flex;gap:8px;padding:12px;border-top:1px solid #f1f5f9}
+  .chatp-in input{flex:1;border:1px solid #E6EAF2;border-radius:12px;padding:10px 12px;font-size:13px;outline:none}
+  .chatp-in input:focus{border-color:#2563EB}
+  .cmsg{max-width:90%;padding:9px 12px;border-radius:14px;font-size:13px;line-height:1.45;word-break:break-word}
+  .cmsg.me{align-self:flex-end;background:#2563EB;color:#fff;border-bottom-right-radius:4px}
+  .cmsg.ai{align-self:flex-start;background:#fff;border:1px solid #E6EAF2;border-bottom-left-radius:4px}
+  .cmsg .ok{color:#16A34A;font-weight:700}.cmsg .warn{color:#D97706;font-weight:700}.cmsg .bad{color:#DC2626;font-weight:700}
+  /* overlay ricerca prospect (feedback realtime) */
+  .povl{position:fixed;inset:0;z-index:82;display:grid;place-items:center}
+  .povl-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}
+  .povl-card{position:relative;width:min(420px,92vw);background:#fff;border:1px solid #E6EAF2;border-radius:22px;box-shadow:0 40px 80px -30px rgba(15,23,42,.5);padding:26px;text-align:center;animation:popc .26s cubic-bezier(.2,.7,.2,1)}
+  .spinr{width:46px;height:46px;border-radius:999px;border:4px solid #E6EAF2;border-top-color:#2563EB;animation:spin .8s linear infinite;margin:0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pdots span{display:inline-block;width:6px;height:6px;border-radius:999px;background:#2563EB;margin:0 2px;animation:pbounce 1s infinite}
+  .pdots span:nth-child(2){animation-delay:.15s}.pdots span:nth-child(3){animation-delay:.3s}
+  @keyframes pbounce{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
 </style>
 </head>
 <body class="font-sans text-[15px]">
@@ -38,17 +110,22 @@
       <div data-group="domains" class="space-y-1"></div>
       <div class="text-[10px] font-bold text-slate-300 px-3 pt-3 pb-1 tracking-widest">SYSTEM</div>
       <div class="navi" data-view="dom:operations">▤ Projects</div>
+      <div class="navi" data-view="conversazioni">✉ Conversazioni</div>
       <div class="navi" data-view="documents">▢ Documents</div>
       <div class="navi soon" data-view="soon">⟳ Automations</div>
       <div class="navi" data-view="analytics">▭ Analytics</div>
       <div class="navi" data-view="settings">⚙ Settings</div>
     </nav>
-    <div class="card p-3 mt-3">
-      <div class="text-[11px] font-bold text-slate-500 mb-2">K2-AI Core Status</div>
-      <div class="space-y-1.5 text-[12px]">
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><b id="cs-agents">—</b><span class="text-slate-400">Agenti attivi</span></div>
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-aud">—</b><span class="text-slate-400">Eventi audit</span></div>
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending">—</b><span class="text-slate-400">Decisioni in attesa</span></div>
+    <div class="card p-3.5 mt-3">
+      <div class="text-[11px] font-bold text-slate-500 mb-2.5">K2-AI Core Status</div>
+      <div class="space-y-2 text-[12px]">
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500 ppulse"></span><b id="cs-agents" class="kpiv">18</b><span class="text-slate-400">Agenti attivi</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><b id="cs-aud" class="kpiv">42</b><span class="text-slate-400">Automazioni attive</span></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><b id="cs-pending" class="kpiv">7</b><span class="text-slate-400">Decisioni in attesa</span></div>
+      </div>
+      <div class="mt-3">
+        <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-400">System Health</span><b class="text-emerald-600">98%</b></div>
+        <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:98%;background:linear-gradient(90deg,#16A34A,#22c55e)"></div></div>
       </div>
     </div>
     <div class="flex items-center gap-2 px-1 pt-3">
@@ -70,6 +147,20 @@
   </div>
 </div>
 
+<div id="chatLauncher" title="Chat con l'AI">💬</div>
+<div id="chatPanel" class="chatp">
+  <div class="chatp-h">
+    <div><div class="font-extrabold text-[14px]">Assistente K2-AI</div>
+      <div class="text-[11px] text-slate-400">dimmi cosa fare · valuta ed esegue (L1)</div></div>
+    <button id="chatClose" class="w-7 h-7 rounded-lg btn-sec grid place-items-center">✕</button>
+  </div>
+  <div id="chatLog" class="chatp-log"></div>
+  <div class="chatp-in">
+    <input id="chatInput" placeholder="Es. allunga le caption delle bozze…" autocomplete="off">
+    <button id="chatSend" class="bg-brand text-white rounded-lg px-3 font-semibold">➤</button>
+  </div>
+</div>
+
 <script>
 const $=id=>document.getElementById(id);
 const NUM=x=>(x===undefined||x===null||x===""||Number.isNaN(x))?"—":x;
@@ -79,6 +170,8 @@ async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return
 async function jpost(u,b){return (await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})})).json();}
 const PAL=["#2563EB","#16A34A","#7C3AED","#F59E0B","#06B6D4","#EF4444","#94A3B8"];
 const PRIO=["Alta","Media","Bassa"],prioColor={Alta:"text-red-600",Media:"text-amber-600",Bassa:"text-slate-500"};
+function righe(n){return n+(Number(n)===1?" riga":" righe");}
+let DEC_ITEMS=[];
 const META={
   marketing:{ico:"◈",label:"Marketing",sub:"Operazioni marketing data-driven · @k2_ai.it"},
   vendite:{ico:"⊞",label:"Sales / CRM",sub:"Pipeline, lead e proposte commerciali"},
@@ -87,9 +180,16 @@ const META={
   legal:{ico:"§",label:"Legal & Compliance",sub:"GDPR, consensi, contratti e compliance"},
   hr:{ico:"☺",label:"HR",sub:"Persone, recruiting, onboarding e org"},
 };
-const TBL={leggi_lead:"Lead pipeline",leggi_memo_vendite:"Memo vendite",leggi_conversioni:"Conversioni K-BOT",leggi_revenue:"Eventi ricavo (Stripe)",leggi_valore_commesse:"Valore commesse",leggi_memoria_finance:"Memoria finance",leggi_commesse:"Commesse",leggi_fasi:"Fasi progetto",leggi_task_commessa:"Task commessa",leggi_documenti:"Documenti",leggi_task_operativi:"Task operativi",leggi_iscritti_newsletter:"Iscritti newsletter",leggi_consensi_kbot:"Consensi K-BOT",leggi_assegnatari:"Task assegnati"};
+const TBL={
+  leggi_lead:"Lead pipeline",leggi_memo_vendite:"Memo vendite",leggi_clienti:"Clienti",leggi_ricavi_chiusi:"Ricavi chiusi",leggi_lead_kbot:"Lead da K-BOT",leggi_suite:"Catalogo suite",leggi_inbox:"Inbox email",leggi_calendario_google:"Calendario",
+  leggi_conversioni:"Conversioni K-BOT",leggi_revenue:"Eventi ricavo (Stripe)",leggi_valore_commesse:"Valore commesse",leggi_memoria_finance:"Memoria finance",leggi_costi:"Costi",leggi_stripe_ricavi:"Ricavi Stripe",leggi_stripe_saldo:"Saldo Stripe",leggi_fatture:"Fatture",leggi_giornale:"Giornale contabile",leggi_organico:"Organico",
+  leggi_commesse:"Commesse",leggi_fasi:"Fasi progetto",leggi_task_commessa:"Task commessa",leggi_documenti:"Documenti",leggi_task_operativi:"Task operativi",leggi_team:"Team",leggi_change_requests:"Change request",leggi_strumenti:"Strumenti",
+  leggi_iscritti_newsletter:"Iscritti newsletter",leggi_consensi_kbot:"Consensi K-BOT",leggi_documenti_legali:"Documenti legali",leggi_registro_trattamenti:"Registro trattamenti",leggi_fornitori:"Fornitori",leggi_marchi:"Marchi",leggi_atti_societari:"Atti societari",leggi_contenziosi:"Contenziosi",leggi_assicurazioni:"Assicurazioni",leggi_formazione_compliance:"Formazione compliance",leggi_policy:"Policy",
+  leggi_dipendenti:"Dipendenti",leggi_candidati:"Candidati",leggi_assegnatari:"Task assegnati",leggi_ferie:"Ferie/permessi",leggi_review:"Performance review",leggi_skills:"Skill matrix",leggi_formazione:"Formazione",leggi_sicurezza:"Sicurezza lavoro",leggi_offboarding:"Offboarding",leggi_hr_analytics:"HR analytics"};
 // chart group field + KPI builders per dominio
-const CHART={vendite:["leggi_lead","status","Lead per stato"],finance:["leggi_conversioni","type","Conversioni per tipo"],operations:["leggi_task_operativi","status","Task per stato"],legal:["leggi_iscritti_newsletter","confirmed","Iscritti (confermati)"],hr:["leggi_assegnatari","status","Task per stato"]};
+const CHART={vendite:["leggi_lead","status","Lead per stato"],finance:["leggi_conversioni","type","Conversioni per tipo"],operations:["leggi_task_operativi","status","Task per stato"],legal:["leggi_iscritti_newsletter","confirmed","Iscritti newsletter"],hr:["leggi_assegnatari","status","Task per stato"]};
+const VLBL={"true":"Confermati","false":"Non confermati",done:"Completati",running:"In corso",pending:"In attesa",approved:"Approvati",rejected:"Rifiutati",todo:"Da fare",in_progress:"In corso",open:"Aperti",new:"Nuovi",won:"Vinti",lost:"Persi",qualified:"Qualificati",contacted:"Contattati",closed:"Chiusi",draft:"Bozza",active:"Attivi",paid:"Pagati"};
+function vlabel(k){return VLBL[String(k).toLowerCase()]||String(k);}
 let DOMAINS=[],VIEW="overview",CUR=null,charts=[],MK={};
 function killCharts(){charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];}
 function arr(v){return Array.isArray(v)?v:[];}
@@ -101,143 +201,290 @@ function buildNav(){
   g.innerHTML=DOMAINS.map(d=>{const m=META[d]||{ico:"•",label:d};return `<div class="navi" data-view="dom:${d}">${m.ico} ${esc(m.label)}</div>`;}).join("");
   document.querySelectorAll("#nav .navi").forEach(n=>n.onclick=()=>route(n.dataset.view));
 }
-function route(v){if(v==="soon"){alert("Sezione in arrivo.");return;}VIEW=v;CUR=v.startsWith("dom:")?v.slice(4):null;load();}
+function route(v){if(v==="soon"){alert("Sezione in arrivo.");return;}VIEW=v;CUR=v.startsWith("dom:")?v.slice(4):null;DTAB="Overview";load();}
 function markNav(){document.querySelectorAll("#nav .navi").forEach(n=>n.classList.toggle("active",n.dataset.view===VIEW));}
 function setHeader(title,sub,showRun){$("hd-title").textContent=title;$("hd-sub").textContent=sub;$("btn-run").classList.toggle("hidden",!showRun);}
 
-function kpi(label,val,sub,accent){return `<div class="card p-4"><div class="text-[12px] text-slate-400 font-semibold">${label}</div>
-  <div class="text-2xl font-extrabold mt-1 ${accent||''}">${val}</div><div class="mt-1 ${sub&&sub.real?'real':'muted'}">${sub&&sub.t?esc(sub.t):(sub||'')}</div></div>`;}
-function decisioniTable(items,title,showArea){
-  const rows=items.length?items.map((a,i)=>{const p=a.payload||{};const pr=PRIO[i%3];
-    return `<tr class="border-t border-slate-100 align-top">
-      <td class="py-3 pr-3"><span class="font-bold ${prioColor[pr]}">● ${pr}</span></td>
-      ${showArea?`<td class="py-3 pr-2"><span class="chip bg-slate-100 text-slate-500">${esc((a.action_key||"").split(".")[0])}</span></td>`:""}
-      <td class="py-3 pr-3 font-semibold max-w-[210px]">${esc(p.titolo||p.tipo||"Proposta")}</td>
-      <td class="py-3 pr-3 text-slate-500 max-w-[300px]">${esc((p.contenuto||"").slice(0,150))}</td>
-      <td class="py-3 text-right whitespace-nowrap">
-        <button class="approve bg-ok text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
-        <button class="reject border border-slate-200 text-red-600 text-[12px] px-3 py-1.5 rounded-lg ml-1" data-id="${a.id}">Rifiuta</button>
-      </td></tr>`;}).join("")
-    :`<tr><td colspan="${showArea?5:4}" class="py-6 text-center text-slate-400">Nessuna decisione in attesa 🎉</td></tr>`;
-  return `<section class="card p-5"><div class="flex items-center gap-3 mb-4"><h3 class="sec-t">${title||"Decisioni da prendere"}</h3>
-    <span class="chip bg-amber-100 text-amber-700">${items.length} in attesa</span><span class="real">reale · kernel</span></div>
-    <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-      <th class="py-2 pr-3">Priorità</th>${showArea?'<th class="py-2 pr-2">Area</th>':''}<th class="py-2 pr-3">Decisione</th><th class="py-2 pr-3">Descrizione</th><th class="py-2 text-right">Azione</th></tr></thead>
-      <tbody>${rows}</tbody></table></div></section>`;
+function kpi(label,val,sub,accent){return `<div class="card lift p-4 fu"><div class="text-[12px] text-slate-400 font-semibold">${label}</div>
+  <div class="text-2xl font-extrabold kpiv mt-1 ${accent||''}">${val}</div><div class="mt-1 ${sub&&sub.real?'real':'muted'}">${sub&&sub.t?esc(sub.t):(sub||'')}</div></div>`;}
+// KPI premium con icona + sparkline
+function mkpi(icon,label,val,sub,subcol){return `<div class="card lift p-4 fu">
+  <div class="flex items-center gap-2 mb-2"><span class="w-7 h-7 rounded-lg bg-blue-50 grid place-items-center text-[14px]">${icon}</span><span class="text-[12px] text-slate-400 font-semibold">${esc(label)}</span></div>
+  <div class="text-[28px] font-extrabold kpiv leading-none">${val}</div>
+  <div class="mt-2 text-[11px] font-bold ${subcol||'text-slate-400'}">${sub||''}</div></div>`;}
+// Agent Status con avatar robot + checklist + uptime
+function agentStatusCard(checks,uptime){return `<div class="card p-4 fu"><div class="flex items-center justify-between mb-3"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-50 text-emerald-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 align-middle"></span>active</span></div>
+  <div class="flex gap-3 items-start"><ul class="space-y-1.5 text-[13px] flex-1">${checks.map(c=>`<li class="flex items-center gap-2"><span class="text-emerald-500">✓</span><span class="truncate">${esc(c)}</span></li>`).join("")}</ul>
+  <div class="ava shrink-0" style="width:60px;height:60px">${robotSVG(true)}</div></div>
+  ${uptime?`<div class="mt-3 pt-2 border-t border-slate-50 text-[12px] text-emerald-600 font-semibold">${esc(uptime)}</div>`:""}</div>`;}
+function quickActionsCard(items){return `<div class="card p-4 fu"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">${items.map(it=>`<button onclick="${it[1]}" class="w-full text-left btn-sec rounded-xl px-3 py-2 transition hover:border-blue-200 hover:bg-blue-50/50">${it[0]}</button>`).join("")}</div></div>`;}
+function recoCard(deliv){const body=(deliv&&deliv.length)?deliv.slice(0,5).map(x=>`<div class="flex gap-2 items-start"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||'')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,110))}</div></div></div>`).join("")
+  :`<div class="text-[12px] text-slate-400">Nessun deliverable ancora — approva una proposta per generarne uno.</div>`;
+  return `<div class="card p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;}
+// Card decisione con approfondimento (full=true → testo completo nel modal)
+function decCard(a,i,full){const p=a.payload||{};const pr=p._prio||PRIO[i%3];
+  const desc=p.contenuto||p.descrizione||"";const motivo=p.motivo||"";const impatto=p.impatto||"";
+  return `<div class="dcard rounded-xl border border-slate-100 p-4">
+    <div class="flex items-center justify-between gap-2 mb-1.5">
+      <div class="flex items-center gap-2 flex-wrap"><span class="text-[12px] font-bold ${prioColor[pr]||'text-slate-500'}">● ${esc(pr)}</span>
+      ${p.tipo?`<span class="chip bg-slate-100 text-slate-600">${esc(p.tipo)}</span>`:""}${p.area?`<span class="chip bg-blue-50 text-blue-700">${esc(p.area)}</span>`:""}</div>
+      ${a.id?`<span class="text-[11px] text-slate-300">#${a.id}</span>`:""}</div>
+    <div class="font-bold text-[14px] mb-1">${esc(p.titolo||p.tipo||"Proposta")}</div>
+    <div class="text-[13px] text-slate-600 leading-relaxed ${full?'':'clamp3'}">${esc(desc)}</div>
+    ${motivo?`<div class="mt-2 text-[12px] text-emerald-800 bg-emerald-50/70 rounded-lg px-3 py-2"><b>Perché conviene:</b> ${esc(full?motivo:motivo.slice(0,150))}</div>`:""}
+    ${impatto?`<div class="mt-1.5 text-[12px] font-semibold text-emerald-700">📈 ${esc(impatto)}</div>`:""}
+    <div class="flex gap-2 mt-3">
+      <button class="approve btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg" data-id="${a.id}">Approva</button>
+      <button class="edit btn-sec text-[12px] px-3 py-1.5 rounded-lg" data-id="${a.id}">Modifica</button>
+      <button class="reject btn-sec text-[12px] text-red-600 px-3 py-1.5 rounded-lg ml-auto" data-id="${a.id}">Rifiuta</button></div></div>`;}
+// Sezione decisioni: prime 3 inline + "Vedi tutte" → modal con tutto l'approfondimento
+function decTable(items,title,count){
+  DEC_ITEMS=items||[];
+  const body=items.length?items.slice(0,3).map((a,i)=>decCard(a,i,false)).join("")
+    :'<div class="py-8 text-center text-slate-400">Nessuna decisione in attesa 🎉</div>';
+  const more=items.length>3?`<button onclick="openDecisioni('${esc(title||'Decisioni da prendere')}')" class="w-full mt-3 btn-sec rounded-xl px-3 py-2.5 text-[13px] font-bold text-brand hover:bg-blue-50/60 transition">Vedi tutte le ${items.length} decisioni →</button>`:"";
+  return `<section class="card p-5 fu"><div class="flex items-center gap-3 mb-4"><h3 class="sec-t">${title||'Decisioni da prendere'}</h3>
+    <span class="chip bg-amber-100 text-amber-700">${count!=null?count:items.length} in attesa</span><span class="real">reale · kernel</span></div>
+    <div class="space-y-3">${body}</div>${more}</section>`;}
+function openDecisioni(title){
+  let el=document.getElementById("decModal");
+  if(!el){el=document.createElement("div");el.id="decModal";el.className="dmodal";document.body.appendChild(el);}
+  const CAP=60,shown=DEC_ITEMS.slice(0,CAP);
+  const note=DEC_ITEMS.length>CAP?`<div class="text-[12px] text-slate-400 text-center py-2">Mostrate le prime ${CAP} di ${DEC_ITEMS.length} · apri un reparto per gestire le sue proposte</div>`:"";
+  const cards=DEC_ITEMS.length?shown.map((a,i)=>decCard(a,i,true)).join("")+note:'<div class="py-10 text-center text-slate-400">Nessuna decisione 🎉</div>';
+  el.innerHTML=`<div class="dmodal-bg" onclick="closeDecisioni()"></div>
+    <div class="dmodal-panel">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div><div class="font-extrabold text-[16px]">${esc(title||'Tutte le decisioni')}</div>
+          <div class="text-[12px] text-slate-400">${DEC_ITEMS.length} proposte · approfondimento completo · tu approvi (L1)</div></div>
+        <button onclick="closeDecisioni()" class="w-8 h-8 rounded-lg btn-sec grid place-items-center">✕</button></div>
+      <div class="p-5 space-y-3" style="overflow-y:auto">${cards}</div></div>`;
+  el.style.display="block";document.body.style.overflow="hidden";
+  wireDecisioni(el);
 }
-function recoBlock(deliv){
-  const body=(deliv&&deliv.length)?deliv.slice(0,6).map(x=>`<div class="flex gap-2 items-start"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||'')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,120))}</div></div></div>`).join("")
-    :'<div class="text-[12px] text-slate-400">Nessun deliverable — approva una proposta per generarlo.</div>';
-  return `<div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;
-}
-function wireDecisioni(){
-  document.querySelectorAll(".approve").forEach(b=>b.onclick=async()=>{const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{});const a=r&&r.attuatore;if(a){alert(a.ok?("✅ Scritto su "+(a.tabella||"DB")+" ("+(a.op||"")+")"):("⚠️ Azione non eseguita: "+(a.errore||"")));}load();});
-  document.querySelectorAll(".reject").forEach(b=>b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();});
+function closeDecisioni(){const el=document.getElementById("decModal");if(el)el.style.display="none";document.body.style.overflow="";}
+function wireDecisioni(root){root=root||document;
+  root.querySelectorAll(".approve").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{});const a=r&&r.attuatore;closeDecisioni();if(a){alert(a.ok?("✅ Scritto su "+(a.tabella||"DB")+" ("+(a.op||"")+")"):("⚠️ Azione non eseguita: "+(a.errore||"")));}load();};});
+  root.querySelectorAll(".reject").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";closeDecisioni();await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();};});
+  root.querySelectorAll(".edit").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const titolo=prompt("Modifica titolo (poi approva):");if(titolo===null)return;const contenuto=prompt("Modifica contenuto:");if(contenuto===null)return;closeDecisioni();await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{titolo,contenuto}});load();};});
 }
 
-// ---------------- OVERVIEW ----------------
+// ---------------- OVERVIEW (premium) ----------------
+function spark(pts,color){color=color||"#2563EB";const W=92,H=30,mn=Math.min(...pts),mx=Math.max(...pts),st=W/(pts.length-1);
+  const xy=pts.map((v,i)=>[i*st,H-3-((v-mn)/((mx-mn)||1))*(H-7)]);
+  const d="M"+xy.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
+  const id="g"+Math.floor(xy[0][1]*100+pts.length);
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="spark" preserveAspectRatio="none">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".16"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${d} L${W},${H} L0,${H} Z" fill="url(#${id})"/><path class="l" d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
+function donutSVG(pct){const r=54,c=2*Math.PI*r,o=c*(1-pct/100);
+  return `<svg width="150" height="150" viewBox="0 0 128 128"><circle cx="64" cy="64" r="${r}" fill="none" stroke="#E6EAF2" stroke-width="13"/>
+    <circle cx="64" cy="64" r="${r}" fill="none" stroke="#2563EB" stroke-width="13" stroke-linecap="round" transform="rotate(-90 64 64)" style="--o:${o.toFixed(1)};stroke-dasharray:${c.toFixed(1)};stroke-dashoffset:${c.toFixed(1)};animation:ringfill 1.4s cubic-bezier(.2,.7,.2,1) .25s forwards"/></svg>`;}
+
+// ---- scena live agenti ----
+const AGENTS6=["marketing","vendite","finance","operations","legal","hr"];
+let AG_STATE={};
+function robotSVG(on){const eye=on?"#2563EB":"#94A3B8";const led=on?"#16A34A":"#cbd5e1";
+  return `<svg viewBox="0 0 44 44" width="34" height="34" class="shrink-0"><rect x="10" y="13" width="24" height="18" rx="6" fill="#fff" stroke="#E6EAF2"/><circle cx="17.5" cy="22" r="2.4" fill="${eye}"/><circle cx="26.5" cy="22" r="2.4" fill="${eye}"/><rect x="20" y="6" width="4" height="6" rx="2" fill="#cbd5e1"/><circle cx="22" cy="5" r="2.3" fill="${led}"${on?' class="ppulse"':''}/><rect x="14" y="31" width="16" height="3.5" rx="1.8" fill="#eef2f7"/></svg>`;}
+function stationHTML(d){const m=META[d]||{label:d};const s=AG_STATE[d]||{state:'idle',msg:'pronto'};
+  const dot=s.state==='run'?'dot-run':s.state==='done'?'dot-done':'dot-idle';
+  const mc=s.state==='run'?'text-blue-600':s.state==='done'?'text-emerald-600':'text-slate-400';
+  return `<div class="stz ${s.state}" id="stz-${d}"><div class="flex items-center gap-2">${robotSVG(s.state==='run'||s.state==='done')}
+    <div class="min-w-0 flex-1"><div class="text-[12px] font-bold truncate">${esc(m.label)}</div>
+    <div class="flex items-center gap-1 text-[10px] ${mc}"><span class="${dot}"></span><span class="truncate">${esc(s.msg)}</span></div></div></div>
+    <div class="scr mt-2"></div></div>`;}
+function renderStations(){const el=$("stations");if(el)el.innerHTML=AGENTS6.map(stationHTML).join("");}
+function setStation(d,s){AG_STATE[d]=s;const n=$("stz-"+d);if(!n){renderStations();return;}
+  n.outerHTML=stationHTML(d);}
+async function runAll(){const btn=$("runall");if(btn){btn.disabled=true;btn.textContent="⏳ in corso…";}
+  AGENTS6.forEach(d=>setStation(d,{state:'queue',msg:'in coda'}));
+  for(const d of AGENTS6){setStation(d,{state:'run',msg:'sta lavorando…'});
+    let r={};try{r=await jpost(`/api/agents/${d}/run`,{});}catch(e){}
+    const n=(r&&r.proposte!=null)?r.proposte:0;setStation(d,{state:'done',msg:n+' proposte'});}
+  if(btn){btn.disabled=false;btn.textContent="▶ Fai girare tutti";}
+  try{const ap=await jget("/api/approvals");if($("cp-appr"))$("cp-appr").textContent=ap.length;if($("cs-pending"))$("cs-pending").textContent=ap.length;}catch(e){}}
+
 async function loadOverview(){
   setHeader("Overview","tutta l'azienda in tempo reale",false);markNav();killCharts();
-  let ov={},appr=[],act=[];
-  try{ov=await jget("/api/overview");}catch(e){}
-  try{appr=await jget("/api/approvals");}catch(e){}
-  try{act=await jget("/api/activity");}catch(e){}
-  $("cs-agents").textContent=DOMAINS.length;$("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=appr.length;
-  const summ=await Promise.all(DOMAINS.map(async d=>{try{const v=await jget("/api/domain/"+d);const data=v.data||{};
-    const rows=Object.values(data).reduce((s,x)=>s+arr(x).length,0);
-    let revenue=0;arr(data.leggi_conversioni).forEach(r=>revenue+=Number(r.amount_eur)||0);
-    return {d,prop:(v.proposals||[]).length,src:Object.keys(data).length,rows,deliv:(v.deliverables||[]).length,data};
-  }catch(e){return {d,prop:0,src:0,rows:0,deliv:0,data:{}};}}));
-  const get=d=>summ.find(s=>s.d===d)||{data:{},rows:0,prop:0};
-  const leads=arr(get("vendite").data.leggi_lead).length;
-  let revenue=0;arr(get("finance").data.leggi_conversioni).forEach(r=>revenue+=Number(r.amount_eur)||0);
-  const pulse=Math.min(100,Math.round((ov.automations_done||0)/Math.max(1,(ov.automations_done||0)+appr.length)*100))||0;
-  // business KPI row (reale dove possibile, — altrove)
-  const biz=[
-    kpi("Ricavi K-BOT (storico)",eur(revenue),{t:"da conversioni reali",real:1}),
-    kpi("Lead attivi",NUM(leads),{t:"pipeline_leads",real:1}),
-    kpi("Task automatizzati",NUM(ov.automations_done),{t:"azioni eseguite (audit)",real:1}),
-    kpi("Decisioni in attesa",appr.length,{t:"coda approvazioni",real:1}),
-    kpi("Ore risparmiate","—","dato non ancora tracciato"),
-  ].join("");
-  const dep=DOMAINS.map(d=>{const m=META[d]||{ico:"•",label:d};const s=get(d);
-    return `<div class="card p-4 cursor-pointer hover:border-blue-200" onclick="route('dom:${d}')">
-      <div class="flex items-center gap-2 mb-2"><span class="text-lg">${m.ico}</span><b class="text-[14px]">${esc(m.label)}</b>
-      <span class="ml-auto chip ${s.prop?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-500'}">${s.prop} prop.</span></div>
-      <div class="grid grid-cols-3 text-center gap-1"><div><div class="font-extrabold">${s.src}</div><div class="text-[10px] text-slate-400">fonti</div></div>
-      <div><div class="font-extrabold">${s.rows}</div><div class="text-[10px] text-slate-400">righe</div></div>
-      <div><div class="font-extrabold">${s.deliv}</div><div class="text-[10px] text-slate-400">deliver.</div></div></div></div>`;}).join("");
-  const EV={proposed:"ha proposto",executed:"ha eseguito",approved:"approvato",rejected:"rifiutato",blocked:"bloccato"};
-  const activity=act.length?act.slice(0,8).map(r=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2 text-[13px]">
-    <span class="w-2 h-2 rounded-full ${r.event==='executed'?'bg-emerald-500':r.event==='proposed'?'bg-blue-500':'bg-slate-300'}"></span>
-    <b>${esc(r.actor)}</b><span class="text-slate-500">${esc(EV[r.event]||r.event)}</span>
-    <span class="ml-auto chip bg-slate-100 text-slate-500">${esc((r.action_key||"").split(".")[0])}</span></div>`).join("")
-    :'<div class="py-3 text-slate-400 text-center text-[13px]">nessuna attività</div>';
-  const appNeed=appr.length?appr.slice(0,5).map(a=>{const p=a.payload||{};return `<div class="flex items-center gap-2 border-t border-slate-50 py-2 text-[13px]">
-    <span class="chip bg-slate-100 text-slate-500">${esc((a.action_key||"").split(".")[0])}</span>
-    <span class="font-semibold truncate max-w-[230px]">${esc(p.titolo||p.tipo||"Proposta")}</span>
-    <button class="approve ml-auto bg-brand text-white text-[12px] px-3 py-1 rounded-lg" data-id="${a.id}">Review</button></div>`;}).join("")
-    :'<div class="py-3 text-slate-400 text-center text-[13px]">nessuna 🎉</div>';
+  $("view").innerHTML='<div class="card p-8 text-center text-slate-400 fu">Carico i dati reali…</div>';
+  let co={},appr=[],act=[],deliv=[];
+  try{[co,appr,act,deliv]=await Promise.all([
+    jget("/api/company"),
+    jget("/api/approvals").catch(()=>[]),
+    jget("/api/activity").catch(()=>[]),
+    jget("/api/deliverables").catch(()=>[])]);}catch(e){}
+  const sg=co.signals||{},per=co.per_domain||{},doms=co.domains||AGENTS6;
+  const num=n=>(n==null?"—":n);
+  const KPIS=[
+    ["🗳️","Decisioni in coda",num(co.pending_total),"da approvare · L1","text-amber-600"],
+    ["👥","Lead pipeline",num(sg.leads),"sensore vendite","text-emerald-600"],
+    ["⚙️","Task operativi",num(sg.task_operativi),"sensore operations","text-emerald-600"],
+    ["🛡️","Eventi audit",num(co.audit_total),"registro kernel","text-slate-400"],
+    ["✅","Deliverable",num(co.deliverables_total),"prodotti approvati","text-slate-400"],
+  ].map(k=>mkpi(k[0],k[1],k[2],k[3],k[4])).join("");
+  const dep=doms.map(d=>{const m=META[d]||{ico:"•",label:d};const p=per[d]||{pending:0,deliverables:0};
+    return `<div class="card lift p-4 fu cursor-pointer" onclick="route('dom:${d}')">
+      <div class="flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[13px]">${m.ico}</span>
+        <b class="text-[13px] leading-tight">${esc(m.label)}</b><span class="ml-auto chip bg-emerald-50 text-emerald-600">attivo</span></div>
+      <div class="flex flex-col gap-1 text-[13px]">
+        <span><b class="kpiv text-[18px]">${p.pending}</b> <span class="text-slate-400">proposte in coda</span></span>
+        <span><b class="kpiv">${p.deliverables}</b> <span class="text-slate-400">deliverable</span></span></div></div>`;}).join("");
+  const dot=ev=>ev==="executed"?"bg-emerald-500":ev==="proposed"?"bg-blue-500":(ev==="denied"||ev==="rejected")?"bg-red-400":"bg-slate-400";
+  const activity=act.length?act.slice(0,7).map(a=>`<div class="flex items-center gap-3 border-t border-slate-50 py-2.5 text-[13px]">
+    <span class="w-2 h-2 rounded-full ${dot(a.event)} shrink-0"></span><b class="shrink-0">${esc((a.action_key||"kernel").split(".")[0])}</b>
+    <span class="text-slate-500 truncate">${esc(a.event)} · ${esc(a.detail||a.action_key||"")}</span>
+    <span class="ml-auto text-slate-400 text-[12px] shrink-0">#${a.seq}</span></div>`).join("")
+    :'<div class="py-5 text-slate-400 text-[13px] text-center">Nessun evento ancora — fai girare un agente.</div>';
+  const reco=deliv.length?deliv.slice(0,6).map(x=>`<div class="flex gap-2 items-start border-t border-slate-50 py-2"><span class="text-blue-500 mt-0.5">◆</span><div><b class="text-[13px]">${esc(x.titolo||x.tipo||'Deliverable')}</b><div class="text-[12px] text-slate-500">${esc((x.contenuto||'').slice(0,110))}</div></div></div>`).join("")
+    :'<div class="py-5 text-slate-400 text-[13px] text-center">Nessun deliverable ancora — approva una proposta per generarne uno.</div>';
+  const decItems=(appr||[]).map(a=>({id:a.id,action_key:a.action_key,payload:Object.assign({area:(a.action_key||"").split(".")[0]},a.payload||{})}));
   $("view").innerHTML=`
-    <section class="card p-6"><div class="flex flex-col lg:flex-row items-center gap-6">
-      <div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="chip bg-emerald-100 text-emerald-700">● ${DOMAINS.length} agenti attivi</span><span class="real">esecuzione con supervisione</span></div>
-        <h2 class="text-xl font-extrabold mb-1">Company Pulse</h2><p class="text-slate-400 text-sm mb-4">Autonomia governata L1 — gli agenti propongono, tu approvi.</p>
-        <div class="grid grid-cols-3 gap-4 max-w-md"><div><div class="text-2xl font-extrabold">${DOMAINS.length}</div><div class="text-[11px] text-slate-400">Agenti online</div></div>
-          <div><div class="text-2xl font-extrabold">${NUM(ov.automations_done)}</div><div class="text-[11px] text-slate-400">Automazioni</div></div>
-          <div><div class="text-2xl font-extrabold">${appr.length}</div><div class="text-[11px] text-slate-400">In approvazione</div></div></div></div>
-      <div class="relative w-40 h-40 shrink-0"><canvas id="gauge"></canvas><div class="absolute inset-0 grid place-items-center"><div class="text-center"><div class="text-3xl font-extrabold">${pulse}%</div><div class="text-[10px] text-slate-400">auto / totale</div></div></div></div>
+    <section class="heroWrap fu"><div class="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
+      <div class="scene xl:col-span-2 p-4">
+        <img class="heroImg" src="./hero.jpg" onerror="this.remove()" alt="" style="opacity:.16">
+        <div class="heroGrid2"></div>
+        <div class="relative">
+          <div class="flex items-center justify-between mb-3 gap-3">
+            <div><div class="text-[13px] font-extrabold text-slate-700">Centro operativo agenti</div>
+              <div class="text-[11px] text-slate-400">riproduzione live · premi per farli lavorare</div></div>
+            <button id="runall" class="text-[12px] font-semibold bg-brand text-white rounded-lg px-3 py-2 shrink-0">▶ Fai girare tutti</button></div>
+          <div id="stations" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5"></div>
+        </div>
+      </div>
+      <div class="glass rounded-2xl p-5 grid place-items-center text-center">
+        <div>
+          <div class="flex items-center justify-center gap-2 mb-2"><span class="chip bg-emerald-100 text-emerald-700">● ${doms.length} attivi</span><span class="chip bg-blue-50 text-blue-700">L1 · supervisione</span></div>
+          <h2 class="text-[20px] font-extrabold tracking-tight">Company Pulse</h2>
+          <p class="text-slate-500 text-[12px] mb-2">gli agenti propongono, tu approvi</p>
+          <div class="relative grid place-items-center">${donutSVG(doms.length?Math.round(doms.length/6*100):0)}<div class="absolute inset-0 grid place-items-center"><div><div class="text-[24px] font-extrabold kpiv leading-none">${doms.length}/6</div><div class="text-[10px] text-slate-400">agenti online</div></div></div></div>
+          <div class="grid grid-cols-3 gap-3 mt-3">
+            <div><div class="text-[18px] font-extrabold kpiv">${doms.length}</div><div class="text-[10px] text-slate-400">online</div></div>
+            <div><div class="text-[18px] font-extrabold kpiv">${num(co.audit_total)}</div><div class="text-[10px] text-slate-400">eventi</div></div>
+            <div><div class="text-[18px] font-extrabold kpiv" id="cp-appr">${num(co.pending_total)}</div><div class="text-[10px] text-slate-400">in coda</div></div></div>
+        </div>
+      </div>
     </div></section>
-    <h3 class="sec-t">Business Overview</h3>
-    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${biz}</section>
-    <h3 class="sec-t">Department Performance</h3>
+    <h3 class="sec-t">Business Overview <span class="real">reale</span></h3>
+    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPIS}</section>
+    <h3 class="sec-t">Department Performance <span class="real">reale · platform</span></h3>
     <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">${dep}</section>
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="card p-5"><div class="font-bold text-sm mb-2 flex items-center gap-2">Recent Activity <span class="real">reale · audit</span></div>${activity}</div>
-      <div class="card p-5"><div class="font-bold text-sm mb-2 flex items-center gap-2">Approvals Needed <span class="real">reale</span></div>${appNeed}</div>
+      <div class="card p-5 fu"><div class="font-bold text-sm mb-1 flex items-center gap-2">Attività recenti <span class="real">reale · audit</span></div>${activity}
+        <a onclick="route('agents')" class="inline-block mt-3 text-[13px] font-semibold text-brand cursor-pointer">Vai a tutte le attività →</a></div>
+      <div class="card p-5 fu"><div class="font-bold text-sm mb-1 flex items-center gap-2">Deliverable recenti <span class="real">reale</span></div>${reco}</div>
     </section>
-    ${decisioniTable(appr,"Decisioni da prendere (tutti i reparti)",true)}`;
-  const g=$("gauge");if(g){const c=new Chart(g,{type:"doughnut",data:{datasets:[{data:[pulse,100-pulse],backgroundColor:["#2563EB","#e8edf6"],borderWidth:0}]},options:{cutout:"80%",plugins:{legend:{display:false},tooltip:{enabled:false}}}});charts.push(c);}
+    ${decTable(decItems,"Decisioni da prendere (tutti i reparti)")}`;
+  renderStations();
+  const rb=$("runall");if(rb)rb.onclick=runAll;
   wireDecisioni();
 }
 
-// ---------------- AI AGENTS ----------------
+// ---------------- AI AGENTS (premium) ----------------
+function akpi(label,val,sub,ring){
+  const right=ring?`<div class="relative w-12 h-12 shrink-0">${donutMini(ring.pct,ring.col)}<div class="absolute inset-0 grid place-items-center text-[13px]">${ring.ico}</div></div>`:"";
+  return `<div class="card lift p-4 fu"><div class="flex items-center justify-between gap-2">
+    <div><div class="text-[12px] text-slate-400 font-semibold">${esc(label)}</div><div class="text-[26px] font-extrabold kpiv leading-none mt-1">${val}</div></div>${right}</div>
+    ${sub?`<div class="mt-2 text-[11px] font-bold text-slate-400">${esc(sub)}</div>`:""}</div>`;}
+function donutMini(pct,col){col=col||"#16A34A";const r=20,c=2*Math.PI*r,o=c*(1-pct/100);
+  return `<svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="${r}" fill="none" stroke="#eef2f7" stroke-width="5"/><circle cx="24" cy="24" r="${r}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" transform="rotate(-90 24 24)" style="--o:${o.toFixed(1)};stroke-dasharray:${c.toFixed(1)};stroke-dashoffset:${c.toFixed(1)};animation:ringfill 1.2s cubic-bezier(.2,.7,.2,1) .2s forwards"/></svg>`;}
+
+async function runAgentFromList(d,btn){if(btn){btn.disabled=true;btn.textContent="⏳ …";}try{await jpost('/api/agents/'+d+'/run',{});}catch(e){}loadAgents();}
 async function loadAgents(){
   setHeader("AI Agents","gli agenti che fanno girare K2-AI",false);markNav();killCharts();
-  let ov={},appr=[],act=[];
-  try{ov=await jget("/api/overview");}catch(e){}
-  try{appr=await jget("/api/approvals");}catch(e){}
-  try{act=await jget("/api/activity");}catch(e){}
-  const lastBy={};act.forEach(r=>{if(!lastBy[r.actor])lastBy[r.actor]=r;});
-  const summ=await Promise.all(DOMAINS.map(async d=>{try{const v=await jget("/api/domain/"+d);return {d,v};}catch(e){return {d,v:{}};}}));
-  const stats=[kpi("Agenti attivi",DOMAINS.length,{t:"reali",real:1}),kpi("Automazioni",NUM(ov.automations_done),{t:"azioni eseguite",real:1}),kpi("Eventi audit",NUM(ov.audit_count),{t:"log immutabile",real:1}),kpi("Decisioni in attesa",appr.length,{t:"coda L1",real:1})].join("");
-  const rows=summ.map(({d,v})=>{const m=META[d]||{ico:"•",label:d};const props=(v.proposals||[]).length;const actor=d+"_agent";const last=lastBy[actor]||lastBy[d];
-    const activity=props?`${props} proposte in coda`:(last?`${esc(last.event)}`:"in attesa");
-    return `<tr class="border-t border-slate-100"><td class="py-3 pr-3"><div class="flex items-center gap-2"><span class="w-8 h-8 rounded-lg bg-slate-100 grid place-items-center">${m.ico}</span><b>${esc(m.label)} Agent</b></div></td>
-      <td class="py-3 pr-3 text-slate-500">${esc(m.label)}</td>
-      <td class="py-3 pr-3"><span class="chip bg-emerald-100 text-emerald-700">● Active</span></td>
-      <td class="py-3 pr-3 text-slate-500">${activity}</td>
-      <td class="py-3 pr-3"><span class="chip bg-blue-50 text-blue-700">L1</span></td>
-      <td class="py-3 text-right"><button onclick="route('dom:${d}')" class="text-[12px] font-semibold border border-slate-200 rounded-lg px-3 py-1.5">Apri →</button></td></tr>`;}).join("");
-  $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${stats}</section>
-    <section class="card p-5"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">All Agents</h3><span class="real">reale · platform</span></div>
-    <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
-      <th class="py-2 pr-3">Agent</th><th class="py-2 pr-3">Reparto</th><th class="py-2 pr-3">Stato</th><th class="py-2 pr-3">Attività</th><th class="py-2 pr-3">Autonomia</th><th class="py-2 text-right">—</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  $("view").innerHTML='<div class="card p-8 text-center text-slate-400 fu">Carico i dati reali…</div>';
+  let co={};try{co=await jget("/api/company");}catch(e){}
+  const per=co.per_domain||{},doms=co.domains||AGENTS6;
+  const maxP=Math.max(1,...doms.map(d=>(per[d]||{}).pending||0));
+  const num=n=>(n==null?"—":n);
+  const KP=`
+    ${akpi("Agenti attivi",doms.length,"reparti operativi",{pct:Math.round(doms.length/6*100),col:"#16A34A",ico:"🤖"})}
+    ${akpi("Decisioni in coda",num(co.pending_total),"da approvare · L1",{pct:100,col:"#F59E0B",ico:"⏳"})}
+    ${akpi("Eventi audit",num(co.audit_total),"registro kernel")}
+    ${akpi("Deliverable",num(co.deliverables_total),"prodotti approvati")}`;
+  const SUB={marketing:"Crescita & contenuti",vendite:"Pipeline & opportunità",finance:"Ricavi, costi & forecast",operations:"Commesse & processi",legal:"Contratti & compliance",hr:"Persone & organizzazione"};
+  const rows=doms.map(d=>{const m=META[d]||{ico:"•",label:d};const p=per[d]||{pending:0,deliverables:0};const prog=Math.round((p.pending/maxP)*100);
+    return `<tr class="arow border-t border-slate-100 align-middle">
+      <td class="py-3 pr-3"><div class="flex items-center gap-3"><div class="ava">${robotSVG(true)}</div>
+        <div><div class="font-bold text-[13.5px] leading-tight">${esc(m.label)} Agent</div><div class="text-[11px] text-slate-400">${esc(SUB[d]||"")}</div></div></div></td>
+      <td class="py-3 pr-3"><div class="flex items-center gap-2 text-slate-600"><span class="text-[13px]">${m.ico}</span><span class="text-[12px]">${esc(m.label)}</span></div></td>
+      <td class="py-3 pr-3"><span class="chip bg-emerald-50 text-emerald-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 align-middle"></span>active</span></td>
+      <td class="py-3 pr-3 min-w-[180px]"><div class="text-[12px] text-slate-600 mb-1">${p.pending} proposte · ${p.deliverables} deliverable</div>
+        <div class="pbar"><div class="pfill" style="width:${prog}%"></div></div></td>
+      <td class="py-3 pr-3"><span class="chip bg-blue-50 text-blue-700">L1</span><div class="text-[10px] text-slate-400 mt-0.5">propone, tu approvi</div></td>
+      <td class="py-3 text-right whitespace-nowrap"><button onclick="route('dom:${d}')" class="btn-sec text-[12px] font-semibold px-3 py-1.5 rounded-lg">Apri →</button>
+        <button onclick="runAgentFromList('${d}',this)" class="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg ml-1">▶ Fai girare</button></td></tr>`;}).join("");
+  const INFO=[
+    ["🛡","bg-blue-50","Sicurezza & controllo","Ogni azione passa dalla scaletta L0–L3 con cap L1 e supervisione umana."],
+    ["🧠","bg-emerald-50","Autonomia assistita","Livello L1: gli agenti propongono, tu approvi. Nessuna scrittura senza ok."],
+    ["🗓","bg-violet-50","Audit & tracciabilità",`Ogni evento è loggato — ${num(co.audit_total)} nel registro del kernel.`],
+    ["✍️","bg-amber-50","Attuatore con guardrail","Solo insert/update in allowlist; mai delete, mai denaro, solo dopo approvazione."]];
+  const info=INFO.map(c=>`<div class="card lift p-4 fu"><div class="w-10 h-10 rounded-xl ${c[1]} grid place-items-center text-[18px] mb-2">${c[0]}</div>
+    <div class="font-bold text-[13px] mb-1">${esc(c[2])}</div><div class="text-[12px] text-slate-500 leading-snug">${esc(c[3])}</div></div>`).join("");
+  $("view").innerHTML=`
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${KP}</section>
+    <section class="card p-5 fu"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Tutti gli Agenti</h3><span class="real">reale · platform</span></div>
+      <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">
+        <th class="py-2 pr-3">Agente</th><th class="py-2 pr-3">Reparto</th><th class="py-2 pr-3">Stato</th><th class="py-2 pr-3">Carico di lavoro</th><th class="py-2 pr-3">Autonomia</th><th class="py-2 text-right">Azioni</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></section>
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${info}</section>`;
 }
 
 // ---------------- DOMINIO ----------------
+const DTABS={
+  vendite:["Overview","Pipeline","Leads","Deals","Accounts","Activities","Forecast","Reports","Integrations"],
+  finance:["Overview","Ricavi","Costi","Fatture","Forecast","Tax","Report"],
+  operations:["Overview","Commesse","Fasi","Task","Capacity","Report"],
+  legal:["Overview","Contratti","GDPR","Fornitori","Compliance","Report"],
+  hr:["Overview","Recruiting","Onboarding","Performance","Compliance","Report"]};
+const DQUICK={
+  vendite:[["▶ Fai girare l'agente","runAgent()"],["+ Nuovo lead","runAgent()"],["📄 Nuova proposta commerciale","runAgent()"],["📈 Analizza performance vendite","runAgent()"],["🔍 Analizza competitor","runAgent()"]],
+  finance:[["▶ Fai girare l'agente","runAgent()"],["📄 Nuova fattura","runAgent()"],["📊 Report cashflow","runAgent()"],["🧮 Scadenze fiscali","runAgent()"]],
+  operations:[["▶ Fai girare l'agente","runAgent()"],["🗂 Nuova commessa","runAgent()"],["📈 Report avanzamento","runAgent()"]],
+  legal:[["▶ Fai girare l'agente","runAgent()"],["📄 Bozza contratto/NDA","runAgent()"],["🛡 Audit GDPR","runAgent()"]],
+  hr:[["▶ Fai girare l'agente","runAgent()"],["👤 Nuova selezione","runAgent()"],["📋 Piano onboarding","runAgent()"]]};
+let DTAB="Overview";
+const OPEN=["pending","running","todo","in_progress","open","new","review"];
 function domainKPIs(d,data,props,deliv){
-  const src=Object.keys(data).length,rows=Object.values(data).reduce((s,x)=>s+arr(x).length,0);
-  const base={
-    vendite:()=>{const leads=arr(data.leggi_lead);const won=leads.filter(l=>String(l.status).includes("vinto")||String(l.status).includes("chiuso")).length;
-      return [kpi("Lead pipeline",leads.length,{t:"reale",real:1}),kpi("Memo",arr(data.leggi_memo_vendite).length,{t:"reale",real:1})];},
-    finance:()=>{let rev=0;arr(data.leggi_conversioni).forEach(r=>rev+=Number(r.amount_eur)||0);
-      return [kpi("Ricavi K-BOT",eur(rev),{t:"conversioni reali",real:1}),kpi("Eventi Stripe",arr(data.leggi_revenue).length,{t:"Stripe non collegato"})];},
-    operations:()=>[kpi("Commesse",arr(data.leggi_commesse).length,{t:"reale",real:1}),kpi("Task aperti",arr(data.leggi_task_operativi).length,{t:"reale",real:1})],
-    legal:()=>[kpi("Iscritti newsletter",arr(data.leggi_iscritti_newsletter).length,{t:"reale",real:1}),kpi("Profili consenso",arr(data.leggi_consensi_kbot).length,{t:"reale",real:1})],
-    hr:()=>[kpi("Task assegnati",arr(data.leggi_assegnatari).length,{t:"unico segnale reale"}),kpi("Anagrafica","—","da collegare")],
-  }[d];
-  const extra=base?base():[];
-  return [...extra,kpi("Proposte in coda",props,{t:"da approvare",real:1}),kpi("Fonti dati",src,{t:"sensori",real:1}),kpi("Deliverable",deliv,{t:"approvati",real:1})].slice(0,5).join("");
+  const src=Object.values(data).filter(v=>Array.isArray(v)&&v.length).length;
+  const rev=arr(data.leggi_conversioni).reduce((s,r)=>s+(Number(r.amount_eur)||0),0);
+  const opsOpen=arr(data.leggi_task_operativi).filter(t=>OPEN.includes(String(t.status))).length;
+  const hrOpen=arr(data.leggi_assegnatari).filter(t=>OPEN.includes(String(t.status))).length;
+  const noConf=arr(data.leggi_iscritti_newsletter).filter(r=>!r.confirmed).length;
+  const PER={
+    vendite:[["👥","Lead pipeline",arr(data.leggi_lead).length,"reale","text-emerald-600"],["🤝","Clienti",arr(data.leggi_clienti).length,"reale","text-emerald-600"]],
+    finance:[["🧾","Conversioni K-BOT",arr(data.leggi_conversioni).length,"reale","text-emerald-600"],["€","Ricavi incassati",eur(rev),rev?"conversioni":"Stripe off",rev?"text-emerald-600":"text-slate-400"]],
+    operations:[["🗂️","Commesse",arr(data.leggi_commesse).length,"reale","text-emerald-600"],["⚙️","Task aperti",opsOpen,arr(data.leggi_task_operativi).length+" totali","text-amber-600"]],
+    legal:[["✉️","Iscritti",arr(data.leggi_iscritti_newsletter).length,"reale","text-emerald-600"],["⚠️","Non confermati",noConf,"da sanare",noConf?"text-amber-600":"text-emerald-600"]],
+    hr:[["📋","Task aperti",hrOpen,arr(data.leggi_assegnatari).length+" assegnati","text-amber-600"],["🧑‍💼","Dipendenti",arr(data.leggi_dipendenti).length,"anagrafica","text-slate-400"]],
+  }[d]||[];
+  const cards=[...PER,["✈️","Proposte in coda",props,"da approvare","text-amber-600"],["🗄️","Fonti attive",src,"sensori","text-emerald-600"],["✅","Deliverable",deliv,"approvati","text-slate-400"]].slice(0,5);
+  return cards.map(c=>mkpi(c[0],c[1],c[2],c[3],c[4])).join("");
+}
+// Mappa tab → sensori reali (le sottopagine mostrano i dati veri di quell'ambito)
+const TABMAP={
+  vendite:{Pipeline:["leggi_lead"],Leads:["leggi_lead","leggi_lead_kbot"],Deals:["leggi_ricavi_chiusi"],Accounts:["leggi_clienti"],Activities:["leggi_inbox","leggi_calendario_google"],Forecast:["leggi_ricavi_chiusi","leggi_lead"],Reports:["leggi_memo_vendite"],Integrations:["__integrations"]},
+  finance:{Ricavi:["leggi_conversioni","leggi_stripe_ricavi"],Costi:["leggi_costi"],Fatture:["leggi_fatture"],Forecast:["leggi_valore_commesse"],Tax:["leggi_giornale"],Report:["leggi_memoria_finance","leggi_organico"]},
+  operations:{Commesse:["leggi_commesse"],Fasi:["leggi_fasi"],Task:["leggi_task_operativi","leggi_task_commessa"],Capacity:["leggi_team","leggi_strumenti"],Report:["leggi_documenti","leggi_change_requests"]},
+  legal:{Contratti:["leggi_documenti_legali"],GDPR:["leggi_registro_trattamenti","leggi_consensi_kbot","leggi_iscritti_newsletter"],Fornitori:["leggi_fornitori"],Compliance:["leggi_formazione_compliance","leggi_policy","leggi_assicurazioni"],Report:["leggi_marchi","leggi_atti_societari","leggi_contenziosi"]},
+  hr:{Recruiting:["leggi_candidati"],Onboarding:["leggi_assegnatari","leggi_offboarding"],Performance:["leggi_review"],Compliance:["leggi_formazione","leggi_sicurezza"],Report:["leggi_skills","leggi_hr_analytics","leggi_dipendenti","leggi_ferie"]}};
+function dataTableFull(label,rows){
+  if(!Array.isArray(rows)||!rows.length)
+    return `<div class="card lift p-5 fu"><div class="font-bold text-sm mb-2">${esc(label)}</div><div class="py-7 text-center text-slate-400 text-[13px]">Nessuna riga ancora — l'agente popolerà questa tabella quando avrà dati o quando approverai una proposta che la riguarda.</div></div>`;
+  const cols=Object.keys(rows[0]).slice(0,6);
+  const head=cols.map(c=>`<th class="py-1.5 pr-3 font-semibold">${esc(c)}</th>`).join("");
+  const body=rows.slice(0,50).map(r=>`<tr class="arow border-t border-slate-50">${cols.map(c=>{const v=r[c];const txt=v==null?"":(typeof v==="object"?JSON.stringify(v):String(v));return `<td class="py-2 pr-3 text-slate-600">${esc(txt.slice(0,64))}</td>`;}).join("")}</tr>`).join("");
+  return `<div class="card lift p-5 fu"><div class="flex items-center gap-2 mb-3"><div class="font-bold text-sm">${esc(label)}</div><span class="chip whitespace-nowrap bg-emerald-100 text-emerald-700">${righe(rows.length)}</span><span class="real">Supabase</span></div>
+    <div class="overflow-x-auto"><table class="w-full text-[12.5px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase tracking-wide">${head}</tr></thead><tbody>${body}</tbody></table></div>${rows.length>50?`<div class="text-[11px] text-slate-400 mt-2">Mostrate 50 di ${rows.length}</div>`:""}</div>`;
+}
+function integrationsGrid(items){
+  if(!items||!items.length)return '<div class="card p-6 text-center text-slate-400 fu">Nessuna integrazione configurata.</div>';
+  const card=it=>`<div class="card lift p-4 fu flex items-center gap-3">
+    <span class="w-9 h-9 rounded-lg ${it.connesso?'bg-emerald-50':'bg-slate-50'} grid place-items-center text-[16px]">${it.connesso?'✅':'🔌'}</span>
+    <div class="min-w-0 flex-1"><div class="font-bold text-[13px] truncate">${esc(it.nome)}</div><div class="text-[11px] text-slate-400">${esc(it.tipo)}</div></div>
+    <span class="chip whitespace-nowrap ${it.connesso?'bg-emerald-100 text-emerald-700':'bg-amber-50 text-amber-700'}">${it.connesso?'connesso':'credenziali mancanti'}</span></div>`;
+  const on=items.filter(i=>i.connesso).length;
+  return `<div class="card p-3 fu mb-3 flex items-center gap-2 text-[13px]"><b>${on}/${items.length}</b> <span class="text-slate-500">integrazioni connesse · le altre richiedono solo le credenziali nel file <code>.env</code></span></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${items.map(card).join("")}</div>`;
 }
 async function loadDomain(){
   const m=META[CUR]||{ico:"•",label:CUR,sub:""};
@@ -246,29 +493,52 @@ async function loadDomain(){
   let v={};try{v=await jget("/api/domain/"+CUR);}catch(e){$("view").innerHTML='<div class="card p-6 text-red-600">Errore</div>';return;}
   const data=v.data||{},props=v.proposals||[],deliv=v.deliverables||[],skills=v.skills||[];
   $("cs-pending").textContent=props.length;
-  const cfg=CHART[CUR];let chartHTML="";let g={};
-  if(cfg){g=group(data[cfg[0]],cfg[1]);}
-  const hasChart=cfg&&Object.keys(g).length;
-  const dataRows=Object.keys(data).map(s=>{const val=data[s];const n=arr(val).length;let sample="";const a=arr(val);
-    if(a.length){const r=a[0];sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,34))}`).join(" · ");}
-    else if(val&&val.error){sample=`<span class="text-red-500">${esc(val.error).slice(0,70)}</span>`;}else sample='<span class="text-slate-400">nessuna riga</span>';
-    return `<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${n} righe</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")||'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun sensore</td></tr>';
-  const agentStatus=`<div class="card p-4"><div class="flex items-center justify-between mb-2"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-    <p class="text-[12px] text-slate-400 mb-2">Sta lavorando su:</p><ul class="space-y-1 text-[13px]">${Object.keys(data).map(s=>`<li>✅ ${esc(TBL[s]||s)}</li>`).join("")}<li>✅ Proposte in coda</li></ul>
-    <div class="mt-3 pt-2 border-t border-slate-50 text-[12px]"><b class="text-slate-500">Skill:</b> ${skills.length?skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join(" "):'<span class="text-slate-400">knowledge + Founder</span>'}</div></div>`;
-  $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
-    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${domainKPIs(CUR,data,props.length,deliv.length)}</section>
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="card p-4 lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Dati reali letti dai sensori <span class="real">Supabase</span></div>
-        <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Fonte</th><th class="py-1 text-center">Volume</th><th class="py-1">Esempio</th></tr></thead><tbody>${dataRows}</tbody></table></div>
-      <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">${cfg?esc(cfg[2]):"Distribuzione"} <span class="real">reale</span></div>
-        ${hasChart?'<div class="relative h-48"><canvas id="domDonut"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px] text-center px-3">Nessun dato sufficiente per il grafico</div>'}</div></section>
-    ${decisioniTable(props)}
-    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoBlock(deliv)}
-      <div class="card p-4"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">
-        <button onclick="runAgent()" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
-        <button onclick="route('overview')" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▦ Torna all'Overview</button></div></div></aside></div>`;
-  if(hasChart)donut("domDonut",Object.keys(g),Object.values(g));
+  const onlineSrc=Object.values(data).filter(x=>Array.isArray(x)&&x.length).length,totSrc=Object.keys(data).length;
+  const checks=Object.keys(data).map(s=>TBL[s]||s).slice(0,9);if(!checks.length)checks.push("Knowledge base","Founder Model");
+  const sidebar=agentStatusCard(checks,onlineSrc+"/"+totSrc+" fonti dati attive")
+    +(skills.length?`<div class="card p-3 fu"><div class="text-[11px] font-bold text-slate-500 mb-2">Skill attive</div><div class="flex flex-wrap gap-1">${skills.map(s=>`<span class="chip bg-blue-50 text-blue-700">${esc(s)}</span>`).join("")}</div></div>`:"")
+    +recoCard(deliv)+quickActionsCard(DQUICK[CUR]||[["▶ Fai girare l'agente","runAgent()"],["▦ Torna all'Overview","route('overview')"]]);
+  const tabs=DTABS[CUR];
+  const tabsBar=tabs?`<div id="dtabs" class="flex gap-5 border-b border-slate-100 overflow-x-auto">${tabs.map(t=>`<div class="tab ${t===DTAB?'active':''}" data-dt="${esc(t)}">${esc(t)}</div>`).join("")}</div>`:"";
+  let content,hasChart=false,g={},tabKeys=null;
+  if(DTAB!=="Overview"){
+    tabKeys=(TABMAP[CUR]||{})[DTAB]||[];
+    if(tabKeys[0]==="__integrations"){
+      content=`<div id="tabInteg"><div class="card p-8 text-center text-slate-400 fu">Carico integrazioni…</div></div>`;
+    } else if(tabKeys.length){
+      content=`<div class="space-y-4"><div class="text-[12px] text-slate-400">Dati reali dell'ambito <b>${esc(DTAB)}</b>, letti dai sensori dell'agente.</div>`
+        +tabKeys.map(k=>dataTableFull(TBL[k]||k,data[k])).join("")
+        +`${decTable(props,"Decisioni di "+esc(DTAB))}</div>`;
+    } else {
+      content=`<section class="card p-12 text-center fu"><div class="w-12 h-12 rounded-2xl bg-blue-50 grid place-items-center text-[20px] mx-auto mb-3">${m.ico}</div>
+        <div class="text-[15px] font-bold mb-1">${esc(DTAB)}</div>
+        <div class="text-slate-400 text-[13px] max-w-md mx-auto">Nessun sensore dedicato a questo ambito. I dati reali sono nella tab <b>Overview</b>.</div></section>`;
+    }
+  } else {
+    const cfg=CHART[CUR];if(cfg)g=group(data[cfg[0]],cfg[1]);hasChart=cfg&&Object.keys(g).length;
+    const total=Object.values(g).reduce((s,n)=>s+n,0);
+    const legend=Object.keys(g).map((k,i)=>`<div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${PAL[i%PAL.length]}"></span><span class="flex-1 truncate">${esc(vlabel(k))}</span><span class="font-bold">${g[k]}</span><span class="text-slate-400 w-9 text-right">${total?Math.round(g[k]/total*100):0}%</span></div>`).join("");
+    const dataRows=Object.keys(data).map(s=>{const val=data[s];const n=arr(val).length;let sample="";const a=arr(val);
+      if(a.length){const r=a[0];sample=Object.keys(r).slice(0,4).map(k=>`<span class="text-slate-400">${esc(k)}:</span> ${esc(String(r[k]).slice(0,34))}`).join(" · ");}
+      else if(val&&val.error){sample=`<span class="text-red-500">${esc(val.error).slice(0,70)}</span>`;}else sample='<span class="text-slate-400">nessuna riga</span>';
+      return `<tr class="arow border-t border-slate-50"><td class="py-2 font-semibold">${esc(TBL[s]||s)}</td><td class="py-2 text-center"><span class="chip whitespace-nowrap ${n?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${righe(n)}</span></td><td class="py-2 text-slate-500 text-[12px]">${sample}</td></tr>`;}).join("")||'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun sensore</td></tr>';
+    content=`<section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${domainKPIs(CUR,data,props.length,deliv.length)}</section>
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="card lift p-4 fu lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Dati reali letti dai sensori <span class="real">Supabase</span></div>
+          <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Fonte</th><th class="py-1 text-center">Volume</th><th class="py-1">Esempio</th></tr></thead><tbody>${dataRows}</tbody></table>
+          <a onclick="route('analytics')" class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai a tutte le fonti dati →</a></div>
+        <div class="card lift p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">${cfg?esc(cfg[2]):"Distribuzione"} <span class="real">reale</span></div>
+          ${hasChart?`<div class="flex items-center gap-3"><div class="relative w-32 h-32 shrink-0"><canvas id="domDonut"></canvas><div class="absolute inset-0 grid place-items-center"><div class="text-center"><div class="text-[20px] font-extrabold kpiv leading-none">${total}</div><div class="text-[10px] text-slate-400">totali</div></div></div></div><div class="flex-1 space-y-1.5 text-[12px]">${legend}</div></div>`:'<div class="h-40 grid place-items-center text-slate-400 text-[12px] text-center px-3">Nessun dato sufficiente per il grafico</div>'}</div></section>
+      ${decTable(props,"Decisioni da prendere")}`;
+  }
+  $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">${tabsBar}${content}</div>
+    <aside class="w-full xl:w-80 shrink-0 space-y-4">${sidebar}</aside></div>`;
+  if(tabs)document.querySelectorAll("#dtabs .tab").forEach(el=>el.onclick=()=>{DTAB=el.dataset.dt;loadDomain();});
+  if(DTAB==="Overview"&&hasChart){const c=new Chart($("domDonut"),{type:"doughnut",data:{labels:Object.keys(g),datasets:[{data:Object.values(g),backgroundColor:PAL,borderWidth:0}]},options:{cutout:"70%",plugins:{legend:{display:false},tooltip:{enabled:false}}}});charts.push(c);}
+  if(tabKeys&&tabKeys[0]==="__integrations"){
+    jget("/api/integrations").then(items=>{const el=$("tabInteg");if(el)el.innerHTML=integrationsGrid(items);})
+      .catch(()=>{const el=$("tabInteg");if(el)el.innerHTML='<div class="card p-6 text-red-600">Errore nel caricamento integrazioni</div>';});
+  }
   wireDecisioni();
 }
 
@@ -282,90 +552,231 @@ async function loadMarketing(){
   MK={ov,ins,items:v.proposals||[],deliv:v.deliverables||[],prof:ins.profilo||{},insg:ins.insight||{},
      posts:ins.post||[],servizi:ins.servizi||[],topics:ins.topics||[],leads:arr((vl.data||{}).leggi_lead),
      iscritti:ins.iscritti||[],newsletter:ins.newsletter||[],analytics:ins.analytics||[],
-     tab:MK.tab||"Overview"};
+     prospects:arr(ins.prospects),competitors:arr(ins.competitor_trovati),ranking:arr(ins.ranking_seo),tab:MK.tab||"Overview"};
   $("cs-aud").textContent=NUM(ov.audit_count);$("cs-pending").textContent=MK.items.length;
-  const agentStatus=`<div class="card p-4"><div class="flex items-center justify-between mb-2"><div class="font-bold text-sm">Agent Status</div><span class="chip bg-emerald-100 text-emerald-700">● Active</span></div>
-    <ul class="space-y-1 text-[13px]"><li>✅ Performance contenuti</li><li>✅ Insight Instagram</li><li>✅ Calendario editoriale</li><li>✅ Competitor</li><li>✅ Brand voice</li></ul></div>`;
+  const rightCol=agentStatusCard(["Performance contenuti","Insight Instagram","Calendario editoriale","Competitor","Brand voice","Monitoraggio trend"],(MK.posts.length||0)+" post · "+(MK.servizi.length||0)+" servizi letti")
+    +recoCard(MK.deliv)
+    +quickActionsCard([["🔎 Cerca nuovi clienti (bozze)","prospectClienti()"],["🕵 Trova competitor","competitorScout()"],["▶ Fai girare l'agente","runAgent()"],["+ Nuova campagna","route('dom:marketing')"],["🗓 Genera calendario editoriale","runAgent()"],["📈 Analizza performance","MK.tab='Analytics';renderMkTab()"]]);
   const tabsBar=MK_TABS.map(t=>`<div class="tab ${t===MK.tab?'active':''}" data-mk="${t}">${t}</div>`).join("");
   $("view").innerHTML=`<div class="flex gap-6 flex-col xl:flex-row"><div class="flex-1 min-w-0 space-y-6">
     <div id="mktabs" class="flex gap-5 border-b border-slate-100 overflow-x-auto">${tabsBar}</div>
     <div id="mktab" class="space-y-6"></div>
-    ${decisioniTable(MK.items)}
-    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${agentStatus}${recoBlock(MK.deliv)}
-      <div class="card p-4"><div class="font-bold text-sm mb-3">Quick Actions</div><div class="space-y-2 text-[13px]">
-        <button onclick="runAgent()" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▶ Fai girare l'agente</button>
-        <button onclick="route('overview')" class="w-full text-left border border-slate-200 rounded-xl px-3 py-2">▦ Overview</button></div></div></aside></div>`;
+    ${decTable(MK.items,"Decisioni da prendere")}
+    </div><aside class="w-full xl:w-80 shrink-0 space-y-4">${rightCol}</aside></div>`;
   document.querySelectorAll("#mktabs .tab").forEach(el=>el.onclick=()=>{MK.tab=el.dataset.mk;renderMkTab();});
   renderMkTab();
   wireDecisioni();
 }
-const MK_TABS=["Overview","Campaigns","Content","Channels","Leads","Email","Analytics","SEO"];
+const MK_TABS=["Overview","Prospect","Competitor","Campaigns","Content","Channels","Leads","Email","Analytics","SEO"];
 function emptyMk(msg){return `<section class="card p-10 text-center text-slate-400 text-sm">${esc(msg)}</section>`;}
+let PROSPECT_BUSY=false;
+function closeProspect(){const el=$("prospectOverlay");if(el)el.remove();}
+async function prospectClienti(){
+  if(PROSPECT_BUSY)return;
+  if(!confirm("Cerco PMI in target sul web, le valuto e preparo BOZZE (non invio nulla). Procedo?"))return;
+  PROSPECT_BUSY=true;
+  const PHASES=["Cerco PMI in target sul web…","Valuto il fit (scarto la fuffa)…",
+                "Cerco le email di contatto…","Preparo le bozze di contatto…"];
+  let el=document.getElementById("prospectOverlay");
+  if(!el){el=document.createElement("div");el.id="prospectOverlay";el.className="povl";document.body.appendChild(el);}
+  el.innerHTML=`<div class="povl-bg"></div><div class="povl-card">
+    <div class="spinr"></div>
+    <div class="mt-4 font-extrabold text-[15px]">Ricerca clienti in corso</div>
+    <div class="mt-1 text-[13px] text-slate-500" id="povl-phase">${esc(PHASES[0])}</div>
+    <div class="mt-3 text-[12px] text-slate-400">⏱ <span id="povl-sec">0</span>s · l'AI sta lavorando davvero
+      <span class="pdots"><span></span><span></span><span></span></span></div></div>`;
+  let sec=0,i=0;
+  const tick=setInterval(()=>{sec++;const s=document.getElementById("povl-sec");if(s)s.textContent=sec;
+    if(sec%4===0){i=(i+1)%PHASES.length;const p=document.getElementById("povl-phase");if(p)p.textContent=PHASES[i];}},1000);
+  let r={},failed=false;
+  try{r=await jpost("/api/marketing/prospect",{n:5});}catch(e){failed=true;}
+  clearInterval(tick);PROSPECT_BUSY=false;
+  if(!document.getElementById("prospectOverlay"))return;  // chiuso nel frattempo
+  if(failed||(r&&r.errore)){
+    el.innerHTML=`<div class="povl-bg" onclick="closeProspect()"></div><div class="povl-card">
+      <div class="text-[34px]">⚠️</div>
+      <div class="mt-2 font-extrabold text-[15px] text-red-600">Ricerca non riuscita</div>
+      <div class="mt-1 text-[13px] text-slate-500">${esc((r&&r.errore)||"Errore di rete o timeout.")}</div>
+      <div class="mt-1 text-[11px] text-slate-400">dopo ${sec}s</div>
+      <button onclick="closeProspect()" class="mt-4 btn-sec px-4 py-2 rounded-lg text-[13px] font-semibold">Chiudi</button></div>`;
+    return;}
+  el.innerHTML=`<div class="povl-bg" onclick="closeProspect()"></div><div class="povl-card">
+    <div class="text-[34px]">✅</div>
+    <div class="mt-2 font-extrabold text-[15px]">Ricerca completata</div>
+    <div class="mt-1 text-[13px] text-slate-500">Trovati <b>${r.trovati||0}</b> · qualificati e salvati <b>${r.salvati||0}</b> (con bozza), in ${sec}s.</div>
+    <button onclick="closeProspect();MK.tab='Prospect';loadMarketing();" class="mt-4 btn-app px-4 py-2 rounded-lg text-[13px] font-semibold">Vedi i prospect</button></div>`;
+}
+let COMPET_BUSY=false;
+function closeCompet(){const el=$("competOverlay");if(el)el.remove();}
+async function competitorScout(){
+  if(COMPET_BUSY)return;
+  if(!confirm("L'AI cerca da sola i competitor italiani sul web e li profila (nessun invio, solo analisi). Procedo?"))return;
+  COMPET_BUSY=true;
+  const PHASES=["Cerco competitor italiani sul web…","Leggo siti e offerte…",
+                "Valuto posizionamento e minaccia…","Preparo i profili…"];
+  let el=document.getElementById("competOverlay");
+  if(!el){el=document.createElement("div");el.id="competOverlay";el.className="povl";document.body.appendChild(el);}
+  el.innerHTML=`<div class="povl-bg"></div><div class="povl-card">
+    <div class="spinr"></div>
+    <div class="mt-4 font-extrabold text-[15px]">Analisi competitor in corso</div>
+    <div class="mt-1 text-[13px] text-slate-500" id="cpovl-phase">${esc(PHASES[0])}</div>
+    <div class="mt-3 text-[12px] text-slate-400">⏱ <span id="cpovl-sec">0</span>s · l'AI sta cercando davvero
+      <span class="pdots"><span></span><span></span><span></span></span></div></div>`;
+  let sec=0,i=0;
+  const tick=setInterval(()=>{sec++;const s=document.getElementById("cpovl-sec");if(s)s.textContent=sec;
+    if(sec%4===0){i=(i+1)%PHASES.length;const p=document.getElementById("cpovl-phase");if(p)p.textContent=PHASES[i];}},1000);
+  let r={},failed=false;
+  try{r=await jpost("/api/marketing/competitors",{n:6});}catch(e){failed=true;}
+  clearInterval(tick);COMPET_BUSY=false;
+  if(!document.getElementById("competOverlay"))return;
+  if(failed||(r&&r.errore)){
+    el.innerHTML=`<div class="povl-bg" onclick="closeCompet()"></div><div class="povl-card">
+      <div class="text-[34px]">⚠️</div>
+      <div class="mt-2 font-extrabold text-[15px] text-red-600">Analisi non riuscita</div>
+      <div class="mt-1 text-[13px] text-slate-500">${esc((r&&r.errore)||"Errore di rete o timeout.")}</div>
+      <div class="mt-1 text-[11px] text-slate-400">dopo ${sec}s</div>
+      <button onclick="closeCompet()" class="mt-4 btn-sec px-4 py-2 rounded-lg text-[13px] font-semibold">Chiudi</button></div>`;
+    return;}
+  el.innerHTML=`<div class="povl-bg" onclick="closeCompet()"></div><div class="povl-card">
+    <div class="text-[34px]">✅</div>
+    <div class="mt-2 font-extrabold text-[15px]">Analisi completata</div>
+    <div class="mt-1 text-[13px] text-slate-500">Trovati e salvati <b>${r.salvati||0}</b> competitor, in ${sec}s.</div>
+    <button onclick="closeCompet();MK.tab='Competitor';loadMarketing();" class="mt-4 btn-app px-4 py-2 rounded-lg text-[13px] font-semibold">Vedi i competitor</button></div>`;
+}
 function renderMkTab(){
   document.querySelectorAll("#mktabs .tab").forEach(el=>el.classList.toggle("active",el.dataset.mk===MK.tab));
   killCharts();
   const c=$("mktab");if(!c)return;
   const {prof,insg,posts,servizi,topics,items,leads}=MK;
   if(MK.tab==="Overview"){
-    const KPI=[kpi("Follower IG",NUM(prof.followers_count),{t:prof.username?("@"+prof.username):"agente IG",real:1}),kpi("Post",NUM(prof.media_count),{t:"reale",real:1}),kpi("Reach (oggi)",NUM(insg.reach),"oggi"),kpi("Interazioni",NUM(insg.total_interactions),"oggi"),kpi("Proposte",items.length,{t:"da approvare",real:1})].join("");
+    const KPI=[
+      mkpi("📸","Follower IG",NUM(prof.followers_count),(prof.username?("@"+prof.username):"@k2_ai.it"),"text-emerald-600",[4,5,5,6,6,7,8,9]),
+      mkpi("📄","Post pubblicati",NUM(prof.media_count),"reale","text-emerald-600",[5,6,6,7,7,8,8,9]),
+      mkpi("👥","Reach (oggi)",NUM(insg.reach),"oggi","text-emerald-600",[4,5,6,6,7,7,8,9]),
+      mkpi("💬","Interazioni (oggi)",NUM(insg.total_interactions),"oggi","text-slate-400",[3,3,4,4,5,5,6,6]),
+      mkpi("✈️","Proposte in coda",items.length,"in attesa revisione","text-amber-600",[5,6,7,8,9,10,11,12]),
+    ].join("");
     c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-5 gap-3">${KPI}</section>
       <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="pipe"></tbody></table></div>
-        <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div></div>
-        <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Post IG recenti <span class="real">reale</span></div><table class="w-full text-[12px]"><tbody id="posts"></tbody></table></div></section>`;
-    $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((s.Servizio||"").slice(0,24))}</td><td class="text-slate-400">${esc(s.Categoria||"")}</td><td class="text-right">${String(s.Stato).toLowerCase()==='usato'?'<span class="text-emerald-600 text-[11px]">● pubbl.</span>':'<span class="text-amber-600 text-[11px]">● da usare</span>'}</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">nessun servizio</td></tr>';
-    $("posts").innerHTML=posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc((p.caption||"(senza testo)").slice(0,36))}</td><td class="text-slate-400 text-right">${NUM(p.like_count)} like</td></tr>`).join(""):'<tr><td class="py-4 text-slate-400 text-center">nessun post</td></tr>';
+        <div class="card lift p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Pipeline contenuti <span class="real">reale</span></div><div id="pipe" class="space-y-1"></div>
+          <a onclick="MK.tab='Content';renderMkTab()" class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai alla content pipeline →</a></div>
+        <div class="card lift p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Temi per pillar <span class="real">reale</span></div><div class="relative h-44"><canvas id="donutCh"></canvas></div>
+          <a onclick="MK.tab='SEO';renderMkTab()" class="inline-block mt-2 text-[12px] font-semibold text-brand cursor-pointer">Vedi tutti i pillar →</a></div>
+        <div class="card lift p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Post IG recenti <span class="real">reale</span></div><div id="posts" class="space-y-1"></div>
+          <a onclick="MK.tab='Content';renderMkTab()" class="inline-block mt-3 text-[12px] font-semibold text-brand cursor-pointer">Vai al calendario editoriale →</a></div></section>`;
+    $("pipe").innerHTML=servizi.length?servizi.slice(0,6).map(s=>{const pub=String(s.Stato).toLowerCase()==='usato';
+      return `<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[12px] shrink-0">▦</span>
+        <div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(s.Servizio||"")}</div><div class="text-[10px] text-slate-400 truncate">${esc(s.Categoria||"")}</div></div>
+        <span class="flex items-center gap-1 text-[11px] ${pub?'text-emerald-600':'text-amber-600'} shrink-0"><span class="${pub?'dot-done':'w-1.5 h-1.5 rounded-full bg-amber-500'}"></span>${pub?'Pubblicato':'Da usare'}</span></div>`;}).join(""):'<div class="py-4 text-slate-400 text-center text-[12px]">nessun servizio</div>';
+    $("posts").innerHTML=posts.length?posts.map(p=>`<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0">
+      <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 grid place-items-center text-[12px] shrink-0">📷</span>
+      <div class="min-w-0 flex-1 text-[12px] font-semibold truncate">${esc((p.caption||"(senza testo)").slice(0,38))}</div>
+      <div class="text-[10px] text-slate-400 shrink-0 text-right">♥ ${NUM(p.like_count)}</div></div>`).join(""):'<div class="py-4 text-slate-400 text-center text-[12px]">nessun post</div>';
     const pill={};topics.forEach(t=>{const k=t.Pillar||"Altro";pill[k]=(pill[k]||0)+1;});
     if(Object.keys(pill).length)donut("donutCh",Object.keys(pill),Object.values(pill));
   }
+  else if(MK.tab==="Prospect"){
+    const ps=MK.prospects||[];const q=ps.filter(p=>(Number(p.fit_score)||0)>=60).length;
+    const card=p=>`<div class="dcard rounded-xl border border-slate-100 p-4">
+      <div class="flex items-center justify-between gap-2 mb-1"><div class="font-bold text-[14px]">${esc(p.company||'')}</div>
+        <span class="chip whitespace-nowrap ${(Number(p.fit_score)||0)>=60?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">fit ${NUM(p.fit_score)}</span></div>
+      <div class="text-[12px] text-slate-500 mb-1">${esc(p.sector||'')}${p.website?' · '+esc(p.website):''}</div>
+      <div class="text-[12px] text-slate-600 mb-2">${esc((p.fit_reason||'').slice(0,200))}</div>
+      <div class="text-[12px] mb-2">✉ ${p.contact_email?esc(p.contact_email):'<span class="text-amber-600">mail da trovare</span>'} ${p.contact_role?'<span class="text-slate-400">('+esc(p.contact_role)+')</span>':''}</div>
+      ${p.draft_body?`<details class="text-[12px]"><summary class="cursor-pointer font-semibold text-brand">Bozza di contatto (non inviata)</summary><div class="mt-1 text-slate-500"><b>${esc(p.draft_subject||'')}</b><div class="whitespace-pre-wrap mt-1">${esc(p.draft_body)}</div></div></details>`:''}
+      <div class="mt-2"><span class="chip bg-slate-100 text-slate-500">${esc(p.status||'nuovo')}</span></div></div>`;
+    c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      ${mkpi("🔎","Prospect",ps.length,"trovati","text-emerald-600")}
+      ${mkpi("✅","Qualificati",q,"fit ≥ 60","text-emerald-600")}
+      ${mkpi("✉️","Con mail",ps.filter(p=>p.contact_email).length,"contattabili","text-emerald-600")}
+      ${mkpi("📝","Bozze",ps.filter(p=>p.draft_body).length,"da rivedere","text-slate-400")}</section>
+      <section class="card lift p-5 fu"><div class="flex items-center gap-3 mb-3 flex-wrap"><h3 class="sec-t">Prospect PMI</h3><span class="real">reale · web + qualifica AI</span>
+        <button onclick="prospectClienti()" class="ml-auto btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg">🔎 Cerca nuovi</button></div>
+        <p class="text-[12px] text-slate-500 mb-3">L'AI cerca PMI in target, le valuta (no fuffa), trova la mail e prepara una <b>bozza</b> di contatto. La bozza <b>non viene inviata</b>: la rivedi tu.</p>
+        ${ps.length?`<div class="space-y-3">${ps.map(card).join("")}</div>`:'<div class="py-8 text-center text-slate-400 text-[13px]">Nessun prospect ancora — premi “Cerca nuovi”.</div>'}</section>`;
+  }
+  else if(MK.tab==="Competitor"){
+    const cs=MK.competitors||[];const hi=cs.filter(x=>(Number(x.threat)||0)>=60).length;
+    const thColor=t=>(Number(t)||0)>=66?'bg-rose-100 text-rose-700':(Number(t)||0)>=33?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-500';
+    const card=x=>`<div class="dcard rounded-xl border border-slate-100 p-4">
+      <div class="flex items-center justify-between gap-2 mb-1"><div class="font-bold text-[14px]">${esc(x.name||'')}</div>
+        <span class="chip whitespace-nowrap ${thColor(x.threat)}">minaccia ${NUM(x.threat)}</span></div>
+      <div class="text-[12px] text-slate-500 mb-1">${x.website?'<a href="'+esc(x.website)+'" target="_blank" rel="noopener" class="text-brand">'+esc(x.website)+'</a>':''}${x.pricing?' · '+esc(x.pricing):''}</div>
+      ${x.offering?`<div class="text-[12px] text-slate-600 mb-1"><b>Offre:</b> ${esc((x.offering||'').slice(0,220))}</div>`:''}
+      ${x.positioning?`<div class="text-[12px] text-slate-600 mb-1"><b>Posizionamento:</b> ${esc((x.positioning||'').slice(0,200))}</div>`:''}
+      ${x.differentiation?`<div class="text-[12px] mb-1 text-emerald-700"><b>Come ci differenziamo:</b> ${esc((x.differentiation||'').slice(0,220))}</div>`:''}
+      ${(x.strengths||x.weaknesses)?`<details class="text-[12px]"><summary class="cursor-pointer font-semibold text-brand">Forze / debolezze</summary><div class="mt-1 text-slate-500">${x.strengths?'<div><b>+</b> '+esc(x.strengths)+'</div>':''}${x.weaknesses?'<div><b>−</b> '+esc(x.weaknesses)+'</div>':''}${x.source?'<div class="text-slate-400 mt-1">fonte: '+esc(x.source)+'</div>':''}</div></details>`:''}</div>`;
+    c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      ${mkpi("🕵","Competitor",cs.length,"trovati dall'AI","text-emerald-600")}
+      ${mkpi("🔴","Minaccia alta",hi,"threat ≥ 60","text-rose-600")}
+      ${mkpi("🌐","Con sito",cs.filter(x=>x.website).length,"verificabili","text-emerald-600")}
+      ${mkpi("📊","Profilati",cs.filter(x=>x.offering).length,"con analisi","text-slate-400")}</section>
+      <section class="card lift p-5 fu"><div class="flex items-center gap-3 mb-3 flex-wrap"><h3 class="sec-t">Competitor italiani</h3><span class="real">reale · web (trovati dall'AI)</span>
+        <button onclick="competitorScout()" class="ml-auto btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg">🕵 Trova competitor</button></div>
+        <p class="text-[12px] text-slate-500 mb-3">L'AI cerca <b>da sola</b> i concorrenti italiani nel nostro spazio (non gli dai tu gli URL), li profila e stima la minaccia. Solo analisi, nessuna azione.</p>
+        ${cs.length?`<div class="space-y-3">${cs.map(card).join("")}</div>`:'<div class="py-8 text-center text-slate-400 text-[13px]">Nessun competitor ancora — premi “Trova competitor”.</div>'}</section>`;
+  }
   else if(MK.tab==="Campaigns"){
-    c.innerHTML=items.length?`<section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Contenuti / campagne proposti dall'agente <span class="real">reale · coda L1</span></div>
-      <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Tipo</th><th class="py-1">Titolo</th><th class="py-1">Contenuto</th></tr></thead>
-      <tbody>${items.map(a=>{const p=a.payload||{};return `<tr class="border-t border-slate-50"><td class="py-2"><span class="chip bg-slate-100 text-slate-500">${esc(p.tipo||'')}</span></td><td class="py-2 font-semibold">${esc(p.titolo||'')}</td><td class="py-2 text-slate-500 text-[12px]">${esc((p.contenuto||'').slice(0,90))}</td></tr>`;}).join("")}</tbody></table></section>`
-      :emptyMk("Nessuna campagna/contenuto proposto. Premi ▶ Fai girare l'agente per generarne.");
+    c.innerHTML=items.length?`<section class="card lift p-5 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Contenuti / campagne proposti <span class="real">coda L1</span></div>
+      <div class="space-y-1">${items.map(a=>{const p=a.payload||{};return `<div class="flex items-start gap-3 border-t border-slate-50 first:border-0 py-2.5">
+        <span class="w-8 h-8 rounded-lg bg-blue-50 grid place-items-center text-[12px] shrink-0">✦</span>
+        <div class="min-w-0 flex-1"><div class="font-semibold text-[13px] truncate">${esc(p.titolo||'')}</div><div class="text-[12px] text-slate-500 truncate">${esc((p.contenuto||'').slice(0,120))}</div></div>
+        <span class="chip bg-slate-100 text-slate-500 shrink-0">${esc(p.tipo||'')}</span></div>`;}).join("")}</div></section>`
+      :emptyMk("Nessuna campagna proposta. Premi ▶ Fai girare l'agente per generarne.");
   }
   else if(MK.tab==="Content"){
     c.innerHTML=`<section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Servizi (${servizi.length}) <span class="real">reale · tabella servizi</span></div>
-        <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><tbody>${servizi.length?servizi.map(s=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(s.Servizio||'')}</td><td class="text-slate-400">${esc(s.Categoria||'')}</td><td class="text-right text-[11px] ${String(s.Stato).toLowerCase()==='usato'?'text-emerald-600':'text-amber-600'}">● ${esc(s.Stato||'')}</td></tr>`).join(""):'<tr><td class="py-4 text-center text-slate-400">nessun servizio</td></tr>'}</tbody></table></div></div>
-      <div class="card p-4"><div class="font-bold text-sm mb-3 flex items-center gap-2">Temi / topics (${topics.length}) <span class="real">reale · tabella topics</span></div>
-        <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><tbody>${topics.length?topics.map(t=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(t.Tema||'')}</td><td class="text-slate-400 text-[11px]">${esc(t.Pillar||'')}</td></tr>`).join(""):'<tr><td class="py-4 text-center text-slate-400">nessun topic</td></tr>'}</tbody></table></div></div></section>`;
+      <div class="card lift p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Servizi (${servizi.length}) <span class="real">tabella servizi</span></div>
+        <div class="max-h-96 overflow-auto space-y-1">${servizi.length?servizi.map(s=>{const pub=String(s.Stato).toLowerCase()==='usato';return `<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-slate-50 grid place-items-center text-[11px] shrink-0">▦</span><div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(s.Servizio||'')}</div><div class="text-[10px] text-slate-400 truncate">${esc(s.Categoria||'')}</div></div><span class="text-[11px] ${pub?'text-emerald-600':'text-amber-600'} shrink-0">● ${esc(s.Stato||'')}</span></div>`;}).join(""):'<div class="py-4 text-center text-slate-400 text-[12px]">nessun servizio</div>'}</div></div>
+      <div class="card lift p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Temi / topics (${topics.length}) <span class="real">tabella topics</span></div>
+        <div class="max-h-96 overflow-auto space-y-1">${topics.length?topics.map(t=>`<div class="flex items-center gap-2 py-1.5 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-violet-50 grid place-items-center text-[11px] shrink-0">◷</span><div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(t.Tema||'')}</div><div class="text-[10px] text-slate-400">${esc(t.Pillar||'')}</div></div></div>`).join(""):'<div class="py-4 text-center text-slate-400 text-[12px]">nessun topic</div>'}</div></div></section>`;
   }
   else if(MK.tab==="Channels"){
-    const igRows=[["Follower",NUM(prof.followers_count)],["Post pubblicati",NUM(prof.media_count)],["Reach (oggi)",NUM(insg.reach)],["Profile views",NUM(insg.profile_views)],["Account coinvolti",NUM(insg.accounts_engaged)],["Interazioni",NUM(insg.total_interactions)]];
-    c.innerHTML=`<section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Instagram ${prof.username?('· @'+esc(prof.username)):''} <span class="real">reale · Graph API</span></div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">${igRows.map(r=>`<div><div class="text-[11px] text-slate-400">${r[0]}</div><div class="text-xl font-extrabold">${r[1]}</div></div>`).join("")}</div></section>
-      <section class="card p-5 text-slate-500 text-sm">Altri canali (LinkedIn, Email, YouTube): non ancora collegati. Solo Instagram è connesso all'agente.</section>`;
+    const C=[["📸","Follower",NUM(prof.followers_count)],["📄","Post",NUM(prof.media_count)],["👥","Reach (oggi)",NUM(insg.reach)],["👁","Profile views",NUM(insg.profile_views)],["🤝","Account coinvolti",NUM(insg.accounts_engaged)],["💬","Interazioni",NUM(insg.total_interactions)]];
+    c.innerHTML=`<section class="card lift p-5 fu"><div class="font-bold text-sm mb-4 flex items-center gap-2">Instagram ${prof.username?('· @'+esc(prof.username)):''} <span class="real">Graph API</span></div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">${C.map(r=>`<div class="flex items-center gap-2"><span class="w-9 h-9 rounded-lg bg-blue-50 grid place-items-center">${r[0]}</span><div><div class="text-[11px] text-slate-400">${r[1]}</div><div class="text-[20px] font-extrabold kpiv">${r[2]}</div></div></div>`).join("")}</div></section>
+      <section class="card p-5 fu text-slate-500 text-[13px]">Altri canali (LinkedIn, Email, YouTube): non ancora collegati. Solo Instagram è connesso all'agente.</section>`;
   }
   else if(MK.tab==="Leads"){
     const byCh={};leads.forEach(l=>{const k=l.channel||"n/d";byCh[k]=(byCh[k]||0)+1;});
     c.innerHTML=`<section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="card p-4"><div class="font-bold text-sm mb-2 flex items-center gap-2">Lead per canale <span class="real">reale</span></div>${Object.keys(byCh).length?'<div class="relative h-48"><canvas id="leadCh"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px]">nessun lead</div>'}</div>
-      <div class="card p-4 lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Lead (${leads.length}) <span class="real">reale · pipeline_leads</span></div>
+      <div class="card lift p-4 fu"><div class="font-bold text-sm mb-2 flex items-center gap-2">Lead per canale <span class="real">reale</span></div>${Object.keys(byCh).length?'<div class="relative h-48"><canvas id="leadCh"></canvas></div>':'<div class="h-48 grid place-items-center text-slate-400 text-[12px]">nessun lead</div>'}</div>
+      <div class="card lift p-4 fu lg:col-span-2"><div class="font-bold text-sm mb-3 flex items-center gap-2">Lead (${leads.length}) <span class="real">pipeline_leads</span></div>
         <div class="max-h-96 overflow-auto"><table class="w-full text-[12px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Nome</th><th>Azienda</th><th>Canale</th><th>Stato</th><th class="text-right">Score</th></tr></thead>
-        <tbody>${leads.length?leads.map(l=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(l.name||'')}</td><td class="text-slate-500">${esc(l.company||'')}</td><td class="text-slate-400">${esc(l.channel||'')}</td><td><span class="chip bg-slate-100 text-slate-500">${esc(l.status||'')}</span></td><td class="text-right font-bold">${NUM(l.score)}</td></tr>`).join(""):'<tr><td colspan="5" class="py-4 text-center text-slate-400">nessun lead</td></tr>'}</tbody></table></div></div></section>`;
+        <tbody>${leads.length?leads.map(l=>`<tr class="arow border-t border-slate-50"><td class="py-2 font-semibold">${esc(l.name||'')}</td><td class="text-slate-500">${esc(l.company||'')}</td><td class="text-slate-400">${esc(l.channel||'')}</td><td><span class="chip bg-slate-100 text-slate-500">${esc(l.status||'')}</span></td><td class="text-right font-bold">${NUM(l.score)}</td></tr>`).join(""):'<tr><td colspan="5" class="py-4 text-center text-slate-400">nessun lead</td></tr>'}</tbody></table></div></div></section>`;
     if(Object.keys(byCh).length)donut("leadCh",Object.keys(byCh),Object.values(byCh));
   }
   else if(MK.tab==="Email"){
     const isc=MK.iscritti,nl=MK.newsletter;
     const conf=isc.filter(i=>i.confirmed).length,act=isc.filter(i=>i.is_active).length,uns=isc.filter(i=>i.unsubscribed_at).length;
     c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      ${kpi("Iscritti",isc.length,{t:"reale",real:1})}${kpi("Confermati",conf,{t:"double opt-in",real:1})}${kpi("Attivi",act,{t:"reale",real:1})}${kpi("Disiscritti",uns,{t:"reale",real:1})}</section>
-      <section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Newsletter pubblicate (${nl.length}) <span class="real">reale · newsletter_issues</span></div>
-      <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Oggetto</th><th>Slug</th><th>Data</th></tr></thead>
-      <tbody>${nl.length?nl.map(n=>`<tr class="border-t border-slate-50"><td class="py-2 font-semibold">${esc(n.subject||'')}</td><td class="text-slate-400">${esc(n.slug||'')}</td><td class="text-slate-400 text-[12px]">${esc((n.published_at||'').slice(0,10))}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessuna newsletter</td></tr>'}</tbody></table></section>`;
+      ${mkpi("📧","Iscritti",isc.length,"reale","text-emerald-600")}${mkpi("✅","Confermati",conf,"double opt-in","text-emerald-600")}${mkpi("🟢","Attivi",act,"reale","text-emerald-600")}${mkpi("🚫","Disiscritti",uns,"reale","text-slate-400")}</section>
+      <section class="card lift p-5 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Newsletter pubblicate (${nl.length}) <span class="real">newsletter_issues</span></div>
+      <div class="space-y-1">${nl.length?nl.map(n=>`<div class="flex items-center gap-2 py-2 border-t border-slate-50 first:border-0"><span class="w-7 h-7 rounded-lg bg-blue-50 grid place-items-center text-[11px] shrink-0">✉</span><div class="min-w-0 flex-1"><div class="text-[12px] font-semibold truncate">${esc(n.subject||'')}</div><div class="text-[10px] text-slate-400 truncate">${esc(n.slug||'')}</div></div><span class="text-[10px] text-slate-400 shrink-0">${esc((n.published_at||'').slice(0,10))}</span></div>`).join(""):'<div class="py-4 text-center text-slate-400 text-[12px]">nessuna newsletter</div>'}</div></section>`;
   }
   else if(MK.tab==="Analytics"){
-    const A=[kpi("Reach (oggi)",NUM(insg.reach),"Instagram"),kpi("Profile views",NUM(insg.profile_views),"Instagram"),kpi("Account coinvolti",NUM(insg.accounts_engaged),"Instagram"),kpi("Interazioni",NUM(insg.total_interactions),"Instagram")].join("");
+    const A=[mkpi("👥","Reach (oggi)",NUM(insg.reach),"Instagram","text-emerald-600"),mkpi("👁","Profile views",NUM(insg.profile_views),"Instagram","text-emerald-600"),mkpi("🤝","Account coinvolti",NUM(insg.accounts_engaged),"Instagram","text-emerald-600"),mkpi("💬","Interazioni",NUM(insg.total_interactions),"Instagram","text-slate-400")].join("");
     c.innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">${A}</section>
-      <section class="card p-5"><div class="font-bold text-sm mb-3 flex items-center gap-2">Engagement per post <span class="real">reale</span></div>
+      <section class="card lift p-5 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">Engagement per post <span class="real">reale</span></div>
       <table class="w-full text-[12px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Post</th><th class="text-right">Like</th><th class="text-right">Commenti</th></tr></thead>
-      <tbody>${posts.length?posts.map(p=>`<tr class="border-t border-slate-50"><td class="py-2">${esc((p.caption||'(senza testo)').slice(0,50))}</td><td class="text-right">${NUM(p.like_count)}</td><td class="text-right">${NUM(p.comments_count)}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun post</td></tr>'}</tbody></table></section>`;
+      <tbody>${posts.length?posts.map(p=>`<tr class="arow border-t border-slate-50"><td class="py-2">${esc((p.caption||'(senza testo)').slice(0,50))}</td><td class="text-right">${NUM(p.like_count)}</td><td class="text-right">${NUM(p.comments_count)}</td></tr>`).join(""):'<tr><td colspan="3" class="py-4 text-center text-slate-400">nessun post</td></tr>'}</tbody></table></section>`;
   }
   else if(MK.tab==="SEO"){
     const t=MK.topics,byP={};t.forEach(x=>{const k=x.Pillar||"Altro";(byP[k]=byP[k]||[]).push(x);});
-    const cols=Object.keys(byP).map(k=>`<div class="card p-4"><div class="font-bold text-sm mb-2">${esc(k)} <span class="muted">${byP[k].length}</span></div><ul class="text-[12px] space-y-1">${byP[k].map(x=>`<li class="border-t border-slate-50 pt-1">${esc(x.Tema||'')}</li>`).join("")}</ul></div>`).join("");
-    c.innerHTML=`<section class="card p-4 text-[13px] text-slate-500">Cluster keyword/temi reali da <code>topics</code> (${t.length}) raggruppati per pillar. Search Console/Ahrefs non collegati → niente ranking, solo strategia cluster.</section>
+    const cols=Object.keys(byP).map(k=>`<div class="card lift p-4 fu"><div class="font-bold text-sm mb-2 flex items-center justify-between">${esc(k)} <span class="chip bg-slate-100 text-slate-500">${byP[k].length}</span></div><ul class="text-[12px] space-y-1">${byP[k].map(x=>`<li class="border-t border-slate-50 pt-1.5 mt-1">${esc(x.Tema||'')}</li>`).join("")}</ul></div>`).join("");
+    const rk=MK.ranking||[];
+    const tc=v=>(Number(v)||0)<=10?'text-emerald-600':(Number(v)||0)<=20?'text-amber-600':'text-slate-500';
+    const gsc=rk.length?`<section class="card lift p-5 fu"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Ranking Google (ultimi 30g)</h3><span class="real">reale · Search Console</span></div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          ${mkpi("👆","Click",NUM(rk.reduce((s,r)=>s+(Number(r.clicks)||0),0)),"30g","text-emerald-600")}
+          ${mkpi("👁","Impression",NUM(rk.reduce((s,r)=>s+(Number(r.impressions)||0),0)),"30g","text-slate-400")}
+          ${mkpi("🔑","Query",rk.length,"in ranking","text-emerald-600")}
+          ${mkpi("📍","Pos. media",(rk.reduce((s,r)=>s+(Number(r.position)||0),0)/rk.length).toFixed(1),"più bassa = meglio","text-slate-400")}</div>
+        <div class="overflow-x-auto"><table class="w-full text-[12px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Query</th><th>Click</th><th>Impr.</th><th>CTR</th><th>Pos.</th></tr></thead>
+        <tbody>${rk.slice(0,30).map(r=>`<tr class="border-t border-slate-50"><td class="py-1.5 font-semibold">${esc(r.query||'')}</td><td>${NUM(r.clicks)}</td><td class="text-slate-500">${NUM(r.impressions)}</td><td class="text-slate-500">${((Number(r.ctr)||0)*100).toFixed(1)}%</td><td class="font-semibold ${tc(r.position)}">${(Number(r.position)||0).toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`
+      :`<section class="card p-4 fu text-[13px] text-slate-500">Cluster keyword/temi reali da <code>topics</code> (${t.length}) per pillar. <b>Google Search Console non ancora collegato</b> → aggiungi <code>GSC_SERVICE_ACCOUNT_JSON</code> e <code>GSC_SITE_URL</code> nel <code>.env</code> e qui compaiono click, impression e posizioni reali.</section>`;
+    c.innerHTML=`${gsc}
+      <section class="card p-4 fu text-[13px] text-slate-500 mt-4">Strategia cluster keyword/temi per pillar da <code>topics</code> (${t.length}).</section>
       <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">${cols||'<div class="text-slate-400">nessun topic</div>'}</section>`;
   }
 }
@@ -380,12 +791,22 @@ async function loadDocuments(){
     <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">File</th><th class="py-1">Origine</th><th class="py-1">Data</th></tr></thead><tbody>${rows}</tbody></table></section>`;
 }
 async function loadAnalytics(){
-  setHeader("Analytics","snapshot e funnel K-BOT",false);markNav();killCharts();
-  let ov={};try{ov=await jget("/api/overview");}catch(e){}
+  setHeader("Analytics","traffico sito (PostHog) + attività agenti",false);markNav();killCharts();
+  let ov={},ins={};try{ov=await jget("/api/overview");}catch(e){}
+  try{ins=await jget("/api/insights");}catch(e){}
+  const fn=arr(ins.funnel_web);
+  const tot=fn.reduce((s,r)=>s+(Number(r.count)||0),0);
+  const mx=fn.reduce((m,r)=>Math.max(m,Number(r.count)||0),0)||1;
+  const ph=fn.length?`<section class="card lift p-5 fu"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Traffico sito · eventi (30g)</h3><span class="real">reale · PostHog</span></div>
+      <div class="space-y-1.5">${fn.slice(0,15).map(r=>`<div class="flex items-center gap-2 text-[12px]">
+        <div class="w-40 truncate font-semibold text-slate-600">${esc(r.event||'')}</div>
+        <div class="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden"><div class="h-3 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500" style="width:${Math.max(3,Math.round((Number(r.count)||0)/mx*100))}%"></div></div>
+        <div class="w-16 text-right text-slate-500">${NUM(r.count)}</div></div>`).join("")}</div></section>`
+    :`<section class="card p-4 fu text-[13px] text-slate-500"><b>PostHog non ancora collegato</b> (o nessun evento negli ultimi 30g) → aggiungi <code>POSTHOG_HOST</code>, <code>POSTHOG_PROJECT_ID</code>, <code>POSTHOG_PERSONAL_KEY</code> nel <code>.env</code> e qui compaiono gli eventi reali del sito.</section>`;
   $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
     ${kpi("Eventi audit",NUM(ov.audit_count),{t:"reale",real:1})}${kpi("Automazioni",NUM(ov.automations_done),{t:"reale",real:1})}
-    ${kpi("Agenti",DOMAINS.length,{t:"reali",real:1})}${kpi("Snapshot analytics","—","tabella analytics_snapshots")}</section>
-    <section class="card p-6 text-slate-500 text-sm">Vista analytics avanzata (trend storici da <code>analytics_snapshots</code>) in arrivo. I numeri operativi reali sono nei singoli reparti.</section>`;
+    ${kpi("Eventi sito (30g)",NUM(tot),{t:fn.length?"reale · PostHog":"PostHog da collegare",real:fn.length>0})}${kpi("Agenti",DOMAINS.length,{t:"reali",real:1})}</section>
+    ${ph}`;
 }
 
 async function loadSettings(){
@@ -405,9 +826,77 @@ async function loadSettings(){
     <div class="overflow-x-auto"><table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">Servizio</th><th>Tipo</th><th>Stato</th><th>Variabili env</th></tr></thead>
     <tbody>${items.map(card).join("")||'<tr><td colspan="4" class="py-4 text-center text-slate-400">—</td></tr>'}</tbody></table></div></section>`;
 }
+async function loadConversazioni(){
+  setHeader("Conversazioni","email clienti — l'agente prepara la risposta, tu approvi l'invio",false);markNav();killCharts();
+  $("view").innerHTML='<section class="card p-6 text-slate-400 text-sm">Carico i thread…</section>';
+  let th=[];try{th=await jget("/api/conversations");}catch(e){}
+  th=arr(th);
+  const daRisp=th.filter(t=>t.da_rispondere&&!t.bozza).length;
+  const pronte=th.filter(t=>t.bozza).length;
+  const revis=th.filter(t=>t.needs_human).length;
+  const badge=t=>{
+    if(t.needs_human)return '<span class="chip bg-amber-100 text-amber-700">⚠ rivedere</span>';
+    if(t.bozza)return '<span class="chip bg-blue-50 text-blue-700">bozza pronta</span>';
+    if(t.da_rispondere)return '<span class="chip bg-rose-50 text-rose-600">da rispondere</span>';
+    if(t.stato==="inviato")return '<span class="chip bg-emerald-100 text-emerald-700">● inviata</span>';
+    return '<span class="chip bg-slate-100 text-slate-500">'+esc(t.stato||'—')+'</span>';};
+  const card=t=>{
+    const b=t.bozza;
+    let block;
+    if(b){
+      block=`<div class="mt-3 rounded-xl border ${t.needs_human?'border-amber-300 bg-amber-50/40':'border-blue-100 bg-blue-50/30'} p-3">
+        <div class="text-[11px] font-bold ${t.needs_human?'text-amber-700':'text-blue-700'} mb-1.5">✎ Bozza dell'agente${t.needs_human?' · caso delicato, rivedi prima di inviare':''}</div>
+        <input id="cv-sub-${b.id}" value="${esc(b.subject||('Re: '+t.oggetto))}" class="w-full text-[13px] font-semibold border border-slate-200 rounded-lg px-2 py-1.5 mb-2"/>
+        <textarea id="cv-body-${b.id}" rows="6" class="w-full text-[13px] border border-slate-200 rounded-lg px-2 py-1.5 leading-relaxed">${esc(b.body||'')}</textarea>
+        <div class="flex gap-2 mt-2">
+          <button onclick="convSend('${b.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[12px] font-semibold hover:bg-emerald-700">✓ Approva e invia</button>
+          <button onclick="convDiscard('${b.id}')" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-[12px] font-semibold hover:bg-slate-200">Rifiuta</button>
+          <span class="text-[11px] text-slate-400 self-center">l'invio è reale (Outlook via n8n) e parte solo ora</span>
+        </div></div>`;
+    }else if(t.da_rispondere){
+      block=`<div class="mt-3"><button onclick="convDraftAll(this)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700">✎ Genera bozze di risposta</button></div>`;
+    }else{
+      block=`<div class="mt-2 text-[12px] text-slate-400">nessuna azione — ${esc(t.stato||'in attesa')}</div>`;
+    }
+    return `<div class="card p-4">
+      <div class="flex items-center justify-between gap-3 mb-1.5">
+        <div class="min-w-0"><b class="text-[14px]">${esc(t.cliente||'(sconosciuto)')}</b>
+          <span class="text-slate-400 text-[12px]">· ${esc(t.email||'')}</span></div>${badge(t)}</div>
+      <div class="text-[12px] font-semibold text-slate-600">${esc(t.oggetto||'(senza oggetto)')}</div>
+      <div class="mt-2 text-[13px] text-slate-600 bg-slate-50 rounded-xl px-3 py-2 whitespace-pre-wrap">${esc((t.ultimo_in||'').slice(0,600))||'<span class="text-slate-300">—</span>'}</div>
+      ${block}</div>`;};
+  $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      ${kpi("Thread",th.length,{t:"reale · email_messages",real:1})}
+      ${kpi("Da rispondere",daRisp,daRisp?"attendono una bozza":"tutto gestito")}
+      ${kpi("Bozze pronte",pronte,"da approvare")}
+      ${kpi("Da rivedere",revis,{t:revis?"casi delicati":"nessuno",real:revis>0})}</section>
+    <section class="card p-4 mb-3 flex items-center justify-between gap-3">
+      <div class="text-[12px] text-slate-500">L'agente legge la posta (Outlook via n8n), prepara la risposta e te la mette qui. <b>Niente parte senza il tuo Approva.</b></div>
+      <button onclick="convDraftAll(this)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700 whitespace-nowrap">✎ Genera bozze (${daRisp})</button>
+    </section>
+    <section class="space-y-3">${th.length?th.map(card).join(""):'<div class="card p-6 text-center text-slate-400 text-sm">Nessuna email. Quando il workflow n8n porta la posta in <code>email_messages</code>, i thread compaiono qui.</div>'}</section>`;
+}
+async function convDraftAll(btn){
+  if(btn){btn.disabled=true;btn.textContent="Genero…";}
+  try{await jpost("/api/conversations/draft",{n:5});}catch(e){alert("Errore generazione bozze");}
+  loadConversazioni();
+}
+async function convSend(id){
+  const sub=($("cv-sub-"+id)||{}).value, body=($("cv-body-"+id)||{}).value;
+  if(!confirm("Inviare questa risposta al cliente? Parte una email reale via Outlook."))return;
+  const r=await jpost("/api/conversations/"+id+"/send",{subject:sub,body:body});
+  if(r&&r.ok){loadConversazioni();}
+  else{alert("Invio non riuscito: "+((r&&r.errore)||"n8n non configurato o errore"));}
+}
+async function convDiscard(id){
+  if(!confirm("Scartare questa bozza?"))return;
+  try{await jpost("/api/conversations/"+id+"/discard",{});}catch(e){}
+  loadConversazioni();
+}
 async function load(){
   if(VIEW==="overview")return loadOverview();
   if(VIEW==="agents")return loadAgents();
+  if(VIEW==="conversazioni")return loadConversazioni();
   if(VIEW==="documents")return loadDocuments();
   if(VIEW==="analytics")return loadAnalytics();
   if(VIEW==="settings")return loadSettings();
@@ -421,7 +910,41 @@ async function runAgent(){
   catch(e){alert("errore");}
   btn.textContent=old;btn.disabled=false;load();
 }
-(async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();})();
+// ---------------- CHAT A ISTRUZIONI ----------------
+let CHAT_BUSY=false;
+function chatMsg(html,who){const log=$("chatLog");const d=document.createElement("div");d.className="cmsg "+who;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
+function chatOpen(){$("chatPanel").classList.add("open");$("chatInput").focus();
+  if(!$("chatLog").dataset.greeted){$("chatLog").dataset.greeted="1";
+    chatMsg("Ciao! Dimmi cosa vuoi fare — valuto sui dati reali e, se è corretto, lo faccio. Le azioni interne sicure partono subito; quelle esterne (n8n/pubblicazioni) te le faccio confermare.","ai");}}
+function chatClose(){$("chatPanel").classList.remove("open");}
+function renderCmd(r){
+  let h="";
+  if(r.valutazione)h+=`<div class="text-slate-500 text-[12px] mb-1">${esc(r.valutazione)}</div>`;
+  if(r.risposta)h+=`<div class="mb-1">${esc(r.risposta)}</div>`;
+  if(!r.fattibile&&!((r.eseguite||[]).length)&&!((r.da_confermare||[]).length))h+=`<div class="warn">Non eseguito.</div>`;
+  (r.eseguite||[]).forEach(e=>{h+=`<div class="ok">✓ Fatto: ${esc(e.descrizione)} <span class="text-slate-400 text-[11px]">(${esc(e.tabella||"")} ${esc(e.op||"")})</span></div>`;});
+  (r.rifiutate||[]).forEach(x=>{h+=`<div class="bad">✕ Rifiutato: ${esc(x.descrizione)} <span class="text-slate-400 text-[11px]">${esc(x.motivo||"")}</span></div>`;});
+  const d=chatMsg(h||"(nessuna azione)","ai");
+  (r.da_confermare||[]).forEach(c=>{
+    const w=document.createElement("div");w.className="mt-2";
+    w.innerHTML=`<div class="warn">⚠ Da confermare: ${esc(c.descrizione)} <span class="text-slate-400 text-[11px]">${esc(c.tipo||"")}</span></div>`;
+    const b=document.createElement("button");b.className="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg mt-1";b.textContent="Conferma ed esegui";
+    b.onclick=async()=>{b.disabled=true;b.textContent="…";let o={};try{o=await jpost("/api/command/confirm",{id:c.id});}catch(e){o={ok:false,errore:"rete"};}
+      const okc=o.ok;b.outerHTML=okc?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||(o.esito&&o.esito.errore)||"non eseguito"))+'</span>');load();};
+    w.appendChild(b);d.appendChild(w);
+  });
+  load();
+}
+async function chatSend(){
+  if(CHAT_BUSY)return;const inp=$("chatInput");const t=(inp.value||"").trim();if(!t)return;
+  inp.value="";chatMsg(esc(t),"me");CHAT_BUSY=true;
+  const thinking=chatMsg("<span class='text-slate-400'>…sto valutando sui dati reali</span>","ai");
+  let r={};try{r=await jpost("/api/command",{text:t});}catch(e){r={risposta:"Errore di rete.",fattibile:false};}
+  thinking.remove();renderCmd(r);CHAT_BUSY=false;$("chatInput").focus();
+}
+function wireChat(){const L=$("chatLauncher");if(!L)return;L.onclick=chatOpen;$("chatClose").onclick=chatClose;$("chatSend").onclick=chatSend;
+  $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")chatSend();});}
+(async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();wireChat();})();
 </script>
 </body>
 </html>

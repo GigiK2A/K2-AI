@@ -51,14 +51,21 @@ def _ensure_action(p: dict) -> dict:
     """Affidabilità attuatore: ogni proposta DEVE avere un'azione valida (allowlist).
     Se l'LLM ne ha data una valida → la tiene; altrimenti fallback deterministico =
     crea un task operativo (board_tasks) con titolo+contenuto. Mai dipendere dall'LLM."""
-    from aios.actuator import validate, ActuatorError
+    from aios.actuator import validate, validate_ddl, ActuatorError
     az = p.get("azione")
     if isinstance(az, dict):
-        try:
-            validate(az)
-            return az
-        except ActuatorError:
-            pass
+        if az.get("tipo") == "ddl" or az.get("sql"):   # proposta di schema (DDL guardato)
+            try:
+                validate_ddl(str(az.get("sql", "")))
+                return az
+            except ActuatorError:
+                pass
+        else:
+            try:
+                validate(az)
+                return az
+            except ActuatorError:
+                pass
     titolo = str(p.get("titolo") or p.get("tipo") or "Azione")[:120]
     note = str(p.get("contenuto") or "")
     if p.get("motivo"):

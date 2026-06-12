@@ -33,9 +33,17 @@ def test_block_delete():
         validate({"tabella": "pipeline_leads", "op": "delete", "dati": {"x": 1}})
 
 
-def test_block_money_table():
+def test_block_control_plane_table():
+    # Nuova policy (scelta owner): denaro/PII scrivibili; resta bloccato il piano di
+    # controllo (audit/policy/auth/catalogo) — qui aios_policy_state.
     with pytest.raises(ActuatorError):
-        validate({"tabella": "board_revenue_events", "op": "insert", "dati": {"amount_cents": 1}})
+        validate({"tabella": "aios_policy_state", "op": "update", "match": {"id": 1}, "dati": {"x": 1}})
+
+
+def test_money_table_now_allowed():
+    # board_revenue_events / kbot_conversions ora in allowlist (insert/update), mai delete.
+    assert validate({"tabella": "board_revenue_events", "op": "insert", "dati": {"amount_eur": 1}})
+    assert validate({"tabella": "kbot_profiles", "op": "update", "match": {"email": "a"}, "dati": {"x": 1}})
 
 
 def test_block_non_allowlisted():
@@ -60,6 +68,30 @@ def test_op_not_allowed_on_table():
 
 
 # ---- apply_action ----
+def test_sanitize_board_tasks_bad_columns_and_enum():
+    # L'LLM inventa colonne (task/motivo/scadenza) e priorità 'high' → ora non 400.
+    c = FakeClient()
+    out = apply_action(c, {"tabella": "board_tasks", "op": "insert", "dati": {
+        "task": "Controlla Stripe", "motivo": "webhook giù", "priority": "high",
+        "scadenza": "48h", "assegnato": "dev"}})
+    assert out["ok"]
+    t, row = c.inserts[0]
+    assert t == "board_tasks" and row["title"] == "Controlla Stripe"   # task→title
+    assert row["priority"] == "alta"                                    # high→alta (enum)
+    assert "webhook" in row["notes"] and "scadenza:" in row["notes"]    # motivo→notes + extra
+    assert "task" not in row and "scadenza" not in row                  # colonne inventate via
+
+
+def test_sanitize_board_cost_items_maps_and_drops():
+    c = FakeClient()
+    out = apply_action(c, {"tabella": "board_cost_items", "op": "insert", "dati": {
+        "voce": "Cloud", "budget_mese": 65, "status": "x", "descrizione": "vercel"}})
+    assert out["ok"]
+    t, row = c.inserts[0]
+    assert row["name"] == "Cloud" and row["amount_eur"] == 65
+    assert "status" not in row and "voce" not in row   # nessuna note col → extra droppati
+
+
 def test_apply_insert():
     c = FakeClient()
     out = apply_action(c, {"tabella": "board_tasks", "op": "insert", "dati": {"title": "x"}})
@@ -117,7 +149,7 @@ def test_ensure_action_keeps_valid_llm_action():
 
 def test_ensure_action_replaces_invalid_action():
     from aios.agents.domain import _ensure_action
-    bad = {"tabella": "board_revenue_events", "op": "insert", "dati": {"a": 1}}
+    bad = {"tabella": "aios_policy_state", "op": "insert", "dati": {"a": 1}}  # piano di controllo
     az = _ensure_action({"titolo": "t", "contenuto": "c", "azione": bad})
     assert az["tabella"] == "board_tasks"  # vietata → sostituita con fallback sicuro
 
@@ -144,13 +176,13 @@ def test_marketing_propose_tool_executes_action():
     assert client.inserts and client.inserts[0][0] == "aios_content_calendar"
 
 
-def test_marketing_propose_tool_blocks_money_table():
+def test_marketing_propose_tool_blocks_control_plane():
     from aios.agents.marketing import propose_tool
     client = FakeClient()
     out = propose_tool(client).run(tipo="x", titolo="t", contenuto="c", motivo="m",
-                                   azione={"tabella": "kbot_conversions", "op": "insert",
-                                           "dati": {"amount_eur": 1}})
-    assert out["attuatore"]["ok"] is False  # tabella vietata
+                                   azione={"tabella": "aios_policy_state", "op": "insert",
+                                           "dati": {"level": 3}})
+    assert out["attuatore"]["ok"] is False  # piano di controllo: vietato
     assert client.inserts == []
 
 
@@ -158,9 +190,9 @@ def test_invalid_action_does_not_crash_approval():
     client = FakeClient()
     llm = FakeLLM(responses=[
         '{"proposte":[{"tipo":"x","titolo":"t","contenuto":"c","motivo":"m",'
-        '"azione":{"tabella":"board_revenue_events","op":"insert","dati":{"a":1}}}]}'])
+        '"azione":{"tabella":"aios_policy_state","op":"insert","dati":{"a":1}}}]}'])
     k, agent = _agent(client, llm)
     res = agent.run()
     out = k.resolve_approval(res.approval_ids[0], approve=True)
-    # nessuna scrittura sulla tabella vietata, e l'approvazione non è crashata
-    assert client.inserts == [] or all(t != "board_revenue_events" for t, _ in client.inserts)
+    # tabella vietata sostituita dal fallback (board_tasks); mai scritta, no crash
+    assert all(t != "aios_policy_state" for t, _ in client.inserts)

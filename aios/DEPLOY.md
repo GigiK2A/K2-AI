@@ -11,8 +11,15 @@ Copia `.env.example` → `.env` e riempi almeno i CORE (`AIOS_SUPABASE_URL`,
 
 ## 2. Processi (Procfile)
 - `web`    → `serve_cockpit.py` (cockpit + API). In deploy imposta `AIOS_HOST=0.0.0.0`; usa `PORT` (Railway lo inietta).
-- `worker` → `telegram_bot.py` (canale Telegram bidirezionale: invia card, riceve approva/rifiuta).
-- cron giornaliero → `scheduler.py` (fa girare tutti gli agenti e accoda le proposte L1).
+- `worker` → `autonomy_loop.py` (loop always-on: ad ogni tick prepara le **bozze email**,
+  1 volta/giorno fa girare i 6 agenti, e tiene aperto il canale **Telegram** bidirezionale
+  — Approva/Rifiuta + istruzioni in linguaggio naturale). Propone, non pubblica.
+- cron giornaliero (alternativa al worker) → `scheduler.py` (agenti + bozze email, accoda L1).
+
+> **Tutto-in-uno**: invece del worker puoi mettere `AIOS_AUTONOMY=1` sul servizio `web`
+> → il cockpit avvia il loop di autonomia in un thread interno (un solo servizio).
+> ⚠️ Non usare worker **e** `AIOS_AUTONOMY=1` insieme: due loop = due poller Telegram in conflitto.
+> Tuning: `AIOS_TICK_SECONDS` (default 1800), `AIOS_AGENTS_HOUR` (default 7 UTC).
 
 ## 3. Railway (esempio)
 ```bash

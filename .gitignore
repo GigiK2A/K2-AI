@@ -3,6 +3,10 @@
 .env.local
 .env.notion
 *.env
+.secrets/
+aios/.secrets/
+*service-account*.json
+*service_account*.json
 
 # Video e file binari grandi
 *.mp4

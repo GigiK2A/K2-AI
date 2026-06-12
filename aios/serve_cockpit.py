@@ -24,4 +24,11 @@ if __name__ == "__main__":
     if host not in ("127.0.0.1", "localhost") and not os.environ.get("AIOS_API_TOKEN"):
         raise RuntimeError("AIOS_API_TOKEN obbligatorio quando AIOS_HOST non è locale "
                            "(altrimenti l'API resta senza autenticazione).")
+    # Deploy single-service: AIOS_AUTONOMY=1 avvia anche il loop di autonomia
+    # (bozze + proposte + Telegram) nello stesso processo del cockpit, in un thread
+    # daemon. In alternativa si usa il process 'worker' del Procfile (autonomy_loop.py).
+    if os.environ.get("AIOS_AUTONOMY") == "1":
+        import threading
+        from autonomy_loop import main as _autonomy
+        threading.Thread(target=_autonomy, daemon=True, name="autonomy").start()
     uvicorn.run(app, host=host, port=port)

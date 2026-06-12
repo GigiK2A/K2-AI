@@ -75,21 +75,51 @@ def _answer(cq_id: str, text: str) -> None:
         pass
 
 
-def poll_decisions(on_approve, on_reject, *, once: bool = False, max_loops: int | None = None) -> None:
-    """Long-poll getUpdates; per ogni callback_query valida chiama on_approve/on_reject(id).
-    once=True fa un solo giro (utile nei test). max_loops limita le iterazioni."""
+def send_command_card(res: dict) -> None:
+    """Manda l'esito di un'istruzione: valutazione + cosa è stato fatto subito +
+    bottoni 'Conferma' per le azioni esterne/sensibili (callback cmdok:<id>)."""
+    if not enabled():
+        return
+    lines = []
+    if res.get("valutazione"):
+        lines.append(f"_{res['valutazione']}_")
+    if res.get("risposta"):
+        lines.append(res["risposta"])
+    for e in res.get("eseguite", []):
+        lines.append(f"✅ Fatto: {e.get('descrizione','')} ({e.get('tabella','')})")
+    for x in res.get("rifiutate", []):
+        lines.append(f"⛔ Rifiutato: {x.get('descrizione','')} — {x.get('motivo','')}")
+    rows = [[{"text": f"✅ Conferma: {c.get('descrizione','')[:40]}",
+              "callback_data": f"cmdok:{c['id']}"}]
+            for c in res.get("da_confermare", []) if c.get("id") is not None]
+    payload = {"chat_id": os.environ["TELEGRAM_CHAT_ID"],
+               "text": ("\n".join(lines) or "Nessuna azione."), "parse_mode": "Markdown"}
+    if rows:
+        payload["reply_markup"] = {"inline_keyboard": rows}
+    try:
+        _post("sendMessage", payload, timeout=15)
+    except Exception:
+        pass
+
+
+def poll_decisions(on_approve, on_reject, *, on_text=None, on_confirm=None,
+                   once: bool = False, max_loops: int | None = None) -> None:
+    """Long-poll getUpdates. callback_query: approve:/reject:/cmdok:<id>. Se on_text è
+    dato, ascolta anche i messaggi di testo (istruzioni in linguaggio naturale).
+    once=True fa un solo giro (test). max_loops limita le iterazioni."""
     if not enabled():
         return
     allow = _allowed_chats()
     if not allow:  # fail-closed: senza chat allowlist valida NON si ascolta
-        send_text("⚠️ TELEGRAM_CHAT_ID non valido (non numerico): canale decisioni disattivato.")
+        send_text("⚠️ TELEGRAM_CHAT_ID non valido (non numerico): canale disattivato.")
         return
+    updates = ["callback_query"] + (["message"] if on_text else [])
     offset = 0
     loops = 0
     while True:
         try:
             data = _post("getUpdates", {"offset": offset, "timeout": 25,
-                                        "allowed_updates": ["callback_query"]})
+                                        "allowed_updates": updates})
         except Exception:
             if once:
                 return
@@ -100,23 +130,36 @@ def poll_decisions(on_approve, on_reject, *, once: bool = False, max_loops: int 
         for upd in data.get("result", []):
             offset = upd["update_id"] + 1
             cq = upd.get("callback_query")
-            if not cq:
+            if cq:
+                chat_id = cq.get("message", {}).get("chat", {}).get("id")
+                if chat_id not in allow:   # fail-closed (allow garantito non vuoto)
+                    _answer(cq.get("id", ""), "Non autorizzato.")
+                    continue
+                cqd = cq.get("data", "")
+                cqid = cq.get("id", "")
+                try:
+                    if cqd.startswith("approve:"):
+                        on_approve(cqd.split(":", 1)[1]); _answer(cqid, "Approvato.")
+                    elif cqd.startswith("reject:"):
+                        on_reject(cqd.split(":", 1)[1]); _answer(cqid, "Rifiutato.")
+                    elif cqd.startswith("cmdok:") and on_confirm:
+                        on_confirm(cqd.split(":", 1)[1]); _answer(cqid, "Eseguito.")
+                    else:
+                        _answer(cqid, "Azione sconosciuta.")
+                except Exception:
+                    _answer(cqid, "Errore nell'azione.")
                 continue
-            chat_id = cq.get("message", {}).get("chat", {}).get("id")
-            if chat_id not in allow:   # fail-closed (allow è garantito non vuoto)
-                _answer(cq.get("id", ""), "Non autorizzato.")
-                continue
-            cqd = cq.get("data", "")
-            cqid = cq.get("id", "")
-            try:
-                if cqd.startswith("approve:"):
-                    on_approve(cqd.split(":", 1)[1]); _answer(cqid, "Approvato.")
-                elif cqd.startswith("reject:"):
-                    on_reject(cqd.split(":", 1)[1]); _answer(cqid, "Rifiutato.")
-                else:
-                    _answer(cqid, "Azione sconosciuta.")
-            except Exception:
-                _answer(cqid, "Errore nell'azione.")
+            msg = upd.get("message")
+            if msg and on_text:
+                chat_id = msg.get("chat", {}).get("id")
+                text = (msg.get("text") or "").strip()
+                if chat_id not in allow:   # fail-closed
+                    continue
+                if text and not text.startswith("/"):
+                    try:
+                        on_text(text)
+                    except Exception:
+                        send_text("Errore nell'elaborare l'istruzione.")
         loops += 1
         if once or (max_loops and loops >= max_loops):
             return
