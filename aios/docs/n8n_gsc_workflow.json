@@ -30,8 +30,8 @@
       "parameters": {
         "method": "POST",
         "url": "=https://www.googleapis.com/webmasters/v3/sites/{{ encodeURIComponent($json.site) }}/searchAnalytics/query",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleOAuth2Api",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"startDate\": \"{{ $today.minus({days: 33}).toFormat('yyyy-MM-dd') }}\",\n  \"endDate\": \"{{ $today.minus({days: 3}).toFormat('yyyy-MM-dd') }}\",\n  \"dimensions\": [\"query\"],\n  \"rowLimit\": 100\n}",
@@ -43,7 +43,7 @@
       "typeVersion": 4.2,
       "position": [820, 300],
       "credentials": {
-        "googleOAuth2Api": { "id": "REPLACE_ME", "name": "Google OAuth2 (GSC)" }
+        "oAuth2Api": { "id": "REPLACE_ME", "name": "Google GSC OAuth2" }
       }
     },
     {
@@ -94,6 +94,6 @@
   "settings": { "executionOrder": "v1" },
   "pinData": {},
   "meta": {
-    "note": "GSC via OAUTH (niente chiave service account, bloccata dalla policy org). Ogni giorno chiama Search Console (ultimi ~30g, dimensione 'query') e scrive in public.seo_rankings; l'AIOS legge l'ultimo batch (fetched_on max). SETUP: 1) Google Cloud > Credenziali > crea 'ID client OAuth' tipo Web, redirect URI = https://k2-ai-n8n2-production.up.railway.app/rest/oauth2-credential/callback ; abilita 'Google Search Console API' e nella schermata consenso aggiungi te come utente di test, scope https://www.googleapis.com/auth/webmasters.readonly . 2) In n8n crea credenziale 'Google OAuth2 API' con quel clientId/secret e quello scope, premi 'Connect my account' e fai il consenso. 3) Aggancia quella cred al nodo GSC e la cred Supabase (host https://uiuvwzrmrdqbfajguuab.supabase.co + Service Role) al nodo Supabase. 4) In 'Config (sito GSC)' metti il site ESATTO: proprieta 'Dominio' -> sc-domain:k2-ai.it ; proprieta 'Prefisso URL' -> https://www.k2-ai.it/ . 5) ATTIVA. Test: esegui a mano una volta, poi nel cockpit Marketing > SEO compaiono click/impression/posizioni."
+    "note": "GSC via OAUTH (niente chiave service account, bloccata dalla policy org). Ogni giorno chiama Search Console (ultimi ~30g, dimensione 'query') e scrive in public.seo_rankings; l'AIOS legge l'ultimo batch (fetched_on max). IMPORTANTE: il nodo GSC usa una credenziale n8n di tipo 'OAuth2 API' GENERICA (non 'Google OAuth2 API'), perche serve impostare lo scope a mano, altrimenti Google da 'Missing required parameter: scope'. SETUP: 1) Google Cloud > abilita 'Google Search Console API'; schermata consenso OAuth (External) + aggiungi la tua email come utente di test; crea 'ID client OAuth' tipo Web. 2) In n8n crea credenziale 'OAuth2 API' (generica) con: Grant Type=Authorization Code; Authorization URL=https://accounts.google.com/o/oauth2/v2/auth ; Access Token URL=https://oauth2.googleapis.com/token ; Client ID/Secret dal punto 1; Scope=https://www.googleapis.com/auth/webmasters.readonly ; Auth URI Query Parameters: access_type=offline&prompt=consent ; Authentication=Header. Copia il Redirect URL che n8n mostra e incollalo nei redirect URI dell'OAuth client su Google. Premi 'Connect my account' e fai il consenso. 3) Aggancia questa cred al nodo GSC e la cred Supabase (host https://uiuvwzrmrdqbfajguuab.supabase.co + Service Role) al nodo Supabase. 4) In 'Config (sito GSC)' metti il site ESATTO: proprieta 'Dominio' -> sc-domain:k2-ai.it ; proprieta 'Prefisso URL' -> https://www.k2-ai.it/ . 5) ATTIVA. Test: esegui a mano una volta, poi nel cockpit Marketing > SEO compaiono click/impression/posizioni."
   }
 }
