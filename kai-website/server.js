@@ -2560,6 +2560,10 @@ const server = http.createServer((req, res) => {
     '/workshop.html': '/suite-ai',
     '/suite-ai/diagnosi-strategica-pmi': '/suite-ai/analisi-strategica-pmi',
     '/suite-ai/diagnosi-strategica-pmi.html': '/suite-ai/analisi-strategica-pmi',
+    // /newsletter non è una pagina: la newsletter vive nel blocco #newsletter di /contatti.
+    // Google la aveva indicizzata (404) → la mandiamo lì.
+    '/newsletter': '/contatti#newsletter',
+    '/newsletter.html': '/contatti#newsletter',
   };
   const rawPath = (req.url || '/').split('?')[0];
   const rawQuery = (req.url || '').includes('?') ? `?${(req.url || '').split('?').slice(1).join('?')}` : '';
@@ -2719,6 +2723,13 @@ const server = http.createServer((req, res) => {
       filePath = path.join(DIST_DIR, appRelPath, 'index.html');
     }
     serveFile(req, res, filePath);
+    return;
+  }
+
+  // Normalizza trailing slash (es. /contatti/ → /contatti) con 301, una sola
+  // forma canonica per pagina. Esclude root e gli asset con estensione.
+  if (rawPath.length > 1 && rawPath.endsWith('/') && !path.extname(rawPath)) {
+    send(res, 301, { Location: `${rawPath.replace(/\/+$/, '')}${rawQuery}` }, '');
     return;
   }
 
