@@ -20,9 +20,13 @@ _SNAPSHOT_PATH = Path(__file__).parent / "data" / "multiples_snapshot.json"
 
 
 def _ok(name: str, inputs: dict, outputs: dict) -> dict:
-    if audit.TRACE:
-        audit.TRACE.quant_result(name, inputs, outputs)
-    return {"content": [{"type": "text", "text": json.dumps(outputs, ensure_ascii=False)}]}
+    """Ritorna l'output + un call_id univoco. L'agente DEVE citare il call_id
+    nella sezione provenance del deliverable (criterio Luca #2: provenienza
+    esplicita, non match per valore)."""
+    full = f"mcp__quant__{name}"
+    call_id = audit.TRACE.quant_result(full, inputs, outputs) if audit.TRACE else f"{full}#000"
+    payload = {"call_id": call_id, **outputs}
+    return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]}
 
 
 @tool(

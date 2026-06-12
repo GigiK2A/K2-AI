@@ -1,10 +1,16 @@
-"""Hook deterministici — il guinzaglio dell'agente. Codice, non LLM: "sempre", non "quasi sempre".
+"""Hook deterministici — il guinzaglio dell'agente. Codice, non LLM.
 
-- PreToolUse  = gate entitlement/allowlist: il tier decide quali tool sono ammessi;
-                Write/Edit solo dentro out/. Tutto il resto: deny.
-- Stop        = gate anti-omissione: non si consegna senza tutte le sezioni
-                obbligatorie, EV completo e — requisito chiave — ogni numero
-                dell'EV TRACCIATO a un output dei tool quant (mai dal modello).
+- PreToolUse = gate entitlement/allowlist: il tier decide quali tool sono ammessi;
+               Write/Edit solo dentro la out dir del run. Tutto il resto: deny.
+- Stop       = gate anti-omissione + PROVENIENZA (criterio Luca #2): non si
+               consegna senza tutte le sezioni obbligatorie, EV completo, e —
+               requisito chiave — ogni numero EV deve CITARE la chiamata quant
+               che l'ha prodotto (provenance), e quella chiamata deve davvero
+               aver prodotto quel valore. Niente più match per valore (un numero
+               inventato che coincide per caso NON passa più).
+
+FAIL-CLOSED (criterio Luca #3): esaurito MAX_STOP_BLOCKS il run è marcato FAILED.
+run_poc mette in quarantena il file e NON lo presenta come deliverable.
 """
 from __future__ import annotations
 
@@ -16,13 +22,14 @@ import audit
 from quant_server import QUANT_TOOL_NAMES
 
 POC_DIR = Path(__file__).parent
-OUT_DIR = POC_DIR / "out"
-DELIVERABLE = OUT_DIR / "deliverable.json"
+
+# Path della out dir del run corrente — settati da run_poc prima di ogni run.
+OUT_DIR: Path = POC_DIR / "out"
+DELIVERABLE: Path = OUT_DIR / "deliverable.json"
 
 # Entitlement simulato (in produzione: derivato dal token firmato del backend).
 TIER_ALLOWLIST: dict[str, set[str]] = {
     "standard": set(QUANT_TOOL_NAMES) | {"Read", "Write", "Edit", "TodoWrite"},
-    # esempio tier ridotto: light non può usare il DCF (solo multipli+patrimoniale)
     "light": (set(QUANT_TOOL_NAMES) - {"mcp__quant__dcf_enterprise_value"}) | {"Read", "Write", "Edit", "TodoWrite"},
 }
 TIER = "standard"
@@ -34,8 +41,19 @@ SEZIONI_OBBLIGATORIE = [
 ]
 EV_CAMPI = ["ev_multipli_eur", "ev_dcf_eur", "valore_patrimoniale_eur", "ev_raccomandato_eur"]
 
+MAX_STOP_BLOCKS = 3
 _stop_blocks = 0
-MAX_STOP_BLOCKS = 3  # anti-loop: dopo 3 rifiuti consegna comunque, run marcato FAILED
+RUN_FAILED = False
+
+
+def configure(out_dir: Path, tier: str = "standard") -> None:
+    """Reset dello stato per un nuovo run (chiamato da run_poc / run_batch)."""
+    global OUT_DIR, DELIVERABLE, TIER, _stop_blocks, RUN_FAILED
+    OUT_DIR = out_dir
+    DELIVERABLE = out_dir / "deliverable.json"
+    TIER = tier
+    _stop_blocks = 0
+    RUN_FAILED = False
 
 
 async def pre_tool_use_gate(input_data: dict[str, Any], tool_use_id: str | None, context: Any) -> dict[str, Any]:
@@ -51,7 +69,7 @@ async def pre_tool_use_gate(input_data: dict[str, Any], tool_use_id: str | None,
     elif name in ("Write", "Edit"):
         fp = Path(str(tool_input.get("file_path", ""))).resolve()
         if not str(fp).startswith(str(OUT_DIR.resolve())):
-            deny_reason = f"scrittura ammessa solo in out/ (richiesto: {fp})"
+            deny_reason = f"scrittura ammessa solo nella out dir del run (richiesto: {fp})"
 
     if deny_reason:
         if audit.TRACE:
@@ -64,54 +82,62 @@ async def pre_tool_use_gate(input_data: dict[str, Any], tool_use_id: str | None,
     return {}
 
 
-def _check_deliverable() -> list[str]:
-    """Checklist anti-omissione. Ritorna i problemi (vuota = consegnabile)."""
+def check_deliverable() -> list[str]:
+    """Checklist anti-omissione + provenienza. Vuota = consegnabile."""
     problemi: list[str] = []
     if not DELIVERABLE.exists():
-        return [f"manca il file {DELIVERABLE.name} in out/"]
+        return [f"manca il file {DELIVERABLE.name} nella out dir"]
     try:
         doc = json.loads(DELIVERABLE.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         return [f"deliverable.json non è JSON valido: {e}"]
 
     for s in SEZIONI_OBBLIGATORIE:
-        v = doc.get(s)
-        if v in (None, "", [], {}):
+        if doc.get(s) in (None, "", [], {}):
             problemi.append(f"sezione obbligatoria mancante o vuota: '{s}'")
 
     ev = doc.get("enterprise_value") or {}
-    traced = audit.TRACE.traced_numbers() if audit.TRACE else set()
+    prov = ev.get("provenance") or {}
     for campo in EV_CAMPI:
         v = ev.get(campo)
         if not isinstance(v, (int, float)) or isinstance(v, bool):
             problemi.append(f"enterprise_value.{campo} assente o non numerico")
-        elif round(float(v), 2) not in traced:
+            continue
+        ref = prov.get(campo)
+        if not ref:
+            problemi.append(f"enterprise_value.{campo}: manca la provenance (deve citare 'mcp__quant__<tool>#<id>')")
+            continue
+        prodotti = audit.TRACE.call_numbers(ref) if audit.TRACE else set()
+        if not prodotti:
+            problemi.append(f"enterprise_value.{campo}: provenance '{ref}' non corrisponde ad alcuna chiamata quant registrata")
+        elif round(float(v), 2) not in prodotti:
             problemi.append(
-                f"enterprise_value.{campo}={v} NON tracciato a un output dei tool quant "
-                f"(i numeri devono uscire dai tool, non dal modello)"
+                f"enterprise_value.{campo}={v} NON è un output della chiamata citata '{ref}' "
+                f"(provenienza non verificata — il numero non viene da quel tool)"
             )
 
-    discl = str(doc.get("disclaimer", ""))
-    if "supporto decisionale" not in discl:
+    if "supporto decisionale" not in str(doc.get("disclaimer", "")):
         problemi.append("disclaimer obbligatorio assente (deve contenere 'supporto decisionale')")
     return problemi
 
 
 async def stop_gate(input_data: dict[str, Any], tool_use_id: str | None, context: Any) -> dict[str, Any]:
-    global _stop_blocks
-    problemi = _check_deliverable()
+    global _stop_blocks, RUN_FAILED
+    problemi = check_deliverable()
     if not problemi:
         if audit.TRACE:
-            audit.TRACE.gate("Stop", "allow", "checklist completa, numeri tracciati")
+            audit.TRACE.gate("Stop", "allow", "checklist completa, provenienza verificata")
         return {}
     if _stop_blocks >= MAX_STOP_BLOCKS:
+        RUN_FAILED = True  # fail-closed: run_poc metterà in quarantena, niente consegna
         if audit.TRACE:
-            audit.TRACE.gate("Stop", "allow_failed", f"{len(problemi)} problemi dopo {MAX_STOP_BLOCKS} blocchi: {problemi}")
+            audit.TRACE.gate("Stop", "give_up_FAILED", f"{len(problemi)} problemi dopo {MAX_STOP_BLOCKS} blocchi: {problemi}")
         return {}
     _stop_blocks += 1
     reason = (
         f"CONSEGNA RIFIUTATA dal gate anti-omissione (tentativo {_stop_blocks}/{MAX_STOP_BLOCKS}). "
-        f"Correggi e riscrivi out/deliverable.json. Problemi: " + "; ".join(problemi)
+        f"Correggi e riscrivi deliverable.json. Per ogni numero EV inserisci enterprise_value.provenance "
+        f"con il call_id del tool che l'ha prodotto. Problemi: " + "; ".join(problemi)
     )
     if audit.TRACE:
         audit.TRACE.gate("Stop", "block", reason)

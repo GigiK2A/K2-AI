@@ -1,0 +1,16 @@
+{
+  "denominazione": "MeccaSud Componenti S.r.l.",
+  "forma_giuridica": "SRL",
+  "settore": "manifatturiero",
+  "settore_ateco": "25.62.00 - Lavorazioni meccaniche per conto terzi",
+  "dipendenti": 34,
+  "regione": "Campania",
+  "obiettivo_36_mesi": "Turnaround della marginalità (EBITDA sotto media settore), ridurre dipendenza dal cliente principale (45% fatturato), valutare investimento in automazione CNC",
+  "competitor": ["Officine Meridionali Spa", "TecnoMecc Srl", "Precision Parts Srl"],
+  "bilanci": [
+    {"esercizio": "2024", "ricavi_eur": 5200000, "costi_operativi_eur": 5010000, "costo_personale_eur": 1620000, "ebitda_eur": 280000, "risultato_netto_eur": 38000, "patrimonio_netto_eur": 1100000, "pfn_eur": 1820000},
+    {"esercizio": "2023", "ricavi_eur": 5450000, "costo_personale_eur": 1580000, "ebitda_eur": 410000, "risultato_netto_eur": 95000, "patrimonio_netto_eur": 1080000, "pfn_eur": 1650000},
+    {"esercizio": "2022", "ricavi_eur": 4980000, "ebitda_eur": 460000, "risultato_netto_eur": 130000, "patrimonio_netto_eur": 1010000, "pfn_eur": 1490000}
+  ],
+  "note": "Margini in calo (EBITDA 5,4% vs media settore ~9%). Magazzino pesante (rotazione lenta). Cliente principale 45% del fatturato. PFN/EBITDA ~6,5 in peggioramento: vicino a soglie di allerta."
+}

@@ -1,0 +1,16 @@
+{
+  "denominazione": "Borgo Antico Resort S.r.l.",
+  "forma_giuridica": "SRL",
+  "settore": "servizi b2b",
+  "settore_ateco": "55.10.00 - Alberghi e strutture simili",
+  "dipendenti": 22,
+  "regione": "Toscana",
+  "obiettivo_36_mesi": "Decidere se investire 800k in una nuova ala SPA/wellness finanziata a debito, destagionalizzare i ricavi (oggi 70% in 4 mesi), valutare il valore della struttura per un eventuale ingresso di socio",
+  "competitor": ["Relais delle Colline", "Tenuta San Giorgio", "Villa Toscana Hotel"],
+  "bilanci": [
+    {"esercizio": "2024", "ricavi_eur": 3600000, "costi_operativi_eur": 3060000, "costo_personale_eur": 1180000, "ebitda_eur": 540000, "risultato_netto_eur": 92000, "patrimonio_netto_eur": 2200000, "pfn_eur": 2900000},
+    {"esercizio": "2023", "ricavi_eur": 3350000, "costo_personale_eur": 1120000, "ebitda_eur": 480000, "risultato_netto_eur": 65000, "patrimonio_netto_eur": 2150000, "pfn_eur": 3050000},
+    {"esercizio": "2022", "ricavi_eur": 2980000, "ebitda_eur": 410000, "risultato_netto_eur": 30000, "patrimonio_netto_eur": 2120000, "pfn_eur": 3200000}
+  ],
+  "note": "Asset-heavy (immobile storico, valore di mercato stimato > valore contabile). EBITDA 15% ma utile risicato da ammortamenti e oneri finanziari del mutuo. Forte stagionalita. PFN/EBITDA ~5,4."
+}

@@ -1,0 +1,16 @@
+{
+  "denominazione": "DataForge S.r.l.",
+  "forma_giuridica": "SRL",
+  "settore": "servizi b2b",
+  "settore_ateco": "62.01.00 - Produzione di software non connesso all'edizione",
+  "dipendenti": 12,
+  "regione": "Emilia-Romagna",
+  "obiettivo_36_mesi": "Decidere se acquisire un concorrente piu piccolo (600k ricavi, 5 dipendenti) per consolidare quota e team, mantenendo la crescita organica >25%",
+  "competitor": ["NextByte Srl", "CloudItalia Srl", "il target di acquisizione: AlfaSoft Srl"],
+  "bilanci": [
+    {"esercizio": "2024", "ricavi_eur": 1420000, "costi_operativi_eur": 1210000, "costo_personale_eur": 820000, "ebitda_eur": 210000, "risultato_netto_eur": 122000, "patrimonio_netto_eur": 380000, "pfn_eur": -50000},
+    {"esercizio": "2023", "ricavi_eur": 1050000, "costo_personale_eur": 640000, "ebitda_eur": 150000, "risultato_netto_eur": 88000, "patrimonio_netto_eur": 260000, "pfn_eur": -20000},
+    {"esercizio": "2022", "ricavi_eur": 780000, "ebitda_eur": 95000, "risultato_netto_eur": 52000, "patrimonio_netto_eur": 175000, "pfn_eur": 30000}
+  ],
+  "note": "Crescita ~35%/anno, ricavi ricorrenti SaaS 55%. Cassa netta positiva (PFN negativa). Valuta acquisizione di AlfaSoft (600k ricavi, EBITDA ~80k). Rischio: integrazione e diluizione marginalita."
+}
