@@ -54,6 +54,12 @@ FRONTEND_URL = _env("FRONTEND_URL", default="http://localhost:3000")
 SITE_URL = _env("NEXT_PUBLIC_SITE_URL", "SITE_URL", default="https://www.k2-ai.it")
 INTERNAL_API_KEY = _env("INTERNAL_API_KEY")
 
+# FREE MODE backend (K-BOT ufficiale senza paywall): genera i deliverable 8e
+# mintando comunque l'entitlement, senza richiedere il pagamento. È la modalità
+# operativa attuale del prodotto. Abbinato a K2A_8E_ENTITLEMENT_DEV=true sul
+# motore 8e. Per riattivare il paywall: KBOT_FREE_MODE=0. Vedi _mint_entitlement.
+KBOT_FREE_MODE = (_env("KBOT_FREE_MODE", default="0") or "0").lower() in ("1", "true", "yes")
+
 # Default to k2-ai.it production origins. Never default to "*" with credentials.
 # Override via KBOT_CORS_ORIGINS env var (comma-separated) for dev/staging.
 _DEFAULT_CORS = ",".join([
@@ -77,6 +83,22 @@ SKILLS_DIR = Path(
 # Storage bucket names (Supabase Storage), shared with the site.
 STORAGE_UPLOADS_BUCKET = _env("STORAGE_UPLOADS_BUCKET", default="kbot-uploads")
 STORAGE_REPORTS_BUCKET = _env("STORAGE_REPORTS_BUCKET", default="kbot-reports")
+
+# Catalog (fonte unica prezzi/servizi/percorsi). Interim: file committato in
+# app/data/catalog.json. Target: generato da k2a-catalogo (vedi
+# docs/interfaccia-kbot-8e.md §2). Override con KBOT_CATALOG_PATH.
+CATALOG_PATH = Path(
+    _env("KBOT_CATALOG_PATH", default=str(ROOT / "app" / "data" / "catalog.json"))
+).resolve()
+
+# Motore 8e (generazione deliverable). Vuoto in dev → si usa il MOCK locale
+# (kbot/mock-8e). Vedi docs/interfaccia-kbot-8e.md.
+ENGINE_8E_BASE_URL = _env("K2A_8E_BASE_URL", default="http://localhost:8800")
+ENGINE_8E_API_KEY = _env("K2A_8E_API_KEY")  # Bearer backend-to-backend
+
+# Entitlement JWT (membrana G1) — segreto condiviso K-BOT↔8e (HS256).
+ENTITLEMENT_SECRET = _env("K2A_ENTITLEMENT_SECRET")
+ENTITLEMENT_TTL_S = int(_env("K2A_ENTITLEMENT_TTL", default="900") or "900")  # 15 min
 
 # Prompt size limits, mirroring api/kbot/_shared.ts.
 CHAT_SYSTEM_MAX_CHARS = int(_env("CHAT_SYSTEM_MAX_CHARS", default="26000") or "26000")

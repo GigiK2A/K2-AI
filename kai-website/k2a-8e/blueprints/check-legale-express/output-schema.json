@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Check Legale Express — output",
+  "type": "object",
+  "required": ["meta", "score_globale", "fascia", "aree", "top_3_rischi", "cta_upsell", "files"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["servizio", "data", "azienda"],
+      "properties": {
+        "servizio": { "const": "Check Legale Express" },
+        "data": { "type": "string" },
+        "azienda": { "type": "string" }
+      }
+    },
+    "score_globale": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "fascia": { "type": "string" },
+    "aree": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["nome", "semaforo", "commento"],
+        "properties": {
+          "nome": { "type": "string" },
+          "semaforo": { "enum": ["verde", "giallo", "rosso"] },
+          "commento": { "type": "string" }
+        }
+      }
+    },
+    "top_3_rischi": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["descrizione", "prima_mossa"],
+        "properties": {
+          "descrizione": { "type": "string" },
+          "prima_mossa": { "type": "string" },
+          "serve_avvocato": { "type": "boolean" }
+        }
+      }
+    },
+    "cta_upsell": {
+      "type": "object",
+      "required": ["prodotto_suggerito"],
+      "properties": {
+        "prodotto_suggerito": { "const": "flusso-legalboost-pmi" }
+      }
+    },
+    "files": { "type": "object" }
+  },
+  "additionalProperties": false
+}

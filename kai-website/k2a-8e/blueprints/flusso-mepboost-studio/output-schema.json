@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MEPBoost Output",
+  "type": "object",
+  "required": ["edificio", "audit_elettrico", "audit_termico", "diagnosi", "piano_eem"],
+  "properties": {
+    "edificio": {
+      "type": "object",
+      "properties": {
+        "tipologia": { "type": "string" },
+        "superficie_mq": { "type": "number" },
+        "zona_climatica": { "type": "string" },
+        "gradi_giorno": { "type": "integer" },
+        "classe_attuale": { "type": "string" },
+        "epgl_nren": { "type": "number" }
+      }
+    },
+    "audit_elettrico": {
+      "type": "object",
+      "properties": {
+        "conforme_dm37": { "type": "boolean" },
+        "non_conformita": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "descrizione": { "type": "string" },
+              "norma": { "type": "string" },
+              "gravita": { "type": "string", "enum": ["critica", "maggiore", "minore"] },
+              "azione": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "audit_termico": {
+      "type": "object",
+      "properties": {
+        "generatore_tipo": { "type": "string" },
+        "generatore_anno": { "type": "integer" },
+        "rendimento_pct": { "type": "number" },
+        "non_conformita": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "diagnosi": {
+      "type": "object",
+      "properties": {
+        "consumo_elettrico_kwh": { "type": "number" },
+        "consumo_gas_smc": { "type": "number" },
+        "costo_annuo_eur": { "type": "number" },
+        "ripartizione": {
+          "type": "object",
+          "properties": {
+            "riscaldamento_pct": { "type": "number" },
+            "acs_pct": { "type": "number" },
+            "raffrescamento_pct": { "type": "number" },
+            "illuminazione_pct": { "type": "number" }
+          }
+        }
+      }
+    },
+    "piano_eem": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "intervento": { "type": "string" },
+          "costo_eur": { "type": "number" },
+          "risparmio_kwh": { "type": "number" },
+          "risparmio_eur": { "type": "number" },
+          "payback_anni": { "type": "number" },
+          "van_15y": { "type": "number" },
+          "tir_pct": { "type": "number" },
+          "incentivo_eur": { "type": "number" },
+          "priorita": { "type": "string", "enum": ["quick_win", "alta", "media", "bassa"] }
+        }
+      }
+    },
+    "classe_raggiungibile": { "type": "string" }
+  }
+}

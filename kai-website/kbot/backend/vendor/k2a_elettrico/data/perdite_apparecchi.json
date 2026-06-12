@@ -1,0 +1,24 @@
+{
+  "ABB_Tmax_XT": {
+    "_disclaimer": "Valori orientativi cataloghi ABB Tmax XT serie standard. Verificare con datasheet costruttore prima dell'asseverazione.",
+    "MCCB_T1_160A": {"In_A": 160, "P_diss_W": 25},
+    "MCCB_T3_250A": {"In_A": 250, "P_diss_W": 45},
+    "MCCB_T6_630A": {"In_A": 630, "P_diss_W": 110},
+    "ACB_E2_1600A": {"In_A": 1600, "P_diss_W": 180},
+    "ACB_E2_2000A": {"In_A": 2000, "P_diss_W": 230},
+    "ACB_E3_4000A": {"In_A": 4000, "P_diss_W": 480}
+  },
+  "Schneider_Compact_NSX": {
+    "_disclaimer": "Valori orientativi cataloghi Schneider Compact NSX. Verificare datasheet costruttore.",
+    "MCCB_NSX100B": {"In_A": 100, "P_diss_W": 18},
+    "MCCB_NSX160B": {"In_A": 160, "P_diss_W": 28},
+    "MCCB_NSX250B": {"In_A": 250, "P_diss_W": 50},
+    "MCCB_NSX630N": {"In_A": 630, "P_diss_W": 125}
+  },
+  "generico": {
+    "_disclaimer": "Stime formula empirica, alta incertezza.",
+    "TA_misura": {"P_diss_W": 2},
+    "contattore_25A": {"P_diss_W": 5},
+    "contattore_100A": {"P_diss_W": 15}
+  }
+}

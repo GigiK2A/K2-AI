@@ -1,0 +1,21 @@
+{
+  "_fonte": "Classificazione ATECO 2007 (sezioni/divisioni) adattata ai comparti tipici delle PMI clienti K2-AI. Esclusi i comparti tecnico-ingegneristici (progettazione strutturale, TLC, impiantistica) trattati da altri MCP.",
+  "_data_validita": "2026-05-22",
+  "_nota": "I servizi trasversali (marketing, SEO, finanza, agevolazioni) si applicano a TUTTI questi settori; il campo 'settore' nei documenti contestualizza il deliverable al comparto della PMI.",
+  "settori": {
+    "commercio_dettaglio": {"label": "Commercio al dettaglio", "ateco": "G47", "descrizione": "Negozi e vendita al dettaglio (anche con e-commerce)."},
+    "commercio_ingrosso": {"label": "Commercio all'ingrosso", "ateco": "G46", "descrizione": "Distribuzione e vendita all'ingrosso B2B."},
+    "ristorazione_food": {"label": "Ristorazione e food", "ateco": "I56", "descrizione": "Ristoranti, bar, catering, food & beverage."},
+    "turismo_ricettivita": {"label": "Turismo e ricettività", "ateco": "I55", "descrizione": "Hotel, B&B, strutture ricettive, agenzie."},
+    "manifatturiero": {"label": "Manifatturiero / produzione", "ateco": "C", "descrizione": "PMI manifatturiere e di produzione."},
+    "artigianato": {"label": "Artigianato", "ateco": "C/S", "descrizione": "Imprese artigiane di produzione e servizio."},
+    "costruzioni": {"label": "Costruzioni / edilizia (impresa)", "ateco": "F", "descrizione": "Imprese edili e di costruzione (lato business, non progettazione tecnica)."},
+    "servizi_professionali": {"label": "Servizi professionali", "ateco": "M", "descrizione": "Studi e attività professionali (commercialisti, consulenti, legali)."},
+    "benessere_estetica": {"label": "Benessere ed estetica", "ateco": "S96", "descrizione": "Parrucchieri, estetica, centri benessere, palestre."},
+    "ecommerce_digitale": {"label": "E-commerce e digitale", "ateco": "G47.91/J", "descrizione": "Vendita online e attività digital-first."},
+    "trasporti_logistica": {"label": "Trasporti e logistica", "ateco": "H", "descrizione": "Autotrasporto, spedizioni, magazzinaggio."},
+    "agricoltura": {"label": "Agricoltura e agroalimentare", "ateco": "A", "descrizione": "Aziende agricole, agriturismi, trasformazione agroalimentare."},
+    "ict_software": {"label": "ICT e software", "ateco": "J62-63", "descrizione": "Software house, servizi IT, agenzie digitali."},
+    "immobiliare": {"label": "Immobiliare", "ateco": "L", "descrizione": "Agenzie e gestione immobiliare."}
+  }
+}

@@ -1,0 +1,584 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/schemas/advisorboost/output-schema.json",
+  "title": "AdvisorBoost — Output strutturato",
+  "description": "Schema JSON del deliverable AdvisorBoost: diagnosi strategico-finanziaria integrata per PMI italiane.",
+  "type": "object",
+  "required": ["meta", "azienda", "bilancio", "indici", "settore", "posizionamento", "opzioni_strategiche", "piano_economico_finanziario", "enterprise_value", "azioni_prioritarie", "cruscotto_kpi", "cta"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["skill", "versione", "data_generazione", "tier", "committente"],
+      "properties": {
+        "skill": {"const": "flusso-advisorboost-pmi"},
+        "versione": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "data_generazione": {"type": "string", "format": "date"},
+        "tier": {"enum": ["light", "standard", "pro"]},
+        "committente": {"type": "string"},
+        "slug_progetto": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "operatore_k2": {"type": "string"}
+      }
+    },
+    "azienda": {
+      "type": "object",
+      "required": ["denominazione", "forma_giuridica", "settore_ateco", "fatturato_anno_corrente_eur", "dipendenti", "regione"],
+      "properties": {
+        "denominazione": {"type": "string"},
+        "forma_giuridica": {"enum": ["SRL", "SRLS", "SPA", "SAPA", "SNC", "SAS", "SS", "ditta individuale", "cooperativa", "altro"]},
+        "partita_iva": {"type": "string", "pattern": "^\\d{11}$"},
+        "settore_ateco": {"type": "string"},
+        "sotto_settore": {"type": "string"},
+        "descrizione_attivita": {"type": "string"},
+        "fatturato_anno_corrente_eur": {"type": "number", "minimum": 0},
+        "dipendenti": {"type": "integer", "minimum": 0},
+        "regione": {"type": "string"},
+        "provincia": {"type": "string"},
+        "anno_fondazione": {"type": "integer", "minimum": 1800},
+        "compagine_sociale": {"type": "string"},
+        "cliente_tipo": {"type": "string"},
+        "mix_ricavi_attuale": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["linea", "percentuale"],
+            "properties": {
+              "linea": {"type": "string"},
+              "percentuale": {"type": "number", "minimum": 0, "maximum": 100},
+              "eur": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+    "bilancio": {
+      "type": "object",
+      "description": "Dati riclassificati 3 anni storici + 3 anni di proiezione (scenario base).",
+      "required": ["storico", "proiezione_base"],
+      "properties": {
+        "storico": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/bilancio_anno"}
+        },
+        "proiezione_base": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/bilancio_anno"}
+        },
+        "quadratura_ok": {"type": "boolean"},
+        "note_riclassificazione": {"type": "string"}
+      }
+    },
+    "indici": {
+      "type": "object",
+      "required": ["redditualita", "solidita", "liquidita", "ccii"],
+      "properties": {
+        "redditualita": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/indice_con_benchmark"}
+        },
+        "solidita": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/indice_con_benchmark"}
+        },
+        "liquidita": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/indice_con_benchmark"}
+        },
+        "dupont": {
+          "type": "object",
+          "properties": {
+            "roe_anno_n": {"type": "number"},
+            "ros_anno_n": {"type": "number"},
+            "rotazione_anno_n": {"type": "number"},
+            "leva_anno_n": {"type": "number"},
+            "scomposizione_ok": {"type": "boolean"}
+          }
+        },
+        "ccii": {
+          "type": "object",
+          "description": "Alert Codice Crisi Impresa e Insolvenza",
+          "required": ["alert_attivi", "dettaglio"],
+          "properties": {
+            "alert_attivi": {"type": "integer", "minimum": 0, "maximum": 5},
+            "dettaglio": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["tipo", "stato"],
+                "properties": {
+                  "tipo": {"enum": ["PN_negativo_o_sotto_soglia", "DSCR_12m_sotto_1", "ritardi_oltre_90gg", "PFN_EBITDA_oltre_6", "CCN_negativo_persistente"]},
+                  "stato": {"enum": ["verde", "giallo", "rosso"]},
+                  "commento": {"type": "string"}
+                }
+              }
+            },
+            "raccomandazione_turnaround": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "settore": {
+      "type": "object",
+      "required": ["definizione", "porter_5_forze", "attrattivita_score"],
+      "properties": {
+        "definizione": {"type": "string"},
+        "lifecycle": {"enum": ["introduzione", "crescita", "maturita", "declino"]},
+        "trend_rilevanti": {"type": "array", "items": {"type": "string"}},
+        "porter_5_forze": {
+          "type": "object",
+          "required": ["rivalita", "entranti", "sostituti", "fornitori", "clienti"],
+          "properties": {
+            "rivalita": {"$ref": "#/$defs/forza_porter"},
+            "entranti": {"$ref": "#/$defs/forza_porter"},
+            "sostituti": {"$ref": "#/$defs/forza_porter"},
+            "fornitori": {"$ref": "#/$defs/forza_porter"},
+            "clienti": {"$ref": "#/$defs/forza_porter"}
+          }
+        },
+        "attrattivita_score": {"type": "integer", "minimum": 0, "maximum": 20, "description": "20 - somma 5 forze"},
+        "attrattivita_giudizio": {"enum": ["bassa", "media-bassa", "media", "media-alta", "alta"]},
+        "raggruppamenti_strategici": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["nome", "descrizione"],
+            "properties": {
+              "nome": {"type": "string"},
+              "descrizione": {"type": "string"},
+              "player_esempio": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        }
+      }
+    },
+    "posizionamento": {
+      "type": "object",
+      "required": ["vrio", "catena_valore", "mappa"],
+      "properties": {
+        "vrio": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["risorsa", "valore", "rarita", "inimitabilita", "organizzazione", "esito"],
+            "properties": {
+              "risorsa": {"type": "string"},
+              "valore": {"type": "boolean"},
+              "rarita": {"type": "boolean"},
+              "inimitabilita": {"type": "boolean"},
+              "organizzazione": {"type": "boolean"},
+              "esito": {"enum": ["svantaggio", "parita_competitiva", "vantaggio_temporaneo", "vantaggio_inutilizzato", "vantaggio_sostenibile"]},
+              "commento": {"type": "string"}
+            }
+          }
+        },
+        "catena_valore": {
+          "type": "object",
+          "properties": {
+            "attivita_primarie": {"type": "array", "items": {"$ref": "#/$defs/attivita_valore"}},
+            "attivita_supporto": {"type": "array", "items": {"$ref": "#/$defs/attivita_valore"}}
+          }
+        },
+        "mappa": {
+          "type": "object",
+          "required": ["asse_x", "asse_y", "posizione_azienda"],
+          "properties": {
+            "asse_x": {"type": "object", "properties": {"nome": {"type": "string"}, "min": {"type": "number"}, "max": {"type": "number"}}},
+            "asse_y": {"type": "object", "properties": {"nome": {"type": "string"}, "min": {"type": "number"}, "max": {"type": "number"}}},
+            "posizione_azienda": {"type": "object", "properties": {"x": {"type": "number"}, "y": {"type": "number"}}},
+            "competitor": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["nome", "x", "y"],
+                "properties": {"nome": {"type": "string"}, "x": {"type": "number"}, "y": {"type": "number"}, "note": {"type": "string"}}
+              }
+            }
+          }
+        },
+        "vantaggio_competitivo": {
+          "type": "object",
+          "properties": {
+            "tipo": {"enum": ["leadership_costo", "differenziazione", "focalizzazione_costo", "focalizzazione_differenziazione", "stuck_in_the_middle"]},
+            "fonti": {"type": "array", "items": {"type": "string"}},
+            "difendibilita_score": {"type": "integer", "minimum": 0, "maximum": 5}
+          }
+        }
+      }
+    },
+    "opzioni_strategiche": {
+      "type": "object",
+      "required": ["ansoff", "opzione_raccomandata"],
+      "properties": {
+        "ansoff": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["opzione", "descrizione", "attrattivita", "fattibilita", "rischio", "modalita"],
+            "properties": {
+              "opzione": {"enum": ["penetrazione", "sviluppo_mercato", "sviluppo_prodotto", "diversificazione"]},
+              "descrizione": {"type": "string"},
+              "attrattivita": {"type": "integer", "minimum": 1, "maximum": 5},
+              "fattibilita": {"type": "integer", "minimum": 1, "maximum": 5},
+              "rischio": {"type": "integer", "minimum": 1, "maximum": 5},
+              "score_totale": {"type": "number"},
+              "modalita": {"enum": ["make", "buy", "ally", "mixed"]},
+              "reazione_competitor_attesa": {"type": "string"}
+            }
+          }
+        },
+        "opzione_raccomandata": {
+          "type": "object",
+          "required": ["opzione", "motivazione"],
+          "properties": {
+            "opzione": {"enum": ["penetrazione", "sviluppo_mercato", "sviluppo_prodotto", "diversificazione"]},
+            "motivazione": {"type": "string"},
+            "condizioni_successo": {"type": "array", "items": {"type": "string"}},
+            "condizioni_fallimento": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "opzione_riserva": {
+          "type": "object",
+          "properties": {
+            "opzione": {"enum": ["penetrazione", "sviluppo_mercato", "sviluppo_prodotto", "diversificazione"]},
+            "trigger_attivazione": {"type": "string"}
+          }
+        }
+      }
+    },
+    "piano_economico_finanziario": {
+      "type": "object",
+      "required": ["ipotesi_base", "budget_mensile_36m", "scenari", "sensitivity"],
+      "properties": {
+        "ipotesi_base": {"type": "array", "items": {"type": "string"}},
+        "budget_mensile_36m": {
+          "type": "array",
+          "minItems": 36,
+          "maxItems": 36,
+          "items": {
+            "type": "object",
+            "required": ["mese", "ricavi", "costi_variabili", "costi_fissi", "ebitda", "utile_netto", "fcf"],
+            "properties": {
+              "mese": {"type": "integer", "minimum": 1, "maximum": 36},
+              "ricavi": {"type": "number"},
+              "costi_variabili": {"type": "number"},
+              "costi_fissi": {"type": "number"},
+              "ebitda": {"type": "number"},
+              "ammortamenti": {"type": "number"},
+              "oneri_finanziari": {"type": "number"},
+              "imposte": {"type": "number"},
+              "utile_netto": {"type": "number"},
+              "fcf": {"type": "number"}
+            }
+          }
+        },
+        "scenari": {
+          "type": "object",
+          "required": ["base", "ottimistico", "pessimistico"],
+          "properties": {
+            "base": {"$ref": "#/$defs/scenario"},
+            "ottimistico": {"$ref": "#/$defs/scenario"},
+            "pessimistico": {"$ref": "#/$defs/scenario"}
+          }
+        },
+        "sensitivity": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["variabile", "delta_percentuale", "impatto_ebitda_eur"],
+            "properties": {
+              "variabile": {"type": "string"},
+              "delta_percentuale": {"type": "number"},
+              "impatto_ebitda_eur": {"type": "number"},
+              "impatto_ebitda_perc": {"type": "number"}
+            }
+          }
+        },
+        "trigger_monitoraggio": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["indicatore", "soglia", "frequenza"],
+            "properties": {
+              "indicatore": {"type": "string"},
+              "soglia": {"type": "string"},
+              "frequenza": {"enum": ["settimanale", "mensile", "trimestrale"]},
+              "azione_se_superato": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "enterprise_value": {
+      "type": "object",
+      "required": ["multipli_ebitda", "dcf", "patrimoniale", "valore_raccomandato_eur"],
+      "properties": {
+        "multipli_ebitda": {
+          "type": "object",
+          "required": ["ebitda_normalizzato_eur", "multiplo_mediano", "ev_mediano_eur"],
+          "properties": {
+            "ebitda_normalizzato_eur": {"type": "number"},
+            "multiplo_basso": {"type": "number"},
+            "multiplo_mediano": {"type": "number"},
+            "multiplo_alto": {"type": "number"},
+            "ev_basso_eur": {"type": "number"},
+            "ev_mediano_eur": {"type": "number"},
+            "ev_alto_eur": {"type": "number"},
+            "sconto_liquidita_percentuale": {"type": "number", "minimum": 0, "maximum": 50}
+          }
+        },
+        "dcf": {
+          "type": "object",
+          "required": ["wacc", "g_perpetuo", "equity_value_eur"],
+          "properties": {
+            "wacc": {"type": "number", "minimum": 0, "maximum": 30},
+            "g_perpetuo": {"type": "number", "minimum": 0, "maximum": 5},
+            "fcff_anni": {"type": "array", "items": {"type": "number"}},
+            "terminal_value_eur": {"type": "number"},
+            "pfn_eur": {"type": "number"},
+            "equity_value_eur": {"type": "number"}
+          }
+        },
+        "patrimoniale": {
+          "type": "object",
+          "required": ["valore_eur"],
+          "properties": {
+            "pn_contabile_eur": {"type": "number"},
+            "rivalutazione_immobili_eur": {"type": "number"},
+            "rivalutazione_intangibles_eur": {"type": "number"},
+            "avviamento_stimato_eur": {"type": "number"},
+            "valore_eur": {"type": "number"}
+          }
+        },
+        "valore_raccomandato_eur": {"type": "number"},
+        "range_plausibile_eur": {
+          "type": "object",
+          "properties": {
+            "min": {"type": "number"},
+            "max": {"type": "number"}
+          }
+        },
+        "spread_percentuale": {"type": "number"},
+        "commento": {"type": "string"}
+      }
+    },
+    "azioni_prioritarie": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["rank", "titolo", "categoria", "descrizione", "impatto_ebitda_eur", "fattibilita", "costo_una_tantum_eur", "tempo_settimane", "responsabile", "prima_mossa_7_giorni"],
+        "properties": {
+          "rank": {"type": "integer", "minimum": 1, "maximum": 8},
+          "titolo": {"type": "string"},
+          "categoria": {"enum": ["Strategia", "Finanza", "Marketing", "Operations", "HR", "Sistemi"]},
+          "descrizione": {"type": "string"},
+          "impatto_ebitda_eur": {"type": "number"},
+          "impatto_fatturato_eur": {"type": "number"},
+          "fattibilita": {"enum": ["alta", "media", "bassa"]},
+          "rischi": {"type": "array", "items": {"type": "string"}},
+          "costo_una_tantum_eur": {"type": "number", "minimum": 0},
+          "costo_ricorrente_mensile_eur": {"type": "number", "minimum": 0},
+          "tempo_settimane": {"type": "integer", "minimum": 1},
+          "responsabile": {"type": "string"},
+          "partner_esterni": {"type": "array", "items": {"type": "string"}},
+          "milestone_30_60_90": {
+            "type": "object",
+            "properties": {
+              "giorno_30": {"type": "string"},
+              "giorno_60": {"type": "string"},
+              "giorno_90": {"type": "string"}
+            }
+          },
+          "kpi_successo": {"type": "array", "items": {"type": "string"}},
+          "prima_mossa_7_giorni": {"type": "string"}
+        }
+      }
+    },
+    "cruscotto_kpi": {
+      "type": "object",
+      "required": ["kpi_mensili"],
+      "properties": {
+        "kpi_mensili": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 15,
+          "items": {
+            "type": "object",
+            "required": ["nome", "target", "frequenza", "fonte_dati"],
+            "properties": {
+              "nome": {"type": "string"},
+              "unita_misura": {"type": "string"},
+              "target": {"type": "string"},
+              "soglia_giallo": {"type": "string"},
+              "soglia_rosso": {"type": "string"},
+              "frequenza": {"enum": ["giornaliera", "settimanale", "mensile", "trimestrale"]},
+              "fonte_dati": {"type": "string"},
+              "responsabile_aggiornamento": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "executive_summary": {
+      "type": "object",
+      "description": "Risposte secche alle 3 domande chiave",
+      "required": ["score_globale", "giudizio", "stiamo_sopravvivendo", "vantaggio_competitivo", "dove_andiamo"],
+      "properties": {
+        "score_globale": {"type": "integer", "minimum": 0, "maximum": 100},
+        "giudizio": {"enum": ["Eccellente", "Buono", "Sufficiente", "Preoccupante", "Critico"]},
+        "percentile_settore": {"type": "integer", "minimum": 0, "maximum": 100},
+        "stiamo_sopravvivendo": {
+          "type": "object",
+          "required": ["semaforo", "sintesi"],
+          "properties": {
+            "semaforo": {"enum": ["verde", "giallo", "rosso"]},
+            "sintesi": {"type": "string", "maxLength": 200}
+          }
+        },
+        "vantaggio_competitivo": {
+          "type": "object",
+          "required": ["semaforo", "sintesi"],
+          "properties": {
+            "semaforo": {"enum": ["verde", "giallo", "rosso"]},
+            "sintesi": {"type": "string", "maxLength": 200}
+          }
+        },
+        "dove_andiamo": {
+          "type": "object",
+          "required": ["opzione_raccomandata", "sintesi"],
+          "properties": {
+            "opzione_raccomandata": {"type": "string"},
+            "sintesi": {"type": "string", "maxLength": 200}
+          }
+        },
+        "top_3_decisioni_30gg": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {"type": "string"}
+        },
+        "impatto_cumulato_36m": {
+          "type": "object",
+          "properties": {
+            "ebitda_delta_eur": {"type": "number"},
+            "ev_delta_eur": {"type": "number"}
+          }
+        }
+      }
+    },
+    "cta": {
+      "type": "object",
+      "required": ["retainer_attivo", "prezzo_retainer_mensile_eur"],
+      "properties": {
+        "retainer_attivo": {"type": "boolean"},
+        "prezzo_retainer_mensile_eur": {"type": "number", "minimum": 0},
+        "durata_minima_mesi": {"type": "integer"},
+        "include": {"type": "array", "items": {"type": "string"}},
+        "link_calendly": {"type": "string", "format": "uri"},
+        "link_landing": {"type": "string", "format": "uri"}
+      }
+    },
+    "file_generati": {
+      "type": "object",
+      "properties": {
+        "docx_report": {"type": "string"},
+        "xlsx_cruscotto": {"type": "string"},
+        "html_dashboard": {"type": "string"},
+        "json_output": {"type": "string"}
+      }
+    },
+    "disclaimer": {"type": "string"}
+  },
+  "$defs": {
+    "bilancio_anno": {
+      "type": "object",
+      "required": ["anno", "ricavi", "ebitda", "utile_netto", "totale_attivo", "patrimonio_netto"],
+      "properties": {
+        "anno": {"type": "integer", "minimum": 2000, "maximum": 2100},
+        "tipo": {"enum": ["storico", "proiezione"]},
+        "ricavi": {"type": "number"},
+        "valore_produzione": {"type": "number"},
+        "valore_aggiunto": {"type": "number"},
+        "ebitda": {"type": "number"},
+        "ebitda_margin": {"type": "number"},
+        "ebit": {"type": "number"},
+        "oneri_finanziari_netti": {"type": "number"},
+        "imposte": {"type": "number"},
+        "utile_netto": {"type": "number"},
+        "totale_attivo": {"type": "number"},
+        "immobilizzazioni": {"type": "number"},
+        "attivo_circolante": {"type": "number"},
+        "patrimonio_netto": {"type": "number"},
+        "pfn": {"type": "number"},
+        "debiti_commerciali": {"type": "number"},
+        "crediti_commerciali": {"type": "number"},
+        "magazzino": {"type": "number"}
+      }
+    },
+    "indice_con_benchmark": {
+      "type": "object",
+      "required": ["nome", "valori_3anni", "benchmark_mediana", "semaforo_n"],
+      "properties": {
+        "nome": {"type": "string"},
+        "formula": {"type": "string"},
+        "valori_3anni": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"type": ["number", "null"]}
+        },
+        "unita_misura": {"enum": ["percentuale", "volte", "giorni", "eur", "numero"]},
+        "benchmark_basso": {"type": "number"},
+        "benchmark_mediana": {"type": "number"},
+        "benchmark_alto": {"type": "number"},
+        "fonte_benchmark": {"type": "string"},
+        "semaforo_n": {"enum": ["verde", "giallo", "rosso"]},
+        "commento": {"type": "string"},
+        "trend_3anni": {"enum": ["migliorativo", "stabile", "peggiorativo"]}
+      }
+    },
+    "forza_porter": {
+      "type": "object",
+      "required": ["score", "commento"],
+      "properties": {
+        "score": {"type": "integer", "minimum": 1, "maximum": 5, "description": "1 debole - 5 fortissima"},
+        "variabili_valutate": {"type": "array", "items": {"type": "string"}},
+        "commento": {"type": "string"}
+      }
+    },
+    "attivita_valore": {
+      "type": "object",
+      "required": ["nome", "valutazione"],
+      "properties": {
+        "nome": {"type": "string"},
+        "descrizione": {"type": "string"},
+        "valutazione": {"enum": ["punto_forza", "adeguata", "punto_debolezza"]},
+        "costo_stimato_eur": {"type": "number"},
+        "contributo_margine_percentuale": {"type": "number"}
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "required": ["ricavi_anno3_eur", "ebitda_anno3_eur", "enterprise_value_eur"],
+      "properties": {
+        "nome": {"enum": ["base", "ottimistico", "pessimistico"]},
+        "ricavi_anno1_eur": {"type": "number"},
+        "ricavi_anno2_eur": {"type": "number"},
+        "ricavi_anno3_eur": {"type": "number"},
+        "ebitda_anno3_eur": {"type": "number"},
+        "ebitda_margin_anno3": {"type": "number"},
+        "enterprise_value_eur": {"type": "number"},
+        "delta_ev_vs_base_eur": {"type": "number"},
+        "condizioni": {"type": "string"},
+        "probabilita_stimata_percentuale": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    }
+  }
+}

@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-mepboost-studio.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost (MEPBoost). Derivato dai file reali flusso-mepboost-studio/assets/template-*.md e schemas/output-schema.json. Replica il pattern del boost HostBoost.",
+  "pacchetto": {
+    "skill": "flusso-mepboost-studio",
+    "nome_commerciale": "MEPBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-mepboost-studio/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": {
+    "min": 15,
+    "max": 20,
+    "target": 17
+  },
+  "artefatti_bundle": [
+    {
+      "id": "docx_report",
+      "ruolo": "principale",
+      "formato": "docx",
+      "obbligatorio": true,
+      "nota": "report executive; oggetto del blueprint"
+    },
+    {
+      "id": "xlsx_modello",
+      "ruolo": "modello vivo",
+      "formato": "xlsx",
+      "obbligatorio": true,
+      "nota": "piano interventi EEM con VAN/TIR/payback"
+    },
+    {
+      "id": "html_dashboard",
+      "ruolo": "wow visivo",
+      "formato": "html",
+      "obbligatorio": true,
+      "nota": "dashboard KPI (Chart.js)"
+    },
+    {
+      "id": "json_output",
+      "ruolo": "dati",
+      "formato": "json",
+      "obbligatorio": true,
+      "nota": "valida contro contratto_dati"
+    }
+  ],
+  "voci": [
+    {
+      "ord": 0,
+      "id": "copertina",
+      "titolo": "Copertina",
+      "argomenti_obbligatori": [
+        "logo MEPBoost",
+        "edificio",
+        "data"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      }
+    },
+    {
+      "ord": 1,
+      "id": "premessa_normativa",
+      "titolo": "Premessa e normativa",
+      "argomenti_obbligatori": [
+        "DM 37/2008, riferimenti energetici"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      },
+      "funzione_psico": "apertura"
+    },
+    {
+      "ord": 2,
+      "id": "descrizione_edificio",
+      "titolo": "Descrizione edificio e impianti",
+      "argomenti_obbligatori": [
+        "dati edificio",
+        "impianti elettrici e termici esistenti"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 3,
+      "id": "audit_elettrico",
+      "titolo": "Audit elettrico",
+      "argomenti_obbligatori": [
+        "conformita DM 37/2008",
+        "non conformita con gravita",
+        "quadri e protezioni"
+      ],
+      "pagine": {
+        "min": 3,
+        "max": 3
+      }
+    },
+    {
+      "ord": 4,
+      "id": "audit_termico",
+      "titolo": "Audit termico/HVAC",
+      "argomenti_obbligatori": [
+        "generazione, distribuzione, emissione",
+        "rendimenti",
+        "non conformita"
+      ],
+      "pagine": {
+        "min": 3,
+        "max": 3
+      }
+    },
+    {
+      "ord": 5,
+      "id": "diagnosi_energetica",
+      "titolo": "Diagnosi energetica",
+      "argomenti_obbligatori": [
+        "consumi mensili",
+        "ripartizione consumi",
+        "classe energetica stimata"
+      ],
+      "pagine": {
+        "min": 3,
+        "max": 3
+      }
+    },
+    {
+      "ord": 6,
+      "id": "piano_eem",
+      "titolo": "Piano interventi EEM",
+      "argomenti_obbligatori": [
+        "tabella interventi: descrizione, risparmio, costo, payback, priorita"
+      ],
+      "pagine": {
+        "min": 3,
+        "max": 3
+      }
+    },
+    {
+      "ord": 7,
+      "id": "analisi_economica",
+      "titolo": "Analisi economica",
+      "argomenti_obbligatori": [
+        "VAN/TIR/payback",
+        "simulazione incentivi"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 8,
+      "id": "conclusioni",
+      "titolo": "Conclusioni",
+      "argomenti_obbligatori": [
+        "sintesi",
+        "azioni prioritarie",
+        "prossimo passo / proposta continuativa (prezzo da catalogo)"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      },
+      "funzione_psico": "chiusura + gancio retainer"
+    }
+  ],
+  "elementi_grafici_obbligatori": [
+    "gauge classe energetica",
+    "grafico consumi mensili elettrico+gas",
+    "scatter matrice costo/risparmio EEM",
+    "torta ripartizione consumi"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella interventi EEM descrizione risparmio costo payback priorita"
+  ],
+  "elementi_psico_trasversali": {
+    "doppio_registro": "sintesi per il titolare + dettaglio tecnico per chi esegue",
+    "peak_end": "picco in apertura + chiusura curata in conclusioni",
+    "concretezza_euro": "ogni impatto/costo espresso in euro",
+    "riprova_sociale_pari": "benchmark di settore/dimensione comparabili",
+    "cliente_eroe": "il titolare e il protagonista; K2-AI e il mentore tecnico"
+  },
+  "regole_validazione_linter": [
+    {
+      "id": "R01",
+      "regola": "tutti i capitoli presenti nell'ordine 'ord'",
+      "severita": "errore"
+    },
+    {
+      "id": "R02",
+      "regola": "somma pagine entro pagine_totali.min..max",
+      "severita": "errore"
+    },
+    {
+      "id": "R03",
+      "regola": "pagine per capitolo entro il rispettivo range",
+      "severita": "warning"
+    },
+    {
+      "id": "R04",
+      "regola": "ogni argomento_obbligatorio rilevabile nel capitolo corrispondente",
+      "severita": "errore"
+    },
+    {
+      "id": "R05",
+      "regola": "la sezione di sintesi iniziale (executive/premessa) entro 1 pagina",
+      "severita": "errore"
+    },
+    {
+      "id": "R06",
+      "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati",
+      "severita": "errore"
+    },
+    {
+      "id": "R07",
+      "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx",
+      "severita": "warning"
+    },
+    {
+      "id": "R08",
+      "regola": "tutte le tabelle_obbligatorie presenti nel docx",
+      "severita": "warning"
+    },
+    {
+      "id": "R09",
+      "regola": "CTA verso il passo successivo presente nel capitolo conclusioni/prossimo_passo",
+      "severita": "errore"
+    },
+    {
+      "id": "R10",
+      "regola": "disclaimer presente",
+      "severita": "errore"
+    },
+    {
+      "id": "R11",
+      "regola": "json_output valida contro contratto_dati (output-schema.json)",
+      "severita": "errore"
+    },
+    {
+      "id": "R12",
+      "regola": "nessun prezzo hard-coded: i prezzi risolti da catalogo a runtime",
+      "severita": "warning",
+      "nota": "Nodo1 prezzi"
+    }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "Gli interventi EEM vanno monitorati nel tempo: il passo successivo e il presidio continuativo."
+  }
+}

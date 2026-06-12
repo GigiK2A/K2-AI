@@ -77,7 +77,31 @@ Il backend kbot **replica l'architettura V2 del sito** (`kai-website/api/kbot/*.
 | `POST /api/kbot/checkout` | opzionale | Stripe Checkout session |
 | `POST /api/kbot/generate-pdf` | `x-internal-key` o `status='paid'` | Sonnet → JSON → Jinja2 → Playwright PDF |
 | `GET  /api/kbot/status` | no | Polling stato dopo checkout |
-| `POST /api/stripe/webhook` | firma Stripe | Marca session paid, scrive `has_paid` su user metadata, triggera generate-pdf |
+| `POST /api/kbot/deliverables` | opzionale (ownership+paid) | Instrada un servizio generabile all'**8e** (motore `k2a-8e`); ritorna `job_id` |
+| `GET  /api/kbot/deliverables/{job_id}` | no | Polling stato job 8e (outputs/validation/citazioni) |
+| `GET  /api/kbot/engine/health` | no | Liveness motore 8e (debug) |
+| `POST /api/kbot/checkout/subscription` | obbligatoria | Abbonamento ricorrente Pro/Business (Stripe `mode=subscription`) |
+| `POST /api/kbot/checkout/credits` | obbligatoria | Acquisto pacchetto crediti (49/199/499€, una-tantum) |
+| `GET  /api/kbot/billing/me` | obbligatoria | Stato billing: piano + saldo crediti + modello |
+| `POST /api/kbot/billing/consume` | obbligatoria | Consuma crediti per un Check express (402 se insufficienti) |
+| `GET  /api/kbot/checks` | no | Elenco Check express deterministici disponibili (calcolo locale) |
+| `POST /api/kbot/check/{service_id}` | (gate crediti a monte) | Esegue un Check express (strato Consumo) — calcolo puro via MCP `k2a-agevolazioni` vendorizzato in `backend/vendor/`, no LLM/corpus. 15 servizi: de_minimis, nuova_sabatini, credito_rd, cumulabilita, bancabilita, riclassifica, crisi, transizione_5_0, {hospitality,ristorazione,retail,ecommerce,benessere}_kpi, seo_onpage, marketing_metriche |
+| `GET  /api/kbot/tools` | no | Catalogo dei ~135 tool a CALCOLO dell'ecosistema MCP (auto-discovery su `backend/vendor/`). Domini: agevolazioni, finanza (quant), elettrico (CEI 64-8), strutturale (NTC 2018), norme-tecniche |
+| `GET  /api/kbot/tool/{tool_id}/schema` | no | Schema input JSON di un tool |
+| `POST /api/kbot/tool/{tool_id}` | (gate a monte) | Esegue un tool a calcolo deterministico (es. `finanza/dcf.compute_dcf`, `strutturale/check_anchor.check_anchor_en1992_4`). Pydantic in→out, no LLM. I tool sono i mattoni dietro i Boost/Check |
+
+### Compute layer (MCP ecosistema vendorizzati)
+
+`backend/vendor/` contiene i package a calcolo degli MCP di Luca (`k2a_agevolazioni`, `k2a_quant`, `k2a_elettrico`, `vs_strutturale`, `k2a_norme_tecniche`). Sono DETERMINISTICI (no LLM, no corpus normativo). `app/api/compute.py` li auto-scopre e li espone come tool. Servono i servizi a calcolo (Consumo) e alimentano i Boost a documento. NB: il testo di legge verbatim (LegalBoost/FiscoBoost) NON è qui — vive nel corpus `normattiva_ai` sulla macchina di Luca, esposto dal suo `normattiva-mcp`.
+| `POST /api/stripe/webhook` | firma Stripe | Marca session paid + abbonamenti/crediti (subscription/invoice.paid/deleted) + triggera generate-pdf |
+
+### Layer pagamenti (abbonamenti + crediti)
+
+Modello in `catalogo_documenti.json` (k2a-catalogo): **Free / Pro 49€-50cr / Business 149€-200cr**, 1 cr = 1€. I **crediti** pagano i Check express (strato Consumo); i **Boost** restano a prezzo (sconto abbonato −10%/−20%), MAI a crediti. Codice: `lib/billing.py` (logica pura), `lib/billing_store.py` (I/O Supabase: tabelle `kbot_subscriptions` + `kbot_credit_ledger`, RPC `kbot_credit_balance/consume/grant` — migration `supabase/migrations/006`). Frontend: `getBilling`/`startSubscriptionCheckout`/`startCreditsCheckout`/`consumeCredits` in `lib/api.ts`.
+
+### Motore 8e (generazione deliverable Boost)
+
+Il K-BOT NON genera i deliverable Boost: li richiede al motore **8e** (`kai-website/k2a-8e/`, FastAPI separato su Railway) via `lib/engine.py`. Catalogo prodotti in `lib/catalog.py` (legge `app/data/catalog.json`, generato da `build_catalog.py` = catalog di Luca + overlay tag pillar). Env: `K2A_8E_BASE_URL` (dev → mock `kbot/mock-8e`), `K2A_8E_API_KEY`. Contratto: `docs/interfaccia-kbot-8e.md`.
 
 ---
 

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinanceBoost — form input PMI",
+  "type": "object",
+  "required": ["settore_ateco", "n_dipendenti"],
+  "properties": {
+    "settore_ateco": { "type": "string", "description": "codice ATECO o descrizione settore" },
+    "n_dipendenti": { "type": "integer", "minimum": 0 },
+    "fatturato_ultimo_anno": { "type": ["number", "null"], "description": "EUR" },
+    "anni_bilancio_disponibili": { "type": "integer", "minimum": 1, "maximum": 5, "description": "numero di esercizi disponibili (1-3 consigliati)" },
+    "bilanci": {
+      "type": "array",
+      "description": "voci principali di SP e CE per anno",
+      "items": {
+        "type": "object",
+        "required": ["anno"],
+        "properties": {
+          "anno": { "type": "integer" },
+          "ricavi": { "type": ["number", "null"] },
+          "ebitda": { "type": ["number", "null"] },
+          "utile_netto": { "type": ["number", "null"] },
+          "totale_attivo": { "type": ["number", "null"] },
+          "patrimonio_netto": { "type": ["number", "null"] },
+          "debiti_finanziari": { "type": ["number", "null"] },
+          "costo_personale": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "note": { "type": "string", "description": "problemi percepiti, investimenti in programma, settore in crisi/crescita" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/check-salute-finanziaria.check.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del Check Express del percorso (Check Salute Finanziaria). Derivato dai file reali check-salute-finanziaria/schemas/output-schema.json (N=5 fattori, criticita=top_3_approfondimenti) e assets/template. Ingresso funnel; modellato su check-pmi/check-host.",
+  "pacchetto": {
+    "skill": "check-salute-finanziaria",
+    "nome_commerciale": "Check Salute Finanziaria",
+    "tier": "check",
+    "posizione_funnel": "ingresso / lead magnet"
+  },
+  "contratto_dati": "check-salute-finanziaria/schemas/output-schema.json",
+  "formato_primario": "html-single-page",
+  "paginato": false,
+  "vincoli_formato": {
+    "peso_kb_max": 80,
+    "mobile_first": true,
+    "dipendenze_esterne": "nessuna (SVG/CSS/JS vanilla)",
+    "tempo_caricamento_s_max": 1,
+    "stampabile_pagine_a4": "2-3"
+  },
+  "voci": [
+    {
+      "ord": 0,
+      "id": "header",
+      "titolo": "Header",
+      "argomenti_obbligatori": [
+        "logo K2-AI",
+        "titolo con nome cliente/oggetto",
+        "data"
+      ]
+    },
+    {
+      "ord": 1,
+      "id": "hero_score",
+      "titolo": "Hero score",
+      "argomenti_obbligatori": [
+        "gauge 0-100",
+        "giudizio testuale (fascia)",
+        "sintesi diagnosi in 1 riga"
+      ],
+      "funzione_psico": "information gap + picco visivo (gauge unico accent)"
+    },
+    {
+      "ord": 2,
+      "id": "semafori",
+      "titolo": "5 fattori/KPI di dominio",
+      "argomenti_obbligatori": [
+        "5 fattori del dominio, ciascuno con semaforo verde/giallo/rosso, valore e commento"
+      ],
+      "vincolo": "esattamente 5 card semaforo (N dal contratto_dati)",
+      "funzione_psico": "riprova sociale + semaforo prima del numero"
+    },
+    {
+      "ord": 3,
+      "id": "criticita",
+      "titolo": "Criticita/priorita su cui agire",
+      "argomenti_obbligatori": [
+        "criticita/priorita (top_3_approfondimenti) collegate ai fattori peggiori",
+        "per ciascuna: prima mossa pratica"
+      ],
+      "funzione_psico": "loss aversion + reciprocita"
+    },
+    {
+      "ord": 4,
+      "id": "cta",
+      "titolo": "CTA verso il tier successivo",
+      "argomenti_obbligatori": [
+        "headline orientata al desiderio",
+        "cosa include il passo successivo: analisi-bilancio-pmi / FinanceBoost (max 3 bullet)",
+        "prezzo risolto da catalogo (NON hardcoded)",
+        "CTA unica (call gratuita)",
+        "fallback email"
+      ],
+      "funzione_psico": "gancio onesto (information gap); CTA unica (Hick's law)"
+    },
+    {
+      "ord": 5,
+      "id": "dettagli_tecnici",
+      "titolo": "Dettagli e metodologia (collapsable)",
+      "argomenti_obbligatori": [
+        "dati input usati",
+        "fonte benchmark e soglie",
+        "metodologia scoring",
+        "limiti dichiarati",
+        "disclaimer"
+      ],
+      "funzione_psico": "frizione buona"
+    },
+    {
+      "ord": 6,
+      "id": "footer",
+      "titolo": "Footer",
+      "argomenti_obbligatori": [
+        "data generazione",
+        "versione skill",
+        "contatti K2-AI",
+        "disclaimer breve"
+      ]
+    }
+  ],
+  "elementi_obbligatori": [
+    "gauge SVG 0-100 a 3 zone",
+    "5 card semaforo",
+    "card criticita/priorita",
+    "banner CTA"
+  ],
+  "elementi_psico_trasversali": {
+    "scala_del_valore": "mini-mappa 'sei qui': VEDERE -> capire -> risolvere -> presidiare, VEDERE evidenziato",
+    "accent_unico": "il gauge e l'unico elemento dominante della prima schermata",
+    "concretezza_euro": "ogni criticita quantifica l'impatto dove possibile",
+    "cliente_eroe": "seconda persona singolare, tono diretto, zero gergo",
+    "etica": "diagnosi reale e utile da sola: niente teaser frustrante"
+  },
+  "regole_validazione_linter": [
+    {
+      "id": "R01",
+      "regola": "tutte le 7 sezioni di struttura_canonica presenti nell'ordine 'ord'",
+      "severita": "errore"
+    },
+    {
+      "id": "R02",
+      "regola": "esattamente 5 card semaforo con i fattori/dimensioni del dominio",
+      "severita": "errore"
+    },
+    {
+      "id": "R03",
+      "regola": "esattamente 3 card criticita/priorita del dominio",
+      "severita": "errore"
+    },
+    {
+      "id": "R04",
+      "regola": "gauge 0-100 presente con giudizio testuale coerente",
+      "severita": "errore"
+    },
+    {
+      "id": "R05",
+      "regola": "CTA unica verso il tier successivo presente",
+      "severita": "errore"
+    },
+    {
+      "id": "R06",
+      "regola": "peso file <= 80 KB e nessuna dipendenza esterna",
+      "severita": "warning"
+    },
+    {
+      "id": "R07",
+      "regola": "disclaimer presente (hero/footer/dettagli)",
+      "severita": "errore"
+    },
+    {
+      "id": "R08",
+      "regola": "json_output valida contro contratto_dati",
+      "severita": "errore"
+    },
+    {
+      "id": "R09",
+      "regola": "nessun prezzo hard-coded: prezzo del tier sopra risolto da catalogo a runtime",
+      "severita": "warning"
+    },
+    {
+      "id": "R10",
+      "regola": "tono: nessun termine gergale da business school in lista nera",
+      "severita": "warning"
+    }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": null,
+    "tier_successivo": "boost",
+    "gancio": "Questa pagella e il COSA. Il passo successivo (analisi-bilancio-pmi / FinanceBoost) da il PERCHE e la rotta. CTA dopo il picco (peak-end)."
+  },
+  "conteggi_attesi": {
+    "card_semaforo": 5,
+    "criticita": 3
+  }
+}

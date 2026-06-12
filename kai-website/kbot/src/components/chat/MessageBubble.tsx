@@ -8,6 +8,14 @@ import { prettyTime } from "@/lib/utils";
 
 const CITATION_RE = /\(pag\.\s*(\d+)\)/gi;
 
+/**
+ * FREE MODE (K-BOT ufficiale senza paywall): quando NEXT_PUBLIC_KBOT_FREE_MODE
+ * === "1" il documento è prodotto dal motore 8e (DeliverablePanel) e la CTA del
+ * report conversazionale viene nascosta, così c'è un solo percorso di generazione.
+ * NB: NEXT_PUBLIC_* è inlinato a build-time → richiede rebuild del frontend.
+ */
+const FREE_MODE = process.env.NEXT_PUBLIC_KBOT_FREE_MODE === "1";
+
 /** Riconosce "(pag. N)" e li mostra come chip cliccabili (styling only per ora). */
 function renderWithCitations(text: string) {
   if (!text) return text;
@@ -137,8 +145,9 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Report-ready CTA: in fase free, genera direttamente il PDF (no checkout). */}
-        {message.reportReady && !message.reportPdfUrl && (
+        {/* Report-ready CTA conversazionale. In FREE_MODE è nascosta: il documento
+            viene generato dal motore 8e tramite il DeliverablePanel (selettore catalogo). */}
+        {message.reportReady && !message.reportPdfUrl && !FREE_MODE && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={message.hasPaid ? onCheckout : onGeneratePdf}

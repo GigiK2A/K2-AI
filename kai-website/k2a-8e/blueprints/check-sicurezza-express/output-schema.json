@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "check-sicurezza-express-output",
+  "title": "Output check-sicurezza-express",
+  "description": "Schema di output per la pagella sicurezza cantiere rapida generata dalla skill check-sicurezza-express",
+  "type": "object",
+  "required": ["meta", "score_globale", "fascia", "fattori", "top_5_criticita", "cta_upsell", "files"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["skill_name", "version", "generated_at", "tipo_cantiere", "numero_imprese"],
+      "properties": {
+        "skill_name": {
+          "type": "string",
+          "const": "check-sicurezza-express"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tipo_cantiere": {
+          "type": "string"
+        },
+        "numero_imprese": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "durata_giorni": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "entita_lavoro_ug": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Entita lavoro in uomini/giorno"
+        },
+        "tipo_committente": {
+          "type": "string",
+          "enum": ["pubblico", "privato"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "score_globale": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "fascia": {
+      "type": "string",
+      "enum": ["Critico", "Insufficiente", "Sufficiente", "Buono", "Eccellente"]
+    },
+    "fattori": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["nome", "peso", "score", "semaforo", "descrizione_cliente"],
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "peso": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "semaforo": {
+            "type": "string",
+            "enum": ["verde", "giallo", "rosso"]
+          },
+          "descrizione_cliente": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "top_5_criticita": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["fattore", "impatto_stimato", "azione_suggerita"],
+        "properties": {
+          "fattore": {
+            "type": "string"
+          },
+          "impatto_stimato": {
+            "type": "string"
+          },
+          "azione_suggerita": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cta_upsell": {
+      "type": "object",
+      "required": ["servizio", "messaggio"],
+      "properties": {
+        "servizio": {
+          "type": "string",
+          "examples": ["Redazione PSC Completo", "DVR"]
+        },
+        "messaggio": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "object",
+      "required": ["html_report", "json_report"],
+      "properties": {
+        "html_report": {
+          "type": "string"
+        },
+        "json_report": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

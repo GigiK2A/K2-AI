@@ -33,7 +33,7 @@ type AppContextValue = {
   /* kbot session */
   kbotSessionId: string | null;
   kbotSession: KbotSession | null;
-  ensureSession: (opts?: { mode?: Mode; serviceId?: string; adopt?: string }) => Promise<KbotSession>;
+  ensureSession: (opts?: { mode?: Mode; serviceId?: string; adopt?: string; tagPillar?: string | null }) => Promise<KbotSession>;
   resetSession: () => void;
 };
 
@@ -137,7 +137,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   const ensureSession = useCallback(
-    async (opts?: { mode?: Mode; serviceId?: string; adopt?: string }) => {
+    async (opts?: { mode?: Mode; serviceId?: string; adopt?: string; tagPillar?: string | null }) => {
       if (kbotSession) return kbotSession;
       const token = await getToken();
       // Priority: explicit adopt (cross-bot bridge from suite-ai) > localStorage > fresh.
@@ -168,6 +168,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       const fresh = await createSession({
         mode: opts?.mode ?? "report",
         serviceId: opts?.serviceId,
+        tagPillar: opts?.tagPillar,
         authToken: token,
       });
       setKbotSession(fresh);

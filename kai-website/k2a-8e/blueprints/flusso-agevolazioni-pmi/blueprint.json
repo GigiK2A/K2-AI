@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-agevolazioni-pmi.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost di AgevolazioniBoost — diagnosi finanza agevolata PMI. docx 15-20 pp + bundle (XLSX simulazione benefici, dashboard HTML, JSON). GIA groundato (fronte A, D-031: numeri/% dal CATALOGO). Voci riconciliate con SKILL.md (workflow 6 step + deliverable §Step 6). Modellato sul pattern boost.",
+  "pacchetto": {
+    "skill": "flusso-agevolazioni-pmi",
+    "nome_commerciale": "AgevolazioniBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-agevolazioni-pmi/schemas/output-schema-agevolazioni.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": { "min": 15, "max": 20, "target": 17 },
+  "artefatti_bundle": [
+    { "id": "docx_report", "ruolo": "principale", "formato": "docx", "obbligatorio": true, "nota": "report piano agevolativo" },
+    { "id": "xlsx_simulatore", "ruolo": "modello vivo", "formato": "xlsx", "obbligatorio": true, "nota": "simulazione benefici 5 tab (input, matching, benefici, cumulabilita, roadmap)" },
+    { "id": "html_dashboard", "ruolo": "wow visivo", "formato": "html", "obbligatorio": true, "nota": "KPI beneficio, barre per strumento, timeline scadenze" },
+    { "id": "json_output", "ruolo": "dati", "formato": "json", "obbligatorio": true, "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0, "id": "copertina_profilo", "titolo": "Copertina, executive summary e profilo azienda", "pagine": { "min": 1, "max": 2 },
+      "argomenti_obbligatori": ["executive summary (beneficio totale stimato, top 3 strumenti, azioni immediate)", "ATECO", "dimensione UE (micro/piccola/media)", "regione", "forma giuridica", "investimenti pianificati"],
+      "funzione_psico": "registro titolare + picco d'apertura; beneficio in euro come accent" },
+    { "ord": 1, "id": "inquadramento_strumenti", "titolo": "Inquadramento strumenti applicabili", "pagine": { "min": 3, "max": 3 },
+      "argomenti_obbligatori": ["strumenti nazionali (Transizione 5.0, Nuova Sabatini, credito R&S, PNRR)", "strumenti regionali FESR/FSE", "tipo agevolazione per strumento (grant/tax credit/finanziamento/garanzia)"] },
+    { "ord": 2, "id": "verifica_requisiti", "titolo": "Verifica requisiti per strumento", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["requisiti soggettivi", "requisiti oggettivi", "ammissibilita per strumento candidato", "scoring di priorita"] },
+    { "ord": 3, "id": "de_minimis_cumulabilita", "titolo": "De minimis e cumulabilita", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["plafond de minimis dal catalogo (D-031)", "calcolo residuo/ESL", "regole di cumulo tra strumenti"] },
+    { "ord": 4, "id": "stima_benefici", "titolo": "Stima benefici", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["beneficio per strumento in euro", "% e massimali DAL CATALOGO (D-031)", "simulazione 3 scenari (base/ottimistico/massimo)"] },
+    { "ord": 5, "id": "roadmap_adempimenti", "titolo": "Roadmap documentale e adempimenti (24 mesi)", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["domande e scadenze", "prenotazione/interconnessione", "rendicontazione", "GANTT 24 mesi con semaforo urgenza"] },
+    { "ord": 6, "id": "conclusioni_prioritizzazione", "titolo": "Conclusioni e prioritizzazione", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["shortlist ordinata", "prossimi passi", "data di aggiornamento delle fonti", "disclaimer 'non sostituisce commercialista/consulente del lavoro' e handoff"],
+      "funzione_psico": "chiusura forte + handoff onesto + gancio monitoraggio" }
+  ],
+  "elementi_grafici_obbligatori": [
+    "KPI cards beneficio (base/ottimistico/de minimis residuo/n strumenti)",
+    "grafico a barre beneficio per strumento",
+    "timeline scadenze prossimi 12 mesi"
+  ],
+  "tabelle_obbligatorie": [
+    "shortlist strumenti con scoring di priorita",
+    "matrice cumulabilita strumenti",
+    "tabella benefici per strumento (% e massimali da catalogo)",
+    "roadmap scadenze con semaforo urgenza"
+  ],
+  "elementi_psico_trasversali": {
+    "beneficio_in_euro_concreto": "ogni beneficio quantificato in EUR, mai in aggettivi; distinguere potenziale vs ottenibile",
+    "fonti_deterministiche_catalogo": "% , massimali, plafond da k2a-catalogo (D-031); data di verifica obbligatoria",
+    "prioritizzazione_chiara": "shortlist ordinata per valore/accessibilita/urgenza",
+    "gancio_monitoraggio": "gancio onesto al retainer monitoraggio-bandi-pmi"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "ogni % e massimale ha fonte CATALOGO (D-031), mai a memoria", "severita": "errore" },
+    { "id": "R02", "regola": "de minimis con plafond risolto da catalogo", "severita": "errore" },
+    { "id": "R03", "regola": "stima benefici quantificata in euro", "severita": "errore" },
+    { "id": "R04", "regola": "nota 'verifica con consulente del lavoro/commercialista' dove dovuto (handoff)", "severita": "errore" },
+    { "id": "R05", "regola": "somma pagine entro pagine_totali.min..max", "severita": "errore" },
+    { "id": "R06", "regola": "tutte le voci presenti nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R07", "regola": "ogni argomento_obbligatorio rilevabile nella voce corrispondente", "severita": "errore" },
+    { "id": "R08", "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati", "severita": "errore" },
+    { "id": "R09", "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx", "severita": "warning" },
+    { "id": "R10", "regola": "tutte le tabelle_obbligatorie presenti nel docx", "severita": "warning" },
+    { "id": "R11", "regola": "json_output valida contro contratto_dati", "severita": "errore" },
+    { "id": "R12", "regola": "nessun prezzo hard-coded: prezzi del servizio risolti da catalogo a runtime", "severita": "warning" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "La diagnosi dice QUALI agevolazioni attivare e in che ordine. Il monitoraggio bandi continuativo (retainer) intercetta le nuove finestre. CTA dopo la quantificazione del beneficio.",
+    "nota_funnel": "tier_precedente reale = check-agevolazioni-express; tier_successivo reale = retainer monitoraggio-bandi-pmi"
+  }
+}

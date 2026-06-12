@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BuildBoost Output",
+  "type": "object",
+  "required": ["intervento", "urbanistica", "vincoli", "iter", "costi"],
+  "properties": {
+    "intervento": {
+      "type": "object",
+      "properties": {
+        "tipo": { "type": "string" },
+        "comune": { "type": "string" },
+        "indirizzo": { "type": "string" },
+        "catasto": { "type": "string" },
+        "superficie_mq": { "type": "number" },
+        "destinazione_attuale": { "type": "string" },
+        "destinazione_progetto": { "type": "string" }
+      }
+    },
+    "urbanistica": {
+      "type": "object",
+      "properties": {
+        "zona_prg": { "type": "string" },
+        "conforme": { "type": "boolean" },
+        "criticita": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "vincoli": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": { "type": "string" },
+          "presente": { "type": "boolean" },
+          "autorizzazione": { "type": "string" },
+          "tempo_gg": { "type": "integer" },
+          "stato": { "type": "string", "enum": ["ok", "da_verificare", "bloccante"] }
+        }
+      }
+    },
+    "iter": {
+      "type": "object",
+      "properties": {
+        "titolo_abilitativo": { "type": "string" },
+        "documenti": { "type": "array", "items": { "type": "object", "properties": { "nome": {"type": "string"}, "obbligatorio": {"type": "boolean"}, "stato": {"type": "string"} } } },
+        "tempo_totale_mesi": { "type": "number" },
+        "oneri_comunali_eur": { "type": "number" }
+      }
+    },
+    "costi": {
+      "type": "object",
+      "properties": {
+        "lavori_eur": { "type": "number" },
+        "professionisti_eur": { "type": "number" },
+        "oneri_eur": { "type": "number" },
+        "contingency_eur": { "type": "number" },
+        "totale_eur": { "type": "number" }
+      }
+    },
+    "fattibilita": {
+      "type": "string",
+      "enum": ["verde", "giallo", "rosso"]
+    }
+  }
+}

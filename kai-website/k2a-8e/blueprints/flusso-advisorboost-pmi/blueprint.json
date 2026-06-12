@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-advisorboost-pmi.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost di AdvisorBoost. Definisce indice canonico, range pagine, argomenti obbligatori, artefatti del bundle ed elementi grafici. Verificabile da linter. La forma vive qui; il 'come scrivere bene' resta nella skill; i dati validano contro contratto_dati.",
+  "pacchetto": {
+    "skill": "flusso-advisorboost-pmi",
+    "nome_commerciale": "AdvisorBoost",
+    "tier": "boost",
+    "tier_schema_dati": "pro"
+  },
+  "contratto_dati": "flusso-advisorboost-pmi/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": { "min": 36, "max": 46, "target": 40 },
+  "artefatti_bundle": [
+    { "id": "docx_report",   "ruolo": "principale", "formato": "docx", "obbligatorio": true,  "nota": "narrazione + raccomandazioni; oggetto di questo blueprint" },
+    { "id": "xlsx_cruscotto","ruolo": "modello vivo","formato": "xlsx", "obbligatorio": true,  "nota": "formule vive: IKEA effect / endowment" },
+    { "id": "html_dashboard","ruolo": "wow visivo",  "formato": "html", "obbligatorio": true,  "nota": "picco emotivo (peak-end)" },
+    { "id": "json_output",   "ruolo": "dati",        "formato": "json", "obbligatorio": true,  "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0,  "id": "copertina", "titolo": "Copertina", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["titolo deliverable", "denominazione azienda", "data", "committente", "versione", "riservatezza", "claim di chiusura"],
+      "funzione_psico": "identità coerente (autorità)" },
+    { "ord": 1,  "id": "toc", "titolo": "Indice", "pagine": { "min": 1, "max": 1 },
+      "argomenti_obbligatori": ["TOC automatico"] },
+    { "ord": 2,  "id": "executive_summary", "titolo": "Executive Summary", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["score globale 0-100 con giudizio", "stiamo sopravvivendo (semaforo)", "abbiamo vantaggio competitivo (semaforo)", "dove andiamo 36 mesi (opzione raccomandata)", "top 3 decisioni entro 30 giorni", "top 5 azioni con impatto EBITDA/fatturato in euro", "impatto cumulato 36 mesi (EBITDA delta, EV delta)"],
+      "funzione_psico": "registro TITOLARE (Sistema 1) + picco d'apertura (peak-end). Leggibile da solo.",
+      "vincolo": "non superare 2 pagine: e' il documento-nel-documento per chi non legge il resto" },
+    { "ord": 3,  "id": "chi_siamo_oggi", "titolo": "Chi siamo oggi", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["snapshot anagrafico", "cliente tipo", "mix ricavi", "milestone storiche", "organigramma", "mercato di riferimento"] },
+    { "ord": 4,  "id": "analisi_bilancio", "titolo": "Analisi di bilancio 3 anni", "pagine": { "min": 6, "max": 8 },
+      "argomenti_obbligatori": ["riclassificazione SP", "riclassificazione CE a valore aggiunto", "indici di redditualita (ROE/ROI/ROS/Du Pont)", "indici di solidita", "indici di liquidita (CCC)", "rendiconto finanziario", "self-financing", "alert CCII", "sintesi pratica del bilancio"],
+      "funzione_psico": "registro TECNICO (Sistema 2) + autorità dimostrata; semaforo accanto a ogni numero" },
+    { "ord": 5,  "id": "analisi_settore", "titolo": "Analisi di settore", "pagine": { "min": 4, "max": 5 },
+      "argomenti_obbligatori": ["definizione settore e confini", "dinamiche e lifecycle", "Porter 5 forze con scoring 1-5", "raggruppamenti strategici", "attrattivita complessiva e implicazioni"] },
+    { "ord": 6,  "id": "posizionamento", "titolo": "Posizionamento competitivo", "pagine": { "min": 4, "max": 5 },
+      "argomenti_obbligatori": ["catena del valore", "test VRIO", "core competencies", "fonti di vantaggio competitivo", "mappa posizionamento con competitor", "test difendibilita", "benchmark vs competitor", "tipo di vantaggio competitivo"] },
+    { "ord": 7,  "id": "opzioni_strategiche", "titolo": "Opzioni strategiche e raccomandazione", "pagine": { "min": 3, "max": 4 },
+      "argomenti_obbligatori": ["matrice Ansoff 4 opzioni", "make/buy/ally per opzione", "scoring attrattivita x fattibilita x rischio", "reazione competitor attesa", "opzione raccomandata + riserva", "condizioni di successo e fallimento"] },
+    { "ord": 8,  "id": "piano_eco_finanziario", "titolo": "Piano economico-finanziario 36 mesi", "pagine": { "min": 5, "max": 6 },
+      "argomenti_obbligatori": ["ipotesi base dichiarate", "budget economico 36 mesi", "budget finanziario / cash flow", "3 scenari (base/ottimistico/pessimistico)", "sensitivity 3 variabili", "enterprise value 3 metodi + valore raccomandato", "trigger di monitoraggio"] },
+    { "ord": 9,  "id": "azioni_prioritarie", "titolo": "Piano azioni prioritarie", "pagine": { "min": 5, "max": 6 },
+      "argomenti_obbligatori": ["da 5 a 8 azioni", "per azione: impatto EBITDA in euro", "fattibilita e rischi", "costo una tantum e ricorrente", "tempo in settimane", "responsabile", "milestone 30-60-90", "KPI di successo", "prima mossa entro 7 giorni"] },
+    { "ord": 10, "id": "cruscotto_kpi", "titolo": "Cruscotto KPI mensile proposto", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["da 8 a 15 KPI con target", "fonti dei dati", "frequenza aggiornamento", "responsabile aggiornamento", "lettura dei semafori"] },
+    { "ord": 11, "id": "conclusioni", "titolo": "Conclusioni e prossimi passi", "pagine": { "min": 1, "max": 2 },
+      "argomenti_obbligatori": ["ricap 3 decisioni entro 30 giorni", "proposta retainer mensile con valore atteso", "modalita di ingaggio follow-up", "disclaimer e note metodologiche", "contatti K2-AI"],
+      "funzione_psico": "chiusura forte (peak-end) + gancio onesto al Retainer (Zeigarnik) + CTA unica" }
+  ],
+  "elementi_grafici_obbligatori": [
+    "gauge score globale",
+    "line chart trend ricavi 3 anni storici + 3 anni proiezione",
+    "radar Porter 5 forze",
+    "scatter 2D mappa posizionamento con competitor",
+    "waterfall EBITDA scenario base",
+    "gantt azioni prioritarie",
+    "semaforo dei KPI chiave"
+  ],
+  "tabelle_obbligatorie": [
+    "riclassificazione SP 3 anni",
+    "riclassificazione CE a valore aggiunto",
+    "indici con benchmark e semaforo",
+    "tabella VRIO",
+    "matrice Ansoff",
+    "tabella 3 scenari",
+    "tabella azioni prioritarie"
+  ],
+  "elementi_psico_trasversali": {
+    "doppio_registro": "executive summary per il titolare (cap. 2) + dettaglio tecnico per chi esegue (cap. 4-8)",
+    "scala_del_valore": "mini-mappa 'sei qui': vedere -> capire -> RISOLVERE -> presidiare, con il Boost evidenziato",
+    "peak_end": "picco in executive summary (insight forte) + chiusura curata in conclusioni",
+    "concretezza_euro": "ogni impatto espresso in euro, mai in aggettivi",
+    "riprova_sociale_pari": "benchmark e percentile riferiti a PMI di settore/dimensione comparabili",
+    "accent_unico_per_pagina": "un solo elemento accent (semaforo, gauge o CTA) per schermata",
+    "cliente_eroe": "il titolare e' il protagonista; K2-AI e' il mentore, mai l'eroe"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "tutti i capitoli di indice_canonico presenti, nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R02", "regola": "somma pagine effettive entro pagine_totali.min..max", "severita": "errore" },
+    { "id": "R03", "regola": "pagine per capitolo entro il rispettivo range min..max", "severita": "warning" },
+    { "id": "R04", "regola": "ogni argomento_obbligatorio rilevabile (heading o keyword) nel capitolo corrispondente", "severita": "errore" },
+    { "id": "R05", "regola": "executive_summary non supera 2 pagine", "severita": "errore" },
+    { "id": "R06", "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati", "severita": "errore" },
+    { "id": "R07", "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx", "severita": "warning" },
+    { "id": "R08", "regola": "tutte le tabelle_obbligatorie presenti nel docx", "severita": "warning" },
+    { "id": "R09", "regola": "CTA retainer presente nel capitolo conclusioni", "severita": "errore" },
+    { "id": "R10", "regola": "disclaimer presente", "severita": "errore" },
+    { "id": "R11", "regola": "json_output valida contro contratto_dati (output-schema.json)", "severita": "errore" },
+    { "id": "R12", "regola": "nessun prezzo hard-coded: i prezzi (es. retainer) risolti da catalogo a runtime", "severita": "warning", "nota": "si lega al Nodo1 prezzi" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "audit",
+    "tier_successivo": "retainer",
+    "gancio": "Il piano vale finche' qualcuno lo tiene vivo: il Retainer e' chi lo presidia. CTA in chiusura, dopo il picco positivo."
+  }
+}

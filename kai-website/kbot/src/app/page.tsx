@@ -8,6 +8,7 @@ import { Composer } from "@/components/chat/Composer";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
 import { InsightPanel } from "@/components/insights/InsightPanel";
+import { ReportGenerator } from "@/components/report/ReportGenerator";
 import {
   sendMessage,
   streamMessage,
@@ -44,7 +45,7 @@ const REPORT_SUGGESTIONS = [
 ];
 
 const WELCOME_MESSAGE =
-  "Benvenuto. Sono K-BOT, l'analista K2-AI. Insieme produciamo il deliverable che ti serve: un'analisi/report (operativa, marketing, SEO, bilancio, fattibilità) oppure un documento operativo (calendario editoriale, piano contenuti, checklist, tabella Excel). Per partire, dimmi cosa ti preparo — o descrivi liberamente il tuo caso.\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il documento. Dettagli su /privacy._";
+  "Benvenuto. Sono K-BOT, l'analista K2-AI. Insieme produciamo il deliverable che ti serve: un'analisi/report (operativa, marketing, SEO, bilancio, fattibilità) oppure un documento operativo (calendario editoriale, piano contenuti, checklist, tabella Excel). Per partire, dimmi cosa ti preparo — o descrivi liberamente il tuo caso.\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il documento. Dettagli su /privacy.html._";
 
 function LoginFirstScreen() {
   return (
@@ -114,6 +115,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [composer, setComposer] = useState("");
   const [usedSkills, setUsedSkills] = useState<string[]>([]);
+  // Boost suggerito dal routing chat→catalogo (selettore): popolato da res.session
+  // a fine conversazione, fa comparire il DeliverablePanel generato via 8e.
+  const [suggestedBoost, setSuggestedBoost] = useState<{ id: string; label?: string } | null>(null);
   const [error, setError] = useState("");
   const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<
@@ -185,16 +189,24 @@ export default function HomePage() {
   }, [authLoading, isSignedIn]);
 
   /* Cross-bot bridge: when arriving from suite-ai widget with ?continue=<id>,
-     adopt that session id instead of creating a new one. Stripped after read
-     so a refresh doesn't keep forcing the bridge. */
+     adopt that session id instead of creating a new one. Also picks up the
+     pillar tag (scenario C) from ?tag= or sessionStorage["kbot.tag_pillar"]
+     set by the site (js/kbot-tag.js) → la sessione nasce col contesto del
+     pillar e il backend calcola il boost suggerito. Stripped after read. */
   useEffect(() => {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     const carry = url.searchParams.get("continue") || url.searchParams.get("kbot_session");
-    if (!carry) return;
-    void ensureSession({ mode: "report", adopt: carry });
+    let tag = url.searchParams.get("tag");
+    if (!tag) {
+      try { tag = sessionStorage.getItem("kbot.tag_pillar"); } catch { tag = null; }
+    }
+    if (!carry && !tag) return;
+    void ensureSession({ mode: "report", adopt: carry ?? undefined, tagPillar: tag ?? undefined });
     url.searchParams.delete("continue");
     url.searchParams.delete("kbot_session");
+    url.searchParams.delete("tag");
+    try { sessionStorage.removeItem("kbot.tag_pillar"); } catch { /* ignore */ }
     window.history.replaceState({}, "", url.toString());
   }, [ensureSession]);
 
@@ -210,8 +222,12 @@ export default function HomePage() {
 
   /* Per-conversation backend session: each sidebar conv must talk to its OWN
      kbot_sessions row, otherwise switching/creating conversations leaks
-     uploaded_files + analyzed_urls across topics (Juventus + k2-ai.it mix). */
+     uploaded_files + analyzed_urls across topics (es. un bilancio + un sito web). */
   useEffect(() => {
+    // Il boost suggerito appartiene alla CONVERSAZIONE: senza questo reset il
+    // pannello della chat precedente "rimaneva appiccicato" e compariva subito
+    // (col boost sbagliato) al 1° messaggio della chat nuova.
+    setSuggestedBoost(null);
     const convSid = activeConversation.kbotSessionId ?? null;
     const liveSid = kbotSession?.id ?? null;
     if (convSid && convSid !== liveSid) {
@@ -560,6 +576,13 @@ export default function HomePage() {
             (res.session?.extractedData as { used_skills?: string[] } | undefined)
               ?.used_skills ?? [];
           setUsedSkills(skills);
+          // Selettore di catalogo: il backend ha pre-scelto il Boost 8e → mostra il pannello.
+          const sess = res.session as
+            | { boostSuggerito?: string; boostSuggeritoLabel?: string }
+            | undefined;
+          if (sess?.boostSuggerito) {
+            setSuggestedBoost({ id: sess.boostSuggerito, label: sess.boostSuggeritoLabel });
+          }
           patchStub({
             content: res.message,
             reportReady: res.nextAction === "show_summary",
@@ -755,6 +778,12 @@ export default function HomePage() {
                 Le tue conversazioni vengono salvate sul tuo account. I documenti generati
                 restano disponibili in dashboard.
               </p>
+            )}
+            {/* Flusso ufficiale: quando il bot ha raccolto abbastanza (boost
+                instradato), UN bottone genera il report. Niente form da riempire:
+                gli input 8e sono auto-compilati dalla conversazione e dai file. */}
+            {kbotSession?.id && (kbotSession.boostSuggerito || suggestedBoost) && (
+              <ReportGenerator sessionId={kbotSession.id} getAuthToken={getToken} />
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}
             <div ref={messagesEndRef} />

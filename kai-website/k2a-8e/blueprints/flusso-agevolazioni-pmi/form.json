@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgevolazioniBoost — form input PMI",
+  "type": "object",
+  "required": ["settore_ateco", "dimensione", "regione"],
+  "properties": {
+    "settore_ateco": { "type": "string", "description": "codice ATECO o attivita" },
+    "dimensione": {
+      "type": "object",
+      "required": ["n_dipendenti"],
+      "properties": {
+        "n_dipendenti": { "type": "integer", "minimum": 0 },
+        "fatturato": { "type": ["number", "null"], "description": "EUR" },
+        "totale_attivo": { "type": ["number", "null"], "description": "EUR" }
+      }
+    },
+    "regione": { "type": "string", "description": "regione/provincia/comune (per bandi regionali, ZES, aree interne)" },
+    "forma_giuridica": { "type": "string", "enum": ["ditta_individuale", "snc", "sas", "srl", "srls", "spa", "cooperativa", "altro"] },
+    "investimenti_pianificati": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tipo"],
+        "properties": {
+          "tipo": { "type": "string", "enum": ["macchinari", "software", "brevetti", "formazione", "efficienza_energetica", "rd", "assunzioni", "export", "edilizia"] },
+          "importo_stimato": { "type": ["number", "null"], "description": "EUR" },
+          "timing": { "type": "string" }
+        }
+      }
+    },
+    "obiettivo_principale": { "type": "string" },
+    "agevolazioni_gia_fruite": { "type": "array", "items": { "type": "string" }, "description": "ultimi 3 anni, per calcolo de minimis residuo" },
+    "startup_pmi_innovativa": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

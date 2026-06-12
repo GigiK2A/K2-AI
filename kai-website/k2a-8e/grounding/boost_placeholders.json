@@ -1,0 +1,90 @@
+{
+  "_nota": "Generato da sync_assets.sh (k2a-skills/snapshot/build_snapshot.py manifest()).",
+  "_fonte": "inglucarossi73/k2a-skills",
+  "cruscotto-direzionale": [
+    "ctrl_cashflow",
+    "ctrl_churn",
+    "ctrl_dso",
+    "ctrl_ebitda",
+    "ctrl_scost",
+    "in_mese"
+  ],
+  "flusso-advisorboost-pmi": [
+    "dcf",
+    "multipli_ev",
+    "wacc"
+  ],
+  "flusso-buildboost-studio": [
+    "dpr380_10",
+    "dpr380_22",
+    "dpr380_24",
+    "dpr380_3",
+    "in_intervento"
+  ],
+  "flusso-financeboost-pmi": [
+    "benchmark_settore",
+    "ccc",
+    "ccn",
+    "current_ratio",
+    "de",
+    "ebitda_margin",
+    "in_bilanci",
+    "in_settore",
+    "quick_ratio",
+    "roe",
+    "roi",
+    "ros"
+  ],
+  "flusso-fiscoboost-pmi": [
+    "in_regime",
+    "iva_16",
+    "iva_19",
+    "ravvedimento_13",
+    "tuir_102",
+    "tuir_109",
+    "tuir_11",
+    "tuir_83",
+    "tuir_96"
+  ],
+  "flusso-hostboost-ricettive": [
+    "adr",
+    "goppar",
+    "in_struttura",
+    "occupancy",
+    "revpar",
+    "revpar_zona"
+  ],
+  "flusso-legalboost-pmi": [
+    "cc_1341",
+    "cc_1342",
+    "dlgs231_25septies"
+  ],
+  "flusso-mepboost-studio": [
+    "dm37_15",
+    "dm37_5",
+    "dm37_6",
+    "dm37_7",
+    "in_edificio"
+  ],
+  "flusso-safetyboost-studio": [
+    "cp_437",
+    "cp_451",
+    "cp_589",
+    "cp_590",
+    "in_cantiere"
+  ],
+  "flusso-strategyboost-pmi": [
+    "in_competitor"
+  ],
+  "flusso-webboost-pmi": [
+    "in_url",
+    "keyword_dataset"
+  ],
+  "check-fiscale-express": [],
+  "check-pmi-express": [],
+  "check-salute-finanziaria": [],
+  "check-edilizia-express": [],
+  "check-impianti-express": [],
+  "check-legale-express": [],
+  "check-sicurezza-express": []
+}

@@ -65,3 +65,4 @@ __pycache__/
 
 # K-BOT generated reports (PII, non versionare)
 kai-website/kbot/data/reports/
+k2a-ecosystem/

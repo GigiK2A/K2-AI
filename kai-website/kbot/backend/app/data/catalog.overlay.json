@@ -1,0 +1,27 @@
+{
+  "_nota": "Overlay Luigi (marketing/funnel) sopra il catalog di Luca (k2a-catalogo, D-040). Il catalog di Luca è fonte di verità per prezzi/blueprint; questo aggiunge solo lo strato SEO scenario C: tag_pillar_sito P01-P20 → servizi. Fuso da build_catalog.py.",
+  "tipi_listino": {
+    "consumo":  { "label": "Check Express", "ruolo": "entry" },
+    "tappa":    { "label": "Tappa percorso", "ruolo": "intermedio" },
+    "servizio": { "label": "Boost", "ruolo": "destinazione" },
+    "retainer": { "label": "Abbonamento", "ruolo": "post-boost" }
+  },
+  "mapping_tag_to_servizi": {
+    "P02": { "boost_primario": "checkup_fiscale" },
+    "P03": { "boost_primario": "primo_parere_legale" },
+    "P04": { "boost_primario": "checkup_edilizia" },
+    "P08": { "boost_primario": "checkup_sicurezza_safetyboost" },
+    "P09": { "boost_primario": "checkup_controllo" },
+    "P11": { "boost_primario": "checkup_seo" },
+    "P12": { "boost_primario": "checkup_advisor" },
+    "P13": { "boost_primario": "checkup_agevolazioni" },
+    "P19": { "boost_primario": "checkup_energia" },
+    "P20": { "boost_primario": "checkup_hospitality" }
+  },
+  "_pillar_high_touch": {
+    "_nota": "Pillar SEO senza boost generabile 8e → funnel high-touch (lead Airtable → call). Nessun blueprint.",
+    "lista": ["P01", "P05", "P06", "P07", "P10", "P14", "P15", "P16", "P17", "P18"]
+  },
+  "percorsi": [],
+  "abbonamenti": []
+}

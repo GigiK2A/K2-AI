@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-safetyboost-studio.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost (SafetyBoost). Derivato dai file reali flusso-safetyboost-studio/assets/template-*.md e schemas/output-schema.json. Replica il pattern del boost HostBoost.",
+  "pacchetto": {
+    "skill": "flusso-safetyboost-studio",
+    "nome_commerciale": "SafetyBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-safetyboost-studio/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": {
+    "min": 15,
+    "max": 20,
+    "target": 17
+  },
+  "artefatti_bundle": [
+    {
+      "id": "docx_report",
+      "ruolo": "principale",
+      "formato": "docx",
+      "obbligatorio": true,
+      "nota": "report executive; oggetto del blueprint"
+    },
+    {
+      "id": "xlsx_modello",
+      "ruolo": "modello vivo",
+      "formato": "xlsx",
+      "obbligatorio": true,
+      "nota": "costi sicurezza con incidenza % (Allegato XV)"
+    },
+    {
+      "id": "html_dashboard",
+      "ruolo": "wow visivo",
+      "formato": "html",
+      "obbligatorio": true,
+      "nota": "dashboard KPI (Chart.js)"
+    },
+    {
+      "id": "json_output",
+      "ruolo": "dati",
+      "formato": "json",
+      "obbligatorio": true,
+      "nota": "valida contro contratto_dati"
+    }
+  ],
+  "voci": [
+    {
+      "ord": 0,
+      "id": "copertina",
+      "titolo": "Copertina",
+      "argomenti_obbligatori": [
+        "titolo SafetyBoost + cantiere",
+        "data",
+        "logo"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      }
+    },
+    {
+      "ord": 1,
+      "id": "premessa_normativa",
+      "titolo": "Premessa e quadro normativo",
+      "argomenti_obbligatori": [
+        "riferimenti D.Lgs. 81/2008 e Allegato XV"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      },
+      "funzione_psico": "apertura"
+    },
+    {
+      "ord": 2,
+      "id": "descrizione_cantiere",
+      "titolo": "Descrizione cantiere/attivita",
+      "argomenti_obbligatori": [
+        "natura opera",
+        "fasi lavorative",
+        "soggetti coinvolti"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 3,
+      "id": "obblighi_normativi",
+      "titolo": "Obblighi normativi",
+      "argomenti_obbligatori": [
+        "PSC, CSP, CSE, notifica, POS, DUVRI"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 4,
+      "id": "analisi_rischi",
+      "titolo": "Analisi rischi",
+      "argomenti_obbligatori": [
+        "matrice rischi per fase lavorativa",
+        "rischi da interferenze",
+        "rischi specifici (amianto, spazi confinati)"
+      ],
+      "pagine": {
+        "min": 4,
+        "max": 4
+      }
+    },
+    {
+      "ord": 5,
+      "id": "misure_prevenzione",
+      "titolo": "Misure di prevenzione e protezione",
+      "argomenti_obbligatori": [
+        "misure collettive, DPI, procedure, segnaletica per fase",
+        "layout cantiere"
+      ],
+      "pagine": {
+        "min": 3,
+        "max": 3
+      }
+    },
+    {
+      "ord": 6,
+      "id": "stima_costi",
+      "titolo": "Stima costi sicurezza",
+      "argomenti_obbligatori": [
+        "tabella analitica voci Allegato XV",
+        "incidenza % e confronto benchmark"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 7,
+      "id": "piano_formazione",
+      "titolo": "Piano formazione e sorveglianza sanitaria",
+      "argomenti_obbligatori": [
+        "tabella soggetto/corso/durata/scadenza/costo",
+        "protocollo sorveglianza"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 8,
+      "id": "responsabilita_legali",
+      "titolo": "Responsabilita legali",
+      "argomenti_obbligatori": [
+        "posizioni di garanzia per soggetto",
+        "sanzioni principali",
+        "raccomandazioni tutela"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 9,
+      "id": "conclusioni_azioni",
+      "titolo": "Conclusioni e azioni",
+      "argomenti_obbligatori": [
+        "sintesi",
+        "azioni prioritarie",
+        "prossimo passo / proposta continuativa (prezzo da catalogo)"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      },
+      "funzione_psico": "chiusura + gancio retainer"
+    }
+  ],
+  "elementi_grafici_obbligatori": [
+    "matrice rischi per fase lavorativa (heatmap)",
+    "grafico incidenza costi sicurezza vs benchmark"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella obblighi PSC CSP CSE notifica POS DUVRI",
+    "matrice rischi per fase lavorativa",
+    "tabella analitica voci Allegato XV",
+    "tabella formazione soggetto corso durata scadenza costo"
+  ],
+  "elementi_psico_trasversali": {
+    "doppio_registro": "sintesi per il titolare + dettaglio tecnico per chi esegue",
+    "peak_end": "picco in apertura + chiusura curata in conclusioni",
+    "concretezza_euro": "ogni impatto/costo espresso in euro",
+    "riprova_sociale_pari": "benchmark di settore/dimensione comparabili",
+    "cliente_eroe": "il titolare e il protagonista; K2-AI e il mentore tecnico"
+  },
+  "regole_validazione_linter": [
+    {
+      "id": "R01",
+      "regola": "tutti i capitoli presenti nell'ordine 'ord'",
+      "severita": "errore"
+    },
+    {
+      "id": "R02",
+      "regola": "somma pagine entro pagine_totali.min..max",
+      "severita": "errore"
+    },
+    {
+      "id": "R03",
+      "regola": "pagine per capitolo entro il rispettivo range",
+      "severita": "warning"
+    },
+    {
+      "id": "R04",
+      "regola": "ogni argomento_obbligatorio rilevabile nel capitolo corrispondente",
+      "severita": "errore"
+    },
+    {
+      "id": "R05",
+      "regola": "la sezione di sintesi iniziale (executive/premessa) entro 1 pagina",
+      "severita": "errore"
+    },
+    {
+      "id": "R06",
+      "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati",
+      "severita": "errore"
+    },
+    {
+      "id": "R07",
+      "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx",
+      "severita": "warning"
+    },
+    {
+      "id": "R08",
+      "regola": "tutte le tabelle_obbligatorie presenti nel docx",
+      "severita": "warning"
+    },
+    {
+      "id": "R09",
+      "regola": "CTA verso il passo successivo presente nel capitolo conclusioni/prossimo_passo",
+      "severita": "errore"
+    },
+    {
+      "id": "R10",
+      "regola": "disclaimer presente",
+      "severita": "errore"
+    },
+    {
+      "id": "R11",
+      "regola": "json_output valida contro contratto_dati (output-schema.json)",
+      "severita": "errore"
+    },
+    {
+      "id": "R12",
+      "regola": "nessun prezzo hard-coded: i prezzi risolti da catalogo a runtime",
+      "severita": "warning",
+      "nota": "Nodo1 prezzi"
+    }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "Il piano sicurezza va presidiato: il passo successivo e l'affiancamento continuativo."
+  }
+}

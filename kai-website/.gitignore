@@ -21,3 +21,4 @@ src/public/k2ai-live-*
 # Python cache
 __pycache__/
 *.pyc
+kbot/mock-8e/.venv/

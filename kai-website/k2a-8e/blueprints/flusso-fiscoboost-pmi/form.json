@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FiscoBoost — form input PMI",
+  "type": "object",
+  "required": ["forma_giuridica", "regime_fiscale", "settore_ateco", "n_dipendenti"],
+  "properties": {
+    "forma_giuridica": { "type": "string", "enum": ["ditta_individuale", "snc", "sas", "srl", "srls", "spa", "cooperativa", "altro"] },
+    "regime_fiscale": { "type": "string", "enum": ["ordinario", "semplificato", "forfettario"] },
+    "settore_ateco": { "type": "string", "description": "codice ATECO o descrizione settore" },
+    "n_dipendenti": { "type": "integer", "minimum": 0 },
+    "regione": { "type": "string", "description": "regione (per IRAP e benchmark)" },
+    "fatturato": { "type": ["number", "null"], "description": "ricavi/compensi ultimo anno, EUR" },
+    "costi_totali": { "type": ["number", "null"], "description": "costi deducibili ultimo anno, EUR" },
+    "utile_ante_imposte": { "type": ["number", "null"], "description": "EUR" },
+    "beni_strumentali": { "type": "boolean", "description": "possiede/acquista beni strumentali" },
+    "investimenti_previsti": { "type": "array", "items": { "type": "string", "enum": ["macchinari", "software", "digitalizzazione_4_0", "rd_innovazione", "formazione", "immobili", "veicoli"] } },
+    "opera_estero": { "type": "boolean" },
+    "agevolazioni_gia_fruite": { "type": "array", "items": { "type": "string" }, "description": "es. transizione5, sabatini, de_minimis" },
+    "periodicita_iva": { "type": "string", "enum": ["mensile", "trimestrale", "non_applicabile"] }
+  },
+  "additionalProperties": false
+}

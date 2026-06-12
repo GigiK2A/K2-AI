@@ -93,6 +93,12 @@ const KBOT_PYTHON_PORT = Number(process.env.KBOT_PYTHON_PORT || 8000);
 const KBOT_PYTHON_DIR = process.env.KBOT_PYTHON_DIR || path.join(__dirname, 'kbot-backend');
 const KBOT_PYTHON_BIN = process.env.KBOT_PYTHON_BIN || '/usr/bin/python3';
 
+// Motore 8e (generazione deliverable Boost) — co-processo nello stesso container,
+// loopback only. Il backend kbot lo raggiunge via K2A_8E_BASE_URL=127.0.0.1:8800.
+let engine8eProcess = null;
+const ENGINE_8E_PORT = Number(process.env.ENGINE_8E_PORT || 8800);
+const ENGINE_8E_DIR = process.env.ENGINE_8E_DIR || path.join(__dirname, 'engine-8e');
+
 function startKbotPythonBackend() {
   if (!fs.existsSync(path.join(KBOT_PYTHON_DIR, 'app', 'main.py'))) {
     console.warn(`Python backend not found at ${KBOT_PYTHON_DIR}; skipping spawn.`);
@@ -112,6 +118,27 @@ function startKbotPythonBackend() {
     console.error(`K-BOT Python backend exited code=${code ?? 'null'} signal=${signal ?? 'null'}`);
   });
   console.log(`K-BOT Python backend spawning on 127.0.0.1:${KBOT_PYTHON_PORT}`);
+}
+
+function startEngine8e() {
+  if (!fs.existsSync(path.join(ENGINE_8E_DIR, 'app', 'main.py'))) {
+    console.warn(`8e engine not found at ${ENGINE_8E_DIR}; skipping spawn.`);
+    return;
+  }
+  engine8eProcess = spawn(
+    KBOT_PYTHON_BIN,
+    ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', String(ENGINE_8E_PORT)],
+    {
+      cwd: ENGINE_8E_DIR,
+      env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      stdio: ['ignore', 'inherit', 'inherit'],
+    },
+  );
+  engine8eProcess.on('exit', (code, signal) => {
+    engine8eProcess = null;
+    console.error(`8e engine exited code=${code ?? 'null'} signal=${signal ?? 'null'}`);
+  });
+  console.log(`8e engine spawning on 127.0.0.1:${ENGINE_8E_PORT}`);
 }
 
 function proxyKbotPython(req, res, rawPath, rawQuery) {
@@ -2608,7 +2635,17 @@ const server = http.createServer((req, res) => {
     // under /api/kbot/* is anonymous LLM/PDF work — cap at 20 req/min/IP.
     if (rawPath !== '/api/stripe/webhook') {
       const ip = clientIp(req);
-      const check = checkRateLimit('kbot:ip', ip, 20, 60_000);
+      // Il polling di stato (GET deliverables/{job_id}, status) è una lettura
+      // cheap e frequente per natura: durante una generazione 8e lunga (minuti)
+      // il frontend polla ogni ~2s e supererebbe 20/min, scattando l'anti-abuse.
+      // Cap generoso separato per il polling; tutto il resto (LLM/PDF, POST) a 20/min.
+      const isStatusPoll = req.method === 'GET' && (
+        /^\/api\/kbot\/deliverables\/[^/]+$/.test(rawPath) ||
+        rawPath.startsWith('/api/kbot/status')
+      );
+      const check = isStatusPoll
+        ? checkRateLimit('kbot-poll:ip', ip, 240, 60_000)
+        : checkRateLimit('kbot:ip', ip, 20, 60_000);
       if (!check.ok) {
         sendRateLimited(res, rawPath, { key: ip, bucket: 'ip', resetAt: check.resetAt });
         return;
@@ -2731,6 +2768,7 @@ const server = http.createServer((req, res) => {
 
 startKbotStandalone();
 startKbotPythonBackend();
+startEngine8e();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`K2-AI website listening on ${PORT}`);

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FiscoBoost — output deliverable",
+  "type": "object",
+  "required": ["meta", "sintesi", "voci", "piano_azione", "disclaimer"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["servizio", "versione", "data", "azienda"],
+      "properties": {
+        "servizio": { "const": "FiscoBoost" },
+        "versione": { "type": "string" },
+        "data": { "type": "string" },
+        "azienda": { "type": "string" }
+      }
+    },
+    "sintesi": {
+      "type": "object",
+      "required": ["score_fiscale", "mappa_aree"],
+      "properties": {
+        "score_fiscale": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "carico_fiscale_stimato": { "type": ["number", "null"], "description": "EUR, con status fonte" },
+        "mappa_aree": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["area", "semaforo"],
+            "properties": {
+              "area": { "type": "string" },
+              "semaforo": { "enum": ["verde", "giallo", "rosso"] }
+            }
+          }
+        }
+      }
+    },
+    "voci": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "titolo", "contenuto", "rischi_opportunita", "azioni", "fonti"],
+        "properties": {
+          "id": { "type": "string" },
+          "titolo": { "type": "string" },
+          "contenuto": { "type": "string" },
+          "rischi_opportunita": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["descrizione", "tipo", "serve_commercialista"],
+              "properties": {
+                "descrizione": { "type": "string" },
+                "tipo": { "enum": ["rischio", "opportunita"] },
+                "gravita": { "enum": ["bassa", "media", "alta"] },
+                "norma_rif": { "type": "string" },
+                "serve_commercialista": { "type": "boolean" }
+              }
+            }
+          },
+          "azioni": { "type": "array", "items": { "type": "string" } },
+          "fonti": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["riferimento", "fonte"],
+              "properties": {
+                "riferimento": { "type": "string" },
+                "fonte": { "enum": ["normattiva", "override_locale", "catalogo", "eur-lex", "route-esterna"] },
+                "status": { "type": "string", "description": "es. 'da confermare anno d'imposta'" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "piano_azione": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["priorita", "azione", "handoff_commercialista"],
+        "properties": {
+          "priorita": { "type": "integer", "minimum": 1 },
+          "azione": { "type": "string" },
+          "handoff_commercialista": { "type": "boolean" }
+        }
+      }
+    },
+    "disclaimer": { "type": "string" }
+  },
+  "additionalProperties": false
+}

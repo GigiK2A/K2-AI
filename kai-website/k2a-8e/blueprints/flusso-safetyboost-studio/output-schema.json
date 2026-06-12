@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SafetyBoost Output",
+  "type": "object",
+  "required": ["cantiere", "obblighi", "rischi", "costi_sicurezza", "formazione"],
+  "properties": {
+    "cantiere": {
+      "type": "object",
+      "properties": {
+        "tipo": { "type": "string" },
+        "localizzazione": { "type": "string" },
+        "durata_gg": { "type": "integer" },
+        "uomini_giorno": { "type": "integer" },
+        "importo_lavori": { "type": "number" },
+        "num_imprese": { "type": "integer" }
+      }
+    },
+    "obblighi": {
+      "type": "object",
+      "properties": {
+        "psc_necessario": { "type": "boolean" },
+        "csp_necessario": { "type": "boolean" },
+        "cse_necessario": { "type": "boolean" },
+        "notifica_necessaria": { "type": "boolean" }
+      }
+    },
+    "rischi": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fase": { "type": "string" },
+          "rischio": { "type": "string" },
+          "p": { "type": "integer" },
+          "d": { "type": "integer" },
+          "r": { "type": "integer" },
+          "misura": { "type": "string" },
+          "dpi": { "type": "string" }
+        }
+      }
+    },
+    "costi_sicurezza": {
+      "type": "object",
+      "properties": {
+        "apprestamenti": { "type": "number" },
+        "misure_preventive": { "type": "number" },
+        "dpi": { "type": "number" },
+        "impianti": { "type": "number" },
+        "procedure": { "type": "number" },
+        "totale": { "type": "number" },
+        "incidenza_pct": { "type": "number" }
+      }
+    },
+    "formazione": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ruolo": { "type": "string" },
+          "corso": { "type": "string" },
+          "durata_ore": { "type": "integer" },
+          "costo_eur": { "type": "number" },
+          "stato": { "type": "string", "enum": ["completato", "da_fare", "scaduto"] }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MEPBoost — form input",
+  "type": "object",
+  "required": ["tipologia_edificio", "superficie_mq", "comune"],
+  "properties": {
+    "tipologia_edificio": { "type": "string", "description": "tipologia (residenziale, uffici, commerciale, industriale, ricettivo)" },
+    "superficie_mq": { "type": "number", "minimum": 0 },
+    "comune": { "type": "string", "description": "comune (per zona climatica e gradi-giorno)" },
+    "classe_energetica_attuale": { "type": ["string", "null"], "description": "classe APE attuale se nota" },
+    "impianto_elettrico": {
+      "type": "object",
+      "properties": {
+        "anno": { "type": ["integer", "null"] },
+        "dichiarazione_conformita": { "type": ["boolean", "null"], "description": "presenza DdC (DM 37/2008)" }
+      }
+    },
+    "impianto_termico": {
+      "type": "object",
+      "properties": {
+        "generatore_tipo": { "type": ["string", "null"], "description": "caldaia/pompa di calore/ibrido" },
+        "generatore_anno": { "type": ["integer", "null"] }
+      }
+    },
+    "consumi_annui": {
+      "type": "object",
+      "properties": {
+        "elettrico_kwh": { "type": ["number", "null"] },
+        "gas_smc": { "type": ["number", "null"] },
+        "costo_annuo_eur": { "type": ["number", "null"] }
+      }
+    }
+  },
+  "additionalProperties": false
+}

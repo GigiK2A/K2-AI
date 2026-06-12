@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/check-legale-express.check.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del Check Legale Express (pagellino legale-compliance PMI). html-single-page, ingresso del funnel LegalBoost. Orientamento, NON consulenza legale (D-034). Modellato su check-sicurezza-express.",
+  "pacchetto": {
+    "skill": "check-legale-express",
+    "nome_commerciale": "Check Legale Express",
+    "tier": "check",
+    "posizione_funnel": "ingresso / lead magnet"
+  },
+  "contratto_dati": "check-legale-express/schemas/output-schema.json",
+  "formato_primario": "html-single-page",
+  "paginato": false,
+  "vincoli_formato": { "peso_kb_max": 80, "mobile_first": true, "dipendenze_esterne": "nessuna (SVG/CSS/JS vanilla)", "tempo_caricamento_s_max": 1, "stampabile_pagine_a4": "2-3" },
+  "voci": [
+    { "ord": 0, "id": "header", "titolo": "Header", "argomenti_obbligatori": ["logo K2-AI", "titolo con nome azienda", "data"] },
+    { "ord": 1, "id": "hero_score", "titolo": "Hero score", "argomenti_obbligatori": ["gauge 0-100", "giudizio testuale (fascia)", "sintesi diagnosi in 1 riga"],
+      "funzione_psico": "information gap + picco visivo; gauge above the fold" },
+    { "ord": 2, "id": "semafori_6", "titolo": "6 aree legali-compliance", "argomenti_obbligatori": ["Contrattualistica", "Privacy & dati", "Lavoro", "Societario & adempimenti", "IP & marchi", "Fiscale-orientamento"],
+      "vincolo": "esattamente 6 card, ognuna con semaforo + commento",
+      "funzione_psico": "riprova sociale + semaforo prima del giudizio" },
+    { "ord": 3, "id": "top_3_rischi", "titolo": "I 3 rischi su cui agire", "argomenti_obbligatori": ["3 rischi collegati alle aree peggiori", "per ciascuno: prima mossa pratica", "flag 'serve avvocato' dove rilevante"],
+      "funzione_psico": "loss aversion + handoff onesto" },
+    { "ord": 4, "id": "cta", "titolo": "CTA verso il tier successivo", "argomenti_obbligatori": ["headline orientata al desiderio", "cosa include LegalBoost (max 3 bullet)", "prezzo risolto da catalogo (NON hardcoded)", "CTA unica (call gratuita)", "fallback email"],
+      "funzione_psico": "gancio onesto: questo è il COSA, sopra la diagnosi completa. CTA unica (Hick's law)." },
+    { "ord": 5, "id": "dettagli_tecnici", "titolo": "Dettagli e metodologia (collapsable)", "argomenti_obbligatori": ["dati input usati", "metodologia scoring", "limiti dichiarati", "disclaimer di non-sostituzione (D-034)"],
+      "funzione_psico": "frizione buona" },
+    { "ord": 6, "id": "footer", "titolo": "Footer", "argomenti_obbligatori": ["data generazione", "versione skill", "contatti K2-AI", "disclaimer breve"] }
+  ],
+  "elementi_obbligatori": ["gauge SVG 0-100 a 3 zone", "6 card semaforo aree", "3 card rischi", "banner CTA"],
+  "elementi_psico_trasversali": {
+    "scala_del_valore": "mini-mappa 'sei qui': VEDERE -> capire -> risolvere -> presidiare, con VEDERE evidenziato",
+    "accent_unico": "il gauge è l'unico elemento dominante della prima schermata",
+    "confine_etico": "orientamento, non consulenza; punti rossi → avvocato (D-034)",
+    "cliente_eroe": "seconda persona singolare, tono diretto, zero gergo legale",
+    "etica": "diagnosi reale e utile da sola: niente teaser frustrante"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "tutte le 7 sezioni di struttura_canonica presenti nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R02", "regola": "esattamente 6 card semaforo con le 6 aree attese", "severita": "errore" },
+    { "id": "R03", "regola": "esattamente 3 card rischi", "severita": "errore" },
+    { "id": "R04", "regola": "gauge 0-100 presente con giudizio testuale coerente", "severita": "errore" },
+    { "id": "R05", "regola": "CTA unica verso il tier successivo presente", "severita": "errore" },
+    { "id": "R06", "regola": "peso file <= 80 KB e nessuna dipendenza esterna", "severita": "warning" },
+    { "id": "R07", "regola": "disclaimer di non-sostituzione presente (hero/footer/dettagli)", "severita": "errore" },
+    { "id": "R08", "regola": "json_output valida contro contratto_dati", "severita": "errore" },
+    { "id": "R09", "regola": "nessun prezzo hard-coded: prezzo del tier sopra risolto da catalogo a runtime", "severita": "warning" },
+    { "id": "R10", "regola": "tono: nessun termine gergale legale non spiegato in lista nera", "severita": "warning" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": null,
+    "tier_successivo": "boost",
+    "gancio": "Questa pagella è il COSA. LegalBoost ti dà la diagnosi completa e il piano d'azione. CTA dopo il picco (peak-end)."
+  },
+  "conteggi_attesi": { "card_semaforo": 6, "criticita": 3 }
+}

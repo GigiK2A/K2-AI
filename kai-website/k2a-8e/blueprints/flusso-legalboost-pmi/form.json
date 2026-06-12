@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LegalBoost — form input PMI",
+  "type": "object",
+  "required": ["forma_giuridica", "settore_ateco", "n_dipendenti"],
+  "properties": {
+    "forma_giuridica": { "type": "string", "enum": ["ditta_individuale", "snc", "sas", "srl", "srls", "spa", "cooperativa", "altro"] },
+    "settore_ateco": { "type": "string", "description": "codice ATECO o descrizione settore" },
+    "n_dipendenti": { "type": "integer", "minimum": 0 },
+    "fatturato": { "type": ["number", "null"], "description": "opzionale, EUR" },
+    "ha_sito_ecommerce": { "type": "boolean" },
+    "tratta_dati_personali": { "type": "array", "items": { "type": "string", "enum": ["clienti", "dipendenti", "marketing", "fornitori", "videosorveglianza"] } },
+    "usa_ai_profilazione": { "type": "boolean" },
+    "ha_contratti_standard": { "type": "boolean" },
+    "opera_estero": { "type": "boolean" },
+    "ha_marchio": { "type": "boolean" },
+    "ha_modello_231": { "type": "boolean" },
+    "settore_regolato": { "type": "boolean", "description": "es. finanziario, sanitario, alimentare, energia" }
+  },
+  "additionalProperties": false
+}

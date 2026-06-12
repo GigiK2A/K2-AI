@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-buildboost-studio.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost (BuildBoost). Derivato dai file reali flusso-buildboost-studio/assets/template-*.md e schemas/output-schema.json. Replica il pattern del boost HostBoost.",
+  "pacchetto": {
+    "skill": "flusso-buildboost-studio",
+    "nome_commerciale": "BuildBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-buildboost-studio/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": {
+    "min": 15,
+    "max": 20,
+    "target": 17
+  },
+  "artefatti_bundle": [
+    {
+      "id": "docx_report",
+      "ruolo": "principale",
+      "formato": "docx",
+      "obbligatorio": true,
+      "nota": "report executive; oggetto del blueprint"
+    },
+    {
+      "id": "xlsx_modello",
+      "ruolo": "modello vivo",
+      "formato": "xlsx",
+      "obbligatorio": true,
+      "nota": "cronoprogramma fasi e scadenze"
+    },
+    {
+      "id": "html_dashboard",
+      "ruolo": "wow visivo",
+      "formato": "html",
+      "obbligatorio": true,
+      "nota": "dashboard KPI (Chart.js)"
+    },
+    {
+      "id": "json_output",
+      "ruolo": "dati",
+      "formato": "json",
+      "obbligatorio": true,
+      "nota": "valida contro contratto_dati"
+    }
+  ],
+  "voci": [
+    {
+      "ord": 0,
+      "id": "copertina",
+      "titolo": "Copertina",
+      "argomenti_obbligatori": [
+        "titolo BuildBoost + intervento",
+        "data",
+        "logo"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      }
+    },
+    {
+      "ord": 1,
+      "id": "premessa_inquadramento",
+      "titolo": "Premessa e inquadramento",
+      "argomenti_obbligatori": [
+        "oggetto intervento",
+        "inquadramento generale"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      },
+      "funzione_psico": "apertura"
+    },
+    {
+      "ord": 2,
+      "id": "descrizione_intervento",
+      "titolo": "Descrizione intervento e stato attuale",
+      "argomenti_obbligatori": [
+        "dati catastali, destinazione d'uso, consistenza",
+        "stato attuale"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 3,
+      "id": "verifica_urbanistica",
+      "titolo": "Verifica urbanistica",
+      "argomenti_obbligatori": [
+        "conformita urbanistica",
+        "titolo abilitativo corretto"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 4,
+      "id": "analisi_vincoli",
+      "titolo": "Analisi vincoli",
+      "argomenti_obbligatori": [
+        "tabella vincoli: tipo, norma, ente, stato, tempo autorizzazione"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 5,
+      "id": "iter_autorizzativo",
+      "titolo": "Iter autorizzativo",
+      "argomenti_obbligatori": [
+        "sequenza pratiche",
+        "tabella documento/stato/responsabile",
+        "tempistiche"
+      ],
+      "pagine": {
+        "min": 3,
+        "max": 3
+      }
+    },
+    {
+      "ord": 6,
+      "id": "stima_costi_tempi",
+      "titolo": "Stima costi e tempi",
+      "argomenti_obbligatori": [
+        "stima costi",
+        "cronoprogramma Gantt semplificato"
+      ],
+      "pagine": {
+        "min": 3,
+        "max": 3
+      }
+    },
+    {
+      "ord": 7,
+      "id": "sicurezza_agibilita",
+      "titolo": "Sicurezza e agibilita",
+      "argomenti_obbligatori": [
+        "adempimenti sicurezza",
+        "requisiti agibilita"
+      ],
+      "pagine": {
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "ord": 8,
+      "id": "conclusioni_prossimi_passi",
+      "titolo": "Conclusioni e prossimi passi",
+      "argomenti_obbligatori": [
+        "sintesi",
+        "azioni prioritarie",
+        "prossimo passo / proposta continuativa (prezzo da catalogo)"
+      ],
+      "pagine": {
+        "min": 1,
+        "max": 1
+      },
+      "funzione_psico": "chiusura + gancio retainer"
+    }
+  ],
+  "elementi_grafici_obbligatori": [
+    "cronoprogramma Gantt semplificato"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella dati catastali destinazione consistenza",
+    "tabella vincoli tipo norma ente stato tempo",
+    "tabella iter documento stato responsabile"
+  ],
+  "elementi_psico_trasversali": {
+    "doppio_registro": "sintesi per il titolare + dettaglio tecnico per chi esegue",
+    "peak_end": "picco in apertura + chiusura curata in conclusioni",
+    "concretezza_euro": "ogni impatto/costo espresso in euro",
+    "riprova_sociale_pari": "benchmark di settore/dimensione comparabili",
+    "cliente_eroe": "il titolare e il protagonista; K2-AI e il mentore tecnico"
+  },
+  "regole_validazione_linter": [
+    {
+      "id": "R01",
+      "regola": "tutti i capitoli presenti nell'ordine 'ord'",
+      "severita": "errore"
+    },
+    {
+      "id": "R02",
+      "regola": "somma pagine entro pagine_totali.min..max",
+      "severita": "errore"
+    },
+    {
+      "id": "R03",
+      "regola": "pagine per capitolo entro il rispettivo range",
+      "severita": "warning"
+    },
+    {
+      "id": "R04",
+      "regola": "ogni argomento_obbligatorio rilevabile nel capitolo corrispondente",
+      "severita": "errore"
+    },
+    {
+      "id": "R05",
+      "regola": "la sezione di sintesi iniziale (executive/premessa) entro 1 pagina",
+      "severita": "errore"
+    },
+    {
+      "id": "R06",
+      "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati",
+      "severita": "errore"
+    },
+    {
+      "id": "R07",
+      "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx",
+      "severita": "warning"
+    },
+    {
+      "id": "R08",
+      "regola": "tutte le tabelle_obbligatorie presenti nel docx",
+      "severita": "warning"
+    },
+    {
+      "id": "R09",
+      "regola": "CTA verso il passo successivo presente nel capitolo conclusioni/prossimo_passo",
+      "severita": "errore"
+    },
+    {
+      "id": "R10",
+      "regola": "disclaimer presente",
+      "severita": "errore"
+    },
+    {
+      "id": "R11",
+      "regola": "json_output valida contro contratto_dati (output-schema.json)",
+      "severita": "errore"
+    },
+    {
+      "id": "R12",
+      "regola": "nessun prezzo hard-coded: i prezzi risolti da catalogo a runtime",
+      "severita": "warning",
+      "nota": "Nodo1 prezzi"
+    }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "Il progetto va seguito fino all'agibilita: il passo successivo e la direzione lavori / presidio continuativo."
+  }
+}

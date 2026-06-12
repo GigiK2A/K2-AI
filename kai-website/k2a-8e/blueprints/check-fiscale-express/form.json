@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Check Fiscale Express — form input",
+  "type": "object",
+  "required": ["forma_giuridica", "regime_fiscale", "settore_ateco"],
+  "properties": {
+    "forma_giuridica": { "type": "string", "enum": ["ditta_individuale", "snc", "sas", "srl", "srls", "spa", "cooperativa", "altro"] },
+    "regime_fiscale": { "type": "string", "enum": ["ordinario", "semplificato", "forfettario"] },
+    "settore_ateco": { "type": "string", "description": "codice ATECO o descrizione settore" },
+    "fatturato": { "type": ["number", "null"], "description": "fatturato/ricavi ultimo anno, EUR" },
+    "n_dipendenti": { "type": "integer", "minimum": 0 },
+    "regione": { "type": "string", "description": "regione (per IRAP e benchmark)" }
+  },
+  "additionalProperties": false
+}

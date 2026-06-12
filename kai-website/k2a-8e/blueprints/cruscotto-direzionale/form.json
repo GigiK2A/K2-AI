@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ControlBoost (cruscotto direzionale) — form input mensile",
+  "type": "object",
+  "required": ["mese", "anno", "azienda", "fatturato", "costi_operativi"],
+  "properties": {
+    "mese": { "type": "integer", "minimum": 1, "maximum": 12 },
+    "anno": { "type": "integer", "minimum": 2020, "maximum": 2100 },
+    "azienda": { "type": "string" },
+    "settore": { "type": "string", "description": "per selezione KPI e benchmark di settore" },
+    "dimensione_organico": { "type": ["integer", "null"], "minimum": 1 },
+    "fatturato": { "type": "number", "description": "fatturato del mese, EUR" },
+    "costi_operativi": { "type": "number", "description": "costi operativi del mese (personale, materie, servizi, affitti, utenze), EUR" },
+    "incassi": { "type": ["number", "null"], "description": "incassi del mese, EUR" },
+    "pagamenti": { "type": ["number", "null"], "description": "pagamenti effettuati nel mese, EUR" },
+    "nuovi_clienti": { "type": ["integer", "null"], "minimum": 0 },
+    "clienti_persi": { "type": ["integer", "null"], "minimum": 0 },
+    "clienti_attivi": { "type": ["integer", "null"], "minimum": 0 },
+    "ore_lavorate": { "type": ["number", "null"], "description": "ore totali (per aziende di servizi)" },
+    "ore_fatturabili": { "type": ["number", "null"] },
+    "scarti_resi_reclami": { "type": ["integer", "null"], "description": "per aziende di produzione" },
+    "posizione_cassa": { "type": ["number", "null"], "description": "posizione di cassa a fine mese, EUR" },
+    "concentrazione_top5_pct": { "type": ["number", "null"], "description": "quota fatturato dai primi 5 clienti" },
+    "target_budget": {
+      "type": "object",
+      "description": "target da budget annuale (se assente, si usano benchmark di settore)",
+      "properties": {
+        "fatturato_target": { "type": ["number", "null"] },
+        "ebitda_target": { "type": ["number", "null"] }
+      }
+    },
+    "storico_mesi_precedenti": { "type": "array", "items": { "type": "object" }, "description": "dati mesi precedenti per trend (idealmente 12)" }
+  },
+  "additionalProperties": false
+}

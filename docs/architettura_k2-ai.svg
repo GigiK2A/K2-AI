@@ -1,0 +1,145 @@
+<svg viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="aDark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#475569"/>
+    </marker>
+    <marker id="aBuild" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#b08968"/>
+    </marker>
+    <marker id="aLLM" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#7c5cbf"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="900" fill="#fbfbfd"/>
+
+  <!-- Title -->
+  <text x="600" y="34" text-anchor="middle" font-size="24" font-weight="700" fill="#1f2937">Architettura K2-AI — fabbrica (build-time) vs prodotto (runtime)</text>
+  <text x="600" y="57" text-anchor="middle" font-size="13" fill="#64748b">i fatti vengono dallo snapshot, non dal modello · gli MCP producono artefatti, non servono in produzione</text>
+
+  <!-- CLIENTE -->
+  <rect x="510" y="78" width="180" height="44" rx="10" fill="#e7f0fb" stroke="#3b82c4" stroke-width="1.5"/>
+  <text x="600" y="100" text-anchor="middle" font-size="15" font-weight="700" fill="#1f2937">CLIENTE</text>
+  <text x="600" y="115" text-anchor="middle" font-size="10.5" fill="#64748b">arriva via SEO / tag pillar</text>
+
+  <!-- flow 1 arrow cliente -> kbot -->
+  <line x1="600" y1="122" x2="600" y2="204" stroke="#475569" stroke-width="2" marker-end="url(#aDark)"/>
+  <circle cx="620" cy="160" r="11" fill="#475569"/><text x="620" y="164" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+
+  <!-- PRODUZIONE container -->
+  <rect x="60" y="150" width="860" height="380" rx="14" fill="#e8f5f0" stroke="#2a9d8f" stroke-width="1.5"/>
+  <text x="78" y="172" font-size="14" font-weight="700" fill="#1d7d70">PRODUZIONE · Railway — live, pubblico</text>
+
+  <!-- KBOT -->
+  <rect x="95" y="205" width="300" height="150" rx="10" fill="#ffffff" stroke="#2a9d8f" stroke-width="1.5"/>
+  <text x="245" y="230" text-anchor="middle" font-size="15" font-weight="700" fill="#1f2937">K-BOT  (Luigi)</text>
+  <text x="245" y="251" text-anchor="middle" font-size="11" fill="#64748b">Next.js + FastAPI · Supabase · Stripe · Resend</text>
+  <text x="245" y="292" text-anchor="middle" font-size="11.5" fill="#334155">intake agentico: capisce → propone → incassa</text>
+  <text x="245" y="312" text-anchor="middle" font-size="11.5" fill="#334155">legge catalog.json · chiama l'8e via API</text>
+
+  <!-- membrane -->
+  <line x1="395" y1="270" x2="553" y2="270" stroke="#475569" stroke-width="2.5" marker-end="url(#aDark)"/>
+  <text x="474" y="259" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1f2937">POST /v1/deliverables</text>
+  <text x="474" y="286" text-anchor="middle" font-size="10" fill="#64748b">(la membrana)</text>
+  <circle cx="415" cy="270" r="11" fill="#475569"/><text x="415" y="274" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text>
+  <!-- async return -->
+  <line x1="553" y1="298" x2="397" y2="298" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#aDark)"/>
+  <text x="474" y="312" text-anchor="middle" font-size="9.5" fill="#94a3b8">job_id → polling stato</text>
+
+  <!-- 8e -->
+  <rect x="555" y="205" width="305" height="210" rx="10" fill="#ffffff" stroke="#2a9d8f" stroke-width="2"/>
+  <text x="707" y="229" text-anchor="middle" font-size="15" font-weight="700" fill="#1f2937">MOTORE 8e</text>
+  <text x="707" y="246" text-anchor="middle" font-size="10.5" fill="#64748b">FastAPI · stateless · on-demand (scale-to-zero)</text>
+  <rect x="575" y="256" width="265" height="92" rx="8" fill="#f1faf7" stroke="#2a9d8f" stroke-width="1" stroke-dasharray="5 4"/>
+  <text x="586" y="274" font-size="10.5" font-weight="700" fill="#1d7d70">bundlato al build (vive dentro l'8e):</text>
+  <text x="586" y="293" font-size="10.5" fill="#334155">• 234 skill + orchestratori</text>
+  <text x="586" y="310" font-size="10.5" fill="#334155">• 24 blueprint + output-schema + form.json</text>
+  <text x="586" y="327" font-size="10.5" fill="#334155">• grounding-snapshot.json</text>
+  <text x="586" y="344" font-size="10.5" fill="#334155">• gate L1 / L2</text>
+  <text x="707" y="372" text-anchor="middle" font-size="11" fill="#334155">routing → filiera → resolve → L1/L2 → render</text>
+  <text x="707" y="390" text-anchor="middle" font-size="11" font-weight="700" fill="#1f2937">→ HTML + PDF + bundle</text>
+  <text x="707" y="406" text-anchor="middle" font-size="9.5" fill="#94a3b8">fuori catalogo / low-confidence → refuse</text>
+  <circle cx="575" cy="372" r="11" fill="#475569"/><text x="575" y="376" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
+
+  <!-- catalog.json -->
+  <rect x="95" y="400" width="300" height="66" rx="8" fill="#ffffff" stroke="#2a9d8f" stroke-width="1.3"/>
+  <text x="245" y="422" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2937">catalog.json</text>
+  <text x="245" y="439" text-anchor="middle" font-size="10.5" fill="#64748b">nel monorepo · letto dal K-BOT</text>
+  <text x="245" y="454" text-anchor="middle" font-size="10.5" fill="#64748b">prezzi + routing + blueprint_id + output_schema_ref</text>
+  <line x1="245" y1="400" x2="245" y2="357" stroke="#475569" stroke-width="1.6" marker-end="url(#aDark)"/>
+
+  <!-- Supabase + Resend -->
+  <rect x="555" y="448" width="140" height="60" rx="8" fill="#ffffff" stroke="#2a9d8f" stroke-width="1.3"/>
+  <text x="625" y="473" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1f2937">Supabase</text>
+  <text x="625" y="489" text-anchor="middle" font-size="10" fill="#64748b">Storage (PDF/bundle)</text>
+  <line x1="650" y1="415" x2="630" y2="447" stroke="#475569" stroke-width="1.6" marker-end="url(#aDark)"/>
+  <circle cx="660" cy="432" r="11" fill="#475569"/><text x="660" y="436" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">4</text>
+
+  <rect x="715" y="448" width="145" height="60" rx="8" fill="#ffffff" stroke="#2a9d8f" stroke-width="1.3"/>
+  <text x="787" y="473" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1f2937">Resend</text>
+  <text x="787" y="489" text-anchor="middle" font-size="10" fill="#64748b">consegna al cliente</text>
+  <line x1="787" y1="415" x2="787" y2="447" stroke="#475569" stroke-width="1.6" marker-end="url(#aDark)"/>
+  <circle cx="812" cy="432" r="11" fill="#475569"/><text x="812" y="436" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">5</text>
+
+  <!-- CLAUDE API -->
+  <rect x="950" y="210" width="210" height="120" rx="10" fill="#efeafc" stroke="#7c5cbf" stroke-width="1.5"/>
+  <text x="1055" y="236" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2937">CLAUDE API</text>
+  <text x="1055" y="254" text-anchor="middle" font-size="10.5" fill="#64748b">motore LLM (entrambi i lati)</text>
+  <text x="1055" y="280" text-anchor="middle" font-size="11" fill="#334155">Haiku → chat K-BOT</text>
+  <text x="1055" y="299" text-anchor="middle" font-size="11" fill="#334155">Sonnet → filiera + peer-review</text>
+  <text x="1055" y="319" text-anchor="middle" font-size="9.5" fill="#7c5cbf">i FATTI però: dallo snapshot</text>
+  <!-- 8e <-> claude -->
+  <line x1="860" y1="300" x2="948" y2="300" stroke="#7c5cbf" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#aLLM)"/>
+  <text x="904" y="293" text-anchor="middle" font-size="9" fill="#7c5cbf">Sonnet</text>
+  <!-- kbot -> claude (orthogonal over top) -->
+  <polyline points="245,205 245,191 1055,191 1055,209" fill="none" stroke="#7c5cbf" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#aLLM)"/>
+  <text x="300" y="186" font-size="9" fill="#7c5cbf">Haiku</text>
+
+  <!-- legend -->
+  <rect x="950" y="345" width="210" height="92" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="962" y="363" font-size="10.5" font-weight="700" fill="#475569">Legenda</text>
+  <line x1="962" y1="378" x2="992" y2="378" stroke="#475569" stroke-width="2.2" marker-end="url(#aDark)"/>
+  <text x="1000" y="382" font-size="10" fill="#475569">runtime (catena calda)</text>
+  <line x1="962" y1="398" x2="992" y2="398" stroke="#b08968" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#aBuild)"/>
+  <text x="1000" y="402" font-size="10" fill="#8a5a2b">build-time: genera / baked</text>
+  <line x1="962" y1="418" x2="992" y2="418" stroke="#7c5cbf" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#aLLM)"/>
+  <text x="1000" y="422" font-size="10" fill="#7c5cbf">chiamata LLM</text>
+
+  <!-- FABBRICA container -->
+  <rect x="60" y="560" width="860" height="300" rx="14" fill="#f6efe2" stroke="#b08968" stroke-width="1.5" stroke-dasharray="9 5"/>
+  <text x="78" y="584" font-size="14" font-weight="700" fill="#8a5a2b">FABBRICA · build-time (Mac di Luca / CI) — NON in produzione</text>
+
+  <!-- factory boxes -->
+  <rect x="95" y="636" width="235" height="92" rx="9" fill="#ffffff" stroke="#b08968" stroke-width="1.3"/>
+  <text x="212" y="666" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f2937">MCP normattiva + dominio</text>
+  <text x="212" y="685" text-anchor="middle" font-size="10" fill="#64748b">strutturale · quant · elettrico</text>
+  <text x="212" y="700" text-anchor="middle" font-size="10" fill="#64748b">norme-tecniche · 62k articoli + override</text>
+
+  <rect x="350" y="636" width="210" height="92" rx="9" fill="#ffffff" stroke="#b08968" stroke-width="1.3"/>
+  <text x="455" y="666" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f2937">MCP k2a-catalogo</text>
+  <text x="455" y="685" text-anchor="middle" font-size="10" fill="#64748b">73 tipi vendibili · prezzi</text>
+  <text x="455" y="700" text-anchor="middle" font-size="10" fill="#64748b">parametri prodotto (de minimis…)</text>
+
+  <rect x="580" y="636" width="300" height="92" rx="9" fill="#ffffff" stroke="#b08968" stroke-width="1.3"/>
+  <text x="730" y="666" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f2937">repo k2a-skills</text>
+  <text x="730" y="685" text-anchor="middle" font-size="10" fill="#64748b">234 skill · 24 blueprint · output-schema</text>
+  <text x="730" y="700" text-anchor="middle" font-size="10" fill="#64748b">fonte di verità (privato)</text>
+
+  <!-- build arrows up -->
+  <line x1="240" y1="636" x2="600" y2="416" stroke="#b08968" stroke-width="1.6" stroke-dasharray="7 4" marker-end="url(#aBuild)"/>
+  <text x="408" y="556" text-anchor="middle" font-size="10" fill="#8a5a2b">genera → snapshot (committato, bundlato in 8e)</text>
+
+  <line x1="430" y1="636" x2="250" y2="468" stroke="#b08968" stroke-width="1.6" stroke-dasharray="7 4" marker-end="url(#aBuild)"/>
+  <text x="300" y="600" text-anchor="middle" font-size="10" fill="#8a5a2b">genera → catalog.json</text>
+  <text x="300" y="613" text-anchor="middle" font-size="9" fill="#8a5a2b">(rigenera-e-committa)</text>
+
+  <line x1="760" y1="636" x2="775" y2="416" stroke="#b08968" stroke-width="1.6" stroke-dasharray="7 4" marker-end="url(#aBuild)"/>
+  <text x="800" y="556" text-anchor="middle" font-size="10" fill="#8a5a2b">baked al build</text>
+
+  <!-- future note -->
+  <rect x="110" y="742" width="770" height="40" rx="8" fill="none" stroke="#b08968" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="495" y="766" text-anchor="middle" font-size="10.5" fill="#8a5a2b">(futuro, solo a volume alto) MCP agevolazioni come container Railway live — a basso volume basta lo snapshot</text>
+
+  <!-- bottom principle -->
+  <text x="600" y="888" text-anchor="middle" font-size="12" font-style="italic" fill="#475569">In runtime gira il PRODOTTO (8e + K-BOT). La FABBRICA (MCP) produce artefatti committati e resta fuori dalla catena calda — la produzione non dipende dal Mac.</text>
+</svg>

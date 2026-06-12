@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useKbotAuth } from "@/app/providers";
 import { fetchUserSessions, type DashboardPayload, type KbotSession } from "@/lib/api";
+import BillingPanel from "@/components/billing/BillingPanel";
 
 export default function DashboardPage() {
   const { user, isSignedIn, hasPaid, loading: authLoading, getToken } = useKbotAuth();
@@ -76,6 +77,10 @@ export default function DashboardPage() {
             sub={data ? `${data.stats.total} sessioni totali` : undefined}
           />
         </section>
+
+        <div className="mb-8">
+          <BillingPanel />
+        </div>
 
         <section>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#9ca3af]">
@@ -154,7 +159,7 @@ function SessionRow({ session }: { session: KbotSession }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">
-            {session.summary || lastUserMsg || `Sessione ${session.id.slice(0, 8)}`}
+            {session.deliverableLabel || session.summary || lastUserMsg || `Sessione ${session.id.slice(0, 8)}`}
           </p>
           <p className="mt-1 text-xs text-[#6b7280]">
             {date} · {time} · {session.serviceId ?? "—"}

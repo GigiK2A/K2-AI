@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-fiscoboost-pmi.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA del deliverable Boost di FiscoBoost — diagnosi e orientamento fiscale-tributario e compliance PMI (NON consulenza fiscale, D-036). 7 voci, aliquote/citazioni ancorate via MCP normattiva + catalogo (D-031), UE/extra-KB route-or-refuse. Gemello di LegalBoost.",
+  "pacchetto": {
+    "skill": "flusso-fiscoboost-pmi",
+    "nome_commerciale": "FiscoBoost",
+    "tier": "boost"
+  },
+  "contratto_dati": "flusso-fiscoboost-pmi/schemas/output-schema.json",
+  "formato_primario": "docx",
+  "paginato": true,
+  "pagine_totali": { "min": 16, "max": 24, "target": 20 },
+  "artefatti_bundle": [
+    { "id": "docx_report", "ruolo": "principale", "formato": "docx", "obbligatorio": true, "nota": "report diagnosi fiscale-tributaria" },
+    { "id": "xlsx_modello", "ruolo": "modello vivo", "formato": "xlsx", "obbligatorio": true, "nota": "scadenzario + simulazione imposte con formule" },
+    { "id": "html_dashboard", "ruolo": "wow visivo", "formato": "html", "obbligatorio": true, "nota": "dashboard KPI fiscali (Chart.js)" },
+    { "id": "json_output", "ruolo": "dati", "formato": "json", "obbligatorio": true, "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0, "id": "profilo_fiscale", "titolo": "Profilo fiscale", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["forma giuridica", "regime (ordinario/semplificato/forfettario)", "settore ATECO e dimensione", "quadro adempimenti", "disclaimer di non-sostituzione (D-036)"],
+      "funzione_psico": "registro imprenditore + apertura; il cruscotto e l'accent" },
+    { "ord": 1, "id": "imposte_dirette", "titolo": "Imposte dirette", "pagine": { "min": 3, "max": 4 },
+      "argomenti_obbligatori": ["base imponibile", "aliquote IRPEF/IRES/IRAP (fonte verificata, status anno d'imposta)", "derivazione (TUIR art. 83)", "competenza e inerenza (art. 109)", "ROL e interessi passivi (art. 96)", "ammortamenti (art. 102)"] },
+    { "ord": 2, "id": "iva_adempimenti", "titolo": "IVA e adempimenti periodici", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["regime IVA e aliquote (DPR 633/72 art. 16 + Tabella A)", "detrazione (art. 19 DPR 633/72)", "liquidazioni periodiche e LIPE", "esterometro", "scadenzario adempimenti"] },
+    { "ord": 3, "id": "deduzioni_ottimizzazione", "titolo": "Deduzioni, detrazioni e ottimizzazione lecita", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["costi deducibili e inerenza", "beni strumentali e ammortamenti", "auto e telefonia (deducibilita parziale)", "spese di rappresentanza", "solo ottimizzazione lecita: nessuna pianificazione aggressiva ne elusione"],
+      "funzione_psico": "confine onesto: lecito, non aggressivo" },
+    { "ord": 4, "id": "agevolazioni_crediti", "titolo": "Agevolazioni e crediti d'imposta", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["Transizione 5.0, Sabatini, R&S, de minimis (% e massimali dal catalogo, D-031)", "stima crediti potenziali", "rinvio ad AgevolazioniBoost", "fonte deterministica: catalogo per i numeri commerciali"] },
+    { "ord": 5, "id": "compliance_sanzioni_rischio", "titolo": "Compliance, sanzioni e rischio", "pagine": { "min": 2, "max": 3 },
+      "argomenti_obbligatori": ["calendario adempimenti", "ravvedimento operoso (art. 13 D.Lgs 472/97)", "sanzioni tributarie (D.Lgs 471/97)", "indici sintetici di affidabilita (ISA)", "rischio accertamento e mitigazioni"] },
+    { "ord": 6, "id": "piano_azione_handoff", "titolo": "Piano d'azione fiscale e handoff commercialista", "pagine": { "min": 2, "max": 2 },
+      "argomenti_obbligatori": ["to-do prioritizzata", "per ogni punto critico: handoff 'commercialista raccomandato'", "modalita di ingaggio professionista/CAF", "disclaimer di chiusura (D-036)"],
+      "funzione_psico": "chiusura forte (peak-end) + handoff onesto", "stato": "voce-CTA del funnel" }
+  ],
+  "elementi_grafici_obbligatori": [
+    "cruscotto semaforico aree fiscali",
+    "grafico carico fiscale stimato vs benchmark di categoria",
+    "timeline scadenzario adempimenti"
+  ],
+  "tabelle_obbligatorie": [
+    "tabella imposte dirette con base imponibile e aliquote (fonte + status)",
+    "scadenzario adempimenti IVA/imposte",
+    "tabella agevolazioni/crediti con % e massimali (fonte catalogo)",
+    "tabella norme citate con fonte (normattiva/override/catalogo/eur-lex/route)"
+  ],
+  "elementi_psico_trasversali": {
+    "doppio_registro": "sintesi semaforica per l'imprenditore + dettaglio per area con riferimenti",
+    "kpi_fiscali": "carico fiscale stimato, aliquota effettiva, crediti potenziali, scadenze a rischio",
+    "confine_etico": "ribadito il non-sostituire il commercialista; handoff sui punti critici; solo lecito (D-036)",
+    "cross_sell": "gancio onesto verso AgevolazioniBoost (crediti) e AdvisorBoost (piano)",
+    "risk_reversal": "diagnosi reale e azionabile; nessuna promessa di risparmio garantito",
+    "determinismo": "aliquote/citazioni via MCP normattiva e catalogo, mai a memoria"
+  },
+  "regole_validazione_linter": [
+    { "id": "R01", "regola": "ogni numero/aliquota/importo ha fonte dichiarata (catalogo o normattiva/override), mai a memoria", "severita": "errore" },
+    { "id": "R02", "regola": "disclaimer di non-sostituzione del commercialista (D-036) presente", "severita": "errore" },
+    { "id": "R03", "regola": "handoff al commercialista presente nel capitolo piano d'azione", "severita": "errore" },
+    { "id": "R04", "regola": "nessuna pianificazione fiscale aggressiva/elusione/evasione: solo ottimizzazione lecita", "severita": "errore" },
+    { "id": "R05", "regola": "la sezione agevolazioni rinvia a fonte deterministica (catalogo, D-031)", "severita": "errore" },
+    { "id": "R06", "regola": "somma pagine entro pagine_totali.min..max", "severita": "errore" },
+    { "id": "R07", "regola": "tutte le voci presenti nell'ordine 'ord'", "severita": "errore" },
+    { "id": "R08", "regola": "ogni argomento_obbligatorio rilevabile nella voce corrispondente", "severita": "errore" },
+    { "id": "R09", "regola": "tutti gli artefatti_bundle obbligatori presenti tra i file_generati (docx+xlsx+html+json)", "severita": "errore" },
+    { "id": "R10", "regola": "tutti gli elementi_grafici_obbligatori presenti nel docx", "severita": "warning" },
+    { "id": "R11", "regola": "tutte le tabelle_obbligatorie presenti nel docx", "severita": "warning" },
+    { "id": "R12", "regola": "json_output valida contro contratto_dati (output-schema.json)", "severita": "errore" },
+    { "id": "R13", "regola": "nessun prezzo hard-coded: prezzo (es. retainer) risolto da catalogo a runtime", "severita": "warning" }
+  ],
+  "aggancio_funnel": {
+    "tier_precedente": "check",
+    "tier_successivo": "retainer",
+    "gancio": "La diagnosi dice DOVE paghi troppo o rischi. Il presidio continuativo (abbonamento fiscale/monitoraggio scadenze) tiene la compliance viva; sui punti caldi, il commercialista partner. Handoff dopo il quadro completo."
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "check-salute-finanziaria-output",
+  "title": "Output Semaforo Finanziario PMI",
+  "description": "Schema di output per il check salute finanziaria di una PMI italiana",
+  "type": "object",
+  "required": ["meta", "score_globale", "fascia", "kpi", "top_3_approfondimenti", "cta_upsell", "files"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadati del report",
+      "required": ["nome_azienda", "settore", "data_report"],
+      "properties": {
+        "nome_azienda": {
+          "type": "string",
+          "description": "Nome dell'azienda analizzata"
+        },
+        "settore": {
+          "type": "string",
+          "description": "Settore di appartenenza",
+          "enum": [
+            "manifatturiero",
+            "servizi",
+            "commercio",
+            "ristorazione",
+            "edilizia",
+            "IT",
+            "trasporti",
+            "professionisti"
+          ]
+        },
+        "data_report": {
+          "type": "string",
+          "format": "date",
+          "description": "Data di generazione del report (YYYY-MM-DD)"
+        },
+        "input_forniti": {
+          "type": "object",
+          "description": "Valori di bilancio inseriti dal titolare",
+          "properties": {
+            "fatturato": { "type": "number" },
+            "utile_netto": { "type": "number" },
+            "totale_attivo": { "type": "number" },
+            "debiti_totali": { "type": "number" },
+            "crediti_commerciali": { "type": "number" },
+            "magazzino": { "type": ["number", "null"] },
+            "debiti_commerciali": { "type": ["number", "null"] },
+            "patrimonio_netto": { "type": ["number", "null"] }
+          },
+          "required": ["fatturato", "utile_netto", "totale_attivo", "debiti_totali", "crediti_commerciali"]
+        }
+      }
+    },
+    "score_globale": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Punteggio di salute finanziaria complessivo (media ponderata 0-100)"
+    },
+    "fascia": {
+      "type": "string",
+      "enum": ["Critico", "Fragile", "Sufficiente", "Solido", "Eccellente"],
+      "description": "Fascia di valutazione basata sullo score globale"
+    },
+    "messaggio_fascia": {
+      "type": "string",
+      "description": "Messaggio descrittivo associato alla fascia"
+    },
+    "kpi": {
+      "type": "array",
+      "description": "Array dei 5 KPI calcolati",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["nome", "valore", "benchmark_settore", "semaforo", "spiegazione"],
+        "properties": {
+          "nome": {
+            "type": "string",
+            "description": "Nome del KPI",
+            "enum": ["ROE", "Current Ratio", "Indebitamento D/E", "Margine Netto", "Giorni Crediti"]
+          },
+          "valore": {
+            "type": "number",
+            "description": "Valore calcolato del KPI"
+          },
+          "valore_formattato": {
+            "type": "string",
+            "description": "Valore formattato per la visualizzazione (es. '12.5%', '1.3', '85 gg')"
+          },
+          "benchmark_settore": {
+            "type": "number",
+            "description": "Valore mediano di benchmark per il settore"
+          },
+          "benchmark_formattato": {
+            "type": "string",
+            "description": "Benchmark formattato per la visualizzazione"
+          },
+          "semaforo": {
+            "type": "string",
+            "enum": ["verde", "giallo", "rosso"],
+            "description": "Colore del semaforo basato sulle soglie settoriali"
+          },
+          "spiegazione": {
+            "type": "string",
+            "description": "Spiegazione in italiano semplice del significato del KPI e del risultato"
+          },
+          "peso": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Peso del KPI nel calcolo dello score globale"
+          },
+          "punteggio_grezzo": {
+            "type": "integer",
+            "enum": [10, 50, 100],
+            "description": "Punteggio grezzo assegnato (100=verde, 50=giallo, 10=rosso)"
+          }
+        }
+      }
+    },
+    "top_3_approfondimenti": {
+      "type": "array",
+      "description": "Le 3 aree prioritarie da approfondire, ordinate per urgenza",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["titolo", "descrizione", "urgenza"],
+        "properties": {
+          "titolo": {
+            "type": "string",
+            "description": "Titolo breve dell'area da approfondire"
+          },
+          "descrizione": {
+            "type": "string",
+            "description": "Spiegazione in italiano semplice di cosa fare e perche"
+          },
+          "urgenza": {
+            "type": "string",
+            "enum": ["alta", "media", "bassa"],
+            "description": "Livello di urgenza dell'intervento"
+          },
+          "kpi_correlato": {
+            "type": "string",
+            "description": "Nome del KPI a cui si riferisce l'approfondimento"
+          }
+        }
+      }
+    },
+    "cta_upsell": {
+      "type": "object",
+      "description": "Call to action verso il servizio Analisi Bilancio PMI",
+      "required": ["messaggio", "link"],
+      "properties": {
+        "messaggio": {
+          "type": "string",
+          "description": "Testo persuasivo della CTA, personalizzato sulla fascia"
+        },
+        "link": {
+          "type": "string",
+          "description": "Link o riferimento al servizio di analisi bilancio completa"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "description": "File generati dal check",
+      "required": ["html", "json"],
+      "properties": {
+        "html": {
+          "type": "string",
+          "description": "Nome del file HTML del semaforo (es. semaforo-finanziario.html)"
+        },
+        "json": {
+          "type": "string",
+          "description": "Nome del file JSON strutturato (es. semaforo-finanziario.json)"
+        }
+      }
+    }
+  }
+}

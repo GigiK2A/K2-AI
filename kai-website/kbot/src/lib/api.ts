@@ -22,6 +22,10 @@ export type Mode = "lead" | "report";
 export interface KbotSession {
   id: string;
   serviceId: string | null;
+  tagPillar?: string | null;
+  boostSuggerito?: string | null;
+  boostSuggeritoLabel?: string | null;
+  deliverableLabel?: string | null;
   mode: Mode;
   messages: KbotMessage[];
   extractedData: Record<string, unknown>;
@@ -103,6 +107,7 @@ async function parseErr(res: Response, fallback: string): Promise<never> {
 
 export async function createSession(opts: {
   serviceId?: string;
+  tagPillar?: string | null;
   mode?: Mode;
   authToken?: string | null;
 } = {}): Promise<KbotSession> {
@@ -111,6 +116,7 @@ export async function createSession(opts: {
     headers: { "Content-Type": "application/json", ...authHeaders(opts.authToken) },
     body: JSON.stringify({
       service_id: opts.serviceId,
+      tag_pillar: opts.tagPillar ?? undefined,
       mode: opts.mode ?? "report",
     }),
   });
@@ -685,4 +691,327 @@ export async function getStatus(
   });
   if (!res.ok) await parseErr(res, "Errore stato");
   return res.json();
+}
+
+/* -----------------------------------------------------------------
+ * Deliverable 8e (Boost) — instrada al motore 8e e polla lo stato.
+ * Vedi docs/interfaccia-kbot-8e.md + api/deliverables.py.
+ * ----------------------------------------------------------------- */
+
+export type DeliverableStatus =
+  | "routed" | "running" | "validating" | "rendered" | "refused" | "error";
+
+export interface DeliverablePreview {
+  score?: number;
+  criticita_1?: { area?: string; descrizione?: string; gravita?: string };
+  altre_aree?: string[];
+  cta?: string;
+}
+
+export interface DeliverableJob {
+  job_id: string;
+  status: DeliverableStatus;
+  outputs?: {
+    html_url?: string; pdf_url?: string; html_path?: string; pdf_path?: string;
+    bundle?: { type: string; url?: string }[];
+    preview?: DeliverablePreview;
+  } | null;
+  validation?: Record<string, unknown> | null;
+  citazioni?: { campo?: string; fonte?: string; vigenza?: string }[];
+  refusal_reason?: string | null;
+  error?: string | null;
+  meta?: Record<string, unknown> | null;
+}
+
+export async function createDeliverable(
+  sessionId: string,
+  servizioId: string,
+  inputs: Record<string, unknown>,
+  authToken?: string | null,
+): Promise<{ job_id: string; status: string }> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, servizio_id: servizioId, inputs }),
+  });
+  if (!res.ok) await parseErr(res, "Errore creazione deliverable");
+  return res.json();
+}
+
+/** Checkout per un Boost: prezzo dal catalogo (non i 19€ del report). */
+export async function startBoostCheckout(
+  sessionId: string,
+  servizioId: string,
+  authToken?: string | null,
+  email?: string,
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/kbot/checkout/boost`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, servizio_id: servizioId, email }),
+  });
+  if (!res.ok) await parseErr(res, "Errore checkout boost");
+  const data = await res.json();
+  return data.checkout_url as string;
+}
+
+// ===== Billing: abbonamenti + crediti =====
+export interface BillingStatus {
+  plan: "free" | "pro" | "business";
+  label: string;
+  crediti: number;
+  crediti_mese: number;
+  sconto_boost_pct: number;
+  servizi_eseguibili: boolean;
+}
+
+export async function getBilling(authToken: string): Promise<BillingStatus> {
+  const res = await fetch(`${API_BASE}/api/kbot/billing/me`, {
+    headers: { ...authHeaders(authToken) },
+  });
+  if (!res.ok) await parseErr(res, "Errore stato abbonamento");
+  return (await res.json()) as BillingStatus;
+}
+
+export async function startSubscriptionCheckout(
+  plan: "pro" | "business",
+  authToken: string,
+  email?: string,
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/kbot/checkout/subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ plan, email }),
+  });
+  if (!res.ok) await parseErr(res, "Errore checkout abbonamento");
+  return (await res.json()).checkout_url as string;
+}
+
+export async function startCreditsCheckout(
+  prezzoEur: 49 | 199 | 499,
+  authToken: string,
+  email?: string,
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/kbot/checkout/credits`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ prezzo_eur: prezzoEur, email }),
+  });
+  if (!res.ok) await parseErr(res, "Errore acquisto crediti");
+  return (await res.json()).checkout_url as string;
+}
+
+export async function consumeCredits(
+  servizioId: string,
+  authToken: string,
+): Promise<{ ok: boolean; saldo: number; costo: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/billing/consume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ servizio_id: servizioId }),
+  });
+  if (!res.ok) await parseErr(res, "Crediti insufficienti");
+  return await res.json();
+}
+
+// ---- Check express (strato Consumo, calcolo deterministico) ----------------
+
+export interface CheckMeta {
+  service_id: string;
+  tool: string;
+  module: string;
+  input_schema: Record<string, unknown>;
+}
+
+/** Elenco dei Check express disponibili (calcolo locale, gate crediti). */
+export async function listChecks(authToken: string): Promise<{ checks: CheckMeta[]; count: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/checks`, {
+    headers: { ...authHeaders(authToken) },
+    cache: "no-store",
+  });
+  if (!res.ok) await parseErr(res, "Impossibile leggere i check");
+  return await res.json();
+}
+
+/** Esegue un Check express → risultato strutturato (consuma crediti). */
+export async function runCheck(
+  serviceId: string,
+  inputs: Record<string, unknown>,
+  authToken: string,
+): Promise<{ service_id: string; result: unknown; saldo_crediti: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/check/${encodeURIComponent(serviceId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ inputs }),
+  });
+  if (!res.ok) await parseErr(res, "Check non riuscito");
+  return await res.json();
+}
+
+/** Esegue un Check express e scarica il PDF D1 (consuma crediti). */
+export async function getCheckDocument(
+  serviceId: string,
+  inputs: Record<string, unknown>,
+  authToken: string,
+): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/api/kbot/check/${encodeURIComponent(serviceId)}/document`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ inputs }),
+  });
+  if (!res.ok) await parseErr(res, "Generazione documento non riuscita");
+  return await res.blob();
+}
+
+/** Catalogo dei tool a calcolo dell'ecosistema (auth richiesta). */
+export async function listComputeTools(
+  authToken: string,
+  dominio?: string,
+): Promise<{ tools: { tool_id: string; dominio: string; tool: string }[]; count: number }> {
+  const url = new URL(`${API_BASE}/api/kbot/tools`);
+  if (dominio) url.searchParams.set("dominio", dominio);
+  const res = await fetch(url.toString(), { headers: { ...authHeaders(authToken) }, cache: "no-store" });
+  if (!res.ok) await parseErr(res, "Impossibile leggere i tool");
+  return await res.json();
+}
+
+/** Esegue un tool a calcolo deterministico dell'ecosistema. */
+export async function runComputeTool(
+  toolId: string,
+  inputs: Record<string, unknown>,
+  authToken: string,
+): Promise<{ tool_id: string; result: unknown }> {
+  const res = await fetch(`${API_BASE}/api/kbot/tool/${toolId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ inputs }),
+  });
+  if (!res.ok) await parseErr(res, "Calcolo non riuscito");
+  return await res.json();
+}
+
+export interface DeliverableFormField {
+  id: string;
+  label: string;
+  tipo?: string;
+  enum?: string[] | null;
+  items_enum?: string[] | null;
+  obbligatorio?: boolean;
+}
+
+/** Campi che il deliverable richiede (dal blueprint form.json via 8e). */
+export async function getDeliverableForm(
+  servizioId: string,
+): Promise<{ service_id: string; title?: string; campi: DeliverableFormField[] }> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables/form/${encodeURIComponent(servizioId)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) await parseErr(res, "Errore form deliverable");
+  return res.json();
+}
+
+export interface BoostCatalogItem {
+  id: string;
+  label: string;
+  ambito?: string;
+}
+
+/** Elenco dei documenti (boost) generabili via 8e — per il selettore nel pannello. */
+export async function listBoostCatalog(): Promise<BoostCatalogItem[]> {
+  const res = await fetch(`${API_BASE}/api/kbot/boost-catalog`, { cache: "no-store" });
+  if (!res.ok) return [];
+  const j = await res.json().catch(() => ({ servizi: [] }));
+  return j.servizi ?? [];
+}
+
+/** Anteprima gratuita (gate W8): richiede login, consuma 1 delle 2 preview/mese.
+ *  409 con reason "preview_quota_exhausted" se quota finita. */
+export async function createPreview(
+  sessionId: string,
+  servizioId: string,
+  inputs: Record<string, unknown>,
+  authToken?: string | null,
+): Promise<{ job_id: string; status: string; preview_count?: number; preview_limit?: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, servizio_id: servizioId, inputs }),
+  });
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.detail?.message || "Anteprime gratuite esaurite per il mese.");
+  }
+  if (!res.ok) await parseErr(res, "Errore anteprima");
+  return res.json();
+}
+
+export async function getDeliverable(jobId: string): Promise<DeliverableJob> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables/${encodeURIComponent(jobId)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) await parseErr(res, "Errore stato deliverable");
+  return res.json();
+}
+
+/** Genera il documento SENZA form: il backend sceglie il boost (instradato dalla
+ * chat) e AUTO-COMPILA gli input dalla conversazione + file caricati. */
+export async function autoGenerateDeliverable(
+  sessionId: string,
+  authToken?: string | null,
+): Promise<{ job_id: string; servizio_id?: string; label?: string }> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables/auto`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+  if (!res.ok) await parseErr(res, "Errore generazione documento");
+  return res.json();
+}
+
+/** Rende duraturo il deliverable: lo carica su Storage e lo lega alla sessione
+ * (→ compare in dashboard/storico). Ritorna l'URL durevole del PDF. */
+export async function saveDeliverable(
+  sessionId: string,
+  jobId: string,
+  authToken?: string | null,
+): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/api/kbot/deliverables/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, job_id: jobId }),
+  });
+  if (!res.ok) return null; // best-effort: il download dal /pdf resta comunque
+  const j = await res.json().catch(() => ({}));
+  return j.pdf_url ?? null;
+}
+
+/** Polla finché rendered/refused/error o timeout. onTick per aggiornare la UI. */
+export async function pollDeliverable(
+  jobId: string,
+  onTick?: (job: DeliverableJob) => void,
+  opts: { intervalMs?: number; timeoutMs?: number } = {},
+): Promise<DeliverableJob> {
+  const interval = opts.intervalMs ?? 2500;
+  // La generazione 8e profonda (16 pagine, per-sezione) dura ~5 min; su prod
+  // può essere più lenta. Timeout generoso (10 min) per non fallire a metà.
+  const timeout = opts.timeoutMs ?? 600_000;
+  const start = Date.now();
+  let lastJob: DeliverableJob | null = null;
+  for (;;) {
+    try {
+      const job = await getDeliverable(jobId);
+      lastJob = job;
+      onTick?.(job);
+      if (["rendered", "refused", "error"].includes(job.status)) return job;
+    } catch {
+      // Errore transitorio (429 rate-limit, blip di rete): NON fatale durante il
+      // polling. La generazione 8e dura minuti → riprova fino al timeout.
+    }
+    if (Date.now() - start > timeout) {
+      return lastJob
+        ? { ...lastJob, status: "error", error: "timeout" }
+        : ({ job_id: jobId, status: "error", error: "timeout" } as DeliverableJob);
+    }
+    await new Promise((r) => setTimeout(r, interval));
+  }
 }

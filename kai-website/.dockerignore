@@ -15,3 +15,11 @@ docs/
 supabase/
 .playwright-cli
 .run
+# Virtualenv Python e output motori (rigenerati / runtime) — il bundle 8e
+# trascinerebbe k2a-8e/.venv (~800M) + _out (~70M) senza queste righe.
+**/.venv
+**/venv
+**/_out
+**/__pycache__
+**/*.pyc
+kbot/backend/data

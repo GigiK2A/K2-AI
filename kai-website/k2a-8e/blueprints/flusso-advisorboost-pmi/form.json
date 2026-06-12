@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AdvisorBoost — form input",
+  "type": "object",
+  "required": ["denominazione", "forma_giuridica", "settore_ateco", "fatturato", "dipendenti", "regione"],
+  "properties": {
+    "denominazione": { "type": "string" },
+    "forma_giuridica": { "type": "string", "enum": ["SRL", "SRLS", "SPA", "SAPA", "SNC", "SAS", "SS", "ditta individuale", "cooperativa", "altro"] },
+    "settore_ateco": { "type": "string", "description": "codice ATECO o descrizione settore" },
+    "fatturato": { "type": "number", "minimum": 0, "description": "fatturato anno corrente, EUR" },
+    "dipendenti": { "type": "integer", "minimum": 0 },
+    "regione": { "type": "string" },
+    "anno_fondazione": { "type": ["integer", "null"], "minimum": 1800 },
+    "tier": { "type": "string", "enum": ["light", "standard", "pro"], "description": "livello di servizio" },
+    "bilanci": {
+      "type": "array",
+      "description": "voci principali SP/CE per anno (2-3 anni)",
+      "items": {
+        "type": "object",
+        "required": ["anno"],
+        "properties": {
+          "anno": { "type": "integer" },
+          "ricavi": { "type": ["number", "null"] },
+          "ebitda": { "type": ["number", "null"] },
+          "utile_netto": { "type": ["number", "null"] },
+          "totale_attivo": { "type": ["number", "null"] },
+          "patrimonio_netto": { "type": ["number", "null"] },
+          "debiti_finanziari": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "competitor": { "type": "array", "items": { "type": "string" }, "description": "2-3 competitor principali" },
+    "obiettivo_strategico": { "type": ["string", "null"], "description": "obiettivo 1-3 anni" }
+  },
+  "additionalProperties": false
+}
