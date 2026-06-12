@@ -1,2 +1,2 @@
 web: python serve_cockpit.py
-worker: python telegram_bot.py
+worker: python autonomy_loop.py
