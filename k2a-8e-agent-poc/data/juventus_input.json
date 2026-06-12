@@ -1,0 +1,19 @@
+{
+  "denominazione": "Juventus Football Club S.p.A.",
+  "forma_giuridica": "SpA quotata (Euronext Milan)",
+  "settore": "calcio professionistico",
+  "settore_ateco": "93.12.00",
+  "dipendenti": 400,
+  "regione": "Piemonte",
+  "obiettivo_36_mesi": "Ritorno alla redditività e alla UEFA Champions League, riduzione dell'indebitamento",
+  "competitor": ["FC Internazionale", "AC Milan", "SSC Napoli", "AS Roma"],
+  "bilanci": [
+    {"esercizio": "2023/2024", "ricavi_eur": 394600000, "costi_operativi_eur": 400300000,
+     "costo_personale_eur": 239000000, "ebitda_eur": -5700000, "risultato_netto_eur": -199200000,
+     "patrimonio_netto_eur": 40200000, "pfn_eur": 242800000, "diritti_calciatori_eur": 274600000,
+     "disponibilita_liquide_eur": 36400000},
+    {"esercizio": "2022/2023", "ricavi_eur": 507700000, "costi_operativi_eur": 427600000,
+     "risultato_netto_eur": -123700000, "patrimonio_netto_eur": 42100000, "pfn_eur": 339900000}
+  ],
+  "note": "Perdita 2023/24 aggravata dalla mancata partecipazione UEFA (~90-95M ricavi). Linee di credito 479,8M (179,9M non utilizzate). Aumento di capitale ~198M netti incassato nell'esercizio."
+}

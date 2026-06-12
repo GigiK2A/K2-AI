@@ -1,0 +1,12 @@
+{
+  "fonte": "PLACEHOLDER — in attesa snapshot Damodaran da k2a-mcp-quant (Luca)",
+  "as_of": "2026-06-12",
+  "placeholder": true,
+  "nota": "Multipli indicativi a soli fini di validazione architetturale del PoC. NON usare per deliverable reali.",
+  "settori": {
+    "calcio professionistico": {"ev_ebitda": 8.0, "ev_ricavi": 2.4},
+    "manifatturiero":          {"ev_ebitda": 6.0, "ev_ricavi": 0.9},
+    "servizi b2b":             {"ev_ebitda": 7.0, "ev_ricavi": 1.2},
+    "default":                 {"ev_ebitda": 6.5, "ev_ricavi": 1.0}
+  }
+}
