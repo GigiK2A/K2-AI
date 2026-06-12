@@ -791,12 +791,22 @@ async function loadDocuments(){
     <table class="w-full text-[13px]"><thead><tr class="text-left text-slate-400 text-[11px] uppercase"><th class="py-1">File</th><th class="py-1">Origine</th><th class="py-1">Data</th></tr></thead><tbody>${rows}</tbody></table></section>`;
 }
 async function loadAnalytics(){
-  setHeader("Analytics","snapshot e funnel K-BOT",false);markNav();killCharts();
-  let ov={};try{ov=await jget("/api/overview");}catch(e){}
+  setHeader("Analytics","traffico sito (PostHog) + attività agenti",false);markNav();killCharts();
+  let ov={},ins={};try{ov=await jget("/api/overview");}catch(e){}
+  try{ins=await jget("/api/insights");}catch(e){}
+  const fn=arr(ins.funnel_web);
+  const tot=fn.reduce((s,r)=>s+(Number(r.count)||0),0);
+  const mx=fn.reduce((m,r)=>Math.max(m,Number(r.count)||0),0)||1;
+  const ph=fn.length?`<section class="card lift p-5 fu"><div class="flex items-center gap-3 mb-3"><h3 class="sec-t">Traffico sito · eventi (30g)</h3><span class="real">reale · PostHog</span></div>
+      <div class="space-y-1.5">${fn.slice(0,15).map(r=>`<div class="flex items-center gap-2 text-[12px]">
+        <div class="w-40 truncate font-semibold text-slate-600">${esc(r.event||'')}</div>
+        <div class="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden"><div class="h-3 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500" style="width:${Math.max(3,Math.round((Number(r.count)||0)/mx*100))}%"></div></div>
+        <div class="w-16 text-right text-slate-500">${NUM(r.count)}</div></div>`).join("")}</div></section>`
+    :`<section class="card p-4 fu text-[13px] text-slate-500"><b>PostHog non ancora collegato</b> (o nessun evento negli ultimi 30g) → aggiungi <code>POSTHOG_HOST</code>, <code>POSTHOG_PROJECT_ID</code>, <code>POSTHOG_PERSONAL_KEY</code> nel <code>.env</code> e qui compaiono gli eventi reali del sito.</section>`;
   $("view").innerHTML=`<section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
     ${kpi("Eventi audit",NUM(ov.audit_count),{t:"reale",real:1})}${kpi("Automazioni",NUM(ov.automations_done),{t:"reale",real:1})}
-    ${kpi("Agenti",DOMAINS.length,{t:"reali",real:1})}${kpi("Snapshot analytics","—","tabella analytics_snapshots")}</section>
-    <section class="card p-6 text-slate-500 text-sm">Vista analytics avanzata (trend storici da <code>analytics_snapshots</code>) in arrivo. I numeri operativi reali sono nei singoli reparti.</section>`;
+    ${kpi("Eventi sito (30g)",NUM(tot),{t:fn.length?"reale · PostHog":"PostHog da collegare",real:fn.length>0})}${kpi("Agenti",DOMAINS.length,{t:"reali",real:1})}</section>
+    ${ph}`;
 }
 
 async function loadSettings(){
