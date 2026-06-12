@@ -23,6 +23,10 @@ def run_all() -> dict:
             results["email"] = conv.draft_replies(limit=5)
         except Exception as exc:
             results["email"] = {"error": str(exc)}
+        try:
+            results["followup_lead"] = conv.draft_lead_followups(limit=5)
+        except Exception as exc:
+            results["followup_lead"] = {"error": str(exc)}
     # Notifica Telegram delle decisioni in coda (no-op se Telegram non configurato)
     if telegram.enabled():
         try:

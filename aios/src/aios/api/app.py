@@ -383,6 +383,13 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             return {"errore": "non disponibile"}
         return platform.conversations.draft_replies(limit=max(1, min(int(body.n or 5), 10)))
 
+    @app.post("/api/conversations/followups")
+    def conversations_followups(body: ProspectBody, _=Depends(_require_auth)) -> dict[str, Any]:
+        """Bozze di follow-up commerciale per i lead del K-BOT (email, non convertiti)."""
+        if platform is None or getattr(platform, "conversations", None) is None:
+            return {"errore": "non disponibile"}
+        return platform.conversations.draft_lead_followups(limit=max(1, min(int(body.n or 5), 10)))
+
     @app.post("/api/conversations/{draft_id}/send")
     def conversations_send(draft_id: str, body: SendDraftBody | None = None,
                            _=Depends(_require_auth)) -> dict[str, Any]:

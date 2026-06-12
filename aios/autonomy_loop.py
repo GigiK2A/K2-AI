@@ -113,11 +113,18 @@ def main() -> None:
         if em.get("bozze_create"):
             print(f"[{time.strftime('%H:%M', now)}] bozze email: {em['bozze_create']}")
 
-        # agenti di dominio 1 volta al giorno, all'ora prevista
+        # agenti di dominio + follow-up lead 1 volta al giorno, all'ora prevista
         if now.tm_hour == agents_hour and last_agents_day != now.tm_yday:
             last_agents_day = now.tm_yday
             res = _run_agents(platform)
             print(f"[{time.strftime('%H:%M', now)}] agenti: {res}")
+            conv = getattr(platform, "conversations", None)
+            if conv is not None:
+                try:
+                    fu = conv.draft_lead_followups(limit=5)
+                    print(f"[{time.strftime('%H:%M', now)}] follow-up lead: {fu}")
+                except Exception as exc:
+                    print(f"follow-up lead error: {exc}")
 
         nuovi = _notify_new_pending(k, seen)
         if nuovi:

@@ -86,3 +86,57 @@ def test_discard_marks_scartata():
     m, client = _mgr([draft], FakeLLM(["{}"]))
     assert m.discard("d1")["ok"] is True
     assert client.updates and client.updates[0][2] == {"status": "scartata"}
+
+
+# ---- follow-up vendite sui lead del K-BOT ----
+class LeadClient(FakeClient):
+    def __init__(self, email_rows, leads):
+        super().__init__(email_rows)
+        self.leads = leads
+
+    def select(self, table, params=None):
+        if table == "kbot_sessions":
+            return list(self.leads)
+        return super().select(table, params)
+
+
+def _lead_mgr(email_rows, leads, llm):
+    platform = SimpleNamespace(kernel=SimpleNamespace(_supabase=LeadClient(email_rows, leads),
+                              audit=SimpleNamespace(append=lambda **k: None)),
+                              agents={}, _founder=None)
+    m = ConversationManager(platform, llm)
+    return m, m.client
+
+
+_LEAD = {"id": "s1", "nome": "Studio Rossi", "email": "info@studiorossi.it",
+         "sector": "ingegneria", "status": "completed", "messages": "[...]",
+         "collected_data": "{}", "paid_at": None}
+
+
+def test_followup_drafts_outbound_for_kbot_lead():
+    llm = FakeLLM([json.dumps({"subject": "Dopo la diagnosi K2-AI",
+                               "body": "Ciao Studio Rossi, ti propongo una call di 20 min.",
+                               "needs_human": False})])
+    m, client = _lead_mgr([], [dict(_LEAD)], llm)
+    res = m.draft_lead_followups(limit=5)
+    assert res["bozze_create"] == 1
+    t, row = client.inserts[0]
+    assert t == "email_messages" and row["direction"] == "out" and row["status"] == "bozza"
+    assert row["conversation_id"] == "kbot:s1" and row["to_email"] == "info@studiorossi.it"
+
+
+def test_followup_skips_lead_already_drafted():
+    existing = {"id": "e1", "conversation_id": "kbot:s1", "direction": "out", "status": "bozza"}
+    m, client = _lead_mgr([existing], [dict(_LEAD)], FakeLLM(["{}"]))
+    assert m.draft_lead_followups()["bozze_create"] == 0
+    assert client.inserts == []
+
+
+def test_followup_thread_shows_lead_email_without_inbound():
+    out_draft = {"id": "e1", "conversation_id": "kbot:s1", "direction": "out",
+                 "to_email": "info@studiorossi.it", "from_name": "K2-AI",
+                 "subject": "Follow-up", "body": "ciao", "status": "bozza", "created_at": "2026-06-12"}
+    m, _ = _lead_mgr([out_draft], [], FakeLLM(["{}"]))
+    th = m.threads()
+    assert len(th) == 1 and th[0]["email"] == "info@studiorossi.it"
+    assert th[0]["bozza"] is not None and th[0]["da_rispondere"] is False
