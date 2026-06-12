@@ -54,10 +54,9 @@ FRONTEND_URL = _env("FRONTEND_URL", default="http://localhost:3000")
 SITE_URL = _env("NEXT_PUBLIC_SITE_URL", "SITE_URL", default="https://www.k2-ai.it")
 INTERNAL_API_KEY = _env("INTERNAL_API_KEY")
 
-# FREE MODE backend (K-BOT ufficiale senza paywall): genera i deliverable 8e
-# mintando comunque l'entitlement, senza richiedere il pagamento. È la modalità
-# operativa attuale del prodotto. Abbinato a K2A_8E_ENTITLEMENT_DEV=true sul
-# motore 8e. Per riattivare il paywall: KBOT_FREE_MODE=0. Vedi _mint_entitlement.
+# FREE MODE = bypass del paywall, SOLO per demo/dev. Default OFF (=produzione):
+# la generazione dei deliverable 8e richiede pagamento (vedi _mint_entitlement →
+# 402 se non pagato). Per una demo: KBOT_FREE_MODE=1 + K2A_8E_ENTITLEMENT_DEV=true.
 KBOT_FREE_MODE = (_env("KBOT_FREE_MODE", default="0") or "0").lower() in ("1", "true", "yes")
 
 # Default to k2-ai.it production origins. Never default to "*" with credentials.

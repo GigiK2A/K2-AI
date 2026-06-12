@@ -80,6 +80,23 @@ def is_8e_generabile(servizio_id: str) -> bool:
     return bool(s and s.get("genera_via") == "8e" and s.get("blueprint_id"))
 
 
+# Boost NON ancora vendibili in pipeline: i numeri di valutazione (EV/DCF/WACC)
+# li produrrebbe l'LLM, non un calcolo deterministico (debito #1). AdvisorBoost
+# torna vendibile quando arriva il motore quant (k2a-mcp-quant + percorso
+# agentico con valida_assunzioni). Vedi docs/handoff-luca-poc-agent-sdk-*.
+_NON_VENDIBILI = {"checkup_advisor"}
+
+
+def is_vendibile(servizio_id: str) -> bool:
+    """False per i boost gated (valutazione da LLM) o marcati vendibile=false a catalogo."""
+    s = get_servizio(servizio_id)
+    if not s:
+        return False
+    if servizio_id in _NON_VENDIBILI:
+        return False
+    return s.get("vendibile") is not False
+
+
 def blueprint_id(servizio_id: str) -> Optional[str]:
     s = get_servizio(servizio_id)
     return s.get("blueprint_id") if s else None

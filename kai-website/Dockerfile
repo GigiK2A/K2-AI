@@ -19,8 +19,8 @@ ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_API_BASE_URL=""
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=""
 ARG NEXT_PUBLIC_SITE_URL="https://www.k2-ai.it"
-# K-BOT ufficiale: genera via motore 8e senza paywall (default ON nell'immagine).
-ARG NEXT_PUBLIC_KBOT_FREE_MODE="1"
+# Paywall reale di default (produzione). =1 solo per demo/dev: salta il pagamento.
+ARG NEXT_PUBLIC_KBOT_FREE_MODE="0"
 
 ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL} \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY} \
@@ -103,9 +103,13 @@ ENV KBOT_SKILLS_DIR=/app/lib/skills \
     ENGINE_8E_PORT=8800 \
     K2A_8E_BASE_URL=http://127.0.0.1:8800 \
     K2A_8E_API_KEY=k2a-8e-internal-loopback \
-    K2A_8E_ENTITLEMENT_DEV=true \
-    K2A_8E_OUT_DIR=/tmp/8e_out \
-    KBOT_FREE_MODE=1
+    K2A_8E_OUT_DIR=/tmp/8e_out
+# PRODUZIONE: paywall + entitlement firmato attivi di default.
+# - K2A_8E_ENTITLEMENT_DEV NON è settato → l'8e è fail-closed: senza
+#   K2A_ENTITLEMENT_SECRET RIFIUTA (nessun bypass silenzioso).
+# - KBOT_FREE_MODE non settato (=0) → la generazione richiede pagamento.
+# RICHIESTO in Railway env (backend E 8e, stesso valore): K2A_ENTITLEMENT_SECRET.
+# Per demo/dev: settare K2A_8E_ENTITLEMENT_DEV=true e KBOT_FREE_MODE=1 in env.
 
 # Run as a non-root user (node:20-slim ships with the "node" user, uid 1000).
 # Tutto sotto /app è read-only a runtime (upload → Supabase storage + /tmp).

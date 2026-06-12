@@ -145,9 +145,11 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Report-ready CTA conversazionale. In FREE_MODE è nascosta: il documento
-            viene generato dal motore 8e tramite il DeliverablePanel (selettore catalogo). */}
-        {message.reportReady && !message.reportPdfUrl && !FREE_MODE && (
+        {/* CTA conversazionale LEGACY (report 19€ via pdf_renderer): superata dal
+            flusso ufficiale 8e (ReportGenerator, un bottone, paywall sul boost).
+            Tenuta nascosta per non avere due CTA in conflitto. Il path resta vivo
+            lato backend se servisse riattivarlo (rimuovi `&& false`). */}
+        {false && message.reportReady && !message.reportPdfUrl && !FREE_MODE && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={message.hasPaid ? onCheckout : onGeneratePdf}

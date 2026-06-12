@@ -147,6 +147,13 @@ async def auto_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(op
         servizio_id = sug["id"] if sug else None
     if not servizio_id or not catalog.is_8e_generabile(servizio_id):
         raise HTTPException(status_code=409, detail="nessun documento generabile per questa conversazione")
+    if not catalog.is_vendibile(servizio_id):
+        raise HTTPException(status_code=409, detail={
+            "reason": "non_vendibile",
+            "servizio_id": servizio_id,
+            "message": "Questo documento sarà disponibile col motore di valutazione (in arrivo). "
+                       "Per ora posso prepararti un altro report.",
+        })
     servizio = catalog.get_servizio(servizio_id)
 
     # Campi richiesti dal boost → auto-compilazione dai dati della conversazione.
@@ -157,9 +164,16 @@ async def auto_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(op
         campi = []
     inputs = autofill.extract_inputs(session, campi)
 
+    # Paywall reale (KBOT_FREE_MODE off): se non pagato → 402 con i dati per il
+    # checkout del boost (il frontend apre Stripe e al ritorno genera).
     entitlement_token = _mint_entitlement(session, servizio_id, tier=servizio.get("tipo"))
     if not entitlement_token:
-        raise HTTPException(status_code=402, detail="servizio non pagato")
+        raise HTTPException(status_code=402, detail={
+            "reason": "payment_required",
+            "servizio_id": servizio_id,
+            "label": servizio.get("label"),
+            "prezzo_eur": catalog.prezzo_eur(servizio_id),
+        })
 
     try:
         res = await engine.create_deliverable(

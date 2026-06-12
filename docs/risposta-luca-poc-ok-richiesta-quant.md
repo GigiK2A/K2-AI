@@ -50,6 +50,14 @@ Hai detto che imposti `k2a-mcp-quant` in stile `k2a-mcp-elettrico` e mi mandi il
 ### 6. Ordine e tempi
 - da quali tool parti (per Advisor bastano i 7 sopra) e una stima, così pianifichiamo lo swap
 
+## PS importante — il quant non serve solo ad AdvisorBoost
+
+Verificando il motore 8e ho trovato che **anche il FinanceBoost (venduto) aveva la stessa falla**: gli indici (D/E, ROE, margini, e soprattutto DCF/WACC) li **calcolava Sonnet**. Lo snapshot li dichiarava `fonte: calcolo-runtime` ma la pipeline salvava solo la formula-stringa → l'aritmetica la faceva l'LLM.
+
+**Ho già messo uno stopgap deterministico** per gli indici di bilancio (D/E, ROE, ROS, ROI, EBITDA margin, current/quick ratio, CCN — calcolati in Python dai dati del form; dove il form non basta → "non disponibile", mai inventato). Ma **DCF, WACC e la valutazione restano fuori**: quelli hanno bisogno del tuo quant (CAPM, g-range, `valida_assunzioni`).
+
+Quindi il tuo `k2a-mcp-quant` chiude **due** falle, non una: AdvisorBoost (agentico) **e** FinanceBoost (pipeline). Ti chiedo di **dimensionare lo scope dei tool per entrambi** — gli 8 tool che hai già spec'ato coprono già tutto, è solo questione di farli consumare anche dalla pipeline 8e (oltre che dall'agente). Quando arriva, il mio `app/calc.py` stopgap si sostituisce con una chiamata al tuo MCP: stesso principio, stessa interfaccia.
+
 ## Il punto
 
 Da parte nostra il PoC è pronto a ricevere il quant vero: provenienza e fail-closed dentro, casi in-target in misura. Appena mi mandi i 6 punti, sostituisco `quant-lite` col tuo MCP e rigiriamo i casi con i **numeri veri e le assunzioni nei tool** — ed è lì che misuriamo la correttezza, non solo la robustezza.
