@@ -18,8 +18,12 @@
           "anno": { "type": "integer" },
           "ricavi": { "type": ["number", "null"] },
           "ebitda": { "type": ["number", "null"] },
+          "reddito_operativo": { "type": ["number", "null"], "description": "EBIT — serve per ROS/ROI deterministici" },
           "utile_netto": { "type": ["number", "null"] },
           "totale_attivo": { "type": ["number", "null"] },
+          "attivo_corrente": { "type": ["number", "null"], "description": "per current/quick ratio, CCN" },
+          "passivo_corrente": { "type": ["number", "null"], "description": "per current/quick ratio, CCN" },
+          "rimanenze": { "type": ["number", "null"], "description": "magazzino — per quick ratio" },
           "patrimonio_netto": { "type": ["number", "null"] },
           "debiti_finanziari": { "type": ["number", "null"] },
           "costo_personale": { "type": ["number", "null"] }

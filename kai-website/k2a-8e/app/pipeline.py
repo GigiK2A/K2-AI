@@ -11,7 +11,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, jobs, llm, validate
+from . import assets, calc, jobs, llm, validate
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -64,7 +64,12 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
                 "testo": testo,  # verbatim dallo snapshot → appendice deterministica
             })
         elif tipo == "formula":
-            facts[k] = {"valore": e.get("formula"), "tipo": "formula"}
+            # Indici finanziari dichiarati 'calcolo-runtime' nello snapshot: il
+            # VALORE va calcolato deterministicamente (calc.py), non lasciato come
+            # formula-stringa che poi calcola l'LLM. Per le chiavi non gestite da
+            # calc (revpar, dcf, wacc, ctrl_*) resta la formula testuale.
+            computed = calc.resolve_formula_fact(k, form)
+            facts[k] = computed if computed is not None else {"valore": e.get("formula"), "tipo": "formula"}
         elif tipo == "input":
             facts[k] = {"valore": form.get(e.get("campo_form")), "tipo": "input"}
         elif tipo == "benchmark":

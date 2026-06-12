@@ -64,10 +64,23 @@ def _parse_json_object(text: str) -> dict:
 
 
 def _facts_block(facts: dict[str, dict]) -> str:
-    lines = ["FATTI DETERMINISTICI (usa SOLO questi per i riferimenti normativi):"]
+    lines = [
+        "FATTI DETERMINISTICI (usa SOLO questi per riferimenti normativi e numeri):",
+        "REGOLE: i valori 'CALCOLATO' sono autoritativi — riportali VERBATIM, non",
+        "ricalcolarli e non arrotondarli diversamente. I 'NON DISPONIBILE' NON vanno",
+        "inventati né stimati: dichiara il dato come non disponibile e spiega perché.",
+    ]
     for k, v in facts.items():
-        val = str(v.get("valore", ""))[:1500]
-        lines.append(f"- [{k}] tipo={v.get('tipo')} fonte={v.get('fonte')} vigenza={v.get('vigenza')}:\n{val}")
+        tipo = v.get("tipo")
+        if tipo == "valore_calcolato":
+            anno = f" (anno {v.get('anno')})" if v.get("anno") else ""
+            serie = f" · serie: {v['serie']}" if v.get("serie") else ""
+            lines.append(f"- [{k}] CALCOLATO{anno}: {v.get('valore')}  [{v.get('formula','')}]{serie}")
+        elif tipo == "non_disponibile":
+            lines.append(f"- [{k}] NON DISPONIBILE — {v.get('motivo','dato mancante')} (NON inventare)")
+        else:
+            val = str(v.get("valore", ""))[:1500]
+            lines.append(f"- [{k}] tipo={tipo} fonte={v.get('fonte')} vigenza={v.get('vigenza')}:\n{val}")
     return "\n".join(lines)
 
 
