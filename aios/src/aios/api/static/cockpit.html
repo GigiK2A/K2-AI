@@ -870,15 +870,25 @@ async function loadConversazioni(){
       ${kpi("Da rispondere",daRisp,daRisp?"attendono una bozza":"tutto gestito")}
       ${kpi("Bozze pronte",pronte,"da approvare")}
       ${kpi("Da rivedere",revis,{t:revis?"casi delicati":"nessuno",real:revis>0})}</section>
-    <section class="card p-4 mb-3 flex items-center justify-between gap-3">
-      <div class="text-[12px] text-slate-500">L'agente legge la posta (Outlook via n8n), prepara la risposta e te la mette qui. <b>Niente parte senza il tuo Approva.</b></div>
-      <button onclick="convDraftAll(this)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700 whitespace-nowrap">✎ Genera bozze (${daRisp})</button>
+    <section class="card p-4 mb-3 flex items-center justify-between gap-3 flex-wrap">
+      <div class="text-[12px] text-slate-500">L'agente legge la posta (Outlook via n8n) e i lead del K-BOT, prepara le risposte e i follow-up e te li mette qui. <b>Niente parte senza il tuo Approva.</b></div>
+      <div class="flex gap-2">
+        <button onclick="convDraftAll(this)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700 whitespace-nowrap">✎ Genera bozze (${daRisp})</button>
+        <button onclick="convFollowups(this)" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 whitespace-nowrap">📣 Follow-up lead K-BOT</button>
+      </div>
     </section>
     <section class="space-y-3">${th.length?th.map(card).join(""):'<div class="card p-6 text-center text-slate-400 text-sm">Nessuna email. Quando il workflow n8n porta la posta in <code>email_messages</code>, i thread compaiono qui.</div>'}</section>`;
 }
 async function convDraftAll(btn){
   if(btn){btn.disabled=true;btn.textContent="Genero…";}
   try{await jpost("/api/conversations/draft",{n:5});}catch(e){alert("Errore generazione bozze");}
+  loadConversazioni();
+}
+async function convFollowups(btn){
+  if(!confirm("Genero le bozze di follow-up per i lead del K-BOT (email, non convertiti)? Solo bozze, nessun invio."))return;
+  if(btn){btn.disabled=true;btn.textContent="Genero follow-up…";}
+  let r={};try{r=await jpost("/api/conversations/followups",{n:5});}catch(e){alert("Errore follow-up");}
+  if(r&&r.errore)alert("Follow-up: "+r.errore);
   loadConversazioni();
 }
 async function convSend(id){
