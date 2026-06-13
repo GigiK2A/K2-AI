@@ -36,4 +36,10 @@ OPERATIONS_CONFIG = DomainConfig(
     ),
     skill_focus=[],
     knowledge_query="operations commesse progetti consegna fasi SAL capacity rischio KPI",
+    action_tables=[
+        ("project_tasks", "task di commessa (insert) o avanzamento/stato (update con match)"),
+        ("project_phases", "fase/SAL di una commessa"),
+        ("change_requests", "variazione di scope/commessa (change request)"),
+        ("board_tasks", "attività operativa interna da fare"),
+    ],
 )
