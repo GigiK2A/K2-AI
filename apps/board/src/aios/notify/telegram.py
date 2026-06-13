@@ -53,11 +53,34 @@ def send_text(text: str) -> None:
         pass
 
 
-def send_approval_card(approval_id, title: str, body: str = "") -> None:
-    """Manda una card con bottoni Approva/Rifiuta. callback_data = approve|reject:<id>."""
+def azione_riga(azione) -> str:
+    """Riga leggibile di COSA esegue l'azione su Approva (no approvazione cieca)."""
+    if not isinstance(azione, dict):
+        return "📋 Crea un task (nessuna scrittura specifica)"
+    canale = str(azione.get("canale") or "").lower()
+    if canale in {"n8n", "esterno", "external", "webhook"}:
+        return f"🌐 ESTERNO via n8n · workflow «{azione.get('workflow', '?')}»"
+    if azione.get("tipo") == "ddl" or azione.get("sql"):
+        return "🛠 Modifica SCHEMA DB (DDL)"
+    op = str(azione.get("op") or "").lower()
+    tab = azione.get("tabella") or azione.get("table") or "?"
+    m = f" · {azione.get('match')}" if azione.get("match") else ""
+    if op == "delete":
+        return f"🗑 ELIMINA da {tab}{m}"
+    if op == "update":
+        return f"✏️ Aggiorna {tab}{m}"
+    if op == "insert":
+        return f"➕ Crea in {tab}"
+    return f"⚙️ {op or 'azione'} su {tab}"
+
+
+def send_approval_card(approval_id, title: str, body: str = "", azione=None) -> None:
+    """Manda una card con bottoni Approva/Rifiuta. callback_data = approve|reject:<id>.
+    Mostra anche COSA esegue l'azione (azione) per evitare approvazioni cieche."""
     if not enabled():
         return
-    txt = f"*Approvazione richiesta*\n\n*{title}*\n{(body or '')[:400]}\n\nID: `{approval_id}`"
+    riga = f"\n\n⚙️ *Su Approva:* {azione_riga(azione)}" if azione is not None else ""
+    txt = f"*Approvazione richiesta*\n\n*{title}*\n{(body or '')[:400]}{riga}\n\nID: `{approval_id}`"
     try:
         _post("sendMessage", {
             "chat_id": os.environ["TELEGRAM_CHAT_ID"], "text": txt, "parse_mode": "Markdown",

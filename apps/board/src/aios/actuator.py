@@ -80,12 +80,17 @@ _APPEND_ONLY = {"finance_journal", "privacy_registro_trattamenti", "board_revenu
 # Canali esterni riconosciuti per un'azione (instradata a n8n, non al DB).
 _EXTERNAL_CANALI = {"n8n", "esterno", "external", "webhook"}
 
+# delete consentita SOLO per chiave d'identità (riga singola), mai per colonne generiche
+# (status/sector/...) → impossibile una cancellazione di massa.
+_DELETE_KEYS = {"id", "uuid"}
+
 
 def is_external_action(action: Any) -> bool:
-    """True se l'azione va eseguita FUORI dal DB (pubblica/invia/social) via n8n."""
+    """True se l'azione va eseguita FUORI dal DB (pubblica/invia/social) via n8n.
+    Richiede un 'canale' ESPLICITO: una chiave 'workflow' da sola non basta (evita
+    che un campo vagante dell'LLM instradi per sbaglio all'esterno)."""
     return (isinstance(action, dict)
-            and (str(action.get("canale") or "").lower() in _EXTERNAL_CANALI
-                 or bool(action.get("workflow"))))
+            and str(action.get("canale") or "").lower() in _EXTERNAL_CANALI)
 
 
 class ActuatorError(RuntimeError):
@@ -111,6 +116,11 @@ def validate(action: dict[str, Any]) -> tuple[str, str, dict, dict]:
             raise ActuatorError(f"delete vietata su registro immutabile: {table}")
         if not isinstance(match, dict) or not match:
             raise ActuatorError("delete richiede un match (niente cancellazioni di massa)")
+        # match SOLO per chiave d'identità (id/uuid) → garantita una sola riga.
+        # Una colonna generica (status/sector/...) cancellerebbe in massa: vietata.
+        if set(match.keys()) - _DELETE_KEYS:
+            raise ActuatorError("delete consentita solo per chiave univoca "
+                                f"(id/uuid), non per {sorted(match.keys())}")
         return table, op, match, data
     if op not in ALLOWLIST[table]:
         raise ActuatorError(f"operazione '{op}' non consentita su {table}")

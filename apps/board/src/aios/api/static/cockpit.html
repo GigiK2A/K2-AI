@@ -233,14 +233,29 @@ function recoCard(deliv){const body=(deliv&&deliv.length)?deliv.slice(0,5).map(x
   :`<div class="text-[12px] text-slate-400">Nessun deliverable ancora — approva una proposta per generarne uno.</div>`;
   return `<div class="card p-4 fu"><div class="font-bold text-sm mb-3 flex items-center gap-2">AI Recommendations <span class="real">reale</span></div><div class="space-y-3">${body}</div></div>`;}
 // Card decisione con approfondimento (full=true → testo completo nel modal)
+function azSummary(az){
+  if(!az||typeof az!=="object")return {txt:"📋 Crea un task (nessuna scrittura specifica)",cls:"bg-slate-100 text-slate-500"};
+  const canale=(az.canale||"").toLowerCase();
+  if(canale==="n8n"||canale==="esterno"||canale==="external"||canale==="webhook")
+    return {txt:"🌐 ESTERNO via n8n · workflow «"+esc(az.workflow||"?")+"»",cls:"bg-amber-100 text-amber-800"};
+  if(az.tipo==="ddl"||az.sql)return {txt:"🛠 Modifica SCHEMA DB (DDL)",cls:"bg-amber-100 text-amber-800"};
+  const op=(az.op||"").toLowerCase(),tab=esc(az.tabella||az.table||"?");
+  const m=az.match?(" · "+esc(JSON.stringify(az.match))):"";
+  if(op==="delete")return {txt:"🗑 ELIMINA da "+tab+m,cls:"bg-rose-100 text-rose-700"};
+  if(op==="update")return {txt:"✏️ Aggiorna "+tab+m,cls:"bg-blue-50 text-blue-700"};
+  if(op==="insert")return {txt:"➕ Crea in "+tab,cls:"bg-emerald-50 text-emerald-700"};
+  return {txt:"⚙️ "+esc(op||"azione")+" su "+tab,cls:"bg-slate-100 text-slate-600"};
+}
 function decCard(a,i,full){const p=a.payload||{};const pr=p._prio||PRIO[i%3];
   const desc=p.contenuto||p.descrizione||"";const motivo=p.motivo||"";const impatto=p.impatto||"";
+  const az=azSummary(p.azione);
   return `<div class="dcard rounded-xl border border-slate-100 p-4">
     <div class="flex items-center justify-between gap-2 mb-1.5">
       <div class="flex items-center gap-2 flex-wrap"><span class="text-[12px] font-bold ${prioColor[pr]||'text-slate-500'}">● ${esc(pr)}</span>
       ${p.tipo?`<span class="chip bg-slate-100 text-slate-600">${esc(p.tipo)}</span>`:""}${p.area?`<span class="chip bg-blue-50 text-blue-700">${esc(p.area)}</span>`:""}</div>
       ${a.id?`<span class="text-[11px] text-slate-300">#${a.id}</span>`:""}</div>
     <div class="font-bold text-[14px] mb-1">${esc(p.titolo||p.tipo||"Proposta")}</div>
+    <div class="mb-1.5"><span class="chip ${az.cls} text-[11px] font-semibold">Su Approva: ${az.txt}</span></div>
     <div class="text-[13px] text-slate-600 leading-relaxed ${full?'':'clamp3'}">${esc(desc)}</div>
     ${motivo?`<div class="mt-2 text-[12px] text-emerald-800 bg-emerald-50/70 rounded-lg px-3 py-2"><b>Perché conviene:</b> ${esc(full?motivo:motivo.slice(0,150))}</div>`:""}
     ${impatto?`<div class="mt-1.5 text-[12px] font-semibold text-emerald-700">📈 ${esc(impatto)}</div>`:""}
@@ -428,7 +443,7 @@ async function loadAgents(){
     ["🛡","bg-blue-50","Sicurezza & controllo","Ogni azione passa dalla scaletta L0–L3 con cap L1 e supervisione umana."],
     ["🧠","bg-emerald-50","Autonomia assistita","Livello L1: gli agenti propongono, tu approvi. Nessuna scrittura senza ok."],
     ["🗓","bg-violet-50","Audit & tracciabilità",`Ogni evento è loggato — ${num(co.audit_total)} nel registro del kernel.`],
-    ["✍️","bg-amber-50","Attuatore con guardrail","Solo insert/update in allowlist; mai delete, mai denaro, solo dopo approvazione."]];
+    ["✍️","bg-amber-50","Attuatore con guardrail","Insert/update/delete in allowlist + azioni esterne (n8n), sempre dopo approvazione. Delete solo per id, mai control-plane né registri immutabili."]];
   const info=INFO.map(c=>`<div class="card lift p-4 fu"><div class="w-10 h-10 rounded-xl ${c[1]} grid place-items-center text-[18px] mb-2">${c[0]}</div>
     <div class="font-bold text-[13px] mb-1">${esc(c[2])}</div><div class="text-[12px] text-slate-500 leading-snug">${esc(c[3])}</div></div>`).join("");
   $("view").innerHTML=`

@@ -33,7 +33,7 @@ def run_all() -> dict:
             for a in platform.kernel.approvals.pending():
                 p = a.payload or {}
                 telegram.send_approval_card(a.id, p.get("titolo") or a.action_key,
-                                            p.get("contenuto") or "")
+                                            p.get("contenuto") or "", p.get("azione"))
         except Exception:
             pass
     return results
