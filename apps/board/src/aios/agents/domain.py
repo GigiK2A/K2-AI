@@ -55,9 +55,11 @@ def _ensure_action(p: dict) -> dict:
     """Affidabilità attuatore: ogni proposta DEVE avere un'azione valida (allowlist).
     Se l'LLM ne ha data una valida → la tiene; altrimenti fallback deterministico =
     crea un task operativo (board_tasks) con titolo+contenuto. Mai dipendere dall'LLM."""
-    from aios.actuator import validate, validate_ddl, ActuatorError
+    from aios.actuator import validate, validate_ddl, ActuatorError, is_external_action
     az = p.get("azione")
     if isinstance(az, dict):
+        if is_external_action(az):     # azione esterna (n8n: pubblica/invia/social) → valida
+            return az
         if az.get("tipo") == "ddl" or az.get("sql"):   # proposta di schema (DDL guardato)
             try:
                 validate_ddl(str(az.get("sql", "")))
@@ -148,14 +150,17 @@ class DomainAgent:
             return ("Per ogni proposta aggiungi 'azione':{tabella,op:insert|update,match,dati} "
                     "su una tabella interna. Se la ometti, verrà creato un task.")
         righe = "\n".join(f"  - {t}: {q}" for t, q in tabs)
-        return ("IMPORTANTE — esecuzione reale: ogni proposta CONCRETA DEVE includere "
-                "'azione':{tabella,op:insert|update,match,dati} scegliendo la tabella giusta "
-                "tra queste del tuo reparto (su Approva il record viene scritto DAVVERO):\n"
-                + righe + "\n"
-                "Compila 'dati' con i campi reali (es. nome/titolo/importo/stato/email...). "
-                "Usa op:update con 'match' per modificare un record esistente. "
-                "Solo se la proposta è pura strategia/analisi senza un record concreto, "
-                "ometti 'azione' (diventerà un task da fare). Niente numeri inventati.")
+        return ("IMPORTANTE — esecuzione reale (su Approva l'azione viene ESEGUITA davvero):\n"
+                "Ogni proposta CONCRETA DEVE includere un'azione. Tre forme possibili:\n"
+                "1) SCRITTURA INTERNA → 'azione':{tabella,op:insert|update|delete,match,dati} "
+                "sulle tabelle del tuo reparto:\n" + righe + "\n"
+                "   - 'dati' coi campi reali (nome/titolo/importo/stato/email...). "
+                "op:update e op:delete richiedono 'match' (mai di massa).\n"
+                "2) AZIONE ESTERNA (pubblicare sul sito/social, inviare email/messaggi, aggiornare "
+                "un gestionale) → 'azione':{canale:'n8n',workflow:'<nome workflow n8n>',payload:{...}}. "
+                "Es. invio email: workflow 'send_email', payload {to,subject,body}.\n"
+                "3) Se è pura strategia/analisi senza un'azione concreta, ometti 'azione' "
+                "(diventa un task). Niente numeri inventati.")
 
     def run(self) -> DomainResult:
         data = {}

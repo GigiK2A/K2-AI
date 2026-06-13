@@ -1,9 +1,12 @@
-"""Attuatore Livello 1: esegue scritture REALI su Supabase quando una proposta
-viene APPROVATA dall'umano (coda L1). Perimetro di sicurezza stretto:
-- solo insert/update su tabelle operative INTERNE in allowlist
-- MAI delete · MAI denaro (revenue/conversions/Stripe) · MAI auth/permessi · MAI dati utente kbot
-- update richiede sempre un match (niente update di massa)
-Ogni scrittura passa di qui e ritorna un esito tracciabile (audit).
+"""Attuatore Livello 1: esegue azioni REALI quando una proposta viene APPROVATA
+dall'umano (coda L1). Sotto approvazione l'agente può fare "tutto", entro il perimetro:
+- insert/update/delete su tabelle operative INTERNE in allowlist
+- azioni ESTERNE (pubblica/invia/social/gestionale) instradate a n8n (canale:'n8n')
+- update e delete richiedono SEMPRE un match (niente operazioni di massa)
+- MAI su control-plane (audit/policy/auth/sessioni/catalogo) — BLOCKED
+- MAI delete su registri immutabili/contabili/GDPR — _APPEND_ONLY
+- DDL solo non distruttivo (mai drop/truncate/cascade)
+Ogni azione passa di qui e ritorna un esito tracciabile (audit).
 """
 from __future__ import annotations
 
@@ -16,7 +19,8 @@ _DDL_OK_START = ("alter table", "create table", "create index", "create unique i
                  "comment on", "create or replace view", "create view", "create schema")
 _DDL_FORBIDDEN = re.compile(r"\b(drop|truncate|cascade)\b", re.IGNORECASE)
 
-# tabella -> operazioni consentite. Nessuna 'delete' è mai consentita.
+# tabella -> operazioni base consentite (insert/update). La delete è gestita a parte
+# in validate(): permessa con match su queste tabelle, TRANNE quelle in _APPEND_ONLY.
 ALLOWLIST: dict[str, set[str]] = {
     "pipeline_leads": {"insert", "update"},
     "invoices": {"insert", "update"},
@@ -67,6 +71,22 @@ ALLOWLIST: dict[str, set[str]] = {
 BLOCKED = {"aios_audit", "aios_policy_state", "board_users", "board_sessions",
            "kbot_sessions", "suite_services"}
 
+# Registri immutabili / contabili: insert e update sì, ma MAI delete (servono per
+# audit, contabilità, GDPR art.30). Cancellarli falserebbe lo storico.
+_APPEND_ONLY = {"finance_journal", "privacy_registro_trattamenti", "board_revenue_events",
+                "kbot_conversions", "kbot_conversations", "hr_analytics_snapshots",
+                "corporate_acts", "compliance_training", "training_records"}
+
+# Canali esterni riconosciuti per un'azione (instradata a n8n, non al DB).
+_EXTERNAL_CANALI = {"n8n", "esterno", "external", "webhook"}
+
+
+def is_external_action(action: Any) -> bool:
+    """True se l'azione va eseguita FUORI dal DB (pubblica/invia/social) via n8n."""
+    return (isinstance(action, dict)
+            and (str(action.get("canale") or "").lower() in _EXTERNAL_CANALI
+                 or bool(action.get("workflow"))))
+
 
 class ActuatorError(RuntimeError):
     pass
@@ -84,10 +104,16 @@ def validate(action: dict[str, Any]) -> tuple[str, str, dict, dict]:
         raise ActuatorError(f"tabella vietata alla scrittura: {table}")
     if table not in ALLOWLIST:
         raise ActuatorError(f"tabella non in allowlist: {table}")
+    # delete consentita SOLO sotto approvazione umana (apply_action gira all'approve),
+    # con match obbligatorio (niente cancellazioni di massa) e MAI su registri immutabili.
+    if op == "delete":
+        if table in _APPEND_ONLY:
+            raise ActuatorError(f"delete vietata su registro immutabile: {table}")
+        if not isinstance(match, dict) or not match:
+            raise ActuatorError("delete richiede un match (niente cancellazioni di massa)")
+        return table, op, match, data
     if op not in ALLOWLIST[table]:
         raise ActuatorError(f"operazione '{op}' non consentita su {table}")
-    if op == "delete":
-        raise ActuatorError("delete mai consentita")
     if not isinstance(data, dict) or not data:
         raise ActuatorError("dati mancanti")
     if op == "update" and (not isinstance(match, dict) or not match):
@@ -238,7 +264,20 @@ def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
     guardata; altrimenti insert/update di righe su tabella allowlist."""
     if isinstance(action, dict) and (action.get("tipo") == "ddl" or action.get("sql")):
         return apply_ddl(str(action.get("sql", "")))
+    # Azione ESTERNA (pubblica/invia/social/gestionale) → instradata a n8n. Gira solo
+    # qui, cioè sotto approvazione umana (apply_action è chiamata all'approve).
+    if is_external_action(action):
+        from aios.sources.n8n import trigger_n8n
+        wf = str(action.get("workflow") or "k2ai")
+        payload = action.get("payload") or action.get("dati") or {}
+        out = trigger_n8n(wf, payload if isinstance(payload, dict) else {})
+        return {"ok": bool(out.get("ok")), "canale": "n8n", "workflow": wf, "esito": out}
     table, op, match, data = validate(action)
+    if op == "delete":
+        # eq. esatto per ogni chiave di match → niente cancellazioni di massa
+        filters = {k: f"eq.{v}" for k, v in match.items()}
+        rows = client.delete(table, filters)
+        return {"ok": True, "tabella": table, "op": "delete", "match": match, "righe": rows}
     data = _sanitize(table, data, op)
     if op == "insert":
         rows = client.insert(table, data)

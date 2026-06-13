@@ -62,3 +62,12 @@ class SupabaseREST:
         return self._fetch(method="PATCH", url=url,
                            headers=self._headers({"Prefer": "return=representation"}),
                            body=json.dumps(patch))
+
+    def delete(self, table: str, filters: dict[str, str]) -> list[dict[str, Any]]:
+        # I filtri sono OBBLIGATORI (il chiamante li garantisce): senza, PostgREST
+        # rifiuta comunque una DELETE non filtrata, ma non ci affidiamo a quello.
+        qs = urllib.parse.urlencode(filters, safe="*")
+        url = f"{self._base}/{table}?{qs}"
+        return self._fetch(method="DELETE", url=url,
+                           headers=self._headers({"Prefer": "return=representation"}),
+                           body=None)

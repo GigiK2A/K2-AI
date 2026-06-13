@@ -14,6 +14,7 @@ class FakeClient:
     def __init__(self):
         self.inserts = []
         self.updates = []
+        self.deletes = []
 
     def select(self, table, params):
         return [{"id": "L1", "name": "Mario"}]
@@ -26,11 +27,49 @@ class FakeClient:
         self.updates.append((table, filters, patch))
         return [{"id": 1, **patch}]
 
+    def delete(self, table, filters):
+        self.deletes.append((table, filters))
+        return [{"id": 1}]
+
 
 # ---- validate / perimetro ----
-def test_block_delete():
+def test_delete_requires_match():
+    # delete senza match → vietata (niente cancellazioni di massa)
     with pytest.raises(ActuatorError):
         validate({"tabella": "pipeline_leads", "op": "delete", "dati": {"x": 1}})
+
+
+def test_delete_with_match_ok():
+    table, op, match, _ = validate(
+        {"tabella": "pipeline_leads", "op": "delete", "match": {"id": "L1"}})
+    assert op == "delete" and match == {"id": "L1"}
+
+
+def test_delete_blocked_on_append_only_ledger():
+    with pytest.raises(ActuatorError):
+        validate({"tabella": "finance_journal", "op": "delete", "match": {"id": 1}})
+
+
+def test_delete_blocked_on_control_plane():
+    with pytest.raises(ActuatorError):
+        validate({"tabella": "aios_audit", "op": "delete", "match": {"id": 1}})
+
+
+def test_apply_delete_executes_with_eq_filter():
+    c = FakeClient()
+    out = apply_action(c, {"tabella": "pipeline_leads", "op": "delete", "match": {"id": "L1"}})
+    assert out["ok"] and out["op"] == "delete"
+    assert c.deletes == [("pipeline_leads", {"id": "eq.L1"})]
+
+
+def test_apply_external_routes_to_n8n(monkeypatch):
+    monkeypatch.delenv("N8N_WEBHOOK_URL", raising=False)  # n8n non configurato
+    c = FakeClient()
+    out = apply_action(c, {"canale": "n8n", "workflow": "send_email",
+                           "payload": {"to": "x@y.it", "subject": "Ciao", "body": "test"}})
+    assert out["canale"] == "n8n" and out["workflow"] == "send_email"
+    assert out["ok"] is False                 # senza webhook non parte
+    assert c.inserts == [] and c.deletes == []  # nessun tocco al DB
 
 
 def test_block_control_plane_table():
