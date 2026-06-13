@@ -66,6 +66,11 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         resp.headers.setdefault("Cache-Control", "no-store")
         return resp
 
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        """Healthcheck pubblico (no auth) per Railway/Docker."""
+        return {"status": "ok"}
+
     @app.get("/", response_class=HTMLResponse)
     def root() -> HTMLResponse:
         html = (_STATIC / "cockpit.html").read_text(encoding="utf-8")

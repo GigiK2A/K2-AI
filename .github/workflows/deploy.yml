@@ -11,7 +11,6 @@ on:
         options:
           - kai-website
           - k2-board
-          - k2-aios
           - both
 
 # Railway "GitHub integration" auto-deploys both services on push to main
@@ -25,10 +24,9 @@ on:
 #      Create token, copy.
 #   2. GitHub repo → Settings → Secrets → Actions → New repository secret:
 #        RAILWAY_TOKEN_KAI_WEBSITE  = <token of kai-website service>
-#        RAILWAY_TOKEN_K2_BOARD     = <token of k2-board service>
-#        RAILWAY_TOKEN_K2_AIOS      = <token of k2-aios service>  (root dir = aios)
+#        RAILWAY_TOKEN_K2_BOARD     = <token of k2-board service>  (ora serve l'AIOS, root dir = apps/board)
 #
-# Then: gh workflow run Deploy --field service=both   (o --field service=k2-aios)
+# Then: gh workflow run Deploy --field service=both
 
 jobs:
   deploy-kai-website:
@@ -63,21 +61,4 @@ jobs:
             echo "::error::Missing RAILWAY_TOKEN_K2_BOARD repository secret"; exit 1
           fi
           cd apps/board
-          railway redeploy --yes
-
-  deploy-k2-aios:
-    if: ${{ github.event.inputs.service == 'k2-aios' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
-      - name: Redeploy k2-aios
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_K2_AIOS }}
-        run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "::error::Missing RAILWAY_TOKEN_K2_AIOS repository secret"; exit 1
-          fi
-          cd aios
           railway redeploy --yes
