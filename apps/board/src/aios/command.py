@@ -2,13 +2,14 @@
 l'AI la VALUTA sui dati reali e — se corretta — la FA davvero.
 
 Politica di esecuzione (scelta dall'owner):
-- azioni INTERNE sicure (tabelle operative reversibili in allowlist) -> eseguite SUBITO;
-- azioni ESTERNE (n8n / pubblicazioni) o INTERNE SENSIBILI (denaro/persone/legale/dati
-  personali) -> messe in CONFERMA (un ok e partono);
-- azioni VIETATE (fuori allowlist, delete, denaro su tabelle bloccate) -> RIFIUTATE.
+- azioni INTERNE insert/update su tabelle allowlist -> eseguite SUBITO;
+- azioni ESTERNE (n8n / pubblicazioni) e ogni DELETE -> messe in CONFERMA (un ok e partono):
+  delete e azioni esterne NON partono mai in automatico;
+- azioni VIETATE (fuori allowlist, control-plane BLOCKED, delete su registri immutabili,
+  delete con match non su chiave id) -> RIFIUTATE dall'attuatore.
 
-La rete di sicurezza vera resta l'attuatore (`actuator.validate`): qualunque cosa
-proponga l'LLM, se non e' in allowlist / e' delete / e' denaro, viene bloccata qui.
+La rete di sicurezza vera resta l'attuatore (`actuator.validate`): allowlist, delete
+solo per id e mai su control-plane/registri immutabili, esterno instradato a n8n.
 Ogni esecuzione passa per l'audit del kernel.
 """
 from __future__ import annotations
@@ -17,12 +18,13 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from aios.actuator import apply_action, validate, validate_ddl, ActuatorError, ALLOWLIST
+from aios.actuator import (apply_action, validate, validate_ddl, ActuatorError, ALLOWLIST,
+                           is_external_action)
 
-# Scelta owner: TUTTO l'interno parte col solo Approva/accetta — nessuna conferma extra
-# per le tabelle interne (denaro e dati personali inclusi). Solo l'ESTERNO va in conferma.
-# La rete di sicurezza resta l'attuatore (allowlist + no delete; il piano di controllo
-# audit/policy/auth/catalogo resta in BLOCKED). DDL = solo non distruttivo.
+# Scelta owner: insert/update interni partono col solo comando. ESTERNO e DELETE invece
+# vanno SEMPRE in conferma esplicita (gestiti in _classify, non da questo set). La rete di
+# sicurezza resta l'attuatore: allowlist, delete solo per id e mai su control-plane/registri
+# immutabili (BLOCKED/_APPEND_ONLY). DDL = solo non distruttivo.
 CHAT_CONFIRM_TABLES: set[str] = set()
 
 # Routing per parole chiave -> dominio (fallback LLM se nessuna combacia).
@@ -78,7 +80,9 @@ _PLAN_SYS = (
     "'esterna':true e 'n8n':{workflow,payload}.\n"
     "Se l'istruzione riguarda i WORKFLOW n8n (crea/modifica/attiva un'automazione) usa "
     "'n8n_manage':{op:create|update|activate|deactivate, workflow_id, definition}. La "
-    "modifica sara' SEMPRE messa in conferma (mai automatica). NON proporre mai delete.\n"
+    "modifica sara' SEMPRE messa in conferma (mai automatica).\n"
+    "Per CANCELLARE un record usa 'azione':{tabella,op:'delete',match:{id:<id>}} — SOLO per "
+    "id (mai colonne generiche) e andra' SEMPRE in conferma esplicita.\n"
     "Per una MODIFICA DI SCHEMA del database (aggiungere colonne/tabelle/indici) usa "
     "'azione':{tipo:'ddl', sql:'ALTER TABLE ... ADD COLUMN ...'}: SOLO non distruttivo, "
     "mai DROP/TRUNCATE/DELETE.\n"
@@ -87,7 +91,8 @@ _PLAN_SYS = (
     "Non inventare numeri non presenti nei dati."
 )
 
-_FORBIDDEN_MSG = "fuori dal perimetro consentito (mai denaro, delete, dati personali; solo allowlist)"
+_FORBIDDEN_MSG = ("fuori dal perimetro consentito (solo allowlist; mai control-plane o registri "
+                  "immutabili; delete solo per id)")
 
 
 @dataclass
@@ -167,10 +172,14 @@ class CommandRouter:
                 return "internal_confirm"   # schema: la fa LEI, ma sotto tua conferma esplicita
             except ActuatorError:
                 return "forbidden"
+        if is_external_action(az):
+            return "internal_confirm"   # esterno (pubblica/invia): SEMPRE conferma esplicita
         try:
-            table, _op, _m, _d = validate(az)
+            table, op, _m, _d = validate(az)
         except ActuatorError:
             return "forbidden"
+        if op == "delete":
+            return "internal_confirm"   # cancellazione: SEMPRE conferma esplicita, mai auto
         return "internal_confirm" if table in CHAT_CONFIRM_TABLES else "internal_auto"
 
     def _exec_internal(self, az: dict, actor: str) -> dict:

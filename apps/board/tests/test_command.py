@@ -85,13 +85,25 @@ def test_internal_money_executes_on_command():
     assert client.writes and client.writes[0][1] == "kbot_conversions"
 
 
-def test_forbidden_delete_refused():
+def test_delete_requires_confirmation_not_auto():
+    # delete è permessa (per id) ma MAI auto via chat: deve finire in da_confermare,
+    # niente esecuzione immediata né scritture finché l'umano non conferma.
     plan = {"valutazione": "x", "fattibile": True, "risposta": "ok",
             "azioni": [{"descrizione": "cancella task", "azione": {
-                "tabella": "board_tasks", "op": "delete", "match": {"id": 1}, "dati": {"x": 1}}}]}
+                "tabella": "board_tasks", "op": "delete", "match": {"id": 1}}}]}
     r, client = _router(plan)
-    res = r.handle("cancella i task")
-    assert not res.eseguite and len(res.rifiutate) == 1 and client.writes == []
+    res = r.handle("cancella il task 1")
+    assert not res.eseguite and client.writes == [] and len(res.da_confermare) == 1
+
+
+def test_external_action_requires_confirmation_not_auto():
+    # azione esterna (n8n) via chat: mai auto, sempre conferma esplicita.
+    plan = {"valutazione": "x", "fattibile": True, "risposta": "ok",
+            "azioni": [{"descrizione": "pubblica post", "azione": {
+                "canale": "n8n", "workflow": "publish_ig", "payload": {"caption": "ciao"}}}]}
+    r, client = _router(plan)
+    res = r.handle("pubblica su instagram")
+    assert not res.eseguite and client.writes == [] and len(res.da_confermare) == 1
 
 
 def test_internal_invoice_executes_now():

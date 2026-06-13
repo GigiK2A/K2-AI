@@ -20,7 +20,7 @@ def main() -> None:
     pending = k.approvals.pending()
     for a in pending:
         p = a.payload or {}
-        telegram.send_approval_card(a.id, p.get("titolo") or a.action_key, p.get("contenuto") or "")
+        telegram.send_approval_card(a.id, p.get("titolo") or a.action_key, p.get("contenuto") or "", p.get("azione"))
     telegram.send_text(f"K2-AI: {len(pending)} decisioni in coda. Approva/rifiuta qui o dal cockpit.")
 
     def on_approve(aid):
