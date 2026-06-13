@@ -555,11 +555,10 @@ async function loadDomain(){
 
 // ---------------- MARKETING ----------------
 async function loadMarketing(){
-  killCharts();let ov={},ins={},v={},vl={};
-  try{ov=await jget("/api/overview");}catch(e){}
-  try{ins=await jget("/api/insights");}catch(e){}
-  try{v=await jget("/api/domain/marketing");}catch(e){}
-  try{vl=await jget("/api/domain/vendite");}catch(e){}
+  killCharts();
+  const g=u=>jget(u).catch(()=>({}));   // fetch in parallelo (non più in serie)
+  const [ov,ins,v,vl]=await Promise.all([
+    g("/api/overview"),g("/api/insights"),g("/api/domain/marketing"),g("/api/domain/vendite")]);
   MK={ov,ins,items:v.proposals||[],deliv:v.deliverables||[],prof:ins.profilo||{},insg:ins.insight||{},
      posts:ins.post||[],servizi:ins.servizi||[],topics:ins.topics||[],leads:arr((vl.data||{}).leggi_lead),
      iscritti:ins.iscritti||[],newsletter:ins.newsletter||[],analytics:ins.analytics||[],
@@ -803,8 +802,8 @@ async function loadDocuments(){
 }
 async function loadAnalytics(){
   setHeader("Analytics","traffico sito (PostHog) + attività agenti",false);markNav();killCharts();
-  let ov={},ins={};try{ov=await jget("/api/overview");}catch(e){}
-  try{ins=await jget("/api/insights");}catch(e){}
+  const g=u=>jget(u).catch(()=>({}));
+  const [ov,ins]=await Promise.all([g("/api/overview"),g("/api/insights")]);
   const fn=arr(ins.funnel_web);
   const tot=fn.reduce((s,r)=>s+(Number(r.count)||0),0);
   const mx=fn.reduce((m,r)=>Math.max(m,Number(r.count)||0),0)||1;
