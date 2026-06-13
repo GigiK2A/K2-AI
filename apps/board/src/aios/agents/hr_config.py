@@ -38,4 +38,12 @@ HR_CONFIG = DomainConfig(
     ),
     skill_focus=[],
     knowledge_query="HR persone recruiting onboarding performance formazione sicurezza CCNL turnover",
+    action_tables=[
+        ("candidates", "nuovo candidato (insert) o avanzamento stato selezione (update con match)"),
+        ("employees", "anagrafica dipendente"),
+        ("performance_reviews", "registrare una review/feedback"),
+        ("training_records", "formazione assegnata/completata"),
+        ("leave_requests", "richiesta ferie/permesso"),
+        ("board_tasks", "attività HR concreta da fare"),
+    ],
 )

@@ -33,4 +33,8 @@ SALES_CONFIG = DomainConfig(
     ),
     skill_focus=["draft-outreach", "linkedin-b2b-outreach", "draft-offer"],
     knowledge_query="vendite CRM lead pipeline offerta pricing ICP retention forecast",
+    action_tables=[
+        ("pipeline_leads", "nuovo lead/opportunità (insert) o avanzamento stage (update con match)"),
+        ("board_tasks", "attività commerciale concreta (follow-up, call, preparare offerta)"),
+    ],
 )

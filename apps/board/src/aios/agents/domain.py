@@ -30,6 +30,10 @@ class DomainConfig:
     system: str
     skill_focus: list = field(default_factory=list)
     knowledge_query: str = ""
+    # Tabelle su cui l'agente può ESEGUIRE davvero su approvazione (insert/update).
+    # list[tuple[tabella, "quando usarla")]. Iniettate nel prompt così ogni proposta
+    # concreta porta un'azione precisa → su Approva scrive il record reale.
+    action_tables: list = field(default_factory=list)
 
 
 @dataclass
@@ -136,6 +140,23 @@ class DomainAgent:
                     pass
         return out
 
+    def _action_guide(self) -> str:
+        """Istruzione: ogni proposta CONCRETA deve portare un'azione eseguibile su una
+        delle tabelle del dominio → su Approva scrive il record reale (non un task)."""
+        tabs = getattr(self.cfg, "action_tables", None) or []
+        if not tabs:
+            return ("Per ogni proposta aggiungi 'azione':{tabella,op:insert|update,match,dati} "
+                    "su una tabella interna. Se la ometti, verrà creato un task.")
+        righe = "\n".join(f"  - {t}: {q}" for t, q in tabs)
+        return ("IMPORTANTE — esecuzione reale: ogni proposta CONCRETA DEVE includere "
+                "'azione':{tabella,op:insert|update,match,dati} scegliendo la tabella giusta "
+                "tra queste del tuo reparto (su Approva il record viene scritto DAVVERO):\n"
+                + righe + "\n"
+                "Compila 'dati' con i campi reali (es. nome/titolo/importo/stato/email...). "
+                "Usa op:update con 'match' per modificare un record esistente. "
+                "Solo se la proposta è pura strategia/analisi senza un record concreto, "
+                "ometti 'azione' (diventerà un task da fare). Niente numeri inventati.")
+
     def run(self) -> DomainResult:
         data = {}
         names = self.k.tools.names()
@@ -147,9 +168,7 @@ class DomainAgent:
                 "<dati_non_fidati>\n"
                 + json.dumps(data, ensure_ascii=False)[:6000] + "\n</dati_non_fidati>"
                 + "\n\nProponi azioni concrete coprendo PIÙ funzioni diverse (non una sola). Max 8.\n"
-                  "Per ogni proposta puoi (opzionale) aggiungere 'azione':{tabella,op:insert|update,"
-                  "match,dati} su una tabella interna (es. board_tasks, pipeline_leads, invoices, "
-                  "finance_journal, board_cost_items, candidates). Se la ometti, verrà creato un task.")
+                  + self._action_guide())
         parsed = self.llm.complete_json(system=self.cfg.system, user=user, schema=_SCHEMA)
         proposte = _as_dict_list(parsed.get("proposte"))
         if not proposte:  # affidabilità: Haiku a volte torna vuoto → un retry

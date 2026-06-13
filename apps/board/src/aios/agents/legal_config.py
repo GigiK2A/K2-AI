@@ -32,4 +32,12 @@ LEGAL_CONFIG = DomainConfig(
     ),
     skill_focus=[],
     knowledge_query="legale privacy GDPR consenso contratti compliance 231 marchi contenzioso assicurazione",
+    action_tables=[
+        ("legal_documents", "registrare un contratto/documento legale o una bozza"),
+        ("policy_register", "registrare/aggiornare una policy (privacy, ToS, 231)"),
+        ("privacy_registro_trattamenti", "voce del registro trattamenti GDPR (art.30)"),
+        ("compliance_training", "formazione/adempimento compliance da tracciare"),
+        ("disputes", "aprire/aggiornare un contenzioso"),
+        ("board_tasks", "adempimento legale concreto da fare"),
+    ],
 )

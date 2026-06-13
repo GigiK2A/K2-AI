@@ -40,4 +40,11 @@ FINANCE_CONFIG = DomainConfig(
     ),
     skill_focus=[],
     knowledge_query="finance ricavi costi budget pricing margine cashflow scadenze fiscali audit rischio",
+    action_tables=[
+        ("invoices", "emettere/registrare una fattura (insert) o aggiornarne lo stato (update con match)"),
+        ("finance_journal", "scrittura contabile / accantonamento"),
+        ("board_cost_items", "registrare un costo"),
+        ("board_revenue_events", "registrare un ricavo incassato"),
+        ("board_tasks", "adempimento o scadenza fiscale da fare"),
+    ],
 )
