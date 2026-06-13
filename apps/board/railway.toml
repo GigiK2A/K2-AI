@@ -1,6 +1,8 @@
-# Single-service Railway deploy for K2-Board (Next.js + FastAPI in one container).
-# Set Railway service "Root Directory" to `apps/board`; the Dockerfile lives here.
-
+# Railway deploy per K2-AI AIOS (sostituisce il vecchio K2-Board su questo servizio).
+# Servizio "k2-board": Root Directory = apps/board, build dal Dockerfile.
+# Variables da impostare (valori dal tuo .env): AIOS_SUPABASE_URL, AIOS_SUPABASE_SERVICE_KEY,
+# ANTHROPIC_API_KEY, AIOS_IG_TOKEN, AIOS_API_TOKEN (OBBLIGATORIO fuori da locale),
+# N8N_*, TELEGRAM_*, POSTHOG_*. Per l'autonomia in-process: AIOS_AUTONOMY=1.
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"

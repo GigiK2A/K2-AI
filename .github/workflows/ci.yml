@@ -93,13 +93,13 @@ jobs:
       - name: Compile check
         run: uv run python -m py_compile main.py core/config.py core/notion_board.py interfaces/dashboard/routes/public_intake.py
 
-  k2-board-build:
+  k2-aios-test:
     needs: rome-time-gate
     if: needs.rome-time-gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/board/backend
+        working-directory: apps/board
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -108,6 +108,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install -e .
-      - name: Compile check
-        run: python -m compileall -q app
+        run: pip install -e ".[dev]"
+      - name: Test suite (hermetic, no secrets needed)
+        run: python -m pytest -q

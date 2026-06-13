@@ -1,78 +1,36 @@
 # syntax=docker/dockerfile:1.7
-# Unified K2-Board image: Next.js standalone (frontend) + FastAPI (backend)
-# running side-by-side in one container. Frontend on $PORT (public),
-# FastAPI on internal 127.0.0.1:8000 (proxied by Next.js rewrites).
-
-# ---------- Stage 1: install Node deps ----------
-FROM node:20-alpine AS web-deps
-WORKDIR /web
-COPY web/package.json web/package-lock.json* ./
-RUN npm ci || npm install
-
-# ---------- Stage 2: build Next.js standalone ----------
-FROM node:20-alpine AS web-build
-WORKDIR /web
-ENV NEXT_TELEMETRY_DISABLED=1
-COPY --from=web-deps /web/node_modules ./node_modules
-COPY web/ ./
-RUN npm run build
-
-# ---------- Stage 3: runtime (Python + Node) ----------
+# K2-AI AIOS — cockpit (FastAPI/uvicorn) + autonomia. Sostituisce il vecchio K2-Board.
+# Servizio Railway "k2-board": Root Directory = apps/board, builder = Dockerfile.
 FROM python:3.12-slim AS runner
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3000 \
-    HOSTNAME=0.0.0.0 \
-    INTERNAL_API_URL=http://127.0.0.1:8765 \
-    INTERNAL_API_PORT=8765 \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    AIOS_HOST=0.0.0.0
 
-# System deps: ca-certs (TLS), curl (healthcheck), Node 20 (for Next.js server.js)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && apt-get purge -y --auto-remove gnupg \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# --- Python / FastAPI ---
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install -r /app/backend/requirements.txt
+# Dipendenze esplicite (no build del pacchetto): l'app gira da /app/src via
+# PYTHONPATH, così i file dati — cockpit.html, skills SKILL.md — restano leggibili
+# da disco senza configurare package-data. (Tenere allineato a pyproject.toml.)
+RUN pip install "psycopg[binary]>=3.1" "anthropic>=0.40" "fastapi>=0.110" "uvicorn>=0.29"
+COPY src ./src
+# Entrypoint + runner (worker autonomia opzionale via AIOS_AUTONOMY=1)
+COPY serve_cockpit.py autonomy_loop.py scheduler.py telegram_bot.py ./
+ENV PYTHONPATH=/app/src
 
-# --- Playwright Chromium for /screenshot endpoint ---
-# Installs Chromium + all system deps needed for headless rendering.
-# PLAYWRIGHT_BROWSERS_PATH set above ensures the non-root `app` user can read browsers.
-# This adds ~300 MB to the image but bundles everything in one container.
-RUN playwright install --with-deps chromium \
-    && chmod -R a+rx /ms-playwright \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY backend/app /app/backend/app
-
-# --- Next.js standalone build ---
-# The standalone output bundles node_modules + a server.js at its root.
-COPY --from=web-build /web/.next/standalone /app/web
-COPY --from=web-build /web/.next/static /app/web/.next/static
-COPY --from=web-build /web/public /app/web/public
-
-# --- Entrypoint ---
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-# Non-root user
 RUN useradd --create-home --uid 1001 app && chown -R app:app /app
 USER app
 
-EXPOSE 3000
+EXPOSE 8800
 
+# Railway inietta $PORT; serve_cockpit ci fa il bind. /health è pubblico (no auth).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
-    CMD curl -fsS "http://127.0.0.1:${PORT:-3000}/health" >/dev/null || exit 1
+    CMD curl -fsS "http://127.0.0.1:${PORT:-8800}/health" >/dev/null || exit 1
 
-CMD ["/app/start.sh"]
+CMD ["python", "serve_cockpit.py"]
