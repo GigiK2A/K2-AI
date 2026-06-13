@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import secrets
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -13,6 +15,42 @@ from pydantic import BaseModel
 from aios.kernel import Kernel
 
 _STATIC = Path(__file__).parent / "static"
+
+# --- Performance: cache TTL + letture sensori in parallelo --------------------
+# Le viste del cockpit leggono molti sensori (ognuno = un giro su Supabase/IG/PostHog).
+# In serie facevano ~6s. Qui: cache breve per navigazione istantanea + fan-out in
+# thread per la prima lettura. Dati "vivi" entro pochi secondi (TTL corto).
+_CACHE: dict[str, tuple[float, Any]] = {}
+
+
+def _cached(key: str, ttl: float, producer):
+    now = time.time()
+    hit = _CACHE.get(key)
+    if hit and (now - hit[0]) < ttl:
+        return hit[1]
+    val = producer()
+    _CACHE[key] = (now, val)
+    return val
+
+
+def _invalidate_cache() -> None:
+    _CACHE.clear()
+
+
+def _parallel(funcs: dict):
+    """funcs: {chiave: callable senza argomenti}. Esegue in parallelo (max 8),
+    ritorna {chiave: risultato}; un errore diventa {'error': ...} per quella chiave."""
+    if not funcs:
+        return {}
+    out: dict[str, Any] = {}
+    with ThreadPoolExecutor(max_workers=min(8, len(funcs))) as ex:
+        futs = {k: ex.submit(fn) for k, fn in funcs.items()}
+        for k, f in futs.items():
+            try:
+                out[k] = f.result()
+            except Exception as exc:
+                out[k] = {"error": str(exc)}
+    return out
 
 
 def _require_auth(request: Request) -> None:
@@ -82,24 +120,24 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
 
     @app.get("/api/overview")
     def overview() -> dict[str, Any]:
-        pending = kernel.approvals.pending()
-        records = kernel.audit.records()
-        executed = sum(1 for r in records if r.event == "executed")
-        return {
-            "pending_count": len(pending),
-            "audit_count": len(records),
-            "automations_done": executed,
-            "agents": [
-                {"name": "Marketing Agent", "status": "active", "accuracy": 88},
-            ],
-        }
+        def _build() -> dict[str, Any]:
+            pending = kernel.approvals.pending()
+            records = kernel.audit.records()
+            executed = sum(1 for r in records if r.event == "executed")
+            return {
+                "pending_count": len(pending),
+                "audit_count": len(records),
+                "automations_done": executed,
+                "agents": [
+                    {"name": "Marketing Agent", "status": "active", "accuracy": 88},
+                ],
+            }
+        return _cached("overview", 10, _build)
 
     @app.get("/api/insights")
     def insights(_=Depends(_require_auth)) -> dict[str, Any]:
         # Everything here is read THROUGH the agent's own sensor tools (kernel),
         # never hardcoded. Each tool is L0 read-only; missing/erroring tools are skipped.
-        names = set(kernel.tools.names())
-        out: dict[str, Any] = {}
         wanted = {
             "profilo": ("leggi_profilo_ig", {}),
             "insight": ("leggi_insight_ig", {}),
@@ -114,14 +152,14 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             "ranking_seo": ("leggi_ranking_seo", {}),
             "funnel_web": ("leggi_funnel_web", {}),
         }
-        for key, (tool, args) in wanted.items():
-            if tool not in names:
-                continue
-            try:
-                out[key] = kernel.execute(tool, actor="cockpit", args=args).result
-            except Exception as exc:  # sensor offline / rate-limited — surface, don't crash
-                out[key] = {"error": str(exc)}
-        return out
+
+        def _build() -> dict[str, Any]:
+            names = set(kernel.tools.names())
+            funcs = {key: (lambda t=tool, a=args: kernel.execute(t, actor="cockpit", args=a).result)
+                     for key, (tool, args) in wanted.items() if tool in names}
+            return _parallel(funcs)  # sensori in parallelo invece che in serie
+
+        return _cached("insights", 25, _build)
 
     @app.get("/api/activity")
     def activity(_=Depends(_require_auth)) -> list[dict[str, Any]]:
@@ -145,6 +183,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     ) -> dict[str, Any]:
         res = kernel.resolve_approval(approval_id, approve=True,
                                       edited_payload=body.edited_payload)
+        _invalidate_cache()   # dato cambiato → cockpit lo vede subito
         out = {"outcome": res.outcome.name}
         if isinstance(res.result, dict) and "attuatore" in res.result:
             out["attuatore"] = res.result["attuatore"]   # esito scrittura reale
@@ -158,6 +197,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     ) -> dict[str, Any]:
         res = kernel.resolve_approval(approval_id, approve=False,
                                       reason=body.reason or "rejected")
+        _invalidate_cache()
         return {"outcome": res.outcome.name}
 
     @app.get("/api/domini")
@@ -173,34 +213,38 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         agent = platform.agents.get(domain)
         if agent is None:
             return {"error": "dominio non valido"}
-        names = set(kernel.tools.names())
-        data: dict[str, Any] = {}
-        cfg = getattr(agent, "cfg", None)
-        if cfg is not None:
-            for tool, args in cfg.sensors:
-                if tool not in names:
-                    continue
-                try:
-                    data[tool] = kernel.execute(tool, actor="cockpit", args=args).result
-                except Exception as exc:
-                    data[tool] = {"error": str(exc)}
-        proposals = [{"id": a.id, "action_key": a.action_key, "payload": a.payload}
-                     for a in kernel.approvals.pending()
-                     if a.action_key.split(".", 1)[0] == domain]
-        try:
-            deliv = [d for d in platform.deliverables() if d.get("dominio") == domain]
-        except Exception:
-            deliv = []
-        skills = list(getattr(cfg, "skill_focus", []) or []) if cfg else []
-        return {"domain": domain, "data": data, "proposals": proposals,
-                "deliverables": deliv, "skills": skills}
+
+        def _build() -> dict[str, Any]:
+            names = set(kernel.tools.names())
+            cfg = getattr(agent, "cfg", None)
+            funcs = {}
+            if cfg is not None:
+                for tool, args in cfg.sensors:
+                    if tool in names:
+                        funcs[tool] = (lambda t=tool, a=args:
+                                       kernel.execute(t, actor="cockpit", args=a).result)
+            data = _parallel(funcs)  # sensori del dominio in parallelo
+            proposals = [{"id": a.id, "action_key": a.action_key, "payload": a.payload}
+                         for a in kernel.approvals.pending()
+                         if a.action_key.split(".", 1)[0] == domain]
+            try:
+                deliv = [d for d in platform.deliverables() if d.get("dominio") == domain]
+            except Exception:
+                deliv = []
+            skills = list(getattr(cfg, "skill_focus", []) or []) if cfg else []
+            return {"domain": domain, "data": data, "proposals": proposals,
+                    "deliverables": deliv, "skills": skills}
+
+        return _cached(f"domain:{domain}", 25, _build)
 
     @app.post("/api/agents/{domain}/run")
     def run_agent(domain: str, _=Depends(_require_auth)):
         if platform is None:
             return {"error": "no platform"}
         try:
-            return platform.run(domain)
+            res = platform.run(domain)
+            _invalidate_cache()   # nuove proposte → visibili subito
+            return res
         except KeyError:
             return {"error": "dominio non valido"}
 
@@ -244,51 +288,52 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     def company(_=Depends(_require_auth)) -> dict[str, Any]:
         """Aggregati REALI per Overview/Agenti: coda decisioni, audit, deliverable,
         per-dominio + alcuni segnali letti dai sensori. Nessun dato inventato."""
-        pending = kernel.approvals.pending()
-        records = kernel.audit.records()
-        executed = sum(1 for r in records if r.event == "executed")
-        domains = platform.domains() if platform else []
-        per = {d: {"pending": 0, "deliverables": 0} for d in domains}
-        for a in pending:
-            d = a.action_key.split(".", 1)[0]
-            if d in per:
-                per[d]["pending"] += 1
-        try:
-            deliv = platform.deliverables() if platform else []
-        except Exception:
-            deliv = []
-        for x in deliv:
-            d = x.get("dominio")
-            if d in per:
-                per[d]["deliverables"] += 1
-        names = set(kernel.tools.names())
-
-        def _count(tool: str) -> int | None:
-            if tool not in names:
-                return None
+        def _build() -> dict[str, Any]:
+            pending = kernel.approvals.pending()
+            records = kernel.audit.records()
+            executed = sum(1 for r in records if r.event == "executed")
+            domains = platform.domains() if platform else []
+            per = {d: {"pending": 0, "deliverables": 0} for d in domains}
+            for a in pending:
+                d = a.action_key.split(".", 1)[0]
+                if d in per:
+                    per[d]["pending"] += 1
             try:
-                r = kernel.execute(tool, actor="cockpit", args={}).result
-                return len(r) if isinstance(r, list) else None
+                deliv = platform.deliverables() if platform else []
             except Exception:
-                return None
+                deliv = []
+            for x in deliv:
+                d = x.get("dominio")
+                if d in per:
+                    per[d]["deliverables"] += 1
+            names = set(kernel.tools.names())
 
-        signals = {
-            "leads": _count("leggi_lead"),
-            "conversioni": _count("leggi_conversioni"),
-            "iscritti": _count("leggi_iscritti_newsletter"),
-            "commesse": _count("leggi_commesse"),
-            "task_operativi": _count("leggi_task_operativi"),
-            "clienti": _count("leggi_clienti"),
-        }
-        return {
-            "pending_total": len(pending),
-            "audit_total": len(records),
-            "executed_total": executed,
-            "deliverables_total": len(deliv),
-            "domains": domains,
-            "per_domain": per,
-            "signals": signals,
-        }
+            def _count_fn(tool: str):
+                def _run():
+                    if tool not in names:
+                        return None
+                    try:
+                        r = kernel.execute(tool, actor="cockpit", args={}).result
+                        return len(r) if isinstance(r, list) else None
+                    except Exception:
+                        return None
+                return _run
+
+            sig_tools = {"leads": "leggi_lead", "conversioni": "leggi_conversioni",
+                         "iscritti": "leggi_iscritti_newsletter", "commesse": "leggi_commesse",
+                         "task_operativi": "leggi_task_operativi", "clienti": "leggi_clienti"}
+            signals = _parallel({k: _count_fn(t) for k, t in sig_tools.items()})  # in parallelo
+            return {
+                "pending_total": len(pending),
+                "audit_total": len(records),
+                "executed_total": executed,
+                "deliverables_total": len(deliv),
+                "domains": domains,
+                "per_domain": per,
+                "signals": signals,
+            }
+
+        return _cached("company", 25, _build)
 
     @app.post("/api/command")
     def command(body: CommandBody, _=Depends(_require_auth)) -> dict[str, Any]:
