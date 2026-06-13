@@ -226,7 +226,9 @@ export default function HomePage() {
   useEffect(() => {
     // Il boost suggerito appartiene alla CONVERSAZIONE: senza questo reset il
     // pannello della chat precedente "rimaneva appiccicato" e compariva subito
-    // (col boost sbagliato) al 1° messaggio della chat nuova.
+    // (col boost sbagliato) al 1° messaggio della chat nuova. Reset legittimo al
+    // cambio di conversazione (dipendenza activeConversation.id).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSuggestedBoost(null);
     const convSid = activeConversation.kbotSessionId ?? null;
     const liveSid = kbotSession?.id ?? null;

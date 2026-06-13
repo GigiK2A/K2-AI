@@ -32,6 +32,8 @@ export default function BillingPanel() {
   }, [getToken]);
 
   useEffect(() => {
+    // Fetch-on-signin: load() è async, lo setState avviene nel callback, non sincrono.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isSignedIn) void load();
   }, [isSignedIn, load]);
 
