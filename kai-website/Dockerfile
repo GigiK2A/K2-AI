@@ -21,6 +21,9 @@ ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=""
 ARG NEXT_PUBLIC_SITE_URL="https://www.k2-ai.it"
 # Paywall reale di default (produzione). =1 solo per demo/dev: salta il pagamento.
 ARG NEXT_PUBLIC_KBOT_FREE_MODE="0"
+# Paywall PIENO con pagamento simulato (demo): mostra prezzo + bottone, ma il
+# "paga" non apre Stripe — marca paid e genera. =1 per la demo, 0 in produzione.
+ARG NEXT_PUBLIC_KBOT_FAKE_PAYMENT="0"
 
 ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL} \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY} \
@@ -28,7 +31,8 @@ ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL} \
     NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY} \
     NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL} \
-    NEXT_PUBLIC_KBOT_FREE_MODE=${NEXT_PUBLIC_KBOT_FREE_MODE}
+    NEXT_PUBLIC_KBOT_FREE_MODE=${NEXT_PUBLIC_KBOT_FREE_MODE} \
+    NEXT_PUBLIC_KBOT_FAKE_PAYMENT=${NEXT_PUBLIC_KBOT_FAKE_PAYMENT}
 
 # Build kai-website (Vite)
 COPY package*.json ./
@@ -109,7 +113,13 @@ ENV KBOT_SKILLS_DIR=/app/lib/skills \
 #   K2A_ENTITLEMENT_SECRET RIFIUTA (nessun bypass silenzioso).
 # - KBOT_FREE_MODE non settato (=0) → la generazione richiede pagamento.
 # RICHIESTO in Railway env (backend E 8e, stesso valore): K2A_ENTITLEMENT_SECRET.
-# Per demo/dev: settare K2A_8E_ENTITLEMENT_DEV=true e KBOT_FREE_MODE=1 in env.
+#
+# DEMO "pagamento finto" (paywall PIENO, prezzo+bottone veri, NIENTE Stripe):
+#   backend runtime env:  KBOT_FAKE_PAYMENT=1
+#   frontend BUILD arg:   NEXT_PUBLIC_KBOT_FAKE_PAYMENT=1  (NEXT_PUBLIC_* = build-time)
+#   + K2A_ENTITLEMENT_SECRET già presente (la generazione passa dall'entitlement vero).
+#   La generazione vera del report consuma comunque crediti Anthropic.
+# DEMO "tutto gratis senza prezzo": K2A_8E_ENTITLEMENT_DEV=true e KBOT_FREE_MODE=1.
 
 # Run as a non-root user (node:20-slim ships with the "node" user, uid 1000).
 # Tutto sotto /app è read-only a runtime (upload → Supabase storage + /tmp).

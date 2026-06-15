@@ -755,6 +755,27 @@ export async function startBoostCheckout(
   return data.checkout_url as string;
 }
 
+/** DEMO — pagamento simulato (nessun Stripe, nessun addebito). Attivo solo se il
+ * backend ha KBOT_FAKE_PAYMENT=1. Marca la sessione `paid` e ritorna il prezzo
+ * applicato: il chiamante poi ri-lancia la generazione (ora la sessione è pagata). */
+export const KBOT_FAKE_PAYMENT =
+  (process.env.NEXT_PUBLIC_KBOT_FAKE_PAYMENT ?? "0").toLowerCase() === "1" ||
+  (process.env.NEXT_PUBLIC_KBOT_FAKE_PAYMENT ?? "").toLowerCase() === "true";
+
+export async function demoPayBoost(
+  sessionId: string,
+  servizioId: string,
+  authToken?: string | null,
+): Promise<{ ok: boolean; prezzo_eur?: number }> {
+  const res = await fetch(`${API_BASE}/api/kbot/checkout/boost/demo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify({ session_id: sessionId, servizio_id: servizioId }),
+  });
+  if (!res.ok) await parseErr(res, "Errore pagamento demo");
+  return (await res.json()) as { ok: boolean; prezzo_eur?: number };
+}
+
 // ===== Billing: abbonamenti + crediti =====
 export interface BillingStatus {
   plan: "free" | "pro" | "business";

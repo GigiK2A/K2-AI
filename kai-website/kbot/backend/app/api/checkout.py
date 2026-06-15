@@ -17,6 +17,7 @@ from ..lib import sessions, catalog, billing, billing_store
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..settings import (
     FRONTEND_URL,
+    KBOT_FAKE_PAYMENT,
     REPORT_PRICE_EUR_CENTS,
     SITE_URL,
     STRIPE_API_VERSION,
@@ -177,6 +178,50 @@ def checkout_boost(body: BoostCheckoutBody, user: Optional[AuthUser] = Depends(o
     sessions.update_session(body.sessionId, {"stripe_session_id": checkout_session.id})
     return {"checkout_url": checkout_session.url, "prezzo_eur": prezzo_scontato,
             "prezzo_base_eur": prezzo_base, "plan": plan,
+            "sconto_pct": billing.sconto_boost_pct(plan)}
+
+
+@router.post("/checkout/boost/demo")
+def checkout_boost_demo(body: BoostCheckoutBody, user: Optional[AuthUser] = Depends(optional_user)):
+    """DEMO — pagamento simulato. Marca la sessione `paid` come farebbe il webhook
+    Stripe, senza Stripe né addebito reale. Attivo SOLO con KBOT_FAKE_PAYMENT=1.
+    Stesse validazioni del checkout vero (ownership, vendibilità, 8e-generabile) e
+    stesso prezzo dal catalogo: così la catena prezzo→sblocca→genera è identica a
+    quella reale, solo il pagamento è finto."""
+    if not KBOT_FAKE_PAYMENT:
+        raise HTTPException(status_code=403, detail="pagamento demo non abilitato")
+
+    session = sessions.get_session(body.sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    owner = session.get("user_id")
+    if owner and (not user or user.id != owner):
+        raise HTTPException(status_code=403, detail="not your session")
+
+    servizio = catalog.get_servizio(body.servizioId)
+    if not servizio:
+        raise HTTPException(status_code=404, detail="servizio non a catalogo")
+    # Il demo vende SOLO ciò che è davvero vendibile: AdvisorBoost (gated) resta gated.
+    if not catalog.is_8e_generabile(body.servizioId) or not catalog.is_vendibile(body.servizioId):
+        raise HTTPException(status_code=409, detail="servizio non vendibile")
+
+    prezzo_base = int(servizio.get("prezzo_eur", 0))
+    if prezzo_base <= 0:
+        raise HTTPException(status_code=409, detail="prezzo servizio non valido")
+    plan = billing_store.get_plan(user.id) if user else "free"
+    prezzo_scontato = billing.prezzo_boost_scontato(prezzo_base, plan)
+
+    # Simula l'effetto del webhook: status=paid + traccia che è stato un pagamento demo.
+    collected = dict(session.get("collected_data") or {})
+    collected["demo_pagamento"] = {
+        "servizio_id": body.servizioId, "prezzo_eur": prezzo_scontato,
+        "prezzo_base_eur": prezzo_base, "plan": plan,
+    }
+    sessions.update_session(body.sessionId, {"status": "paid", "collected_data": collected})
+    log.info("DEMO pagamento simulato: sessione %s → paid (%s, %s€)",
+             body.sessionId, body.servizioId, prezzo_scontato)
+    return {"ok": True, "demo": True, "servizio_id": body.servizioId,
+            "prezzo_eur": prezzo_scontato, "prezzo_base_eur": prezzo_base, "plan": plan,
             "sconto_pct": billing.sconto_boost_pct(plan)}
 
 

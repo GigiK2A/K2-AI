@@ -59,6 +59,14 @@ INTERNAL_API_KEY = _env("INTERNAL_API_KEY")
 # 402 se non pagato). Per una demo: KBOT_FREE_MODE=1 + K2A_8E_ENTITLEMENT_DEV=true.
 KBOT_FREE_MODE = (_env("KBOT_FREE_MODE", default="0") or "0").lower() in ("1", "true", "yes")
 
+# FAKE PAYMENT = paywall PIENO (prezzo + bottone Sblocca veri), ma il "pagamento"
+# è simulato: POST /checkout/boost/demo marca la sessione paid come farebbe il
+# webhook Stripe, senza Stripe né addebito. Serve a provare tutta la catena
+# prezzo→paga→sblocca→genera. Default OFF. Distinto da FREE_MODE (che invece NON
+# mostra prezzo né pagamento). Con FAKE_PAYMENT serve comunque ENTITLEMENT_SECRET
+# perché la generazione passa dall'entitlement reale (status=paid → mint → 8e).
+KBOT_FAKE_PAYMENT = (_env("KBOT_FAKE_PAYMENT", default="0") or "0").lower() in ("1", "true", "yes")
+
 # Default to k2-ai.it production origins. Never default to "*" with credentials.
 # Override via KBOT_CORS_ORIGINS env var (comma-separated) for dev/staging.
 _DEFAULT_CORS = ",".join([
