@@ -7,7 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    AIOS_HOST=0.0.0.0
+    AIOS_HOST=0.0.0.0 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
@@ -18,7 +19,14 @@ WORKDIR /app
 # Dipendenze esplicite (no build del pacchetto): l'app gira da /app/src via
 # PYTHONPATH, così i file dati — cockpit.html, skills SKILL.md — restano leggibili
 # da disco senza configurare package-data. (Tenere allineato a pyproject.toml.)
-RUN pip install "psycopg[binary]>=3.1" "anthropic>=0.40" "fastapi>=0.110" "uvicorn>=0.29"
+RUN pip install "psycopg[binary]>=3.1" "anthropic>=0.40" "fastapi>=0.110" "uvicorn>=0.29" "playwright>=1.40"
+
+# Chromium headless per /api/screenshot (HTML→PNG slide IG). --with-deps installa
+# le librerie di sistema. Browser sotto /ms-playwright leggibile dall'utente non-root.
+RUN playwright install --with-deps chromium \
+    && chmod -R a+rx /ms-playwright \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY src ./src
 # Entrypoint + runner (worker autonomia opzionale via AIOS_AUTONOMY=1)
 COPY serve_cockpit.py autonomy_loop.py scheduler.py telegram_bot.py ./
