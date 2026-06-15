@@ -1,8 +1,8 @@
-"""Test del calcolo deterministico indici (stopgap integrità FinanceBoost).
+"""Test del calcolo deterministico formula-fact (FinanceBoost + HostBoost + Cruscotto).
 
-Standalone (stile repo): python tests/test_calc.py → exit 0 se PASS.
-Garantisce: numeri deterministici e corretti, 'non_disponibile' mai inventato,
-chiavi di altri boost non toccate.
+Standalone: python tests/test_calc.py → exit 0 se PASS. I dati usano la STRUTTURA
+REALE dei form.json (kpi_attuali per HostBoost, clienti_attivi per Cruscotto), non i
+nomi assunti: è la riconciliazione che evita il fallimento silenzioso sui venduti.
 """
 import sys
 from pathlib import Path
@@ -19,43 +19,62 @@ def check(label, cond):
     print(f"  {'OK ' if cond else 'FAIL'} {label}")
 
 
-b_full = {"anno": 2024, "ricavi": 1000000, "ebitda": 150000, "reddito_operativo": 120000,
-          "utile_netto": 80000, "totale_attivo": 1200000, "patrimonio_netto": 500000,
-          "debiti_finanziari": 300000, "attivo_corrente": 400000, "passivo_corrente": 250000,
-          "rimanenze": 50000}
-form_full = {"bilanci": [b_full]}
+def val(key, form):
+    f = calc.resolve_formula_fact(key, form)
+    return f.get("valore") if f else None
 
-# Valori attesi deterministici
-check("de = 0.6", calc.resolve_formula_fact("de", form_full)["valore"] == 0.6)
-check("roe = 16.0%", calc.resolve_formula_fact("roe", form_full)["valore"] == 16.0)
-check("ebitda_margin = 15.0%", calc.resolve_formula_fact("ebitda_margin", form_full)["valore"] == 15.0)
-check("ros = 12.0%", calc.resolve_formula_fact("ros", form_full)["valore"] == 12.0)
-check("roi = 10.0%", calc.resolve_formula_fact("roi", form_full)["valore"] == 10.0)
-check("current_ratio = 1.6", calc.resolve_formula_fact("current_ratio", form_full)["valore"] == 1.6)
-check("quick_ratio = 1.4", calc.resolve_formula_fact("quick_ratio", form_full)["valore"] == 1.4)
-check("ccn = 150000", calc.resolve_formula_fact("ccn", form_full)["valore"] == 150000)
 
-# Dato mancante → non_disponibile, MAI inventato
-f_ros_missing = calc.resolve_formula_fact("ros", {"bilanci": [{"anno": 2024, "ricavi": 1000000}]})
-check("ros senza EBIT → non_disponibile", f_ros_missing["tipo"] == "non_disponibile" and f_ros_missing["valore"] is None)
-check("ccc → sempre non_disponibile (form non lo supporta)", calc.resolve_formula_fact("ccc", form_full)["tipo"] == "non_disponibile")
+def nd(key, form):
+    f = calc.resolve_formula_fact(key, form)
+    return bool(f) and f["tipo"] == "non_disponibile"
 
-# Divisione per zero / PN nullo → non_disponibile, niente crash
-f_de_zero = calc.resolve_formula_fact("de", {"bilanci": [{"anno": 2024, "debiti_finanziari": 100, "patrimonio_netto": 0}]})
-check("PN=0 → de non_disponibile (no crash)", f_de_zero["tipo"] == "non_disponibile")
 
-# Chiave non gestita → None (fallback alla formula testuale degli altri boost)
-check("revpar → None (fallback)", calc.resolve_formula_fact("revpar", form_full) is None)
-
-# Bilanci assenti → non_disponibile
-check("no bilanci → non_disponibile", calc.resolve_formula_fact("de", {})["tipo"] == "non_disponibile")
-
-# Serie pluriennale
-f_serie = calc.resolve_formula_fact("de", {"bilanci": [
+# ───── bilancio (regressione: comportamento esistente invariato) ─────
+b = {"anno": 2024, "ricavi": 1000000, "ebitda": 150000, "reddito_operativo": 120000,
+     "utile_netto": 80000, "totale_attivo": 1200000, "patrimonio_netto": 500000,
+     "debiti_finanziari": 300000, "attivo_corrente": 400000, "passivo_corrente": 250000,
+     "rimanenze": 50000}
+ff = {"bilanci": [b]}
+check("de=0.6", val("de", ff) == 0.6)
+check("roe=16.0", val("roe", ff) == 16.0)
+check("ros=12.0", val("ros", ff) == 12.0)
+check("roi=10.0", val("roi", ff) == 10.0)
+check("ebitda_margin=15.0", val("ebitda_margin", ff) == 15.0)
+check("current_ratio=1.6", val("current_ratio", ff) == 1.6)
+check("quick_ratio=1.4", val("quick_ratio", ff) == 1.4)
+check("ccn=150000", val("ccn", ff) == 150000)
+check("ccc → non_disponibile", nd("ccc", ff))
+check("de PN=0 → n/d (no crash)", nd("de", {"bilanci": [{"anno": 2024, "debiti_finanziari": 100, "patrimonio_netto": 0}]}))
+serie = calc.resolve_formula_fact("de", {"bilanci": [
     {"anno": 2023, "debiti_finanziari": 400, "patrimonio_netto": 100},
     {"anno": 2024, "debiti_finanziari": 300, "patrimonio_netto": 100}]})
-check("serie pluriennale presente", f_serie.get("serie") == {"2023": 4.0, "2024": 3.0})
-check("valore = anno più recente", f_serie["valore"] == 3.0)
+check("serie pluriennale + valore=anno recente", serie.get("serie") == {"2023": 4.0, "2024": 3.0} and serie["valore"] == 3.0)
 
+# ───── hospitality (HostBoost) — KPI dichiarati in kpi_attuali ─────
+host = {"nome": "Agriturismo X", "camere_totali": 10,
+        "kpi_attuali": {"occupancy_pct": 54.8, "adr_eur": 73.0, "revpar_eur": 40.0}}
+check("adr=73.0 (passthrough da kpi_attuali)", val("adr", host) == 73.0)
+check("revpar=40.0 (passthrough)", val("revpar", host) == 40.0)
+check("occupancy=54.8 (passthrough)", val("occupancy", host) == 54.8)
+check("goppar → n/d (non nel form HostBoost)", nd("goppar", host))
+nd_adr = calc.resolve_formula_fact("adr", {"camere_totali": 10})
+check("adr senza kpi → n/d con campo giusto", nd_adr["tipo"] == "non_disponibile" and "adr_eur" in nd_adr["motivo"])
+
+# ───── controllo (Cruscotto) — struttura form reale ─────
+cru = {"mese": 6, "anno": 2026, "fatturato": 1000000, "costi_operativi": 820000,
+       "incassi": 900000, "pagamenti": 850000, "clienti_attivi": 200, "nuovi_clienti": 20,
+       "clienti_persi": 12, "target_budget": {"fatturato_target": 950000}}
+check("ctrl_ebitda=180000", val("ctrl_ebitda", cru) == 180000)
+check("ctrl_cashflow=50000", val("ctrl_cashflow", cru) == 50000)
+check("ctrl_churn=6.2 (persi/iniziali ricostruiti)", val("ctrl_churn", cru) == 6.2)
+check("ctrl_scost=5.3 (fatturato vs target)", val("ctrl_scost", cru) == 5.3)
+check("ctrl_dso → n/d (manca crediti_commerciali)", nd("ctrl_dso", cru))
+
+# ───── dcf/wacc restano fuori (quant) + div/0 ─────
+check("dcf → None", calc.resolve_formula_fact("dcf", ff) is None)
+check("wacc → None", calc.resolve_formula_fact("wacc", ff) is None)
+check("ctrl_churn iniziali=0 → n/d", nd("ctrl_churn", {"clienti_attivi": 0, "nuovi_clienti": 0, "clienti_persi": 0}))
+
+print("\nHANDLED:", sorted(calc.HANDLED))
 print("\nTEST CALC " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)
