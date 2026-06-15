@@ -458,4 +458,11 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             return {"ok": False, "errore": "non disponibile"}
         return platform.conversations.discard(draft_id)
 
+    # HTML→PNG per n8n (slide Instagram): /api/screenshot + /shots statico pubblico
+    try:
+        from aios.api.screenshot import add_screenshot
+        add_screenshot(app)
+    except Exception:
+        pass
+
     return app
