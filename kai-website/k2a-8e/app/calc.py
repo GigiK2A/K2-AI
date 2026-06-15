@@ -150,15 +150,15 @@ def _f_ctrl_cashflow(form):
     return round(a - b, 2) if a is not None and b is not None else None
 
 def _f_ctrl_dso(form):
-    # crediti_commerciali non è nel form Cruscotto → n/d (serve a Luca decidere
-    # campo + giorni-periodo per un cruscotto mensile). Calcola se i dati ci sono.
-    r = _div(_field(form, "crediti_commerciali"), _field(form, "fatturato"))
+    # Decisione Luca: aggiunto 'crediti' al form. DSO = crediti / fatturato * giorni;
+    # cruscotto MENSILE → giorni_periodo default 30 (non 365).
+    r = _div(_field(form, "crediti"), _field(form, "fatturato"))
     giorni = _field(form, "giorni_periodo")
     return _r1(r * (giorni if giorni is not None else 30.0)) if r is not None else None
 
 def _f_ctrl_churn(form):
-    # RICONCILIATO: il form ha clienti_attivi (fine periodo) + nuovi_clienti + clienti_persi.
-    # base iniziale ricostruita = attivi - nuovi + persi (standard). churn = persi / iniziali.
+    # Decisione Luca: base INIZIO periodo. Il form ha clienti_attivi (fine periodo,
+    # come posizione_cassa) → inizio ricostruito = attivi - nuovi + persi. churn = persi / inizio.
     persi, attivi, nuovi = _field(form, "clienti_persi"), _field(form, "clienti_attivi"), _field(form, "nuovi_clienti")
     if persi is None or attivi is None or nuovi is None:
         return None
@@ -166,11 +166,23 @@ def _f_ctrl_churn(form):
     return _pct(persi / iniziali) if iniziali > 0 else None
 
 def _f_ctrl_scost(form):
-    # RICONCILIATO: scostamento ricavi vs budget (fatturato vs target_budget.fatturato_target).
-    fatt, tgt = _field(form, "fatturato"), _field(form, "fatturato_target")
-    if fatt is None or tgt is None or tgt == 0:
-        return None
-    return _pct((fatt - tgt) / tgt)
+    # Decisione Luca: NON un fact singolo, è PER-KPI. Calcola lo scostamento % per
+    # ogni coppia (actual, target) disponibile: ricavi (fatturato vs fatturato_target),
+    # ebitda (ctrl_ebitda vs ebitda_target) + eventuale lista esplicita `scostamenti`
+    # [{metrica, valore, target}]. Ritorna una LISTA di scostamenti.
+    items: list[dict] = []
+    fatt, ftgt = _field(form, "fatturato"), _field(form, "fatturato_target")
+    if fatt is not None and ftgt not in (None, 0):
+        items.append({"metrica": "ricavi", "valore": fatt, "target": ftgt, "scostamento_pct": _pct((fatt - ftgt) / ftgt)})
+    eb, ebtgt = _f_ctrl_ebitda(form), _field(form, "ebitda_target")
+    if eb is not None and ebtgt not in (None, 0):
+        items.append({"metrica": "ebitda", "valore": eb, "target": ebtgt, "scostamento_pct": _pct((eb - ebtgt) / ebtgt)})
+    for it in (form.get("scostamenti") or []):
+        if isinstance(it, dict):
+            v, t = _num(it.get("valore")), _num(it.get("target"))
+            if v is not None and t not in (None, 0):
+                items.append({"metrica": it.get("metrica", "?"), "valore": v, "target": t, "scostamento_pct": _pct((v - t) / t)})
+    return items or None
 
 
 _FLAT_SPEC: dict[str, tuple[str, Any, list[str]]] = {
@@ -182,9 +194,9 @@ _FLAT_SPEC: dict[str, tuple[str, Any, list[str]]] = {
     # controllo (Cruscotto direzionale)
     "ctrl_ebitda":   ("EBITDA = fatturato - costi_operativi",            _f_ctrl_ebitda,   ["fatturato", "costi_operativi"]),
     "ctrl_cashflow": ("cashflow_operativo = incassi - pagamenti",        _f_ctrl_cashflow, ["incassi", "pagamenti"]),
-    "ctrl_dso":      ("DSO = crediti_commerciali / fatturato * giorni",  _f_ctrl_dso,      ["crediti_commerciali", "fatturato"]),
+    "ctrl_dso":      ("DSO = crediti / fatturato * giorni (mese=30)",     _f_ctrl_dso,      ["crediti", "fatturato"]),
     "ctrl_churn":    ("churn % = clienti_persi / (clienti_attivi - nuovi_clienti + clienti_persi)", _f_ctrl_churn, ["clienti_persi", "clienti_attivi", "nuovi_clienti"]),
-    "ctrl_scost":    ("scostamento ricavi % = (fatturato - fatturato_target) / fatturato_target",   _f_ctrl_scost, ["fatturato", "fatturato_target"]),
+    "ctrl_scost":    ("scostamento % per-KPI (actual vs target di budget)", _f_ctrl_scost, ["fatturato_target", "ebitda_target"]),
 }
 _FLAT_KEYS = set(_FLAT_SPEC)
 

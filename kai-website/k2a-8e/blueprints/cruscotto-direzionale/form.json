@@ -20,6 +20,7 @@
     "ore_fatturabili": { "type": ["number", "null"] },
     "scarti_resi_reclami": { "type": ["integer", "null"], "description": "per aziende di produzione" },
     "posizione_cassa": { "type": ["number", "null"], "description": "posizione di cassa a fine mese, EUR" },
+    "crediti": { "type": ["number", "null"], "description": "crediti commerciali a fine mese, EUR — per il DSO" },
     "concentrazione_top5_pct": { "type": ["number", "null"], "description": "quota fatturato dai primi 5 clienti" },
     "target_budget": {
       "type": "object",

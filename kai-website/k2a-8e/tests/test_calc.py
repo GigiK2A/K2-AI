@@ -62,13 +62,17 @@ check("adr senza kpi → n/d con campo giusto", nd_adr["tipo"] == "non_disponibi
 
 # ───── controllo (Cruscotto) — struttura form reale ─────
 cru = {"mese": 6, "anno": 2026, "fatturato": 1000000, "costi_operativi": 820000,
-       "incassi": 900000, "pagamenti": 850000, "clienti_attivi": 200, "nuovi_clienti": 20,
-       "clienti_persi": 12, "target_budget": {"fatturato_target": 950000}}
+       "incassi": 900000, "pagamenti": 850000, "crediti": 150000, "clienti_attivi": 200,
+       "nuovi_clienti": 20, "clienti_persi": 12,
+       "target_budget": {"fatturato_target": 950000, "ebitda_target": 200000}}
 check("ctrl_ebitda=180000", val("ctrl_ebitda", cru) == 180000)
 check("ctrl_cashflow=50000", val("ctrl_cashflow", cru) == 50000)
-check("ctrl_churn=6.2 (persi/iniziali ricostruiti)", val("ctrl_churn", cru) == 6.2)
-check("ctrl_scost=5.3 (fatturato vs target)", val("ctrl_scost", cru) == 5.3)
-check("ctrl_dso → n/d (manca crediti_commerciali)", nd("ctrl_dso", cru))
+check("ctrl_churn=6.2 (base inizio periodo ricostruita)", val("ctrl_churn", cru) == 6.2)
+check("ctrl_dso=4.5 (crediti/fatturato*30 mensile)", val("ctrl_dso", cru) == 4.5)
+scost = val("ctrl_scost", cru)
+check("ctrl_scost = lista per-KPI (ricavi +5.3, ebitda -10.0)",
+      isinstance(scost, list) and {s["metrica"]: s["scostamento_pct"] for s in scost} == {"ricavi": 5.3, "ebitda": -10.0})
+check("ctrl_scost senza target → n/d", nd("ctrl_scost", {"fatturato": 1000000}))
 
 # ───── dcf/wacc restano fuori (quant) + div/0 ─────
 check("dcf → None", calc.resolve_formula_fact("dcf", ff) is None)
