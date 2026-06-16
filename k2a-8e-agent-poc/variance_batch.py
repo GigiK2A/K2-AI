@@ -16,8 +16,9 @@ PY = POC / ".venv" / "bin" / "python"
 RUN = POC / "run_poc.py"
 CASES = POC / "data" / "cases"
 
-# 02,03,04 una volta (01 già girato in out/cases/); 01 ripetuto 2× per varianza.
+# Re-run QUANT VERO: 4 casi in-target FRESCHI (01 = run1) + 01 ripetuto 2× → varianza n=3.
 JOBS = [
+    ("01-studio-ingegneria", CASES / "01-studio-ingegneria.json", POC / "out/cases/01-studio-ingegneria"),
     ("02-manifatturiero-turnaround", CASES / "02-manifatturiero-turnaround.json", POC / "out/cases/02-manifatturiero-turnaround"),
     ("03-servizi-it-acquisizione", CASES / "03-servizi-it-acquisizione.json", POC / "out/cases/03-servizi-it-acquisizione"),
     ("04-hospitality-investimento", CASES / "04-hospitality-investimento.json", POC / "out/cases/04-hospitality-investimento"),

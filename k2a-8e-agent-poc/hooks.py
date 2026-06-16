@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import audit
-from quant_server import QUANT_TOOL_NAMES
+from quant_server import QUANT_TOOL_NAMES, DCF_TOOL_NAME, VALIDA_TOOL_NAME
 
 POC_DIR = Path(__file__).parent
 
@@ -30,7 +30,7 @@ DELIVERABLE: Path = OUT_DIR / "deliverable.json"
 # Entitlement simulato (in produzione: derivato dal token firmato del backend).
 TIER_ALLOWLIST: dict[str, set[str]] = {
     "standard": set(QUANT_TOOL_NAMES) | {"Read", "Write", "Edit", "TodoWrite"},
-    "light": (set(QUANT_TOOL_NAMES) - {"mcp__quant__dcf_enterprise_value"}) | {"Read", "Write", "Edit", "TodoWrite"},
+    "light": (set(QUANT_TOOL_NAMES) - {DCF_TOOL_NAME}) | {"Read", "Write", "Edit", "TodoWrite"},
 }
 TIER = "standard"
 
@@ -44,6 +44,17 @@ EV_CAMPI = ["ev_multipli_eur", "ev_dcf_eur", "valore_patrimoniale_eur", "ev_racc
 MAX_STOP_BLOCKS = 3
 _stop_blocks = 0
 RUN_FAILED = False
+
+
+def _last_valida_esito() -> str | None:
+    """Esito dell'ULTIMA chiamata valida_assunzioni registrata nel trace, o None se
+    non è mai stata chiamata. Base del contratto assunzioni: DCF solo dopo valida."""
+    if not audit.TRACE:
+        return None
+    for r in reversed(audit.TRACE.data["quant_results"]):
+        if r["tool"] == VALIDA_TOOL_NAME:
+            return (r.get("outputs") or {}).get("esito_globale")
+    return None
 
 
 def configure(out_dir: Path, tier: str = "standard") -> None:
@@ -70,6 +81,17 @@ async def pre_tool_use_gate(input_data: dict[str, Any], tool_use_id: str | None,
         fp = Path(str(tool_input.get("file_path", ""))).resolve()
         if not str(fp).startswith(str(OUT_DIR.resolve())):
             deny_reason = f"scrittura ammessa solo nella out dir del run (richiesto: {fp})"
+    elif name == DCF_TOOL_NAME:
+        # CONTRATTO ASSUNZIONI (brief Luca): il DCF è negato se nel trace non c'è una
+        # valida_assunzioni precedente; e se l'ultima valida è FAIL (assunzioni
+        # incoerenti col recinto) il DCF resta negato finché l'agente non le rivede.
+        esito = _last_valida_esito()
+        if esito is None:
+            deny_reason = ("DCF negato: chiama prima mcp__quant__valida_assunzioni sulle FCF previste "
+                           "(contratto assunzioni: nessun DCF senza recinto superato)")
+        elif esito == "FAIL":
+            deny_reason = ("DCF negato: valida_assunzioni ha dato FAIL (assunzioni fuori dal recinto). "
+                           "Rivedi le FCF/g e ri-valida: solo OK o WARN motivato ammettono il DCF")
 
     if deny_reason:
         if audit.TRACE:

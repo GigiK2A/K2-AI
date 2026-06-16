@@ -41,9 +41,22 @@ OPERATING_RULES = """
 
 Stai eseguendo la skill qui sopra come AGENTE, server-side senza utente.
 1. I dati cliente sono nel file indicato qui sotto (leggilo con Read).
-2. OGNI numero di valutazione (indici, WACC, DCF, multipli, valore patrimoniale,
-   EV raccomandato) DEVE uscire dai tool mcp__quant__* — MAI calcolato da te.
-   Scegli TU quali metodi pesare di più in base ai dati (motiva la scelta).
+2. OGNI numero di valutazione (indici, ke, WACC, DCF, multipli, valore
+   patrimoniale, EV raccomandato) DEVE uscire dai tool mcp__quant__* — MAI
+   calcolato da te. Scegli TU quali metodi pesare di più in base ai dati (motiva).
+   SEQUENZA del ramo valutazione:
+   a. mcp__quant__capm_cost_of_equity → ke (beta/rf/erp/size dallo snapshot).
+   b. mcp__quant__wacc (usa il ke del passo a) → WACC.
+   c. CONTRATTO ASSUNZIONI: le FCF forward sono TUE assunzioni dichiarate. Prima
+      del DCF chiama OBBLIGATORIAMENTE mcp__quant__valida_assunzioni con le FCF
+      previste, g e costo debito. Il DCF è NEGATO dall'hook se non l'hai fatto.
+      - esito OK   → procedi al DCF.
+      - esito WARN → procedi al DCF MA motiva ogni check in WARN dentro
+        enterprise_value.motivazione_assunzioni del deliverable.
+      - esito FAIL → NON fare il DCF: rivedi le FCF/g (più prudenti) e ri-valida.
+   d. mcp__quant__dcf_enterprise_value_guarded (g dentro il range di settore).
+   e. mcp__quant__ev_from_multiples e mcp__quant__patrimonial_value.
+   f. mcp__quant__reconcile_ev → EV raccomandato (pesi espliciti, motivati).
 3. Ogni risultato dei tool quant include un campo "call_id". DEVI citarlo.
 4. Il deliverable è il SOLO output JSON: scrivilo con Write in <OUTFILE> con
    ESATTAMENTE queste chiavi top-level:
