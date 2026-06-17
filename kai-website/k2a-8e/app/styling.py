@@ -415,71 +415,96 @@ def section_number(num: int, title: str, S=None) -> Table:
 
 
 # ===================== COPERTINA + PAGINE FISSE ==========================
+def _kicker(canvas, x, y, text, size=7.5, color=GOLD_DK, spacing=1.4, right=None):
+    """Etichetta uppercase con letter-spacing (look editoriale del riferimento).
+    Usa un text object (charSpace non è sul Canvas in tutte le versioni)."""
+    t = str(text).upper()
+    canvas.saveState()
+    canvas.setFillColor(color)
+    try:
+        if right is not None:
+            w = canvas.stringWidth(t, F_BOLD, size) + spacing * max(0, len(t) - 1)
+            x = right - w
+        to = canvas.beginText(x, y)
+        to.setFont(F_BOLD, size)
+        to.setCharSpace(spacing)
+        to.setFillColor(color)
+        to.textOut(t)
+        canvas.drawText(to)
+    except Exception:
+        canvas.setFont(F_BOLD, size)
+        if right is not None:
+            canvas.drawRightString(right, y, t)
+        else:
+            canvas.drawString(x, y, t)
+    canvas.restoreState()
+
+
 def _cover_meta(canvas, x, y, label, value):
-    canvas.setFillColor(COVER_SUB); canvas.setFont(F_BOLD, 7)
-    canvas.drawString(x, y + 4 * mm, label.upper())
-    canvas.setFillColor(colors.white); canvas.setFont(F_BODY, 10)
-    canvas.drawString(x, y, str(value)[:46])
+    _kicker(canvas, x, y + 4.5 * mm, label, size=7, color=GOLD_DK, spacing=1.2)
+    canvas.setFillColor(TEXT); canvas.setFont(F_BOLD, 10.5); canvas.drawString(x, y, str(value)[:46])
 
 
 def cover_page(canvas, *, modulo, titolo, sottotitolo, azienda="", periodo="",
                versione="1.0", codice="", categoria="DIAGNOSI", valore="", data=""):
-    """Copertina premium full-page."""
-    canvas.setFillColor(CARBON)
-    canvas.rect(0, 0, PAGE_W, PAGE_H, stroke=0, fill=1)
-    # pattern geometrico leggero (angolo basso-destra): cerchi concentrici teal tenui
-    canvas.saveState()
-    canvas.setStrokeColor(colors.HexColor("#15302c")); canvas.setLineWidth(0.8)
-    for rr in range(1, 7):
-        canvas.circle(PAGE_W - 8 * mm, 8 * mm, rr * 11 * mm, stroke=1, fill=0)
-    canvas.restoreState()
-    # barra teal in alto
-    canvas.setFillColor(GOLD)
-    canvas.rect(0, PAGE_H - 5 * mm, PAGE_W, 5 * mm, stroke=0, fill=1)
-    # logo
+    """Copertina white-editorial (design riferimento K2A): fondo bianco caldo, logo +
+    kicker in alto, titolone Syne, deck, e strip fatti in basso. Accenti oro."""
+    # fondo bianco caldo + barra oro sottile in alto
+    canvas.setFillColor(WARM); canvas.rect(0, 0, PAGE_W, PAGE_H, stroke=0, fill=1)
+    canvas.setFillColor(GOLD); canvas.rect(0, PAGE_H - 3 * mm, PAGE_W, 3 * mm, stroke=0, fill=1)
+    # logo su chip scuro (il PNG è bianco) in alto a sinistra + kicker a destra
+    top = PAGE_H - 20 * mm
     try:
         from reportlab.lib.utils import ImageReader
         if os.path.exists(_LOGO):
             logo = ImageReader(_LOGO); iw, ih = logo.getSize()
-            lh = 16 * mm; lw = lh * iw / ih
-            canvas.drawImage(logo, MARGIN, PAGE_H - 34 * mm, width=lw, height=lh, mask=[0, 12, 0, 12, 0, 12])
+            lh = 7 * mm; lw = lh * iw / ih
+            canvas.setFillColor(CARBON); canvas.roundRect(MARGIN - 3, top - 2 * mm, lw + 6, lh + 4, 2.5, stroke=0, fill=1)
+            canvas.drawImage(logo, MARGIN, top - 1 * mm, width=lw, height=lh, mask=[0, 12, 0, 12, 0, 12])
     except Exception:
         pass
-    # badge categoria (pill)
+    _kicker(canvas, 0, top + 1 * mm, f"{categoria} · {periodo or data or '2026'}",
+            size=7.5, color=GOLD_DK, spacing=1.6, right=PAGE_W - MARGIN)
+
+    # blocco editoriale (kicker modulo + titolone + deck) ~ a metà alta
     by = PAGE_H * 0.60
-    canvas.setFillColor(GOLD)
-    cat = str(categoria).upper()
-    cw = canvas.stringWidth(cat, F_BOLD, 8) + 14
-    canvas.roundRect(MARGIN, by, cw, 6.5 * mm, 3, stroke=0, fill=1)
-    canvas.setFillColor(CARBON); canvas.setFont(F_BOLD, 8)
-    canvas.drawString(MARGIN + 7, by + 2.1 * mm, cat)
-    # modulo
-    canvas.setFillColor(GOLD); canvas.setFont(F_BOLD, 12)
-    canvas.drawString(MARGIN, by - 9 * mm, str(modulo).upper())
-    # titolo grande (Syne)
-    canvas.setFillColor(colors.white); canvas.setFont(F_TITLE, 33)
-    canvas.drawString(MARGIN, by - 22 * mm, str(titolo)[:30])
-    # sottotitolo
+    _kicker(canvas, MARGIN, by + 9 * mm, modulo, size=9, color=GOLD_DK, spacing=2.0)
+    # titolone Syne, wrap manuale su 2 righe
+    canvas.setFillColor(CARBON); canvas.setFont(F_TITLE, 34)
+    words = str(titolo).split(); lines, cur = [], ""
+    for w in words:
+        t = (cur + " " + w).strip()
+        if canvas.stringWidth(t, F_TITLE, 34) <= CONTENT_W and len(lines) < 1:
+            cur = t
+        else:
+            lines.append(cur); cur = w
+    lines.append(cur); lines = [l for l in lines if l][:2]
+    for i, ln in enumerate(lines):
+        canvas.drawString(MARGIN, by - i * 13 * mm, ln)
+    ty = by - (len(lines) - 1) * 13 * mm
     if sottotitolo:
-        canvas.setFillColor(COVER_SUB); canvas.setFont(F_BODY, 12.5)
-        canvas.drawString(MARGIN, by - 30 * mm, str(sottotitolo)[:74])
-    # descrizione valore
+        canvas.setFillColor(TEXT_GRAY); canvas.setFont(F_BODY, 13)
+        canvas.drawString(MARGIN, ty - 9 * mm, str(sottotitolo)[:80])
     if valore:
-        canvas.setFillColor(colors.HexColor("#7f8c89")); canvas.setFont(F_BODY, 9.5)
-        canvas.drawString(MARGIN, by - 37 * mm, str(valore)[:96])
-    # blocco meta in basso (cliente/periodo/versione/codice)
+        canvas.setFillColor(NEUTRAL); canvas.setFont(F_BODY, 10)
+        canvas.drawString(MARGIN, ty - 16 * mm, str(valore)[:104])
+
+    # strip fatti in basso (Cliente/Periodo/Versione/Documento) — come il riferimento
     my = 34 * mm
-    canvas.setStrokeColor(colors.HexColor("#22302c")); canvas.setLineWidth(0.6)
-    canvas.line(MARGIN, my + 12 * mm, PAGE_W - MARGIN, my + 12 * mm)
-    col_w = (CONTENT_W) / 4
+    canvas.setStrokeColor(LINE); canvas.setLineWidth(0.8)
+    canvas.line(MARGIN, my + 13 * mm, PAGE_W - MARGIN, my + 13 * mm)
+    col_w = CONTENT_W / 4
     metas = [("Cliente", azienda or "—"), ("Periodo", periodo or "—"),
              ("Versione", f"v{versione}"), ("Documento", codice or data or "2026")]
     for i, (lb, va) in enumerate(metas):
-        _cover_meta(canvas, MARGIN + i * col_w, my, lb, va)
-    # footer copertina
-    canvas.setFillColor(COVER_SUB); canvas.setFont(F_BODY, 7.5)
-    canvas.drawString(MARGIN, 15 * mm, "K2-AI · K2A S.R.L.S. · documento riservato e confidenziale")
-    canvas.drawRightString(PAGE_W - MARGIN, 15 * mm, "k2-ai.it")
+        canvas.setStrokeColor(GOLD); canvas.setLineWidth(1.2)
+        canvas.line(MARGIN + i * col_w, my + 9 * mm, MARGIN + i * col_w, my - 1 * mm)
+        _cover_meta(canvas, MARGIN + i * col_w + 4 * mm, my, lb, va)
+    # footer
+    _kicker(canvas, MARGIN, 14 * mm, "K2-AI · K2A S.R.L.S. · documento riservato e confidenziale",
+            size=7, color=NEUTRAL, spacing=0.8)
+    canvas.setFillColor(NEUTRAL); canvas.setFont(F_BODY, 7.5)
+    canvas.drawRightString(PAGE_W - MARGIN, 14 * mm, "k2-ai.it")
 
 
 def page_header(canvas, report_name: str):
