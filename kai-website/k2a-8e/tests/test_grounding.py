@@ -49,6 +49,18 @@ def test_gate_lascia_pulito_il_buono():
     assert "priorita_indifferenziate" not in codes
 
 
+def test_depth_vs_data_segnala_generico():
+    # deliverable lungo (>4000 char) su input scarni (il caso reale: "non ho dati")
+    lungo = {"meta": {"cliente": "Studio Reale"}, "analisi": {"testo": "x " * 3000}}
+    f = g.integrity_findings(lungo, citazioni=[], inputs={"settore": "ingegneria"})
+    assert any(x["code"] == "input_povero" for x in f)
+    # con dati ricchi, niente warn
+    f2 = g.integrity_findings(lungo, citazioni=[], inputs={
+        "settore": "ingegneria", "fatturato": "2.1M", "dipendenti": "18",
+        "canali": "passaparola, sito", "target": "privati edilizia", "budget": "10k"})
+    assert not any(x["code"] == "input_povero" for x in f2)
+
+
 if __name__ == "__main__":
     import pytest
     sys.exit(pytest.main([__file__, "-q"]))

@@ -88,6 +88,15 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
             findings.append({"code": "numero_esterno_non_grounded", "severity": "warn",
                              "dettaglio": f"'{num}%' asserito come fatto normativo/di mercato senza citazione grounded"})
 
+    # 3b. DEPTH-vs-DATA → warn: deliverable ricco su input scarni = la RADICE del
+    #     generico (16 pagine sicure su 4 fatti + 'non ho dati'). Non blocca, ma
+    #     segnala che l'analisi è probabilmente archetipo, non QUESTO cliente.
+    sostanziali = sum(1 for v in _walk_strings(inputs or {}) if len(str(v).strip()) >= 3)
+    if inputs is not None and sostanziali < 5 and len(full) > 4000:
+        findings.append({"code": "input_povero", "severity": "warn",
+                         "dettaglio": f"deliverable ricco (~{len(full)} caratteri) su soli {sostanziali} dati "
+                                      f"cliente sostanziali: rischio analisi generica/archetipo, non specifica"})
+
     # 4. PRIORITÀ indifferenziate → warn (la 'lettura prioritizzata' promessa è vuota)
     prios = _collect_priorities(deliverable)
     if len(prios) >= 3 and len({p.lower() for p in prios}) == 1:
