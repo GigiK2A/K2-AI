@@ -25,9 +25,14 @@ const STATUS_LABEL: Record<string, string> = {
 export function ReportGenerator({
   sessionId,
   getAuthToken,
+  boostLabel,
 }: {
   sessionId: string;
   getAuthToken?: () => Promise<string | null>;
+  /** Nome del Boost che verrà generato — mostrato sul bottone così l'utente
+   *  vede COSA sta per generare e può accorgersi di un routing sbagliato PRIMA
+   *  di spendere la generazione (es. "LegalBoost DD" su una chat di marketing). */
+  boostLabel?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -169,7 +174,7 @@ export function ReportGenerator({
           disabled={busy}
           className="inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-60"
         >
-          {busy ? "Generazione in corso…" : "Genera il report"}
+          {busy ? "Generazione in corso…" : `Genera il report${boostLabel ? ` · ${boostLabel}` : ""}`}
         </button>
         {busy && (
           <span className="text-xs text-[var(--text-muted)]">

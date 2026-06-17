@@ -823,7 +823,11 @@ export default function HomePage() {
                 instradato), UN bottone genera il report. Niente form da riempire:
                 gli input 8e sono auto-compilati dalla conversazione e dai file. */}
             {kbotSession?.id && reportReady && (kbotSession.boostSuggerito || suggestedBoost) && (
-              <ReportGenerator sessionId={kbotSession.id} getAuthToken={getToken} />
+              <ReportGenerator
+                sessionId={kbotSession.id}
+                getAuthToken={getToken}
+                boostLabel={kbotSession.boostSuggeritoLabel ?? undefined}
+              />
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}
             <div ref={messagesEndRef} />
