@@ -3,13 +3,15 @@ uvicorn[standard]>=0.32
 # MCP client — il backend interroga i MCP server di Luca via stdio (lib/mcp_client.py).
 mcp>=1.2.0
 # I MCP server di Luca eseguiti DENTRO il backend (architettura A2, "la sua roba").
-# PINNARE a un tag/commit prima del deploy (NON @main). Repo: inglucarossi73/k2a-mcp-*.
-k2a-quant @ git+https://github.com/inglucarossi73/k2a-mcp-quant@main
-k2a-agevolazioni @ git+https://github.com/inglucarossi73/k2a-mcp-agevolazioni@main
-k2a-elettrico @ git+https://github.com/inglucarossi73/k2a-mcp-elettrico@main
-vs-strutturale @ git+https://github.com/inglucarossi73/k2a-mcp-strutturale@main
-# k2a-norme-tecniche: wheel build rotto (da sistemare lato repo) → fallback vendorizzato in vendor/.
-# k2a-norme-tecniche @ git+https://github.com/inglucarossi73/k2a-mcp-norme-tecniche@main
+# DISATTIVATI nel build di deploy finché non sono verificati su Railway (build da
+# sorgente, env diverso; norme ha gia il wheel rotto): un fallimento qui romperebbe
+# TUTTO il deploy. Il codice (lib/mcp_client.py) degrada a "non disponibile" senza
+# rompere. Per attivarli in prod: pinnare a un tag, decommentare, watchare il build.
+# k2a-quant @ git+https://github.com/inglucarossi73/k2a-mcp-quant@<tag>
+# k2a-agevolazioni @ git+https://github.com/inglucarossi73/k2a-mcp-agevolazioni@<tag>
+# k2a-elettrico @ git+https://github.com/inglucarossi73/k2a-mcp-elettrico@<tag>
+# vs-strutturale @ git+https://github.com/inglucarossi73/k2a-mcp-strutturale@<tag>
+# k2a-norme-tecniche @ git+...@<tag>   (wheel build rotto lato repo → fallback vendorizzato)
 pydantic[email]>=2.10
 python-dotenv>=1.0
 PyJWT[crypto]>=2.10
