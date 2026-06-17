@@ -18,6 +18,7 @@ import concurrent.futures
 import json
 import os
 import shutil
+import sys
 from typing import Any, Optional
 
 try:
@@ -29,7 +30,15 @@ except Exception:  # pragma: no cover - mcp non installato
 
 
 def _cmd() -> Optional[str]:
-    return os.environ.get("K2A_QUANT_CMD") or shutil.which("k2a-quant")
+    explicit = os.environ.get("K2A_QUANT_CMD")
+    if explicit:
+        return explicit
+    # entrypoint installato accanto al python corrente (venv bin) — robusto senza PATH,
+    # è il caso del backend in container (uvicorn dal venv).
+    cand = os.path.join(os.path.dirname(sys.executable), "k2a-quant")
+    if os.path.exists(cand):
+        return cand
+    return shutil.which("k2a-quant")
 
 
 def available() -> bool:
