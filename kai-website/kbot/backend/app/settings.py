@@ -67,6 +67,15 @@ KBOT_FREE_MODE = (_env("KBOT_FREE_MODE", default="0") or "0").lower() in ("1", "
 # perché la generazione passa dall'entitlement reale (status=paid → mint → 8e).
 KBOT_FAKE_PAYMENT = (_env("KBOT_FAKE_PAYMENT", default="0") or "0").lower() in ("1", "true", "yes")
 
+# AGENTE A2: i Boost "che ragionano" (AdvisorBoost) generati da un agente tool-use
+# (lib/boost_agent.py) che chiama i MCP di Luca, invece della pipeline 8e. Default
+# OFF: opt-in quando ci sono crediti + il quant pronto. Vedi lib/boost_agent.py.
+K2A_BOOST_AGENT = (_env("K2A_BOOST_AGENT", default="0") or "0").lower() in ("1", "true", "yes")
+# servizi instradati all'agente A2 (CSV), se K2A_BOOST_AGENT attivo.
+K2A_BOOST_AGENT_SERVIZI = [
+    s.strip() for s in (_env("K2A_BOOST_AGENT_SERVIZI", default="checkup_advisor") or "").split(",") if s.strip()
+]
+
 # Default to k2-ai.it production origins. Never default to "*" with credentials.
 # Override via KBOT_CORS_ORIGINS env var (comma-separated) for dev/staging.
 _DEFAULT_CORS = ",".join([

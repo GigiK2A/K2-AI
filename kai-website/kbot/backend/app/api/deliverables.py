@@ -199,6 +199,71 @@ async def auto_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(op
     return {**res, "servizio_id": servizio_id, "label": servizio.get("label")}
 
 
+_AGENT_SEZIONI = {
+    "checkup_advisor": ["executive_summary", "analisi_bilancio", "analisi_settore",
+                        "posizionamento_vrio", "opzioni_strategiche", "piano_36_mesi",
+                        "enterprise_value", "azioni_prioritarie", "cruscotto_kpi", "disclaimer"],
+}
+_AGENT_SEZIONI_DEFAULT = ["executive_summary", "analisi", "enterprise_value", "azioni_prioritarie", "disclaimer"]
+
+
+@router.post("/deliverables/agent")
+async def agent_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(optional_user)):
+    """A2 — genera un Boost 'che ragiona' (AdvisorBoost) con l'AGENTE tool-use
+    (lib/boost_agent.py) che chiama i MCP di Luca per ogni numero, invece della
+    pipeline 8e. Attivo solo con K2A_BOOST_AGENT=1 e servizio in K2A_BOOST_AGENT_SERVIZI.
+    Stesso gate dell'auto (ownership + entitlement). CONSUMA CREDITI (loop modello).
+    NB: sincrono (prima versione) → in prod va reso job async come il motore 8e."""
+    from ..lib import boost_agent
+    if not settings.K2A_BOOST_AGENT:
+        raise HTTPException(status_code=403, detail="agente A2 non abilitato (K2A_BOOST_AGENT=0)")
+    session = sessions.get_session(body.sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    _check_ownership(session, user)
+
+    collected = dict(session.get("collected_data") or {})
+    servizio_id = body.servizioId or collected.get("boost_suggerito")
+    if not servizio_id or servizio_id not in settings.K2A_BOOST_AGENT_SERVIZI:
+        raise HTTPException(status_code=409, detail="servizio non instradato all'agente A2")
+    servizio = catalog.get_servizio(servizio_id)
+    if not servizio:
+        raise HTTPException(status_code=404, detail="servizio non a catalogo")
+
+    if not boost_agent.mcp_quant.available():
+        raise HTTPException(status_code=503, detail="MCP quant non disponibile nel backend")
+
+    try:
+        form = await engine.get_form(servizio_id)
+        campi = form.get("campi") or []
+    except engine.EngineError:
+        campi = []
+    inputs = autofill.extract_inputs(session, campi)
+
+    entitlement_token = _mint_entitlement(session, servizio_id, tier=servizio.get("tipo"))
+    if not entitlement_token:
+        raise HTTPException(status_code=402, detail={
+            "reason": "payment_required", "servizio_id": servizio_id,
+            "label": servizio.get("label"), "prezzo_eur": catalog.prezzo_eur(servizio_id)})
+
+    # skill di dominio: blueprint_id (es. "flusso-advisorboost-pmi.boost") → cartella skill
+    blueprint = str(servizio.get("blueprint_id") or "").replace(".boost", "")
+    skill_path = settings.SKILLS_DIR / blueprint / "SKILL.md"
+    if not skill_path.exists():
+        raise HTTPException(status_code=500, detail=f"skill non trovata: {blueprint}")
+    skill_text = skill_path.read_text(encoding="utf-8")
+    sezioni = _AGENT_SEZIONI.get(servizio_id, _AGENT_SEZIONI_DEFAULT)
+
+    res = boost_agent.run_boost_agent(skill_text, inputs, servizio_id, sezioni=sezioni)
+    if not res.get("delivered"):
+        raise HTTPException(status_code=422, detail={
+            "reason": "agent_refused", "problemi": res.get("problemi"),
+            "message": "L'agente non ha prodotto un deliverable conforme (provenienza/sezioni)."})
+    return {"servizio_id": servizio_id, "label": servizio.get("label"),
+            "deliverable": res["deliverable"], "metrics": res.get("metrics"),
+            "provenance_calls": len(res.get("provenance_calls") or [])}
+
+
 # --- Gate Preview (W8): gratis, max 2/mese, utente registrato -------------
 
 class PreviewBody(BaseModel):
