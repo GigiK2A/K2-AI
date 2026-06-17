@@ -214,3 +214,32 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 - **Precedenti versioni** del backend (FastAPI + Clerk, FastAPI standalone con Stripe diretto, ecc.) sono state archiviate ed eliminate. **Non recuperarle**: il design corrente è canonico.
 - L'auth è stata migrata da Clerk a Supabase (commit `981e034`).
 - Il backend session-based attuale è stato introdotto col commit `37a5273` (rebuild completo).
+
+---
+
+## Architettura A2 + MCP di Luca nel backend + ponte pagamento (giu 2026)
+
+**Numeri dai MCP di Luca, non da copie.** I suoi MCP server (repo `inglucarossi73/k2a-mcp-*`)
+sono la fonte di verità. Il `k2a-quant` pubblicato (4 tool nuovi capm/ev_multiples/
+valida_assunzioni/dcf_enterprise_value_guarded + snapshot rf 2,95/erp 6,69) è su github.
+
+- **`lib/mcp_quant.py`**: client MCP **stdio** — il backend avvia `k2a-quant` come
+  sottoprocesso e lo interroga (deterministico, no LLM). `available()` trova l'entrypoint
+  nel venv bin. Health: `GET /api/kbot/quant/health`. Install: `mcp` + `k2a-quant` (git,
+  **pinnare a tag** prima del deploy) in `requirements.txt`.
+- **`lib/boost_agent.py` (A2)**: i Boost "che ragionano" (AdvisorBoost) li genera un
+  AGENTE tool-use sul **raw Anthropic SDK** (NON l'Agent SDK → niente CLI `claude` nel
+  container). L'agente esegue la skill e chiama i tool MCP per ogni numero. Gate in-loop:
+  contratto assunzioni (DCF negato senza `valida_assunzioni` OK/WARN), provenienza per
+  call_id, fail-closed. I Boost compilativi restano in **pipeline 8e**.
+- **`POST /api/kbot/deliverables/agent`**: entry A2. Flag `K2A_BOOST_AGENT` (default OFF)
+  + `K2A_BOOST_AGENT_SERVIZI` (=`checkup_advisor`). Stesso gate dell'auto. **Sincrono (v1)**
+  → in prod va reso job async come il motore 8e. Consuma crediti.
+
+**Ponte pagamento→generazione** (il webhook Boost marca `paid` ma NON genera):
+- `POST /api/kbot/checkout/exchange` (success_token opaco → session_id) + il frontend
+  (`page.tsx` handler `?kbot_paid=1&t=`, `ReportGenerator` auto-resume). Senza, il cliente
+  paga e non vede partire il report.
+- Demo: `KBOT_FAKE_PAYMENT` + `POST /api/kbot/checkout/boost/demo` (pagamento simulato).
+
+Stato completo e muri esterni (crediti/Stripe/normattiva/deploy/ateco): `docs/stato-kbot-operativo.md`.
