@@ -83,13 +83,19 @@ class _Doc(BaseDocTemplate):
 
 
 # ===================== blocchi fissi (metodologia, CTA) ==================
-def _methodology(S, ambito: str) -> list:
+def _methodology(S, ambito: str, has_citations: bool = False) -> list:
+    # La promessa "riferimenti normativi verbatim" si fa SOLO se ci sono citazioni
+    # grounded reali (LegalBoost/FiscoBoost). Asserirla su un report di strategia
+    # senza una sola citazione è un over-promise (e induce a fidarsi di fatti
+    # normativi che il modello ha inventato — vedi report StrategyBoost reale).
+    fonti = ("parametri di settore e — dove applicabile — riferimenti normativi riportati "
+             "verbatim dalla fonte ufficiale, per garantire tracciabilità e affidabilità delle valutazioni"
+             if has_citations else
+             "parametri di settore, distinguendo le evidenze verificate dalle inferenze qualitative")
     txt = (
         "Questo documento è stato prodotto da K2-AI, sistema di intelligenza artificiale "
         "specializzato nell'analisi tecnica, strategica e operativa per imprese e professionisti. "
-        f"L'analisi {ambito} integra i dati forniti, parametri di settore e — dove applicabile — "
-        "riferimenti normativi riportati verbatim dalla fonte ufficiale, per garantire tracciabilità "
-        "e affidabilità delle valutazioni.\n\n"
+        f"L'analisi {ambito} integra i dati forniti e {fonti}.\n\n"
         "La struttura del report segue una logica consulenziale: una sintesi esecutiva leggibile anche "
         "da non tecnici, una dashboard sintetica degli indicatori chiave, l'analisi di dettaglio con "
         "criticità e opportunità, le raccomandazioni operative prioritizzate e una roadmap dei prossimi "
@@ -313,14 +319,14 @@ def _cover_meta(deliverable, blueprint, default_titolo, sottotitolo, valore):
     }, modulo
 
 
-def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, ambito):
+def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, ambito, has_citations: bool = False):
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
     S = ST.styles()
     doc = _Doc(pdf_path, cover_meta, report_name)
     toc = TableOfContents()
     toc.levelStyles = [S["toc"]]
     story = [NextPageTemplate("content"), PageBreak()]
-    story += _methodology(S, ambito)
+    story += _methodology(S, ambito, has_citations)
     story += [PageBreak(), _Heading("Indice del report", S["h1"], "indice"), Spacer(1, 4), toc, PageBreak()]
     story += _exec_summary(deliverable, S)
     story += _kpi_dashboard(deliverable, S)
@@ -376,7 +382,7 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
     if citazioni:
         body += _fonti(citazioni, S) + _testi_normativi(citazioni, S)
     body += _disclaimer_inline(deliverable, blueprint, S)
-    _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance")
+    _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance", has_citations=bool(citazioni))
 
 
 # ========================= Generico (a componenti) =======================
@@ -459,7 +465,7 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
     if citazioni:
         body += _fonti(citazioni, S) + _testi_normativi(citazioni, S)
     body += _disclaimer_inline(deliverable, blueprint, S)
-    _build(pdf_path, cover_meta, report_name, body, deliverable, "professionale")
+    _build(pdf_path, cover_meta, report_name, body, deliverable, "professionale", has_citations=bool(citazioni))
 
 
 def render_html(deliverable: dict, blueprint: dict, citazioni: list) -> str:

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, calc, jobs, llm, validate
+from . import assets, calc, grounding, jobs, llm, validate
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -238,6 +238,19 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             )
             return
 
+        # Gate di GROUNDING (integrità qualitativa) — accanto a L1/L2. Becca la
+        # classe di difetti che il linter STRUTTURALE non vede e che nessun calc.py
+        # intercetta sui boost qualitativi: segnaposto trapelati, numeri esterni
+        # asseriti senza citazione, cover non personalizzata, priorità tutte uguali
+        # (vedi report StrategyBoost reale). 'block' → non si consegna (fail-closed).
+        g_findings = grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs)
+        g_blocks = grounding.blocks(g_findings)
+        if g_blocks:
+            log.warning("grounding gate REFUSE job %s: %s", job_id, [b["dettaglio"] for b in g_blocks])
+            jobs.update(job_id, status="refused", refusal_reason="grounding_failed",
+                        validation={"grounding_block": g_blocks, "grounding_findings": g_findings})
+            return
+
         # Render HTML + PDF.
         out_dir = OUT_DIR / job_id
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -259,7 +272,8 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             job_id, status="rendered",
             outputs={"html_path": str(html_path), "pdf_path": str(pdf_path),
                      "json_path": str(json_path), "bundle": []},
-            validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS"},
+            validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS",
+                        "grounding": g_findings or "PASS"},
             citazioni=citazioni,
             meta={"skill": skill, "blueprint_id": bp_id, "auth_level": "FULL",
                   "filiera": filiera_meta, "snapshot_version": assets.snapshot_version()},
