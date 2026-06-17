@@ -755,6 +755,21 @@ export async function startBoostCheckout(
   return data.checkout_url as string;
 }
 
+/** Rientro post-redirect Stripe: scambia il success_token opaco (querystring ?t=)
+ * con il session_id + stato, così il frontend riprende generazione e polling. */
+export async function exchangeToken(
+  token: string,
+): Promise<{ session_id: string; status: string | null; paid: boolean; pdf_url: string | null } | null> {
+  const res = await fetch(`${API_BASE}/api/kbot/checkout/exchange`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) await parseErr(res, "Errore scambio token");
+  return (await res.json()) as { session_id: string; status: string | null; paid: boolean; pdf_url: string | null };
+}
+
 /** DEMO — pagamento simulato (nessun Stripe, nessun addebito). Attivo solo se il
  * backend ha KBOT_FAKE_PAYMENT=1. Marca la sessione `paid` e ritorna il prezzo
  * applicato: il chiamante poi ri-lancia la generazione (ora la sessione è pagata). */

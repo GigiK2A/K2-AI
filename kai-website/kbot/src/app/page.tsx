@@ -24,6 +24,7 @@ import {
   deleteRemoteConversation,
   removeContextItem,
   fetchFollowUps,
+  exchangeToken,
   RateLimitError,
   type UploadedFile,
   type AnalyzedUrl,
@@ -208,6 +209,33 @@ export default function HomePage() {
     url.searchParams.delete("tag");
     try { sessionStorage.removeItem("kbot.tag_pillar"); } catch { /* ignore */ }
     window.history.replaceState({}, "", url.toString());
+  }, [ensureSession]);
+
+  /* Rientro post-redirect Stripe: ?kbot_paid=1&t=<success_token>. Il frontend ha
+     il token ma non il session_id (non viaggia nell'URL, H-7). Scambia il token →
+     session_id, adotta la sessione (ora paid) e segna il resume: ReportGenerator
+     riprende la generazione da solo. Senza questo, il cliente paga e vede la UI
+     vecchia (il ponte pagamento→report era rotto). */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("kbot_paid") !== "1") return;
+    const token = url.searchParams.get("t");
+    // pulisci subito i parametri (evita ri-trigger su refresh/replaceState)
+    url.searchParams.delete("kbot_paid");
+    url.searchParams.delete("t");
+    url.searchParams.delete("cs");
+    window.history.replaceState({}, "", url.toString());
+    if (!token) return;
+    void (async () => {
+      try {
+        const r = await exchangeToken(token);
+        if (!r?.session_id) return;
+        await ensureSession({ mode: "report", adopt: r.session_id });
+        // segnala a ReportGenerator di riprendere la generazione per questa sessione
+        try { sessionStorage.setItem("kbot.pay_resume", r.session_id); } catch { /* ignore */ }
+      } catch { /* il polling/stato a valle gestisce il resto */ }
+    })();
   }, [ensureSession]);
 
   const activeConversation = useMemo(

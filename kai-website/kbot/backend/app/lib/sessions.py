@@ -121,6 +121,20 @@ def get_session(session_id: str) -> Optional[dict]:
     return res.data[0]
 
 
+def get_session_by_success_token(token: str) -> Optional[dict]:
+    """Risolve il `success_token` opaco (messo in success_url Stripe) → sessione.
+    Serve al rientro post-redirect: il frontend ha il token in querystring ma non
+    il session_id (l'UUID non viaggia nell'URL, H-7). Token lungo e non indovinabile;
+    l'autorizzazione vera resta sugli endpoint deliverable/status (ownership)."""
+    if not token:
+        return None
+    client = get_admin_client()
+    res = client.table(TABLE).select("*").eq("success_token", token).limit(1).execute()
+    if not res.data:
+        return None
+    return res.data[0]
+
+
 def update_session(session_id: str, patch: Dict[str, Any]) -> dict:
     patch = {**patch, "updated_at": _now_iso()}
     client = get_admin_client()

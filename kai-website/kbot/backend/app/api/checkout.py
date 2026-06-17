@@ -225,6 +225,27 @@ def checkout_boost_demo(body: BoostCheckoutBody, user: Optional[AuthUser] = Depe
             "sconto_pct": billing.sconto_boost_pct(plan)}
 
 
+class ExchangeTokenBody(BaseModel):
+    token: str
+
+
+@router.post("/checkout/exchange")
+def checkout_exchange(body: ExchangeTokenBody):
+    """Rientro post-redirect Stripe: il frontend arriva con ?kbot_paid=1&t=<token>
+    ma NON ha il session_id (non viaggia nell'URL). Qui scambia il token opaco con
+    il session_id + lo stato, così il frontend può riprendere la generazione e il
+    polling. Nessuna info sensibile: l'autorizzazione resta sugli endpoint a valle."""
+    session = sessions.get_session_by_success_token(body.token)
+    if not session:
+        raise HTTPException(status_code=404, detail="token non valido o scaduto")
+    return {
+        "session_id": session.get("id"),
+        "status": session.get("status"),
+        "paid": session.get("status") == "paid",
+        "pdf_url": session.get("pdf_url"),
+    }
+
+
 # ============================ Abbonamenti (ricorrente) ======================
 class SubscriptionCheckoutBody(BaseModel):
     plan: str  # 'pro' | 'business'
