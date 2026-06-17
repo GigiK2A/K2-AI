@@ -1,10 +1,15 @@
 fastapi>=0.115
 uvicorn[standard]>=0.32
-# MCP client — il backend interroga i MCP server di Luca (k2a-quant) via stdio (lib/mcp_quant.py).
+# MCP client — il backend interroga i MCP server di Luca via stdio (lib/mcp_client.py).
 mcp>=1.2.0
-# Quant di Luca come MCP server eseguito DENTRO il backend (architettura A2, deciso con Luca).
-# Pinnare a un tag/commit prima del deploy in prod (NON @main). Repo: inglucarossi73/k2a-mcp-quant.
+# I MCP server di Luca eseguiti DENTRO il backend (architettura A2, "la sua roba").
+# PINNARE a un tag/commit prima del deploy (NON @main). Repo: inglucarossi73/k2a-mcp-*.
 k2a-quant @ git+https://github.com/inglucarossi73/k2a-mcp-quant@main
+k2a-agevolazioni @ git+https://github.com/inglucarossi73/k2a-mcp-agevolazioni@main
+k2a-elettrico @ git+https://github.com/inglucarossi73/k2a-mcp-elettrico@main
+vs-strutturale @ git+https://github.com/inglucarossi73/k2a-mcp-strutturale@main
+# k2a-norme-tecniche: wheel build rotto (da sistemare lato repo) → fallback vendorizzato in vendor/.
+# k2a-norme-tecniche @ git+https://github.com/inglucarossi73/k2a-mcp-norme-tecniche@main
 pydantic[email]>=2.10
 python-dotenv>=1.0
 PyJWT[crypto]>=2.10

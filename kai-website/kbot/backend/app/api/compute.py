@@ -128,6 +128,19 @@ def _discover() -> dict[str, dict[str, Any]]:
 _REGISTRY = _discover()
 
 
+@router.get("/mcp/health")
+@limiter.limit("30/minute")
+def mcp_health(request: Request) -> dict:
+    """Stato di TUTTI i MCP server di Luca eseguiti NEL backend (quant, agevolazioni,
+    elettrico, norme, strutturale). Deterministico, no LLM. 'available' = il backend
+    raggiunge l'entrypoint via stdio. Quelli non installati hanno fallback vendorizzato."""
+    from ..lib import mcp_client
+    st = mcp_client.status()
+    live = [n for n, i in st.items() if i.get("available")]
+    return {"mcp_servers": st, "live": live, "n_live": len(live), "n_registrati": len(st),
+            "fonte": "MCP di Luca (inglucarossi73/k2a-mcp-*), stdio nel backend"}
+
+
 @router.get("/quant/health")
 @limiter.limit("30/minute")
 def quant_health(request: Request) -> dict:
