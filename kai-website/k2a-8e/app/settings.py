@@ -7,8 +7,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Auth backend-to-backend.
-API_KEY = os.environ.get("K2A_8E_API_KEY", "dev-key")
+# Auth backend-to-backend. DEFAULT allineato al backend (kbot settings) così con
+# env non settato il bearer combacia (evita 401 "missing bearer" → motore ko).
+API_KEY = os.environ.get("K2A_8E_API_KEY", "k2a-8e-internal-loopback")
 API_KEY_NEXT = os.environ.get("K2A_8E_API_KEY_NEXT")  # rotazione (membrana G6)
 
 # Entitlement JWT (membrana G1) — segreto condiviso col K-BOT (HS256).

@@ -103,7 +103,7 @@ async def create(body: DeliverableBody, user: Optional[AuthUser] = Depends(optio
         raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})
     except engine.EngineError as e:
         log.warning("8e error: %s", e)
-        raise HTTPException(status_code=502, detail="motore non disponibile")
+        raise HTTPException(status_code=502, detail=f"motore non disponibile · {str(e)[:140]}")
 
     # Persisti il job dentro collected_data (JSONB esistente), NON come colonne
     # top-level: deliverable_job_id/deliverable_service NON esistono come colonne
@@ -186,7 +186,7 @@ async def auto_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(op
         raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})
     except engine.EngineError as e:
         log.warning("8e error: %s", e)
-        raise HTTPException(status_code=502, detail="motore non disponibile")
+        raise HTTPException(status_code=502, detail=f"motore non disponibile · {str(e)[:140]}")
 
     try:
         collected["deliverable_job_id"] = res.get("job_id")
@@ -319,7 +319,7 @@ async def create_preview(body: PreviewBody, user: AuthUser = Depends(require_use
         raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})
     except engine.EngineError as e:
         log.warning("8e preview error: %s", e)
-        raise HTTPException(status_code=502, detail="motore non disponibile")
+        raise HTTPException(status_code=502, detail=f"motore non disponibile · {str(e)[:140]}")
 
     return {**res, "preview_count": new_count, "preview_limit": PREVIEW_LIMIT_MESE}
 

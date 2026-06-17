@@ -110,7 +110,9 @@ CATALOG_PATH = Path(
 # Motore 8e (generazione deliverable). Vuoto in dev → si usa il MOCK locale
 # (kbot/mock-8e). Vedi docs/interfaccia-kbot-8e.md.
 ENGINE_8E_BASE_URL = _env("K2A_8E_BASE_URL", default="http://localhost:8800")
-ENGINE_8E_API_KEY = _env("K2A_8E_API_KEY")  # Bearer backend-to-backend
+# Bearer backend→8e. DEFAULT allineato a quello dell'8e (app/settings.py) così con
+# env non settato combaciano comunque (fix "missing bearer" → motore non disponibile).
+ENGINE_8E_API_KEY = _env("K2A_8E_API_KEY", default="k2a-8e-internal-loopback")
 
 # Entitlement JWT (membrana G1) — segreto condiviso K-BOT↔8e (HS256).
 ENTITLEMENT_SECRET = _env("K2A_ENTITLEMENT_SECRET")

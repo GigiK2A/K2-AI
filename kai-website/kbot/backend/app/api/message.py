@@ -37,12 +37,31 @@ from ..settings import (
 router = APIRouter()
 log = logging.getLogger(__name__)
 
-_URL_RE = _re.compile(r"https?://[^\s<>\"']{6,}", _re.IGNORECASE)
+# Rileva URL incollati in chat anche SENZA schema: http(s)://, www., o dominio nudo
+# con TLD comune (es. "studioX.com", "sito.it/pagina"). Evita le email (lookbehind @).
+_URL_RE = _re.compile(
+    r"(?:https?://|www\.)[^\s<>\"')\]]{2,}"
+    r"|(?<![@\w/.])(?:[a-z0-9](?:[a-z0-9-]{0,40}[a-z0-9])?\.)+"
+    r"(?:it|com|net|org|io|eu|ai|co|info|biz|dev|app|cloud|online|shop|store|tech|me|uk|de|fr|es|us|gov|edu|news|agency|studio|consulting|email)"
+    r"(?:/[^\s<>\"')\]]*)?",
+    _re.IGNORECASE)
 _MAX_AUTO_URLS = 2  # max URLs to auto-fetch per message turn
 
 
+def _normalize_url(u: str) -> str:
+    u = (u or "").strip().rstrip(".,;:!?)>]\"'")
+    if not u.lower().startswith(("http://", "https://")):
+        u = "https://" + u
+    return u
+
+
 def _extract_urls(text: str) -> list[str]:
-    return list(dict.fromkeys(_URL_RE.findall(text or "")))[:_MAX_AUTO_URLS]
+    seen, out = set(), []
+    for m in _URL_RE.findall(text or ""):
+        nu = _normalize_url(m)
+        if nu.lower() not in seen:
+            seen.add(nu.lower()); out.append(nu)
+    return out[:_MAX_AUTO_URLS]
 
 
 async def _auto_fetch_urls(text: str, collected: dict) -> dict:
