@@ -88,6 +88,15 @@ async def alist_tools() -> list[str]:
     return await _session(run)
 
 
+async def alist_tool_defs() -> list[dict]:
+    """Definizioni complete (name, description, inputSchema) per il tool-use Anthropic."""
+    async def run(s):
+        return [{"name": t.name, "description": (t.description or "")[:1000],
+                 "input_schema": t.inputSchema or {"type": "object", "properties": {}}}
+                for t in (await s.list_tools()).tools]
+    return await _session(run)
+
+
 # ---- wrapper sincroni per il codice FastAPI sync (gestiscono il loop già attivo) ----
 def _sync(coro):
     try:
@@ -110,3 +119,8 @@ def call_batch(calls: list[tuple[str, dict]]) -> list[dict]:
 
 def list_tools() -> list[str]:
     return _sync(alist_tools())
+
+
+def tool_defs() -> list[dict]:
+    """Tool MCP nel formato Anthropic tool-use (name, description, input_schema)."""
+    return _sync(alist_tool_defs())
