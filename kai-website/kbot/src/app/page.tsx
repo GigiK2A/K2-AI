@@ -243,6 +243,16 @@ export default function HomePage() {
     [conversations, activeId],
   );
 
+  // Il bottone "Genera il report" deve riflettere la prontezza CORRENTE, non il boost
+  // persistito sulla sessione (che restava settato → su una chat continuata il bottone
+  // compariva subito dopo un semplice "ciao"). Lo mostriamo se l'ULTIMO messaggio del
+  // bot è in stato pronto (nextAction=show_summary → reportReady); fallback al boost
+  // persistito SOLO quando non c'è ancora un segnale di prontezza (es. al reload).
+  const reportReady = useMemo(() => {
+    const lastAssistant = [...activeConversation.messages].reverse().find((m) => m.role === "assistant");
+    return lastAssistant?.reportReady ?? Boolean(kbotSession?.boostSuggerito);
+  }, [activeConversation.messages, kbotSession?.boostSuggerito]);
+
   // Auto-scroll to bottom on new messages / streaming deltas / loading state.
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -812,7 +822,7 @@ export default function HomePage() {
             {/* Flusso ufficiale: quando il bot ha raccolto abbastanza (boost
                 instradato), UN bottone genera il report. Niente form da riempire:
                 gli input 8e sono auto-compilati dalla conversazione e dai file. */}
-            {kbotSession?.id && (kbotSession.boostSuggerito || suggestedBoost) && (
+            {kbotSession?.id && reportReady && (kbotSession.boostSuggerito || suggestedBoost) && (
               <ReportGenerator sessionId={kbotSession.id} getAuthToken={getToken} />
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}
