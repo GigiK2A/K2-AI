@@ -18,22 +18,22 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Flowable, Paragraph, Spacer, Table, TableStyle
 
 # ===================== PALETTE (premium, sobria) =========================
-CARBON = colors.HexColor("#0B0D0E")      # nero carbone — copertina/header
-TEAL = colors.HexColor("#00BFA6")        # verde acqua premium — accento
-TEAL_DK = colors.HexColor("#039f8b")     # teal scuro per testo su chiaro
-WARM = colors.HexColor("#F7F8F6")        # bianco caldo — sfondi
-TEXT = colors.HexColor("#1F2430")        # testo principale (più scuro del gray spec per leggibilità)
-TEXT_GRAY = colors.HexColor("#4B5563")   # testo secondario
-LINE = colors.HexColor("#E5E7EB")        # linee/bordi
-NEUTRAL = colors.HexColor("#6B7280")     # grigio neutro
+CARBON = colors.HexColor("#1A1714")      # nero caldo — titoli/header (warm black)
+GOLD = colors.HexColor("#A8884F")        # ORO/BRONZO — accento (design editoriale K2A)
+GOLD_DK = colors.HexColor("#8A6D3B")     # oro scuro per testo su chiaro
+WARM = colors.HexColor("#FBFAF7")        # bianco caldo — sfondi
+TEXT = colors.HexColor("#1F1B16")        # testo principale (near-black caldo)
+TEXT_GRAY = colors.HexColor("#6B6256")   # testo secondario (taupe)
+LINE = colors.HexColor("#E7E2D8")        # linee/bordi (warm line)
+NEUTRAL = colors.HexColor("#8C8475")     # grigio neutro caldo
 # Funzionali (uso parco)
 GREEN = colors.HexColor("#16A34A")
 AMBER = colors.HexColor("#F59E0B")
 RED = colors.HexColor("#DC2626")
 BLUE = colors.HexColor("#2563EB")
-CARD = colors.HexColor("#FBFCFB")
-TEAL_SOFT = colors.HexColor("#E6F7F4")   # sfondo teal tenue
-COVER_SUB = colors.HexColor("#9AA6A3")   # testo tenue su copertina scura
+CARD = colors.HexColor("#FBF9F4")    # card su fondo caldo
+CREAM = colors.HexColor("#F5F1E8")   # cream/beige — callout (come il riferimento)
+COVER_SUB = colors.HexColor("#B8AE9C")   # testo tenue su copertina scura (taupe)
 
 SEMAFORO = {"verde": GREEN, "giallo": AMBER, "rosso": RED,
             "bassa": GREEN, "media": AMBER, "alta": RED,
@@ -94,7 +94,7 @@ def styles() -> dict:
         "title": S("title", fontName=F_TITLE, fontSize=24, textColor=CARBON, leading=27, spaceAfter=4),
         "h1": S("h1", fontName=F_TITLE, fontSize=15, textColor=CARBON, leading=19,
                 spaceBefore=14, spaceAfter=6),
-        "h2": S("h2", fontName=F_BOLD, fontSize=11.5, textColor=TEAL_DK, leading=15,
+        "h2": S("h2", fontName=F_BOLD, fontSize=11.5, textColor=GOLD_DK, leading=15,
                 spaceBefore=9, spaceAfter=3),
         "h3": S("h3", fontName=F_BOLD, fontSize=10, textColor=TEXT, leading=13,
                 spaceBefore=6, spaceAfter=2),
@@ -115,7 +115,7 @@ def styles() -> dict:
 
 
 # ===================== COMPONENTI ========================================
-def badge(text: str, tone=TEAL, fg=colors.white) -> Table:
+def badge(text: str, tone=GOLD, fg=colors.white) -> Table:
     """Pill colorata (categoria/stato/priorità)."""
     p = Paragraph(f'<font name="{F_BOLD}" size="7.5" color="{hx(fg)}">{html_escape(str(text).upper())}</font>',
                   ParagraphStyle("b", leading=10))
@@ -176,14 +176,14 @@ def kpi_dashboard(cards: list[dict], S=None, per_row=3) -> Table:
 def insight_box(text: str, label="Insight della piattaforma", S=None) -> Table:
     """Box intuizione con barra teal a sinistra e sfondo tenue."""
     S = S or styles()
-    body = [Paragraph(f'<font name="{F_BOLD}" size="8.5" color="{hx(TEAL_DK)}">'
+    body = [Paragraph(f'<font name="{F_BOLD}" size="8.5" color="{hx(GOLD_DK)}">'
                       f'{html_escape(label).upper()}</font>', S["small"]),
             Spacer(1, 2),
             Paragraph(html_escape(text), S["body"])]
     t = Table([["", body]], colWidths=[3, CONTENT_W - 3])
     t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, -1), TEAL),
-        ("BACKGROUND", (1, 0), (1, -1), TEAL_SOFT),
+        ("BACKGROUND", (0, 0), (0, -1), GOLD),
+        ("BACKGROUND", (1, 0), (1, -1), CREAM),
         ("LEFTPADDING", (1, 0), (1, -1), 12), ("RIGHTPADDING", (1, 0), (1, -1), 12),
         ("TOPPADDING", (0, 0), (-1, -1), 9), ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -200,7 +200,7 @@ def action_box(actions: list, label="Azioni consigliate", S=None) -> Table:
     for i, a in enumerate(actions, 1):
         txt = a if isinstance(a, str) else (a.get("azione") or a.get("descrizione") or str(a))
         rows.append([Paragraph(
-            f'<font name="{F_BOLD}" color="{hx(TEAL_DK)}">{i:02d}</font>&nbsp;&nbsp;{html_escape(txt)}',
+            f'<font name="{F_BOLD}" color="{hx(GOLD_DK)}">{i:02d}</font>&nbsp;&nbsp;{html_escape(txt)}',
             S["bullet"])])
     t = Table(rows, colWidths=[CONTENT_W], hAlign="LEFT")
     t.setStyle(TableStyle([
@@ -223,7 +223,7 @@ def roadmap(phases: list, S=None) -> Table:
             desc = ph.get("descrizione") or ph.get("obiettivo") or ph.get("azione") or ""
         else:
             title, desc = str(ph), ""
-        inner = [Paragraph(f'<font name="{F_TITLE}" size="13" color="{hx(TEAL_DK)}">{i:02d}</font>', S["kv"]),
+        inner = [Paragraph(f'<font name="{F_TITLE}" size="13" color="{hx(GOLD_DK)}">{i:02d}</font>', S["kv"]),
                  Spacer(1, 2),
                  Paragraph(f'<font name="{F_BOLD}" size="9.5" color="{hx(CARBON)}">{html_escape(title)}</font>', S["kv"])]
         if desc:
@@ -238,7 +238,7 @@ def roadmap(phases: list, S=None) -> Table:
     for c in cells:
         row.append(Table([c], colWidths=[cw], style=TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.white), ("BOX", (0, 0), (-1, -1), 0.7, LINE),
-            ("LINEABOVE", (0, 0), (-1, 0), 2, TEAL),
+            ("LINEABOVE", (0, 0), (-1, 0), 2, GOLD),
             ("LEFTPADDING", (0, 0), (-1, -1), 9), ("RIGHTPADDING", (0, 0), (-1, -1), 9),
             ("TOPPADDING", (0, 0), (-1, -1), 9), ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
             ("ROUNDEDCORNERS", [4, 4, 4, 4])])))
@@ -268,8 +268,8 @@ def premium_table(headers: list, rows: list, S=None, widths=None, align_right=No
     cw = widths or [CONTENT_W / n] * n
     t = Table(data, colWidths=cw, hAlign="LEFT", repeatRows=1)
     style = [
-        ("BACKGROUND", (0, 0), (-1, 0), TEAL_SOFT),
-        ("LINEBELOW", (0, 0), (-1, 0), 1.0, TEAL),
+        ("BACKGROUND", (0, 0), (-1, 0), CREAM),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.0, GOLD),
         ("LINEBELOW", (0, 1), (-1, -1), 0.4, LINE),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, CARD]),
         ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
@@ -390,8 +390,8 @@ def kpi_table(items: list, S) -> Table:
     widths = [CONTENT_W * w for w in ([0.42, 0.18, 0.28, 0.12] if n == 4 else [1.0 / n] * n)][:n]
     t = Table(data, colWidths=widths, hAlign="LEFT", repeatRows=1)
     t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), TEAL_SOFT),
-        ("LINEBELOW", (0, 0), (-1, 0), 1.0, TEAL),
+        ("BACKGROUND", (0, 0), (-1, 0), CREAM),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.0, GOLD),
         ("LINEBELOW", (0, 1), (-1, -1), 0.4, LINE),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, CARD]),
         ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
@@ -404,11 +404,11 @@ def section_number(num: int, title: str, S=None) -> Table:
     """Divisore di sezione: numero teal + titolo Syne sulla stessa linea + rule sotto."""
     S = S or styles()
     st = ParagraphStyle("secn", fontName=F_TITLE, fontSize=14.5, textColor=CARBON, leading=18)
-    sn = ParagraphStyle("secnum", fontName=F_TITLE, fontSize=14.5, textColor=TEAL, leading=18)
+    sn = ParagraphStyle("secnum", fontName=F_TITLE, fontSize=14.5, textColor=GOLD, leading=18)
     cell = [[Paragraph(f"{num:02d}", sn), Paragraph(html_escape(title), st)]]
     t = Table(cell, colWidths=[10 * mm, CONTENT_W - 10 * mm], hAlign="LEFT")
     t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                           ("LINEBELOW", (0, 0), (-1, -1), 1.0, TEAL),
+                           ("LINEBELOW", (0, 0), (-1, -1), 1.0, GOLD),
                            ("LEFTPADDING", (0, 0), (0, 0), 0), ("LEFTPADDING", (1, 0), (1, 0), 2),
                            ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
     return t
@@ -434,7 +434,7 @@ def cover_page(canvas, *, modulo, titolo, sottotitolo, azienda="", periodo="",
         canvas.circle(PAGE_W - 8 * mm, 8 * mm, rr * 11 * mm, stroke=1, fill=0)
     canvas.restoreState()
     # barra teal in alto
-    canvas.setFillColor(TEAL)
+    canvas.setFillColor(GOLD)
     canvas.rect(0, PAGE_H - 5 * mm, PAGE_W, 5 * mm, stroke=0, fill=1)
     # logo
     try:
@@ -447,14 +447,14 @@ def cover_page(canvas, *, modulo, titolo, sottotitolo, azienda="", periodo="",
         pass
     # badge categoria (pill)
     by = PAGE_H * 0.60
-    canvas.setFillColor(TEAL)
+    canvas.setFillColor(GOLD)
     cat = str(categoria).upper()
     cw = canvas.stringWidth(cat, F_BOLD, 8) + 14
     canvas.roundRect(MARGIN, by, cw, 6.5 * mm, 3, stroke=0, fill=1)
     canvas.setFillColor(CARBON); canvas.setFont(F_BOLD, 8)
     canvas.drawString(MARGIN + 7, by + 2.1 * mm, cat)
     # modulo
-    canvas.setFillColor(TEAL); canvas.setFont(F_BOLD, 12)
+    canvas.setFillColor(GOLD); canvas.setFont(F_BOLD, 12)
     canvas.drawString(MARGIN, by - 9 * mm, str(modulo).upper())
     # titolo grande (Syne)
     canvas.setFillColor(colors.white); canvas.setFont(F_TITLE, 33)

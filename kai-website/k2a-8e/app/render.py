@@ -120,7 +120,7 @@ _CTA = (
 
 
 def _cta(S) -> list:
-    inner = [Paragraph(f'<font name="{ST.F_BOLD}" size="9" color="{ST.hx(ST.TEAL_DK)}">'
+    inner = [Paragraph(f'<font name="{ST.F_BOLD}" size="9" color="{ST.hx(ST.GOLD_DK)}">'
                        f'K2-AI · ANALISI INTELLIGENTE PER LE IMPRESE</font>', S["kv"]), Spacer(1, 4)]
     for para in _CTA.split("\n\n"):
         inner.append(Paragraph(html.escape(para), S["small"]))
@@ -129,7 +129,7 @@ def _cta(S) -> list:
     box.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), ST.WARM),
         ("BOX", (0, 0), (-1, -1), 0.7, ST.LINE),
-        ("LINEABOVE", (0, 0), (-1, 0), 2, ST.TEAL),
+        ("LINEABOVE", (0, 0), (-1, 0), 2, ST.GOLD),
         ("LEFTPADDING", (0, 0), (-1, -1), 14), ("RIGHTPADDING", (0, 0), (-1, -1), 14),
         ("TOPPADDING", (0, 0), (-1, -1), 12), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
     ]))
@@ -218,7 +218,7 @@ def _exec_summary(deliverable, S) -> list:
     if evid:
         out.append(Paragraph("Evidenze principali", S["h3"]))
         for i, e in enumerate(evid, 1):
-            out.append(Paragraph(f'<font name="{ST.F_BOLD}" color="{ST.hx(ST.TEAL_DK)}">{i:02d}</font>'
+            out.append(Paragraph(f'<font name="{ST.F_BOLD}" color="{ST.hx(ST.GOLD_DK)}">{i:02d}</font>'
                                  f'&nbsp;&nbsp;{_rich(e)}', S["bullet"]))
         out.append(Spacer(1, 4))
     if azioni:
@@ -439,7 +439,7 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
                             body.append(Paragraph(f"<b>{html.escape(_humanize(kk))}:</b> {_rich(str(vv))}", S["bullet"]))
                     body.append(Spacer(1, 2))
                 elif isinstance(item, str):
-                    body.append(Paragraph(f'<font color="{ST.hx(ST.TEAL_DK)}">•</font> {_rich(item)}', S["bullet"]))
+                    body.append(Paragraph(f'<font color="{ST.hx(ST.GOLD_DK)}">•</font> {_rich(item)}', S["bullet"]))
         else:
             body.append(Paragraph(html.escape(str(v)), S["body"]))
 
