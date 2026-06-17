@@ -128,6 +128,25 @@ def _discover() -> dict[str, dict[str, Any]]:
 _REGISTRY = _discover()
 
 
+@router.get("/quant/health")
+@limiter.limit("30/minute")
+def quant_health(request: Request) -> dict:
+    """Liveness del MCP server quant di Luca eseguito NEL backend (architettura A2).
+    Conferma che il backend raggiunge il suo `k2a-quant` via stdio e ne legge i tool.
+    Deterministico, no LLM/crediti. 503 se l'MCP non e' disponibile."""
+    from ..lib import mcp_quant
+    if not mcp_quant.available():
+        raise HTTPException(status_code=503, detail="MCP quant non disponibile (manca mcp o l'entrypoint k2a-quant)")
+    try:
+        tools = mcp_quant.list_tools()
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=503, detail=f"MCP quant non raggiungibile: {exc}")
+    nuovi = ["capm_cost_of_equity", "ev_from_multiples", "valida_assunzioni", "dcf_enterprise_value_guarded"]
+    return {"ok": True, "source": "k2a-quant MCP (Luca, stdio nel backend)",
+            "n_tools": len(tools), "tools": sorted(tools),
+            "valutazione_pmi_pronta": all(t in tools for t in nuovi)}
+
+
 @router.get("/tools")
 @limiter.limit("30/minute")
 def list_tools(request: Request, dominio: str | None = None,
