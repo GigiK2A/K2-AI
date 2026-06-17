@@ -169,7 +169,9 @@ def boost_per_tag(tag: str) -> Optional[dict]:
 # StrategyBoost. È il routing deterministico che trasforma il K-BOT in un
 # selettore del catalogo di Luca: a fine conversazione propone il deliverable.
 _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
-    (("due diligence", "m&a", "acquisizion", "fusione"), "checkup_legale_dd"),
+    (("due diligence", "m&a", "fusione", "acquisizione di azienda", "acquisizione aziendale",
+      "acquisizione societaria", "acquisto di azienda", "cessione d'azienda", "cessione di ramo",
+      "cessione di quote"), "checkup_legale_dd"),
     (("contratt", "nda", "clausol", "contract review", "review legale"), "checkup_legale_review"),
     (("legale", "avvocat", "causa", "contenzioso", "parere legale", "diffida"), "primo_parere_legale"),
     (("fiscal", "iva", "tribut", "tasse", "imposte", "f24", "dichiarazione dei redditi"), "checkup_fiscale"),
@@ -181,11 +183,13 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
     (("seo", "sito web", "posizionamento organico", "keyword", "traffico organico", "reputazione online", "sentiment"), "checkup_seo"),
     (("bilanci", "finanziar", "cash flow", "liquidità", "bancabil", "margini", "solvibil", "rating", "investiment", "roi", "payback"), "checkup_finanziario"),
     (("controllo di gestione", "kpi", "cruscotto", "reporting direzionale", "monitoraggio"), "checkup_controllo"),
-    (("marketing", "brand", "campagn", "funnel", "social", "lead generation", "studio di mercato", "competitor", "benchmark"), "checkup_marketing"),
+    (("marketing", "brand", "awareness", "notorietà", "visibilità", "campagn", "funnel", "social",
+      "lead generation", "acquisizione clienti", "studio di mercato", "competitor", "benchmark",
+      "comunicazione", "pubblicità", "advertising"), "checkup_marketing"),
     # NB: ex checkup_advisor, ma AdvisorBoost fallisce la validazione (schema
     # numerico stringente) → instrado su ControlBoost finché non è irrobustito.
     # AdvisorBoost resta scegliibile a mano dal selettore del pannello.
-    (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione", "due diligence", "acquisizion", "acquist"), "checkup_controllo"),
+    (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione"), "checkup_controllo"),
 ]
 
 # Default quando nessuna keyword combacia: ControlBoost (cruscotto direzionale),
@@ -203,17 +207,29 @@ def suggest_boost(summary: Optional[dict]) -> Optional[dict]:
     catalogo, altrimenti None. Mai solleva: il routing non deve bloccare la chat.
     """
     summary = summary or {}
-    text = " ".join(
-        str(summary.get(k) or "")
-        for k in ("reportType", "objective", "businessType", "scope", "notes")
-    ).lower()
-    chosen = _BOOST_DEFAULT
-    # Match a CONFINE DI PAROLA (\b a inizio keyword), non per sottostringa: evita
-    # falsi positivi tipo "nda" dentro "azie​ndale" → LegalBoost su un bilancio.
-    for keys, sid in _BOOST_KEYWORDS:
-        if any(re.search(r"\b" + re.escape(k), text) for k in keys):
-            chosen = sid
-            break
+
+    def _match(text: str) -> Optional[str]:
+        # Match a CONFINE DI PAROLA (\b a inizio keyword), non per sottostringa: evita
+        # falsi positivi tipo "nda" dentro "aziendale" → LegalBoost su un bilancio.
+        for keys, sid in _BOOST_KEYWORDS:
+            if any(re.search(r"\b" + re.escape(k), text) for k in keys):
+                return sid
+        return None
+
+    # PASS 1 — l'INTENTO esplicito (reportType/deliverableType) vince sui termini
+    # INCIDENTALI che compaiono in objective/scope/notes: il SETTORE del cliente
+    # ("edilizia") o frasi come "acquisizione clienti" NON devono dirottare un
+    # report di marketing su BuildBoost o LegalBoost DD. (bug reale giu 2026)
+    intent = " ".join(str(summary.get(k) or "") for k in ("reportType", "deliverableType")).lower()
+    chosen = _match(intent)
+    # PASS 2 — fallback sull'intero riepilogo se l'intento non è già instradabile.
+    if not chosen:
+        full = " ".join(
+            str(summary.get(k) or "")
+            for k in ("reportType", "deliverableType", "objective", "businessType", "scope", "notes")
+        ).lower()
+        chosen = _match(full)
+    chosen = chosen or _BOOST_DEFAULT
     if not is_8e_generabile(chosen):
         chosen = next(
             (s["id"] for s in load_catalog().get("servizi", []) if is_8e_generabile(s["id"])),

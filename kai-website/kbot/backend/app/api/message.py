@@ -219,7 +219,11 @@ async def post_message(
         # Mostra il pannello (boost_suggerito) solo dopo qualche scambio reale, non
         # al 1° messaggio: il bot a volte emette il riepilogo troppo presto.
         _user_turns = sum(1 for _m in (merged_messages or []) if isinstance(_m, dict) and _m.get("role") == "user")
-        if not collected.get("boost_suggerito") and _user_turns >= 3:
+        # Ricalcola a OGNI turno (>=3): la suggestion segue l'intento CORRENTE e
+        # auto-corregge un routing stantio (bug giu 2026: marketing → LegalBoost DD).
+        # Eccezione: se il boost viene dal TAG PILLAR del sito (tag_pillar settato),
+        # lo preserviamo (è il contesto della pagina da cui arriva l'utente).
+        if _user_turns >= 3 and not collected.get("tag_pillar"):
             try:
                 from ..lib import catalog as _catalog
                 _boost = _catalog.suggest_boost(summary)
@@ -315,7 +319,11 @@ def _persist_assistant_turn(
         # Mostra il pannello (boost_suggerito) solo dopo qualche scambio reale, non
         # al 1° messaggio: il bot a volte emette il riepilogo troppo presto.
         _user_turns = sum(1 for _m in (merged_messages or []) if isinstance(_m, dict) and _m.get("role") == "user")
-        if not collected.get("boost_suggerito") and _user_turns >= 3:
+        # Ricalcola a OGNI turno (>=3): la suggestion segue l'intento CORRENTE e
+        # auto-corregge un routing stantio (bug giu 2026: marketing → LegalBoost DD).
+        # Eccezione: se il boost viene dal TAG PILLAR del sito (tag_pillar settato),
+        # lo preserviamo (è il contesto della pagina da cui arriva l'utente).
+        if _user_turns >= 3 and not collected.get("tag_pillar"):
             try:
                 from ..lib import catalog as _catalog
                 _boost = _catalog.suggest_boost(summary)
