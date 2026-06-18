@@ -353,6 +353,38 @@ async def deliverable_pdf(job_id: str):
     return FileResponse(pdf_path, media_type="application/pdf", filename="report-k2ai.pdf")
 
 
+@router.get("/deliverables/{job_id}/xlsx")
+async def deliverable_xlsx(job_id: str):
+    """Excel 'modello vivo' del deliverable Boost — il 2° file del bundle (oltre al
+    PDF). Legge il deliverable.json prodotto dall'8e (filesystem condiviso, come il
+    PDF) e lo rende un Excel multi-foglio editabile (opzioni scorate, iniziative,
+    KPI...). On-demand: nessun costo di generazione, deterministico."""
+    import json as _json
+    from fastapi.responses import Response
+    from ..lib.xlsx_renderer import render_deliverable_8e_xlsx
+    try:
+        job = await engine.get_deliverable(job_id)
+    except engine.EngineError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    if job.get("status") != "rendered":
+        raise HTTPException(status_code=409, detail="documento non ancora pronto")
+    json_path = (job.get("outputs") or {}).get("json_path")
+    if not json_path or not os.path.isfile(json_path):
+        raise HTTPException(status_code=404, detail="modello Excel non disponibile per questo documento")
+    out_root = os.path.realpath(os.environ.get("K2A_8E_OUT_DIR", "/tmp/8e_out"))
+    if not os.path.realpath(json_path).startswith(out_root + os.sep):
+        raise HTTPException(status_code=403, detail="percorso non consentito")
+    try:
+        deliverable = _json.loads(open(json_path, encoding="utf-8").read())
+        data = render_deliverable_8e_xlsx(deliverable)
+    except Exception as exc:
+        log.warning("xlsx render fallito per %s: %s", job_id, exc)
+        raise HTTPException(status_code=500, detail="impossibile generare il modello Excel")
+    return Response(content=data,
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": 'attachment; filename="modello-k2ai.xlsx"'})
+
+
 class SaveDeliverableBody(BaseModel):
     sessionId: str = Field(..., alias="session_id")
     jobId: str = Field(..., alias="job_id")
