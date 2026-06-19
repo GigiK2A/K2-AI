@@ -71,6 +71,11 @@ RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/kbot-requirement
 # -------- Copy Python backend source --------
 COPY kbot/backend/app ./kbot-backend/app
 COPY kbot/backend/Procfile ./kbot-backend/Procfile
+# Compute layer: i package MCP vendorizzati di Luca (k2a_quant ecc., ~65MB). Servono
+# al compute layer (/api/kbot/tools, check express) E al fallback MCP-stdio del quant
+# (mcp_client lancia `python -m k2a_quant.server` dal vendored se manca l'entrypoint
+# pip). Senza questa COPY erano assenti in prod → compute vuoto + quant/health 503.
+COPY kbot/backend/vendor ./kbot-backend/vendor
 
 # -------- Install Python deps + source for the 8e engine (motore deliverable) --------
 # Gira come co-processo in questo stesso container (loopback :8800). Le deps sono

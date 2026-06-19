@@ -14,6 +14,7 @@ import asyncio
 import concurrent.futures
 import json
 import os
+import shlex
 import shutil
 import sys
 from typing import Any, Optional
@@ -34,31 +35,55 @@ REGISTRY: dict[str, dict] = {
     "strutturale":  {"cmd": "vs-strutturale",    "repo": "k2a-mcp-strutturale",  "domini": ["strutturale"]},
 }
 
+# Fallback al server VENDORIZZATO (sorgente nel repo, §1) quando l'entrypoint pip non
+# è installato: i repo di Luca sono PRIVATI → niente pip-da-git in build, ma ogni
+# package vendorizzato porta il suo `server.py` (MCP stdio). server logico → package.
+_VENDOR_PKG: dict[str, str] = {
+    "quant": "k2a_quant", "agevolazioni": "k2a_agevolazioni", "elettrico": "k2a_elettrico",
+    "norme": "k2a_norme_tecniche", "strutturale": "vs_strutturale",
+}
+_VENDOR_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "vendor")
 
-def _cmd(server: str) -> Optional[str]:
+
+def _resolve(server: str) -> Optional[tuple[str, list[str], dict]]:
+    """Come lanciare il server MCP: (comando, args, env-extra) o None se irrisolvibile.
+    Ordine: override env → entrypoint pip installato → server VENDORIZZATO (§1)."""
     spec = REGISTRY.get(server)
     if not spec:
         return None
+    # 1. override esplicito (riga di comando completa, es. K2A_MCP_QUANT_CMD="python -m ...")
     env = os.environ.get(f"K2A_MCP_{server.upper()}_CMD")
     if env:
-        return env
+        parts = shlex.split(env)
+        if parts:
+            return parts[0], parts[1:], {}
+    # 2. entrypoint pip accanto al python (venv bin) o nel PATH
     name = spec["cmd"]
-    # entrypoint accanto al python corrente (venv bin) — robusto senza PATH (container)
     cand = os.path.join(os.path.dirname(sys.executable), name)
     if os.path.exists(cand):
-        return cand
-    return shutil.which(name)
+        return cand, [], {}
+    w = shutil.which(name)
+    if w:
+        return w, [], {}
+    # 3. fallback: server vendorizzato nel repo (python -m <pkg>.server, PYTHONPATH=vendor)
+    pkg = _VENDOR_PKG.get(server)
+    if pkg and os.path.isfile(os.path.join(_VENDOR_DIR, pkg, "server.py")):
+        extra = {"PYTHONPATH": _VENDOR_DIR + os.pathsep + os.environ.get("PYTHONPATH", "")}
+        return sys.executable, ["-m", f"{pkg}.server"], extra
+    return None
 
 
 def available(server: str) -> bool:
-    return _MCP_OK and bool(_cmd(server))
+    return _MCP_OK and _resolve(server) is not None
 
 
 async def _session(server: str, run):
-    cmd = _cmd(server)
-    if not _MCP_OK or not cmd:
+    spec = _resolve(server)
+    if not _MCP_OK or not spec:
         raise RuntimeError(f"MCP '{server}' non disponibile (manca mcp o l'entrypoint {REGISTRY.get(server, {}).get('cmd')})")
-    params = StdioServerParameters(command=cmd, args=[])
+    command, args, extra_env = spec
+    params = StdioServerParameters(command=command, args=args,
+                                   env={**os.environ, **extra_env} if extra_env else None)
     async with stdio_client(params) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()

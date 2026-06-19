@@ -12,6 +12,11 @@ mcp>=1.2.0
 # k2a-elettrico @ git+https://github.com/inglucarossi73/k2a-mcp-elettrico@<tag>
 # vs-strutturale @ git+https://github.com/inglucarossi73/k2a-mcp-strutturale@<tag>
 # k2a-norme-tecniche @ git+...@<tag>   (wheel build rotto lato repo → fallback vendorizzato)
+# Deps dei package quant vendorizzati (vendor/k2a_quant): il server MCP importa EAGER
+# anche i tool numerici (monte carlo, regressioni, var) → senza numpy/scipy non parte.
+# I tool core (wacc/dcf/capm) sono puro Python, ma il server li carica tutti insieme.
+numpy>=1.26
+scipy>=1.11
 pydantic[email]>=2.10
 python-dotenv>=1.0
 PyJWT[crypto]>=2.10
