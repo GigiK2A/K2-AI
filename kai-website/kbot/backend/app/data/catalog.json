@@ -1113,6 +1113,22 @@
         "tappa_cruscotto_direzionale"
       ],
       "destinazione_id": "checkup_controllo"
+    },
+    {
+      "id": "advisor_strategico",
+      "nome": "Percorso AdvisorBoost",
+      "descrizione": "Filiera strategico-finanziaria a fasi: pagella strategica (entry) → analisi di settore → diagnosi di bilancio → posizionamento competitivo → sintesi e piano, oppure l'AdvisorBoost completo come destinazione. Prezzi dal catalogo (SSOT).",
+      "ambito": "strategia",
+      "entry_checks_id": [
+        "check_pmi_express"
+      ],
+      "tappe_id_ordinate": [
+        "tappa_settore_pmi",
+        "tappa_bilancio_pmi",
+        "tappa_posizionamento_pmi",
+        "tappa_advisor_sintesi"
+      ],
+      "destinazione_id": "checkup_advisor"
     }
   ],
   "abbonamenti": [],

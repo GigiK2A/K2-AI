@@ -57,6 +57,18 @@ def test_percorso_controllo_di_gestione():
         assert catalog.get_servizio(cid) is not None, f"entry check '{cid}' non a catalogo"
 
 
+def test_percorso_advisor_strategico():
+    """Percorso AdvisorBoost: tappe reali del catalogo (settore→bilancio→posizionamento
+    →sintesi) → destinazione checkup_advisor. Prezzi dal catalogo (SSOT)."""
+    sch = catalog.scheda_percorso("advisor_strategico")
+    assert sch is not None
+    assert [t["id"] for t in sch["tappe"]] == \
+        ["tappa_settore_pmi", "tappa_bilancio_pmi", "tappa_posizionamento_pmi", "tappa_advisor_sintesi"], \
+        "una tappa non risolve (id sbagliato → droppata in silenzio)"
+    assert sch["prezzo_tappe_totale"] == 349 + 299 + 449 + 753
+    assert sch["destinazione"]["id"] == "checkup_advisor"
+
+
 def test_prezzo_per_piano_rimosso():
     """Regression: catalog.prezzo_per_piano era dead code che ritornava SEMPRE il prezzo
     pieno (leggeva `abbonamenti` vuoti + `sconto_tappa_pct` invece di sconto_boost_pct).
