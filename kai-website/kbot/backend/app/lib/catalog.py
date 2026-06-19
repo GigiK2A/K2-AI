@@ -109,14 +109,12 @@ def prezzo_eur(servizio_id: str) -> int:
     return int(s.get("prezzo_eur", 0)) if s else 0
 
 
-def prezzo_per_piano(servizio_id: str, piano: Optional[str]) -> int:
-    """Prezzo scontato per piano abbonamento (L3). Senza piano = prezzo pieno."""
-    base = prezzo_eur(servizio_id)
-    if not piano:
-        return base
-    abbonamenti = {a["id"]: a for a in load_catalog().get("abbonamenti", [])}
-    sconto = int(abbonamenti.get(piano, {}).get("sconto_tappa_pct", 0))
-    return int(round(base * (100 - sconto) / 100))
+# Lo sconto abbonato sui Boost vive in billing.prezzo_boost_scontato(base, plan)
+# (-10% Pro / -20% Business), usato da api/checkout.py: è l'UNICO path corretto.
+# Qui c'era prezzo_per_piano(): dead code (zero chiamanti) che leggeva `abbonamenti`
+# vuoti e `sconto_tappa_pct` → ritornava SEMPRE il prezzo pieno anche per Pro/Business.
+# Rimosso per non lasciare una mina sul prezzo. Se servirà uno sconto-per-tappa sui
+# PERCORSI, va costruito ex-novo su billing + dati `abbonamenti` reali + test.
 
 
 # ---- Percorsi ------------------------------------------------------------

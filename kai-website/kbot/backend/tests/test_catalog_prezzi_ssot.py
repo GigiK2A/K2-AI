@@ -34,12 +34,21 @@ def test_accessor_ritorna_il_campo_del_catalogo():
 def test_sconto_boost_si_applica_sul_prezzo_del_catalogo():
     """Il path che usa davvero il checkout: prezzo base DAL CATALOGO → sconto abbonato
     via billing.prezzo_boost_scontato (-10% Pro / -20% Business). È quello che addebita
-    Stripe (checkout.py), non il dimenticato catalog.prezzo_per_piano."""
+    Stripe (checkout.py): l'UNICO path corretto per lo sconto Boost."""
     base = catalog.prezzo_eur("checkup_hospitality")  # 690
     assert base == 690
     assert billing.prezzo_boost_scontato(base, "pro") == 621       # -10%
     assert billing.prezzo_boost_scontato(base, "business") == 552  # -20%
     assert billing.prezzo_boost_scontato(base, None) == base
+
+
+def test_prezzo_per_piano_rimosso():
+    """Regression: catalog.prezzo_per_piano era dead code che ritornava SEMPRE il prezzo
+    pieno (leggeva `abbonamenti` vuoti + `sconto_tappa_pct` invece di sconto_boost_pct).
+    Rimosso: lo sconto Boost passa SOLO da billing.prezzo_boost_scontato. Questo blocca
+    la sua resurrezione come mina silenziosa sul prezzo."""
+    assert not hasattr(catalog, "prezzo_per_piano"), \
+        "catalog.prezzo_per_piano è tornato: usa billing.prezzo_boost_scontato per lo sconto Boost"
 
 
 def test_checkout_non_hardcoda_prezzi_boost():
