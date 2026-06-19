@@ -42,6 +42,16 @@ def test_sconto_boost_si_applica_sul_prezzo_del_catalogo():
     assert billing.prezzo_boost_scontato(base, None) == base
 
 
+def test_suggest_boost_explicit_only_intento_vince():
+    """Routing chat: un intento ESPLICITO (es. bilancio/finanza) deve poter vincere sul
+    contesto-pagina (tag_pillar). explicit_only=True ritorna il match o None (niente
+    default), così il chiamante sovrascrive il boost solo quando l'utente è chiaro."""
+    fin = {"notes": "vorrei valutassi il bilancio: salute finanziaria, redditività, investimento"}
+    assert catalog.suggest_boost(fin, explicit_only=True)["id"] == "checkup_finanziario"
+    assert catalog.suggest_boost({}, explicit_only=True) is None         # vuoto → tiene il corrente
+    assert catalog.suggest_boost({}) is not None                          # non-explicit → default
+
+
 def test_percorso_controllo_di_gestione():
     """La scala finanza di Luca (P1→P7) modellata come PERCORSO: tappe reali del
     catalogo, prezzi dal catalogo (SSOT). Guard contro reference morte — scheda_percorso

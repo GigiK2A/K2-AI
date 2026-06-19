@@ -197,7 +197,7 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
 _BOOST_DEFAULT = "checkup_controllo"
 
 
-def suggest_boost(summary: Optional[dict]) -> Optional[dict]:
+def suggest_boost(summary: Optional[dict], explicit_only: bool = False) -> Optional[dict]:
     """Dal riepilogo conversazione → il Boost 8e più adatto (selettore catalogo).
 
     Deterministico (keyword match, primo vince) con default generico. Ritorna il
@@ -227,6 +227,8 @@ def suggest_boost(summary: Optional[dict]) -> Optional[dict]:
             for k in ("reportType", "deliverableType", "objective", "businessType", "scope", "notes")
         ).lower()
         chosen = _match(full)
+    if not chosen and explicit_only:
+        return None          # nessun match esplicito → il chiamante tiene il boost corrente
     chosen = chosen or _BOOST_DEFAULT
     if not is_8e_generabile(chosen):
         chosen = next(
