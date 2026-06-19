@@ -101,7 +101,7 @@ def search(query: str, limit: int = 5) -> list[dict]:
         return []
     q = _fts_query(query)
     try:
-        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=20)
+        con = sqlite3.connect(f"file:{db}?immutable=1", uri=True, timeout=20)
     except sqlite3.Error:
         return []
     try:
@@ -184,7 +184,7 @@ def find_by_estremi(anno: int, numero: str, tipo: Optional[str] = None,
         return []
     valid_tipi = _TIPO_ALIASES.get(tipo) if tipo else None
     try:
-        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=20)
+        con = sqlite3.connect(f"file:{db}?immutable=1", uri=True, timeout=20)
     except sqlite3.Error:
         return []
     try:
