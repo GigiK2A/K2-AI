@@ -417,6 +417,9 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
                 body.append(ST.risk_card(str(it.get("descrizione", "")), it.get("gravita", "media"), S, extra))
                 body.append(Spacer(1, 2))
             return
+        # liste con punteggio a rubrica (es. forze di Porter) → barre, non testo
+        if _is_list_of_dicts(v) and _has(v, "scoring"):
+            body.append(ST.score_bars(v, S)); body.append(Spacer(1, 4)); return
         # liste di azioni/raccomandazioni stringa → action box
         if isinstance(v, list) and v and all(isinstance(x, str) for x in v) and len(v) <= 12:
             body.append(ST.action_box(v, "Punti chiave", S)); body.append(Spacer(1, 3)); return

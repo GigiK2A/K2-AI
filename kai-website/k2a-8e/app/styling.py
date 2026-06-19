@@ -421,6 +421,60 @@ def quadrant_map(mappa: dict, S=None):
     return QuadrantMap(azienda, competitor, asse_x=str(ax), asse_y=str(ay))
 
 
+# --- Barre di punteggio (Porter, scoring 1-5) → visual, non testo ------------
+class _Bar(Flowable):
+    """Barra orizzontale 0..max con valore. Punteggio a rubrica (1-5), non falsa
+    precisione: è una scala discreta dichiarata."""
+    def __init__(self, score, max_score=5, width=70 * mm, height=9):
+        super().__init__()
+        self.score = score
+        self.max = max_score or 5
+        self.width, self.height = width, height
+
+    def draw(self):
+        try:
+            val = max(0, min(self.max, float(self.score)))
+        except (TypeError, ValueError):
+            val = 0
+        frac = val / self.max if self.max else 0
+        col = GREEN if frac >= 0.66 else AMBER if frac >= 0.33 else RED
+        d = Drawing(self.width, self.height)
+        d.add(Rect(0, 0, self.width, self.height, rx=2, ry=2, strokeColor=None, fillColor=WARM))
+        if frac > 0:
+            d.add(Rect(0, 0, self.width * frac, self.height, rx=2, ry=2, strokeColor=None, fillColor=col))
+        d.add(String(self.width - 2, self.height / 2 - 3,
+                     f"{int(val) if val == int(val) else round(val,1)}/{self.max}",
+                     fontName=F_BOLD, fontSize=6.5, fillColor=NEUTRAL, textAnchor="end"))
+        d.drawOn(self.canv, 0, 0)
+
+
+def score_bars(items: list, S=None, *, label_key="forza", score_key="scoring",
+               desc_key="motivazione", max_score=5, title="") -> Table:
+    """Lista {label, score, desc} → tabella con barre orizzontali (es. forze di Porter)."""
+    S = S or styles()
+    rows = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        lab = it.get(label_key) or it.get("voce") or it.get("nome") or it.get("label") or ""
+        sc = it.get(score_key, it.get("punteggio", it.get("valore")))
+        desc = it.get(desc_key) or it.get("descrizione") or ""
+        left = [Paragraph(f"<b>{html_escape(str(lab))}</b>", S["kvb"])]
+        if desc:
+            left.append(Paragraph(html_escape(str(desc))[:240], S["small"]))
+        rows.append([left, _Bar(sc, max_score)])
+    if not rows:
+        return Spacer(0, 0)
+    t = Table(rows, colWidths=[CONTENT_W * 0.58, CONTENT_W * 0.42], hAlign="LEFT")
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.4, LINE),
+        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (0, -1), 0), ("RIGHTPADDING", (1, 0), (1, -1), 0),
+    ]))
+    return t
+
+
 def semaforo_dot(stato: str) -> str:
     col = SEMAFORO.get(str(stato).lower(), NEUTRAL)
     return f'<font color="{hx(col)}">●</font> {html_escape(str(stato).capitalize())}'

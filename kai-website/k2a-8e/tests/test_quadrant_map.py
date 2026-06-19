@@ -46,6 +46,24 @@ def test_render_mappa_quadrante_senza_falsa_precisione():
     assert "Specialista FER" in txt                          # competitor nel grafico
 
 
+def test_porter_score_bars():
+    ST.styles()
+    porter = [{"forza": "Minaccia nuovi entranti", "scoring": 3, "motivazione": "Barriere moderate."},
+              {"forza": "Potere clienti", "scoring": 4, "motivazione": "Clienti forti."}]
+    t = ST.score_bars(porter)
+    assert t.__class__.__name__ == "Table"
+    bp = json.load(open(Path(__file__).resolve().parent.parent / "blueprints" / "flusso-strategyboost-pmi" / "blueprint.json"))
+    p = Path(tempfile.mktemp(suffix=".pdf"))
+    render_generic_pdf({"meta": {"cliente": "X"}, "analisi_settore": {"porter": porter}}, bp, [], p)
+    assert p.stat().st_size > 5000
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        return
+    txt = " ".join((pg.extract_text() or "") for pg in PdfReader(str(p)).pages)
+    assert "/5" in txt and "Barriere moderate" in txt
+
+
 if __name__ == "__main__":
     import pytest
     sys.exit(pytest.main([__file__, "-q"]))
