@@ -168,9 +168,28 @@ def _lint_instance(blueprint: dict) -> dict:
     }
 
 
+def _normalize_inputs(inputs: dict) -> dict:
+    """Compat di schema FEED. Certi campi-lista del form passano da string[] a object[]:
+    il breaking change di Advisor è `competitor` ('ACME' → {'nome': 'ACME', ...}). L'engine
+    deve reggere ENTRAMBE le forme, così il merge del branch grounding di Luca non rompe la
+    prod (sequenza dell'handoff §4: prima l'engine gestisce il nuovo schema, poi si mergia).
+    Canonicalizza a object[]: le stringhe diventano {'nome': str}, i dict passano intatti, i
+    tipi imprevisti si scartano. Le sessioni vecchie con string[] continuano a funzionare."""
+    if not isinstance(inputs, dict):
+        return inputs
+    out = dict(inputs)
+    for campo in ("competitor", "competitors"):
+        v = out.get(campo)
+        if isinstance(v, list) and any(isinstance(x, str) for x in v):
+            out[campo] = [{"nome": x} if isinstance(x, str) else x
+                          for x in v if isinstance(x, (str, dict))]
+    return out
+
+
 def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") -> None:
     try:
         jobs.update(job_id, status="running")
+        inputs = _normalize_inputs(inputs)      # FEED: regge competitor string[] o object[]
         skill, bp_id, _ = route(service_id)
 
         blueprint = assets.load_blueprint(skill)
