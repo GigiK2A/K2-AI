@@ -122,3 +122,92 @@ def search(query: str, limit: int = 5) -> list[dict]:
         out.append({**e, "citazione": citazione(e), "snippet": snippet,
                     "testo": testo, "rank": round(rank, 4) if rank is not None else None})
     return out
+
+
+# ── Lookup per ESTREMI (anno, numero) — per VERIFICARE un riferimento di legge ──
+# Il nome-file codifica anno e numero; il tokenizer FTS5 spezza su '_', quindi una
+# MATCH column-scoped `file:<anno> AND file:<numero>` usa l'indice FTS (~0.5s) invece
+# di uno scan LIKE su 62k righe (~5 min). Niente indice extra sul DB di Luca.
+
+# tipo canonico → varianti del prefisso-file nel corpus (forme estese E abbreviate).
+_TIPO_ALIASES = {
+    "decreto_ministeriale": {"decreto_ministeriale", "dm"},
+    "decreto_legislativo": {"decreto_legislativo", "dlgs", "d_lgs"},
+    "decreto_legge": {"decreto_legge", "dl"},
+    "decreto_presidente_repubblica": {"decreto_presidente_repubblica", "dpr"},
+    "decreto_presidente_consiglio_ministri": {"decreto_presidente_consiglio_ministri", "dpcm"},
+    "legge": {"legge", "l"},
+    "regio_decreto": {"regio_decreto", "rd"},
+}
+# label testuale (es. 'D.Lgs', 'DM') normalizzata → tipo canonico.
+_LABEL_TO_TIPO = {
+    "dm": "decreto_ministeriale", "dlgs": "decreto_legislativo",
+    "dl": "decreto_legge", "dpr": "decreto_presidente_repubblica",
+    "dpcm": "decreto_presidente_consiglio_ministri",
+    "l": "legge", "legge": "legge", "rd": "regio_decreto",
+}
+# Riferimento normativo nel testo (mirror della regex C2 del CAGE in grounding.py).
+_NORM_REF_RE = re.compile(
+    r"\b(d\.?\s?m\.?|d\.?\s?l\.?|d\.?\s?p\.?r\.?|d\.?\s?lgs\.?|legge|l\.)\s*(?:n\.?\s*)?(\d{1,4})\s*[/\-]\s*(\d{4})",
+    re.I)
+
+
+def _norm_label(label: str) -> str:
+    return re.sub(r"[.\s]", "", label or "").lower()
+
+
+def extract_norm_refs(text: str) -> list[dict]:
+    """Estrae i riferimenti di legge da un testo (es. 'DPR 380/2001', 'DM 143/2013').
+    Solo anni a 4 cifre (gli unici non ambigui). Ritorna [{tipo, numero, anno, label}]."""
+    refs, seen = [], set()
+    for m in _NORM_REF_RE.finditer(text or ""):
+        tipo = _LABEL_TO_TIPO.get(_norm_label(m.group(1)))
+        numero, anno = m.group(2), int(m.group(3))
+        key = (tipo, numero, anno)
+        if tipo and key not in seen:
+            seen.add(key)
+            refs.append({"tipo": tipo, "numero": numero, "anno": anno, "label": m.group(0).strip()})
+    return refs
+
+
+def find_by_estremi(anno: int, numero: str, tipo: Optional[str] = None,
+                    articolo: Optional[str] = None, limit: int = 3) -> list[dict]:
+    """Cerca una norma per estremi (anno, numero) — per VERIFICARE un riferimento citato
+    nel deliverable. Filtra per `tipo` (alias-aware: 'decreto_ministeriale' ≡ 'dm') così
+    una norma confabulata ('DM 143/2013' quando esiste solo L. 143/2013) NON viene
+    verificata. Ritorna [] se il corpus non ha quella norma. FTS column-scoped, veloce."""
+    db = _db_path()
+    if not db or not anno or not numero:
+        return []
+    num = re.sub(r"\D", "", str(numero))
+    if not num:
+        return []
+    valid_tipi = _TIPO_ALIASES.get(tipo) if tipo else None
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=20)
+    except sqlite3.Error:
+        return []
+    try:
+        con.execute("PRAGMA busy_timeout=20000")
+        rows = con.execute(
+            "SELECT file, testo FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT ?",
+            (f"file:{int(anno)} AND file:{num}", max(1, int(limit)) * 8),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    finally:
+        con.close()
+
+    out: list[dict] = []
+    for file, testo in rows:
+        e = _estremi(file)
+        if e.get("anno") != int(anno) or str(e.get("numero")) != num:
+            continue                                   # token-match casuale: scarta
+        if valid_tipi is not None and e.get("tipo") not in valid_tipi:
+            continue                                   # tipo diverso (es. legge vs DM)
+        if articolo is not None and str(e.get("articolo")) != str(articolo):
+            continue
+        out.append({**e, "citazione": citazione(e), "testo": testo})
+        if len(out) >= limit:
+            break
+    return out

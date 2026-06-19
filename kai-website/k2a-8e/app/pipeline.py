@@ -11,7 +11,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, calc, grounding, jobs, llm, validate
+from . import assets, calc, grounding, jobs, llm, normattiva, validate
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -186,6 +186,35 @@ def _normalize_inputs(inputs: dict) -> dict:
     return out
 
 
+def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> list[dict]:
+    """§3b — verifica i riferimenti di legge del deliverable contro il corpus Normattiva.
+    Le norme TROVATE diventano citazioni grounded col testo verbatim → il CAGE C2
+    (norma_non_citata) si spegne per quelle. Le norme NON trovate (confabulate o assenti,
+    es. 'DM 143/2013' quando esiste solo L. 143/2013) restano flaggate. No-op onesto se il
+    corpus non è disponibile (NORMATTIVA_DB_PATH assente)."""
+    if not normattiva.available():
+        return citazioni
+    import json as _json
+    full = _json.dumps(deliverable, ensure_ascii=False)
+    enriched = list(citazioni)
+    seen = {(c.get("tipo"), str(c.get("numero")), c.get("anno")) for c in citazioni}
+    for ref in normattiva.extract_norm_refs(full):
+        key = (ref["tipo"], ref["numero"], ref["anno"])
+        if key in seen:
+            continue
+        hits = normattiva.find_by_estremi(ref["anno"], ref["numero"], tipo=ref["tipo"], limit=1)
+        if not hits:
+            continue                                   # norma assente/confabulata → il CAGE C2 la tiene flaggata
+        h = hits[0]
+        seen.add(key)
+        enriched.append({
+            "riferimento": h["citazione"], "campo": "norma_verificata", "fonte": "normattiva",
+            "tipo": h.get("tipo"), "numero": h.get("numero"), "anno": h.get("anno"),
+            "articolo": h.get("articolo"), "testo": (h.get("testo") or "")[:1200],
+        })
+    return enriched
+
+
 def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") -> None:
     try:
         jobs.update(job_id, status="running")
@@ -263,6 +292,9 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         # intercetta sui boost qualitativi: segnaposto trapelati, numeri esterni
         # asseriti senza citazione, cover non personalizzata, priorità tutte uguali
         # (vedi report StrategyBoost reale). 'block' → non si consegna (fail-closed).
+        # §3b · ROUTE: verifica i riferimenti normativi contro il corpus → citazioni
+        # verbatim grounded (le norme reali); le confabulate restano scoperte per il CAGE.
+        citazioni = _enrich_citazioni_normattiva(deliverable, citazioni)
         g_findings = (grounding.required_inputs_findings(form_schema, inputs)
                       + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs))
         g_blocks = grounding.blocks(g_findings)
