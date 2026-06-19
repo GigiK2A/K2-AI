@@ -27,12 +27,24 @@ class DeliverableBody(BaseModel):
 
 @app.get("/health")
 def health():
+    import os as _os
+    from . import normattiva
     from .settings import ENTITLEMENT_SECRET, ANTHROPIC_API_KEY
     warnings = []
     if not ENTITLEMENT_SECRET:
         warnings.append("K2A_ENTITLEMENT_SECRET non configurato → entitlement permissivo (NON per produzione)")
     if not ANTHROPIC_API_KEY:
         warnings.append("ANTHROPIC_API_KEY non configurato → filiera offline (deliverable segnaposto)")
+    # §3 — stato corpus Normattiva (db_path_configured è baked solo dal Dockerfile:
+    # se False in prod → il builder NON è Dockerfile o l'env non c'è).
+    norm = {"db_path_configured": bool(_os.environ.get("NORMATTIVA_DB_PATH")),
+            "available": normattiva.available()}
+    if norm["available"]:
+        try:
+            norm["queryable"] = bool(normattiva.search("legge", limit=1))
+        except Exception as exc:
+            norm["queryable"] = False
+            norm["error"] = str(exc)[:120]
     return {
         "status": "ok",
         "version": ENGINE_VERSION,
@@ -40,6 +52,7 @@ def health():
         "phase": "1",
         "entitlement": "enforced" if ENTITLEMENT_SECRET else "permissive",
         "filiera": "anthropic" if ANTHROPIC_API_KEY else "offline",
+        "normattiva": norm,
         "warnings": warnings,
     }
 
