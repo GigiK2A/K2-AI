@@ -119,6 +119,27 @@ def test_cage_norma_citata_non_flaggata():
     assert not any(x["code"] == "norma_non_citata" for x in f)
 
 
+def test_feed_required_inputs_rende_loadbearing_il_form():
+    """§5: form.json.required era solo advisory (proiettato in /v1/form, prompt autofill).
+    Ora un campo obbligatorio assente dagli input estratti è un finding C1: i fatti-cliente
+    indispensabili mancanti non passano silenziosi (radice del report-archetipo)."""
+    form = {"required": ["descrizione_azienda", "competitor", "obiettivo_strategico"],
+            "properties": {"descrizione_azienda": {"description": "settore, prodotti, clienti target"},
+                           "competitor": {"type": "array"},
+                           "obiettivo_strategico": {"description": "cosa vuole nei prossimi 1-3 anni"}}}
+    f = g.required_inputs_findings(form, {"descrizione_azienda": "studio ingegneria, 9 persone"})
+    assert all(x["classe"] == "C1" and x["severity"] == "warn" for x in f)
+    mancanti = " ".join(x["dettaglio"] for x in f)
+    assert "competitor" in mancanti and "obiettivo_strategico" in mancanti
+    assert "descrizione_azienda" not in mancanti                       # presente → non flaggato
+    # tutti presenti → nessun finding
+    full = {"descrizione_azienda": "x", "competitor": [{"nome": "A"}], "obiettivo_strategico": "crescere"}
+    assert g.required_inputs_findings(form, full) == []
+    # robustezza: form senza required, o input None → no-op
+    assert g.required_inputs_findings({}, full) == []
+    assert g.required_inputs_findings(form, None) == []
+
+
 def test_depth_vs_data_segnala_generico():
     # deliverable lungo (>4000 char) su input scarni (il caso reale: "non ho dati")
     lungo = {"meta": {"cliente": "Studio Reale"}, "analisi": {"testo": "x " * 3000}}

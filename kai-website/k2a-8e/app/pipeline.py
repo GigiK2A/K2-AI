@@ -175,6 +175,7 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
 
         blueprint = assets.load_blueprint(skill)
         out_schema = assets.load_output_schema(skill)
+        form_schema = assets.load_form(skill)   # FEED contract: campi richiesti dal boost
         if not blueprint or not out_schema:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
 
@@ -243,7 +244,8 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         # intercetta sui boost qualitativi: segnaposto trapelati, numeri esterni
         # asseriti senza citazione, cover non personalizzata, priorità tutte uguali
         # (vedi report StrategyBoost reale). 'block' → non si consegna (fail-closed).
-        g_findings = grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs)
+        g_findings = (grounding.required_inputs_findings(form_schema, inputs)
+                      + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs))
         g_blocks = grounding.blocks(g_findings)
         if g_blocks:
             log.warning("grounding gate REFUSE job %s: %s", job_id, [b["dettaglio"] for b in g_blocks])

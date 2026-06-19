@@ -215,5 +215,32 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
     return uniq
 
 
+def required_inputs_findings(form_schema: dict | None, inputs: dict | None) -> list[dict]:
+    """FEED-completeness (C1) — i campi 'required' del form.json del blueprint che NON
+    sono arrivati negli input estratti dalla conversazione.
+
+    Il form.json è la SSOT di cosa serve al boost. Oggi il suo `required` è solo
+    ADVISORY: proietta in /v1/form → l'autofill ci mette '(OBBLIGATORIO)' nel prompt,
+    ma se la chat non conteneva quel dato il campo viene omesso e la generazione parte
+    LO STESSO su dati parziali — la radice del report-archetipo. Qui si rende il
+    `required` un segnale vero: i fatti-cliente indispensabili mancanti diventano un
+    finding C1 (le chiavi degli input combaciano con gli id del form, niente falsi
+    positivi). Severità warn, come il resto del CAGE (vedi nota nel modulo)."""
+    if not form_schema or inputs is None:
+        return []
+    required = form_schema.get("required")
+    if not isinstance(required, list):
+        return []
+    props = form_schema.get("properties") if isinstance(form_schema.get("properties"), dict) else {}
+    findings: list[dict] = []
+    for name in required:
+        if inputs.get(name) in (None, "", [], {}):
+            desc = ((props or {}).get(name) or {}).get("description") or name
+            findings.append({"code": "campo_obbligatorio_mancante", "classe": "C1", "severity": "warn",
+                             "dettaglio": f"campo obbligatorio del form '{name}' assente dagli input estratti "
+                                          f"(il boost lo dichiara indispensabile: {str(desc)[:80]})"})
+    return findings
+
+
 def blocks(findings: list[dict]) -> list[dict]:
     return [f for f in findings if f.get("severity") == "block"]
