@@ -61,7 +61,7 @@ ENV NODE_ENV=production \
 # docker più piccola, cold start più rapido, zero apt-get dipendenze
 # native per il PDF rendering.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-venv ca-certificates \
+    python3 python3-pip python3-venv ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
 # -------- Install Python dependencies for kbot backend --------
@@ -85,6 +85,20 @@ COPY k2a-8e/grounding ./engine-8e/grounding
 COPY k2a-8e/k2a_validation ./engine-8e/k2a_validation
 COPY k2a-8e/assets ./engine-8e/assets
 
+# -------- §3c · Corpus Normattiva (normattiva.db, ~1.8GB FTS5) — fetch build-time --------
+# Il corpus NON è nel repo (gitignored, >100MB → il deploy GitHub-push non lo porta).
+# Si baka nell'immagine scaricandolo da una URL (consigliato Cloudflare R2 free tier:
+# 10GB storage + egress 0 → costo 0€). DORMIENTE se NORMATTIVA_DB_URL non è settato:
+# l'immagine builda comunque e il resolver degrada onesto (available()=False, niente
+# crash, niente citazioni inventate). Usa una URL FIRMATA a scadenza (R2 presigned) così
+# nessuna credenziale permanente resta nella history dell'immagine.
+ARG NORMATTIVA_DB_URL=""
+RUN if [ -n "$NORMATTIVA_DB_URL" ]; then \
+      echo "§3c: fetch normattiva.db…" && \
+      curl -fSL --retry 3 "$NORMATTIVA_DB_URL" -o /app/engine-8e/normattiva.db && \
+      ls -lh /app/engine-8e/normattiva.db ; \
+    else echo "§3c: NORMATTIVA_DB_URL non settato → normattiva DORMIENTE (resolver degrada onesto)"; fi
+
 # -------- Install Node runtime dependencies for server.js --------
 COPY package*.json ./
 RUN npm ci --omit=dev
@@ -107,7 +121,8 @@ ENV KBOT_SKILLS_DIR=/app/lib/skills \
     ENGINE_8E_PORT=8800 \
     K2A_8E_BASE_URL=http://127.0.0.1:8800 \
     K2A_8E_API_KEY=k2a-8e-internal-loopback \
-    K2A_8E_OUT_DIR=/tmp/8e_out
+    K2A_8E_OUT_DIR=/tmp/8e_out \
+    NORMATTIVA_DB_PATH=/app/engine-8e/normattiva.db
 # PRODUZIONE: paywall + entitlement firmato attivi di default.
 # - K2A_8E_ENTITLEMENT_DEV NON è settato → l'8e è fail-closed: senza
 #   K2A_ENTITLEMENT_SECRET RIFIUTA (nessun bypass silenzioso).
