@@ -1,0 +1,61 @@
+"""§6 (handoff Luca) — il CATALOGO è l'unica fonte dei prezzi Boost (claim C2).
+
+Il prezzo che paga il cliente esce SEMPRE da `catalog.prezzo_eur`, mai scritto a mano
+nel codice o nelle skill. Questi test pinnano il caso di deriva noto (HostBoost = 690,
+non 899) e bloccano il ritorno di un prezzo Boost hardcoded nel checkout.
+Deterministici, no rete/DB/Stripe."""
+import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from app.lib import billing, catalog  # noqa: E402
+
+_BACKEND = Path(__file__).resolve().parent.parent
+
+
+def test_hostboost_e_690_non_899():
+    # La deriva citata nell'handoff: il catalogo dice 690; la skill diceva 899.
+    assert catalog.prezzo_eur("checkup_hospitality") == 690
+
+
+def test_accessor_ritorna_il_campo_del_catalogo():
+    """prezzo_eur() NON applica override: ritorna esattamente il campo del catalogo,
+    e ogni Boost vendibile+8e-generabile ha un prezzo valido."""
+    boosts = catalog.lista_servizi(tipo="servizio")
+    assert boosts, "nessun Boost a catalogo?"
+    for s in boosts:
+        sid = s["id"]
+        assert catalog.prezzo_eur(sid) == int(s.get("prezzo_eur") or 0)
+        if catalog.is_vendibile(sid) and catalog.is_8e_generabile(sid):
+            assert catalog.prezzo_eur(sid) > 0, f"{sid} vendibile ma senza prezzo"
+
+
+def test_sconto_boost_si_applica_sul_prezzo_del_catalogo():
+    """Il path che usa davvero il checkout: prezzo base DAL CATALOGO → sconto abbonato
+    via billing.prezzo_boost_scontato (-10% Pro / -20% Business). È quello che addebita
+    Stripe (checkout.py), non il dimenticato catalog.prezzo_per_piano."""
+    base = catalog.prezzo_eur("checkup_hospitality")  # 690
+    assert base == 690
+    assert billing.prezzo_boost_scontato(base, "pro") == 621       # -10%
+    assert billing.prezzo_boost_scontato(base, "business") == 552  # -20%
+    assert billing.prezzo_boost_scontato(base, None) == base
+
+
+def test_checkout_non_hardcoda_prezzi_boost():
+    """Guard strutturale: l'amount Stripe del Boost si calcola da `prezzo_eur` del
+    catalogo, mai da un numero a mano. Nessun prezzo di listino (≥600, soglia che
+    evita le collisioni con i codici HTTP) deve comparire come letterale in checkout.py.
+    L'unico prezzo letterale ammesso è il report legacy (REPORT_PRICE_EUR_CENTS=1900)."""
+    src = (_BACKEND / "app" / "api" / "checkout.py").read_text(encoding="utf-8")
+    prezzi_listino = {int(s["prezzo_eur"]) for s in catalog.lista_servizi(tipo="servizio")
+                      if s.get("prezzo_eur") and int(s["prezzo_eur"]) >= 600}
+    letterali = {int(n) for n in re.findall(r"(?<![\w.])(\d{3,5})(?![\w.])", src)}
+    sovrapposti = prezzi_listino & letterali
+    assert not sovrapposti, (f"prezzo Boost hardcoded in checkout.py: {sorted(sovrapposti)} "
+                             f"— usa catalog.prezzo_eur(servizio_id)")
+
+
+if __name__ == "__main__":
+    import pytest
+    sys.exit(pytest.main([__file__, "-q"]))
