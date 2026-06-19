@@ -24,7 +24,9 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
       - name: Smoke test (offline, LegalBoost end-to-end)
-        run: python tests/smoke_test.py
+        # bearer interno valido (require_bearer è fail-closed dopo 829d304) + entitlement
+        # dev (no secret in CI) così il create con token passa; il no-token resta 402.
+        run: K2A_8E_API_KEY=dev-key K2A_8E_ENTITLEMENT_DEV=true python tests/smoke_test.py
       - name: Resolve + L1 su tutti gli 11 boost
         run: python tests/test_all_boosts.py
       - name: Security suite

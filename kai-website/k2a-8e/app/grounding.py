@@ -33,6 +33,9 @@ _PLACEHOLDER_PATTERNS: list[tuple[str, str]] = [
     (r"\bregolamento\s+FER-?X\b", "segnaposto 'Regolamento FER-X'"),
     (r"\[[a-zàèéìòù ]{2,24}\]", "segnaposto generico [...]"),
 ]
+# Marker DI SISTEMA tra parentesi quadre che NON sono template trapelati: il degrado
+# offline (filiera senza API) produce '[BOZZA OFFLINE]' di proposito. Esenti dal block.
+_PLACEHOLDER_EXEMPT = {"[bozza offline]"}
 _COVER_GENERICA = {"", "cliente", "—", "-", "n/d", "azienda", "la tua azienda"}
 
 
@@ -122,12 +125,15 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
     findings: list[dict] = []
     full = "\n".join(_walk_strings(deliverable))
 
-    # 1. SEGNAPOSTO TRAPELATI → block (output rotto/non professionale)
+    # 1. SEGNAPOSTO TRAPELATI → block (output rotto/non professionale). I marker di
+    #    sistema (es. '[BOZZA OFFLINE]') sono esenti: non sono template trapelati.
     for pat, desc in _PLACEHOLDER_PATTERNS:
-        m = re.search(pat, full, re.I)
-        if m:
+        for m in re.finditer(pat, full, re.I):
+            if m.group(0).strip().lower() in _PLACEHOLDER_EXEMPT:
+                continue
             findings.append({"code": "placeholder_leak", "severity": "block",
                              "dettaglio": f"{desc}: \"{m.group(0)}\""})
+            break   # un finding per pattern basta
 
     # 2. COVER non personalizzata → warn
     cliente = str((deliverable.get("meta") or {}).get("cliente") or "").strip()
