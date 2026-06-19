@@ -22,6 +22,16 @@
     "_nota": "Pillar SEO senza boost generabile 8e → funnel high-touch (lead Airtable → call). Nessun blueprint.",
     "lista": ["P01", "P05", "P06", "P07", "P10", "P14", "P15", "P16", "P17", "P18"]
   },
-  "percorsi": [],
+  "percorsi": [
+    {
+      "id": "controllo_di_gestione",
+      "nome": "Catena Controllo di Gestione",
+      "descrizione": "Filiera finanza K2-AI a fasi (modello catena Luca, giu 2026): lead magnet → diagnosi → forward-looking → cruscotto. Le tappe si comprano à la carte o si va diretti al ControlBoost completo (destinazione). Tutti i prezzi vengono dal catalogo (SSOT), non da qui.",
+      "ambito": "finanza",
+      "entry_checks_id": ["check_salute_finanziaria", "check_pmi_express"],
+      "tappe_id_ordinate": ["tappa_bilancio_pmi", "tappa_budget_forecast_pmi", "tappa_cruscotto_direzionale"],
+      "destinazione_id": "checkup_controllo"
+    }
+  ],
   "abbonamenti": []
 }

@@ -42,6 +42,21 @@ def test_sconto_boost_si_applica_sul_prezzo_del_catalogo():
     assert billing.prezzo_boost_scontato(base, None) == base
 
 
+def test_percorso_controllo_di_gestione():
+    """La scala finanza di Luca (P1→P7) modellata come PERCORSO: tappe reali del
+    catalogo, prezzi dal catalogo (SSOT). Guard contro reference morte — scheda_percorso
+    droppa in silenzio gli id inesistenti, quindi un typo sparirebbe senza errore."""
+    sch = catalog.scheda_percorso("controllo_di_gestione")
+    assert sch is not None, "percorso non trovato (overlay non rigenerato in catalog.json?)"
+    assert [t["id"] for t in sch["tappe"]] == \
+        ["tappa_bilancio_pmi", "tappa_budget_forecast_pmi", "tappa_cruscotto_direzionale"], \
+        "una tappa non risolve (id sbagliato → droppata in silenzio)"
+    assert sch["prezzo_tappe_totale"] == 299 + 399 + 452            # prezzi dal catalogo
+    assert sch["destinazione"]["id"] == "checkup_controllo"
+    for cid in sch["entry_checks_id"]:                              # i lead magnet esistono
+        assert catalog.get_servizio(cid) is not None, f"entry check '{cid}' non a catalogo"
+
+
 def test_prezzo_per_piano_rimosso():
     """Regression: catalog.prezzo_per_piano era dead code che ritornava SEMPRE il prezzo
     pieno (leggeva `abbonamenti` vuoti + `sconto_tappa_pct` invece di sconto_boost_pct).
