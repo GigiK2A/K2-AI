@@ -134,6 +134,27 @@ def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Res
             "routed_blueprint": blueprint_id, "confidence": confidence}
 
 
+class RenderBody(BaseModel):
+    service_id: str
+    deliverable: dict
+    citazioni: list = Field(default_factory=list)
+    inputs: dict = Field(default_factory=dict)
+
+
+@app.post("/v1/render", dependencies=[Depends(require_bearer)])
+def render_external(body: RenderBody, response: Response):
+    """Renderizza un deliverable GIÀ generato altrove (agente A2) → PDF, con gli stessi
+    gate del flusso normale (enrich normattiva + CAGE). Sincrono. Ritorna il job 8e."""
+    try:
+        job = pipeline.render_external(body.service_id, body.deliverable, body.citazioni, body.inputs)
+    except pipeline.Refuse as r:
+        response.status_code = 422
+        return {"status": "refused", "reason": r.reason, "message": r.message}
+    if (job or {}).get("status") == "refused":
+        response.status_code = 422
+    return job
+
+
 @app.get("/v1/deliverables/{job_id}", dependencies=[Depends(require_bearer)])
 def get_deliverable(job_id: str):
     j = jobs.get(job_id)

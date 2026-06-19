@@ -215,6 +215,42 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
     return enriched
 
 
+def render_external(service_id: str, deliverable: dict, citazioni: list | None = None,
+                    inputs: dict | None = None) -> dict:
+    """Renderizza un deliverable GIÀ generato altrove (es. dall'agente A2 nel backend)
+    → PDF, applicando gli STESSI gate del flusso normale: enrich normattiva (§3b) +
+    CAGE grounding (§2). Sincrono (niente LLM: solo verifica + render). Ritorna il job
+    8e (status rendered|refused + outputs), così il backend lo tratta come gli altri."""
+    skill, bp_id, _ = route(service_id)
+    blueprint = assets.load_blueprint(skill)
+    form_schema = assets.load_form(skill)
+    if not blueprint:
+        raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
+    inputs = inputs or {}
+    citazioni = _enrich_citazioni_normattiva(deliverable, list(citazioni or []))
+    g_findings = (grounding.required_inputs_findings(form_schema, inputs)
+                  + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs))
+    job_id = jobs.create(service_id, bp_id, 1.0)
+    if grounding.blocks(g_findings):
+        jobs.update(job_id, status="refused", refusal_reason="grounding_failed",
+                    validation={"grounding_block": grounding.blocks(g_findings), "grounding_findings": g_findings})
+        return jobs.get(job_id)
+    out_dir = OUT_DIR / job_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = out_dir / "deliverable.pdf"
+    json_path = out_dir / "deliverable.json"
+    import json as _json
+    json_path.write_text(_json.dumps(deliverable, ensure_ascii=False, indent=2), encoding="utf-8")
+    from .render import render_generic_pdf
+    render_generic_pdf(deliverable, blueprint, citazioni, pdf_path)
+    jobs.update(job_id, status="rendered",
+                outputs={"pdf_path": str(pdf_path), "json_path": str(json_path), "bundle": []},
+                validation={"grounding": g_findings or "PASS"}, citazioni=citazioni,
+                meta={"skill": skill, "blueprint_id": bp_id, "auth_level": "FULL",
+                      "source": "agent_a2", "snapshot_version": assets.snapshot_version()})
+    return jobs.get(job_id)
+
+
 def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") -> None:
     try:
         jobs.update(job_id, status="running")
