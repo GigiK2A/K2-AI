@@ -50,6 +50,45 @@ from .logit import LogitInput, fit_logit
 from .monte_carlo import MonteCarloInput, simulate
 from .game_theory import NashInput, AuctionInput, solve_nash, optimal_bid
 
+# --- AdvisorBoost-ready: tool da snapshot (patch quant) ---
+from pathlib import Path
+from typing import Optional
+from pydantic import BaseModel, Field
+from .capm import capm_cost_of_equity
+from .ev_multiples import ev_from_multiples
+from .valida_assunzioni import valida_assunzioni
+from .dcf_guard import dcf_enterprise_value_guarded
+
+# Snapshot caricato dal file dati (puro, nessuna rete a runtime).
+_SNAP = json.loads((Path(__file__).parent / "data" / "industry_multiples.json").read_text())
+
+
+class CapmInput(BaseModel):
+    settore: str = Field(..., description="Chiave settore (vedi list_sectors / ateco_to_sector).")
+    pfn_eur: float = Field(..., description="Posizione finanziaria netta (debito netto), EUR.")
+    patrimonio_netto_eur: float = Field(..., description="Patrimonio netto, EUR (!= 0).")
+    fatturato_eur: float = Field(..., description="Ricavi, EUR (per size premium).")
+    paese: str = Field("italy", description="Paese per rf_10y/erp/tax_rate dallo snapshot.")
+    tax_rate_pct: Optional[float] = Field(None, description="Override aliquota fiscale in %.")
+
+
+class EvMultiplesInput(BaseModel):
+    settore: str = Field(..., description="Chiave settore.")
+    ebitda_eur: float = Field(..., description="EBITDA EUR. >0 → EV/EBITDA; <=0 → EV/Ricavi.")
+    ricavi_eur: float = Field(..., description="Ricavi EUR (usati se EBITDA<=0).")
+
+
+class ValidaAssunzioniInput(BaseModel):
+    storici: dict = Field(..., description="Storici cliente: {ricavi_eur:[...], ebitda_eur:[...]}.")
+    assunzioni: dict = Field(..., description="Assunzioni forward: fcf_previsti_eur, g_perpetuo_pct, costo_debito_pct, rettifiche_totale_eur.")
+    settore: str = Field(..., description="Chiave settore (per g_range/banda).")
+    patrimonio_netto_eur: Optional[float] = Field(None, description="PN per check rettifiche.")
+
+
+class DcfGuardInput(BaseModel):
+    dcf_input: dict = Field(..., description="Dict conforme a DcfInput (fcf, wacc, g_perpetual, terminal_method...).")
+    settore: str = Field(..., description="Chiave settore (per g_range hard-reject).")
+
 
 server: Server = Server("k2a-quant")
 
@@ -84,6 +123,25 @@ _TOOLS = [
     ("generate_dcf_excel",
      "Genera modello DCF Excel vivo con formule.",
      ExcelDcfInput, lambda a: json.dumps(generate_dcf_excel(ExcelDcfInput(**a)), indent=2)),
+
+    # --- AdvisorBoost: assunzioni dallo snapshot + envelope CalcResult + recinto ---
+    ("capm_cost_of_equity",
+     "Costo equity (CAPM + Hamada) con beta/rf/erp/size DALLO SNAPSHOT dato il settore. Ritorna envelope CalcResult.",
+     CapmInput, lambda a: json.dumps(
+         capm_cost_of_equity(**{**CapmInput(**a).model_dump(), "snapshot": _SNAP}), indent=2, ensure_ascii=False)),
+    ("ev_from_multiples",
+     "Enterprise Value dai multipli di settore: EBITDA>0 → EV/EBITDA, EBITDA<=0 → EV/Ricavi. Envelope CalcResult.",
+     EvMultiplesInput, lambda a: json.dumps(
+         ev_from_multiples(**{**EvMultiplesInput(**a).model_dump(), "snapshot": _SNAP}), indent=2, ensure_ascii=False)),
+    ("valida_assunzioni",
+     "Recinto deterministico OK/WARN/FAIL su assunzioni forward (CAGR FCF vs storico, traiettoria margini, g-in-range, costo debito, rettifiche).",
+     ValidaAssunzioniInput, lambda a: json.dumps(
+         valida_assunzioni(**{**ValidaAssunzioniInput(**a).model_dump(), "snapshot": _SNAP}), indent=2, ensure_ascii=False)),
+    ("dcf_enterprise_value_guarded",
+     "DCF con hard-reject se g fuori dal g_range di settore. Wrappa compute_dcf invariato. Envelope CalcResult.",
+     DcfGuardInput, lambda a: json.dumps(
+         dcf_enterprise_value_guarded(dcf_input=a["dcf_input"], settore=a["settore"], snapshot=_SNAP,
+                                      compute_dcf=compute_dcf, DcfInput=DcfInput), indent=2, ensure_ascii=False)),
 
     # --- Derivati & fixed income ---
     ("black_scholes",
