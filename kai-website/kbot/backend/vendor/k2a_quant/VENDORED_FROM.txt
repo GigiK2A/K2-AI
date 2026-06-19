@@ -1,0 +1,6 @@
+Vendored from: github.com/inglucarossi73/k2a-mcp-quant
+Commit (SHA):  1d7d9c2adec1a38ebbbe7445be17f1307154f94d  (Merge PR #1 refresh-settori-damodaran-weur-2026)
+Path sorgente: src/k2a_quant/
+Data vendoring: 2026-06-19
+Vendorizzato da: Luigi/Code (handoff Luca §1). Re-run annuale gennaio: ri-pinnare al nuovo HEAD.
+PIN ESPLICITO a questo SHA — non "ultimo main".
