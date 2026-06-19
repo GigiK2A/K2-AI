@@ -1,7 +1,8 @@
 """Prospecting qualificato per il Marketing.
 
-L'AI cerca sul web PMI italiane REALI in target ICP, le VALUTA (fit, non fuffa),
-trova la mail (responsabile o aziendale) e prepara una BOZZA di primo contatto.
+L'AI cerca sul web PMI italiane REALI che sarebbero CLIENTI (acquirenti dei nostri
+servizi, in settori ICP) — NON concorrenti né fornitori del nostro stesso spazio.
+Le VALUTA (fit col bisogno, non somiglianza a noi), trova la mail e prepara una BOZZA.
 La bozza è SOLO una bozza: viene salvata in `marketing_prospects`, MAI inviata
 in automatico (nessun canale di invio è collegato a questo flusso).
 """
@@ -16,24 +17,35 @@ from aios.tools import Tool
 PROSPECT_ACTION = ActionType("marketing", "prospect")
 
 _RESEARCH_SYS = (
-    "Sei un analista commerciale B2B di K2-AI. Cerchi sul web PMI italiane REALI e "
-    "VERIFICABILI in target con l'ICP qui sotto. NON inventare aziende, dati o email. "
-    "Per ogni azienda riporta: nome, sito ufficiale, settore, dimensione stimata, "
-    "perché è (o NON è) in target per i nostri servizi, e una mail di contatto reale "
-    "(del responsabile se la trovi, altrimenti quella aziendale generica) con la FONTE. "
-    "Scarta esplicitamente chi è fuori target (multinazionali, micro-partite IVA non "
-    "rilevanti, settori non nostri): non vogliamo fuffa. Se non trovi una mail reale, "
-    "scrivilo chiaramente invece di inventarla."
+    "Sei un analista commerciale B2B di K2-AI. K2-AI VENDE sistemi AI operativi (agenti "
+    "email/CRM, automazioni amministrative, microapp documentali, RAG) ALLE PMI italiane. "
+    "Devi trovare CLIENTI POTENZIALI = aziende che COMPREREBBERO questi servizi perché "
+    "hanno processi manuali/ripetitivi da automatizzare. NON cerchi fornitori come noi.\n"
+    "TARGET (ICP) — cerca QUI: studi professionali (ingegneria, architettura, "
+    "commercialisti, consulenza), manifatturiero e PMI industriali, servizi B2B; "
+    "indicativamente 5-50 dipendenti, fatturato ~500k-10M €, in Italia.\n"
+    "ESCLUDI TASSATIVAMENTE (NON sono clienti, sono concorrenti o pari-categoria): "
+    "agenzie digitali/marketing, software house, system integrator, società di "
+    "consulenza IT/AI, chi già vende AI/automazione/RPA/chatbot/sviluppo software, "
+    "startup tech, big tech. Se un'azienda fa più o meno quello che facciamo noi, NON è "
+    "un prospect: scartala. Escludi anche multinazionali e micro-partite IVA non rilevanti.\n"
+    "Per ogni CLIENTE valido riporta: nome, sito ufficiale, settore, dimensione stimata, "
+    "il PROBLEMA operativo concreto che potremmo risolvergli, e una mail di contatto reale "
+    "(responsabile o aziendale) con la FONTE. NON inventare aziende, dati o email: se non "
+    "trovi una mail reale, dillo."
 )
 
 _STRUCT_SYS = (
-    "Struttura i risultati della ricerca in JSON. Per ogni azienda valuta il fit con "
-    "i nostri servizi (fit_score 0-100) e spiega in 1 frase perché è un possibile "
-    "cliente o perché è fuffa. Se non c'è una mail reale lascia contact_email vuoto. "
-    "Prepara una BOZZA di primo contatto in italiano, brand voice K2-AI (pragmatica, "
-    "del 'tu', numeri concreti, niente buzzword), 5-8 righe, specifica per quell'azienda "
-    "e per il servizio più adatto. La bozza NON verrà inviata: è solo una proposta da "
-    "rivedere. Non inventare numeri o dati non presenti nella ricerca."
+    "Struttura in JSON i CLIENTI POTENZIALI trovati. REGOLA DURA: se l'azienda OFFRE essa "
+    "stessa AI/automazione/software/consulenza digitale/marketing (è un concorrente o un "
+    "fornitore del nostro stesso spazio, NON un cliente) → in_target=false, fit_score basso, "
+    "fit_reason='concorrente/stesso settore, non un cliente'. Un cliente valido è una PMI di "
+    "ALTRO settore (studio professionale, manifatturiero, servizi B2B) con un processo "
+    "concreto da automatizzare. Valuta il fit (0-100) col bisogno del cliente, non con la "
+    "somiglianza a noi. Se non c'è una mail reale lascia contact_email vuoto. Prepara una "
+    "BOZZA di primo contatto in italiano, brand voice K2-AI (pragmatica, del 'tu', numeri "
+    "concreti, niente buzzword), 5-8 righe, specifica per quell'azienda e il suo problema. "
+    "La bozza NON verrà inviata. Non inventare numeri o dati non presenti nella ricerca."
 )
 
 _SCHEMA = {
@@ -79,13 +91,20 @@ class Prospector:
                 if v:
                     names.append(str(v))
         if names:
-            out += "\n\n# NOSTRI SERVIZI (cosa vendiamo)\n" + "\n".join(f"- {n}" for n in names)
+            out += ("\n\n# COSA OFFRIAMO AI CLIENTI (per abbinare il servizio al problema)\n"
+                    + "\n".join(f"- {n}" for n in names))
+        out += ("\n\n# CHI CERCHIAMO\nClienti potenziali = PMI italiane (studi professionali, "
+                "manifatturiero, servizi B2B; 5-50 dip.) con processi manuali da automatizzare, "
+                "che COMPREREBBERO i nostri servizi.\n# CHI ESCLUDERE\nChi fa il nostro stesso "
+                "mestiere o lo fornisce: agenzie, software house, system integrator, consulenza "
+                "IT/AI, chi vende AI/automazione/software. Quelli sono CONCORRENTI, non clienti.")
         return out
 
     def find(self, n: int = 5) -> list[dict]:
         ctx = self._context()
-        user_research = (ctx + f"\n\n# COMPITO\nTrova {n} PMI italiane reali e in target, "
-                         "ben qualificate (no fuffa), con mail di contatto reale e fonte.")
+        user_research = (ctx + f"\n\n# COMPITO\nTrova {n} CLIENTI POTENZIALI reali (PMI che "
+                         "comprerebbero i nostri servizi), NON concorrenti né fornitori del nostro "
+                         "spazio. Settori ICP, mail di contatto reale e fonte. No fuffa.")
         research = self.llm_web.complete(system=_RESEARCH_SYS, user=user_research)
         parsed = self.llm_struct.complete_json(
             system=_STRUCT_SYS,
