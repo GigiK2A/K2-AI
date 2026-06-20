@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import re
+from datetime import date
 from pathlib import Path
 
 from reportlab.lib import colors
@@ -21,7 +22,8 @@ from reportlab.platypus.tableofcontents import TableOfContents
 from . import styling as ST
 
 _FONTE_LABEL = {"override_locale": "Normattiva", "akn_bulk_xml": "Normattiva", "normattiva": "Normattiva"}
-_SKIP_KEYS = {"meta", "metadata", "disclaimer", "files", "file_generati", "input", "allegati"}
+_SKIP_KEYS = {"meta", "metadata", "disclaimer", "files", "file_generati", "input", "allegati",
+              "executive_summary", "sintesi"}
 
 
 def _fonte(f) -> str:
@@ -308,14 +310,16 @@ def _cover_meta(deliverable, blueprint, default_titolo, sottotitolo, valore):
     meta = deliverable.get("meta") or deliverable.get("metadata") or {}
     modulo = blueprint.get("pacchetto", {}).get("nome_commerciale") or default_titolo
     azienda = str(meta.get("azienda") or meta.get("cliente") or meta.get("committente") or "")
-    periodo = str(meta.get("periodo") or meta.get("mese") or meta.get("anno") or "")
+    data_doc = str(meta.get("data") or meta.get("generated_at") or date.today().isoformat())
+    periodo = str(meta.get("periodo") or meta.get("mese") or meta.get("anno") or data_doc[:7])
     versione = str(meta.get("versione") or meta.get("version") or "1.0").replace("v", "")
-    codice = str(meta.get("codice") or meta.get("code") or meta.get("id") or "")
+    codice = str(meta.get("codice") or meta.get("code") or meta.get("id")
+                 or f"K2AI-{re.sub(r'[^A-Z0-9]', '', modulo.upper())[:10]}-{data_doc.replace('-', '')[:8]}")
     return {
         "modulo": modulo, "titolo": modulo.replace("Boost", "").strip() or modulo,
         "sottotitolo": sottotitolo, "azienda": azienda, "periodo": periodo,
         "versione": versione or "1.0", "codice": codice, "categoria": "Diagnosi professionale",
-        "valore": valore, "data": "2026",
+        "valore": valore, "data": data_doc,
     }, modulo
 
 
@@ -354,13 +358,13 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
                                           "Diagnosi legale e compliance",
                                           "Quadro dei rischi legali e priorità d'azione per la tua impresa.")
     sint = deliverable.get("sintesi", {})
-    body = [ST.section_number(1, "Sintesi e mappa rischi", S)]
+    body = [_Heading("01 · Sintesi e mappa rischi", S["h1"], "legal-1")]
     if sint.get("mappa_rischi"):
         body += [Spacer(1, 4), ST.heatmap(sint["mappa_rischi"], S), Spacer(1, 6)]
 
     n = 2
     for v in deliverable.get("voci", []):
-        body.append(ST.section_number(n, str(v.get("titolo", "")), S)); n += 1
+        body.append(_Heading(f"{n:02d} · {str(v.get('titolo', ''))}", S["h1"], f"legal-{n}")); n += 1
         if v.get("contenuto"):
             body.append(Paragraph(_rich(str(v["contenuto"])), S["body"]))
         if v.get("rischi"):
@@ -374,7 +378,7 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
         body.append(Spacer(1, 4))
 
     if deliverable.get("piano_azione"):
-        body.append(ST.section_number(n, "Piano d'azione", S))
+        body.append(_Heading(f"{n:02d} · Piano d'azione", S["h1"], f"legal-{n}"))
         rows = [[str(p.get("priorita", "")), str(p.get("azione", "")),
                  "Avvocato" if p.get("handoff_avvocato") else "—"] for p in deliverable["piano_azione"]]
         body.append(ST.premium_table(["#", "Azione", "Handoff"], rows, S,
@@ -457,7 +461,7 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
         # score scalari già mostrati nella dashboard → salta se top-level int 'score'
         if isinstance(val, (int, float)) and "score" in key.lower():
             continue
-        body.append(ST.section_number(n, _humanize(key), S)); n += 1
+        body.append(_Heading(f"{n:02d} · {_humanize(key)}", S["h1"], f"section-{n}")); n += 1
         body.append(Spacer(1, 2))
         render_value(val, 1)
         body.append(Spacer(1, 4))

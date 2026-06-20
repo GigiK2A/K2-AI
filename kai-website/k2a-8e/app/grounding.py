@@ -14,8 +14,14 @@ from __future__ import annotations
 import re
 from typing import Any, Iterable
 
+from . import quality
+
 # Segnaposto/template che NON devono MAI trapelare in un deliverable venduto.
 _PLACEHOLDER_PATTERNS: list[tuple[str, str]] = [
+    (r"\[\s*BOZZA\s+OFFLINE\s*\]", "bozza offline"),
+    (r"\bSegnaposto deterministico\b", "testo di fallback interno"),
+    (r"\boverride_locale\b", "identificatore interno della fonte"),
+    (r"\bANTHROPIC_API_KEY\b", "configurazione interna"),
     (r"\[\s*citt[aà]\s*\]", "segnaposto [città]"),
     (r"\[\s*regione\s*\]", "segnaposto [regione]"),
     (r"\[\s*mese\s*/?\s*anno\s*\]", "segnaposto [mese/anno]"),
@@ -58,7 +64,7 @@ def _collect_priorities(deliverable: dict) -> list[str]:
 
 
 def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
-                       inputs: dict | None = None) -> list[dict]:
+                       inputs: dict | None = None, facts: dict | None = None) -> list[dict]:
     citazioni = citazioni or []
     findings: list[dict] = []
     full = "\n".join(_walk_strings(deliverable))
@@ -71,9 +77,10 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
                              "dettaglio": f"{desc}: \"{m.group(0)}\""})
 
     # 2. COVER non personalizzata → warn
-    cliente = str((deliverable.get("meta") or {}).get("cliente") or "").strip()
+    meta = deliverable.get("meta") or deliverable.get("metadata") or {}
+    cliente = str(meta.get("cliente") or meta.get("azienda") or meta.get("client_name") or "").strip()
     if cliente.lower() in _COVER_GENERICA:
-        findings.append({"code": "cover_non_personalizzata", "severity": "warn",
+        findings.append({"code": "cover_non_personalizzata", "severity": "block",
                          "dettaglio": f"meta.cliente generico ('{cliente or 'vuoto'}') invece del nome reale"})
 
     # 3. NUMERI ESTERNI (target normativi/UE/mercato) asseriti senza essere tra le
@@ -93,9 +100,16 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
     #     segnala che l'analisi è probabilmente archetipo, non QUESTO cliente.
     sostanziali = sum(1 for v in _walk_strings(inputs or {}) if len(str(v).strip()) >= 3)
     if inputs is not None and sostanziali < 5 and len(full) > 4000:
-        findings.append({"code": "input_povero", "severity": "warn",
+        findings.append({"code": "input_povero", "severity": "block",
                          "dettaglio": f"deliverable ricco (~{len(full)} caratteri) su soli {sostanziali} dati "
                                       f"cliente sostanziali: rischio analisi generica/archetipo, non specifica"})
+
+    # 3c. Falsa precisione economica e fatti cliente ipotetici. Questi controlli
+    # sono condivisi da Finance, Strategy, Legal, Web, MEP, Safety, Host ecc.
+    findings.extend(quality.unsupported_number_findings(
+        deliverable, inputs or {}, facts or {}, citazioni,
+    ))
+    findings.extend(quality.uncertain_fact_findings(deliverable))
 
     # 4. PRIORITÀ indifferenziate → warn (la 'lettura prioritizzata' promessa è vuota)
     prios = _collect_priorities(deliverable)

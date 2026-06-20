@@ -20,6 +20,13 @@ LegalBoost). Servizio FastAPI stateless, deployabile su Railway, contratto API =
 > Gli ASSET di dominio (blueprint, snapshot normativo) sono **FIXTURE placeholder**
 > finché Luca non consegna `k2a-skills` + lo snapshot reale. Vedi §"Confine".
 
+## Quality gate
+
+Ogni servizio passa anche da `app/quality.py`: validazione degli input, metadati reali,
+provenienza dei numeri e controlli di falsa precisione. FinanceBoost applica inoltre la
+quadratura contabile deterministica e genera un XLSX con input separati e formule vive.
+Placeholder/fallback offline e dati incoerenti causano `refused`, mai un PDF vendibile.
+
 ## Confine ENGINE (Luigi) ↔ ASSET (Luca)
 
 L'engine è asset-agnostico. Carica blueprint/output-schema/form/snapshot tramite

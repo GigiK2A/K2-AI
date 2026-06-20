@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FinanceBoost — form input PMI",
   "type": "object",
-  "required": ["settore_ateco", "n_dipendenti"],
+  "required": ["settore_ateco", "n_dipendenti", "bilanci"],
   "properties": {
     "settore_ateco": { "type": "string", "description": "codice ATECO o descrizione settore" },
     "n_dipendenti": { "type": "integer", "minimum": 0 },
@@ -13,9 +13,22 @@
       "description": "voci principali di SP e CE per anno",
       "items": {
         "type": "object",
-        "required": ["anno"],
+        "required": ["anno", "ricavi", "utile_netto", "totale_attivo"],
         "properties": {
           "anno": { "type": "integer" },
+          "voci": {
+            "type": "array",
+            "description": "TRASCRIZIONE FEDELE delle righe del bilancio (preferita: PN, EBITDA, debiti, indici e aggregati vengono DERIVATI deterministicamente dalle voci — non vanno calcolati a mano). Una voce per riga etichettata di Stato Patrimoniale e Conto Economico.",
+            "items": {
+              "type": "object",
+              "required": ["sezione", "descrizione", "importo"],
+              "properties": {
+                "sezione": { "enum": ["attivo", "passivo", "costi", "ricavi", "risultato"], "description": "attivo/passivo = Stato Patrimoniale; costi/ricavi = Conto Economico; risultato = utile/perdita del periodo" },
+                "descrizione": { "type": "string", "description": "descrizione della riga COSI COM'E nel bilancio" },
+                "importo": { "type": "number", "description": "importo in EUR, numero puro (1234.56), niente separatori migliaia ne simboli" }
+              }
+            }
+          },
           "ricavi": { "type": ["number", "null"] },
           "ebitda": { "type": ["number", "null"] },
           "reddito_operativo": { "type": ["number", "null"], "description": "EBIT — serve per ROS/ROI deterministici" },
@@ -25,7 +38,18 @@
           "passivo_corrente": { "type": ["number", "null"], "description": "per current/quick ratio, CCN" },
           "rimanenze": { "type": ["number", "null"], "description": "magazzino — per quick ratio" },
           "patrimonio_netto": { "type": ["number", "null"] },
-          "debiti_finanziari": { "type": ["number", "null"] },
+          "capitale_sociale": { "type": ["number", "null"] },
+          "riserve": { "type": ["number", "null"] },
+          "utili_portati_nuovo": { "type": ["number", "null"] },
+          "risultato_esercizio": { "type": ["number", "null"] },
+          "passivita_verso_terzi": { "type": ["number", "null"], "description": "debiti e fondi escluso il patrimonio netto" },
+          "totale_passivita_prima_risultato": { "type": ["number", "null"], "description": "solo per bilanci a 4 sezioni: totale passività stampato prima della riga utile/perdita del periodo" },
+          "debiti_finanziari": { "type": ["number", "null"], "description": "solo banche, mutui e altri finanziamenti onerosi" },
+          "debiti_bancari": { "type": ["number", "null"] },
+          "mutui_finanziamenti": { "type": ["number", "null"] },
+          "imposte": { "type": ["number", "null"] },
+          "oneri_finanziari": { "type": ["number", "null"] },
+          "ammortamenti_svalutazioni": { "type": ["number", "null"] },
           "costo_personale": { "type": ["number", "null"] }
         }
       }

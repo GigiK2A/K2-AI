@@ -27,6 +27,32 @@ def _strip_html(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+_EURO_RE = re.compile(r"^€\s*(-?[\d.]+(?:,\d+)?)$")
+_PCT_RE = re.compile(r"^(-?[\d.]+(?:,\d+)?)\s*%$")
+_NUM_RE = re.compile(r"^-?[\d.]+(?:,\d+)?$")
+
+
+def _typed_cell(value: Any) -> tuple[Any, str | None]:
+    """Mantiene numeri/formule come tali; niente workbook composto solo da testo."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value, '#,##0.00;[Red](#,##0.00);-'
+    text = _strip_html(value)
+    if text.startswith("="):
+        return text, None
+    for rx, fmt, scale in ((_EURO_RE, '€ #,##0.00;[Red](€ #,##0.00);-', 1),
+                           (_PCT_RE, '0.0%', 100), (_NUM_RE, '#,##0.00;[Red](#,##0.00);-', 1)):
+        m = rx.match(text)
+        if not m:
+            continue
+        raw = m.group(1) if m.lastindex else text
+        try:
+            n = float(raw.replace(".", "").replace(",", ".")) / scale
+            return n, fmt
+        except ValueError:
+            pass
+    return text, None
+
+
 def _safe_sheet_title(title: str, used: set) -> str:
     name = re.sub(r"[\[\]:*?/\\]", " ", _strip_html(title) or "Foglio").strip() or "Foglio"
     name = name[:_MAX_SHEET_NAME]
@@ -160,7 +186,10 @@ def render_xlsx(analysis: Dict[str, Any]) -> bytes:
             cells = r if isinstance(r, list) else [r]
             for ci in range(1, ncols + 1):
                 value = cells[ci - 1] if ci - 1 < len(cells) else ""
-                cell = tws.cell(row=ri, column=ci, value=_strip_html(value))
+                typed, number_format = _typed_cell(value)
+                cell = tws.cell(row=ri, column=ci, value=typed)
+                if number_format:
+                    cell.number_format = number_format
                 cell.alignment = wrap
                 cell.border = border
 

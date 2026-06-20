@@ -22,6 +22,7 @@ from typing import Optional
 
 from .settings import (ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ANTHROPIC_MODEL_LIGHT,
                        ALLOW_OFFLINE_FALLBACK)
+from . import quality
 
 log = logging.getLogger("8e.llm")
 
@@ -213,8 +214,8 @@ def _pat_value(pat: str) -> str:
     """Valore minimo che soddisfa i pattern ricorrenti negli schemi meta."""
     table = {
         r"^\d{11}$": "12345678901",
-        r"^\d{4}-\d{2}$": "2026-06",
-        r"^\d{4}-\d{2}-\d{2}$": "2026-06-08",
+        r"^\d{4}-\d{2}$": quality.today_iso()[:7],
+        r"^\d{4}-\d{2}-\d{2}$": quality.today_iso(),
         r"^\d+\.\d+\.\d+$": "1.0.0",
     }
     if pat in table:
@@ -225,7 +226,7 @@ def _pat_value(pat: str) -> str:
 
 
 def _det_string(key: str, schema: dict, inputs: dict, servizio: str) -> str:
-    az = inputs.get("ragione_sociale") or inputs.get("azienda") or "Cliente"
+    az = quality.display_name(inputs) or ""
     if "const" in schema:
         return schema["const"]
     if "enum" in schema:
@@ -237,9 +238,9 @@ def _det_string(key: str, schema: dict, inputs: dict, servizio: str) -> str:
         return _pat_value(schema["pattern"])
     fmt = schema.get("format")
     if fmt == "date":
-        return "2026-06-08"
+        return quality.today_iso()
     if fmt == "date-time":
-        return "2026-06-08T00:00:00Z"
+        return quality.now_iso()
     kl = (key or "").lower()
     if any(w in kl for w in ("azienda", "cliente", "committente", "client")):
         return az
@@ -252,7 +253,7 @@ def _det_string(key: str, schema: dict, inputs: dict, servizio: str) -> str:
     if "slug" in kl:
         return "k2ai-2026"
     if any(w in kl for w in ("data", "date", "generated", "emiss")):
-        return "2026-06-08"
+        return quality.today_iso()
     if any(w in kl for w in ("codice", "code", "id")):
         return "K2AI-2026"
     s = servizio
@@ -296,7 +297,12 @@ def _det_sample(schema: dict, root: dict, inputs: dict, servizio: str, key: str 
             for ik in ("dipendenti", "organico", "addetti", "numero_dipendenti"):
                 if isinstance(inputs.get(ik), (int, float)):
                     return inputs[ik]
-        v = 2026 if ("anno" in kl or "year" in kl) else 1
+        # Mai creare un numero cliente solo per soddisfare lo schema. Gli unici
+        # numeri strutturali generabili sono anno/versione; il resto deve arrivare
+        # dagli input e, se assente, fallira la validazione fail-closed.
+        if "anno" not in kl and "year" not in kl:
+            return None
+        v = int(quality.today_iso()[:4])
         if "minimum" in schema:
             v = max(v, schema["minimum"])
         if "maximum" in schema:
@@ -369,7 +375,8 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         "(basso/medio/alto). Numeri precisi SOLO se presenti nei FATTI.\n"
         "  • NIENTE fatti CONTROLLABILI sul cliente asseriti senza dato: presenza/assenza "
         "di LinkedIn, social, SEO, sito, fatturato, n° dipendenti vanno usati SOLO se nei "
-        "DATI CLIENTE; altrimenti etichetta 'ipotesi da confermare' o ometti. Mai asserire nudo.\n"
+        "DATI CLIENTE; altrimenti scrivi 'dato non disponibile' oppure ometti. Non sostituire "
+        "mai il dato con 'presumibilmente/probabilmente/ipotetico'.\n"
         "  • NIENTE numeri di mercato/target normativi (es. '% FER UE 2030', minimi tariffari) "
         "senza un FATTO che li sostenga: se non c'è il fatto, NON citare la cifra.\n"
         "- Rispetta maxLength/maxItems. JSON STRETTAMENTE VALIDO (virgolette interne con \\\").\n"
@@ -384,7 +391,13 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     analytical = []  # (name, sub, sub_compact_json, sub_val, user, maxtok, light)
     for name, sub in props.items():
         if name in structural:
-            result[name] = _det_sample(sub, output_schema, inputs, servizio, name)
+            if name == "input":
+                # Echo dei soli dati reali. Il vecchio _det_sample fabbricava
+                # valori (URL, budget, enum) per far passare lo schema.
+                props_in = sub.get("properties", {}) if isinstance(sub, dict) else {}
+                result[name] = {k: inputs[k] for k in props_in if k in inputs}
+            else:
+                result[name] = _det_sample(sub, output_schema, inputs, servizio, name)
             continue
         sub_compact = {"type": sub.get("type", "object")}
         for kk in ("properties", "required", "items", "enum"):

@@ -29,6 +29,7 @@ from ..settings import (
     PDF_SYSTEM_MAX_CHARS,
 )
 from .prompts import compact_messages
+from .report_guard import validate_report
 from .services import resolve_skills_for_session
 from .skills import load_skill, load_skill_bundle
 
@@ -54,6 +55,11 @@ def _build_context_block(session: dict) -> str:
     extracted = collected.get("extractedData") or {}
     lines: List[str] = []
     fields = [
+        ("Cliente / soggetto analizzato", _coalesce(
+            collected.get("ragione_sociale"), extracted.get("ragione_sociale"),
+            collected.get("companyName"), extracted.get("companyName"),
+            collected.get("businessName"), extracted.get("businessName"),
+            collected.get("clientName"), extracted.get("clientName"))),
         ("Servizio Suite", collected.get("service_id")),
         ("Modalità", collected.get("mode")),
         ("Tier consigliato", collected.get("recommendedTier")),
@@ -201,11 +207,6 @@ def _classify_report(report_type: Optional[str]) -> str:
         return "sentiment"
     if any(k in rt for k in ("competitiv", "benchmark")):
         return "competitivo"
-    if any(k in rt for k in ("calendario", "editorial", "piano contenuti", "piano editoriale",
-                             "content plan", "content calendar", "contenuti social", "contenuti",
-                             "post social", "social media", "instagram", "linkedin", "redazionale",
-                             "newsletter", "bozze", "copywriting")):
-        return "contenuti"
     if any(k in rt for k in ("marketing", "funnel", "customer journey", "positioning", "posizionamento mark")):
         return "marketing"
     if any(k in rt for k in ("dati", "dataset", "data analysis")):
@@ -227,7 +228,8 @@ _SCORE_RUBRICS: Dict[str, str] = {
         "  2. Redditività (max 25): EBITDA margin≥10%=10, ROE≥8%=8, ROI≥5%=7\n"
         "  3. Solvibilità (max 25): leverage≤2x=10, debt/equity≤1=8, copertura interessi≥3x=7\n"
         "  4. Crescita (max 25): CAGR ricavi 3yr≥5%=10, margine in crescita=8, working capital efficienza=7\n"
-        "Se metrica non disponibile (no file bilancio in sessione)→assegna 12pt fissi per dimensione e marca 'non misurato'.\n"
+        "Se una dimensione non ha almeno 2 metriche calcolabili, NON assegnare punti fissi: "
+        "ometti score e score_breakdown e dichiara 'valutazione quantitativa incompleta'.\n"
     ),
     "business_plan": (
         "RUBRIC SCORE BUSINESS PLAN (somma 4 dim × 25pt):\n"
@@ -246,7 +248,7 @@ _SCORE_RUBRICS: Dict[str, str] = {
     "investimento": (
         "RUBRIC SCORE INVESTIMENTO (somma 4 dim × 25pt):\n"
         "  1. Ritorno (max 25): IRR≥15%=10, NPV>0=8, ROI≥20%=7\n"
-        "  2. Tempo recupero (max 25): payback <2y=10, <4y=15, >4y=8\n"
+        "  2. Tempo recupero (max 25): payback <2y=25, 2-4y=15, >4y=8\n"
         "  3. Rischio (max 25): scenario stress positivo=10, hedge attivi=8, downside limitato=7\n"
         "  4. Strategia (max 25): allineamento obiettivi=10, exit pianificata=8, scalabilità=7\n"
     ),
@@ -258,7 +260,7 @@ _SCORE_RUBRICS: Dict[str, str] = {
     ),
 }
 # Alias per categorie senza rubric specifica
-for _k in ("due_diligence", "processi", "mercato", "sentiment", "competitivo", "marketing", "custom_data", "contenuti"):
+for _k in ("due_diligence", "processi", "mercato", "sentiment", "competitivo", "marketing", "custom_data"):
     _SCORE_RUBRICS[_k] = _SCORE_RUBRICS["generic"]
 
 
@@ -270,30 +272,23 @@ _REQUIRED_BLOCKS: Dict[str, str] = {
     ),
     "bilancio": (
         "BLOCCHI OBBLIGATORI ANALISI BILANCIO:\n"
-        "  a) data_table 'Indici di bilancio' columns=[Indice, Valore, Benchmark settore, Stato, Note], ≥6 righe (current ratio, ROE, ROI, EBITDA margin, leverage, DSO)\n"
-        "  b) data_table 'Proiezione P&L 3 anni' columns=[Voce, Anno 1, Anno 2, Anno 3, CAGR], ≥5 righe (Ricavi, COGS, EBITDA, Net income, Cash flow op)\n"
-        "  c) two_column 'Punti forza / Aree miglioramento' (forza=verde / aree=rosso)\n"
+        "  a) data_table 'Dati estratti e quadrature' con fonte/pagina e stato certo|stimato|mancante\n"
+        "  b) data_table 'Indici di bilancio' SOLO per indici calcolabili, con formula e numeratore/denominatore. "
+        "Mai trattare totale passività come debiti; PN include capitale+riserve+utili portati+risultato.\n"
+        "  c) Proiezione P&L SOLO se il contesto contiene assunzioni esplicite; altrimenti sostituiscila "
+        "con 'Dati mancanti per proiezioni' senza numeri inventati.\n"
+        "  d) two_column 'Punti forza / Aree miglioramento' (forza=verde / aree=rosso)\n"
     ),
     "marketing": (
         "BLOCCHI OBBLIGATORI ANALISI MARKETING:\n"
-        "  a) data_table 'Channel mix' columns=[Canale, Spesa %, CAC stimato, Conversion rate, ROAS], ≥4 righe (Search, Social, Email, Direct)\n"
-        "  b) data_table 'Funnel conversion' columns=[Stage, Volume, Conversion %, Tempo medio], ≥4 righe (Awareness, Interest, Decision, Action)\n"
+        "  a) data_table 'Channel mix' e 'Funnel conversion' SOLO con dati misurati forniti. "
+        "Se assenti, usa una tabella 'Dati necessari alla misurazione' senza valori simulati.\n"
         "  c) two_column 'Posizionamento forte / Gap competitivo'\n"
-    ),
-    "contenuti": (
-        "BLOCCHI OBBLIGATORI PIANO CONTENUTI / CALENDARIO EDITORIALE:\n"
-        "  a) data_table 'Pilastri di contenuto' columns=[Pilastro, Obiettivo, Mix %, Esempi di tema], ≥3 righe\n"
-        "  b) data_table 'Calendario editoriale' columns=[Data, Giorno, Pilastro, Titolo, Gancio/Copy breve, Formato, CTA]\n"
-        "     UNA RIGA PER OGNI USCITA del periodo richiesto (es. 3 post/sett per 3 mesi ≈ 36-40 righe).\n"
-        "     ⚠ ECCEZIONE alla regola 'array max 8 voci': QUESTA tabella DEVE elencare TUTTE le uscite,\n"
-        "     anche 40, dalla data di oggi in poi. NIENTE troncamenti, niente 'Post 1/Post 2' generici:\n"
-        "     titoli e ganci concreti del settore del cliente. Tieni Titolo ≤60 char e Gancio ≤90 char\n"
-        "     per restare compatto. Date assolute progressive nei giorni di pubblicazione richiesti.\n"
-        "  c) two_column 'Tono di voce e linee guida / Cose da evitare'\n"
     ),
     "business_plan": (
         "BLOCCHI OBBLIGATORI BUSINESS PLAN:\n"
-        "  a) data_table 'Proiezione finanziaria 5 anni' columns=[Voce, Y1, Y2, Y3, Y4, Y5], ≥6 righe (Ricavi, COGS, OPEX, EBITDA, CapEx, Cash flow)\n"
+        "  a) data_table 'Proiezione finanziaria 5 anni' SOLO se tutte le assunzioni economiche "
+        "sono esplicite nel contesto; altrimenti tabella delle assunzioni da raccogliere, senza cifre.\n"
         "  b) data_table 'Roadmap milestone 12 mesi' columns=[Mese, Milestone, KPI atteso, Owner], ≥6 righe con date assolute dal corrente\n"
         "  c) two_column 'Punti forza modello / Rischi go-to-market'\n"
     ),
@@ -367,11 +362,6 @@ _CONCLUSIONS_SCHEMAS: Dict[str, str] = {
         "  right.heading='Iniziative growth' · right.milestones=[\n"
         "    Campaign quick-win | Sviluppo channel | KPI marketing 30/60/90gg (CAC, ROAS, conv rate)]\n"
     ),
-    "contenuti": (
-        "  left.heading='3 priorità del piano contenuti' · body_html=<ol> 3 priorità (coerenza pilastri, cadenza sostenibile, CTA verso obiettivo)\n"
-        "  right.heading='Come partire (prime 2 settimane)' · right.milestones=[\n"
-        "    Setup asset/template | Prime uscite + hashtag/keyword | KPI 30/60/90gg (reach, salvataggi, click, lead)]\n"
-    ),
     "business_plan": (
         "  left.heading='3 rischi go-to-market' · body_html=<ol> 3 rischi su mercato/competizione/esecuzione\n"
         "  right.heading='Milestone chiave 12 mesi' · right.milestones=[\n"
@@ -429,7 +419,6 @@ _FOOTER_DISCLAIMERS: Dict[str, str] = {
     "seo": "Le stime di traffico, volume keyword e proiezioni sono basate su benchmark di mercato. I dati reali possono variare. Verificare con Google Search Console e strumenti di analisi dedicati.",
     "bilancio": "Le proiezioni finanziarie sono basate sui dati di bilancio forniti e su benchmark di settore. Verificare con il commercialista e dati gestionali aggiornati.",
     "marketing": "Le stime di CAC, conversion e ROAS sono benchmark di mercato. I valori reali dipendono da budget, creatività e audience. Verificare con Analytics e piattaforme ads.",
-    "contenuti": "Piano editoriale basato sugli obiettivi e sul materiale forniti. Adattare i contenuti al calendario reale dell'azienda e alle linee guida di brand. Le metriche social vanno verificate negli insight delle piattaforme.",
     "business_plan": "Le proiezioni economico-finanziarie sono basate su assunzioni esplicitate nel documento. Soggette a revisione in base a evoluzione mercato ed esecuzione.",
     "fattibilita": "L'analisi è basata sui dati forniti e su benchmark pubblici. Decisione finale richiede validazione tecnica e commerciale approfondita.",
     "due_diligence": "Documento di sintesi preliminare. Non sostituisce due diligence legale, fiscale e commerciale completa di professionisti qualificati.",
@@ -486,7 +475,7 @@ def _run_llm_call(
     *,
     max_tokens: int = 16000,
     use_web_search: bool = True,
-    timeout: float = 120.0,
+    timeout: float = 240.0,
     max_hops: int = 4,
     web_search_uses: int = 4,
     label: str = "llm",
@@ -665,17 +654,7 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
     # schema / footer disclaimer specifici per il tipo di analisi richiesto.
     collected = session.get("collected_data") or {}
     extracted = collected.get("extractedData") or {}
-    # deliverableType ("calendario editoriale", "tabella"…) guida la categoria
-    # tanto quanto reportType (il tema). Li concateniamo: così un calendario
-    # social diventa categoria "contenuti" anche se reportType resta "marketing".
-    report_type_raw = " ".join(
-        str(v) for v in (
-            extracted.get("deliverableType"),
-            collected.get("deliverableType"),
-            extracted.get("reportType"),
-            collected.get("reportType"),
-        ) if v
-    )
+    report_type_raw = extracted.get("reportType") or collected.get("reportType") or ""
     profile = _build_report_profile(report_type_raw)
     log.info("Report profile: reportType=%r → category=%s", report_type_raw, profile["category"])
 
@@ -724,13 +703,14 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         "- Tono pragmatico, mai marketing, mai 'rivoluzionario'/'all'avanguardia'.\n"
         "- Ogni numero quantificato, mai 'X' o placeholder.\n"
         "- 6-8 blocchi totali (mai oltre 8), sempre executive_summary primo e conclusions ultimo.\n"
-        "- JSON COMPATTO: ogni stringa max 350 caratteri, ogni array max 8 voci "
-        "(ECCEZIONE: le data_table di tipo calendario/elenco temporale elencano UNA riga per "
-        "uscita/periodo, anche 40 — vedi blocchi obbligatori), no spazi superflui. Tieni l'output "
-        "compatto ma COMPLETO: non troncare i calendari.\n"
+        "- JSON COMPATTO: ogni stringa max 350 caratteri, ogni array max 8 voci, "
+        "no spazi superflui. Output deve stare in 14k tokens.\n"
         "- Coerenza interna: stesso numero in blocchi diversi senza contraddizioni.\n"
         "- Adatta i titoli e le sezioni AL CASO SPECIFICO dell'utente.\n"
         "- Usa SOLO i tipi di blocco documentati nella master skill.\n\n"
+        "- METADATI: meta.client_meta_lines deve contenere il nome reale del cliente/progetto "
+        "estratto dal contesto e la data corrente. Se il nome non è disponibile, NON generare il "
+        "report: segnala dato mancante; mai usare 'Cliente', 'Azienda' o trattino.\n\n"
         f"RUBRIC SCORE (per reportType={profile['category']}):\n"
         f"{profile['score_rubric']}\n"
         "FORMATO BREAKDOWN OBBLIGATORIO nell'executive_summary (campo score_breakdown) "
@@ -845,7 +825,7 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
             parsed = _generate_multi_call(client, system_blocks, user_message)
             parsed = _sanitize_hallucinations(parsed)
             parsed = _validate_and_repair(parsed, client, system_blocks, user_message)
-            return parsed
+            return validate_report(parsed, profile["category"])
         except (ValueError, json.JSONDecodeError, RuntimeError) as exc:
             log.warning("Multi-call generation failed (%s), falling back to single-call", exc)
 
@@ -857,7 +837,7 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         parsed = _sanitize_hallucinations(parsed)
         # Pipeline validation: rigenera blocchi problematici prima del render.
         parsed = _validate_and_repair(parsed, client, system_blocks, user_message)
-        return parsed
+        return validate_report(parsed, profile["category"])
     except (ValueError, json.JSONDecodeError) as exc:
         # JSON troncato o malformato (max_tokens esaurito, virgola mancante, ecc).
         # Retry singolo chiedendo a Sonnet di riemettere SOLO un JSON valido,
@@ -874,10 +854,10 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
             max_tokens=16000,
             system=system_blocks,
             messages=[{"role": "user", "content": repair_user}],
-            timeout=180.0,
+            timeout=240.0,
         )
         repaired = "".join(b.text for b in retry.content if getattr(b, "type", "") == "text")
-        return _sanitize_hallucinations(_extract_json(repaired))
+        return validate_report(_sanitize_hallucinations(_extract_json(repaired)), profile["category"])
 
 
 # Pattern di hallucination tipici da bonificare post-generation.
@@ -1246,7 +1226,7 @@ def _repair_block(
             max_tokens=4096,
             system=system_blocks,
             messages=[{"role": "user", "content": repair_user}],
-            timeout=120.0,
+            timeout=240.0,
         )
     except Exception:
         log.exception("Block repair LLM call failed")

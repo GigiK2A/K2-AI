@@ -11,7 +11,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, calc, grounding, jobs, llm, validate
+from . import assets, calc, grounding, jobs, llm, quality, validate
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -121,15 +121,14 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
     mappa = (meta_struct or {}).get("mappa_rischi")
     if not (isinstance(mappa, list) and mappa and all(
             m.get("semaforo") in ("verde", "giallo", "rosso") for m in mappa)):
-        mappa = [{"area": "Contrattualistica", "semaforo": "giallo"},
-                 {"area": "Privacy & dati", "semaforo": "rosso"}]
+        mappa = []
     score = (meta_struct or {}).get("score")
     if not isinstance(score, int) or not (0 <= score <= 100):
-        score = 72
+        score = -1  # forza il refuse dello schema: mai score cosmetico di fallback
     return {
         "meta": {
-            "servizio": "LegalBoost", "versione": "1.0.0", "data": "2026-06-08",
-            "azienda": inputs.get("ragione_sociale") or inputs.get("azienda") or "Cliente",
+            "servizio": "LegalBoost", "versione": "1.0.0", "data": quality.today_iso(),
+            "azienda": quality.display_name(inputs) or "",
         },
         "sintesi": {"score_compliance": score, "mappa_rischi": mappa},
         "voci": voci_out,
@@ -175,8 +174,15 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
 
         blueprint = assets.load_blueprint(skill)
         out_schema = assets.load_output_schema(skill)
+        form_schema = assets.load_form(skill) or {}
         if not blueprint or not out_schema:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
+
+        # Gate 0 comune: nessun report parte con campi obbligatori mancanti,
+        # copertina anonima o bilancio non riconciliato.
+        inputs, input_errors, quality_notes = quality.prepare_inputs(skill, form_schema, inputs)
+        if input_errors:
+            raise Refuse("insufficient_or_inconsistent_input", "; ".join(input_errors[:12]))
 
         facts, citazioni = resolve(skill, inputs)
 
@@ -221,6 +227,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                 raise Refuse("validation_failed",
                              "generazione non disponibile (offline o incompleta) per questo boost")
 
+        deliverable = quality.ensure_metadata(
+            deliverable, out_schema, inputs,
+            blueprint.get("pacchetto", {}).get("nome_commerciale", service_id),
+        )
+
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
         # schema.
@@ -243,7 +254,9 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         # intercetta sui boost qualitativi: segnaposto trapelati, numeri esterni
         # asseriti senza citazione, cover non personalizzata, priorità tutte uguali
         # (vedi report StrategyBoost reale). 'block' → non si consegna (fail-closed).
-        g_findings = grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs)
+        g_findings = grounding.integrity_findings(
+            deliverable, citazioni=citazioni, inputs=inputs, facts=facts,
+        )
         g_blocks = grounding.blocks(g_findings)
         if g_blocks:
             log.warning("grounding gate REFUSE job %s: %s", job_id, [b["dettaglio"] for b in g_blocks])
@@ -268,10 +281,18 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             html_path.write_text(render_html(deliverable, blueprint, citazioni), encoding="utf-8")
             render_pdf(deliverable, blueprint, citazioni, pdf_path)
 
+        bundle = []
+        extra_outputs = {}
+        if skill == "flusso-financeboost-pmi":
+            from .xlsx import render_finance_workbook
+            xlsx_path = render_finance_workbook(inputs, out_dir / "modello-finanziario.xlsx")
+            extra_outputs["xlsx_path"] = str(xlsx_path)
+            bundle.append({"formato": "xlsx", "path": str(xlsx_path), "formule_vive": True})
+
         jobs.update(
             job_id, status="rendered",
             outputs={"html_path": str(html_path), "pdf_path": str(pdf_path),
-                     "json_path": str(json_path), "bundle": []},
+                     "json_path": str(json_path), "bundle": bundle, **extra_outputs},
             validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS",
                         "grounding": g_findings or "PASS"},
             citazioni=citazioni,
