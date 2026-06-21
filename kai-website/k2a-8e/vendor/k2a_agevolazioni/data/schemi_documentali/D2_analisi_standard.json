@@ -1,0 +1,59 @@
+{
+  "$schema": "k2ai-schema-documentale-v1",
+  "livello": "D2",
+  "nome": "Analisi Standard",
+  "fascia_prezzo_tipica_eur": [98, 250],
+  "pagine_min": 6,
+  "pagine_max": 8,
+  "pagine_target": 7,
+  "indice_id": "B",
+  "masterplan_ref": "v2.0 §4.2",
+  "nota": "Livello D2 attualmente non popolato da servizi nel catalogo, riservato per futuri servizi intermedi (es. Audit SEO tecnico approfondito)",
+  "sezioni": [
+    {
+      "ordine": 1,
+      "titolo": "Copertina + Executive Summary",
+      "pagine": 1,
+      "elementi_obbligatori": ["copertina con header K2-AI", "score globale", "verdetto in 3 righe", "3 take-away numerici"]
+    },
+    {
+      "ordine": 2,
+      "titolo": "Contesto e Input",
+      "pagine": 1,
+      "elementi_obbligatori": ["profilo cliente sintetico", "benchmark di settore applicato (fonte citata)", "periodo di riferimento"]
+    },
+    {
+      "ordine": 3,
+      "titolo": "Analisi dei KPI",
+      "pagine": 2,
+      "elementi_obbligatori": ["6-10 KPI con tabella", "interpretazione 2 righe per KPI", "grafici di confronto vs benchmark"]
+    },
+    {
+      "ordine": 4,
+      "titolo": "Diagnosi prioritaria",
+      "pagine": 2,
+      "elementi_obbligatori": ["Top 3 criticità con causa/impatto/urgenza", "Top 3 opportunità con potenziale/fattibilità"]
+    },
+    {
+      "ordine": 5,
+      "titolo": "Piano azione a 90 giorni",
+      "pagine": 1,
+      "elementi_obbligatori": ["3-5 azioni concrete", "responsabile/scadenza/KPI per ogni azione", "stima impatto economico"]
+    },
+    {
+      "ordine": 6,
+      "titolo": "Metodologia + fonti + upgrade",
+      "pagine": 1,
+      "elementi_obbligatori": ["metodo di calcolo (motore MCP citato)", "fonti normative/dati", "CTA upgrade Boost D4", "firma machine-readable"]
+    }
+  ],
+  "tono": "professionale, narrazione media, dati e prosa bilanciati",
+  "test_qualita": [
+    "pagine totali tra 6 e 8",
+    "almeno 6 KPI analizzati",
+    "Top 3 criticità presenti",
+    "Top 3 opportunità presenti",
+    "piano azione con 3-5 azioni numerate",
+    "presenza firma machine-readable"
+  ]
+}

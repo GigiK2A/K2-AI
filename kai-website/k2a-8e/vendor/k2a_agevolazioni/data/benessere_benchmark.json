@@ -1,0 +1,11 @@
+{
+  "_fonte": "Indicatori gestionali dei servizi alla persona (parrucchieri, estetica, centri benessere, palestre): tasso di utilizzo della capacità (poltrone/cabine), incidenza del personale, retention clienti, scontrino medio, ricavo per ora-operatore, retail mix (vendita prodotti).",
+  "_data_validita": "2026-05-22",
+  "_disclaimer": "Soglie ORIENTATIVE: variano per format (saloni, SPA, palestre). Valori indicativi, da calibrare sul singolo centro. _da_validare.",
+  "_da_validare": true,
+  "soglie": {
+    "tasso_utilizzo_pct": {"label": "Tasso di utilizzo capacità (%)", "direzione": "alto_meglio", "ottimo": 75, "buono": 60, "attenzione": 45},
+    "incidenza_personale_pct": {"label": "Incidenza costo del personale (%)", "direzione": "basso_meglio", "ottimo": 45, "buono": 55, "attenzione": 65},
+    "retention_pct": {"label": "Tasso di ritorno clienti (%)", "direzione": "alto_meglio", "ottimo": 60, "buono": 45, "attenzione": 30}
+  }
+}

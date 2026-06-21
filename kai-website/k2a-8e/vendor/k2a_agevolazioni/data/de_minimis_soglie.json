@@ -1,0 +1,32 @@
+{
+  "_fonte": "Reg. UE 2023/2831 (de minimis generale, in vigore dal 01/01/2024) + regolamenti settoriali",
+  "_data_validita": "2024-01-01",
+  "_disclaimer": "Soglie verificate al 20/05/2026. I regolamenti settoriali (agricoltura, pesca) sono soggetti ad aggiornamenti periodici: verificare su EUR-Lex / portale RNA prima dell'uso in pratica ufficiale.",
+  "_finestra": "Reg. 2023/2831 art.3 §2: periodo mobile di 3 anni (rolling day-by-day), NON più esercizio finanziario corrente + 2 precedenti come nel previgente Reg. 1407/2013.",
+  "soglie_eur": {
+    "generale": {
+      "massimale": 300000,
+      "regolamento": "Reg. UE 2023/2831",
+      "_da_validare": false,
+      "note": "Include trasporto merci su strada per conto terzi (unificato a 300k nel nuovo regolamento, prima 100k)."
+    },
+    "sieg": {
+      "massimale": 750000,
+      "regolamento": "Reg. UE 2023/2832 (SIEG - servizi di interesse economico generale)",
+      "_da_validare": false,
+      "note": "Soglia distinta per imprese che erogano SIEG."
+    },
+    "agricoltura_primaria": {
+      "massimale": 50000,
+      "regolamento": "Reg. UE 2024/3118 (produzione primaria agricola)",
+      "_da_validare": false,
+      "note": "Massimale 50.000€ ex Reg. UE 2024/3118 (aumentato dai 20.000€ del Reg. 1408/2013)."
+    },
+    "pesca_acquacoltura": {
+      "massimale": 40000,
+      "regolamento": "Reg. UE 2023/2391 (pesca e acquacoltura)",
+      "_da_validare": false,
+      "note": "Massimale 40.000€ ex Reg. UE 2023/2391."
+    }
+  }
+}

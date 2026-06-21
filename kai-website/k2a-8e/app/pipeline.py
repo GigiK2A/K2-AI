@@ -11,7 +11,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, calc, finance, freshness, grounding, jobs, llm, quality, quant, validate
+from . import (agevolazioni, assets, calc, finance, freshness, grounding, jobs, llm,
+               quality, quant, validate)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -265,6 +266,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                 wacc_pct = w.get("valore") if (isinstance(w, dict) and w.get("tipo") == "valore_calcolato") else None
                 deliverable = finance.apply_financeboost_sections(deliverable, fb_reclass, wacc_pct)
                 filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True}
+
+        # AgevolazioniBoost: i benefici (Sabatini/T5.0/de minimis) vengono dai tool
+        # deterministici di k2a_agevolazioni, non dall'LLM (Fix #3). Cumulabilità segnalata.
+        if skill == "flusso-agevolazioni-pmi":
+            deliverable, agev_meta = agevolazioni.apply_agevolazioni(deliverable, inputs)
+            if agev_meta:
+                filiera_meta = {**filiera_meta, "agevolazioni": agev_meta}
 
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
