@@ -11,7 +11,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, calc, grounding, jobs, llm, quality, validate
+from . import assets, calc, grounding, jobs, llm, quality, quant, validate
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -64,18 +64,27 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
                 "testo": testo,  # verbatim dallo snapshot → appendice deterministica
             })
         elif tipo == "formula":
-            # Indici finanziari dichiarati 'calcolo-runtime' nello snapshot: il
-            # VALORE va calcolato deterministicamente (calc.py), non lasciato come
-            # formula-stringa che poi calcola l'LLM. Per le chiavi non gestite da
-            # calc (revpar, dcf, wacc, ctrl_*) resta la formula testuale.
+            # Indici finanziari dichiarati 'calcolo-runtime' nello snapshot: il VALORE va
+            # calcolato deterministicamente. Prima calc.py (bilancio/host/cruscotto), poi
+            # il quant di Luca (dcf/wacc) — Fix #0. Solo se entrambi None resta la
+            # formula-stringa (che poi calcolerebbe l'LLM): da evitare per le chiavi quant.
             computed = calc.resolve_formula_fact(k, form)
+            if computed is None:
+                computed = quant.resolve_quant_fact(k, form)
             facts[k] = computed if computed is not None else {"valore": e.get("formula"), "tipo": "formula"}
         elif tipo == "input":
             facts[k] = {"valore": form.get(e.get("campo_form")), "tipo": "input"}
         elif tipo == "benchmark":
-            # non bloccante: se non disponibile → confronto assente (D-handoff E)
-            facts[k] = {"valore": e.get("valore"), "tipo": "benchmark",
-                        "status": e.get("status")}
+            # non bloccante: se non disponibile → confronto assente (D-handoff E).
+            # multipli_ev: prova il quant (EV da multipli). PRESERVA fonte/as_of/descrizione
+            # dello snapshot (P0-8: D-046 — un benchmark senza fonte è un numero nudo).
+            qf = quant.resolve_quant_fact(k, form)
+            if qf is not None and qf.get("tipo") == "valore_calcolato":
+                facts[k] = qf
+            else:
+                facts[k] = {"valore": e.get("valore"), "tipo": "benchmark",
+                            "status": e.get("status"), "fonte": e.get("fonte"),
+                            "as_of": e.get("as_of"), "descrizione": e.get("descrizione")}
         else:
             facts[k] = {"valore": e, "tipo": tipo}
     return facts, citazioni
@@ -231,6 +240,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             deliverable, out_schema, inputs,
             blueprint.get("pacchetto", {}).get("nome_commerciale", service_id),
         )
+
+        # Binding strutturale (Fix #0 Fase 2): gli slot numerici di valutazione vengono
+        # SOVRASCRITTI col valore del quant deterministico (non ri-emessi dall'LLM).
+        # Chiude INV1/P0-1/P0-2; la provenance (call_id/as_of) finisce nel meta del job.
+        deliverable, quant_prov = quant.bind_quant_slots(skill, deliverable, facts)
+        if quant_prov:
+            filiera_meta = {**filiera_meta, "quant_binding": quant_prov}
 
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
