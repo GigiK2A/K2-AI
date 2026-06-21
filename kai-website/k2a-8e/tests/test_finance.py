@@ -220,5 +220,31 @@ check("meta.azienda personalizzata dagli input (non 'Cliente')",
 check("meta.data riflette l'esercizio 2024 (non '2026')", "2024" in str(fixed["meta"]["data"]))
 check("meta.periodo valorizzato (cover non più 'Periodo: —')", "2024" in str(fixed["meta"].get("periodo", "")))
 
+print("── Sezioni FinanceBoost 9-voci popolate DETERMINISTICAMENTE (riclass/margin/valut) ──")
+ric = finance.build_riclassificazione(r)
+check("riclassificazione ha anni [2024]", ric.get("anni") == [2024])
+check("riclass SP contiene Patrimonio netto 176.127",
+      any(row["voce"].lower().startswith("patrimonio") and approx(row["valori"][0], 176127.44) for row in ric["stato_patrimoniale"]))
+check("riclass CE contiene EBITDA 121.861",
+      any("ebitda" in row["voce"].lower() and approx(row["valori"][0], 121861.50) for row in ric["conto_economico"]))
+
+mar = finance.build_marginalita(r)
+check("marginalita: stima_da_aggregati=True (BEP non derivabile dagli aggregati)", mar.get("stima_da_aggregati") is True)
+check("marginalita: BEP onesto = None (non inventato)", mar.get("bep_valore") is None)
+
+val = finance.build_valutazione(r, 7.0)
+check("valutazione: WACC bindato 7.0", approx(val.get("wacc"), 7.0))
+check("valutazione: ROI scomposto margine_operativo ≈ 13.85", approx(val["roi_scomposto"]["margine_operativo"], 13.85, tol=0.1))
+check("valutazione: EVA computata (NOPAT - CI*WACC)", isinstance(val.get("eva"), (int, float)))
+val_nw = finance.build_valutazione(r, None)
+check("valutazione: senza WACC → eva None (non inventata)", val_nw.get("eva") is None)
+
+print("── apply_financeboost_sections: sovrascrive le 3 sezioni nel deliverable ──")
+deliv = {"riclassificazione": {"x": 1}, "marginalita": {"bep_valore": 999999}, "valutazione_performance": {"wacc": 99}}
+deliv2 = finance.apply_financeboost_sections(deliv, r, 7.0)
+check("riclassificazione sovrascritta (deterministica)", "stato_patrimoniale" in deliv2["riclassificazione"])
+check("marginalita sovrascritta (BEP non più 999999)", deliv2["marginalita"].get("bep_valore") is None)
+check("valutazione sovrascritta (wacc 7.0 non 99)", approx(deliv2["valutazione_performance"]["wacc"], 7.0))
+
 print("\nTEST FINANCE " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)

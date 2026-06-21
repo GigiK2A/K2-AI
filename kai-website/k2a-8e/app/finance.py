@@ -419,6 +419,81 @@ def build_indici(reclass: dict) -> list[dict]:
     return out
 
 
+# ─── Sezioni FinanceBoost data-payload 9-voci (riclassificazione/marginalità/valutazione) ───
+# Popolano DETERMINISTICAMENTE le 3 sezioni aggiunte dal contratto data-payload (vendor-sync
+# §A), così non le scrive l'LLM. Riclassificazione = i nostri SP/CE; valutazione = ROI/EVA da
+# bilancio + WACC dal quant; marginalità = onesta (BEP/leva non derivabili dagli aggregati).
+_TAX_PROXY = 0.279  # aliquota effettiva (country snapshot italy) per il NOPAT — proxy documentato
+
+
+def build_riclassificazione(reclass: dict) -> dict:
+    sp, ce = reclass.get("sp", {}), reclass.get("ce", {})
+    anno = reclass.get("anno")
+    anni = [anno] if anno is not None else []
+
+    def _rows(spec):
+        return [{"voce": n, "valori": [v]} for n, v in spec if v is not None]
+
+    sp_rows = _rows([
+        ("Immobilizzazioni nette", sp.get("immobilizzazioni_nette")),
+        ("Liquidità", sp.get("liquidita")),
+        ("Attivo corrente", sp.get("attivo_corrente")),
+        ("Totale attivo (netto)", sp.get("totale_attivo")),
+        ("Patrimonio netto", sp.get("patrimonio_netto")),
+        ("Debiti finanziari", sp.get("debiti_finanziari")),
+        ("Debiti v/terzi", sp.get("debiti_terzi")),
+        ("Passivo corrente", sp.get("passivo_corrente")),
+    ])
+    ce_rows = _rows([
+        ("Ricavi", ce.get("ricavi")),
+        ("EBITDA", ce.get("ebitda")),
+        ("EBIT", ce.get("ebit")),
+        ("Utile netto", ce.get("utile_netto")),
+    ])
+    return {"anni": anni, "stato_patrimoniale": sp_rows, "conto_economico": ce_rows}
+
+
+def build_marginalita(reclass: dict) -> dict:
+    """BEP / leva operativa richiedono la divisione costi fissi/variabili (contabilità
+    analitica), NON derivabile dagli aggregati di bilancio → onestamente null + flag."""
+    return {
+        "margine_contribuzione": None, "costi_fissi": None, "costi_variabili": None,
+        "bep_valore": None, "bep_quantita": None, "leva_operativa": None, "margine_sicurezza": None,
+        "stima_da_aggregati": True,
+    }
+
+
+def build_valutazione(reclass: dict, wacc_pct: Optional[float]) -> dict:
+    """ROI scomposto (Du Pont) ed EVA deterministici dal bilancio + WACC (dal quant).
+    EVA solo se il WACC è disponibile (mai inventato)."""
+    ce, sp = reclass.get("ce", {}), reclass.get("sp", {})
+    ebit, ricavi, ta = ce.get("ebit"), ce.get("ricavi"), sp.get("totale_attivo")
+    margine_operativo = _p(_div(ebit, ricavi)) if (ebit is not None and ricavi) else None
+    rotazione_ci = _r(_div(ricavi, ta)) if (ricavi is not None and ta) else None
+    eva = None
+    if wacc_pct is not None and ebit is not None and ta is not None:
+        nopat = ebit * (1 - _TAX_PROXY)
+        eva = round(nopat - ta * (wacc_pct / 100.0), 2)
+    return {
+        "wacc": round(wacc_pct, 2) if wacc_pct is not None else None,
+        "eva": eva,
+        "roi_scomposto": {"margine_operativo": margine_operativo, "rotazione_ci": rotazione_ci},
+        "bsc": [],
+    }
+
+
+def apply_financeboost_sections(deliverable: dict, reclass: dict, wacc_pct: Optional[float] = None) -> dict:
+    """Sovrascrive le 3 sezioni data-payload del deliverable FinanceBoost con i valori
+    deterministici (riclassificazione/marginalità/valutazione). Le altre sezioni restano."""
+    if not isinstance(deliverable, dict) or not reclass:
+        return deliverable
+    out = dict(deliverable)
+    out["riclassificazione"] = build_riclassificazione(reclass)
+    out["marginalita"] = build_marginalita(reclass)
+    out["valutazione_performance"] = build_valutazione(reclass, wacc_pct)
+    return out
+
+
 def latest_reclass_from_inputs(inputs: dict) -> Optional[dict]:
     """Trova nel form il bilancio più recente CON voci grezze e lo riclassifica.
     None se non ci sono voci (→ la pipeline lascia il path standard)."""

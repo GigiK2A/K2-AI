@@ -11,7 +11,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, calc, grounding, jobs, llm, quality, quant, validate
+from . import assets, calc, finance, grounding, jobs, llm, quality, quant, validate
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -247,6 +247,17 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         deliverable, quant_prov = quant.bind_quant_slots(skill, deliverable, facts)
         if quant_prov:
             filiera_meta = {**filiera_meta, "quant_binding": quant_prov}
+
+        # FinanceBoost: le 3 sezioni data-payload (riclassificazione/marginalità/
+        # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate
+        # (finance.py) + WACC dal quant — non scritte dall'LLM (chiude P0-2/P0-6).
+        if skill == "flusso-financeboost-pmi":
+            fb_reclass = finance.latest_reclass_from_inputs(inputs)
+            if fb_reclass:
+                w = quant.resolve_quant_fact("wacc", inputs)
+                wacc_pct = w.get("valore") if (isinstance(w, dict) and w.get("tipo") == "valore_calcolato") else None
+                deliverable = finance.apply_financeboost_sections(deliverable, fb_reclass, wacc_pct)
+                filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True}
 
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo

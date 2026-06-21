@@ -1,6 +1,6 @@
 ---
 name: flusso-financeboost-pmi
-description: Orchestratore FinanceBoost — diagnosi finanziaria completa e controllo di gestione per PMI italiane (5-50 dipendenti), con riclassificazione bilancio, analisi indici, marginalita, proiezioni e piano d'azione. Usa SEMPRE questa skill quando l'utente dice "diagnosi finanziaria", "FinanceBoost", "analisi finanziaria PMI", "controllo di gestione", "come sta la mia azienda", "margini", "bilancio", "budget", "KPI aziendali", "cruscotto direzionale", "non so se guadagno", "cash flow", "liquidita", "quanto vale la mia azienda", "indici di bilancio", oppure quando fornisce dati di bilancio o chiede una valutazione economico-finanziaria di una PMI italiana. Attivala anche per analisi BEP, leva operativa, Du Pont, EVA, benchmark settore, budget previsionale. Produce report DOCX executive, cruscotto XLSX con formule, dashboard HTML e output JSON strutturato.
+description: Orchestratore FinanceBoost — diagnosi finanziaria completa e controllo di gestione per PMI italiane (5-50 dipendenti), con riclassificazione bilancio, analisi indici, marginalita, proiezioni e piano d'azione. Usa SEMPRE questa skill quando l'utente dice "diagnosi finanziaria", "FinanceBoost", "analisi finanziaria PMI", "controllo di gestione", "come sta la mia azienda", "margini", "bilancio", "budget", "KPI aziendali", "cruscotto direzionale", "non so se guadagno", "cash flow", "liquidita", "quanto vale la mia azienda", "indici di bilancio", oppure quando fornisce dati di bilancio o chiede una valutazione economico-finanziaria di una PMI italiana. Attivala anche per analisi BEP, leva operativa, Du Pont, EVA, benchmark settore, budget previsionale. Emette il payload-dati strutturato (schemas/output-schema.json) da cui il renderer costruisce report DOCX executive, cruscotto XLSX con formule, dashboard HTML e output JSON.
 ---
 
 # flusso-financeboost-pmi — Orchestratore FinanceBoost
@@ -8,6 +8,8 @@ description: Orchestratore FinanceBoost — diagnosi finanziaria completa e cont
 ## 1. Cosa fa questa skill (e perche esiste)
 
 Questa skill e il **motore del prodotto FinanceBoost** della piattaforma consulenziale per PMI italiane (5-50 dipendenti). Orchestra un workflow end-to-end che trasforma i dati di bilancio degli ultimi 2-3 anni in un pacchetto completo di diagnosi finanziaria: report executive DOCX (15-20 pagine), cruscotto XLSX con formule vive, dashboard HTML interattiva e output JSON strutturato per integrazione software.
+
+> **PARADIGMA — DATA-PAYLOAD (non autoria documento).** La skill **non scrive il documento**. Calcola la diagnosi ed **emette SOLO il payload-dati conforme a `schemas/output-schema.json`** (uno slot per ciascuna delle 9 voci del blueprint). La struttura del deliverable — copertina, header, sezioni numerate, TOC, card, prosa di sintesi — la costruisce il **renderer** a partire dal payload. L'agente non inventa struttura ne' titoli: riempie gli slot. Questo elimina la struttura libera, l'executive summary duplicato e i mismatch copertina/indici. Vedi Step 7.
 
 Il target e il titolare di una PMI italiana che non ha un controller interno e "naviga a vista". La skill deve comportarsi come **il CFO che il titolare non ha**: severo sui numeri, chiaro nelle spiegazioni, sempre con benchmark di settore per contestualizzare ogni indicatore. Mai un numero senza contesto: "il tuo ROE e 8% — nella tua industria la media e 12%, il top quartile e 18%".
 
@@ -44,7 +46,7 @@ Prima di partire, **raccogli in modo conversazionale** queste informazioni. Non 
 
 Se il cliente non ha il bilancio sotto mano, guidalo: "Chieda al commercialista il bilancio depositato in Camera di Commercio degli ultimi 2-3 anni in PDF. Se non riesce, mi dica almeno: fatturato, costi del personale, utile netto, totale attivo, debiti finanziari, patrimonio netto."
 
-## 4. Workflow — i 7 step dell'orchestratore
+## 4. Workflow — gli 8 step dell'orchestratore
 
 Esegui questi step **in ordine**. Ogni step produce un artefatto intermedio usato dallo step successivo. Non saltare step — se un dato manca, annotalo e procedi con ipotesi esplicite.
 
@@ -145,17 +147,31 @@ Azioni:
 
 Invoca `corporate-finance` per DCF, valutazione investimenti, struttura capitale. Invoca `casi-numerici-bocconi` per costruire i modelli numerici. In modalita piattaforma: `genera_budget(parametri)`.
 
-### Step 7 — Consolidamento deliverable
+### Step 7 — Emissione del payload-dati (NON autorare il documento)
 
-Obiettivo: produrre i 4 deliverable finali.
+Obiettivo: emettere **un solo artefatto**: il **payload-dati** conforme a `schemas/output-schema.json`. Il documento (DOCX/XLSX/HTML) lo costruisce il **renderer** a partire da questo payload.
+
+**Emetti SOLO il payload conforme a `schemas/output-schema.json`. Il documento è costruito dal renderer. NON autorare struttura, header, sezioni numerate, copertina, TOC, prosa di sintesi: solo i dati degli slot.**
+
+Regole di emissione:
+- **Uno slot per voce (copertura 1:1).** Popola tutti gli slot top-level: `meta`, `executive_summary`, `riclassificazione`, `indici`, `marginalita`, `valutazione_performance`, `scenari`, `piano_azione`, `limitazioni`. Nessuno slot vuoto se il dato è calcolabile; se un dato manca, valorizza a `null` e dichiaralo in `limitazioni`.
+- **`meta`**: compila `cliente`, `periodo` (oltre a `azienda`, `servizio`, `versione`, `data`). Sono questi i campi della copertina — non lasciarli al renderer come placeholder.
+- **`indici[]`**: ogni indice ha `valore` (numero/stringa), `benchmark`, `semaforo`. Il `valore` è **obbligatorio** — niente card senza numero.
+- **Nessuna prosa libera, nessun titolo di sezione, nessuna numerazione**: quelli sono responsabilità del renderer. La prosa breve consentita vive solo dentro i campi-stringa degli slot (es. `trend`, `impatto_stimato`, `limitazioni`).
+- **Niente prezzi hard-coded**: i prezzi si risolvono dal catalogo a runtime.
+
+In modalita piattaforma: `save_to_tenant_storage(payload)` e `update_job_progress(100)`. Il rendering di DOCX/XLSX/dashboard è a valle, lato renderer (vedi nota "Confine renderer" in §8).
+
+### Step 8 — Gate di conformità prima della consegna
+
+Obiettivo: non consegnare un payload che viola il contratto. Esegui il gate **prima** di restituire l'output.
 
 Azioni:
-- **Report DOCX** (15-20 pagine): struttura completa secondo `assets/template-report-finanziario.md`. Invoca `docx` per la generazione.
-- **Cruscotto XLSX**: con 5 tab, formule vive, grafici, semafori condizionali. Struttura secondo `assets/template-cruscotto-xlsx.md`. Invoca `xlsx` per la generazione.
-- **Dashboard HTML**: self-contained con Chart.js, 5 KPI card con semaforo, radar chart, trend chart. Struttura secondo `assets/template-dashboard-html.md`.
-- **Output JSON**: schema secondo `schemas/output-schema.json`. Include tutti i dati calcolati, benchmark, proiezioni, piano d'azione.
+- **Livello 1 — blueprint ben formato**: `validate_blueprint("flusso-financeboost-pmi.boost.blueprint.json")` (MCP `k2a-deliverable`) → deve dare `PASS` (incluso il check coverage 1:1 voce→slot, R13).
+- **Livello 2 — payload conforme**: valida il payload contro `schemas/output-schema.json` (R11) e, se è stato comunque prodotto un DOCX, `lint_deliverable`/`lint_file` contro il blueprint → l'esito deve essere `PASS` (0 errori). In `validazione_strict` il gate rigetta voci mancanti, **voci extra o duplicate** (es. executive summary doppio, R14) e slot scoperti.
+- Se il gate è `FAIL`: correggi il payload (slot mancanti/extra, `valore` indici, `cliente`/`periodo`) e ripeti. Non consegnare con errori aperti.
 
-In modalita piattaforma: `save_to_tenant_storage(files)` e `update_job_progress(100)`.
+Se i tool MCP non sono disponibili (modalità consulenziale degradata): esegui il gate "a mano" verificando che il JSON validi contro `schemas/output-schema.json`, che tutti e 9 gli slot siano presenti e che non ci siano sezioni inventate fuori schema.
 
 ## 5. Sotto-skill invocate
 
@@ -170,8 +186,19 @@ Questa skill orchestra le seguenti sotto-skill Bocconi e strumentali:
 | `corporate-finance` | Step 5, 6 | DCF, WACC, valutazione investimenti, struttura capitale |
 | `benchmark-italia-business` | Step 3 | KPI settore italiani per confronto |
 | `casi-numerici-bocconi` | Step 4, 6 | Esempi numerici, modelli di calcolo |
-| `xlsx` | Step 7 | Generazione cruscotto Excel |
-| `docx` | Step 7 | Generazione report Word |
+| `xlsx` | — (renderer) | Il cruscotto Excel lo costruisce il renderer dal payload; la skill NON lo autora |
+| `docx` | — (renderer) | Il report Word lo costruisce il renderer dal payload; la skill NON lo autora |
+
+### Bridge verso ecosistemi teorici (MIT/Yale)
+
+Per fondamenti teorici profondi, delega all'orchestratore corrispondente — non duplicare contenuti.
+
+| Orchestratore teorico | Quando invocarlo |
+|---|---|
+| `ft-orchestrator` | **Solo per casi che lo richiedono**: cost of equity rigoroso quando si valuta M&A o investimento >500k EUR (`ft-capm-apt`), NPV/IRR teorici per capex significativi (`ft-present-value`), opzioni reali per decisioni con opzionalità (`ft-options`). Non per analisi di bilancio ordinaria — duration/convexity e portfolio theory sono fuori scala per PMI tipica |
+| `math-orchestrator` | Probabilità per scenari forecast (distribuzioni, intervalli di confidenza), ottimizzazione mix prodotti/produzione (`math-ottimizzazione`), statistica inferenziale su dati storici aziendali, regressione per forecasting fatturato. Processi stocastici solo se la PMI ha serie storiche granulari multi-anno |
+| `psy-decisioni` | Riconoscere bias del titolare (overconfidence sui forecast, sunk cost, ancoraggio sul bilancio storico), strutturare il piano d'azione con architettura della scelta efficace |
+| `ai-fpa-controllo` (#15) | Quando il cliente vuole il **layer AI** sul controllo di gestione/FP&A (commento varianza automatico, anomaly detection, rolling/continuous forecast): FinanceBoost fa la diagnosi, #15 porta l'architettura **AI-FP&A deterministica** (l'AI orchestra/narra, i numeri restano dai motori — ADR-028). Non duplicare: il layer AI è di #15 |
 
 ## 6. Tono e stile comunicativo
 
@@ -194,10 +221,15 @@ Sei il CFO che il titolare non ha mai avuto. Questo significa:
 
 ## 8. Riferimenti interni
 
-- `references/framework-analisi-pmi.md` — Framework diagnostico con formule, soglie, interpretazioni
-- `references/benchmark-finanziari-settore.md` — Benchmark Italia per 8 macro-settori
-- `references/piattaforma-integration.md` — Tool custom e integrazione piattaforma
-- `assets/template-report-finanziario.md` — Struttura del report DOCX
-- `assets/template-cruscotto-xlsx.md` — Struttura del cruscotto XLSX
-- `assets/template-dashboard-html.md` — Struttura della dashboard HTML
-- `schemas/output-schema.json` — JSON Schema dell'output strutturato
+**Contratti e grounding (presenti, usati):**
+- `schemas/output-schema.json` — **contratto-dati**: l'unico artefatto che la skill emette (paradigma data-payload). Uno slot per ciascuna delle 9 voci del blueprint.
+- `schemas/form.json` — schema dell'input PMI.
+- `references/grounding-finanziario.md` — quali campi sono `calcolo` (formula su input), quali `benchmark` (dataset con fonte), quali `input`. I numeri non si inventano.
+
+**Materiale-fonte DATI (non template di autoria; da creare separatamente, NON in questo task — oggi assenti):**
+- `references/framework-analisi-pmi.md` — *(pianificato)* soglie e interpretazioni degli indici. Finché assente: usa le formule in `grounding-finanziario.md` e la sotto-skill `bilancio-consolidato-analisi`.
+- `references/benchmark-finanziari-settore.md` — *(pianificato)* valori benchmark Italia per macro-settore. Finché assente: usa la sotto-skill `benchmark-italia-business`.
+
+> **NB — niente template di autoria.** I vecchi `assets/template-report-finanziario.md` / `template-cruscotto-xlsx.md` / `template-dashboard-html.md` **non esistono e non servono più**: nel paradigma data-payload la struttura del documento è di competenza del renderer, non della skill. Non cercare né creare file-template di struttura.
+
+> **Confine renderer (lato Luigi).** A valle del payload, il renderer costruisce DOCX/XLSX/dashboard/PDF. Restano a suo carico: **(1)** una sola materializzazione dell'`executive_summary` (niente hero + capitolo duplicato); **(2)** la copertina legge `meta.cliente` + `meta.periodo`; **(3)** la card indice bynda `indici[].valore`; **(4)** la TOC è costruita dall'insieme completo delle 9 voci; **(5)** rendering delle 3 nuove sezioni (`riclassificazione`, `marginalita`, `valutazione_performance`). La skill garantisce solo che il payload contenga i dati per tutto questo.
