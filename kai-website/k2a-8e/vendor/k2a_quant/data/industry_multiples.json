@@ -1,0 +1,591 @@
+{
+  "_source": "Damodaran NYU Stern, Western Europe — Date updated 2026-01-05 (annual update gennaio 2026). Tutti i 24 settori (20 esistenti rifondati + 4 nuovi) su QUESTA UNICA BASE. URL: betaEurope.xls / vebitdaEurope.xls / psEurope.xls / peEurope.xls.",
+  "_metodo": {
+    "beta_unlevered": "Damodaran 'Unlevered beta' (NON 'corrected for cash').",
+    "ev_ebitda": "Damodaran 'EV/EBITDA' aggregato (blocco aggregate, non 'without negatives').",
+    "ev_sales": "Damodaran 'EV/Sales'.",
+    "pe": "Damodaran 'Aggregate Mkt Cap/Trailing Net Income (only money-making firms)'.",
+    "g_range_pct": "ELABORAZIONE K2A (default [0.5, 2.0]), NON Damodaran. Preservato sui 20 esistenti, default sui 4 nuovi.",
+    "banda_cagr_fcf_pct": "ELABORAZIONE K2A (default 8.0), NON Damodaran. Preservato sui 20 esistenti, default sui 4 nuovi.",
+    "ambiguita_dichiarate": "Per i sector con più candidati Damodaran (restaurant_hotel, construction, energy_oil_gas, logistics_trucking, chemical, metals_steel, software_system/application) la scelta è in _scelta_nota; le alternative coi valori in _alternative_dam.",
+    "categorie_assenti": "retail_online: 'Retail (Online)' non esiste in W.Europe gen-2026 → 4 campi a null + _flag.",
+    "sentinelle_ateco": "ateco_to_sector usa 'non_coperto' (01-03 agricoltura/pesca) e 'non_applicabile' (84,97-99 PA/famiglie). Gestite in ev_multiples.py con messaggi onesti.",
+    "financials": "Sector finanziari (banking_regional, insurance_general) marcati is_financial=true. capm_cost_of_equity ritorna GUARD 'settore_finanziario_capm_non_applicabile' (no re-levering Hamada: depositi/passività tecniche come debito invalidano βU). beta_regression (beta levered di regressione W.Europe) disponibile nel sector per uso senza re-levering.",
+    "retail_general": "Switch da 'Retail (General)' (EV/EBITDA 23.6 distorto, pochi titoli grandi cap) a 'Retail (Distributors)' (più rappresentativo per retail generale). Valori 'Retail (General)' preservati in _alternative_dam.",
+    "construction_split": "construction ed engineering_construction usano ENTRAMBI 'Engineering/Construction' (Damodaran W.Europe non separa builders ATECO 41/43 da ingegneria ATECO 42/71). 'Construction Supplies' (materiali) e 'Building Materials' disponibili come alternative/candidati per un futuro sector 'building_materials' (ATECO 16, 23).",
+    "retail_online": "ALIAS funzionale → retail_general. Categoria 'Retail (Online)' non esiste in W.Europe gen-2026. Il lookup risolve la chiave."
+  },
+  "_metrics": [
+    "ev_ebitda",
+    "ev_sales",
+    "pe",
+    "beta_unlevered"
+  ],
+  "sectors": {
+    "software_system": {
+      "ev_ebitda": 20.9,
+      "ev_sales": 5.3,
+      "pe": 32.0,
+      "beta_unlevered": 0.91,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "W.Europe non separa System da Application (categoria unica); software_system e software_application condividono i valori. Decisione: stessa categoria per entrambi.",
+      "_dam_category": "Software (System & Application)"
+    },
+    "software_application": {
+      "ev_ebitda": 20.9,
+      "ev_sales": 5.3,
+      "pe": 32.0,
+      "beta_unlevered": 0.91,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Vedi software_system: W.Europe non separa System da Application.",
+      "_dam_category": "Software (System & Application)"
+    },
+    "retail_general": {
+      "ev_ebitda": 11.6,
+      "ev_sales": 1.3,
+      "pe": 14.9,
+      "beta_unlevered": 0.62,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_alternative_dam": {
+        "Retail (Distributors)": [
+          0.62,
+          11.6,
+          1.3,
+          14.9
+        ],
+        "Retail (Special Lines)": [
+          1.01,
+          14.1,
+          1.5,
+          24.9
+        ],
+        "Retail (Grocery and Food)": [
+          0.7,
+          9.7,
+          0.5,
+          18.7
+        ],
+        "Retail (Building Supply)": [
+          0.82,
+          9.3,
+          0.7,
+          19.5
+        ],
+        "Retail (Automotive)": [
+          0.81,
+          12.4,
+          0.5,
+          23.7
+        ],
+        "Retail (General)": [
+          0.79,
+          23.6,
+          1.5,
+          12.1
+        ]
+      },
+      "_dam_category": "Retail (Distributors)"
+    },
+    "retail_online": {
+      "_alias_a": "retail_general",
+      "_dam_category": "Retail (Distributors) — via alias retail_general",
+      "_note": "E-commerce valutato come retail generale: Damodaran W.Europe gen-2026 NON ha categoria 'Retail (Online)' dedicata. Il lookup (ev_from_multiples / capm_cost_of_equity) risolve retail_online → retail_general."
+    },
+    "food_processing": {
+      "ev_ebitda": 12.4,
+      "ev_sales": 1.6,
+      "pe": 19.5,
+      "beta_unlevered": 0.37,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Food Processing"
+    },
+    "restaurant_hotel": {
+      "ev_ebitda": 12.1,
+      "ev_sales": 0.9,
+      "pe": 19.8,
+      "beta_unlevered": 0.55,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Scelta dichiarata: Restaurant/Dining (più rappresentativo per PMI italiane ristorazione). W.Europe separa Hotel/Gaming.",
+      "_alternative_dam": {
+        "Hotel/Gaming": [
+          0.71,
+          10.9,
+          2.1,
+          15.0
+        ]
+      },
+      "_dam_category": "Restaurant/Dining"
+    },
+    "construction": {
+      "ev_ebitda": 9.7,
+      "ev_sales": 0.9,
+      "pe": 14.9,
+      "beta_unlevered": 0.68,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Scelta dichiarata: Construction Supplies. W.Europe non ha 'Construction' generica; sono distinte Construction Supplies, Engineering/Construction, Homebuilding, Building Materials.",
+      "_alternative_dam": {
+        "Homebuilding": [
+          1.25,
+          10.6,
+          1.1,
+          18.9
+        ],
+        "Engineering/Construction": [
+          0.68,
+          9.7,
+          0.9,
+          14.9
+        ],
+        "Building Materials": [
+          0.91,
+          14.3,
+          2.3,
+          23.1
+        ],
+        "Construction Supplies": [
+          0.8,
+          11.0,
+          1.5,
+          11.9
+        ]
+      },
+      "_dam_category": "Engineering/Construction",
+      "_note": "Condivide categoria con engineering_construction (Damodaran W.Europe non separa builders/ATECO 41/43 da ingegneria civile/ATECO 42/71). Stessi 4 valori per i due sector.",
+      "_todo": "ATECO 16 (legno), 23 (minerali non metalliferi) sono MATERIALI: candidati a un futuro sector 'building_materials' (categoria Damodaran 'Building Materials' βU 0.91, EV/EBITDA 14.3, EV/S 2.3, PE 23.1). NON implementato in questo commit."
+    },
+    "engineering_construction": {
+      "ev_ebitda": 9.7,
+      "ev_sales": 0.9,
+      "pe": 14.9,
+      "beta_unlevered": 0.68,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Engineering/Construction"
+    },
+    "machinery": {
+      "ev_ebitda": 15.0,
+      "ev_sales": 2.3,
+      "pe": 25.8,
+      "beta_unlevered": 1.03,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Machinery",
+      "_review_note": "Verifica OK: categoria 'Machinery' Damodaran W.Europe conferma βU 1.029 (≈1.03 nel file), EV/EBITDA 15.0, EV/Sales 2.3, PE 25.8. Salto multipli rispetto a vintage precedente (11.2→15.0) dovuto a re-rating Damodaran annual update, NON a errore di categoria."
+    },
+    "auto_parts": {
+      "ev_ebitda": 5.8,
+      "ev_sales": 0.5,
+      "pe": 19.4,
+      "beta_unlevered": 0.68,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Auto Parts",
+      "_review_note": "Verifica OK: 'Auto Parts' βU 0.68 EV/EBITDA 5.8 EV/S 0.5 PE 19.4. Riga giusta. PE 11.2→19.4 = re-rating Damodaran (n. firms ampio, segnale di mercato)."
+    },
+    "banking_regional": {
+      "ev_ebitda": null,
+      "ev_sales": 11.6,
+      "pe": 12.3,
+      "beta_unlevered": 0.13,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Damodaran non riporta EV/EBITDA per le banche (bilancio bancario): null intenzionale.",
+      "_dam_category": "Banks (Regional)",
+      "beta_regression": 0.39,
+      "is_financial": true,
+      "_warning_financial": "Finanziario — beta_unlevered NON valido per CAPM (depositi come debito → denominatore D/E enorme rende βU spurio: 0.13). Usare beta_regression (0.39 = beta levered di regressione W.Europe) SENZA re-levering. Trattamento CAPM dedicato richiesto (non re-leverare). NOTA: capm_cost_of_equity NON è stato modificato in questo commit — decisione a valle (Luca)."
+    },
+    "insurance_general": {
+      "ev_ebitda": 8.1,
+      "ev_sales": 1.4,
+      "pe": 14.5,
+      "beta_unlevered": 0.63,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Insurance (General)",
+      "beta_regression": 0.77,
+      "is_financial": true,
+      "_warning_financial": "Finanziario — beta_unlevered di norma poco affidabile per CAPM (passività tecniche/depositi come 'debito' nel rapporto D/E). Usare beta_regression (0.77 = beta levered di regressione 'Insurance (General)' W.Europe) senza re-levering. NOTA: capm_cost_of_equity NON modificato qui — decisione Luca."
+    },
+    "real_estate_general": {
+      "ev_ebitda": 24.1,
+      "ev_sales": 8.1,
+      "pe": 9.5,
+      "beta_unlevered": 0.34,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Real Estate (General/Diversified)",
+      "_review_note": "Verifica OK: 'Real Estate (General/Diversified)' βU 0.34 EV/EBITDA 24.1 EV/S 8.1 PE 9.5. EV/EBITDA alto + PE basso è coerente per Real Estate europeo (ammortamenti elevati comprimono EBITDA→EBIT→NI in modo diverso). Riga giusta."
+    },
+    "telecom_services": {
+      "ev_ebitda": 7.2,
+      "ev_sales": 2.3,
+      "pe": 14.6,
+      "beta_unlevered": 0.43,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Telecom. Services"
+    },
+    "utilities_general": {
+      "ev_ebitda": 7.6,
+      "ev_sales": 1.3,
+      "pe": 14.0,
+      "beta_unlevered": 0.38,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Utility (General)"
+    },
+    "healthcare_products": {
+      "ev_ebitda": 17.0,
+      "ev_sales": 3.5,
+      "pe": 33.2,
+      "beta_unlevered": 1.1,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Healthcare Products"
+    },
+    "biotech": {
+      "ev_ebitda": 16.2,
+      "ev_sales": 6.5,
+      "pe": 20.7,
+      "beta_unlevered": 1.07,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Drugs (Biotechnology)"
+    },
+    "energy_oil_gas": {
+      "ev_ebitda": 5.9,
+      "ev_sales": 1.7,
+      "pe": 15.2,
+      "beta_unlevered": 0.38,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Scelta dichiarata: Oil/Gas (Integrated) (più rappresentativo).",
+      "_alternative_dam": {
+        "Oil/Gas (Production and Exploration)": [
+          0.58,
+          2.7,
+          1.8,
+          13.4
+        ],
+        "Oil/Gas Distribution": [
+          0.44,
+          9.5,
+          2.9,
+          11.7
+        ]
+      },
+      "_dam_category": "Oil/Gas (Integrated)"
+    },
+    "renewable_energy": {
+      "ev_ebitda": 11.9,
+      "ev_sales": 3.6,
+      "pe": 12.7,
+      "beta_unlevered": 0.44,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Green & Renewable Energy",
+      "_review_note": "Verifica OK: 'Green & Renewable Energy' βU 0.44 EV/EBITDA 11.9 EV/S 3.6 PE 12.7. PE 22.4→12.7 = drop reale di mercato (gennaio 2026 vs vintage precedente), non errore di riga."
+    },
+    "logistics_trucking": {
+      "ev_ebitda": 9.1,
+      "ev_sales": 0.6,
+      "pe": 15.1,
+      "beta_unlevered": 0.61,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Scelta dichiarata: Trucking. W.Europe NON ha categoria 'Logistics' separata (esiste in US/Global, non Europe).",
+      "_alternative_dam": {
+        "Transportation": [
+          0.49,
+          12.6,
+          1.3,
+          19.6
+        ]
+      },
+      "_dam_category": "Trucking"
+    },
+    "business_services": {
+      "ev_ebitda": 12.8,
+      "ev_sales": 1.5,
+      "pe": 22.4,
+      "beta_unlevered": 0.68,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_dam_category": "Business & Consumer Services"
+    },
+    "apparel_textile": {
+      "ev_ebitda": 15.2,
+      "ev_sales": 3.4,
+      "pe": 30.6,
+      "beta_unlevered": 0.74,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Multipli W.Europe Apparel gonfiati dal lusso (LVMH/Hermès/Moncler); per PMI tessili italiane usare il beta, multipli con cautela.",
+      "_dam_category": "Apparel"
+    },
+    "chemical": {
+      "ev_ebitda": 12.8,
+      "ev_sales": 2.3,
+      "pe": 21.4,
+      "beta_unlevered": 0.97,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Scelta dichiarata: Chemical (Specialty) (più rappresentativo per PMI chimiche italiane: intermediari/specialty).",
+      "_alternative_dam": {
+        "Chemical (Basic)": [
+          0.46,
+          10.7,
+          1.5,
+          15.9
+        ],
+        "Chemical (Diversified)": [
+          1.0,
+          9.3,
+          0.9,
+          69.8
+        ]
+      },
+      "_dam_category": "Chemical (Specialty)"
+    },
+    "metals_steel": {
+      "ev_ebitda": 8.3,
+      "ev_sales": 0.5,
+      "pe": 15.8,
+      "beta_unlevered": 0.69,
+      "g_range_pct": [
+        0.5,
+        2.0
+      ],
+      "banda_cagr_fcf_pct": 8.0,
+      "_scelta_nota": "Steel (acciaio/trasformazione). Se include estrazione mineraria preferire Metals & Mining.",
+      "_alternative_dam": {
+        "Metals & Mining": [
+          0.91,
+          8.8,
+          1.1,
+          16.1
+        ]
+      },
+      "_dam_category": "Steel"
+    }
+  },
+  "country_data": {
+    "italy": {
+      "rf_10y": 0.0295,
+      "erp": 0.0669,
+      "tax_rate": 0.279,
+      "rf_as_of": "2026-06-15",
+      "rf_source": "German Bund 10Y — Euro risk-free",
+      "erp_as_of": "2026-01-05",
+      "erp_source": "Damodaran country ERP (rating Baa2): mature 4.23% + CRP 2.46%",
+      "_metodo": "rf = Bund (risk-free euro); erp = Damodaran Italia total, include il country risk premium. Non usare il BTP come rf: conterebbe il rischio-Italia due volte."
+    },
+    "germany": {
+      "rf_10y": 0.025,
+      "erp": 0.05,
+      "tax_rate": 0.2982
+    },
+    "france": {
+      "rf_10y": 0.031,
+      "erp": 0.056,
+      "tax_rate": 0.258
+    },
+    "spain": {
+      "rf_10y": 0.0345,
+      "erp": 0.064,
+      "tax_rate": 0.25
+    },
+    "us": {
+      "rf_10y": 0.043,
+      "erp": 0.048,
+      "tax_rate": 0.21
+    }
+  },
+  "as_of": "2026-06-15",
+  "size_premium": [
+    [
+      "ricavi_0_1M",
+      1000000,
+      0.025
+    ],
+    [
+      "ricavi_1_10M",
+      10000000,
+      0.014
+    ],
+    [
+      "ricavi_10_50M",
+      50000000,
+      0.008
+    ],
+    [
+      "ricavi_oltre_50M",
+      null,
+      0.005
+    ]
+  ],
+  "ateco_to_sector": {
+    "_nota": "Mappa completa ATECO 2 cifre → settore (sostituisce la bozza precedente). Speciali: non_coperto / non_applicabile gestiti dalle sentinelle in ev_multiples.py.",
+    "05": "energy_oil_gas",
+    "06": "energy_oil_gas",
+    "09": "energy_oil_gas",
+    "19": "energy_oil_gas",
+    "10": "food_processing",
+    "11": "food_processing",
+    "12": "food_processing",
+    "25": "machinery",
+    "26": "machinery",
+    "27": "machinery",
+    "28": "machinery",
+    "31": "machinery",
+    "32": "machinery",
+    "33": "machinery",
+    "29": "auto_parts",
+    "30": "auto_parts",
+    "45": "auto_parts",
+    "35": "utilities_general",
+    "36": "utilities_general",
+    "37": "utilities_general",
+    "38": "utilities_general",
+    "39": "utilities_general",
+    "16": "construction",
+    "23": "construction",
+    "41": "construction",
+    "43": "construction",
+    "42": "engineering_construction",
+    "71": "engineering_construction",
+    "46": "retail_general",
+    "47": "retail_general",
+    "49": "logistics_trucking",
+    "50": "logistics_trucking",
+    "51": "logistics_trucking",
+    "52": "logistics_trucking",
+    "53": "logistics_trucking",
+    "55": "restaurant_hotel",
+    "56": "restaurant_hotel",
+    "58": "telecom_services",
+    "59": "telecom_services",
+    "60": "telecom_services",
+    "61": "telecom_services",
+    "62": "software_application",
+    "63": "software_system",
+    "64": "banking_regional",
+    "66": "banking_regional",
+    "65": "insurance_general",
+    "68": "real_estate_general",
+    "72": "biotech",
+    "21": "healthcare_products",
+    "86": "healthcare_products",
+    "87": "healthcare_products",
+    "88": "healthcare_products",
+    "18": "business_services",
+    "69": "business_services",
+    "70": "business_services",
+    "73": "business_services",
+    "74": "business_services",
+    "75": "business_services",
+    "77": "business_services",
+    "78": "business_services",
+    "79": "business_services",
+    "80": "business_services",
+    "81": "business_services",
+    "82": "business_services",
+    "85": "business_services",
+    "90": "business_services",
+    "91": "business_services",
+    "92": "business_services",
+    "93": "business_services",
+    "94": "business_services",
+    "95": "business_services",
+    "96": "business_services",
+    "13": "apparel_textile",
+    "14": "apparel_textile",
+    "15": "apparel_textile",
+    "17": "chemical",
+    "20": "chemical",
+    "22": "chemical",
+    "07": "metals_steel",
+    "08": "metals_steel",
+    "24": "metals_steel",
+    "01": "non_coperto",
+    "02": "non_coperto",
+    "03": "non_coperto",
+    "84": "non_applicabile",
+    "97": "non_applicabile",
+    "98": "non_applicabile",
+    "99": "non_applicabile"
+  }
+}
