@@ -11,7 +11,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, calc, finance, grounding, jobs, llm, quality, quant, validate
+from . import assets, calc, finance, freshness, grounding, jobs, llm, quality, quant, validate
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -194,6 +194,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             raise Refuse("insufficient_or_inconsistent_input", "; ".join(input_errors[:12]))
 
         facts, citazioni = resolve(skill, inputs)
+
+        # Freshness-gate runtime (Fix #6-gate / P0-10): se il boost usa un fatto normativo
+        # HARD-stale (snapshot regredito a legge pre-riforma) → non consegnare legge superata.
+        stale = freshness.stale_findings(used_keys=set(facts.keys()))
+        if stale:
+            raise Refuse("snapshot_stale",
+                         "; ".join(f"{s['key']}: {s['motivo']} ({s.get('law')})" for s in stale[:5]))
 
         # PREVIEW (gate W8): compone SOLO l'assaggio, niente documento/file/leak.
         if auth_level == "PREVIEW":
