@@ -66,5 +66,20 @@ check("carico: nota addizionali locality non incluse", any("addizional" in n.low
 cpf = tax.carico_fiscale_stimato(forma_giuridica="ditta_individuale", imponibile_eur=40000, valore_produzione_irap_eur=50000)
 check("ditta individuale → usa IRPEF (10.400 + IRAP)", approx(cpf["dettaglio"][0]["imposta_eur"], 10400))
 
+print("── apply_fiscoboost: bind del carico nel deliverable (no LLM) ──")
+deliv = {"sintesi": {"score_fiscale": 60, "mappa_aree": [], "carico_fiscale_stimato": 999999}}
+form = {"forma_giuridica": "SRL", "regime_fiscale": "ordinario", "settore_ateco": "62", "utile_ante_imposte": 100000}
+out, meta = tax.apply_fiscoboost(deliv, form)
+check("carico_fiscale_stimato SOVRASCRITTO col deterministico (IRES 24.000, non 999999)",
+      approx(out["sintesi"]["carico_fiscale_stimato"], 24000))
+check("meta porta le aliquote verificate + provenance", bool(meta) and bool(meta.get("aliquote")) and bool(meta.get("as_of")))
+check("meta nota: IRAP esclusa (no valore produzione netta)", any("irap" in n.lower() for n in meta.get("note", [])))
+# senza imponibile → onesto None, non inventato
+out2, meta2 = tax.apply_fiscoboost({"sintesi": {"carico_fiscale_stimato": 555}}, {"forma_giuridica": "SRL", "regime_fiscale": "ordinario"})
+check("senza imponibile → carico None (non inventato)", out2["sintesi"]["carico_fiscale_stimato"] is None)
+# imponibile derivato da fatturato-costi se utile assente
+out3, _ = tax.apply_fiscoboost({"sintesi": {}}, {"forma_giuridica": "srl", "fatturato": 200000, "costi_totali": 150000})
+check("imponibile = fatturato-costi (50.000) → IRES 12.000", approx(out3["sintesi"]["carico_fiscale_stimato"], 12000))
+
 print("\nTEST TAX " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)

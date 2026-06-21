@@ -12,7 +12,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from . import (agevolazioni, assets, calc, finance, freshness, grounding, jobs, llm,
-               quality, quant, validate)
+               quality, quant, tax, validate)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -273,6 +273,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             deliverable, agev_meta = agevolazioni.apply_agevolazioni(deliverable, inputs)
             if agev_meta:
                 filiera_meta = {**filiera_meta, "agevolazioni": agev_meta}
+
+        # FiscoBoost: il carico fiscale viene dal motore tax deterministico (tabelle
+        # verificate), non dall'LLM (Fix #2/#4). IRAP/addizionali escluse con nota onesta.
+        if skill == "flusso-fiscoboost-pmi":
+            deliverable, fisco_meta = tax.apply_fiscoboost(deliverable, inputs)
+            if fisco_meta:
+                filiera_meta = {**filiera_meta, "fiscale": fisco_meta}
 
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo

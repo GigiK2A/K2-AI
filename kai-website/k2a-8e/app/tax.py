@@ -183,3 +183,70 @@ def carico_fiscale_stimato(forma_giuridica: str, imponibile_eur: float,
     return {"totale_eur": totale, "dettaglio": dettaglio, "forma_giuridica": forma_giuridica,
             "anno": anno, "as_of": _as_of(), "note": note,
             "fonte_principale": _tables().get("fonte_principale")}
+
+
+# ───────────────────────── binding FiscoBoost (Fix #2 parte numeri) ─────────────────────────
+
+def _num(v: Any) -> Optional[float]:
+    if isinstance(v, bool) or v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    try:
+        return float(str(v).replace("€", "").replace(".", "").replace(",", ".").strip())
+    except ValueError:
+        return None
+
+
+def aliquote_riepilogo() -> list[dict]:
+    """Aliquote verificate (con provenance) da iniettare come riferimento — non LLM."""
+    out = []
+    for imp, *subs in [("IRES", "ordinaria"), ("IRAP", "ordinaria (base)"), ("IVA", "ordinaria")]:
+        e = _find(imp, *subs)
+        if e:
+            out.append({"imposta": imp, "descrizione": e.get("descrizione"), "valore": e.get("valore"),
+                        "fonte": _prov(e)})
+    bs = _irpef_brackets()
+    out.append({"imposta": "IRPEF", "descrizione": "scaglioni",
+                "valore": "/".join(str(_pct(b.get("valore"))) for b in bs) + "%",
+                "fonte": _prov(bs[0] if bs else None)})
+    return out
+
+
+def apply_fiscoboost(deliverable: dict, form: dict) -> tuple[dict, Optional[dict]]:
+    """Sovrascrive `sintesi.carico_fiscale_stimato` col valore deterministico (imposta sul
+    reddito: IRES società di capitali, IRPEF altre, su utile ante imposte o fatturato-costi).
+    IRAP esclusa (manca il valore della produzione netta nel form) → nota onesta, non inventata.
+    Ritorna (deliverable, meta{carico, aliquote, note, provenance})."""
+    if not isinstance(deliverable, dict):
+        return deliverable, None
+    out = dict(deliverable)
+    sintesi = dict(out.get("sintesi") or {})
+
+    imponibile = _num(form.get("utile_ante_imposte"))
+    if imponibile is None:
+        fat, cos = _num(form.get("fatturato")), _num(form.get("costi_totali"))
+        if fat is not None and cos is not None:
+            imponibile = fat - cos
+    note = ["IRAP esclusa dal carico: richiede il valore della produzione netta, non presente "
+            "nel form (calcolabile con un bilancio completo via FinanceBoost).",
+            "Addizionali IRPEF regionale/comunale escluse (locality-dependent).",
+            "Imponibile = utile ante imposte (o fatturato−costi): proxy dell'imponibile fiscale."]
+
+    if imponibile is None or imponibile <= 0:
+        sintesi["carico_fiscale_stimato"] = None
+        note.insert(0, "carico non stimabile: imponibile (utile/fatturato−costi) assente o ≤0 nel form")
+        red = None
+    else:
+        fg = str(form.get("forma_giuridica") or "").strip().lower().replace(" ", "_")
+        red = ires(imponibile) if fg in _SOC_CAPITALI else irpef_lorda(imponibile)
+        sintesi["carico_fiscale_stimato"] = red["imposta_eur"]
+    out["sintesi"] = sintesi
+
+    meta = {
+        "carico_fiscale_stimato": sintesi["carico_fiscale_stimato"],
+        "imposta_reddito": (red.get("imposta") if red else None),
+        "provenance": (red.get("fonte") if red else None),
+        "aliquote": aliquote_riepilogo(), "as_of": _as_of(), "note": note,
+    }
+    return out, meta
