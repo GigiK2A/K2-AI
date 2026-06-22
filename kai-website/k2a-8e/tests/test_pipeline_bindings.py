@@ -61,6 +61,19 @@ outw, mw = pipeline.apply_deterministic_bindings("flusso-webboost-pmi", dw, FACT
 check("meta porta 'web_onpage' (hook scattato)", "web_onpage" in mw)
 check("score LLM non toccato senza fetch (onesto)", dw["diagnosi"]["seo_onpage"]["score"] == 80)
 
+print("── AdvisorBoost: dispatch → apply_advisor + §E budget (2 hook) ──")
+da = {"enterprise_value": {"multipli_ebitda": {"multiplo_mediano": 12.8, "ev_mediano_eur": 1559833.0}},
+      "indici": {}, "cta": {},
+      "piano_economico_finanziario": {"budget_mensile_36m": [], "scenari": {}, "sensitivity": []}}
+ia = {"bilanci": [{"anno": 2024, "ricavi": 789766.17, "ebitda": 121861.5, "utile_netto": 71125,
+                   "totale_attivo": 570166, "patrimonio_netto": 176127, "debiti_finanziari": 92859,
+                   "ammortamenti": 12470.37, "oneri_finanziari": 13181.28, "pfn": -197149.54}]}
+outa, ma = pipeline.apply_deterministic_bindings("flusso-advisorboost-pmi", da, FACTS, ia, {})
+check("hook advisor scattato (DuPont)", "dupont" in outa.get("indici", {}) and "advisor" in ma)
+check("hook §E budget scattato (36 mesi + meta budget_pef)",
+      len(outa["piano_economico_finanziario"]["budget_mensile_36m"]) == 36 and "budget_pef" in ma)
+check("scenari §E sovrascritti (deterministici)", ma["budget_pef"].get("scenari_bound") is True)
+
 print("── Negativo: skill senza hook tecnico non triggera mep/safety/build ──")
 _, mn = pipeline.apply_deterministic_bindings("flusso-legalboost-pmi", {"x": 1}, FACTS, {}, {})
 check("nessun meta tecnico per legalboost", not any(k in mn for k in ("mep", "elettrico", "safety", "build", "web_onpage")))

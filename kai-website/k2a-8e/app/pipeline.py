@@ -11,8 +11,9 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import (advisor, agevolazioni, assets, build, calc, elettrico, finance, freshness,
-               grounding, jobs, llm, mep, norme, quality, quant, safety, tax, validate, web)
+from . import (advisor, agevolazioni, assets, budget, build, calc, elettrico, finance,
+               freshness, grounding, jobs, llm, mep, norme, quality, quant, safety, tax,
+               validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -197,6 +198,11 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
         deliverable, adv_meta = advisor.apply_advisor(deliverable, inputs)
         if adv_meta:
             filiera_meta = {**filiera_meta, "advisor": adv_meta}
+        # §E — piano_economico_finanziario (budget 36m + scenari + sensitivity) dal MCP
+        # k2a_budget deterministico, non più dall'LLM. Dopo apply_advisor (serve l'EV multiplo).
+        deliverable, budget_meta = budget.apply_budget(deliverable, inputs)
+        if budget_meta:
+            filiera_meta = {**filiera_meta, "budget_pef": budget_meta}
 
     # FinanceBoost: le 3 sezioni data-payload (riclassificazione/marginalità/
     # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate
