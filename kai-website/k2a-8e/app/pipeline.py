@@ -11,7 +11,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import (agevolazioni, assets, calc, finance, freshness, grounding, jobs, llm,
+from . import (advisor, agevolazioni, assets, calc, finance, freshness, grounding, jobs, llm,
                quality, quant, tax, validate)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
@@ -255,6 +255,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         deliverable, quant_prov = quant.bind_quant_slots(skill, deliverable, facts)
         if quant_prov:
             filiera_meta = {**filiera_meta, "quant_binding": quant_prov}
+
+        # AdvisorBoost: binding economici §A-§D (EV-synth, DuPont, CCII, CTA) da bilancio
+        # reale + quant — dopo bind_quant_slots (che popola enterprise_value.multipli_ebitda).
+        if skill == "flusso-advisorboost-pmi":
+            deliverable, adv_meta = advisor.apply_advisor(deliverable, inputs)
+            if adv_meta:
+                filiera_meta = {**filiera_meta, "advisor": adv_meta}
 
         # FinanceBoost: le 3 sezioni data-payload (riclassificazione/marginalità/
         # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate
