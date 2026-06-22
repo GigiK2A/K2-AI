@@ -1,4 +1,5 @@
 source: in-repo kbot/backend/vendor/k2a_agevolazioni (stessa versione del compute layer chat)
 repo: inglucarossi73/k2a-mcp-agevolazioni
+sha: a2d78295205d1ae137b2d940aa95fb6bf42778f8
 vendored_at: 2026-06-21
 by: Fix #3 agevolazioni — wiring 8e
