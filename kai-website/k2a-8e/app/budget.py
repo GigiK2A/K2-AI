@@ -87,12 +87,14 @@ def _map_sensitivity(matrice: dict, base_ebitda: Optional[float]) -> list[dict]:
         for r in righe:
             if r.get("variazione") == "base":
                 continue
-            segno = 1 if r.get("variazione") == "plus" else -1
             imp = _num(r.get("delta_eur"))
+            if imp is None:           # schema vuole number: salta righe senza impatto (no PEF invalido)
+                continue
+            segno = 1 if r.get("variazione") == "plus" else -1
             row = {"variabile": leva, "delta_percentuale": segno * _DELTA_PCT,
                    "impatto_ebitda_eur": imp}
             if base_ebitda:
-                row["impatto_ebitda_perc"] = round((imp or 0.0) / base_ebitda * 100, 2)
+                row["impatto_ebitda_perc"] = round(imp / base_ebitda * 100, 2)
             out.append(row)
     return out
 
@@ -108,6 +110,11 @@ def bind_pef(deliverable: dict, inputs: dict) -> dict:
     from k2a_budget.engine import budget_36m
     from k2a_budget.scenari import budget_scenari
     from k2a_budget.sensitivity import budget_sensitivity
+    try:
+        from k2a_budget.snapshot import get_aliquota_default
+        aliquota_pct = get_aliquota_default()
+    except Exception:
+        aliquota_pct = None
 
     pfn0 = _pfn_iniziale(b)
     env = budget_36m(base, pfn_iniziale_eur=pfn0)
@@ -161,19 +168,25 @@ def bind_pef(deliverable: dict, inputs: dict) -> dict:
         base_eb = _num(se_env["outputs"].get("base_ebitda_cumulato_36m_eur"))
         pef["sensitivity"] = _map_sensitivity(se_env["outputs"].get("matrice", {}), base_eb)
 
-    # 4) ipotesi_base (narrativa deterministica)
-    pef["ipotesi_base"] = [
+    # 4) ipotesi_base (narrativa deterministica e ONESTA su default/assenze)
+    cv0 = base["costi_variabili_eur_anno_base"]
+    da_of_assenti = base["ammortamenti_eur_anno_base"] == 0 and base["oneri_finanziari_eur_anno_base"] == 0
+    aliq_txt = f"{aliquota_pct}%" if aliquota_pct is not None else "default motore"
+    ipotesi = [
         f"Ricavi base {round(base['ricavi_eur_anno_base'])}€ · EBITDA base {round(ebitda_base)}€",
-        "Costi variabili = 0 (convenzione PMI servizi: nessun COGS proporzionale ai ricavi)",
-        "Aliquota imposte 27,9% (IRES 24% + IRAP 3,9% semplificata)",
-        "Crescita ricavi e costi fissi: default 2%/anno (ISTAT) salvo assunzioni nel form",
-        f"PFN iniziale: {round(pfn0)}€ (negativo = cassa netta)" if pfn0 is not None else "PFN iniziale non nota",
+        (f"Costi variabili {round(cv0)}€" if cv0 else "Costi variabili = 0 (convenzione PMI servizi: nessun COGS proporzionale)"),
+        f"Aliquota imposte {aliq_txt} (IRES+IRAP semplificata; vedi warning motore)",
+        "Crescita ricavi/costi fissi: default 2%/anno (assunzioni custom dal form NON ancora passate al motore)",
+        (f"PFN iniziale: {round(pfn0)}€ (negativo = cassa netta)" if pfn0 is not None else "PFN iniziale non nota → rollforward da 0"),
     ]
+    if da_of_assenti:
+        ipotesi.append("⚠ Ammortamenti e oneri finanziari assenti dal bilancio (=0): utile netto e FCF potenzialmente sovrastimati")
+    pef["ipotesi_base"] = ipotesi
 
     return {
         "disponibile": True, "scenari_bound": scenari_bound,
         "mesi": len(pef["budget_mensile_36m"]), "multiplo_ev_usato": mult,
-        "pfn_iniziale": pfn0,
+        "pfn_iniziale": pfn0, "da_of_assenti": da_of_assenti,
         "warnings_motore": [w.get("codice") for w in env.get("warnings", [])],
         "note": (None if scenari_bound else "scenari NON sovrascritti: manca il multiplo EV (lascio l'LLM, enterprise_value_eur è required)"),
         "provenance": "k2a_budget.budget_36m/scenari/sensitivity (vendorizzato @5c54105)",

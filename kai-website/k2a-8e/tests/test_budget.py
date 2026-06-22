@@ -75,6 +75,21 @@ out2, meta2 = budget.apply_budget({"piano_economico_finanziario": {"budget_mensi
 check("budget_mensile comunque bound", len(out2["piano_economico_finanziario"]["budget_mensile_36m"]) == 36)
 check("scenari_bound False senza multiplo + nota", meta2["scenari_bound"] is False and "multiplo" in (meta2.get("note") or ""))
 
+print("── input FORM-CONFORME (solo anno/ricavi/ebitda/debiti, no D&A/OF/PFN) → default + flag onesto ──")
+# path produzione reale: l'intake porta solo gli aggregati base, NON ammortamenti/oneri/pfn
+form_inputs = {"bilanci": [{"anno": 2024, "ricavi": 789766.17, "ebitda": 121861.5,
+                            "debiti_finanziari": 92859.0}]}
+df = {"enterprise_value": {"multipli_ebitda": {"multiplo_mediano": 12.8}},
+      "piano_economico_finanziario": {"budget_mensile_36m": [], "scenari": {}, "sensitivity": []}}
+outf, mf = budget.apply_budget(df, form_inputs)
+peff = outf["piano_economico_finanziario"]
+check("budget gira comunque (36 mesi)", len(peff["budget_mensile_36m"]) == 36)
+check("flag onesto: D&A/OF assenti segnalato in meta", mf.get("da_of_assenti") is True)
+check("ipotesi_base avverte di utile/FCF sovrastimati", any("sovrastima" in i.lower() for i in peff["ipotesi_base"]))
+check("PFN derivata da debiti_finanziari (no pfn esplicito)", approx(mf.get("pfn_iniziale"), 92859.0, 0.1))
+errs_f = sorted(Draft202012Validator(pef_schema).iter_errors(peff), key=lambda e: list(e.path))
+check("pef form-conforme comunque VALIDO a schema", not errs_f)
+
 print("── senza bilancio → onesto ──")
 _, meta3 = budget.apply_budget({}, {})
 check("disponibile False senza bilancio", meta3["disponibile"] is False)
