@@ -11,8 +11,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import (advisor, agevolazioni, assets, calc, finance, freshness, grounding, jobs, llm,
-               quality, quant, tax, validate)
+from . import (advisor, agevolazioni, assets, build, calc, finance, freshness, grounding, jobs,
+               llm, mep, quality, quant, safety, tax, validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -287,6 +287,36 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             deliverable, fisco_meta = tax.apply_fiscoboost(deliverable, inputs)
             if fisco_meta:
                 filiera_meta = {**filiera_meta, "fiscale": fisco_meta}
+
+        # MepBoost: l'economia degli EEM (payback/VAN/TIR) è ricalcolata col motore
+        # quant da costo+risparmio (non fabbricata dall'LLM). Termico/APE marcato
+        # non_validato (nessun tool APE/UNI-TS-11300), non sovrascritto con numeri inventati.
+        if skill == "flusso-mepboost-studio":
+            deliverable, mep_meta = mep.apply_mep(deliverable, inputs)
+            if mep_meta:
+                filiera_meta = {**filiera_meta, "mep": mep_meta}
+
+        # WebBoost: lo score SEO on-page è calcolato dal tool audit_seo_onpage sulla
+        # pagina reale (fetch stdlib), non fabbricato dall'LLM. I volumi keyword restano
+        # esterni (Semrush/GSC) → non inventati. Fetch fallito → onesto (no sovrascrittura).
+        if skill == "flusso-webboost-pmi":
+            deliverable, web_meta = web.apply_web(deliverable, inputs)
+            if web_meta:
+                filiera_meta = {**filiera_meta, "web_onpage": web_meta}
+
+        # SafetyBoost: R=P×D + totale/incidenza dei costi sicurezza = math deterministica
+        # (non più incoerenti). Singole voci Allegato XV = stima LLM (nessun prezzario) → flag.
+        if skill == "flusso-safetyboost-studio":
+            deliverable, safety_meta = safety.apply_safety(deliverable, inputs)
+            if safety_meta:
+                filiera_meta = {**filiera_meta, "safety": safety_meta}
+
+        # BuildBoost: costi.totale_eur = Σ voci deterministico. Oneri urbanizzazione/CME/
+        # tempi-iter = stima LLM (nessuna tabella per-comune / prezzario) → flag onesto.
+        if skill == "flusso-buildboost-studio":
+            deliverable, build_meta = build.apply_build(deliverable, inputs)
+            if build_meta:
+                filiera_meta = {**filiera_meta, "build": build_meta}
 
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
