@@ -11,8 +11,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import (advisor, agevolazioni, assets, build, calc, finance, freshness, grounding, jobs,
-               llm, mep, quality, quant, safety, tax, validate, web)
+from . import (advisor, agevolazioni, assets, build, calc, elettrico, finance, freshness,
+               grounding, jobs, llm, mep, norme, quality, quant, safety, tax, validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -295,6 +295,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             deliverable, mep_meta = mep.apply_mep(deliverable, inputs)
             if mep_meta:
                 filiera_meta = {**filiera_meta, "mep": mep_meta}
+            # audit_elettrico: caduta tensione + verifica terra dal MCP k2a_elettrico
+            # (CEI 64-8), se il form porta impianto_elettrico_dettaglio; altrimenti onesto.
+            deliverable, el_meta = elettrico.apply_elettrico(deliverable, inputs)
+            if el_meta:
+                filiera_meta = {**filiera_meta, "elettrico": el_meta}
 
         # WebBoost: lo score SEO on-page è calcolato dal tool audit_seo_onpage sulla
         # pagina reale (fetch stdlib), non fabbricato dall'LLM. I volumi keyword restano
@@ -317,6 +322,12 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             deliverable, build_meta = build.apply_build(deliverable, inputs)
             if build_meta:
                 filiera_meta = {**filiera_meta, "build": build_meta}
+            # riferimenti normativi tecnici dal MCP k2a_norme_tecniche (search sul corpus).
+            # KB vuota oggi → 0 riferimenti onesti (nessuna citazione inventata) finché Luca
+            # non ingerisce NTC/CEI/Eurocodici. Risultati in meta (BuildBoost senza slot citazioni).
+            deliverable, norme_meta = norme.apply_norme(deliverable, inputs)
+            if norme_meta:
+                filiera_meta = {**filiera_meta, "norme_tecniche": norme_meta}
 
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo

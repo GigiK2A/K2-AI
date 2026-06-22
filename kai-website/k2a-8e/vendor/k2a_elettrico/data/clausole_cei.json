@@ -1,0 +1,50 @@
+{
+  "CEI_64-8_433.1": {
+    "titolo": "Protezione contro le sovracorrenti — sovraccarico",
+    "clausola": "(1) Ib ≤ In ≤ Iz  (2) I2 ≤ 1.45 × Iz. I2=1.45·In per magnetotermici → cond.2 automatica."
+  },
+  "CEI_64-8_434.5.2": {
+    "titolo": "Protezione contro i corto circuiti — tempo intervento",
+    "clausola": "t ≤ (k·S/I)²  →  I²t ≤ k²·S². k=115 (Cu/PVC), 143 (Cu/EPR), 76 (Al/PVC), 94 (Al/EPR)."
+  },
+  "CEI_64-8_411.3.2.2": {
+    "titolo": "Sistema TT — interruzione automatica",
+    "clausola": "RA · Idn ≤ 50V (ord.) / ≤ 25V (speciali). Per 30mA: RA≤1666Ω (50V) o 833Ω (25V)."
+  },
+  "CEI_64-8_411.4.4": {
+    "titolo": "Sistema TN — interruzione automatica",
+    "clausola": "Zs · Ia ≤ U0. Tempi: 0.4s (finali ≤32A TN, U0=230V), 5s (distribuzione)."
+  },
+  "CEI_64-8_525": {
+    "titolo": "Caduta di tensione",
+    "clausola": "ΔV ≤ 4% Vn (illuminazione e altri usi). ΔV = √3·I·L·(R·cosφ + X·sinφ) trifase."
+  },
+  "CEI_64-12": {
+    "titolo": "Impianti di terra negli edifici residenziali e terziari",
+    "clausola": "Picchetti acciaio zincato Ø16mm min 1.5m; corda nuda Cu min 35mm². Sunde picchetto: Re = (ρ/2πL)·(ln(4L/d)-1)."
+  },
+  "CEI_64-8_712": {
+    "titolo": "Impianti FV",
+    "clausola": "Cavi DC: ΔV ≤ 1-2% lato DC; Icc_FV = 1.25·Isc·Nstr; sezionatore DC obbligatorio; SPD DC tipo 2 + AC tipo 1+2."
+  },
+  "CEI_64-8_722": {
+    "titolo": "Ricarica veicoli elettrici",
+    "clausola": "Wallbox modo 3 IEC 61851-1. RCD tipo B o A+RDC-DD. SPD tipo 2. Sez. min 2.5mm² (16A), 6mm² (32A)."
+  },
+  "CEI_0-21": {
+    "titolo": "Connessione utenti BT — generazione",
+    "clausola": "SPI obbligatorio >6kW. Soglie 27/59 (V±) e 81 (f±0.5Hz). FV+accumulo: CEI 0-21:2022."
+  },
+  "CEI_EN_62305-2": {
+    "titolo": "Protezione contro i fulmini — valutazione rischio",
+    "clausola": "R > RT (10⁻⁵/anno vite umane) → LPS obbligatorio. LPL I/II/III/IV: Iimp=200/150/100/100 kA; maglia 5/10/15/20m."
+  },
+  "DPR_462_2001": {
+    "titolo": "Denuncia impianti di terra e LPS",
+    "clausola": "Art.2: dichiarazione INAIL entro 30gg messa in esercizio. Verifiche periodiche 2 (speciali) o 5 anni."
+  },
+  "ETSI_EN_300_132-2": {
+    "titolo": "Alimentazione DC -48V per apparati TLC",
+    "clausola": "Tensione carico ∈ [40.5; 57]V. ΔV cavo ≤1% Vn. Batterie tampone tipiche 4-8h autonomia."
+  }
+}

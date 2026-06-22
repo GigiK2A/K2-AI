@@ -29,6 +29,31 @@
         "gas_smc": { "type": ["number", "null"] },
         "costo_annuo_eur": { "type": ["number", "null"] }
       }
+    },
+    "prezzo_energia_eur_kwh": { "type": ["number", "null"], "description": "prezzo €/kWh per derivare il risparmio €/anno degli EEM dai kWh (se noto)" },
+    "impianto_elettrico_dettaglio": {
+      "type": ["object", "null"],
+      "description": "FEED opzionale per audit_elettrico deterministico (k2a_elettrico): se valorizzato, caduta tensione + verifica terra sono calcolate dal MCP (CEI 64-8); altrimenti audit_elettrico resta non valutabile",
+      "properties": {
+        "sistema_terra": { "type": ["string", "null"], "enum": ["TT", "TN-S", "TN-C", "TN-C-S", null] },
+        "RA_ohm": { "type": ["number", "null"], "description": "resistenza dispersore di terra (Ω)" },
+        "Idn_RCD_mA": { "type": ["number", "null"], "description": "corrente differenziale RCD (mA)" },
+        "circuiti": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nome": { "type": "string" },
+              "corrente_a": { "type": "number", "minimum": 0 },
+              "lunghezza_m": { "type": "number", "minimum": 0 },
+              "sezione_mm2": { "type": "number", "minimum": 0 },
+              "sistema": { "type": ["string", "null"], "enum": ["trifase", "monofase", null] },
+              "tensione_v": { "type": ["number", "null"] },
+              "cosfi": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
     }
   },
   "additionalProperties": false

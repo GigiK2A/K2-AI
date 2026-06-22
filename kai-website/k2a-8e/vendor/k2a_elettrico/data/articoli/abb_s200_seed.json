@@ -1,0 +1,119 @@
+{
+  "_meta": {
+    "famiglia": "ABB System pro M compact S200 - interruttori magnetotermici modulari (MCB)",
+    "costruttore": "ABB",
+    "fonte_catalogo": "pagine prodotto ufficiali ABB new.abb.com/products/<order_code> (range S200)",
+    "norma_targa": "IEC/EN 60898-1 (Icn) - IEC/EN 60947-2 (Icu)",
+    "etim_class": "EC000042 = Miniature circuit breaker (MCB) (ETIM 6.0 / ETIM-60)",
+    "fonte_etim": "https://www.traceparts.com/en/search/etim-60-circuit-breakers-and-fuses-miniature-circuit-breaker-mcb?CatalogPath=ETIM60%3AEC000042",
+    "estratto_il": "2026-06-10",
+    "principio": "valori di targa presi dalle pagine prodotto/datasheet ABB; NESSUN valore inventato; Ui_V e Uimp_kV sono costanti di famiglia S200 (groundate su S204-C25)."
+  },
+  "articoli": [
+    {
+      "id": "abb_s201_b10",
+      "codice_articolo": "2CDS251001R0105",
+      "costruttore": "ABB",
+      "tipo_dispositivo": "interruttore_magnetotermico",
+      "dati_targa": {
+        "serie": "S200",
+        "In_A": 10,
+        "curva": "B",
+        "poli": 1,
+        "potere_int_Icn_kA": 6,
+        "Ue_V": "230/400",
+        "Ui_V": 440,
+        "Uimp_kV": 4,
+        "norma": "IEC/EN 60898-1"
+      },
+      "etim_class": "EC000042",
+      "simbolo_grafico_id": "interruttore_magnetotermico",
+      "fonte": "https://new.abb.com/products/2CDS251001R0105/s201-b10",
+      "vigenza": "vigente 2026-06 (catalogo ABB System pro M compact S200)"
+    },
+    {
+      "id": "abb_s201_c16",
+      "codice_articolo": "2CDS251001R0164",
+      "costruttore": "ABB",
+      "tipo_dispositivo": "interruttore_magnetotermico",
+      "dati_targa": {
+        "serie": "S200",
+        "In_A": 16,
+        "curva": "C",
+        "poli": 1,
+        "potere_int_Icn_kA": 6,
+        "Ue_V": "230/400",
+        "Ui_V": 440,
+        "Uimp_kV": 4,
+        "norma": "IEC/EN 60898-1"
+      },
+      "etim_class": "EC000042",
+      "simbolo_grafico_id": "interruttore_magnetotermico",
+      "fonte": "https://new.abb.com/products/2CDS251001R0164/s201-c16",
+      "vigenza": "vigente 2026-06 (catalogo ABB System pro M compact S200)"
+    },
+    {
+      "id": "abb_s203_c25",
+      "codice_articolo": "2CDS253001R0254",
+      "costruttore": "ABB",
+      "tipo_dispositivo": "interruttore_magnetotermico",
+      "dati_targa": {
+        "serie": "S200",
+        "In_A": 25,
+        "curva": "C",
+        "poli": 3,
+        "potere_int_Icn_kA": 6,
+        "Ue_V": "230/400",
+        "Ui_V": 440,
+        "Uimp_kV": 4,
+        "norma": "IEC/EN 60898-1"
+      },
+      "etim_class": "EC000042",
+      "simbolo_grafico_id": "interruttore_magnetotermico",
+      "fonte": "https://new.abb.com/products/2CDS253001R0254/s203-c25",
+      "vigenza": "vigente 2026-06 (catalogo ABB System pro M compact S200)"
+    },
+    {
+      "id": "abb_s203_d32",
+      "codice_articolo": "2CDS253001R0321",
+      "costruttore": "ABB",
+      "tipo_dispositivo": "interruttore_magnetotermico",
+      "dati_targa": {
+        "serie": "S200",
+        "In_A": 32,
+        "curva": "D",
+        "poli": 3,
+        "potere_int_Icn_kA": 6,
+        "Ue_V": "230/400",
+        "Ui_V": 440,
+        "Uimp_kV": 4,
+        "norma": "IEC/EN 60898-1"
+      },
+      "etim_class": "EC000042",
+      "simbolo_grafico_id": "interruttore_magnetotermico",
+      "fonte": "https://new.abb.com/products/2CDS253001R0321/s203-d32",
+      "vigenza": "vigente 2026-06 (catalogo ABB System pro M compact S200)"
+    },
+    {
+      "id": "abb_s204_c25",
+      "codice_articolo": "2CDS254001R0254",
+      "costruttore": "ABB",
+      "tipo_dispositivo": "interruttore_magnetotermico",
+      "dati_targa": {
+        "serie": "S200",
+        "In_A": 25,
+        "curva": "C",
+        "poli": 4,
+        "potere_int_Icn_kA": 6,
+        "Ue_V": "230/400",
+        "Ui_V": 440,
+        "Uimp_kV": 4,
+        "norma": "IEC/EN 60898-1"
+      },
+      "etim_class": "EC000042",
+      "simbolo_grafico_id": "interruttore_magnetotermico",
+      "fonte": "https://new.abb.com/products/2CDS254001R0254/s204-c25",
+      "vigenza": "vigente 2026-06 (catalogo ABB System pro M compact S200)"
+    }
+  ]
+}
