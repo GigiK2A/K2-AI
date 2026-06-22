@@ -177,6 +177,96 @@ def _lint_instance(blueprint: dict) -> dict:
     }
 
 
+def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
+                                 inputs: dict, filiera_meta: dict) -> tuple[dict, dict]:
+    """Sovrascrive gli slot numerici/strutturali col valore dei tool deterministici, per-skill.
+
+    Estratto da run() per essere testabile in isolamento (senza jobs/validazione/render).
+    Ogni hook è no-op se il deliverable non ha gli slot attesi. Vedi test_pipeline_bindings.py.
+    """
+    # Binding strutturale (Fix #0 Fase 2): gli slot numerici di valutazione vengono
+    # SOVRASCRITTI col valore del quant deterministico (non ri-emessi dall'LLM).
+    # Chiude INV1/P0-1/P0-2; la provenance (call_id/as_of) finisce nel meta del job.
+    deliverable, quant_prov = quant.bind_quant_slots(skill, deliverable, facts)
+    if quant_prov:
+        filiera_meta = {**filiera_meta, "quant_binding": quant_prov}
+
+    # AdvisorBoost: binding economici §A-§D (EV-synth, DuPont, CCII, CTA) da bilancio
+    # reale + quant — dopo bind_quant_slots (che popola enterprise_value.multipli_ebitda).
+    if skill == "flusso-advisorboost-pmi":
+        deliverable, adv_meta = advisor.apply_advisor(deliverable, inputs)
+        if adv_meta:
+            filiera_meta = {**filiera_meta, "advisor": adv_meta}
+
+    # FinanceBoost: le 3 sezioni data-payload (riclassificazione/marginalità/
+    # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate
+    # (finance.py) + WACC dal quant — non scritte dall'LLM (chiude P0-2/P0-6).
+    if skill == "flusso-financeboost-pmi":
+        fb_reclass = finance.latest_reclass_from_inputs(inputs)
+        if fb_reclass:
+            w = quant.resolve_quant_fact("wacc", inputs)
+            wacc_pct = w.get("valore") if (isinstance(w, dict) and w.get("tipo") == "valore_calcolato") else None
+            deliverable = finance.apply_financeboost_sections(deliverable, fb_reclass, wacc_pct)
+            filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True}
+
+    # AgevolazioniBoost: i benefici (Sabatini/T5.0/de minimis) vengono dai tool
+    # deterministici di k2a_agevolazioni, non dall'LLM (Fix #3). Cumulabilità segnalata.
+    if skill == "flusso-agevolazioni-pmi":
+        deliverable, agev_meta = agevolazioni.apply_agevolazioni(deliverable, inputs)
+        if agev_meta:
+            filiera_meta = {**filiera_meta, "agevolazioni": agev_meta}
+
+    # FiscoBoost: il carico fiscale viene dal motore tax deterministico (tabelle
+    # verificate), non dall'LLM (Fix #2/#4). IRAP/addizionali escluse con nota onesta.
+    if skill == "flusso-fiscoboost-pmi":
+        deliverable, fisco_meta = tax.apply_fiscoboost(deliverable, inputs)
+        if fisco_meta:
+            filiera_meta = {**filiera_meta, "fiscale": fisco_meta}
+
+    # MepBoost: l'economia degli EEM (payback/VAN/TIR) è ricalcolata col motore
+    # quant da costo+risparmio (non fabbricata dall'LLM). Termico/APE marcato
+    # non_validato (nessun tool APE/UNI-TS-11300), non sovrascritto con numeri inventati.
+    if skill == "flusso-mepboost-studio":
+        deliverable, mep_meta = mep.apply_mep(deliverable, inputs)
+        if mep_meta:
+            filiera_meta = {**filiera_meta, "mep": mep_meta}
+        # audit_elettrico: caduta tensione + verifica terra dal MCP k2a_elettrico
+        # (CEI 64-8), se il form porta impianto_elettrico_dettaglio; altrimenti onesto.
+        deliverable, el_meta = elettrico.apply_elettrico(deliverable, inputs)
+        if el_meta:
+            filiera_meta = {**filiera_meta, "elettrico": el_meta}
+
+    # WebBoost: lo score SEO on-page è calcolato dal tool audit_seo_onpage sulla
+    # pagina reale (fetch stdlib), non fabbricato dall'LLM. I volumi keyword restano
+    # esterni (Semrush/GSC) → non inventati. Fetch fallito → onesto (no sovrascrittura).
+    if skill == "flusso-webboost-pmi":
+        deliverable, web_meta = web.apply_web(deliverable, inputs)
+        if web_meta:
+            filiera_meta = {**filiera_meta, "web_onpage": web_meta}
+
+    # SafetyBoost: R=P×D + totale/incidenza dei costi sicurezza = math deterministica
+    # (non più incoerenti). Singole voci Allegato XV = stima LLM (nessun prezzario) → flag.
+    if skill == "flusso-safetyboost-studio":
+        deliverable, safety_meta = safety.apply_safety(deliverable, inputs)
+        if safety_meta:
+            filiera_meta = {**filiera_meta, "safety": safety_meta}
+
+    # BuildBoost: costi.totale_eur = Σ voci deterministico. Oneri urbanizzazione/CME/
+    # tempi-iter = stima LLM (nessuna tabella per-comune / prezzario) → flag onesto.
+    if skill == "flusso-buildboost-studio":
+        deliverable, build_meta = build.apply_build(deliverable, inputs)
+        if build_meta:
+            filiera_meta = {**filiera_meta, "build": build_meta}
+        # riferimenti normativi tecnici dal MCP k2a_norme_tecniche (search sul corpus).
+        # KB vuota oggi → 0 riferimenti onesti (nessuna citazione inventata) finché Luca
+        # non ingerisce NTC/CEI/Eurocodici. Risultati in meta (BuildBoost senza slot citazioni).
+        deliverable, norme_meta = norme.apply_norme(deliverable, inputs)
+        if norme_meta:
+            filiera_meta = {**filiera_meta, "norme_tecniche": norme_meta}
+
+    return deliverable, filiera_meta
+
+
 def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") -> None:
     try:
         jobs.update(job_id, status="running")
@@ -249,85 +339,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             blueprint.get("pacchetto", {}).get("nome_commerciale", service_id),
         )
 
-        # Binding strutturale (Fix #0 Fase 2): gli slot numerici di valutazione vengono
-        # SOVRASCRITTI col valore del quant deterministico (non ri-emessi dall'LLM).
-        # Chiude INV1/P0-1/P0-2; la provenance (call_id/as_of) finisce nel meta del job.
-        deliverable, quant_prov = quant.bind_quant_slots(skill, deliverable, facts)
-        if quant_prov:
-            filiera_meta = {**filiera_meta, "quant_binding": quant_prov}
-
-        # AdvisorBoost: binding economici §A-§D (EV-synth, DuPont, CCII, CTA) da bilancio
-        # reale + quant — dopo bind_quant_slots (che popola enterprise_value.multipli_ebitda).
-        if skill == "flusso-advisorboost-pmi":
-            deliverable, adv_meta = advisor.apply_advisor(deliverable, inputs)
-            if adv_meta:
-                filiera_meta = {**filiera_meta, "advisor": adv_meta}
-
-        # FinanceBoost: le 3 sezioni data-payload (riclassificazione/marginalità/
-        # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate
-        # (finance.py) + WACC dal quant — non scritte dall'LLM (chiude P0-2/P0-6).
-        if skill == "flusso-financeboost-pmi":
-            fb_reclass = finance.latest_reclass_from_inputs(inputs)
-            if fb_reclass:
-                w = quant.resolve_quant_fact("wacc", inputs)
-                wacc_pct = w.get("valore") if (isinstance(w, dict) and w.get("tipo") == "valore_calcolato") else None
-                deliverable = finance.apply_financeboost_sections(deliverable, fb_reclass, wacc_pct)
-                filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True}
-
-        # AgevolazioniBoost: i benefici (Sabatini/T5.0/de minimis) vengono dai tool
-        # deterministici di k2a_agevolazioni, non dall'LLM (Fix #3). Cumulabilità segnalata.
-        if skill == "flusso-agevolazioni-pmi":
-            deliverable, agev_meta = agevolazioni.apply_agevolazioni(deliverable, inputs)
-            if agev_meta:
-                filiera_meta = {**filiera_meta, "agevolazioni": agev_meta}
-
-        # FiscoBoost: il carico fiscale viene dal motore tax deterministico (tabelle
-        # verificate), non dall'LLM (Fix #2/#4). IRAP/addizionali escluse con nota onesta.
-        if skill == "flusso-fiscoboost-pmi":
-            deliverable, fisco_meta = tax.apply_fiscoboost(deliverable, inputs)
-            if fisco_meta:
-                filiera_meta = {**filiera_meta, "fiscale": fisco_meta}
-
-        # MepBoost: l'economia degli EEM (payback/VAN/TIR) è ricalcolata col motore
-        # quant da costo+risparmio (non fabbricata dall'LLM). Termico/APE marcato
-        # non_validato (nessun tool APE/UNI-TS-11300), non sovrascritto con numeri inventati.
-        if skill == "flusso-mepboost-studio":
-            deliverable, mep_meta = mep.apply_mep(deliverable, inputs)
-            if mep_meta:
-                filiera_meta = {**filiera_meta, "mep": mep_meta}
-            # audit_elettrico: caduta tensione + verifica terra dal MCP k2a_elettrico
-            # (CEI 64-8), se il form porta impianto_elettrico_dettaglio; altrimenti onesto.
-            deliverable, el_meta = elettrico.apply_elettrico(deliverable, inputs)
-            if el_meta:
-                filiera_meta = {**filiera_meta, "elettrico": el_meta}
-
-        # WebBoost: lo score SEO on-page è calcolato dal tool audit_seo_onpage sulla
-        # pagina reale (fetch stdlib), non fabbricato dall'LLM. I volumi keyword restano
-        # esterni (Semrush/GSC) → non inventati. Fetch fallito → onesto (no sovrascrittura).
-        if skill == "flusso-webboost-pmi":
-            deliverable, web_meta = web.apply_web(deliverable, inputs)
-            if web_meta:
-                filiera_meta = {**filiera_meta, "web_onpage": web_meta}
-
-        # SafetyBoost: R=P×D + totale/incidenza dei costi sicurezza = math deterministica
-        # (non più incoerenti). Singole voci Allegato XV = stima LLM (nessun prezzario) → flag.
-        if skill == "flusso-safetyboost-studio":
-            deliverable, safety_meta = safety.apply_safety(deliverable, inputs)
-            if safety_meta:
-                filiera_meta = {**filiera_meta, "safety": safety_meta}
-
-        # BuildBoost: costi.totale_eur = Σ voci deterministico. Oneri urbanizzazione/CME/
-        # tempi-iter = stima LLM (nessuna tabella per-comune / prezzario) → flag onesto.
-        if skill == "flusso-buildboost-studio":
-            deliverable, build_meta = build.apply_build(deliverable, inputs)
-            if build_meta:
-                filiera_meta = {**filiera_meta, "build": build_meta}
-            # riferimenti normativi tecnici dal MCP k2a_norme_tecniche (search sul corpus).
-            # KB vuota oggi → 0 riferimenti onesti (nessuna citazione inventata) finché Luca
-            # non ingerisce NTC/CEI/Eurocodici. Risultati in meta (BuildBoost senza slot citazioni).
-            deliverable, norme_meta = norme.apply_norme(deliverable, inputs)
-            if norme_meta:
-                filiera_meta = {**filiera_meta, "norme_tecniche": norme_meta}
+        # Binding deterministici per-skill (estratto in apply_deterministic_bindings,
+        # coperto da test_pipeline_bindings.py): sovrascrive gli slot col valore dei tool
+        # deterministici (quant/finance/tax/mep/elettrico/web/safety/build/norme).
+        deliverable, filiera_meta = apply_deterministic_bindings(
+            skill, deliverable, facts, inputs, filiera_meta)
 
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
