@@ -373,6 +373,9 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         "  • NIENTE numeri di mercato/target normativi (es. '% FER UE 2030', minimi tariffari) "
         "senza un FATTO che li sostenga: se non c'è il fatto, NON citare la cifra.\n"
         "- Rispetta maxLength/maxItems. JSON STRETTAMENTE VALIDO (virgolette interne con \\\").\n"
+        "  • NIENTE segnaposto template: se un campo non è nei DATI CLIENTE usa 'non specificato' "
+        "o 'n/d', MAI il formato [campo] (es. '[città]', '[regione]', '[nome]'). Questi formati "
+        "vengono bloccati automaticamente dal gate di qualità e impediscono la consegna.\n"
         "- Orientamento professionale, non consulenza vincolante (D-034/D-036).\n\n"
         f"{facts_blk}\n\nDATI CLIENTE: {cli}"
     )

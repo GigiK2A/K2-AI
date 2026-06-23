@@ -350,7 +350,9 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
             # Salta se il numero è privo di contesto finanziario (date, step, ID, ecc.).
             # Eccezione: se il simbolo valutario/termine hard è PRIMA del numero (es. "€40000")
             # o il termine è nel value (post-posizione "40000 EBITDA") → non saltare.
-            pre_currency = bool(re.search(r"(?:€|eur)\s*" + re.escape(match.group(1)), value, re.I))
+            # Pre-positioned currency "€40000": controlla solo i 5 char prima del match.
+            pre_window = value[max(0, match.start() - 5):match.start()]
+            pre_currency = bool(re.search(r"(?:€|eur)\s*$", pre_window, re.I))
             if not suffix and not pre_currency and not re.search(
                     r"(?:ricav|ebitda|utile|debito|fatturat|nfp|pfn).{0,20}" + re.escape(match.group(1)), value, re.I):
                 continue
@@ -362,9 +364,13 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
             if _ASSUMPTION.search(value):
                 continue
             excerpt = re.sub(r"\s+", " ", value).strip()[:180]
-            # hard-financial (€/indici/ROI…) o promessa garantita → block ANCHE sui
-            # qualitativi; solo i benchmark morbidi non-finanziari sono declassabili.
-            hard = suffix in ("€", "eur") or bool(_HARD_FINANCIAL.search(value)) or bool(_PROMISE.search(value))
+            # Hard-financial (€/indici/ROI…) o promessa garantita → block ANCHE sui
+            # qualitativi. Controlla ±80 char intorno al numero (NON l'intera stringa:
+            # "risparmio energetico" in un'altra frase non trasforma "82%" in financial).
+            ctx_start = max(0, match.start() - 80)
+            ctx_end = min(len(value), match.end() + 80)
+            near = value[ctx_start:ctx_end]
+            hard = suffix in ("€", "eur") or bool(_HARD_FINANCIAL.search(near)) or bool(_PROMISE.search(near))
             findings.append({
                 "code": "numero_non_grounded", "severity": "block" if (strict or hard) else "warn",
                 "dettaglio": f"numero {match.group(0).strip()} non presente in input/fact e non marcato come assunzione: {excerpt}",
