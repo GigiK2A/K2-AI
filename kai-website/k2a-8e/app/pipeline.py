@@ -19,13 +19,28 @@ from .settings import CATALOGO_CHIUSO, OUT_DIR
 
 log = logging.getLogger("8e.pipeline")
 
-# Boost FINANZIARI: il grounding gate resta fail-closed (block) — un numero-CLIENTE
-# fabbricato è il bug FinanceBoost. Gli altri (qualitativi: SEO/marketing/strategy/legal/
-# host/build/safety/mep) hanno l'integrità ADVISORY (warn): i benchmark di settore citati
-# (CTR/traffico %) e i segnaposto da dato mancante annotano ma non bloccano un report pagato.
+# Boost FINANZIARI: il grounding gate resta FAIL-CLOSED (block su qualunque numero-cliente
+# non grounded) — un numero-CLIENTE fabbricato è il bug FinanceBoost. Il criterio NON è
+# "è marketing vs finanza" ma "emette cifre-CLIENTE (€/indici) su cui il cliente AGISCE":
+# vanno qui anche i boost che producono economics-cliente SENZA binder deterministico che
+# li sovrascriva (cruscotto 12-mesi, host €impatto/scenari, gli express che calcolano ROE/
+# D/E/CCII). Finché non hanno un binder, fail-closed = RIFIUTO onesto invece di numeri finti.
+#
+# Gli altri (qualitativi: SEO/marketing/strategy/legal) hanno l'integrità ADVISORY (warn) MA
+# con eccezioni boost-agnostiche che restano block OVUNQUE (vedi grounding/quality): segnaposto
+# specifici trapelati, cover anonima, e i numeri HARD-FINANCIAL (€/EBITDA/ROI/payback…). Solo i
+# benchmark di settore "morbidi" (traffico/conversion %) e i dati mancanti annotano (warn).
+# I mixed con binder che ricalcola i derivati pericolosi (mep payback/VAN/TIR via quant; build
+# totale_eur; safety R=P·D) restano fuori: il numero pericoloso è già deterministico.
 FINANCIAL_SKILLS = frozenset({
     "flusso-financeboost-pmi", "flusso-advisorboost-pmi",
     "flusso-fiscoboost-pmi", "flusso-agevolazioni-pmi",
+    # economics-cliente SENZA binder → fail-closed finché non si cabla un binder reale:
+    "cruscotto-direzionale",          # ControlBoost 1499€: trend 12-mesi cashflow/EBITDA tutto LLM
+    "flusso-hostboost-ricettive",     # €impatto/scenari ricavi (impatto_eur_anno, rischio_sospensione_eur)
+    "check-salute-finanziaria",       # ROE / D/E / Current Ratio / Margine sul cliente
+    "check-pmi-express",              # kpi_derivati + alert_ccii (indici Codice Crisi)
+    "check-fiscale-express",          # scoring fiscale: coerenza con la famiglia tax
 })
 
 
@@ -346,9 +361,10 @@ def render_external(service_id: str, deliverable: dict, citazioni: list | None =
         raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
     inputs = inputs or {}
     citazioni = _enrich_citazioni_normattiva(deliverable, list(citazioni or []))
-    g_findings = (grounding.required_inputs_findings(form_schema, inputs)
+    strict_grounding = skill in FINANCIAL_SKILLS
+    g_findings = (grounding.required_inputs_findings(form_schema, inputs, strict=strict_grounding)
                   + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
-                                                  strict=(skill in FINANCIAL_SKILLS)))
+                                                  strict=strict_grounding))
     job_id = jobs.create(service_id, bp_id, 1.0)
     if grounding.blocks(g_findings):
         jobs.update(job_id, status="refused", refusal_reason="grounding_failed",
@@ -477,7 +493,7 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         # verbatim grounded (le norme reali); le confabulate restano scoperte per il CAGE.
         citazioni = _enrich_citazioni_normattiva(deliverable, citazioni)
         strict_grounding = skill in FINANCIAL_SKILLS
-        g_findings = (grounding.required_inputs_findings(form_schema, inputs)
+        g_findings = (grounding.required_inputs_findings(form_schema, inputs, strict=strict_grounding)
                       + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
                                                       facts=facts, strict=strict_grounding))
         g_blocks = grounding.blocks(g_findings)

@@ -42,6 +42,11 @@ _PLACEHOLDER_PATTERNS: list[tuple[str, str]] = [
 # Marker DI SISTEMA tra parentesi quadre che NON sono template trapelati: il degrado
 # offline (filiera senza API) produce '[BOZZA OFFLINE]' di proposito. Esenti dal block.
 _PLACEHOLDER_EXEMPT = {"[bozza offline]"}
+# Pattern di segnaposto "morbidi": il catch-all generico [...] becca anche note editoriali
+# legittime ("[da definire]", "[vedi sezione]") → falso positivo su report qualitativi. Sui
+# boost NON finanziari (strict=False) si annota (warn) invece di bloccare; i leak SPECIFICI
+# (città/regione/FER-X/BOZZA/override interno…) restano block OVUNQUE: sono rotture vere.
+_SOFT_PLACEHOLDER = {"segnaposto generico [...]"}
 _COVER_GENERICA = {"", "cliente", "—", "-", "n/d", "azienda", "la tua azienda"}
 
 
@@ -133,12 +138,14 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
     full = "\n".join(_walk_strings(deliverable))
 
     # 1. SEGNAPOSTO TRAPELATI → block (output rotto/non professionale). I marker di
-    #    sistema (es. '[BOZZA OFFLINE]') sono esenti: non sono template trapelati.
+    #    sistema (es. '[BOZZA OFFLINE]') sono esenti: non sono template trapelati. Il
+    #    catch-all generico [...] è declassato a warn sui qualitativi (becca note editoriali).
     for pat, desc in _PLACEHOLDER_PATTERNS:
         for m in re.finditer(pat, full, re.I):
             if m.group(0).strip().lower() in _PLACEHOLDER_EXEMPT:
                 continue
-            findings.append({"code": "placeholder_leak", "severity": "block",
+            sev = "warn" if (not strict and desc in _SOFT_PLACEHOLDER) else "block"
+            findings.append({"code": "placeholder_leak", "severity": sev,
                              "dettaglio": f"{desc}: \"{m.group(0)}\""})
             break   # un finding per pattern basta
 
@@ -206,9 +213,12 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
     # 3b. DEPTH-vs-DATA → warn: deliverable ricco su input scarni = la RADICE del
     #     generico (16 pagine sicure su 4 fatti + 'non ho dati'). Non blocca, ma
     #     segnala che l'analisi è probabilmente archetipo, non QUESTO cliente.
+    #     Euristica blunt: false-positive sui boost tool-grounded (web fa fetch della pagina,
+    #     mep/build calcolano) dove l'input-form È scarno ma il fatto è reale → block solo sui
+    #     FINANZIARI (strict), warn altrove (l'archetipo finanziario è il caso pericoloso).
     sostanziali = sum(1 for v in _walk_strings(inputs or {}) if len(str(v).strip()) >= 3)
     if inputs is not None and sostanziali < 5 and len(full) > 4000:
-        findings.append({"code": "input_povero", "severity": "block",
+        findings.append({"code": "input_povero", "severity": "block" if strict else "warn",
                          "dettaglio": f"deliverable ricco (~{len(full)} caratteri) su soli {sostanziali} dati "
                                       f"cliente sostanziali: rischio analisi generica/archetipo, non specifica"})
 
@@ -226,14 +236,12 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
                          "dettaglio": f"tutte le {len(prios)} iniziative hanno priorità '{prios[0]}': "
                                       f"il documento promette priorità ma non le differenzia"})
 
-    # Boost QUALITATIVI (strict=False): l'integrità è ADVISORY — segnaposto/cover/numeri
-    # non-grounded sono benchmark di settore o dati mancanti, non numeri-CLIENTE fabbricati:
-    # si annotano (warn), NON bloccano un deliverable pagato. I boost FINANZIARI (strict=True)
-    # restano fail-closed (il bug FinanceBoost). required_inputs_findings resta block a parte.
-    if not strict:
-        for f in findings:
-            if f.get("severity") == "block":
-                f["severity"] = "warn"
+    # NB: niente più declassamento "a colpo d'accetta". La severità è decisa PER TIPO di
+    # finding (boost-agnostico) là dove viene emesso: i FINANZIARI (strict=True) sono tutti
+    # block; sui qualitativi (strict=False) restano block OVUNQUE i difetti che danneggiano
+    # comunque — segnaposto specifici trapelati, cover anonima, numeri HARD-FINANCIAL e
+    # promesse garantite (vedi quality.unsupported_number_findings) — mentre i benchmark di
+    # settore morbidi, il placeholder generico [...] e l'input-povero tool-grounded → warn.
     # dedup (stesso code+dettaglio)
     seen, uniq = set(), []
     for f in findings:
@@ -244,7 +252,8 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
     return uniq
 
 
-def required_inputs_findings(form_schema: dict | None, inputs: dict | None) -> list[dict]:
+def required_inputs_findings(form_schema: dict | None, inputs: dict | None,
+                             *, strict: bool = False) -> list[dict]:
     """FEED-completeness (C1) — i campi 'required' del form.json del blueprint che NON
     sono arrivati negli input estratti dalla conversazione.
 
@@ -254,7 +263,10 @@ def required_inputs_findings(form_schema: dict | None, inputs: dict | None) -> l
     LO STESSO su dati parziali — la radice del report-archetipo. Qui si rende il
     `required` un segnale vero: i fatti-cliente indispensabili mancanti diventano un
     finding C1 (le chiavi degli input combaciano con gli id del form, niente falsi
-    positivi). Severità warn, come il resto del CAGE (vedi nota nel modulo)."""
+    positivi). strict=True (boost FINANZIARI): severità 'block' — un report-soldi non parte
+    su campi-cliente indispensabili mancanti (chiude il fail-open di render_external, che non
+    ha il Gate 0 di run()). strict=False (qualitativi): warn, come il resto del CAGE — su run()
+    ci pensa già il Gate 0 (prepare_inputs → Refuse)."""
     if not form_schema or inputs is None:
         return []
     required = form_schema.get("required")
@@ -265,7 +277,8 @@ def required_inputs_findings(form_schema: dict | None, inputs: dict | None) -> l
     for name in required:
         if inputs.get(name) in (None, "", [], {}):
             desc = ((props or {}).get(name) or {}).get("description") or name
-            findings.append({"code": "campo_obbligatorio_mancante", "classe": "C1", "severity": "warn",
+            findings.append({"code": "campo_obbligatorio_mancante", "classe": "C1",
+                             "severity": "block" if strict else "warn",
                              "dettaglio": f"campo obbligatorio del form '{name}' assente dagli input estratti "
                                           f"(il boost lo dichiara indispensabile: {str(desc)[:80]})"})
     return findings

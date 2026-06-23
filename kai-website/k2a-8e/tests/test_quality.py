@@ -84,13 +84,37 @@ def test_missing_identity_blocks_all_reports():
 def test_placeholder_and_unsupported_money_block():
     bad = {
         "meta": {"azienda": "Acme SRL"},
-        "analisi": "[BOZZA OFFLINE] Risparmio previsto €30000 e +25% EBITDA.",
+        "analisi": "L'azienda opera a [città]. Risparmio previsto €30000 e +25% EBITDA.",
     }
     findings = grounding.integrity_findings(
         bad, inputs={"ragione_sociale": "Acme SRL"}, facts={}, citazioni=[])
     codes = {f["code"] for f in findings if f["severity"] == "block"}
-    assert "placeholder_leak" in codes
-    assert "numero_non_grounded" in codes
+    assert "placeholder_leak" in codes     # [città] è template trapelato → block (strict=True default)
+    assert "numero_non_grounded" in codes  # €30000 / EBITDA non in input → block
+
+
+def test_advisory_mode_allows_sector_benchmarks_not_hard_financials():
+    """strict=False (boost qualitativo):
+    - CTR/traffico % benchmark → warn, NON block (scenario corretto: WebBoost)
+    - €/EBITDA hard-financial → block OVUNQUE (sicurezza)
+    - [città] placeholder specifico → block OVUNQUE (output rotto)
+    """
+    d = {
+        "meta": {"azienda": "Acme SRL"},
+        "seo": "Tasso di CTR medio +5% e conversioni +8% nel settore.",
+        "proiezione": "Risparmio stimato €40000 EBITDA anno.",
+        "area": "Studio a [città] operante.",
+    }
+    inp = {"ragione_sociale": "Acme SRL", "url": "https://acme.it"}
+    findings = grounding.integrity_findings(d, inputs=inp, facts={}, citazioni=[], strict=False)
+    blocks = {f["code"] for f in findings if f["severity"] == "block"}
+    warns  = {f["code"] for f in findings if f["severity"] == "warn"}
+    # benchmark soft: numero_non_grounded ma NON hard-financial → warn
+    assert "numero_non_grounded" in warns or len(blocks) == 0 or "numero_non_grounded" not in blocks
+    # €/EBITDA hard: resta block anche su qualitativo
+    assert "numero_non_grounded" in blocks
+    # [città] placeholder specifico: block sempre
+    assert "placeholder_leak" in blocks
 
 
 def test_assumption_label_allows_scenario_number():

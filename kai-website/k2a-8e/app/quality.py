@@ -304,6 +304,20 @@ _QUANT_CONTEXT = re.compile(
     r"payback|fatturato|conversion|traffico|nfp|pfn|cagr|impatto|beneficio)", re.I
 )
 _ASSUMPTION = re.compile(r"(?:assunzione|ipotesi esplicita|scenario illustrativo|da validare)", re.I)
+# Numeri HARD-FINANCIAL: cifre-CLIENTE su cui si AGISCE economicamente (€, indici di
+# bilancio, ROI/payback/VAN/TIR, imposte). Restano 'block' anche sui boost qualitativi
+# (strict=False): un "€50k di impatto" o un "ROI del 250%" fabbricato è pericoloso in
+# QUALSIASI report, non solo nei finanziari. I 'soft' (traffico/conversion %) sono
+# benchmark di settore → declassabili a warn quando il boost non è finanziario.
+_HARD_FINANCIAL = re.compile(
+    r"(?:€|\beur\b|ebitda|utile|debit\w*|\bpfn\b|\bnfp\b|\broi\b|\broe\b|\bros\b|payback|"
+    r"\bvan\b|\btir\b|margine|fatturat\w*|ricav\w*|cagr|impost\w*|\bires\b|\birap\b|\biva\b|"
+    r"enterprise\s+value|valore\s+d'impresa|beneficio|risparmi\w*)", re.I)
+# PROMESSA/GARANZIA: un numero-risultato GARANTITO al cliente ("ti garantiamo +40%") è
+# una promessa fabbricata = liability, resta block ovunque. Distinta dal benchmark nudo
+# ("+40% tipico del settore" → soft/warn): qui c'è il verbo di garanzia.
+_PROMISE = re.compile(
+    r"(?:garant\w*|assicuriam\w*|ti\s+assicur\w*|otterrai|raddoppi\w*|triplic\w*|moltiplic\w*)", re.I)
 _UNCERTAIN_CLIENT_FACT = re.compile(
     r"(?:presumibilmente|probabilmente|ipotetic[oa]|si presume|verosimilmente).{0,100}"
     r"(?:dipendent|fatturat|cliente|contratt|registro|modello 231|social|seo|sito|process)", re.I | re.S
@@ -317,12 +331,14 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
     Percentuali/valute nuove sono ammesse solo se dichiarate come assunzioni
     esplicite. Non blocca date, numerazione di passi o durate operative.
 
-    strict=True (boost FINANZIARI): severità 'block' — un numero-cliente fabbricato è
-    pericoloso (il bug FinanceBoost originale). strict=False (boost QUALITATIVI: SEO/
-    marketing/strategy): severità 'warn' — i benchmark di settore (CTR, traffico %) sono
-    conoscenza di dominio citata, non numeri-cliente inventati: si annotano, non bloccano
-    un deliverable pagato (i numeri-cliente critici dei finanziari restano comunque bound
-    deterministicamente dai binder).
+    strict=True (boost FINANZIARI): severità 'block' su QUALUNQUE numero non grounded — un
+    numero-cliente fabbricato è pericoloso (il bug FinanceBoost originale). strict=False
+    (boost QUALITATIVI: SEO/marketing/strategy): la severità dipende dalla NATURA del numero,
+    non dal boost — un benchmark di settore morbido (CTR, traffico, conversion %) si annota
+    (warn), ma un numero HARD-FINANCIAL (€/EBITDA/ROI/payback…) o una promessa GARANTITA
+    ("ti garantiamo +40%") resta 'block' OVUNQUE: fabbricare una cifra-cliente su cui si agisce
+    economicamente è liability in qualsiasi report. (I numeri-cliente dei finanziari restano
+    comunque bound deterministicamente dai binder dove esistono.)
     """
     known = grounded_numbers(inputs, facts, citations)
     findings: list[dict] = []
@@ -331,7 +347,12 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
             continue
         for match in _NUMBER.finditer(value):
             suffix = (match.group(2) or "").lower()
-            if not suffix and not re.search(r"(?:ricav|ebitda|utile|debito|fatturat|nfp|pfn).{0,20}" + re.escape(match.group(1)), value, re.I):
+            # Salta se il numero è privo di contesto finanziario (date, step, ID, ecc.).
+            # Eccezione: se il simbolo valutario/termine hard è PRIMA del numero (es. "€40000")
+            # o il termine è nel value (post-posizione "40000 EBITDA") → non saltare.
+            pre_currency = bool(re.search(r"(?:€|eur)\s*" + re.escape(match.group(1)), value, re.I))
+            if not suffix and not pre_currency and not re.search(
+                    r"(?:ricav|ebitda|utile|debito|fatturat|nfp|pfn).{0,20}" + re.escape(match.group(1)), value, re.I):
                 continue
             n = _num(match.group(1))
             if n is None or round(n, 4) in known:
@@ -341,8 +362,11 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
             if _ASSUMPTION.search(value):
                 continue
             excerpt = re.sub(r"\s+", " ", value).strip()[:180]
+            # hard-financial (€/indici/ROI…) o promessa garantita → block ANCHE sui
+            # qualitativi; solo i benchmark morbidi non-finanziari sono declassabili.
+            hard = suffix in ("€", "eur") or bool(_HARD_FINANCIAL.search(value)) or bool(_PROMISE.search(value))
             findings.append({
-                "code": "numero_non_grounded", "severity": "block" if strict else "warn",
+                "code": "numero_non_grounded", "severity": "block" if (strict or hard) else "warn",
                 "dettaglio": f"numero {match.group(0).strip()} non presente in input/fact e non marcato come assunzione: {excerpt}",
             })
     # dedup compatto
