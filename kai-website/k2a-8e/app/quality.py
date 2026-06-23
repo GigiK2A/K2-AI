@@ -311,11 +311,18 @@ _UNCERTAIN_CLIENT_FACT = re.compile(
 
 
 def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
-                                citations: list | None = None) -> list[dict]:
+                                citations: list | None = None, strict: bool = True) -> list[dict]:
     """Trova falsa precisione economica non presente negli input/fact.
 
     Percentuali/valute nuove sono ammesse solo se dichiarate come assunzioni
     esplicite. Non blocca date, numerazione di passi o durate operative.
+
+    strict=True (boost FINANZIARI): severità 'block' — un numero-cliente fabbricato è
+    pericoloso (il bug FinanceBoost originale). strict=False (boost QUALITATIVI: SEO/
+    marketing/strategy): severità 'warn' — i benchmark di settore (CTR, traffico %) sono
+    conoscenza di dominio citata, non numeri-cliente inventati: si annotano, non bloccano
+    un deliverable pagato (i numeri-cliente critici dei finanziari restano comunque bound
+    deterministicamente dai binder).
     """
     known = grounded_numbers(inputs, facts, citations)
     findings: list[dict] = []
@@ -335,7 +342,7 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
                 continue
             excerpt = re.sub(r"\s+", " ", value).strip()[:180]
             findings.append({
-                "code": "numero_non_grounded", "severity": "block",
+                "code": "numero_non_grounded", "severity": "block" if strict else "warn",
                 "dettaglio": f"numero {match.group(0).strip()} non presente in input/fact e non marcato come assunzione: {excerpt}",
             })
     # dedup compatto
@@ -347,9 +354,9 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
     return out[:20]
 
 
-def uncertain_fact_findings(deliverable: dict) -> list[dict]:
+def uncertain_fact_findings(deliverable: dict, strict: bool = True) -> list[dict]:
     full = "\n".join(str(v) for v in _walk(deliverable) if isinstance(v, str))
     return [{
-        "code": "fatto_cliente_ipotetico", "severity": "block",
+        "code": "fatto_cliente_ipotetico", "severity": "block" if strict else "warn",
         "dettaglio": "un dato controllabile del cliente e stato sostituito da una supposizione; va raccolto o dichiarato non disponibile",
     }] if _UNCERTAIN_CLIENT_FACT.search(full) else []

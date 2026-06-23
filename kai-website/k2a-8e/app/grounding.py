@@ -126,7 +126,8 @@ _C2_NORMA = re.compile(
 
 
 def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
-                       inputs: dict | None = None, facts: dict | None = None) -> list[dict]:
+                       inputs: dict | None = None, facts: dict | None = None,
+                       strict: bool = True) -> list[dict]:
     citazioni = citazioni or []
     findings: list[dict] = []
     full = "\n".join(_walk_strings(deliverable))
@@ -214,9 +215,9 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
     # 3c. Falsa precisione economica e fatti cliente ipotetici. Questi controlli
     # sono condivisi da Finance, Strategy, Legal, Web, MEP, Safety, Host ecc.
     findings.extend(quality.unsupported_number_findings(
-        deliverable, inputs or {}, facts or {}, citazioni,
+        deliverable, inputs or {}, facts or {}, citazioni, strict=strict,
     ))
-    findings.extend(quality.uncertain_fact_findings(deliverable))
+    findings.extend(quality.uncertain_fact_findings(deliverable, strict=strict))
 
     # ── C3 · PRIORITÀ indifferenziate → warn (la 'lettura prioritizzata' è vuota)
     prios = _collect_priorities(deliverable)
@@ -225,6 +226,14 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
                          "dettaglio": f"tutte le {len(prios)} iniziative hanno priorità '{prios[0]}': "
                                       f"il documento promette priorità ma non le differenzia"})
 
+    # Boost QUALITATIVI (strict=False): l'integrità è ADVISORY — segnaposto/cover/numeri
+    # non-grounded sono benchmark di settore o dati mancanti, non numeri-CLIENTE fabbricati:
+    # si annotano (warn), NON bloccano un deliverable pagato. I boost FINANZIARI (strict=True)
+    # restano fail-closed (il bug FinanceBoost). required_inputs_findings resta block a parte.
+    if not strict:
+        for f in findings:
+            if f.get("severity") == "block":
+                f["severity"] = "warn"
     # dedup (stesso code+dettaglio)
     seen, uniq = set(), []
     for f in findings:

@@ -19,6 +19,15 @@ from .settings import CATALOGO_CHIUSO, OUT_DIR
 
 log = logging.getLogger("8e.pipeline")
 
+# Boost FINANZIARI: il grounding gate resta fail-closed (block) — un numero-CLIENTE
+# fabbricato è il bug FinanceBoost. Gli altri (qualitativi: SEO/marketing/strategy/legal/
+# host/build/safety/mep) hanno l'integrità ADVISORY (warn): i benchmark di settore citati
+# (CTR/traffico %) e i segnaposto da dato mancante annotano ma non bloccano un report pagato.
+FINANCIAL_SKILLS = frozenset({
+    "flusso-financeboost-pmi", "flusso-advisorboost-pmi",
+    "flusso-fiscoboost-pmi", "flusso-agevolazioni-pmi",
+})
+
 
 class Refuse(Exception):
     def __init__(self, reason: str, message: str):
@@ -338,7 +347,8 @@ def render_external(service_id: str, deliverable: dict, citazioni: list | None =
     inputs = inputs or {}
     citazioni = _enrich_citazioni_normattiva(deliverable, list(citazioni or []))
     g_findings = (grounding.required_inputs_findings(form_schema, inputs)
-                  + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs))
+                  + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
+                                                  strict=(skill in FINANCIAL_SKILLS)))
     job_id = jobs.create(service_id, bp_id, 1.0)
     if grounding.blocks(g_findings):
         jobs.update(job_id, status="refused", refusal_reason="grounding_failed",
@@ -466,8 +476,10 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         # §3b · ROUTE: verifica i riferimenti normativi contro il corpus → citazioni
         # verbatim grounded (le norme reali); le confabulate restano scoperte per il CAGE.
         citazioni = _enrich_citazioni_normattiva(deliverable, citazioni)
+        strict_grounding = skill in FINANCIAL_SKILLS
         g_findings = (grounding.required_inputs_findings(form_schema, inputs)
-                      + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs, facts=facts))
+                      + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
+                                                      facts=facts, strict=strict_grounding))
         g_blocks = grounding.blocks(g_findings)
         # OFFLINE = deliverable segnaposto/demo (no LLM): contiene placeholder e gira su input
         # minimi → i block del gate sono attesi e non vanno applicati (il gate è per i report
