@@ -64,6 +64,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-venv ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
+# -------- §3c · Corpus Normattiva (normattiva.db, ~1.8GB FTS5) — fetch build-time --------
+# POSIZIONE: subito dopo apt-get (curl c'è) e PRIMA delle COPY del codice → il layer (1.8GB)
+# si CACHA e NON si ri-scarica a ogni commit (la COPY di app/, che cambia sempre,
+# invaliderebbe tutto ciò che la segue, incluso questo fetch). DORMIENTE se la URL non è
+# settata. NON-FATALE + bounded (--max-time): se il download non finisce entro il budget
+# (URL throttled tipo pub-*.r2.dev, o deadline di build) il RUN NON fa fallire il build —
+# normattiva resta dormiente (il resolver degrada onesto: available()=False, niente
+# citazioni inventate) e tutto il resto (report, boost) deploya comunque. Il parziale viene
+# rimosso per non lasciare un .db SQLite corrotto. Quando la URL diventa veloce (R2 custom
+# domain / presigned), cambiare NORMATTIVA_DB_URL busta la cache e il download riparte.
+ARG NORMATTIVA_DB_URL=""
+RUN if [ -n "$NORMATTIVA_DB_URL" ]; then \
+      mkdir -p /app/engine-8e && \
+      echo "§3c: fetch normattiva.db (best-effort, non-fatale, max 8 min)…" && \
+      { curl -fSL --max-time 480 "$NORMATTIVA_DB_URL" -o /app/engine-8e/normattiva.db \
+        && ls -lh /app/engine-8e/normattiva.db ; } \
+      || { echo "§3c: download non completato entro il budget → normattiva DORMIENTE"; \
+           rm -f /app/engine-8e/normattiva.db ; } ; \
+    else echo "§3c: NORMATTIVA_DB_URL non settato → normattiva DORMIENTE (resolver degrada onesto)"; fi
+
 # -------- Install Python dependencies for kbot backend --------
 COPY kbot/backend/requirements.txt /tmp/kbot-requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/kbot-requirements.txt
@@ -93,20 +113,6 @@ COPY k2a-8e/assets ./engine-8e/assets
 # i binder deterministici (advisor/finance/§E budget/mep/agevolazioni) li importano a runtime
 # via sys.path. Senza questa COPY → ModuleNotFoundError quando un boost prova a generare.
 COPY k2a-8e/vendor ./engine-8e/vendor
-
-# -------- §3c · Corpus Normattiva (normattiva.db, ~1.8GB FTS5) — fetch build-time --------
-# Il corpus NON è nel repo (gitignored, >100MB → il deploy GitHub-push non lo porta).
-# Si baka nell'immagine scaricandolo da una URL (consigliato Cloudflare R2 free tier:
-# 10GB storage + egress 0 → costo 0€). DORMIENTE se NORMATTIVA_DB_URL non è settato:
-# l'immagine builda comunque e il resolver degrada onesto (available()=False, niente
-# crash, niente citazioni inventate). Usa una URL FIRMATA a scadenza (R2 presigned) così
-# nessuna credenziale permanente resta nella history dell'immagine.
-ARG NORMATTIVA_DB_URL=""
-RUN if [ -n "$NORMATTIVA_DB_URL" ]; then \
-      echo "§3c: fetch normattiva.db…" && \
-      curl -fSL --retry 3 "$NORMATTIVA_DB_URL" -o /app/engine-8e/normattiva.db && \
-      ls -lh /app/engine-8e/normattiva.db ; \
-    else echo "§3c: NORMATTIVA_DB_URL non settato → normattiva DORMIENTE (resolver degrada onesto)"; fi
 
 # -------- Install Node runtime dependencies for server.js --------
 COPY package*.json ./
