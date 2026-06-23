@@ -1,4 +1,0 @@
-repo: inglucarossi73/k2a-mcp-deliverable
-sha: ca0f2ba2d0b74ce89bf2ec4f8cd35d31ea110e9d
-vendored_at: 2026-06-21
-by: Fix #6 coverage gate (validate_coverage, ok di Luca)

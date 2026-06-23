@@ -89,13 +89,6 @@ def get_form(service_id: str):
     props = form.get("properties", {})
     required = set(form.get("required", []))
     campi = []
-    # Metadato comune a TUTTI i report. In passato non era richiesto dai form e
-    # la copertina usciva come "Cliente / —" anche su documenti venduti.
-    if "ragione_sociale" not in props:
-        campi.append({
-            "id": "ragione_sociale", "label": "Ragione sociale o nome del soggetto analizzato",
-            "tipo": "string", "enum": None, "items_enum": None, "obbligatorio": True,
-        })
     for name, spec in props.items():
         t = spec.get("type")
         t = t[0] if isinstance(t, list) else t

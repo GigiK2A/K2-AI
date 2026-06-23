@@ -1,5 +1,0 @@
-repo: inglucarossi73/k2a-mcp-quant
-sha: 1d7d9c2adec1a38ebbbe7445be17f1307154f94d
-merge: PR #1 refresh-settori-damodaran-weur-2026
-vendored_at: 2026-06-21
-by: wiring quant->8e (handoff Luca Fix #0)

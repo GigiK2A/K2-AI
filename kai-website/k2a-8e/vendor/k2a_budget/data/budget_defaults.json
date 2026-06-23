@@ -1,6 +1,0 @@
-{
-  "inflazione_pct_2026": 2.0,
-  "aliquota_imposte_default_pct": 27.9,
-  "_source": "ISTAT inflazione 2026 + tax-tables-fiscale.json IRES 24% + IRAP 3.9% (semplificata)",
-  "snapshot_as_of": "2026-06-21"
-}

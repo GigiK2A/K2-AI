@@ -1,7 +1,0 @@
-vs_strutturale
-fonte: github inglucarossi73/k2a-mcp-vs-strutturale
-sha: c630bb7
-uso: 52 check_* (verifiche NTC2018). VENDORIZZATO ma NON FUNZIONALE da pacchetto:
-  BUG UPSTREAM #1: il pacchetto pubblicato NON include data/sanity_rules.json (riga _sanity.py:20 lo cerca a parent.parent.parent/data) -> ogni check_* crasha con K2A_SANITY_CHECK=1 (default). Vale anche nel venv kbot/A2.
-  BLOCCO #2: NESSUN boost del catalogo (11 schemi verificati) ha uno slot per il risultato di una verifica strutturale -> serve StructBoost instradato (decisione prodotto).
-DA LUCA: (1) includere sanity_rules.json nel wheel; (2) decidere StructBoost.

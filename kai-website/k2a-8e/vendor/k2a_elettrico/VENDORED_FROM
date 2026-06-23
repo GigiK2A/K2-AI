@@ -1,4 +1,0 @@
-k2a_elettrico
-fonte: github inglucarossi73/k2a-mcp-elettrico
-sha: c9a4a14
-uso: 8e importa caduta_v/terra/lookup_cei come libreria (NO stdio). Moduli AI/docx (relazione_docx, google-genai) presenti ma non importati.

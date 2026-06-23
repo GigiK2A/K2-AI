@@ -22,8 +22,6 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from . import finance
-
 # ───────────────────────── helper numerici ─────────────────────────
 
 def _num(v: Any) -> Optional[float]:
@@ -224,9 +222,6 @@ def resolve_formula_fact(key: str, form: dict) -> Optional[dict]:
         bilanci = form.get("bilanci")
         if not isinstance(bilanci, list) or not bilanci:
             return _nd(formula, "nessun bilancio strutturato fornito")
-        # Se il bilancio porta le VOCI grezze, riclassifica deterministicamente e
-        # SOVRASCRIVI gli aggregati (le voci battono gli aggregati estratti dall'LLM).
-        bilanci = [finance.enrich_bilancio(bb) if isinstance(bb, dict) else bb for bb in bilanci]
         b = _latest(bilanci) or {}
         val, campi = _compute_bilancio(key, b)
         if val is None:

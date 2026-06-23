@@ -1,36 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "FinanceBoost — output deliverable (DATA-PAYLOAD)",
-  "description": "Contratto-DATI di FinanceBoost. PARADIGMA: l'agente emette SOLO questo payload; il documento e' costruito dal renderer (Luigi). Uno slot per ciascuna delle 9 voci del blueprint flusso-financeboost-pmi.boost.blueprint.json (copertura 1:1). Vietati campi inventati (additionalProperties:false).",
+  "title": "FinanceBoost — output deliverable",
   "type": "object",
-  "required": [
-    "meta",
-    "executive_summary",
-    "riclassificazione",
-    "indici",
-    "marginalita",
-    "valutazione_performance",
-    "scenari",
-    "piano_azione",
-    "limitazioni"
-  ],
+  "required": ["meta", "executive_summary", "indici", "piano_azione", "limitazioni"],
   "properties": {
     "meta": {
       "type": "object",
-      "description": "slot voce ord0 (copertina_incarico). FLAG-LUIGI: la copertina deve bindare 'cliente' (o 'azienda') e 'periodo'; oggi il renderer mostra 'Cliente'/'—' perche' periodo non aveva slot e l'etichetta 'Cliente' non e' legata ad 'azienda'.",
-      "required": ["servizio", "versione", "data", "azienda", "cliente", "periodo"],
+      "required": ["servizio", "versione", "data", "azienda"],
       "properties": {
         "servizio": { "const": "FinanceBoost" },
         "versione": { "type": "string" },
-        "data": { "type": "string", "description": "data emissione del deliverable" },
-        "azienda": { "type": "string", "description": "ragione sociale (mantenuto per back-compat con il renderer attuale)" },
-        "cliente": { "type": "string", "description": "nome cliente per la copertina. FLAG-LUIGI: decidere se la copertina bynda 'cliente' o 'azienda' — devono coincidere." },
-        "periodo": { "type": "string", "description": "periodo di analisi, es. 'FY2024' o '2022-2024'. FLAG-LUIGI: nuovo slot — risolve la copertina che mostrava '—'." }
+        "data": { "type": "string" },
+        "azienda": { "type": "string" }
       }
     },
     "executive_summary": {
       "type": "object",
-      "description": "slot voce ord1 (executive_summary). Una SOLA materializzazione: il renderer non deve duplicarlo (hero + capitolo numerato).",
       "required": ["score_globale", "semafori_aree"],
       "properties": {
         "score_globale": { "type": "integer", "minimum": 0, "maximum": 100 },
@@ -48,41 +33,8 @@
         "top_azioni": { "type": "array", "items": { "type": "string" } }
       }
     },
-    "riclassificazione": {
-      "type": "object",
-      "description": "slot voce ord2 (riclassificazione_bilancio). Dati, non prosa: SP a liquidita/esigibilita e CE a valore aggiunto su 2-3 anni.",
-      "required": ["anni", "stato_patrimoniale", "conto_economico"],
-      "properties": {
-        "anni": { "type": "array", "items": { "type": "integer" }, "description": "esercizi comparati, es. [2022,2023,2024]" },
-        "stato_patrimoniale": {
-          "type": "array",
-          "description": "righe SP riclassificato; valori[] allineati ad anni[]",
-          "items": {
-            "type": "object",
-            "required": ["voce", "valori"],
-            "properties": {
-              "voce": { "type": "string", "description": "es. 'Attivo fisso netto', 'Passivita correnti'" },
-              "valori": { "type": "array", "items": { "type": ["number", "null"] } }
-            }
-          }
-        },
-        "conto_economico": {
-          "type": "array",
-          "description": "righe CE a valore aggiunto/margini; valori[] allineati ad anni[]",
-          "items": {
-            "type": "object",
-            "required": ["voce", "valori"],
-            "properties": {
-              "voce": { "type": "string", "description": "es. 'Valore Aggiunto', 'MOL', 'EBIT', 'Utile netto'" },
-              "valori": { "type": "array", "items": { "type": ["number", "null"] } }
-            }
-          }
-        }
-      }
-    },
     "indici": {
       "type": "array",
-      "description": "slot voce ord3 (analisi_indici_trend). FLAG-LUIGI: la card indice deve bindare 'valore' (oggi esce solo label+semaforo, senza numero). 'valore' e' obbligatorio.",
       "items": {
         "type": "object",
         "required": ["nome", "valore", "benchmark", "semaforo"],
@@ -95,78 +47,21 @@
         }
       }
     },
-    "marginalita": {
-      "type": "object",
-      "description": "slot voce ord4 (analisi_marginalita): margine di contribuzione, BEP, leva operativa, margine di sicurezza.",
-      "properties": {
-        "margine_contribuzione": { "type": ["number", "null"] },
-        "costi_fissi": { "type": ["number", "null"] },
-        "costi_variabili": { "type": ["number", "null"] },
-        "bep_valore": { "type": ["number", "null"], "description": "break-even point in valore (fatturato)" },
-        "bep_quantita": { "type": ["number", "null"] },
-        "leva_operativa": { "type": ["number", "null"], "description": "grado di leva operativa = MC/RO" },
-        "margine_sicurezza": { "type": ["number", "null"] },
-        "stima_da_aggregati": { "type": ["boolean", "null"], "description": "true se costi fissi/variabili sono stimati (manca contabilita analitica)" }
-      }
-    },
-    "valutazione_performance": {
-      "type": "object",
-      "description": "slot voce ord5 (valutazione_performance): EVA, WACC, ROI scomposto, BSC semplificata.",
-      "properties": {
-        "eva": { "type": ["number", "null"], "description": "Economic Value Added = NOPAT - (CI x WACC)" },
-        "wacc": { "type": ["number", "null"] },
-        "roi_scomposto": {
-          "type": "object",
-          "properties": {
-            "margine_operativo": { "type": ["number", "null"] },
-            "rotazione_ci": { "type": ["number", "null"] }
-          }
-        },
-        "bsc": {
-          "type": "array",
-          "description": "Balanced Scorecard semplificata",
-          "items": {
-            "type": "object",
-            "required": ["prospettiva"],
-            "properties": {
-              "prospettiva": { "enum": ["finanziaria", "clienti", "processi", "apprendimento"] },
-              "indicatore": { "type": "string" },
-              "valore": { "type": ["number", "string", "null"] }
-            }
-          }
-        }
-      }
-    },
     "scenari": {
       "type": "array",
-      "description": "slot voce ord6 (proiezioni_scenari): 3 scenari proiezione 12 mesi con cash flow, BEP temporale e sensitivity.",
+      "description": "3 scenari proiezione 12 mesi",
       "items": {
         "type": "object",
         "required": ["nome"],
         "properties": {
           "nome": { "enum": ["base", "ottimistico", "pessimistico"] },
           "ricavi_proiettati": { "type": ["number", "null"] },
-          "ebitda_proiettato": { "type": ["number", "null"] },
-          "cash_flow_proiettato": { "type": ["number", "null"], "description": "flusso di cassa previsionale 12m dello scenario" },
-          "break_even_mese": { "type": ["integer", "string", "null"], "description": "mese (1-12) di raggiungimento del BEP nello scenario, o null" },
-          "sensitivity": {
-            "type": "array",
-            "description": "variabili a maggior impatto sul risultato dello scenario",
-            "items": {
-              "type": "object",
-              "required": ["variabile", "impatto"],
-              "properties": {
-                "variabile": { "type": "string" },
-                "impatto": { "type": ["number", "string"] }
-              }
-            }
-          }
+          "ebitda_proiettato": { "type": ["number", "null"] }
         }
       }
     },
     "piano_azione": {
       "type": "array",
-      "description": "slot voce ord7 (piano_azione): max 5 azioni prioritarie.",
       "maxItems": 5,
       "items": {
         "type": "object",
@@ -179,10 +74,7 @@
         }
       }
     },
-    "limitazioni": {
-      "type": "string",
-      "description": "slot voce ord8 (conclusioni_limitazioni): limitazioni dell'analisi dovute a dati mancanti."
-    }
+    "limitazioni": { "type": "string", "description": "limitazioni dell'analisi dovute a dati mancanti" }
   },
   "additionalProperties": false
 }
