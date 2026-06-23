@@ -57,7 +57,8 @@ def main():
     # happy path LegalBoost (service_id reale dal manifest)
     r = client.post("/v1/deliverables", headers=H, json={
         "service_id": "primo_parere_legale", "tier": "boost",
-        "inputs": {"ragione_sociale": "Acme SRL", "tipo_contratto": "fornitura"},
+        "inputs": {"ragione_sociale": "Acme SRL", "tipo_contratto": "fornitura",
+                   "forma_giuridica": "srl", "settore_ateco": "69.10.10", "n_dipendenti": 10},
         "entitlement_token": "x",
     })
     assert r.status_code == 202, _fail(f"create {r.status_code} {r.text}")
