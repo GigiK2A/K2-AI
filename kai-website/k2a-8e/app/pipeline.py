@@ -95,7 +95,8 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
 # ---- Stadio 4-assemble: deliverable conforme a output-schema (LegalBoost) -
 
 def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
-                        inputs: dict, meta_struct: dict | None = None) -> dict:
+                        inputs: dict, meta_struct: dict | None = None,
+                        offline: bool = False) -> dict:
     norme = [
         {"riferimento": c.get("riferimento") or c.get("campo"), "fonte": "normattiva"}
         for c in citazioni
@@ -135,7 +136,10 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
         mappa = []
     score = (meta_struct or {}).get("score")
     if not isinstance(score, int) or not (0 <= score <= 100):
-        score = -1  # forza il refuse dello schema: mai score cosmetico di fallback
+        # ONLINE senza score valido dall'LLM → -1 forza il refuse (mai score cosmetico
+        # in un report reale/pagato). OFFLINE è un placeholder/demo (nessun LLM, sezioni
+        # segnaposto): usa uno score-segnaposto valido per far girare la pipeline end-to-end.
+        score = 50 if offline else -1
     return {
         "meta": {
             "servizio": "LegalBoost", "versione": "1.0.0", "data": quality.today_iso(),
@@ -368,10 +372,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         if not blueprint or not out_schema:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
 
-        # Gate 0 comune: nessun report parte con campi obbligatori mancanti,
-        # copertina anonima o bilancio non riconciliato.
+        # Gate 0 (solo FULL): nessun report PAGATO parte con campi obbligatori mancanti,
+        # copertina anonima o bilancio non riconciliato. La PREVIEW gratuita resta permissiva
+        # (è l'assaggio: deve girare anche con input minimi/assenti, no leak del completo).
         inputs, input_errors, quality_notes = quality.prepare_inputs(skill, form_schema, inputs)
-        if input_errors:
+        if input_errors and auth_level != "PREVIEW":
             raise Refuse("insufficient_or_inconsistent_input", "; ".join(input_errors[:12]))
 
         facts, citazioni = resolve(skill, inputs)
@@ -410,7 +415,8 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             # Voci-shape (LegalBoost/FiscoBoost): HYBRID prosa + meta strutturato.
             sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
             meta_struct = llm.generate_structured_meta(blueprint, facts, inputs)
-            deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs, meta_struct)
+            offline = filiera_meta.get("mode") == "offline"
+            deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs, meta_struct, offline=offline)
             filiera_meta = {**filiera_meta, "assembly": "hybrid" if meta_struct else "prose+deterministic",
                             "structured_meta": bool(meta_struct)}
         else:
@@ -463,7 +469,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         g_findings = (grounding.required_inputs_findings(form_schema, inputs)
                       + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs, facts=facts))
         g_blocks = grounding.blocks(g_findings)
-        if g_blocks:
+        # OFFLINE = deliverable segnaposto/demo (no LLM): contiene placeholder e gira su input
+        # minimi → i block del gate sono attesi e non vanno applicati (il gate è per i report
+        # REALI/online). Online: fail-closed come sempre.
+        offline_mode = (filiera_meta or {}).get("mode") == "offline"
+        if g_blocks and not offline_mode:
             log.warning("grounding gate REFUSE job %s: %s", job_id, [b["dettaglio"] for b in g_blocks])
             jobs.update(job_id, status="refused", refusal_reason="grounding_failed",
                         validation={"grounding_block": g_blocks, "grounding_findings": g_findings})
