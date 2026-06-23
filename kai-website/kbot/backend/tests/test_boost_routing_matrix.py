@@ -66,6 +66,33 @@ def test_routing_matrix_no_cross_domain_misroute():
     assert not fails, f"{len(fails)} mis-route cross-dominio: {[(n, g, a) for n, g, a in fails]}"
 
 
+def test_user_text_intent_wins_over_site_derived_reporttype():
+    """BUG live giu 2026 (studio commercialista): l'LLM mette reportType='analisi bilancio'
+    (dal SITO letto) ma l'utente chiede ESPLICITAMENTE un audit SEO. L'intento dell'utente,
+    passato come user_text, deve vincere in PASS 1 → checkup_seo, non checkup_finanziario."""
+    out = catalog.suggest_boost(
+        {"reportType": "analisi bilancio", "notes": "studio associato, consulenza"},
+        explicit_only=True,
+        user_text="ciao, vorrei un parere seo sul mio sito internet — il sito è https://studio.com",
+    )
+    assert out is not None and out["id"] == "checkup_seo", out
+
+
+def test_user_text_none_backward_compatible():
+    """Senza user_text il routing è identico a prima (nessuna regressione)."""
+    assert catalog.suggest_boost({"reportType": "analisi bilancio"})["id"] == "checkup_finanziario"
+    assert catalog.suggest_boost({"reportType": "audit SEO"})["id"] == "checkup_seo"
+
+
+def test_legit_finance_stays_finance_with_user_text():
+    """Se l'utente parla DAVVERO di finanza, resta finanza anche col nuovo user_text."""
+    out = catalog.suggest_boost(
+        {"reportType": "analisi finanziaria"}, explicit_only=True,
+        user_text="voglio capire la bancabilità e i margini, analisi del bilancio",
+    )
+    assert out is not None and out["id"] == "checkup_finanziario", out
+
+
 if __name__ == "__main__":
     import sys as _s
     _s.exit(1 if run() else 0)

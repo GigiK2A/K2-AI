@@ -116,6 +116,43 @@ def _new_user_messages(body: MessageBody) -> List[dict]:
     return []
 
 
+def _recompute_boost(collected: dict, merged_messages: list, summary: Optional[dict]) -> None:
+    """Ricalcola boost_suggerito a OGNI turno (>=3 turni utente), sull'intento CORRENTE.
+
+    Gira anche SENZA summary: l'intento esplicito vive nel testo dell'UTENTE, quindi una
+    richiesta SEO corregge subito un boost finance stantio di un turno precedente. Allinea
+    il boost alle SKILL (che già si ricalcolano per-turno → era l'asimmetria che faceva
+    apparire FinanceBoost su una richiesta SEO). Muta `collected` in place; non solleva mai.
+    """
+    _user_turns = sum(
+        1 for _m in (merged_messages or [])
+        if isinstance(_m, dict) and _m.get("role") == "user"
+    )
+    if _user_turns < 3:        # MINIMO 3 turni utili (come il prompt) → niente pannello precoce
+        return
+    try:
+        from ..lib import catalog as _catalog
+        # L'intento REALE è nei messaggi dell'UTENTE: passato come user_text, entra in PASS 1
+        # di suggest_boost DAVANTI al reportType LLM (che può riflettere il SITO letto, non la
+        # richiesta). Un match esplicito vince anche sul tag_pillar d'ingresso.
+        _utext = " ".join(
+            str(_m.get("content") or "") for _m in (merged_messages or [])
+            if isinstance(_m, dict) and _m.get("role") == "user"
+        )[-2000:]
+        _base = summary or (collected.get("extractedData") or {})
+        _explicit = _catalog.suggest_boost(_base, explicit_only=True, user_text=_utext)
+        if _explicit is not None:
+            collected["boost_suggerito"] = _explicit["id"]
+            collected["boost_suggerito_label"] = _explicit.get("label")
+        elif not collected.get("boost_suggerito") and not collected.get("tag_pillar"):
+            _boost = _catalog.suggest_boost(_base, user_text=_utext)
+            if _boost:
+                collected["boost_suggerito"] = _boost["id"]
+                collected["boost_suggerito_label"] = _boost.get("label")
+    except Exception:
+        pass  # il routing non deve mai bloccare la chat
+
+
 @router.post("/message")
 @limiter.limit("30/minute")
 async def post_message(
@@ -214,38 +251,9 @@ async def post_message(
         )
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
-        # Selettore di catalogo: a fine conversazione pre-seleziona il Boost 8e da
-        # generare (non sovrascrive un boost già suggerito da tag pillar del sito).
-        # Mostra il pannello (boost_suggerito) solo dopo qualche scambio reale, non
-        # al 1° messaggio: il bot a volte emette il riepilogo troppo presto.
-        _user_turns = sum(1 for _m in (merged_messages or []) if isinstance(_m, dict) and _m.get("role") == "user")
-        # Ricalcola a OGNI turno (>=3): la suggestion segue l'intento CORRENTE e
-        # auto-corregge un routing stantio (bug giu 2026: marketing → LegalBoost DD).
-        # Eccezione: se il boost viene dal TAG PILLAR del sito (tag_pillar settato),
-        # lo preserviamo (è il contesto della pagina da cui arriva l'utente).
-        if _user_turns >= 2:
-            try:
-                from ..lib import catalog as _catalog
-                # L'intento REALE è nei messaggi dell'UTENTE: la summary LLM può essere
-                # sbilanciata dal profilo/pagina d'ingresso (es. tag_pillar marketing su
-                # una richiesta di bilancio → StrategyBoost). Arricchisco il match col
-                # loro testo e lascio che un match ESPLICITO vinca anche sul tag_pillar.
-                _utext = " ".join(
-                    str(_m.get("content") or "") for _m in (merged_messages or [])
-                    if isinstance(_m, dict) and _m.get("role") == "user"
-                )[-2000:]
-                _enriched = {**summary, "notes": f"{summary.get('notes') or ''} {_utext}"}
-                _explicit = _catalog.suggest_boost(_enriched, explicit_only=True)
-                if _explicit is not None:
-                    collected["boost_suggerito"] = _explicit["id"]
-                    collected["boost_suggerito_label"] = _explicit.get("label")
-                elif not collected.get("boost_suggerito") and not collected.get("tag_pillar"):
-                    _boost = _catalog.suggest_boost(summary)   # default solo se niente già
-                    if _boost:
-                        collected["boost_suggerito"] = _boost["id"]
-                        collected["boost_suggerito_label"] = _boost.get("label")
-            except Exception:
-                pass  # il routing non deve mai bloccare la chat
+    # Boost ricalcolato FUORI da `if summary:`, a OGNI turno, sull'intento corrente
+    # (come le skill): chiude l'asimmetria che lasciava un boost stantio sul bottone.
+    _recompute_boost(collected, merged_messages, summary)
 
     # Always expose the skills used in this turn so the UI can render them.
     existing_extracted = dict(collected.get("extractedData") or {})
@@ -328,38 +336,9 @@ def _persist_assistant_turn(
         )
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
-        # Selettore di catalogo: a fine conversazione pre-seleziona il Boost 8e da
-        # generare (non sovrascrive un boost già suggerito da tag pillar del sito).
-        # Mostra il pannello (boost_suggerito) solo dopo qualche scambio reale, non
-        # al 1° messaggio: il bot a volte emette il riepilogo troppo presto.
-        _user_turns = sum(1 for _m in (merged_messages or []) if isinstance(_m, dict) and _m.get("role") == "user")
-        # Ricalcola a OGNI turno (>=3): la suggestion segue l'intento CORRENTE e
-        # auto-corregge un routing stantio (bug giu 2026: marketing → LegalBoost DD).
-        # Eccezione: se il boost viene dal TAG PILLAR del sito (tag_pillar settato),
-        # lo preserviamo (è il contesto della pagina da cui arriva l'utente).
-        if _user_turns >= 2:
-            try:
-                from ..lib import catalog as _catalog
-                # L'intento REALE è nei messaggi dell'UTENTE: la summary LLM può essere
-                # sbilanciata dal profilo/pagina d'ingresso (es. tag_pillar marketing su
-                # una richiesta di bilancio → StrategyBoost). Arricchisco il match col
-                # loro testo e lascio che un match ESPLICITO vinca anche sul tag_pillar.
-                _utext = " ".join(
-                    str(_m.get("content") or "") for _m in (merged_messages or [])
-                    if isinstance(_m, dict) and _m.get("role") == "user"
-                )[-2000:]
-                _enriched = {**summary, "notes": f"{summary.get('notes') or ''} {_utext}"}
-                _explicit = _catalog.suggest_boost(_enriched, explicit_only=True)
-                if _explicit is not None:
-                    collected["boost_suggerito"] = _explicit["id"]
-                    collected["boost_suggerito_label"] = _explicit.get("label")
-                elif not collected.get("boost_suggerito") and not collected.get("tag_pillar"):
-                    _boost = _catalog.suggest_boost(summary)   # default solo se niente già
-                    if _boost:
-                        collected["boost_suggerito"] = _boost["id"]
-                        collected["boost_suggerito_label"] = _boost.get("label")
-            except Exception:
-                pass  # il routing non deve mai bloccare la chat
+    # Boost ricalcolato FUORI da `if summary:`, a OGNI turno, sull'intento corrente
+    # (come le skill): chiude l'asimmetria che lasciava un boost stantio sul bottone.
+    _recompute_boost(collected, merged_messages, summary)
 
     # Always expose skills used in this turn so the UI panel can render them
     # (mirror of the non-streaming branch — era assente nello stream).

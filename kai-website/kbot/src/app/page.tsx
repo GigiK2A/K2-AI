@@ -530,13 +530,9 @@ export default function HomePage() {
         } catch {
           /* ignore */
         }
-        const confirmMsg: ChatMessage = {
-          id: uid("msg"),
-          role: "assistant",
-          content: `Ho letto **${result.title || url}** ✓ — l'ho aggiunto al contesto. Vai pure avanti con la tua richiesta, lo tengo presente.`,
-          ts: Date.now(),
-        };
-        updateMessages([...activeConversation.messages, confirmMsg]);
+        // Niente bubble-ack qui: l'URL compare già nel chip "Contesto attivo" del Composer.
+        // Aggiungerne una si intrometteva nel flusso (messaggio K2-AI fuori posto, prima
+        // della risposta vera) → era il "primo messaggio col link disordinato".
       } catch (err: unknown) {
         const errMsg: ChatMessage = {
           id: uid("msg"),
@@ -544,7 +540,10 @@ export default function HomePage() {
           content: `Non riesco ad analizzare l'URL: ${err instanceof Error ? err.message : "errore sconosciuto"}.`,
           ts: Date.now(),
         };
-        updateMessages([...activeConversation.messages, errMsg]);
+        // Updater funzionale: appende ai messaggi CORRENTI, non a uno snapshot stantio.
+        setConversations((prev) =>
+          prev.map((c) => (c.id === activeConversation.id ? { ...c, messages: [...c.messages, errMsg] } : c)),
+        );
       } finally {
         setFetchingUrl(false);
       }
@@ -826,7 +825,7 @@ export default function HomePage() {
               <ReportGenerator
                 sessionId={kbotSession.id}
                 getAuthToken={getToken}
-                boostLabel={kbotSession.boostSuggeritoLabel ?? undefined}
+                boostLabel={suggestedBoost?.label ?? kbotSession.boostSuggeritoLabel ?? undefined}
               />
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}

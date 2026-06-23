@@ -197,12 +197,19 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
 _BOOST_DEFAULT = "checkup_controllo"
 
 
-def suggest_boost(summary: Optional[dict], explicit_only: bool = False) -> Optional[dict]:
+def suggest_boost(summary: Optional[dict], explicit_only: bool = False,
+                  user_text: Optional[str] = None) -> Optional[dict]:
     """Dal riepilogo conversazione → il Boost 8e più adatto (selettore catalogo).
 
     Deterministico (keyword match, primo vince) con default generico. Ritorna il
     servizio dict se 8e-generabile, altrimenti il primo Boost generabile a
     catalogo, altrimenti None. Mai solleva: il routing non deve bloccare la chat.
+
+    `user_text` (opzionale): il testo dei messaggi UTENTE. Entra in PASS 1 DAVANTI a
+    reportType/deliverableType: se l'LLM ha messo in reportType il contenuto del SITO
+    analizzato (es. "analisi bilancio" su uno studio commercialista) mentre l'utente ha
+    chiesto "parere SEO", deve vincere la richiesta dell'utente. Con user_text=None il
+    comportamento è identico a prima (backward-compatible).
     """
     summary = summary or {}
 
@@ -214,11 +221,13 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False) -> Optio
                 return sid
         return None
 
-    # PASS 1 — l'INTENTO esplicito (reportType/deliverableType) vince sui termini
-    # INCIDENTALI che compaiono in objective/scope/notes: il SETTORE del cliente
-    # ("edilizia") o frasi come "acquisizione clienti" NON devono dirottare un
-    # report di marketing su BuildBoost o LegalBoost DD. (bug reale giu 2026)
-    intent = " ".join(str(summary.get(k) or "") for k in ("reportType", "deliverableType")).lower()
+    # PASS 1 — l'INTENTO esplicito (testo utente + reportType/deliverableType) vince sui
+    # termini INCIDENTALI in objective/scope/notes: il SETTORE del cliente ("edilizia") o
+    # frasi come "acquisizione clienti" NON devono dirottare un report di marketing su
+    # BuildBoost o LegalBoost DD. Il testo utente è davanti: l'arbitro resta l'ordine dei
+    # gruppi keyword (domini specifici prima), così "parere SEO" batte "analisi bilancio".
+    intent = (str(user_text or "") + " "
+              + " ".join(str(summary.get(k) or "") for k in ("reportType", "deliverableType"))).lower()
     chosen = _match(intent)
     # PASS 2 — fallback sull'intero riepilogo se l'intento non è già instradabile.
     if not chosen:
@@ -226,6 +235,8 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False) -> Optio
             str(summary.get(k) or "")
             for k in ("reportType", "deliverableType", "objective", "businessType", "scope", "notes")
         ).lower()
+        if user_text:
+            full = str(user_text).lower() + " " + full
         chosen = _match(full)
     if not chosen and explicit_only:
         return None          # nessun match esplicito → il chiamante tiene il boost corrente
