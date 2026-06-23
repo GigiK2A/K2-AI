@@ -78,5 +78,13 @@ tneg = {d["tipo"]: d for d in out2["indici"]["ccii"]["dettaglio"]}
 check("PN negativo → PN_negativo stato rosso + alert_attivi>=1",
       tneg.get("PN_negativo_o_sotto_soglia", {}).get("stato") == "rosso" and out2["indici"]["ccii"]["alert_attivi"] >= 1)
 
+print("── voci-bridge: bilancio a VOCI (path prod) viene riclassificato (no §A-§D a vuoto) ──")
+b_voci = {"anno": 2024, "voci": [{"sezione": "ricavi", "descrizione": "Ricavi delle vendite", "importo": 100000.0}]}
+enr = advisor._latest_bilancio({"bilanci": [b_voci]})
+check("advisor riclassifica il bilancio a voci (_reclass allegato)", isinstance(enr, dict) and "_reclass" in enr)
+# regressione: con aggregati (no voci) resta invariato e DuPont gira come prima
+enr2 = advisor._latest_bilancio(ADV)
+check("con aggregati (no voci) bilancio invariato", enr2.get("ricavi") == ADV["bilanci"][0]["ricavi"])
+
 print("\nTEST ADVISOR " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)

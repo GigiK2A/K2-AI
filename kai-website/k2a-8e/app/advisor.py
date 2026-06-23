@@ -34,7 +34,15 @@ def _latest_bilancio(inputs: dict) -> Optional[dict]:
     if not bs:
         return None
     wy = [b for b in bs if _num(b.get("anno")) is not None]
-    return max(wy, key=lambda b: _num(b.get("anno"))) if wy else bs[-1]
+    b = max(wy, key=lambda b: _num(b.get("anno"))) if wy else bs[-1]
+    # In produzione il bilancio arriva come VOCI grezze: riclassifico con finance.py per avere
+    # gli aggregati (ricavi/ebitda/utile/PN/attivo/debiti) che DuPont/CCII/EV leggono —
+    # altrimenti b.get('ricavi') ecc. sono assenti e tutto §A-§D gira a vuoto.
+    try:
+        from . import finance
+        return finance.enrich_bilancio(b)
+    except Exception:
+        return b
 
 
 def bind_dupont(deliverable: dict, b: dict) -> None:
