@@ -214,12 +214,18 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False,
     summary = summary or {}
 
     def _match(text: str) -> Optional[str]:
-        # Match a CONFINE DI PAROLA (\b a inizio keyword), non per sottostringa: evita
-        # falsi positivi tipo "nda" dentro "aziendale" → LegalBoost su un bilancio.
+        # SCORE-BASED (allineato a infer_service_id_from_session, che fa girare le SKILL):
+        # conta le occorrenze di keyword per gruppo e vince il PIÙ menzionato → l'INTENTO
+        # (es. "marketing"/"seo", citati più volte) batte il SETTORE incidentale (es.
+        # "edilizia" nominato di sfuggita), che con il vecchio first-match-per-ordine dirottava
+        # un'analisi marketing su BuildBoost. A PARITÀ vince il primo gruppo (ordine-dominio).
+        # \b a inizio keyword: niente match parziali ("nda" dentro "aziendale").
+        best_sid, best_score = None, 0
         for keys, sid in _BOOST_KEYWORDS:
-            if any(re.search(r"\b" + re.escape(k), text) for k in keys):
-                return sid
-        return None
+            score = sum(len(re.findall(r"\b" + re.escape(k), text)) for k in keys)
+            if score > best_score:
+                best_sid, best_score = sid, score
+        return best_sid
 
     # PASS 1 — l'INTENTO esplicito (testo utente + reportType/deliverableType) vince sui
     # termini INCIDENTALI in objective/scope/notes: il SETTORE del cliente ("edilizia") o

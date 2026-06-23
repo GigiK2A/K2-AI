@@ -93,6 +93,22 @@ def test_legit_finance_stays_finance_with_user_text():
     assert out is not None and out["id"] == "checkup_finanziario", out
 
 
+def test_user_intent_marketing_seo_beats_sector_edilizia():
+    """BUG live giu 2026 #2 (studio rinnovabili+edilizia): l'utente chiede marketing+SEO ma
+    nomina il SETTORE 'edilizia'/'rinnovabili'. Lo score-based di _match deve far vincere
+    l'INTENTO (seo/marketing, più menzionato), NON BuildBoost (checkup_edilizia) per via
+    dell'ordine-dominio. Era la regressione del primo tentativo di fix."""
+    out = catalog.suggest_boost(
+        {"reportType": "analisi marketing", "objective": "posizionamento, keyword, funnel, contenuti"},
+        explicit_only=True,
+        user_text=("valutazione marketing e seo del sito, strategia keyword e seo, funnel, "
+                   "contenuti, settore rinnovabili ed edilizia, clienti privati o aziende"),
+    )
+    assert out is not None, out
+    assert out["id"] != "checkup_edilizia", out
+    assert out["id"] in ("checkup_seo", "checkup_marketing"), out
+
+
 if __name__ == "__main__":
     import sys as _s
     _s.exit(1 if run() else 0)
