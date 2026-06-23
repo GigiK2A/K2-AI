@@ -1,0 +1,24 @@
+{
+  "_fonte": "L. 98/2013 art.2 (Nuova Sabatini) + DM MISE/MIMIT attuativi e circolari. Contributo in conto impianti calcolato come interessi figurativi su finanziamento quinquennale.",
+  "_data_validita": "2024-01-01",
+  "_disclaimer": "Tassi convenzionali di calcolo del contributo soggetti ad aggiornamento per circolare MIMIT. Verificare i tassi vigenti e i limiti di finanziamento prima dell'uso ufficiale.",
+  "_da_aggiornare_2026": "Nuova Sabatini RESTA vigente e potenziata dalla LdB 2026, cumulabile con l'iperammortamento (no doppio finanziamento sullo stesso costo). I parametri sotto sono tarati 2024: i valori vigenti 2026 (tasso convenzionale, durata, limiti) NON sono ancora forniti da fonte verificata → DA AGGIORNARE prima dell'uso 2026, non stimati a memoria (D-028).",
+  "_da_validare": false,
+  "tassi_riferimento_annui_pct": {
+    "ordinario": 2.75,
+    "industria_4_0": 3.575,
+    "green": 3.575,
+    "capitalizzazione_micro_piccole": 5.0
+  },
+  "piano": {
+    "durata_anni": 5,
+    "rate_per_anno": 2,
+    "n_rate": 10,
+    "nota": "Contributo = somma quote interessi di un ammortamento a rata costante (francese) sul finanziamento, al tasso convenzionale, 5 anni, rate semestrali."
+  },
+  "limiti_finanziamento_eur": {
+    "minimo": 20000,
+    "massimo": 4000000,
+    "nota": "Finanziamento ammissibile da 20.000€ a 4.000.000€ per impresa (cumulo richieste)."
+  }
+}

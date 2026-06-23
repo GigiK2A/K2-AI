@@ -34,6 +34,20 @@ log = logging.getLogger(__name__)
 PREVIEW_LIMIT_MESE = 2  # gate W8, A/B 2 vs 3 post-live
 
 
+def _session_company(session: dict) -> Optional[str]:
+    """Denominazione nota dalla sessione: il motore 8e la richiede per identificare e
+    personalizzare il report (gate identità di quality.py). Fallback se l'autofill non
+    l'ha estratta dal bilancio."""
+    collected = session.get("collected_data") or session.get("collected") or {}
+    extracted = collected.get("extractedData") or {}
+    for src in (collected, extracted):
+        for k in ("ragione_sociale", "companyName", "businessName", "clientName", "azienda"):
+            v = src.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+    return None
+
+
 class DeliverableBody(BaseModel):
     sessionId: str = Field(..., alias="session_id")
     servizioId: str = Field(..., alias="servizio_id")
@@ -218,6 +232,10 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
     except engine.EngineError:
         campi = []
     inputs = autofill.extract_inputs(session, campi)
+    if not inputs.get("ragione_sociale"):
+        _name = _session_company(session)
+        if _name:
+            inputs["ragione_sociale"] = _name
 
     # Paywall reale (KBOT_FREE_MODE off): se non pagato → 402 con i dati per il
     # checkout del boost (il frontend apre Stripe e al ritorno genera).
@@ -306,6 +324,10 @@ async def agent_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(o
     except engine.EngineError:
         campi = []
     inputs = autofill.extract_inputs(session, campi)
+    if not inputs.get("ragione_sociale"):
+        _name = _session_company(session)
+        if _name:
+            inputs["ragione_sociale"] = _name
 
     entitlement_token = _mint_entitlement(session, servizio_id, tier=servizio.get("tipo"))
     if not entitlement_token:

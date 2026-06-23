@@ -1,0 +1,11 @@
+{
+  "_fonte": "Indicatori gestionali standard del commercio al dettaglio: margine commerciale, markup, rotazione di magazzino (inventory turnover), GMROI, ricavo per mq, sell-through, scontrino medio.",
+  "_data_validita": "2026-05-22",
+  "_disclaimer": "Soglie ORIENTATIVE: variano molto per merceologia (alimentari vs abbigliamento vs elettronica). Valori indicativi, da calibrare sul singolo punto vendita. _da_validare.",
+  "_da_validare": true,
+  "soglie": {
+    "margine_commerciale_pct": {"label": "Margine commerciale lordo (%)", "direzione": "alto_meglio", "ottimo": 40, "buono": 30, "attenzione": 20},
+    "rotazione_magazzino": {"label": "Rotazione di magazzino (volte/anno)", "direzione": "alto_meglio", "ottimo": 6, "buono": 4, "attenzione": 2},
+    "gmroi": {"label": "GMROI (margine lordo / giacenza a costo)", "direzione": "alto_meglio", "ottimo": 3.0, "buono": 2.0, "attenzione": 1.0}
+  }
+}

@@ -25,7 +25,12 @@
           "utile_netto": { "type": ["number", "null"] },
           "totale_attivo": { "type": ["number", "null"] },
           "patrimonio_netto": { "type": ["number", "null"] },
-          "debiti_finanziari": { "type": ["number", "null"] }
+          "debiti_finanziari": { "type": ["number", "null"] },
+          "ammortamenti": { "type": ["number", "null"], "description": "D&A annui — serve al budget per il bridge EBITDA→utile (se assente: 0, utile/FCF sovrastimati)" },
+          "oneri_finanziari": { "type": ["number", "null"], "description": "oneri finanziari annui — bridge EBITDA→utile" },
+          "costi_variabili": { "type": ["number", "null"], "description": "COGS/costi variabili annui — split CV/CF per il budget (se assente: 0 = tutto fisso, ok PMI servizi)" },
+          "posizione_finanziaria_netta": { "type": ["number", "null"], "description": "PFN iniziale per il rollforward 36m (negativo = cassa netta); se assente derivata da debiti_finanziari − liquidita" },
+          "liquidita": { "type": ["number", "null"], "description": "disponibilità liquide, per derivare la PFN" }
         }
       }
     },

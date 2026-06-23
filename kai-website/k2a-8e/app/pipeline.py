@@ -11,7 +11,9 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import assets, calc, grounding, jobs, llm, normattiva, validate
+from . import (advisor, agevolazioni, assets, budget, build, calc, elettrico, finance,
+               freshness, grounding, jobs, llm, mep, norme, normattiva, quality, quant,
+               safety, tax, validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -64,18 +66,27 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
                 "testo": testo,  # verbatim dallo snapshot → appendice deterministica
             })
         elif tipo == "formula":
-            # Indici finanziari dichiarati 'calcolo-runtime' nello snapshot: il
-            # VALORE va calcolato deterministicamente (calc.py), non lasciato come
-            # formula-stringa che poi calcola l'LLM. Per le chiavi non gestite da
-            # calc (revpar, dcf, wacc, ctrl_*) resta la formula testuale.
+            # Indici finanziari dichiarati 'calcolo-runtime' nello snapshot: il VALORE va
+            # calcolato deterministicamente. Prima calc.py (bilancio/host/cruscotto), poi
+            # il quant di Luca (dcf/wacc) — Fix #0. Solo se entrambi None resta la
+            # formula-stringa (che poi calcolerebbe l'LLM): da evitare per le chiavi quant.
             computed = calc.resolve_formula_fact(k, form)
+            if computed is None:
+                computed = quant.resolve_quant_fact(k, form)
             facts[k] = computed if computed is not None else {"valore": e.get("formula"), "tipo": "formula"}
         elif tipo == "input":
             facts[k] = {"valore": form.get(e.get("campo_form")), "tipo": "input"}
         elif tipo == "benchmark":
-            # non bloccante: se non disponibile → confronto assente (D-handoff E)
-            facts[k] = {"valore": e.get("valore"), "tipo": "benchmark",
-                        "status": e.get("status")}
+            # non bloccante: se non disponibile → confronto assente (D-handoff E).
+            # multipli_ev: prova il quant (EV da multipli). PRESERVA fonte/as_of/descrizione
+            # dello snapshot (P0-8: D-046 — un benchmark senza fonte è un numero nudo).
+            qf = quant.resolve_quant_fact(k, form)
+            if qf is not None and qf.get("tipo") == "valore_calcolato":
+                facts[k] = qf
+            else:
+                facts[k] = {"valore": e.get("valore"), "tipo": "benchmark",
+                            "status": e.get("status"), "fonte": e.get("fonte"),
+                            "as_of": e.get("as_of"), "descrizione": e.get("descrizione")}
         else:
             facts[k] = {"valore": e, "tipo": tipo}
     return facts, citazioni
@@ -121,15 +132,14 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
     mappa = (meta_struct or {}).get("mappa_rischi")
     if not (isinstance(mappa, list) and mappa and all(
             m.get("semaforo") in ("verde", "giallo", "rosso") for m in mappa)):
-        mappa = [{"area": "Contrattualistica", "semaforo": "giallo"},
-                 {"area": "Privacy & dati", "semaforo": "rosso"}]
+        mappa = []
     score = (meta_struct or {}).get("score")
     if not isinstance(score, int) or not (0 <= score <= 100):
-        score = 72
+        score = -1  # forza il refuse dello schema: mai score cosmetico di fallback
     return {
         "meta": {
-            "servizio": "LegalBoost", "versione": "1.0.0", "data": "2026-06-08",
-            "azienda": inputs.get("ragione_sociale") or inputs.get("azienda") or "Cliente",
+            "servizio": "LegalBoost", "versione": "1.0.0", "data": quality.today_iso(),
+            "azienda": quality.display_name(inputs) or "",
         },
         "sintesi": {"score_compliance": score, "mappa_rischi": mappa},
         "voci": voci_out,
@@ -166,6 +176,101 @@ def _lint_instance(blueprint: dict) -> dict:
         "tabelle": list(blueprint.get("tabelle_obbligatorie", [])),
         "prezzi_hardcoded": [],
     }
+
+
+def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
+                                 inputs: dict, filiera_meta: dict) -> tuple[dict, dict]:
+    """Sovrascrive gli slot numerici/strutturali col valore dei tool deterministici, per-skill.
+
+    Estratto da run() per essere testabile in isolamento (senza jobs/validazione/render).
+    Ogni hook è no-op se il deliverable non ha gli slot attesi. Vedi test_pipeline_bindings.py.
+    """
+    # Binding strutturale (Fix #0 Fase 2): gli slot numerici di valutazione vengono
+    # SOVRASCRITTI col valore del quant deterministico (non ri-emessi dall'LLM).
+    # Chiude INV1/P0-1/P0-2; la provenance (call_id/as_of) finisce nel meta del job.
+    deliverable, quant_prov = quant.bind_quant_slots(skill, deliverable, facts)
+    if quant_prov:
+        filiera_meta = {**filiera_meta, "quant_binding": quant_prov}
+
+    # AdvisorBoost: binding economici §A-§D (EV-synth, DuPont, CCII, CTA) da bilancio
+    # reale + quant — dopo bind_quant_slots (che popola enterprise_value.multipli_ebitda).
+    if skill == "flusso-advisorboost-pmi":
+        deliverable, adv_meta = advisor.apply_advisor(deliverable, inputs)
+        if adv_meta:
+            filiera_meta = {**filiera_meta, "advisor": adv_meta}
+        # §E — piano_economico_finanziario (budget 36m + scenari + sensitivity) dal MCP
+        # k2a_budget deterministico, non più dall'LLM. Dopo apply_advisor (serve l'EV multiplo).
+        deliverable, budget_meta = budget.apply_budget(deliverable, inputs)
+        if budget_meta:
+            filiera_meta = {**filiera_meta, "budget_pef": budget_meta}
+
+    # FinanceBoost: le 3 sezioni data-payload (riclassificazione/marginalità/
+    # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate
+    # (finance.py) + WACC dal quant — non scritte dall'LLM (chiude P0-2/P0-6).
+    if skill == "flusso-financeboost-pmi":
+        fb_reclass = finance.latest_reclass_from_inputs(inputs)
+        if fb_reclass:
+            w = quant.resolve_quant_fact("wacc", inputs)
+            wacc_pct = w.get("valore") if (isinstance(w, dict) and w.get("tipo") == "valore_calcolato") else None
+            deliverable = finance.apply_financeboost_sections(deliverable, fb_reclass, wacc_pct)
+            filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True}
+
+    # AgevolazioniBoost: i benefici (Sabatini/T5.0/de minimis) vengono dai tool
+    # deterministici di k2a_agevolazioni, non dall'LLM (Fix #3). Cumulabilità segnalata.
+    if skill == "flusso-agevolazioni-pmi":
+        deliverable, agev_meta = agevolazioni.apply_agevolazioni(deliverable, inputs)
+        if agev_meta:
+            filiera_meta = {**filiera_meta, "agevolazioni": agev_meta}
+
+    # FiscoBoost: il carico fiscale viene dal motore tax deterministico (tabelle
+    # verificate), non dall'LLM (Fix #2/#4). IRAP/addizionali escluse con nota onesta.
+    if skill == "flusso-fiscoboost-pmi":
+        deliverable, fisco_meta = tax.apply_fiscoboost(deliverable, inputs)
+        if fisco_meta:
+            filiera_meta = {**filiera_meta, "fiscale": fisco_meta}
+
+    # MepBoost: l'economia degli EEM (payback/VAN/TIR) è ricalcolata col motore
+    # quant da costo+risparmio (non fabbricata dall'LLM). Termico/APE marcato
+    # non_validato (nessun tool APE/UNI-TS-11300), non sovrascritto con numeri inventati.
+    if skill == "flusso-mepboost-studio":
+        deliverable, mep_meta = mep.apply_mep(deliverable, inputs)
+        if mep_meta:
+            filiera_meta = {**filiera_meta, "mep": mep_meta}
+        # audit_elettrico: caduta tensione + verifica terra dal MCP k2a_elettrico
+        # (CEI 64-8), se il form porta impianto_elettrico_dettaglio; altrimenti onesto.
+        deliverable, el_meta = elettrico.apply_elettrico(deliverable, inputs)
+        if el_meta:
+            filiera_meta = {**filiera_meta, "elettrico": el_meta}
+
+    # WebBoost: lo score SEO on-page è calcolato dal tool audit_seo_onpage sulla
+    # pagina reale (fetch stdlib), non fabbricato dall'LLM. I volumi keyword restano
+    # esterni (Semrush/GSC) → non inventati. Fetch fallito → onesto (no sovrascrittura).
+    if skill == "flusso-webboost-pmi":
+        deliverable, web_meta = web.apply_web(deliverable, inputs)
+        if web_meta:
+            filiera_meta = {**filiera_meta, "web_onpage": web_meta}
+
+    # SafetyBoost: R=P×D + totale/incidenza dei costi sicurezza = math deterministica
+    # (non più incoerenti). Singole voci Allegato XV = stima LLM (nessun prezzario) → flag.
+    if skill == "flusso-safetyboost-studio":
+        deliverable, safety_meta = safety.apply_safety(deliverable, inputs)
+        if safety_meta:
+            filiera_meta = {**filiera_meta, "safety": safety_meta}
+
+    # BuildBoost: costi.totale_eur = Σ voci deterministico. Oneri urbanizzazione/CME/
+    # tempi-iter = stima LLM (nessuna tabella per-comune / prezzario) → flag onesto.
+    if skill == "flusso-buildboost-studio":
+        deliverable, build_meta = build.apply_build(deliverable, inputs)
+        if build_meta:
+            filiera_meta = {**filiera_meta, "build": build_meta}
+        # riferimenti normativi tecnici dal MCP k2a_norme_tecniche (search sul corpus).
+        # KB vuota oggi → 0 riferimenti onesti (nessuna citazione inventata) finché Luca
+        # non ingerisce NTC/CEI/Eurocodici. Risultati in meta (BuildBoost senza slot citazioni).
+        deliverable, norme_meta = norme.apply_norme(deliverable, inputs)
+        if norme_meta:
+            filiera_meta = {**filiera_meta, "norme_tecniche": norme_meta}
+
+    return deliverable, filiera_meta
 
 
 def _normalize_inputs(inputs: dict) -> dict:
@@ -259,11 +364,24 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
 
         blueprint = assets.load_blueprint(skill)
         out_schema = assets.load_output_schema(skill)
-        form_schema = assets.load_form(skill)   # FEED contract: campi richiesti dal boost
+        form_schema = assets.load_form(skill) or {}   # FEED contract: campi richiesti dal boost
         if not blueprint or not out_schema:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
 
+        # Gate 0 comune: nessun report parte con campi obbligatori mancanti,
+        # copertina anonima o bilancio non riconciliato.
+        inputs, input_errors, quality_notes = quality.prepare_inputs(skill, form_schema, inputs)
+        if input_errors:
+            raise Refuse("insufficient_or_inconsistent_input", "; ".join(input_errors[:12]))
+
         facts, citazioni = resolve(skill, inputs)
+
+        # Freshness-gate runtime (Fix #6-gate / P0-10): se il boost usa un fatto normativo
+        # HARD-stale (snapshot regredito a legge pre-riforma) → non consegnare legge superata.
+        stale = freshness.stale_findings(used_keys=set(facts.keys()))
+        if stale:
+            raise Refuse("snapshot_stale",
+                         "; ".join(f"{s['key']}: {s['motivo']} ({s.get('law')})" for s in stale[:5]))
 
         # PREVIEW (gate W8): compone SOLO l'assaggio, niente documento/file/leak.
         if auth_level == "PREVIEW":
@@ -306,6 +424,17 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                 raise Refuse("validation_failed",
                              "generazione non disponibile (offline o incompleta) per questo boost")
 
+        deliverable = quality.ensure_metadata(
+            deliverable, out_schema, inputs,
+            blueprint.get("pacchetto", {}).get("nome_commerciale", service_id),
+        )
+
+        # Binding deterministici per-skill (estratto in apply_deterministic_bindings,
+        # coperto da test_pipeline_bindings.py): sovrascrive gli slot col valore dei tool
+        # deterministici (quant/finance/tax/mep/elettrico/web/safety/build/norme).
+        deliverable, filiera_meta = apply_deterministic_bindings(
+            skill, deliverable, facts, inputs, filiera_meta)
+
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
         # schema.
@@ -332,7 +461,7 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         # verbatim grounded (le norme reali); le confabulate restano scoperte per il CAGE.
         citazioni = _enrich_citazioni_normattiva(deliverable, citazioni)
         g_findings = (grounding.required_inputs_findings(form_schema, inputs)
-                      + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs))
+                      + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs, facts=facts))
         g_blocks = grounding.blocks(g_findings)
         if g_blocks:
             log.warning("grounding gate REFUSE job %s: %s", job_id, [b["dettaglio"] for b in g_blocks])
@@ -357,10 +486,18 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             html_path.write_text(render_html(deliverable, blueprint, citazioni), encoding="utf-8")
             render_pdf(deliverable, blueprint, citazioni, pdf_path)
 
+        bundle = []
+        extra_outputs = {}
+        if skill == "flusso-financeboost-pmi":
+            from .xlsx import render_finance_workbook
+            xlsx_path = render_finance_workbook(inputs, out_dir / "modello-finanziario.xlsx")
+            extra_outputs["xlsx_path"] = str(xlsx_path)
+            bundle.append({"formato": "xlsx", "path": str(xlsx_path), "formule_vive": True})
+
         jobs.update(
             job_id, status="rendered",
             outputs={"html_path": str(html_path), "pdf_path": str(pdf_path),
-                     "json_path": str(json_path), "bundle": []},
+                     "json_path": str(json_path), "bundle": bundle, **extra_outputs},
             validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS",
                         "grounding": g_findings or "PASS"},
             citazioni=citazioni,

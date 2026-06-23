@@ -1,0 +1,38 @@
+{
+  "_fonte": "CHECK DI SOSTENIBILITÀ (CCII vigente). Gli indici (DSCR, PN, oneri/ricavi, ecc.) sono uno STRUMENTO DIAGNOSTICO INFORMALE, NON il trigger legale dell'art. 13 D.Lgs. 14/2019. Il sistema di allerta con indicatori/indici della crisi è stato ELIMINATO dal D.Lgs. 83/2022 (e successivo correttivo D.Lgs. 136/2024); l'art. 13 oggi disciplina la 'lista di controllo' per i piani di risanamento, non gli indici della crisi. Quadro vigente per il monitoraggio: ADEGUATI ASSETTI (art. 2086 c.c. / art. 3 CCII) + SEGNALAZIONI dei creditori pubblici qualificati (art. 25-novies CCII: INPS, INAIL, Agenzia Entrate, Agente riscossione) + COMPOSIZIONE NEGOZIATA (artt. 12 ss. CCII).",
+  "_data_validita": "2024-09-28",
+  "_disclaimer": "NON è una valutazione ai fini dell'allerta legale: il CCII NON prevede più indicatori/indici della crisi (correttivo D.Lgs. 83/2022, poi 136/2024). Gli indici qui calcolati restano un riferimento tecnico di screening (check di sostenibilità). Il monitoraggio vigente poggia su: adeguati assetti (art. 2086 c.c.), segnalazioni creditori pubblici qualificati (art. 25-novies CCII), composizione negoziata. NESSUN 'superamento congiunto dei 5 indici' fa scattare un indizio legale.",
+  "_da_validare": true,
+  "prerequisiti": {
+    "patrimonio_netto_negativo": "Se il patrimonio netto è negativo, sussiste fondato indizio di crisi a prescindere dagli indici.",
+    "dscr_6_mesi": "Indicatore principale: DSCR a 6 mesi. Se < 1 → fondato indizio di crisi prospettica. Se affidabile, prevale sui 5 indici settoriali."
+  },
+  "indici_settoriali": {
+    "_nota": "I 5 indici vanno superati TUTTI CONGIUNTAMENTE (in senso peggiorativo) perché scatti la segnalazione di crisi. Direzione: 'sopra'=allerta se valore > soglia; 'sotto'=allerta se valore < soglia.",
+    "definizioni": [
+      {"id": "oneri_fin_ricavi", "label": "Oneri finanziari / Ricavi", "direzione": "sopra"},
+      {"id": "pn_debiti", "label": "Patrimonio netto / Debiti totali", "direzione": "sotto"},
+      {"id": "cashflow_attivo", "label": "Cash flow / Attivo", "direzione": "sotto"},
+      {"id": "liquidita", "label": "Attività a breve / Passività a breve", "direzione": "sotto"},
+      {"id": "indebit_prev_trib", "label": "(Debiti previdenziali + tributari) / Attivo", "direzione": "sopra"}
+    ]
+  },
+  "soglie_per_settore": {
+    "generico": {
+      "_da_validare": true,
+      "_note": "PLACEHOLDER orientativo: NON sostituisce le soglie settoriali ufficiali CNDCEC. Caricare la tabella ufficiale a 11 settori prima dell'uso in pratica.",
+      "oneri_fin_ricavi": 0.03,
+      "pn_debiti": 0.05,
+      "cashflow_attivo": 0.01,
+      "liquidita": 1.0,
+      "indebit_prev_trib": 0.08
+    }
+  },
+  "settori_ufficiali_attesi": [
+    "A - agricoltura/silvicoltura/pesca", "B-C-D-E - manifatturiero/estrattivo/utilities",
+    "F.41 - costruzioni edifici", "F.42-43 - ingegneria civile e specializzate",
+    "G.45 - commercio autoveicoli", "G.46 - commercio ingrosso", "G.47 - commercio dettaglio",
+    "H-J - trasporto/magazzinaggio/informazione", "I - alloggio e ristorazione",
+    "M-N - attività professionali/servizi", "P-Q-R-S - istruzione/sanità/altri servizi"
+  ]
+}
