@@ -42,28 +42,44 @@ def _latest_bilancio(inputs: dict) -> Optional[dict]:
     if not bs:
         return None
     wy = [b for b in bs if _num(b.get("anno")) is not None]
-    return max(wy, key=lambda b: _num(b.get("anno"))) if wy else bs[-1]
+    b = max(wy, key=lambda b: _num(b.get("anno"))) if wy else bs[-1]
+    # In produzione l'intake trascrive le VOCI grezze (non gli aggregati): riclassifico
+    # con finance.py per ottenere ricavi/ebitda/D&A/oneri/PFN deterministici (allega _reclass).
+    try:
+        from . import finance
+        return finance.enrich_bilancio(b)
+    except Exception:
+        return b
+
+
+def _from_reclass(b: dict, dove: str, chiave: str) -> Optional[float]:
+    rc = b.get("_reclass") if isinstance(b.get("_reclass"), dict) else {}
+    return _num((rc.get(dove) or {}).get(chiave))
 
 
 def _bilancio_base(b: dict) -> Optional[dict]:
-    ricavi, ebitda = _num(b.get("ricavi")), _num(b.get("ebitda"))
+    ricavi = _num(b.get("ricavi")) or _from_reclass(b, "ce", "ricavi")
+    ebitda = _num(b.get("ebitda")) or _from_reclass(b, "ce", "ebitda")
     if ricavi is None or ebitda is None or ricavi <= 0:
         return None
     cv = _num(b.get("costi_variabili")) or 0.0
+    # D&A e oneri finanziari: dagli aggregati o, se assenti, dalla riclassificazione delle voci
+    amm = _num(b.get("ammortamenti")) or _from_reclass(b, "ce", "ammortamenti") or 0.0
+    oneri = _num(b.get("oneri_finanziari")) or _from_reclass(b, "ce", "oneri_finanziari") or 0.0
     return {
         "ricavi_eur_anno_base": ricavi,
         "costi_variabili_eur_anno_base": cv,
         "costi_fissi_eur_anno_base": max(ricavi - ebitda - cv, 0.0),
-        "ammortamenti_eur_anno_base": _num(b.get("ammortamenti")) or 0.0,
-        "oneri_finanziari_eur_anno_base": _num(b.get("oneri_finanziari")) or 0.0,
+        "ammortamenti_eur_anno_base": amm,
+        "oneri_finanziari_eur_anno_base": oneri,
     }
 
 
 def _pfn_iniziale(b: dict) -> Optional[float]:
-    pfn = _num(b.get("pfn")) or _num(b.get("posizione_finanziaria_netta"))
+    pfn = _num(b.get("pfn")) or _num(b.get("posizione_finanziaria_netta")) or _from_reclass(b, "indici", "pfn")
     if pfn is not None:
         return pfn
-    df = _num(b.get("debiti_finanziari"))
+    df = _num(b.get("debiti_finanziari")) or _from_reclass(b, "sp", "debiti_finanziari")
     if df is not None:
         liq = _num(b.get("liquidita")) or _num(b.get("disponibilita_liquide")) or 0.0
         return df - liq

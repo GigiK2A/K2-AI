@@ -90,6 +90,19 @@ check("PFN derivata da debiti_finanziari (no pfn esplicito)", approx(mf.get("pfn
 errs_f = sorted(Draft202012Validator(pef_schema).iter_errors(peff), key=lambda e: list(e.path))
 check("pef form-conforme comunque VALIDO a schema", not errs_f)
 
+print("── bilancio VOCI-based (path produzione): D&A/oneri/PFN dalla riclassificazione, non 0 ──")
+# enrich_bilancio allega _reclass quando il bilancio arriva come voci (lo simulo qui):
+# il binder deve leggere D&A/oneri/PFN dal _reclass, NON defaultare a 0
+b_reclass = {"anno": 2024, "_reclass": {
+    "ce": {"ricavi": 789766.17, "ebitda": 121861.5, "ammortamenti": 12470.37, "oneri_finanziari": 13181.28},
+    "indici": {"pfn": -197149.54}, "sp": {}}}
+dv = {"enterprise_value": {"multipli_ebitda": {"multiplo_mediano": 12.8}},
+      "piano_economico_finanziario": {"budget_mensile_36m": [], "scenari": {}, "sensitivity": []}}
+outr, mr = budget.apply_budget(dv, {"bilanci": [b_reclass]})
+check("budget gira da voci-reclass (36 mesi)", len(outr["piano_economico_finanziario"]["budget_mensile_36m"]) == 36)
+check("D&A/oneri NON azzerati (presi dal reclass) → da_of_assenti False", mr.get("da_of_assenti") is False)
+check("PFN dal reclass (−197.149)", approx(mr.get("pfn_iniziale"), -197149.54, 1.0))
+
 print("── senza bilancio → onesto ──")
 _, meta3 = budget.apply_budget({}, {})
 check("disponibile False senza bilancio", meta3["disponibile"] is False)
