@@ -89,6 +89,10 @@ COPY k2a-8e/catalog ./engine-8e/catalog
 COPY k2a-8e/grounding ./engine-8e/grounding
 COPY k2a-8e/k2a_validation ./engine-8e/k2a_validation
 COPY k2a-8e/assets ./engine-8e/assets
+# Pacchetti vendorizzati del motore 8e (k2a_quant/k2a_budget/elettrico/norme/strutturale):
+# i binder deterministici (advisor/finance/§E budget/mep/agevolazioni) li importano a runtime
+# via sys.path. Senza questa COPY → ModuleNotFoundError quando un boost prova a generare.
+COPY k2a-8e/vendor ./engine-8e/vendor
 
 # -------- §3c · Corpus Normattiva (normattiva.db, ~1.8GB FTS5) — fetch build-time --------
 # Il corpus NON è nel repo (gitignored, >100MB → il deploy GitHub-push non lo porta).
