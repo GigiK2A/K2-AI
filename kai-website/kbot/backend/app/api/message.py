@@ -223,13 +223,27 @@ async def post_message(
         # auto-corregge un routing stantio (bug giu 2026: marketing → LegalBoost DD).
         # Eccezione: se il boost viene dal TAG PILLAR del sito (tag_pillar settato),
         # lo preserviamo (è il contesto della pagina da cui arriva l'utente).
-        if _user_turns >= 3 and not collected.get("tag_pillar"):
+        if _user_turns >= 2:
             try:
                 from ..lib import catalog as _catalog
-                _boost = _catalog.suggest_boost(summary)
-                if _boost:
-                    collected["boost_suggerito"] = _boost["id"]
-                    collected["boost_suggerito_label"] = _boost.get("label")
+                # L'intento REALE è nei messaggi dell'UTENTE: la summary LLM può essere
+                # sbilanciata dal profilo/pagina d'ingresso (es. tag_pillar marketing su
+                # una richiesta di bilancio → StrategyBoost). Arricchisco il match col
+                # loro testo e lascio che un match ESPLICITO vinca anche sul tag_pillar.
+                _utext = " ".join(
+                    str(_m.get("content") or "") for _m in (merged_messages or [])
+                    if isinstance(_m, dict) and _m.get("role") == "user"
+                )[-2000:]
+                _enriched = {**summary, "notes": f"{summary.get('notes') or ''} {_utext}"}
+                _explicit = _catalog.suggest_boost(_enriched, explicit_only=True)
+                if _explicit is not None:
+                    collected["boost_suggerito"] = _explicit["id"]
+                    collected["boost_suggerito_label"] = _explicit.get("label")
+                elif not collected.get("boost_suggerito") and not collected.get("tag_pillar"):
+                    _boost = _catalog.suggest_boost(summary)   # default solo se niente già
+                    if _boost:
+                        collected["boost_suggerito"] = _boost["id"]
+                        collected["boost_suggerito_label"] = _boost.get("label")
             except Exception:
                 pass  # il routing non deve mai bloccare la chat
 
@@ -323,13 +337,27 @@ def _persist_assistant_turn(
         # auto-corregge un routing stantio (bug giu 2026: marketing → LegalBoost DD).
         # Eccezione: se il boost viene dal TAG PILLAR del sito (tag_pillar settato),
         # lo preserviamo (è il contesto della pagina da cui arriva l'utente).
-        if _user_turns >= 3 and not collected.get("tag_pillar"):
+        if _user_turns >= 2:
             try:
                 from ..lib import catalog as _catalog
-                _boost = _catalog.suggest_boost(summary)
-                if _boost:
-                    collected["boost_suggerito"] = _boost["id"]
-                    collected["boost_suggerito_label"] = _boost.get("label")
+                # L'intento REALE è nei messaggi dell'UTENTE: la summary LLM può essere
+                # sbilanciata dal profilo/pagina d'ingresso (es. tag_pillar marketing su
+                # una richiesta di bilancio → StrategyBoost). Arricchisco il match col
+                # loro testo e lascio che un match ESPLICITO vinca anche sul tag_pillar.
+                _utext = " ".join(
+                    str(_m.get("content") or "") for _m in (merged_messages or [])
+                    if isinstance(_m, dict) and _m.get("role") == "user"
+                )[-2000:]
+                _enriched = {**summary, "notes": f"{summary.get('notes') or ''} {_utext}"}
+                _explicit = _catalog.suggest_boost(_enriched, explicit_only=True)
+                if _explicit is not None:
+                    collected["boost_suggerito"] = _explicit["id"]
+                    collected["boost_suggerito_label"] = _explicit.get("label")
+                elif not collected.get("boost_suggerito") and not collected.get("tag_pillar"):
+                    _boost = _catalog.suggest_boost(summary)   # default solo se niente già
+                    if _boost:
+                        collected["boost_suggerito"] = _boost["id"]
+                        collected["boost_suggerito_label"] = _boost.get("label")
             except Exception:
                 pass  # il routing non deve mai bloccare la chat
 

@@ -140,6 +140,21 @@ def _build_context_block(session: dict) -> str:
             main = (u.get("main_content") or "").strip()
             if main:
                 lines.append(f"  estratto contenuto ({u.get('word_count', 0)} parole): {main[:800]}{'…' if len(main) > 800 else ''}")
+            # Fatti VERIFICATI dal sito (social/SEO) — autoritativi: il report deve
+            # usarli e NON confabulare 'LinkedIn assente / SEO assente' (vedi Strategy).
+            vf = u.get("verified_facts") or {}
+            soc = vf.get("social_link_nel_sito") or {}
+            if soc:
+                present = [k for k, v in soc.items() if v]
+                absent = [k for k, v in soc.items() if not v]
+                seo = vf.get("seo_onpage") or {}
+                lines.append(
+                    f"  ⚠️ FATTI VERIFICATI DAL SITO (usa QUESTI, non assumere il contrario): "
+                    f"social linkati nel sito = {', '.join(present) or 'NESSUNO'}; "
+                    f"NON linkati = {', '.join(absent) or 'nessuno'}; "
+                    f"title={'sì' if seo.get('title_presente') else 'no'}, "
+                    f"meta description={'sì' if seo.get('meta_description_presente') else 'no'}, "
+                    f"schema.org={'sì' if seo.get('schema_org_presente') else 'no'}.")
             # Pagine interne aggiuntive (fix crawl multipagina)
             extra = u.get("additional_pages") or []
             if extra:

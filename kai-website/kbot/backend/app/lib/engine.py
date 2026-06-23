@@ -80,6 +80,23 @@ async def create_deliverable(
     raise EngineError(f"8e {r.status_code}: {r.text[:300]}")
 
 
+def render_deliverable_sync(service_id: str, deliverable: dict, citazioni: Optional[list] = None,
+                            inputs: Optional[dict] = None) -> dict:
+    """POST /v1/render (SINCRONO) — renderizza un deliverable già generato (agente A2)
+    → job 8e {status rendered|refused, outputs}. Sincrono perché chiamato dal background
+    task dell'agente (già fuori dal request path). EngineRefused se il CAGE blocca."""
+    payload: dict[str, Any] = {"service_id": service_id, "deliverable": deliverable,
+                               "citazioni": citazioni or [], "inputs": inputs or {}}
+    with httpx.Client(timeout=_TIMEOUT) as c:
+        r = c.post(f"{ENGINE_8E_BASE_URL}/v1/render", json=payload, headers=_headers())
+    if r.status_code == 422:
+        body = r.json()
+        raise EngineRefused(body.get("reason", "refused"), body.get("message", ""))
+    if r.status_code != 200:
+        raise EngineError(f"8e render {r.status_code}: {r.text[:300]}")
+    return r.json()
+
+
 async def get_deliverable(job_id: str) -> dict:
     """GET /v1/deliverables/{job_id}. Ritorna lo stato job."""
     async with httpx.AsyncClient(timeout=_TIMEOUT) as c:

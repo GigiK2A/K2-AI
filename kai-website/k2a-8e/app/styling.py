@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 
-from reportlab.graphics.shapes import Circle, Drawing, String, Wedge
+from reportlab.graphics.shapes import Circle, Drawing, Line, Rect, String, Wedge
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -309,6 +309,170 @@ class Gauge(Flowable):
         d.add(String(cx, cy - 13, self.label.upper(), fontName=F_BOLD, fontSize=6,
                      fillColor=NEUTRAL, textAnchor="middle"))
         d.drawOn(self.canv, 0, 0)
+
+
+# --- Mappa di posizionamento 2x2 a BANDE (no falsa precisione) ----------------
+# Rende la mappa strategica come grafico vero invece che coordinate testuali, MA a
+# bande qualitative (basso/medio/alto): l'azienda e i competitor sono piazzati per
+# banda, niente "0,75" sul grafico (rispetta il C3 del grounding contract: a bande,
+# mai falsa precisione). Onesto e leggibile.
+def _to_band(v) -> int:
+    """coordinata 0-1 o stringa qualitativa → banda 0(basso)/1(medio)/2(alto)."""
+    if isinstance(v, str):
+        t = v.strip().lower()
+        if any(k in t for k in ("alt", "high")):
+            return 2
+        if any(k in t for k in ("bass", "low")):
+            return 0
+        return 1
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return 1
+    if f > 1:  # se per errore è 0-100
+        f /= 100.0
+    return 0 if f < 0.4 else (2 if f > 0.7 else 1)
+
+
+class QuadrantMap(Flowable):
+    """Mappa 2x2 a bande: azienda (verde) + competitor (grigi), piazzati per banda."""
+    def __init__(self, azienda, competitor, asse_x="", asse_y="", width=150 * mm, height=95 * mm):
+        super().__init__()
+        self.azienda = azienda          # (nome, bx, by)
+        self.competitor = competitor    # [(nome, bx, by), ...]
+        self.asse_x, self.asse_y = asse_x, asse_y
+        self.width, self.height = width, height
+
+    def draw(self):
+        c = self.canv
+        pad_l, pad_b = 26, 24
+        pw = self.width - pad_l - 8
+        ph = self.height - pad_b - 14
+        ox, oy = pad_l, pad_b
+        d = Drawing(self.width, self.height)
+        # cornice + griglia 3x3 (le 2 linee di banda)
+        d.add(Rect(ox, oy, pw, ph, strokeColor=LINE, strokeWidth=1, fillColor=None))
+        for i in (1, 2):
+            d.add(Line(ox + pw * i / 3, oy, ox + pw * i / 3, oy + ph, strokeColor=LINE, strokeWidth=0.5))
+            d.add(Line(ox, oy + ph * i / 3, ox + pw, oy + ph * i / 3, strokeColor=LINE, strokeWidth=0.5))
+        # etichette assi
+        d.add(String(ox + pw / 2, oy - 16, (self.asse_x or "Asse X").upper()[:60],
+                     fontName=F_BOLD, fontSize=6.5, fillColor=NEUTRAL, textAnchor="middle"))
+        d.add(String(ox - 16, oy + ph / 2, (self.asse_y or "Asse Y").upper()[:42],
+                     fontName=F_BOLD, fontSize=6.5, fillColor=NEUTRAL, textAnchor="middle", angle=90))
+        for i, lab in enumerate(("basso", "medio", "alto")):
+            d.add(String(ox + pw * (i + 0.5) / 3, oy - 7, lab, fontName=F_BODY, fontSize=5.5,
+                         fillColor=NEUTRAL, textAnchor="middle"))
+            d.add(String(ox - 6, oy + ph * (i + 0.5) / 3 - 2, lab, fontName=F_BODY, fontSize=5.5,
+                         fillColor=NEUTRAL, textAnchor="end"))
+
+        def cell_xy(bx, by, jitter=0.0):
+            return ox + pw * (bx + 0.5) / 3 + jitter, oy + ph * (by + 0.5) / 3
+
+        # competitor (grigi) — jitter se più d'uno nella stessa cella
+        seen: dict = {}
+        for nome, bx, by in self.competitor:
+            k = (bx, by); n = seen.get(k, 0); seen[k] = n + 1
+            x, y = cell_xy(bx, by, jitter=(n - 0.5) * 10 if n else 0)
+            d.add(Circle(x, y, 3.5, strokeColor=NEUTRAL, strokeWidth=0.5, fillColor=WARM))
+            d.add(String(x, y + 6, str(nome)[:22], fontName=F_BODY, fontSize=5.5,
+                         fillColor=NEUTRAL, textAnchor="middle"))
+        # azienda (verde, evidenziata)
+        if self.azienda:
+            nome, bx, by = self.azienda
+            x, y = cell_xy(bx, by)
+            d.add(Circle(x, y, 5.5, strokeColor=GREEN, strokeWidth=1.2, fillColor=GREEN))
+            d.add(String(x, y + 9, str(nome)[:24], fontName=F_BOLD, fontSize=6.5,
+                         fillColor=CARBON, textAnchor="middle"))
+        d.drawOn(c, 0, 0)
+
+
+def quadrant_map(mappa: dict, S=None):
+    """Costruisce QuadrantMap dal blocco 'mappa' del deliverable (struttura libera).
+    Ritorna None se non trova posizioni usabili → il chiamante tiene il testo."""
+    if not isinstance(mappa, dict):
+        return None
+
+    def _xy(o):
+        if not isinstance(o, dict):
+            return None
+        x = o.get("coordinata_x", o.get("x", o.get("asse_x", o.get("ampiezza"))))
+        y = o.get("coordinata_y", o.get("y", o.get("asse_y", o.get("segmentazione"))))
+        if x is None and y is None:
+            return None
+        return _to_band(x), _to_band(y)
+
+    az = mappa.get("posizione_azienda") or mappa.get("azienda") or mappa.get("cliente")
+    az_xy = _xy(az) if isinstance(az, dict) else None
+    azienda = (az.get("nome") or az.get("label") or "La tua azienda", *az_xy) if az_xy else None
+
+    comps = mappa.get("posizione_competitor") or mappa.get("competitor") or mappa.get("competitors") or []
+    competitor = []
+    for cdict in comps if isinstance(comps, list) else []:
+        cxy = _xy(cdict)
+        if cxy:
+            competitor.append((cdict.get("nome") or cdict.get("label") or "Competitor", *cxy))
+
+    if not azienda and not competitor:
+        return None
+    da = mappa.get("descrizione_assi") or {}
+    ax = (da.get("asse_x") if isinstance(da, dict) else "") or mappa.get("asse_x", "") or "Ampiezza offerta"
+    ay = (da.get("asse_y") if isinstance(da, dict) else "") or mappa.get("asse_y", "") or "Segmentazione cliente"
+    return QuadrantMap(azienda, competitor, asse_x=str(ax), asse_y=str(ay))
+
+
+# --- Barre di punteggio (Porter, scoring 1-5) → visual, non testo ------------
+class _Bar(Flowable):
+    """Barra orizzontale 0..max con valore. Punteggio a rubrica (1-5), non falsa
+    precisione: è una scala discreta dichiarata."""
+    def __init__(self, score, max_score=5, width=70 * mm, height=9):
+        super().__init__()
+        self.score = score
+        self.max = max_score or 5
+        self.width, self.height = width, height
+
+    def draw(self):
+        try:
+            val = max(0, min(self.max, float(self.score)))
+        except (TypeError, ValueError):
+            val = 0
+        frac = val / self.max if self.max else 0
+        col = GREEN if frac >= 0.66 else AMBER if frac >= 0.33 else RED
+        d = Drawing(self.width, self.height)
+        d.add(Rect(0, 0, self.width, self.height, rx=2, ry=2, strokeColor=None, fillColor=WARM))
+        if frac > 0:
+            d.add(Rect(0, 0, self.width * frac, self.height, rx=2, ry=2, strokeColor=None, fillColor=col))
+        d.add(String(self.width - 2, self.height / 2 - 3,
+                     f"{int(val) if val == int(val) else round(val,1)}/{self.max}",
+                     fontName=F_BOLD, fontSize=6.5, fillColor=NEUTRAL, textAnchor="end"))
+        d.drawOn(self.canv, 0, 0)
+
+
+def score_bars(items: list, S=None, *, label_key="forza", score_key="scoring",
+               desc_key="motivazione", max_score=5, title="") -> Table:
+    """Lista {label, score, desc} → tabella con barre orizzontali (es. forze di Porter)."""
+    S = S or styles()
+    rows = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        lab = it.get(label_key) or it.get("voce") or it.get("nome") or it.get("label") or ""
+        sc = it.get(score_key, it.get("punteggio", it.get("valore")))
+        desc = it.get(desc_key) or it.get("descrizione") or ""
+        left = [Paragraph(f"<b>{html_escape(str(lab))}</b>", S["kvb"])]
+        if desc:
+            left.append(Paragraph(html_escape(str(desc))[:240], S["small"]))
+        rows.append([left, _Bar(sc, max_score)])
+    if not rows:
+        return Spacer(0, 0)
+    t = Table(rows, colWidths=[CONTENT_W * 0.58, CONTENT_W * 0.42], hAlign="LEFT")
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.4, LINE),
+        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (0, -1), 0), ("RIGHTPADDING", (1, 0), (1, -1), 0),
+    ]))
+    return t
 
 
 def semaforo_dot(stato: str) -> str:

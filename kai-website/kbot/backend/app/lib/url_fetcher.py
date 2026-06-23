@@ -220,6 +220,59 @@ def extract_html_content(html: str, url: str, content_type: str = "text/html") -
     }
 
 
+# Pattern per i link social NEL sito (footer/header). Verificare la presenza è
+# deterministico: il report StrategyBoost asseriva "LinkedIn assente" SENZA guardare.
+_SOCIAL_PATTERNS = {
+    "linkedin": r"linkedin\.com/(?:company|in|pub|school)/",
+    "instagram": r"instagram\.com/[a-z0-9_.]",
+    "facebook": r"facebook\.com/[a-z0-9_.]",
+    "youtube": r"youtube\.com/(?:c/|channel/|user/|@)|youtu\.be/",
+    "twitter_x": r"(?:twitter\.com|x\.com)/[a-z0-9_]",
+    "tiktok": r"tiktok\.com/@",
+}
+
+
+def extract_verified_facts(html: str, data: Dict[str, Any], pages_html: str = "") -> Dict[str, Any]:
+    """Fatti VERIFICATI dal sito già letto — deterministici, NON inventati. Servono a
+    GROUNDARE le affermazioni che il modello altrimenti confabula sui canali/SEO del
+    cliente (es. 'LinkedIn assente', 'SEO assente' — vedi report StrategyBoost reale).
+    La presenza di un link social o di un meta tag è un fatto controllabile: o c'è o no.
+    """
+    hay = html + " " + (pages_html or "")
+    social = {name: bool(re.search(pat, hay, re.IGNORECASE)) for name, pat in _SOCIAL_PATTERNS.items()}
+    seo = {
+        "title_presente": bool(data.get("title")),
+        "meta_description_presente": bool(data.get("meta_description")),
+        "schema_org_presente": bool(data.get("schema_types")),
+        "canonical_presente": bool(data.get("canonical")),
+        "og_presente": bool((data.get("og") or {}).get("title") or (data.get("og") or {}).get("image")),
+        "pagine_indicizzabili": len(data.get("additional_pages") or []) + 1,
+    }
+    return {
+        "social_link_nel_sito": social,
+        "seo_onpage": seo,
+        "_nota": "Fatti RILEVATI DAL SITO (verificati al fetch), non assunti. Usare questi "
+                 "per affermazioni su presenza/assenza di canali e SEO; NON inventare.",
+    }
+
+
+def build_verified_summary(vf: Dict[str, Any]) -> str:
+    """Riga compatta dei fatti verificati, per il prompt/autofill (grounded)."""
+    soc = vf.get("social_link_nel_sito") or {}
+    present = [k for k, v in soc.items() if v]
+    absent = [k for k, v in soc.items() if not v]
+    seo = vf.get("seo_onpage") or {}
+    return (
+        "FATTI VERIFICATI DAL SITO (non assumere il contrario): "
+        f"social linkati nel sito = {', '.join(present) or 'NESSUNO'}; "
+        f"NON linkati = {', '.join(absent) or 'nessuno'}; "
+        f"title={'sì' if seo.get('title_presente') else 'no'}, "
+        f"meta description={'sì' if seo.get('meta_description_presente') else 'no'}, "
+        f"dati strutturati schema.org={'sì' if seo.get('schema_org_presente') else 'no'}, "
+        f"pagine indicizzabili={seo.get('pagine_indicizzabili', 1)}."
+    )
+
+
 def build_url_summary(data: Dict[str, Any]) -> str:
     """Build compact string for injection into system prompt."""
     parts = [f"URL: {data['url']}"]
@@ -436,5 +489,11 @@ async def fetch_url_content(url: str) -> Dict[str, Any]:
         data["additional_pages"] = await _crawl_additional_pages(html, current_url)
     except Exception:
         data["additional_pages"] = []
-    data["summary"] = build_url_summary(data)
+    # Fatti VERIFICATI dal sito (social/SEO) → grounding dei claim sui canali del
+    # cliente, così il report non confabula "LinkedIn assente" senza guardare.
+    data["verified_facts"] = extract_verified_facts(html, data)
+    data["verified_summary"] = build_verified_summary(data["verified_facts"])
+    # I fatti verificati cavalcano il summary → arrivano sia alla chat sia
+    # all'autofill 8e, dove il prompt indurito impone di usarli e non confabulare.
+    data["summary"] = build_url_summary(data) + "\n" + data["verified_summary"]
     return data

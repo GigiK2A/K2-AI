@@ -15,7 +15,7 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "x")
 os.environ.setdefault("K2A_ENTITLEMENT_SECRET", "test-secret-integration")
 
 import pytest  # noqa: E402
-from fastapi import HTTPException  # noqa: E402
+from fastapi import BackgroundTasks, HTTPException  # noqa: E402
 
 import app.api.deliverables as d  # noqa: E402
 
@@ -49,7 +49,7 @@ def test_marketing_conversation_routes_to_strategyboost_not_legaldd(monkeypatch)
                                    "objective": "brand awareness, acquisizione clienti",
                                    "scope": "edilizia, rinnovabili, tlc"}}
     created = _setup(monkeypatch, status="paid", collected=collected)
-    res = asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), user=None))
+    res = asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
     assert res["servizio_id"] == "checkup_marketing", res
     assert created["service_id"] == "checkup_marketing"
     assert created["entitlement_present"] is True  # sessione paid → entitlement mintato
@@ -59,7 +59,7 @@ def test_unpaid_session_returns_402_checkout(monkeypatch):
     collected = {"extractedData": {"reportType": "analisi marketing", "objective": "awareness"}}
     _setup(monkeypatch, status="active", collected=collected)  # NON paid
     with pytest.raises(HTTPException) as ei:
-        asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), user=None))
+        asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
     assert ei.value.status_code == 402
     assert ei.value.detail.get("reason") == "payment_required"
     assert ei.value.detail.get("servizio_id") == "checkup_marketing"
@@ -71,7 +71,7 @@ def test_advisor_routing_blocked_non_vendibile(monkeypatch):
     collected = {"extractedData": {"reportType": "strategia e crescita",
                                    "objective": "business plan, espansione"}}
     created = _setup(monkeypatch, status="paid", collected=collected)
-    res = asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), user=None))
+    res = asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
     assert res["servizio_id"] != "checkup_advisor"  # mai l'advisor gated
     assert created["service_id"] == res["servizio_id"]
 

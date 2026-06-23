@@ -12,8 +12,8 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from . import (advisor, agevolazioni, assets, budget, build, calc, elettrico, finance,
-               freshness, grounding, jobs, llm, mep, norme, quality, quant, safety, tax,
-               validate, web)
+               freshness, grounding, jobs, llm, mep, norme, normattiva, quality, quant,
+               safety, tax, validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -273,14 +273,98 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
     return deliverable, filiera_meta
 
 
+def _normalize_inputs(inputs: dict) -> dict:
+    """Compat di schema FEED. Certi campi-lista del form passano da string[] a object[]:
+    il breaking change di Advisor è `competitor` ('ACME' → {'nome': 'ACME', ...}). L'engine
+    deve reggere ENTRAMBE le forme, così il merge del branch grounding di Luca non rompe la
+    prod (sequenza dell'handoff §4: prima l'engine gestisce il nuovo schema, poi si mergia).
+    Canonicalizza a object[]: le stringhe diventano {'nome': str}, i dict passano intatti, i
+    tipi imprevisti si scartano. Le sessioni vecchie con string[] continuano a funzionare."""
+    if not isinstance(inputs, dict):
+        return inputs
+    out = dict(inputs)
+    for campo in ("competitor", "competitors"):
+        v = out.get(campo)
+        if isinstance(v, list) and any(isinstance(x, str) for x in v):
+            out[campo] = [{"nome": x} if isinstance(x, str) else x
+                          for x in v if isinstance(x, (str, dict))]
+    return out
+
+
+def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> list[dict]:
+    """§3b — verifica i riferimenti di legge del deliverable contro il corpus Normattiva.
+    Le norme TROVATE diventano citazioni grounded col testo verbatim → il CAGE C2
+    (norma_non_citata) si spegne per quelle. Le norme NON trovate (confabulate o assenti,
+    es. 'DM 143/2013' quando esiste solo L. 143/2013) restano flaggate. No-op onesto se il
+    corpus non è disponibile (NORMATTIVA_DB_PATH assente)."""
+    if not normattiva.available():
+        return citazioni
+    import json as _json
+    full = _json.dumps(deliverable, ensure_ascii=False)
+    enriched = list(citazioni)
+    seen = {(c.get("tipo"), str(c.get("numero")), c.get("anno")) for c in citazioni}
+    for ref in normattiva.extract_norm_refs(full):
+        key = (ref["tipo"], ref["numero"], ref["anno"])
+        if key in seen:
+            continue
+        hits = normattiva.find_by_estremi(ref["anno"], ref["numero"], tipo=ref["tipo"], limit=1)
+        if not hits:
+            continue                                   # norma assente/confabulata → il CAGE C2 la tiene flaggata
+        h = hits[0]
+        seen.add(key)
+        enriched.append({
+            "riferimento": h["citazione"], "campo": "norma_verificata", "fonte": "normattiva",
+            "tipo": h.get("tipo"), "numero": h.get("numero"), "anno": h.get("anno"),
+            "articolo": h.get("articolo"), "testo": (h.get("testo") or "")[:1200],
+        })
+    return enriched
+
+
+def render_external(service_id: str, deliverable: dict, citazioni: list | None = None,
+                    inputs: dict | None = None) -> dict:
+    """Renderizza un deliverable GIÀ generato altrove (es. dall'agente A2 nel backend)
+    → PDF, applicando gli STESSI gate del flusso normale: enrich normattiva (§3b) +
+    CAGE grounding (§2). Sincrono (niente LLM: solo verifica + render). Ritorna il job
+    8e (status rendered|refused + outputs), così il backend lo tratta come gli altri."""
+    skill, bp_id, _ = route(service_id)
+    blueprint = assets.load_blueprint(skill)
+    form_schema = assets.load_form(skill)
+    if not blueprint:
+        raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
+    inputs = inputs or {}
+    citazioni = _enrich_citazioni_normattiva(deliverable, list(citazioni or []))
+    g_findings = (grounding.required_inputs_findings(form_schema, inputs)
+                  + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs))
+    job_id = jobs.create(service_id, bp_id, 1.0)
+    if grounding.blocks(g_findings):
+        jobs.update(job_id, status="refused", refusal_reason="grounding_failed",
+                    validation={"grounding_block": grounding.blocks(g_findings), "grounding_findings": g_findings})
+        return jobs.get(job_id)
+    out_dir = OUT_DIR / job_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = out_dir / "deliverable.pdf"
+    json_path = out_dir / "deliverable.json"
+    import json as _json
+    json_path.write_text(_json.dumps(deliverable, ensure_ascii=False, indent=2), encoding="utf-8")
+    from .render import render_generic_pdf
+    render_generic_pdf(deliverable, blueprint, citazioni, pdf_path)
+    jobs.update(job_id, status="rendered",
+                outputs={"pdf_path": str(pdf_path), "json_path": str(json_path), "bundle": []},
+                validation={"grounding": g_findings or "PASS"}, citazioni=citazioni,
+                meta={"skill": skill, "blueprint_id": bp_id, "auth_level": "FULL",
+                      "source": "agent_a2", "snapshot_version": assets.snapshot_version()})
+    return jobs.get(job_id)
+
+
 def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") -> None:
     try:
         jobs.update(job_id, status="running")
+        inputs = _normalize_inputs(inputs)      # FEED: regge competitor string[] o object[]
         skill, bp_id, _ = route(service_id)
 
         blueprint = assets.load_blueprint(skill)
         out_schema = assets.load_output_schema(skill)
-        form_schema = assets.load_form(skill) or {}
+        form_schema = assets.load_form(skill) or {}   # FEED contract: campi richiesti dal boost
         if not blueprint or not out_schema:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
 
@@ -373,9 +457,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         # intercetta sui boost qualitativi: segnaposto trapelati, numeri esterni
         # asseriti senza citazione, cover non personalizzata, priorità tutte uguali
         # (vedi report StrategyBoost reale). 'block' → non si consegna (fail-closed).
-        g_findings = grounding.integrity_findings(
-            deliverable, citazioni=citazioni, inputs=inputs, facts=facts,
-        )
+        # §3b · ROUTE: verifica i riferimenti normativi contro il corpus → citazioni
+        # verbatim grounded (le norme reali); le confabulate restano scoperte per il CAGE.
+        citazioni = _enrich_citazioni_normattiva(deliverable, citazioni)
+        g_findings = (grounding.required_inputs_findings(form_schema, inputs)
+                      + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs, facts=facts))
         g_blocks = grounding.blocks(g_findings)
         if g_blocks:
             log.warning("grounding gate REFUSE job %s: %s", job_id, [b["dettaglio"] for b in g_blocks])

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class WaccInput(BaseModel):
-    rf: float = Field(..., description="Risk-free rate (es. BTP 10Y), decimale es. 0.035")
+    rf: float = Field(..., description="Risk-free rate (Bund 10Y, euro), decimale es. 0.0295 (cfr. country_data['italy'].rf_10y). NB: il rischio-paese va nell'ERP, NON nel rf — non usare il BTP qui (doppio conteggio del rischio-Italia).")
     erp: float = Field(..., description="Equity Risk Premium paese, decimale es. 0.055")
     beta_unlevered: float = Field(..., description="Beta unlevered di settore (Damodaran)")
     equity: float = Field(..., gt=0, description="Equity (E) in EUR")

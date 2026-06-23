@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -81,8 +81,50 @@ def _mint_entitlement(session: dict, servizio_id: str, tier: Optional[str] = Non
     return token or f"dev-unsigned-{session.get('id')}-{servizio_id}"
 
 
+async def _get_job(job_id: str) -> dict:
+    """Stato job da QUALSIASI sorgente: store locale dell'agente A2 o motore 8e. Così
+    poll/pdf/xlsx/json/save passano dagli stessi endpoint per entrambi i tipi di job."""
+    from ..lib import agent_jobs
+    if agent_jobs.is_agent_job(job_id):
+        j = agent_jobs.get(job_id)
+        if not j:
+            raise HTTPException(status_code=404, detail="job non trovato")
+        return j
+    return await engine.get_deliverable(job_id)
+
+
+async def _maybe_route_agent(session: dict, servizio_id: str, servizio: dict,
+                             bg: BackgroundTasks) -> Optional[dict]:
+    """Se l'agente A2 è attivo per il servizio e il quant è disponibile, instrada al job
+    ASINCRONO dell'agente (boost_agent → render 8e). Ritorna {job_id, status} o None →
+    fallback alla pipeline 8e (degrado safe: quant giù / skill assente non rompe nulla)."""
+    from ..lib import boost_agent, agent_jobs
+    if not settings.K2A_BOOST_AGENT or servizio_id not in settings.K2A_BOOST_AGENT_SERVIZI:
+        return None
+    if not boost_agent.mcp_quant.available():
+        log.warning("agent A2 on ma quant non disponibile → fallback pipeline per %s", servizio_id)
+        return None
+    blueprint = str(servizio.get("blueprint_id") or "").replace(".boost", "")
+    skill_path = settings.SKILLS_DIR / blueprint / "SKILL.md"
+    if not blueprint or not skill_path.exists():
+        log.warning("agent A2: skill mancante (%s) → fallback pipeline", blueprint)
+        return None
+    skill_text = skill_path.read_text(encoding="utf-8")
+    sezioni = _AGENT_SEZIONI.get(servizio_id, _AGENT_SEZIONI_DEFAULT)
+    try:
+        form = await engine.get_form(servizio_id)
+        campi = form.get("campi") or []
+    except engine.EngineError:
+        campi = []
+    job_id = agent_jobs.create(servizio_id)
+    bg.add_task(agent_jobs.run, job_id, session, servizio_id, skill_text, sezioni, campi)
+    return {"job_id": job_id, "status": "routed", "auth_level": "FULL",
+            "routed_blueprint": blueprint, "source": "agent_a2"}
+
+
 @router.post("/deliverables")
-async def create(body: DeliverableBody, user: Optional[AuthUser] = Depends(optional_user)):
+async def create(body: DeliverableBody, bg: BackgroundTasks,
+                 user: Optional[AuthUser] = Depends(optional_user)):
     session = sessions.get_session(body.sessionId)
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
@@ -100,6 +142,18 @@ async def create(body: DeliverableBody, user: Optional[AuthUser] = Depends(optio
     entitlement_token = _mint_entitlement(session, body.servizioId, tier=servizio.get("tipo"))
     if not entitlement_token:
         raise HTTPException(status_code=402, detail="servizio non pagato")
+
+    # A2 — se il servizio è instradato all'agente (flag + quant), job async dell'agente.
+    agent_res = await _maybe_route_agent(session, body.servizioId, servizio, bg)
+    if agent_res is not None:
+        try:
+            collected = dict(session.get("collected_data") or {})
+            collected["deliverable_job_id"] = agent_res.get("job_id")
+            collected["deliverable_service"] = body.servizioId
+            sessions.update_session(body.sessionId, {"collected_data": collected})
+        except Exception:
+            log.warning("persist agent job fallita (non bloccante)", exc_info=True)
+        return agent_res
 
     # L'8e instrada per service_id (chiave manifest = id catalog, stessa fonte
     # k2a-catalogo); è l'8e a risolvere service_id→blueprint internamente.
@@ -143,7 +197,8 @@ class AutoBody(BaseModel):
 
 
 @router.post("/deliverables/auto")
-async def auto_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(optional_user)):
+async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
+                           user: Optional[AuthUser] = Depends(optional_user)):
     """Genera il documento SENZA form: il boost è quello già instradato dalla chat
     (o ridedotto dal caso), e gli input 8e sono AUTO-COMPILATI dalla conversazione
     e dai file/bilanci caricati. È il flusso 'chiedi → raccogli → genera. Punto.'."""
@@ -192,6 +247,18 @@ async def auto_deliverable(body: AutoBody, user: Optional[AuthUser] = Depends(op
             "label": servizio.get("label"),
             "prezzo_eur": catalog.prezzo_eur(servizio_id),
         })
+
+    # A2 — instrada all'agente async se attivo per il servizio (altrimenti pipeline 8e).
+    agent_res = await _maybe_route_agent(session, servizio_id, servizio, bg)
+    if agent_res is not None:
+        try:
+            collected["deliverable_job_id"] = agent_res.get("job_id")
+            collected["deliverable_service"] = servizio_id
+            collected["deliverable_label"] = servizio.get("label")
+            sessions.update_session(body.sessionId, {"collected_data": collected})
+        except Exception:
+            log.warning("persist agent job (auto) fallita (non bloccante)", exc_info=True)
+        return {**agent_res, "servizio_id": servizio_id, "label": servizio.get("label")}
 
     try:
         res = await engine.create_deliverable(
@@ -349,7 +416,7 @@ async def create_preview(body: PreviewBody, user: AuthUser = Depends(require_use
 @router.get("/deliverables/{job_id}")
 async def status(job_id: str):
     try:
-        return await engine.get_deliverable(job_id)
+        return await _get_job(job_id)
     except engine.EngineError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
@@ -360,7 +427,7 @@ async def deliverable_pdf(job_id: str):
     e backend kbot condividono il filesystem → il PDF si legge dal path locale
     prodotto dal 8e. Nessuna auth: job_id opaco, come lo status poll."""
     try:
-        job = await engine.get_deliverable(job_id)
+        job = await _get_job(job_id)
     except engine.EngineError as e:
         raise HTTPException(status_code=502, detail=str(e))
     if job.get("status") != "rendered":
@@ -373,6 +440,38 @@ async def deliverable_pdf(job_id: str):
     if not os.path.realpath(pdf_path).startswith(out_root + os.sep):
         raise HTTPException(status_code=403, detail="percorso non consentito")
     return FileResponse(pdf_path, media_type="application/pdf", filename="report-k2ai.pdf")
+
+
+@router.get("/deliverables/{job_id}/xlsx")
+async def deliverable_xlsx(job_id: str):
+    """Excel 'modello vivo' del deliverable Boost — il 2° file del bundle (oltre al
+    PDF). Legge il deliverable.json prodotto dall'8e (filesystem condiviso, come il
+    PDF) e lo rende un Excel multi-foglio editabile (opzioni scorate, iniziative,
+    KPI...). On-demand: nessun costo di generazione, deterministico."""
+    import json as _json
+    from fastapi.responses import Response
+    from ..lib.xlsx_renderer import render_deliverable_8e_xlsx
+    try:
+        job = await _get_job(job_id)
+    except engine.EngineError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    if job.get("status") != "rendered":
+        raise HTTPException(status_code=409, detail="documento non ancora pronto")
+    json_path = (job.get("outputs") or {}).get("json_path")
+    if not json_path or not os.path.isfile(json_path):
+        raise HTTPException(status_code=404, detail="modello Excel non disponibile per questo documento")
+    out_root = os.path.realpath(os.environ.get("K2A_8E_OUT_DIR", "/tmp/8e_out"))
+    if not os.path.realpath(json_path).startswith(out_root + os.sep):
+        raise HTTPException(status_code=403, detail="percorso non consentito")
+    try:
+        deliverable = _json.loads(open(json_path, encoding="utf-8").read())
+        data = render_deliverable_8e_xlsx(deliverable)
+    except Exception as exc:
+        log.warning("xlsx render fallito per %s: %s", job_id, exc)
+        raise HTTPException(status_code=500, detail="impossibile generare il modello Excel")
+    return Response(content=data,
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": 'attachment; filename="modello-k2ai.xlsx"'})
 
 
 class SaveDeliverableBody(BaseModel):
@@ -399,7 +498,7 @@ async def save_deliverable(body: SaveDeliverableBody,
         return {"pdf_url": session["pdf_url"], "cached": True}
 
     try:
-        job = await engine.get_deliverable(body.jobId)
+        job = await _get_job(body.jobId)
     except engine.EngineError as e:
         raise HTTPException(status_code=502, detail=str(e))
     if job.get("status") != "rendered":

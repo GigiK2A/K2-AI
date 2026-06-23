@@ -40,6 +40,7 @@ export function ReportGenerator({
   const [label, setLabel] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [checkout, setCheckout] = useState<{ servizioId?: string; label?: string; prezzo?: number } | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
   const resumedRef = useRef(false);
 
   // Rientro post-pagamento: page.tsx ha adottato la sessione paid e messo il flag
@@ -99,6 +100,7 @@ export function ReportGenerator({
       }
       if (res.label) setLabel(res.label);
       const jobId = res.job_id;
+      setJobId(jobId);
       const final = await pollDeliverable(jobId, (j) => setStatus(j.status));
       if (final.status === "rendered") {
         const saved = await saveDeliverable(sessionId, jobId, token);
@@ -121,7 +123,7 @@ export function ReportGenerator({
 
   if (pdfUrl) {
     return (
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <a
           href={pdfUrl}
           target="_blank"
@@ -130,7 +132,15 @@ export function ReportGenerator({
         >
           Apri il report{label ? ` · ${label}` : ""} (PDF)
         </a>
-        <span className="ml-3 text-xs text-[var(--text-muted)]">Salvato anche in Dashboard.</span>
+        {jobId && (
+          <a
+            href={`${API_BASE}/api/kbot/deliverables/${encodeURIComponent(jobId)}/xlsx`}
+            className="inline-flex rounded-lg border border-[var(--teal)] px-4 py-2 text-sm font-semibold text-[var(--teal)] hover:bg-[var(--teal)]/10"
+          >
+            Scarica il modello (Excel)
+          </a>
+        )}
+        <span className="text-xs text-[var(--text-muted)]">Salvato anche in Dashboard.</span>
       </div>
     );
   }

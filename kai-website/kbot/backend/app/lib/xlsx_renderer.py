@@ -13,6 +13,7 @@ is guarded and unknown block types degrade to text instead of raising.
 from __future__ import annotations
 
 import io
+import json
 import re
 from typing import Any, Dict, List
 
@@ -205,3 +206,38 @@ def render_xlsx(analysis: Dict[str, Any]) -> bytes:
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+# ===================== Bundle Boost: Excel "modello vivo" =====================
+# I blueprint dell'8e chiedono per ogni Boost un bundle multi-file (docx report +
+# xlsx "modello vivo" + html dashboard). Qui rendiamo il 2° file: un Excel editabile
+# dal deliverable 8e — ogni lista-di-oggetti (opzioni scorate, iniziative, forze
+# Porter, KPI) diventa un foglio. Riusa render_xlsx (già testato).
+def _cell_text(v: Any) -> str:
+    if isinstance(v, (dict, list)):
+        return _strip_html(json.dumps(v, ensure_ascii=False))
+    return _strip_html(v)
+
+
+def _tables_from_deliverable(obj: Any, path: str, out: List[dict]) -> None:
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            _tables_from_deliverable(v, (path + " " + str(k)).strip(), out)
+    elif isinstance(obj, list) and obj and all(isinstance(x, dict) for x in obj):
+        cols: List[str] = []
+        for x in obj:
+            for k in x.keys():
+                if k not in cols:
+                    cols.append(k)
+        rows = [[_cell_text(x.get(c, "")) for c in cols] for x in obj]
+        out.append({"type": "data_table", "title": (path or "Dati").replace("_", " "),
+                    "columns": [c.replace("_", " ") for c in cols], "rows": rows})
+
+
+def render_deliverable_8e_xlsx(deliverable: Dict[str, Any], *, titolo: str = "") -> bytes:
+    """Excel 'modello vivo' da un deliverable 8e (il 2° artefatto del bundle).
+    Ogni lista-di-oggetti del deliverable → un foglio editabile. Deterministico."""
+    blocks: List[dict] = []
+    _tables_from_deliverable(deliverable, "", blocks)
+    meta = {"title": titolo or (deliverable.get("meta") or {}).get("cliente") or "Modello operativo K2-AI"}
+    return render_xlsx({"meta": meta, "blocks": blocks})

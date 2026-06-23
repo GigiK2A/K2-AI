@@ -405,7 +405,12 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
                                           "Analisi tecnica e operativa con priorità d'intervento.")
     body = []
 
-    def render_value(v, level=0):
+    # coordinate da NON stampare quando la mappa è resa come quadrante (no falsa
+    # precisione "0,75" — C3 del grounding contract): si tiene il razionale, non il numero.
+    _COORD_KEYS = {"coordinata_x", "coordinata_y", "x", "y", "ampiezza", "segmentazione",
+                   "posizione_azienda", "posizione_competitor"}
+
+    def render_value(v, level=0, skip_keys=()):
         if _is_list_of_dicts(v) and _has(v, "semaforo"):
             body.append(ST.heatmap(v, S)); body.append(Spacer(1, 4)); return
         if _is_list_of_dicts(v) and _has(v, "valore", "benchmark"):
@@ -416,16 +421,32 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
                 body.append(ST.risk_card(str(it.get("descrizione", "")), it.get("gravita", "media"), S, extra))
                 body.append(Spacer(1, 2))
             return
+        # liste con punteggio a rubrica (es. forze di Porter) → barre, non testo
+        if _is_list_of_dicts(v) and _has(v, "scoring"):
+            body.append(ST.score_bars(v, S)); body.append(Spacer(1, 4)); return
         # liste di azioni/raccomandazioni stringa → action box
         if isinstance(v, list) and v and all(isinstance(x, str) for x in v) and len(v) <= 12:
             body.append(ST.action_box(v, "Punti chiave", S)); body.append(Spacer(1, 3)); return
         if isinstance(v, dict):
+            # MAPPA DI POSIZIONAMENTO → quadrante 2x2 a bande (grafico, non testo).
+            q = ST.quadrant_map(v)
+            if q is not None:
+                body.append(Spacer(1, 4)); body.append(q); body.append(Spacer(1, 6))
+                # razionali (perché ognuno sta lì) SENZA i decimali inventati
+                for label, obj in (("La tua azienda", v.get("posizione_azienda")),):
+                    if isinstance(obj, dict) and obj.get("razionale"):
+                        body.append(Paragraph(f"<b>{label}:</b> {_rich(str(obj['razionale']))}", S["bullet"]))
+                for cdict in (v.get("posizione_competitor") or []):
+                    if isinstance(cdict, dict) and cdict.get("razionale"):
+                        nome = cdict.get("nome") or "Competitor"
+                        body.append(Paragraph(f"<b>{html.escape(str(nome))}:</b> {_rich(str(cdict['razionale']))}", S["bullet"]))
+                skip_keys = set(skip_keys) | _COORD_KEYS
             for k, vv in v.items():
-                if vv in (None, "", [], {}):
+                if vv in (None, "", [], {}) or k in skip_keys:
                     continue
                 if isinstance(vv, (dict, list)):
                     body.append(Paragraph(html.escape(_humanize(k)), S["h3"] if level else S["h2"]))
-                    render_value(vv, level + 1)
+                    render_value(vv, level + 1, skip_keys)
                 else:
                     body.append(Paragraph(f"<b>{html.escape(_humanize(k))}:</b> {_rich(str(vv))}", S["bullet"]))
         elif isinstance(v, list):
@@ -438,13 +459,13 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
                         body.append(Paragraph(_rich(str(item["contenuto"])), S["body"]))
                     for sub in ("rischi", "rischi_opportunita", "azioni", "norme_citate", "fonti", "findings"):
                         if item.get(sub):
-                            render_value(item[sub], level + 1)
+                            render_value(item[sub], level + 1, skip_keys)
                     for kk, vv in item.items():
                         if kk in ("titolo", "nome", "area", "contenuto", "rischi", "rischi_opportunita",
-                                  "azioni", "norme_citate", "fonti", "findings") or vv in (None, "", [], {}):
+                                  "azioni", "norme_citate", "fonti", "findings") or vv in (None, "", [], {}) or kk in skip_keys:
                             continue
                         if isinstance(vv, (dict, list)):
-                            render_value(vv, level + 1)
+                            render_value(vv, level + 1, skip_keys)
                         else:
                             body.append(Paragraph(f"<b>{html.escape(_humanize(kk))}:</b> {_rich(str(vv))}", S["bullet"]))
                     body.append(Spacer(1, 2))

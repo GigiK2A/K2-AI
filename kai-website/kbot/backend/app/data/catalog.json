@@ -1097,7 +1097,40 @@
       "tag_pillar_sito": []
     }
   ],
-  "percorsi": [],
+  "percorsi": [
+    {
+      "id": "controllo_di_gestione",
+      "nome": "Catena Controllo di Gestione",
+      "descrizione": "Filiera finanza K2-AI a fasi (modello catena Luca, giu 2026): lead magnet → diagnosi → forward-looking → cruscotto. Le tappe si comprano à la carte o si va diretti al ControlBoost completo (destinazione). Tutti i prezzi vengono dal catalogo (SSOT), non da qui.",
+      "ambito": "finanza",
+      "entry_checks_id": [
+        "check_salute_finanziaria",
+        "check_pmi_express"
+      ],
+      "tappe_id_ordinate": [
+        "tappa_bilancio_pmi",
+        "tappa_budget_forecast_pmi",
+        "tappa_cruscotto_direzionale"
+      ],
+      "destinazione_id": "checkup_controllo"
+    },
+    {
+      "id": "advisor_strategico",
+      "nome": "Percorso AdvisorBoost",
+      "descrizione": "Filiera strategico-finanziaria a fasi: pagella strategica (entry) → analisi di settore → diagnosi di bilancio → posizionamento competitivo → sintesi e piano, oppure l'AdvisorBoost completo come destinazione. Prezzi dal catalogo (SSOT).",
+      "ambito": "strategia",
+      "entry_checks_id": [
+        "check_pmi_express"
+      ],
+      "tappe_id_ordinate": [
+        "tappa_settore_pmi",
+        "tappa_bilancio_pmi",
+        "tappa_posizionamento_pmi",
+        "tappa_advisor_sintesi"
+      ],
+      "destinazione_id": "checkup_advisor"
+    }
+  ],
   "abbonamenti": [],
   "mapping_tag_to_servizi": {
     "P02": {
