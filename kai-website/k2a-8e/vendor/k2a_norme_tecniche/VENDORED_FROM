@@ -1,0 +1,4 @@
+k2a_norme_tecniche
+fonte: github inglucarossi73/k2a-mcp-norme-tecniche
+sha: 3c22d22
+uso: 8e importa search/cerca_articolo come libreria. KB VUOTA (scaffold NT-1) -> search() torna 0 hits onesto finche Luca non ingerisce il corpus (NTC2018/CEI/Eurocodici).

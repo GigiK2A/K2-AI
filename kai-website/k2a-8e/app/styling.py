@@ -604,9 +604,16 @@ def _kicker(canvas, x, y, text, size=7.5, color=GOLD_DK, spacing=1.4, right=None
     canvas.restoreState()
 
 
-def _cover_meta(canvas, x, y, label, value):
+def _cover_meta(canvas, x, y, label, value, max_width=None):
     _kicker(canvas, x, y + 4.5 * mm, label, size=7, color=GOLD_DK, spacing=1.2)
-    canvas.setFillColor(TEXT); canvas.setFont(F_BOLD, 10.5); canvas.drawString(x, y, str(value)[:46])
+    canvas.setFillColor(TEXT); canvas.setFont(F_BOLD, 10.5)
+    text = str(value)
+    if max_width:
+        while text and canvas.stringWidth(text, F_BOLD, 10.5) > max_width:
+            text = text[:-1]
+        if text != str(value):
+            text = text[:-1].rstrip() + "…" if len(text) > 1 else "…"
+    canvas.drawString(x, y, text)
 
 
 def cover_page(canvas, *, modulo, titolo, sottotitolo, azienda="", periodo="",
@@ -663,7 +670,8 @@ def cover_page(canvas, *, modulo, titolo, sottotitolo, azienda="", periodo="",
     for i, (lb, va) in enumerate(metas):
         canvas.setStrokeColor(GOLD); canvas.setLineWidth(1.2)
         canvas.line(MARGIN + i * col_w, my + 9 * mm, MARGIN + i * col_w, my - 1 * mm)
-        _cover_meta(canvas, MARGIN + i * col_w + 4 * mm, my, lb, va)
+        _cover_meta(canvas, MARGIN + i * col_w + 4 * mm, my, lb, va,
+                    max_width=col_w - 8 * mm)
     # footer
     _kicker(canvas, MARGIN, 14 * mm, "K2-AI · K2A S.R.L.S. · documento riservato e confidenziale",
             size=7, color=NEUTRAL, spacing=0.8)

@@ -1,0 +1,4 @@
+k2a_budget
+fonte: github inglucarossi73/k2a-mcp-budget
+sha: 5c54105
+uso: 8e importa engine.budget_36m + scenari.budget_scenari + sensitivity.budget_sensitivity come libreria (envelope CalcResult). Prerequisito §E AdvisorBoost (piano_economico_finanziario).

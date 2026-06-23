@@ -1,0 +1,11 @@
+{
+  "_fonte": "Indicatori gestionali standard dell'e-commerce: conversion rate, AOV (average order value), ricavo per sessione, margine di contribuzione netto (al netto di COGS, spedizioni e commissioni), tasso di reso, ROAS.",
+  "_data_validita": "2026-05-22",
+  "_disclaimer": "Soglie ORIENTATIVE: variano molto per merceologia e canale (marketplace vs sito proprio). Valori indicativi, da calibrare sul singolo shop. _da_validare.",
+  "_da_validare": true,
+  "soglie": {
+    "conversion_rate_pct": {"label": "Conversion rate (%)", "direzione": "alto_meglio", "ottimo": 3.0, "buono": 2.0, "attenzione": 1.0},
+    "margine_contribuzione_pct": {"label": "Margine di contribuzione netto (%)", "direzione": "alto_meglio", "ottimo": 25, "buono": 15, "attenzione": 8},
+    "tasso_reso_pct": {"label": "Tasso di reso (%)", "direzione": "basso_meglio", "ottimo": 10, "buono": 20, "attenzione": 30}
+  }
+}

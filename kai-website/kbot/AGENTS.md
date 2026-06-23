@@ -103,6 +103,16 @@ Modello in `catalogo_documenti.json` (k2a-catalogo): **Free / Pro 49€-50cr / B
 
 Il K-BOT NON genera i deliverable Boost: li richiede al motore **8e** (`kai-website/k2a-8e/`, FastAPI separato su Railway) via `lib/engine.py`. Catalogo prodotti in `lib/catalog.py` (legge `app/data/catalog.json`, generato da `build_catalog.py` = catalog di Luca + overlay tag pillar). Env: `K2A_8E_BASE_URL` (dev → mock `kbot/mock-8e`), `K2A_8E_API_KEY`. Contratto: `docs/interfaccia-kbot-8e.md`.
 
+#### Quality gate trasversale (giu 2026)
+
+- `k2a-8e/app/quality.py` valida gli input di **tutti** i Boost prima della generazione:
+  identità cliente obbligatoria, form completo, niente valori campione.
+- Il gate post-generazione blocca placeholder, token interni, fatti cliente ipotetici e
+  numeri economici non presenti negli input/fact/citazioni o non dichiarati come assunzioni.
+- FinanceBoost riconcilia PN e quadratura, distingue passività/debiti finanziari e ricava
+  EBITDA solo con bridge completo. Produce anche `modello-finanziario.xlsx` con formule vive.
+- Un finding `severity=block` rifiuta il job: un report incompleto non viene renderizzato.
+
 ---
 
 ## Flusso utente (login-first)

@@ -6,3 +6,8 @@ reportlab>=4.1
 jsonschema>=4.21
 httpx>=0.27
 PyJWT>=2.8
+# Richiesti a runtime dai pacchetti vendorizzati (vendor/): k2a_quant (npv_irr usa
+# scipy.optimize.brentq + numpy; dcf/wacc/capm usano numpy) e k2a_elettrico (caduta_v).
+# Senza, gli hook deterministici di advisor/finance/fisco/mep crashano in esecuzione in prod.
+numpy>=1.26
+scipy>=1.11

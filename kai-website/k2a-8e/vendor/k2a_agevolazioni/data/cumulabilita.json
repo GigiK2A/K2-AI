@@ -1,0 +1,24 @@
+{
+  "_fonte": "Principio generale divieto di doppio finanziamento (Reg. UE 2021/241 art.9 PNRR) + limiti di cumulo dei singoli decreti (Transizione 5.0 art.38 c.18 DL 19/2024; credito R&S; Sabatini de minimis).",
+  "_data_validita": "2025-01-01",
+  "_disclaimer": "Le regole di cumulo sono specifiche per misura e per costo agevolato. Questa matrice copre i casi più comuni ed è semplificata: verificare sempre il decreto della singola misura e le FAQ ufficiali.",
+  "_da_validare": false,
+  "incompatibilita": [
+    {
+      "misure": ["transizione_5_0", "transizione_4_0"],
+      "tipo": "vietata_su_stessi_costi",
+      "nota": "Transizione 5.0 NON cumulabile con il credito beni strumentali 4.0 (Transizione 4.0) sui medesimi costi ammissibili."
+    }
+  ],
+  "etichette_misure": {
+    "transizione_5_0": "Credito Transizione 5.0",
+    "transizione_4_0": "Credito beni strumentali 4.0",
+    "credito_rd": "Credito R&S/Innovazione/Design",
+    "nuova_sabatini": "Nuova Sabatini",
+    "credito_zes": "Credito ZES unica",
+    "fondo_perduto": "Contributo a fondo perduto",
+    "altro": "Altra agevolazione"
+  },
+  "intensita_massima_pct": 100,
+  "nota_intensita": "La somma di tutte le agevolazioni sui medesimi costi non può superare il 100% del costo sostenuto (divieto di doppio finanziamento). Limiti di intensità inferiori possono valere per specifici regimi di aiuto di Stato."
+}
