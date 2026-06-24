@@ -467,6 +467,12 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         deliverable, filiera_meta = apply_deterministic_bindings(
             skill, deliverable, facts, inputs, filiera_meta)
 
+        # Scrub segnaposto template trapelati ([città]/[regione]/[nome]…) PRIMA del gate e
+        # del render: il deep-gen a volte li lascia su dati mancanti nonostante il prompt, e
+        # il gate li blocca (placeholder_leak). Neutralizzazione deterministica → il report si
+        # consegna pulito invece di fallire. Il gate resta come backstop su ciò che sfugge.
+        deliverable = quality.scrub_template_placeholders(deliverable, inputs)
+
         # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
         # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
         # schema.

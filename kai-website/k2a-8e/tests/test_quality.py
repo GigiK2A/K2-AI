@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import grounding, quality  # noqa: E402
+
+
+def json_dumps(obj) -> str:
+    return json.dumps(obj, ensure_ascii=False)
 from app.xlsx import render_finance_workbook  # noqa: E402
 
 
@@ -146,6 +151,37 @@ def test_naked_hard_financial_still_blocks_on_qualitative():
     blocks = [f for f in quality.unsupported_number_findings(naked, {"ragione_sociale": "Acme SRL"}, {}, strict=False)
               if f["severity"] == "block"]
     assert blocks
+
+
+def test_scrub_template_placeholders_neutralises_leaks():
+    """Il deep-gen a volte lascia [città]/[regione] quando non conosce la sede (nonostante
+    il prompt lo vieti) → il gate li BLOCCA (placeholder_leak, refuse reale visto in prod:
+    job_f1d31380ff0d). Lo scrub deterministico li neutralizza PRIMA del gate: il report si
+    consegna invece di fallire. [nome]→cliente reale, luoghi ignoti→neutro."""
+    d = {
+        "meta": {"azienda": "Studio Evolution"},
+        "intro": "Lo studio [nome] con sede a [città], in [regione], opera dal [mese/anno].",
+        "voci": ["Espansione in [città]", "Presidio [regione]"],
+    }
+    out = quality.scrub_template_placeholders(d, {"ragione_sociale": "Studio Evolution"})
+    blob = json_dumps(out)
+    # nessun segnaposto a bracket sopravvive
+    assert "[città]" not in blob and "[regione]" not in blob and "[nome]" not in blob and "[mese/anno]" not in blob
+    # [nome] riempito col cliente reale
+    assert "Studio Evolution" in blob
+    # e il gate ora NON blocca più (placeholder_leak sparito)
+    leaks = [f for f in grounding.integrity_findings(out, inputs={"ragione_sociale": "Studio Evolution"},
+                                                     facts={}, citazioni=[], strict=False)
+             if f["code"] == "placeholder_leak" and f["severity"] == "block"]
+    assert not leaks
+
+
+def test_scrub_preserves_uppercase_markers_and_refs():
+    """Lo scrub NON deve toccare i marker legittimi maiuscoli ([IPOTESI]) né i ref numerici."""
+    d = {"x": "Stima [IPOTESI] da confermare; vedi nota [1]."}
+    out = quality.scrub_template_placeholders(d, {"ragione_sociale": "Acme"})
+    blob = json_dumps(out)
+    assert "[IPOTESI]" in blob and "[1]" in blob
 
 
 def test_financial_strict_not_loosened_by_weak_estimate_word():

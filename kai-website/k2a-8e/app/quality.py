@@ -284,6 +284,49 @@ def ensure_metadata(deliverable: dict, output_schema: dict, inputs: dict, servic
     return deliverable
 
 
+# Template placeholder che il deep-gen a volte lascia NONOSTANTE il prompt che li vieta
+# (es. '[città]' quando non conosce la sede): il gate CAGE li blocca come placeholder_leak
+# (refuse reale in prod, job_f1d31380ff0d). Affidarsi al solo prompt non regge → qui li
+# NEUTRALIZZIAMO deterministicamente PRIMA del gate: un dato mancante non deve far fallire la
+# consegna. [nome]/[azienda] → cliente reale; date → mese/anno correnti; luoghi ignoti → neutro.
+_SCRUB_SUBS: list[tuple] = [
+    (re.compile(r"\[\s*(?:nome|azienda|ragione[\s_]*sociale|denominazione|cliente|committente|societ[aà])\s*\]", re.I), "{name}"),
+    (re.compile(r"\[\s*(?:citt[aà]|comune|sede)\s*\]", re.I), "località non indicata"),
+    (re.compile(r"\[\s*(?:regione|provincia|zona|area(?:\s+geografica)?|territorio)\s*\]", re.I), "area non indicata"),
+    (re.compile(r"\[\s*indirizzo\s*\]", re.I), "indirizzo non indicato"),
+    (re.compile(r"\[\s*(?:mese\s*/?\s*anno|data|periodo)\s*\]", re.I), "{myyyy}"),
+    (re.compile(r"\[\s*anno\s*\]", re.I), "{yyyy}"),
+    (re.compile(r"\[\s*(?:settore|mercato|comparto)\s*\]", re.I), "il settore di riferimento"),
+]
+# Catch-all: qualunque parola MINUSCOLA (accentata) tra [] rimasta = segnaposto trapelato.
+# Lowercase-only e senza cifre ⇒ NON tocca i marker legittimi maiuscoli ([IPOTESI]) né i ref ([1]).
+_SCRUB_CATCHALL = re.compile(r"\[\s*[a-zàèéìòù][a-zàèéìòù _/]{1,30}\]")
+
+
+def scrub_template_placeholders(deliverable: dict, inputs: dict) -> dict:
+    """Neutralizza i segnaposto template trapelati dal LLM prima del gate/render. Deterministico."""
+    name = display_name(inputs) or "l'azienda"
+    myyyy = date.today().strftime("%m/%Y")
+    yyyy = date.today().strftime("%Y")
+
+    def fix(s: str) -> str:
+        for rx, tmpl in _SCRUB_SUBS:
+            val = tmpl.format(name=name, myyyy=myyyy, yyyy=yyyy)
+            s = rx.sub(lambda _m, _v=val: _v, s)        # lambda ⇒ replacement letterale (no backref)
+        return _SCRUB_CATCHALL.sub(lambda _m: "dato non indicato", s)
+
+    def walk(v):
+        if isinstance(v, str):
+            return fix(v)
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        return v
+
+    return walk(deliverable)
+
+
 def grounded_numbers(inputs: dict, facts: dict, citations: list | None = None) -> set[float]:
     nums: set[float] = set()
     for value in list(_walk(inputs)) + list(_walk(facts)) + list(_walk(citations or [])):
