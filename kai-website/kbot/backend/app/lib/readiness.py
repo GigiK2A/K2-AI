@@ -18,6 +18,23 @@ from __future__ import annotations
 from typing import Any
 
 _EMPTY = (None, "", [], {})
+_GENERIC_NAMES = {"", "cliente", "azienda", "la tua azienda", "n/d", "-", "—"}
+
+
+def has_identity(inputs: dict | None) -> bool:
+    """Vero se gli input contengono un nome-cliente USABILE. Mirror di 8e
+    quality.display_name: il Gate 0 dell'8e lo esige per personalizzare il report, ma il
+    pre-flight non lo controllava → un'identità mancante cadeva nel Gate 0 (errore generico)
+    invece di essere nominata. Qui la riconosciamo per dirla tra i dati mancanti."""
+    inputs = inputs or {}
+    for k in ("ragione_sociale", "denominazione", "azienda", "nome", "client_name"):
+        v = str(inputs.get(k) or "").strip()
+        if v and v.lower() not in _GENERIC_NAMES:
+            return True
+    # StrategyBoost usa una descrizione libera: vale come identità solo se breve/nominale
+    # (come 8e: una descrizione lunga NON è un nome).
+    desc = str(inputs.get("descrizione_azienda") or "").strip()
+    return bool(desc) and len(desc) <= 100
 
 
 def missing_required(campi: list[dict] | None, inputs: dict | None) -> list[dict]:

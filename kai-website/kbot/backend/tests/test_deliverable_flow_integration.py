@@ -38,7 +38,10 @@ def _setup(monkeypatch, *, status="paid", collected=None):
     monkeypatch.setattr(d.sessions, "update_session", lambda sid, patch: {**session, **patch})
     monkeypatch.setattr(d.engine, "get_form", fake_get_form)
     monkeypatch.setattr(d.engine, "create_deliverable", fake_create)
-    monkeypatch.setattr(d.autofill, "extract_inputs", lambda *a, **k: {})
+    # identità presente (sessione reale ha un nome dalla chat): così questi test esercitano
+    # routing/paywall senza inciampare nel pre-flight needs_input (campi form vuoti = nessun
+    # required mancante). I casi senza identità/required hanno i loro test dedicati.
+    monkeypatch.setattr(d.autofill, "extract_inputs", lambda *a, **k: {"ragione_sociale": "ACME Srl"})
     return created
 
 
@@ -131,6 +134,34 @@ def test_all_required_present_proceeds_to_generation(monkeypatch):
     res = asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
     assert res["job_id"] == "job-int-2"
     assert created["service_id"] == "checkup_marketing"
+
+
+def test_missing_identity_named_in_needs_input(monkeypatch):
+    """Anche se i campi required del form ci sono, se manca l'IDENTITÀ (ragione sociale) il
+    pre-flight deve NOMINARLA (prima cadeva nel Gate 0 8e → 'Mancano dei dati' generico)."""
+    collected = {"boost_suggerito": "checkup_marketing"}
+    session = {"id": "sess-int-1", "user_id": None, "status": "paid", "collected_data": collected}
+
+    async def fake_get_form(servizio_id):
+        return {"campi": [{"id": "obiettivo", "obbligatorio": True, "label": "obiettivo"}]}
+
+    async def fake_create(**kw):
+        raise AssertionError("create NON deve partire senza identità")
+
+    monkeypatch.setattr(d.sessions, "get_session", lambda sid: session)
+    monkeypatch.setattr(d.sessions, "update_session", lambda sid, patch: {**session, **patch})
+    monkeypatch.setattr(d.engine, "get_form", fake_get_form)
+    monkeypatch.setattr(d.engine, "create_deliverable", fake_create)
+    monkeypatch.setattr(d, "_session_company", lambda s: None)  # nessun nome recuperabile
+    # required presente, ma NESSUNA ragione sociale / descrizione → identità mancante
+    monkeypatch.setattr(d.autofill, "extract_inputs", lambda *a, **k: {"obiettivo": "crescere"})
+
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
+    assert ei.value.status_code == 409
+    assert ei.value.detail.get("reason") == "needs_input"
+    assert "ragione_sociale" in ei.value.detail.get("missing", [])
+    assert "ragione sociale" in ei.value.detail.get("message", "").lower()
 
 
 def test_required_fields_hint_injected_into_chat_prompt():

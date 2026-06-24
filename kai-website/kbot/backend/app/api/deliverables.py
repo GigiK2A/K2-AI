@@ -245,15 +245,19 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
     # e si rigenera. (Se il form 8e non è raggiungibile, campi=[] → nessun blocco: si
     # lascia decidere all'8e.)
     missing = readiness.missing_required(campi, inputs)
-    if missing:
+    needs_identity = not readiness.has_identity(inputs)  # il Gate 0 dell'8e esige il nome cliente
+    if missing or needs_identity:
+        labels = readiness.format_missing_labels(missing)
+        if needs_identity:
+            labels = "la ragione sociale (nome dell'azienda)" + (f"; {labels}" if labels else "")
+        miss_ids = (["ragione_sociale"] if needs_identity else []) + [c.get("id") for c in missing]
         raise HTTPException(status_code=409, detail={
             "reason": "needs_input",
             "servizio_id": servizio_id,
-            "missing": [c.get("id") for c in missing],
+            "missing": miss_ids,
             "message": (
                 f"Per generare «{servizio.get('label') or servizio_id}» mi servono ancora: "
-                f"{readiness.format_missing_labels(missing)}. "
-                "Scrivimeli in chat e premi di nuovo Genera."
+                f"{labels}. Scrivimeli in chat e premi di nuovo Genera."
             ),
         })
 

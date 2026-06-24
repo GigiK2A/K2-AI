@@ -87,6 +87,25 @@ def test_required_fields_hint_lists_required_labels_for_chat():
     assert "ateco" not in hint.lower()
 
 
+def test_has_identity_detects_usable_company_name():
+    """Il Gate 0 dell'8e ESIGE un nome-cliente (display_name). Il pre-flight deve saperlo
+    riconoscere per nominarlo tra i dati mancanti, invece di lasciarlo cadere nel Gate 0
+    (che poi dà un errore generico). Mirror di 8e quality.display_name."""
+    assert readiness.has_identity({"ragione_sociale": "Studio Evolution"}) is True
+    assert readiness.has_identity({"azienda": "ACME Srl"}) is True
+    # descrizione breve = nominale → accettata (come 8e)
+    assert readiness.has_identity({"descrizione_azienda": "Studio di ingegneria di Perugia"}) is True
+
+
+def test_has_identity_false_when_missing_or_generic():
+    assert readiness.has_identity({}) is False
+    assert readiness.has_identity({"ragione_sociale": ""}) is False
+    assert readiness.has_identity({"ragione_sociale": "azienda"}) is False  # generico
+    # descrizione LUNGA (>100) NON conta come identità (quirk reale di 8e display_name)
+    long_desc = "Studio di ingegneria, progettazione, clienti privati e società, " * 3
+    assert readiness.has_identity({"descrizione_azienda": long_desc}) is False
+
+
 def test_required_fields_hint_empty_when_no_required():
     assert readiness.required_fields_hint([], boost_label="X") == ""
     assert readiness.required_fields_hint(

@@ -16,13 +16,37 @@ const GENERIC_REFUSAL =
   "Non sono riuscito a generare il documento con i dati attuali. " +
   "Dammi qualche dettaglio in più in chat (o carica il bilancio) e riprovo.";
 
-/** Messaggio LEGGIBILE per un job rifiutato: il motore 8e dice PERCHÉ
- *  (`refusal_reason` + `error`), ma il frontend prima lo nascondeva dietro una
- *  stringa fissa. Mappiamo il motivo a un'azione concreta per l'utente. */
+// Etichette leggibili per i campi più comuni; per gli altri si prettifica l'id.
+const FIELD_LABELS: Record<string, string> = {
+  ragione_sociale: "la ragione sociale (nome azienda)",
+  descrizione_azienda: "una breve descrizione dell'azienda",
+  competitor: "i 2-3 competitor principali",
+  obiettivo_strategico: "l'obiettivo strategico (cosa vuoi ottenere)",
+  settore_ateco: "il settore/codice ATECO",
+};
+
+/** Estrae i NOMI dei campi mancanti dall'errore del Gate 0 8e ("campo: motivo; campo2: …")
+ *  e li rende leggibili, così l'utente sa ESATTAMENTE cosa aggiungere. */
+function namedMissingFields(error: string): string {
+  const ids = error
+    .split(/[;\n]/)
+    .map((s) => s.split(":")[0].trim())
+    .filter((s) => s && s.length <= 40 && !s.includes(" "));
+  const labels = Array.from(new Set(ids)).map((id) => FIELD_LABELS[id] ?? id.replace(/_/g, " "));
+  return labels.join(", ");
+}
+
+/** Messaggio LEGGIBILE per un job rifiutato: il motore 8e dice PERCHÉ (`refusal_reason` +
+ *  `error`). Per i dati mancanti NOMINIAMO i campi (non più un generico "mancano dei dati"). */
 function refusedMessage(job: DeliverableJob): string {
+  const detail = (job.error ?? "").trim();
+  if (job.refusal_reason === "insufficient_or_inconsistent_input") {
+    const fields = namedMissingFields(detail);
+    return fields
+      ? `Per generare il documento mi servono ancora: ${fields}. Aggiungili in chat e premi di nuovo Genera.`
+      : "Mancano dei dati necessari per questo documento. Aggiungili in chat e premi di nuovo Genera.";
+  }
   const map: Record<string, string> = {
-    insufficient_or_inconsistent_input:
-      "Mancano dei dati necessari per questo documento. Aggiungili in chat e premi di nuovo Genera.",
     grounding_failed:
       "Il controllo qualità ha bloccato contenuti non verificabili (numeri o fonti non confermati). " +
       "Dammi dati più concreti in chat e riprovo.",
@@ -33,7 +57,6 @@ function refusedMessage(job: DeliverableJob): string {
   };
   const friendly = job.refusal_reason ? map[job.refusal_reason] : undefined;
   if (friendly) return friendly;
-  const detail = (job.error ?? "").trim();
   return detail ? `Non sono riuscito a generare il documento: ${detail}` : GENERIC_REFUSAL;
 }
 
