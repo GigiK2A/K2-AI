@@ -126,6 +126,37 @@ def test_assumption_label_allows_scenario_number():
     assert not findings
 
 
+def test_qualitative_allows_illustrative_number_with_honest_markers():
+    """Scelta utente: i boost qualitativi (StrategyBoost) POSSONO includere numeri
+    illustrativi SE marcati come ipotesi esplicita. I marker onesti più naturali
+    ('(ipotesi)', 'a titolo illustrativo', 'da confermare') devono esentare, così il
+    modello non viene bloccato quando etichetta onestamente una proiezione."""
+    exempt = {
+        "meta": {"azienda": "Acme SRL"},
+        "piano": "Budget marketing indicativo 10.000€ a titolo illustrativo (ipotesi da confermare).",
+        "roi": "ROI atteso del 30% (ipotesi esplicita, da confermare con dati reali).",
+    }
+    assert not quality.unsupported_number_findings(exempt, {"ragione_sociale": "Acme SRL"}, {}, strict=False)
+
+
+def test_naked_hard_financial_still_blocks_on_qualitative():
+    """Protezione intatta: un numero hard-financial NUDO (senza marker di ipotesi)
+    resta bloccato anche sui qualitativi — non si spacciano cifre inventate per fatti."""
+    naked = {"meta": {"azienda": "Acme SRL"}, "piano": "Investimento di 50.000€ con ROI del 30%."}
+    blocks = [f for f in quality.unsupported_number_findings(naked, {"ragione_sociale": "Acme SRL"}, {}, strict=False)
+              if f["severity"] == "block"]
+    assert blocks
+
+
+def test_financial_strict_not_loosened_by_weak_estimate_word():
+    """FinanceBoost (strict): 'stimato €40000 EBITDA' resta block — i numeri finanziari
+    vanno grounded/bound, non 'stimati'. La parola debole 'stima' NON esenta."""
+    d = {"meta": {"azienda": "Acme SRL"}, "x": "Risparmio stimato €40000 EBITDA anno."}
+    blocks = [f for f in quality.unsupported_number_findings(d, {"ragione_sociale": "Acme SRL"}, {}, strict=True)
+              if f["severity"] == "block"]
+    assert blocks
+
+
 def _voci_input():
     return {
         "ragione_sociale": "Esempio S.r.l.",

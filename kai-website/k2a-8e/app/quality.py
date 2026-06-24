@@ -303,7 +303,14 @@ _QUANT_CONTEXT = re.compile(
     r"(?:€|\beur\b|%|margine|ricav|ebitda|utile|debito|costo|risparm|roi|roe|ros|"
     r"payback|fatturato|conversion|traffico|nfp|pfn|cagr|impatto|beneficio)", re.I
 )
-_ASSUMPTION = re.compile(r"(?:assunzione|ipotesi esplicita|scenario illustrativo|da validare)", re.I)
+# Marker di ASSUNZIONE ESPLICITA: un numero NON-grounded è ammesso se la frase lo etichetta
+# onestamente come ipotesi/illustrazione (così un report qualitativo può includere cifre
+# illustrative dichiarate). Riconosce i fraseggi onesti più naturali del modello — ma NON la
+# parola debole 'stima'/'stimato' (una stima spacciata per quasi-fatto resta bloccata, vedi
+# test_financial_strict_not_loosened_by_weak_estimate_word) né un numero NUDO.
+_ASSUMPTION = re.compile(
+    r"(?:assunzione|ipotes\w*|ipotizz\w*|scenario\s+illustrativo|illustrativ\w*|"
+    r"a\s+titolo|da\s+validare|da\s+confermare)", re.I)
 # Numeri HARD-FINANCIAL: cifre-CLIENTE su cui si AGISCE economicamente (€, indici di
 # bilancio, ROI/payback/VAN/TIR, imposte). Restano 'block' anche sui boost qualitativi
 # (strict=False): un "€50k di impatto" o un "ROI del 250%" fabbricato è pericoloso in
