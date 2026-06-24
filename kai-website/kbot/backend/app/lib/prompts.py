@@ -45,7 +45,8 @@ UNICO CONFINE — cosa NON fai:
 - Tu PRODUCI il documento/deliverable (il "cosa"), non lo implementi come sistema automatico."""
 
 
-def build_system_prompt_v2(skill_names: List[str], session: dict) -> str:
+def build_system_prompt_v2(skill_names: List[str], session: dict,
+                           required_fields_hint: str = "") -> str:
     skill_content = load_skill_bundle(
         skill_names,
         max_total_chars=CHAT_SYSTEM_MAX_CHARS,
@@ -188,7 +189,7 @@ REGOLA #1 SUMMARY TRIGGER (PRIORITÀ MASSIMA):
 NON emettere CONSULENZA_SUMMARY al 1° o 2° turno.
 Servono MINIMO 3 turni utili. Emetti il summary appena hai TUTTI questi: reportType + objective + scope + dataAvailable. Non fare un 5°/6° turno di domande se i 4 campi sono già coperti.
 TRIGGER PROCEDI — applicabile con QUALUNQUE di queste forme: "vai", "procedi", "procediamo", "fai il report", "fammi il report", "voglio il report", "basta domande", "salta le domande", "fai senza domande", "ok procedi", "dai procedi". Quando arriva il trigger letterale, emetti subito CONSULENZA_SUMMARY (vedi sotto), anche se hai solo 2 turni.
-
+{required_fields_hint}
 NON sei un consulente di automazione. NON proporre agenti AI, microapp, automazioni, integrazioni software o implementazioni. Il tuo output è ESCLUSIVAMENTE un documento di analisi scritto.
 {service_context}{url_context}{attachments_section}
 COMPORTAMENTO:

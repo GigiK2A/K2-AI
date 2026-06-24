@@ -76,5 +76,74 @@ def test_advisor_routing_blocked_non_vendibile(monkeypatch):
     assert created["service_id"] == res["servizio_id"]
 
 
+def test_missing_required_field_returns_409_needs_input(monkeypatch):
+    """Pre-flight: il boost esige un campo OBBLIGATORIO che la chat non ha raccolto →
+    409 `needs_input` che lo NOMINA, SENZA spendere (né far pagare) una generazione che
+    l'8e rifiuterebbe come `insufficient_or_inconsistent_input`. È il bug reale
+    StrategyBoost (competitor/obiettivo mai chiesti) generalizzato a ogni boost."""
+    collected = {"boost_suggerito": "checkup_marketing",
+                 "extractedData": {"reportType": "analisi marketing", "objective": "awareness"}}
+    session = {"id": "sess-int-1", "user_id": None, "status": "paid", "collected_data": collected}
+
+    async def fake_get_form(servizio_id):
+        return {"campi": [{"id": "obiettivo_strategico", "obbligatorio": True,
+                           "label": "cosa vuole ottenere nei prossimi 1-3 anni"}]}
+
+    async def fake_create(**kw):
+        raise AssertionError("create_deliverable NON deve partire se manca un campo required")
+
+    monkeypatch.setattr(d.sessions, "get_session", lambda sid: session)
+    monkeypatch.setattr(d.sessions, "update_session", lambda sid, patch: {**session, **patch})
+    monkeypatch.setattr(d.engine, "get_form", fake_get_form)
+    monkeypatch.setattr(d.engine, "create_deliverable", fake_create)
+    # autofill estrae solo la ragione sociale; il required `obiettivo_strategico` resta assente.
+    monkeypatch.setattr(d.autofill, "extract_inputs", lambda *a, **k: {"ragione_sociale": "ACME Srl"})
+
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
+    assert ei.value.status_code == 409
+    assert ei.value.detail.get("reason") == "needs_input"
+    assert "obiettivo_strategico" in ei.value.detail.get("missing", [])
+    assert "cosa vuole ottenere" in ei.value.detail.get("message", "")
+
+
+def test_all_required_present_proceeds_to_generation(monkeypatch):
+    """Contro-prova: con i required presenti il pre-flight NON blocca e si genera."""
+    collected = {"boost_suggerito": "checkup_marketing"}
+    session = {"id": "sess-int-1", "user_id": None, "status": "paid", "collected_data": collected}
+
+    async def fake_get_form(servizio_id):
+        return {"campi": [{"id": "obiettivo_strategico", "obbligatorio": True, "label": "obiettivo"}]}
+
+    created = {}
+
+    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level):
+        created["service_id"] = service_id
+        return {"job_id": "job-int-2", "status": "routed"}
+
+    monkeypatch.setattr(d.sessions, "get_session", lambda sid: session)
+    monkeypatch.setattr(d.sessions, "update_session", lambda sid, patch: {**session, **patch})
+    monkeypatch.setattr(d.engine, "get_form", fake_get_form)
+    monkeypatch.setattr(d.engine, "create_deliverable", fake_create)
+    monkeypatch.setattr(d.autofill, "extract_inputs",
+                        lambda *a, **k: {"ragione_sociale": "ACME Srl", "obiettivo_strategico": "crescere del 30%"})
+
+    res = asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
+    assert res["job_id"] == "job-int-2"
+    assert created["service_id"] == "checkup_marketing"
+
+
+def test_required_fields_hint_injected_into_chat_prompt():
+    """Part 3 — il prompt della chat espone i campi obbligatori del boost instradato,
+    così il bot li raccoglie PRIMA di dichiararsi pronto (prevenzione)."""
+    from app.lib.prompts import build_system_prompt_v2
+    session = {"id": "s1", "collected_data": {}}
+    base = build_system_prompt_v2([], session)
+    with_hint = build_system_prompt_v2([], session,
+                                       required_fields_hint="\nCAMPI OBBLIGATORI SENTINELLA_XYZ\n")
+    assert "SENTINELLA_XYZ" not in base
+    assert "SENTINELLA_XYZ" in with_hint
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

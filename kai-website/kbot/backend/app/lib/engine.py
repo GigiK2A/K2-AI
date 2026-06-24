@@ -108,15 +108,26 @@ async def get_deliverable(job_id: str) -> dict:
     return r.json()
 
 
+_FORM_CACHE: dict[str, dict] = {}
+
+
 async def get_form(service_id: str) -> dict:
-    """Campi form richiesti dal deliverable (per raccolta input lato K-BOT)."""
+    """Campi form richiesti dal deliverable (per raccolta input lato K-BOT).
+
+    I form sono asset statici del blueprint → cache di processo: la chat li interroga
+    a ogni turno (per sapere COSA raccogliere) e non deve colpire l'8e ogni volta."""
+    cached = _FORM_CACHE.get(service_id)
+    if cached is not None:
+        return cached
     async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
         r = await c.get(f"{ENGINE_8E_BASE_URL}/v1/form/{service_id}", headers=_headers())
     if r.status_code == 404:
         raise EngineError("servizio sconosciuto")
     if r.status_code != 200:
         raise EngineError(f"8e form {r.status_code}: {r.text[:200]}")
-    return r.json()
+    data = r.json()
+    _FORM_CACHE[service_id] = data
+    return data
 
 
 async def get_catalog() -> dict:

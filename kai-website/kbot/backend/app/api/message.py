@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ..lib import sessions
+from ..lib import sessions, engine, readiness
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.limiter import limiter
@@ -153,6 +153,22 @@ def _recompute_boost(collected: dict, merged_messages: list, summary: Optional[d
         pass  # il routing non deve mai bloccare la chat
 
 
+async def _required_fields_hint(collected: dict) -> str:
+    """Istruzione per il prompt: i campi OBBLIGATORI del boost già instradato
+    (`boost_suggerito`), così il bot li raccoglie PRIMA di dichiararsi pronto invece di
+    emettere un summary su input parziali → 8e Gate 0 → vicolo cieco. Degrada a '' se il
+    boost non è ancora noto o il form 8e non è raggiungibile (la chat non si rompe mai)."""
+    boost = collected.get("boost_suggerito")
+    if not boost:
+        return ""
+    try:
+        form = await engine.get_form(boost)
+    except Exception:
+        return ""
+    return readiness.required_fields_hint(
+        form.get("campi") or [], boost_label=collected.get("boost_suggerito_label"))
+
+
 @router.post("/message")
 @limiter.limit("30/minute")
 async def post_message(
@@ -196,7 +212,8 @@ async def post_message(
             if fs and fs not in seen:
                 skills.append(fs)
                 seen.add(fs)
-    system_prompt = build_system_prompt_v2(skills, session_for_prompt)
+    req_hint = await _required_fields_hint(collected)
+    system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
     if not ANTHROPIC_API_KEY:
@@ -305,7 +322,8 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
 
     session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages}
     skills = resolve_skills_for_session(session_for_prompt)
-    system_prompt = build_system_prompt_v2(skills, session_for_prompt)
+    req_hint = await _required_fields_hint(collected)
+    system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
     if not ANTHROPIC_API_KEY:

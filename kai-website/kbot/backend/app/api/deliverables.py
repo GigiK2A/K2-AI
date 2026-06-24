@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .. import settings
-from ..lib import engine, sessions, catalog, entitlement, autofill
+from ..lib import engine, sessions, catalog, entitlement, autofill, readiness
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..lib.storage import upload_pdf
 from ..lib.supabase_admin import get_admin_client
@@ -236,6 +236,26 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
         _name = _session_company(session)
         if _name:
             inputs["ragione_sociale"] = _name
+
+    # Pre-flight required (PRIMA del paywall): i campi OBBLIGATORI del boost devono
+    # esserci PRIMA di spendere — e prima di far pagare — una generazione. Se la chat
+    # non li ha raccolti, l'autofill li omette (giusto: niente invenzioni) e l'8e li
+    # rifiuterebbe come `insufficient_or_inconsistent_input`, mostrando all'utente un
+    # vicolo cieco generico. Qui NOMINIAMO cosa manca → il frontend lo rimanda in chat
+    # e si rigenera. (Se il form 8e non è raggiungibile, campi=[] → nessun blocco: si
+    # lascia decidere all'8e.)
+    missing = readiness.missing_required(campi, inputs)
+    if missing:
+        raise HTTPException(status_code=409, detail={
+            "reason": "needs_input",
+            "servizio_id": servizio_id,
+            "missing": [c.get("id") for c in missing],
+            "message": (
+                f"Per generare «{servizio.get('label') or servizio_id}» mi servono ancora: "
+                f"{readiness.format_missing_labels(missing)}. "
+                "Scrivimeli in chat e premi di nuovo Genera."
+            ),
+        })
 
     # Paywall reale (KBOT_FREE_MODE off): se non pagato → 402 con i dati per il
     # checkout del boost (il frontend apre Stripe e al ritorno genera).

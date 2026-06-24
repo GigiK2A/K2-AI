@@ -113,6 +113,22 @@ Il K-BOT NON genera i deliverable Boost: li richiede al motore **8e** (`kai-webs
   EBITDA solo con bridge completo. Produce anche `modello-finanziario.xlsx` con formule vive.
 - Un finding `severity=block` rifiuta il job: un report incompleto non viene renderizzato.
 
+#### Pre-flight required-fields (giu 2026) — chat↔8e non più disaccoppiate
+
+La chat (Haiku) decideva "ho tutto" su campi generici, cieca ai `required` del form del
+boost instradato (es. StrategyBoost esige `competitor` + `obiettivo_strategico`). Risultato:
+generazione lanciata su input parziali → Gate 0 8e (`insufficient_or_inconsistent_input`) →
+vicolo cieco generico. Tre layer chiudono il gap (`lib/readiness.py` è la SSOT condivisa):
+
+- **Pre-flight** in `POST /api/kbot/deliverables/auto`: prima del paywall, `readiness.missing_required`
+  confronta i campi `obbligatorio` (form 8e) con gli input auto-compilati. Se mancano → **409
+  `needs_input`** che li NOMINA (no generazione/pagamento sprecati). Frontend → `kind:"unavailable"`.
+- **Prompt boost-aware**: `message.py` inietta `readiness.required_fields_hint(boost_suggerito)`
+  nel system prompt → il bot chiede i campi del boost PRIMA di emettere `CONSULENZA_SUMMARY`.
+  `engine.get_form` ora ha cache di processo (form statici, interrogati a ogni turno).
+- **Refuse leggibile**: `ReportGenerator.tsx` mostra `refusal_reason`/`error` reali dell'8e,
+  non più una stringa fissa (copre anche grounding/validation).
+
 ---
 
 ## Flusso utente (login-first)
