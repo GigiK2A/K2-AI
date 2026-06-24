@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-06-17",
+  "updated_at": "2026-06-24",
   "description": "Scaletta blog + IG K2-AI. Source of truth unica per blog autopilot e n8n IG.",
   "rows": [
     {
@@ -69,9 +69,9 @@
       "url": "https://www.k2-ai.it/laboratorio",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "",
-      "blog_pubblicato": "",
-      "blog_url": ""
+      "blog_slug": "board-agenti-ai-riunioni-senza-ricostruzione",
+      "blog_pubblicato": "2026-06-24",
+      "blog_url": "/blog/board-agenti-ai-riunioni-senza-ricostruzione"
     },
     {
       "row": 7,
