@@ -176,6 +176,25 @@ def test_scrub_template_placeholders_neutralises_leaks():
     assert not leaks
 
 
+def test_scrub_covers_all_gate_block_placeholders():
+    """Lo scrub deve neutralizzare OGNI segnaposto che il gate blocca, non solo i bracket
+    (stop whack-a-mole): [città]/[regione], la famiglia norma-segnaposto FER-X/DM FER-X
+    (vista in prod su WebBoost), e i marker interni. Dopo lo scrub, ZERO placeholder_leak."""
+    d = {
+        "meta": {"azienda": "Studio X"},
+        "a": "Sede a [città], regione [regione]. Ai sensi del DM FER-X e del regolamento FER-X.",
+        "b": "Riferimento FER-X applicabile. Segnaposto deterministico. override_locale interno.",
+    }
+    out = quality.scrub_template_placeholders(d, {"ragione_sociale": "Studio X"})
+    leaks = [f for f in grounding.integrity_findings(
+                out, inputs={"ragione_sociale": "Studio X"}, facts={}, citazioni=[], strict=False)
+             if f["code"] == "placeholder_leak" and f["severity"] == "block"]
+    assert not leaks, leaks
+    # FER-X non deve sopravvivere in nessuna forma
+    blob = json_dumps(out)
+    assert "FER-X" not in blob and "FER X" not in blob
+
+
 def test_scrub_preserves_uppercase_markers_and_refs():
     """Lo scrub NON deve toccare i marker legittimi maiuscoli ([IPOTESI]) né i ref numerici."""
     d = {"x": "Stima [IPOTESI] da confermare; vedi nota [1]."}

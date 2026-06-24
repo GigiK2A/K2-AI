@@ -297,6 +297,15 @@ _SCRUB_SUBS: list[tuple] = [
     (re.compile(r"\[\s*(?:mese\s*/?\s*anno|data|periodo)\s*\]", re.I), "{myyyy}"),
     (re.compile(r"\[\s*anno\s*\]", re.I), "{yyyy}"),
     (re.compile(r"\[\s*(?:settore|mercato|comparto)\s*\]", re.I), "il settore di riferimento"),
+    # Norma-segnaposto NON tra parentesi che l'LLM inventa quando non sa la norma reale
+    # (es. settore energia: 'DM FER-X', 'FER-X', 'regolamento FER-X' — visto in prod su WebBoost).
+    # Rispecchia _PLACEHOLDER_PATTERNS del gate → neutralizzazione onesta invece del block.
+    (re.compile(r"\b(?:regolamento\s+FER-?X|D\.?\s*M\.?\s*FER\s*-?\s*X|FER\s*-\s*X)\b", re.I),
+     "la normativa di settore applicabile"),
+    # Marker INTERNI che non devono mai trapelare: se escono, neutralizza (non bloccare).
+    (re.compile(r"\bSegnaposto deterministico\b", re.I), "dato non disponibile"),
+    (re.compile(r"\boverride_locale\b", re.I), "fonte interna"),
+    (re.compile(r"\bANTHROPIC_API_KEY\b", re.I), "configurazione interna"),
 ]
 # Catch-all: qualunque parola MINUSCOLA (accentata) tra [] rimasta = segnaposto trapelato.
 # Lowercase-only e senza cifre ⇒ NON tocca i marker legittimi maiuscoli ([IPOTESI]) né i ref ([1]).
