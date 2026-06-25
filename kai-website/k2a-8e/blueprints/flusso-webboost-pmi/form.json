@@ -9,7 +9,7 @@
     "area_geografica": { "type": "string", "description": "raggio competitivo (locale/regionale/nazionale)" },
     "keywords_seed": { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 10, "description": "parole chiave di partenza" },
     "obiettivo": { "type": "string", "enum": ["lead_generation", "ecommerce_sales", "brand_awareness", "customer_support", "education"] },
-    "competitor": { "type": "array", "items": { "type": "string", "format": "uri" }, "description": "URL competitor" },
+    "competitor": { "type": "array", "items": { "type": "object", "properties": { "nome": { "type": "string" }, "descrizione": { "type": "string" } } }, "description": "competitor principali (nome o URL) — l'engine normalizza stringhe in {nome}" },
     "brand_voice_provided": { "type": ["boolean", "null"] },
     "budget_mensile_eur": { "type": ["number", "null"] }
   },
