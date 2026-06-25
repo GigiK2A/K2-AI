@@ -20,7 +20,11 @@ from typing import Any
 
 FACTS_PATH = Path(__file__).resolve().parents[2] / "data" / "cei_0_16_facts.json"
 
-_DEFAULT_KB = "/Users/lucarossi/Code/k2a-mcp/k2a-mcp-norme-tecniche/data/norme_tecniche.db"
+# Default portabile: la KB norme-tecniche vendorizzata accanto al motore (stessa
+# risoluzione di k2a_norme_tecniche/db.py). Override esplicito via K2A_NORME_TECNICHE_DB.
+# Assente (dev/prod senza corpus) -> kb_disponibile()=False -> la verifica di provenienza
+# e' SALTATA (degrado onesto), non un crash. Niente path personali hardcoded.
+_DEFAULT_KB = str(Path(__file__).resolve().parents[2] / "data" / "norme_tecniche.db")
 
 
 def kb_path() -> Path:

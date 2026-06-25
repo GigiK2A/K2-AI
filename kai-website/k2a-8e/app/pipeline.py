@@ -453,8 +453,17 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                 deliverable, fm2 = llm.generate_conforming(out_schema, blueprint, facts, inputs)
                 filiera_meta = {**filiera_meta, **fm2, "assembly": "generic-fallback"}
             if not deliverable:
+                # Distingui misconfig (filiera offline: manca ANTHROPIC_API_KEY) da
+                # generazione incompleta/non conforme (chiamata LLM fallita o output
+                # invalido): cosi' il refuse e' leggibile, non un generico "non disponibile".
+                fm = filiera_meta or {}
+                if fm.get("mode") == "offline":
+                    raise Refuse("offline_generation",
+                                 "filiera LLM offline (ANTHROPIC_API_KEY assente): il "
+                                 "deliverable completo non puo' essere generato per questo boost")
                 raise Refuse("validation_failed",
-                             "generazione non disponibile (offline o incompleta) per questo boost")
+                             "generazione incompleta/non conforme per questo boost: "
+                             + str(fm.get("warning") or fm.get("reason") or "output LLM non valido"))
 
         deliverable = quality.ensure_metadata(
             deliverable, out_schema, inputs,

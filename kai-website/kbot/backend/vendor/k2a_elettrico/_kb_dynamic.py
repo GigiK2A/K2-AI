@@ -23,7 +23,7 @@ from functools import lru_cache
 from pathlib import Path
 
 # Sorgente del package norme-tecniche (sibling repo). Override via env.
-_DEFAULT_NORME_SRC = "/Users/lucarossi/Code/k2a-mcp/k2a-mcp-norme-tecniche/src"
+_DEFAULT_NORME_SRC = os.path.expanduser("~/Code/k2a-mcp/k2a-mcp-norme-tecniche/src")
 NORME_SRC = os.environ.get("K2A_NORME_SRC", _DEFAULT_NORME_SRC)
 
 # Nome-norma (come citato dai tool / _kb_mapping) -> codice documento in KB.
