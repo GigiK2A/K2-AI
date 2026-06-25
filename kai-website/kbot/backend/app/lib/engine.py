@@ -12,6 +12,7 @@ API consumate:
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, Optional
 
 import httpx
@@ -108,17 +109,21 @@ async def get_deliverable(job_id: str) -> dict:
     return r.json()
 
 
-_FORM_CACHE: dict[str, dict] = {}
+_FORM_CACHE: dict[str, tuple[float, dict]] = {}
+_FORM_TTL_S = 600  # 10 min: i form 8e sono semi-statici, ma un cambio schema lato 8e DEVE
+                   # propagare al K-BOT. Prima la cache era eterna → uno schema aggiornato
+                   # sull'8e restava stale all'infinito (finché il processo non riavviava).
 
 
 async def get_form(service_id: str) -> dict:
     """Campi form richiesti dal deliverable (per raccolta input lato K-BOT).
 
-    I form sono asset statici del blueprint → cache di processo: la chat li interroga
-    a ogni turno (per sapere COSA raccogliere) e non deve colpire l'8e ogni volta."""
-    cached = _FORM_CACHE.get(service_id)
-    if cached is not None:
-        return cached
+    I form sono asset statici del blueprint → cache di processo CON TTL: la chat li
+    interroga a ogni turno (per sapere COSA raccogliere) e non deve colpire l'8e ogni
+    volta, ma un cambio schema 8e si propaga entro il TTL (vedi _FORM_TTL_S)."""
+    ent = _FORM_CACHE.get(service_id)
+    if ent is not None and (time.monotonic() - ent[0]) < _FORM_TTL_S:
+        return ent[1]
     async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
         r = await c.get(f"{ENGINE_8E_BASE_URL}/v1/form/{service_id}", headers=_headers())
     if r.status_code == 404:
@@ -126,7 +131,7 @@ async def get_form(service_id: str) -> dict:
     if r.status_code != 200:
         raise EngineError(f"8e form {r.status_code}: {r.text[:200]}")
     data = r.json()
-    _FORM_CACHE[service_id] = data
+    _FORM_CACHE[service_id] = (time.monotonic(), data)
     return data
 
 
