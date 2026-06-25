@@ -1,6 +1,6 @@
 """Tool `lookup_ntc` — ricerca full-text NTC 2018 + Circolare.
 
-Sorgente: `/Users/lucarossi/normattiva_ai/ntc_2018/ntc_2018.db` (SQLite + FTS5),
+Sorgente: `ntc_2018.db` (SQLite + FTS5; path risolto via env NTC_DB_PATH),
 generato da `chunk_ntc.py` parsando il PDF ufficiale D.M. 17/01/2018.
 
 Restituisce il testo dei paragrafi NTC che corrispondono alla query, così che
@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from .schemas import CalcResult, TraceStep
 
 NTC_DB_PATH = Path(
-    os.environ.get("NTC_DB_PATH", "/Users/lucarossi/normattiva_ai/ntc_2018/ntc_2018.db")
+    os.environ.get("NTC_DB_PATH", os.path.expanduser("~/normattiva_ai/ntc_2018/ntc_2018.db"))
 )
 
 

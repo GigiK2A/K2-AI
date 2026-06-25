@@ -1,6 +1,8 @@
 """8e — API FastAPI (Phase-1). Contratto: docs/interfaccia-kbot-8e.md §1."""
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Response
@@ -8,9 +10,27 @@ from pydantic import BaseModel, Field
 
 from . import assets, jobs, pipeline, entitlement, ratelimit
 from .auth import require_bearer
-from .settings import CATALOGO_CHIUSO, ENGINE_VERSION
+from .settings import CATALOGO_CHIUSO, ENGINE_VERSION, ENTITLEMENT_SECRET, ENTITLEMENT_DEV
 
-app = FastAPI(title="K2-AI 8e", version=ENGINE_VERSION)
+log = logging.getLogger("8e.main")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # FAIL-LOUD all'avvio: senza segreto entitlement E senza opt-in dev, il motore
+    # accetterebbe qualunque token non vuoto (bypass del pagamento, membrana G1). Una
+    # misconfig di produzione NON deve avviarsi in silenzio: o si configura
+    # K2A_ENTITLEMENT_SECRET, o si dichiara esplicitamente dev/CI con K2A_8E_ENTITLEMENT_DEV=true.
+    if not ENTITLEMENT_SECRET and not ENTITLEMENT_DEV:
+        raise RuntimeError(
+            "K2A_ENTITLEMENT_SECRET non configurato e K2A_8E_ENTITLEMENT_DEV non attivo: "
+            "il motore 8e rifiuta l'avvio per non bypassare il pagamento (membrana G1). "
+            "Imposta il segreto in produzione, oppure K2A_8E_ENTITLEMENT_DEV=true in dev/CI."
+        )
+    yield
+
+
+app = FastAPI(title="K2-AI 8e", version=ENGINE_VERSION, lifespan=lifespan)
 
 
 class DeliverableBody(BaseModel):
@@ -29,10 +49,15 @@ class DeliverableBody(BaseModel):
 def health():
     import os as _os
     from . import normattiva
-    from .settings import ENTITLEMENT_SECRET, ANTHROPIC_API_KEY
+    from .settings import ANTHROPIC_API_KEY
     warnings = []
     if not ENTITLEMENT_SECRET:
-        warnings.append("K2A_ENTITLEMENT_SECRET non configurato → entitlement permissivo (NON per produzione)")
+        warnings.append(
+            "K2A_ENTITLEMENT_SECRET non configurato → entitlement PERMISSIVO (dev)"
+            if ENTITLEMENT_DEV else
+            "K2A_ENTITLEMENT_SECRET non configurato e dev non attivo → entitlement "
+            "FAIL-CLOSED (ogni richiesta rifiutata; in prod il motore non si avvia)"
+        )
     if not ANTHROPIC_API_KEY:
         warnings.append("ANTHROPIC_API_KEY non configurato → filiera offline (deliverable segnaposto)")
     # §3 — stato corpus Normattiva (db_path_configured è baked solo dal Dockerfile:
@@ -50,7 +75,8 @@ def health():
         "version": ENGINE_VERSION,
         "snapshot_version": assets.snapshot_version(),
         "phase": "1",
-        "entitlement": "enforced" if ENTITLEMENT_SECRET else "permissive",
+        "entitlement": ("enforced" if ENTITLEMENT_SECRET
+                        else "permissive_dev" if ENTITLEMENT_DEV else "fail_closed"),
         "filiera": "anthropic" if ANTHROPIC_API_KEY else "offline",
         "normattiva": norm,
         "warnings": warnings,

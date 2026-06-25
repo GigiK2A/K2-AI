@@ -22,7 +22,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 DEFAULT_MODEL = "gemini-2.5-flash"
-_DEFAULT_NORME_ENV = "/Users/lucarossi/Code/k2a-mcp/k2a-mcp-norme-tecniche/.env"
+_DEFAULT_NORME_ENV = os.path.expanduser("~/Code/k2a-mcp/k2a-mcp-norme-tecniche/.env")
 
 
 class ClassificationError(Exception):

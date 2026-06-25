@@ -11,6 +11,12 @@ ROOT = Path(__file__).resolve().parent.parent
 # env non settato il bearer combacia (evita 401 "missing bearer" → motore ko).
 API_KEY = os.environ.get("K2A_8E_API_KEY", "k2a-8e-internal-loopback")
 API_KEY_NEXT = os.environ.get("K2A_8E_API_KEY_NEXT")  # rotazione (membrana G6)
+# G6 stretto (opt-in): se attivo, il bearer interno di default (_INTERNAL_DEFAULT in
+# auth.py) NON e' piu' accettato — backend e 8e DEVONO condividere la stessa
+# K2A_8E_API_KEY. Default OFF (retrocompat: il loopback interno resta valido per non far
+# cadere il traffico backend->8e quando le env sono disallineate).
+STRICT_BEARER = (os.environ.get("K2A_8E_STRICT_BEARER", "false").lower()
+                 in ("1", "true", "yes"))
 
 # Entitlement JWT (membrana G1) — segreto condiviso col K-BOT (HS256).
 ENTITLEMENT_SECRET = os.environ.get("K2A_ENTITLEMENT_SECRET")
