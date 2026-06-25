@@ -30,6 +30,13 @@ ANTHROPIC_PDF_MODEL = _env("ANTHROPIC_PDF_MODEL", default="claude-sonnet-4-5")
 # flag per safe rollout. Attivare con ANTHROPIC_PDF_MULTI_CALL=1.
 ANTHROPIC_PDF_MULTI_CALL = (_env("ANTHROPIC_PDF_MULTI_CALL", default="0") or "0").lower() in ("1", "true", "yes")
 
+# OpenAI — usato ESCLUSIVAMENTE per la web search (override cosciente della regola
+# "no OpenAI" deciso dall'owner, giu 2026). Tutto il resto resta su Claude/Anthropic.
+# Il tool `web_search` di Claude è un client-tool il cui handler chiama l'API OpenAI
+# (Responses API). Senza chiave la ricerca è disattivata (degrado safe). Vedi lib/web_search.py.
+OPENAI_API_KEY = _env("OPENAI_API_KEY")
+OPENAI_SEARCH_MODEL = _env("OPENAI_SEARCH_MODEL", default="gpt-4.1-mini")
+
 SUPABASE_URL = _env("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = _env(
     "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_KEY"

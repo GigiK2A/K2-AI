@@ -42,7 +42,7 @@ kbot/
 |---|---|
 | Frontend | Next.js 16 + React 19 + TypeScript + Tailwind 4 |
 | Backend | FastAPI + uvicorn + Python 3.12 |
-| LLM | Anthropic Claude Haiku 4.5 (chat) + Sonnet 4.5 (report PDF) |
+| LLM | Anthropic Claude Haiku 4.5 (chat) + Sonnet 4.5 (report PDF). **Web search = OpenAI** (eccezione "no OpenAI", OK Luca giu 2026): `web_search` è un client-tool di Claude, l'handler chiama OpenAI Responses API (`lib/web_search.py`). Tutto il resto resta Claude. |
 | Auth | **Supabase Auth** (JWT validation via JWKS endpoint, ECC P-256). **NESSUN Clerk.** |
 | DB | Supabase Postgres — tabella `kbot_sessions` con `user_id` FK su `auth.users` |
 | Storage | Supabase Storage — bucket `kbot-uploads`, `kbot-reports` |

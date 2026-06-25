@@ -22,7 +22,7 @@ import json
 import time
 from typing import Any, Optional
 
-from . import mcp_quant
+from . import mcp_quant, web_search
 from .. import settings
 
 DCF_TOOL = "dcf_enterprise_value_guarded"
@@ -125,6 +125,12 @@ def exec_tool(name: str, args: dict, trace: Trace, quant_names: set[str]) -> dic
             return {"errore": "DCF negato: chiama prima valida_assunzioni sulle FCF previste (contratto assunzioni)"}
         if esito == "FAIL":
             return {"errore": "DCF negato: valida_assunzioni=FAIL. Rivedi le FCF/g e ri-valida (serve OK o WARN)"}
+    if name == "web_search":
+        # ricerca web (OpenAI): contesto qualitativo (settore/competitor), NON numeri EV
+        # → non alimenta il gate provenienza, che resta sui tool quant.
+        out = {"risultati": web_search.run_openai_search(str(args.get("query") or ""))}
+        trace.record(name, args, out)
+        return out
     if name in quant_names:
         out = mcp_quant.call(name, args)
     else:
@@ -159,7 +165,10 @@ def build_tools() -> tuple[list[dict], set[str]]:
     Ritorna (tools_anthropic, nomi_quant). Deterministico, no crediti."""
     quant = mcp_quant.tool_defs() if mcp_quant.available() else []
     quant_names = {t["name"] for t in quant}
-    return quant + _LOCAL_TOOLS, quant_names
+    tools = quant + _LOCAL_TOOLS
+    if web_search.enabled():
+        tools = tools + [web_search.web_search_tool()]
+    return tools, quant_names
 
 
 def run_boost_agent(skill_text: str, inputs: dict, servizio_id: str, *,

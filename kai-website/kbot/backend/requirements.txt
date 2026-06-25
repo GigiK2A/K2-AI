@@ -22,6 +22,8 @@ python-dotenv>=1.0
 PyJWT[crypto]>=2.10
 supabase>=2.30
 anthropic>=0.40
+# OpenAI — SOLO per la web search (Responses API + tool web_search), vedi lib/web_search.py.
+openai>=1.40
 stripe>=11.4
 resend>=2.5
 httpx>=0.27

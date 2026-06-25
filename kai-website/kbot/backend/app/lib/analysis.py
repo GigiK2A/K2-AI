@@ -32,6 +32,7 @@ from .prompts import compact_messages
 from .report_guard import validate_report
 from .services import resolve_skills_for_session
 from .skills import load_skill, load_skill_bundle
+from . import web_search
 
 log = logging.getLogger(__name__)
 
@@ -523,10 +524,11 @@ def _run_llm_call(
     single-call e da ciascuna fase del multi-call orchestrator.
     """
     delays = [12, 25, 45]
-    tools = (
-        [{"type": "web_search_20250305", "name": "web_search", "max_uses": web_search_uses}]
-        if use_web_search else []
-    )
+    # Ricerca web in generazione: CLIENT-tool agganciato a OpenAI (decisione owner, vedi
+    # lib/web_search.py). `web_search_uses` è legacy (era max_uses del server-tool
+    # Anthropic); ora il numero di ricerche è limitato da `max_hops`. Degrada senza tool
+    # se la ricerca non è configurata (OPENAI_API_KEY assente / KBOT_WEB_SEARCH=0).
+    tools = [web_search.web_search_tool()] if (use_web_search and web_search.enabled()) else []
 
     def _create(messages: List[Dict[str, Any]]):
         last_exc: Optional[Exception] = None
@@ -559,16 +561,12 @@ def _run_llm_call(
         stop = getattr(result, "stop_reason", None)
         if stop == "tool_use":
             conversation.append({"role": "assistant", "content": result.content})
-            tool_uses = [b for b in result.content if getattr(b, "type", "") == "tool_use"]
-            if not tool_uses:
+            # ESEGUI davvero la ricerca via OpenAI (era lo stub "[no client-side tool wired]"
+            # → la web search in generazione non aveva mai funzionato).
+            tool_results = web_search.execute_tool_uses(result.content)
+            if not tool_results:
                 break
-            conversation.append({
-                "role": "user",
-                "content": [
-                    {"type": "tool_result", "tool_use_id": tu.id, "content": "[no client-side tool wired]"}
-                    for tu in tool_uses
-                ],
-            })
+            conversation.append({"role": "user", "content": tool_results})
             continue
         text = "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
         log.info("LLM[%s] DONE total=%.1fs text_len=%d", label, time.monotonic() - call_start, len(text))

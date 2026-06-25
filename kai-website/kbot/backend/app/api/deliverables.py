@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .. import settings
-from ..lib import engine, sessions, catalog, entitlement, autofill, readiness
+from ..lib import engine, sessions, catalog, entitlement, autofill, readiness, research
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..lib.storage import upload_pdf
 from ..lib.supabase_admin import get_admin_client
@@ -236,6 +236,31 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
         _name = _session_company(session)
         if _name:
             inputs["ragione_sociale"] = _name
+
+    # Ricerca web PRE-GATE: i campi OBBLIGATORI *ricercabili* mancanti (competitor, dati
+    # di mercato) li CERCHIAMO DAVVERO sul web invece di rimandarli all'utente — è la
+    # differenza tra "l'agente chiede i competitor" e "l'agente va a cercarli". Solo dati
+    # pubblici/esterni con provenienza; mai dati privati del cliente. Best-effort: no-op
+    # se la web search è spenta o l'API non risponde (flusso invariato → no regressioni).
+    pre_missing = readiness.missing_required(campi, inputs)
+    if pre_missing:
+        try:
+            found, fonti = research.research_missing_fields(session, campi, pre_missing, inputs)
+        except Exception:  # difesa: la ricerca non deve MAI bloccare la generazione
+            found, fonti = {}, []
+            log.warning("research pre-gate fallita (non bloccante)", exc_info=True)
+        if found:
+            inputs.update(found)
+            collected["web_research"] = {
+                **(collected.get("web_research") or {}),
+                "servizio_id": servizio_id,
+                "fields": list(found.keys()),
+                "fonti": fonti,
+            }
+            try:
+                sessions.update_session(body.sessionId, {"collected_data": collected})
+            except Exception:
+                log.warning("persist web_research fallita (non bloccante)", exc_info=True)
 
     # Pre-flight required (PRIMA del paywall): i campi OBBLIGATORI del boost devono
     # esserci PRIMA di spendere — e prima di far pagare — una generazione. Se la chat
