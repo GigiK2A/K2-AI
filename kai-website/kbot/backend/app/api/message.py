@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ..lib import sessions, engine, readiness
+from ..lib import sessions, engine, readiness, web_search
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.limiter import limiter
@@ -214,13 +214,18 @@ async def post_message(
                 seen.add(fs)
     req_hint = await _required_fields_hint(collected)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
+    if web_search.enabled():
+        system_prompt += web_search.SYSTEM_HINT
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     try:
-        result = client.messages.create(
+        # web_search abilitato: il modello cerca DAVVERO quando l'utente lo chiede, invece
+        # di promettere una ricerca che non fa. L'helper gestisce pause_turn + fallback.
+        result = web_search.create_with_web_search(
+            client,
             model=ANTHROPIC_MODEL,
             # max_tokens generoso: serve per i report finali. 1200 era ok per
             # chat brevi ma segava i report a metà.
@@ -324,6 +329,8 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     skills = resolve_skills_for_session(session_for_prompt)
     req_hint = await _required_fields_hint(collected)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
+    if web_search.enabled():
+        system_prompt += web_search.SYSTEM_HINT
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
     if not ANTHROPIC_API_KEY:
@@ -393,25 +400,49 @@ async def post_message_stream(
 
     async def event_gen():
         raw_buffer: list[str] = []
+        usage = None
+        # web_search è un CLIENT-tool agganciato a OpenAI (il path streaming è quello LIVE
+        # della chat usato dal frontend). Loop: stream Claude → se chiama web_search,
+        # eseguiamo la ricerca via OpenAI e proseguiamo lo stream coi risultati.
+        use_search = web_search.enabled()
+        tools = [web_search.web_search_tool()] if use_search else None
+        messages = list(history)
+        rounds, max_rounds = 0, 4
         try:
-            # Anthropic SDK sync streaming context manager — iterate token deltas.
-            with client.messages.stream(
-                model=ANTHROPIC_MODEL,
-                max_tokens=8000,
-                system=system_prompt,
-                messages=history,
-                timeout=120.0,
-            ) as stream:
-                for text_chunk in stream.text_stream:
-                    if await request.is_disconnected():
-                        log.info("kbot stream: client disconnected mid-response")
-                        return
-                    if not text_chunk:
-                        continue
-                    raw_buffer.append(text_chunk)
-                    yield _sse({"delta": text_chunk})
-                final = stream.get_final_message()
+            while True:
+                stream_kwargs: dict = dict(
+                    model=ANTHROPIC_MODEL,
+                    max_tokens=8000,
+                    system=system_prompt,
+                    messages=messages,
+                    timeout=120.0,
+                )
+                if tools:
+                    stream_kwargs["tools"] = tools
+                # Anthropic SDK sync streaming context manager — iterate token deltas.
+                with client.messages.stream(**stream_kwargs) as stream:
+                    for text_chunk in stream.text_stream:
+                        if await request.is_disconnected():
+                            log.info("kbot stream: client disconnected mid-response")
+                            return
+                        if not text_chunk:
+                            continue
+                        raw_buffer.append(text_chunk)
+                        yield _sse({"delta": text_chunk})
+                    final = stream.get_final_message()
                 usage = getattr(final, "usage", None)
+                # Claude ha chiamato web_search? esegui la ricerca OpenAI e continua.
+                if not tools or getattr(final, "stop_reason", None) != "tool_use" or rounds >= max_rounds:
+                    break
+                tool_results = web_search.execute_tool_uses(final.content)
+                if not tool_results:
+                    break
+                messages = [
+                    *messages,
+                    {"role": "assistant", "content": final.content},
+                    {"role": "user", "content": tool_results},
+                ]
+                rounds += 1
         except anthropic.APITimeoutError:
             log.exception("Anthropic stream timeout")
             yield _sse({"error": "K-BOT è temporaneamente lento, riprova tra qualche secondo."})

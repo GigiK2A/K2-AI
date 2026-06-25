@@ -38,7 +38,7 @@ Se stai per proporre un refactor più ampio di 3 file esistenti, **fermati e chi
 | Pagamenti | Stripe Payment Link | no integrazione custom, solo link |
 | Email transazionale | Resend | free tier 3k email/mese |
 | Analytics | PostHog self-host | no Google Analytics |
-| LLM API | Claude API (Anthropic) | no OpenAI |
+| LLM API | Claude API (Anthropic) | no OpenAI — **ECCEZIONE (giu 2026, OK Luca): OpenAI SOLO per la web search del K-BOT** (Responses API, dietro il client-tool `web_search` di Claude). Tutto il resto resta Claude. |
 | Form/CRM embedded | Airtable free + webhook | no HubSpot |
 
 **Stack confermato da audit aprile 2026**: package.json ha solo Vite 5.2.0 come devDependency. Zero npm packages frontend.
@@ -179,7 +179,7 @@ kbot/                        ← K-BOT Premium app (Next.js + Python, deploy Rai
 1. Cambiare il dominio o la configurazione DNS
 2. Disattivare redirect 301 esistenti (`/workshop.html` → `/suite-ai.html`, `/casi-studio.html` → `/laboratorio.html`)
 3. Rimuovere pagine v1 che hanno backlink
-4. Integrare SaaS a pagamento non in elenco
+4. Integrare SaaS a pagamento non in elenco (eccezione approvata: **OpenAI per la SOLA web search del K-BOT**, giu 2026 — vedi §3)
 5. Modificare pricing mostrato al pubblico senza conferma
 6. Aggiungere npm packages frontend senza motivazione esplicita di peso bundle
 
