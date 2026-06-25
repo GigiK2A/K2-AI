@@ -160,6 +160,24 @@ def quant_health(request: Request) -> dict:
             "valutazione_pmi_pronta": all(t in tools for t in nuovi)}
 
 
+@router.get("/web-search/health")
+@limiter.limit("30/minute")
+def web_search_health(request: Request) -> dict:
+    """Readiness della ricerca web (OpenAI dietro il client-tool `web_search` di Claude).
+    NESSUN segreto: solo booleani + nome modello. Permette di confermare in prod — senza
+    auth né crediti — che OPENAI_API_KEY è settata sul service backend. `enabled` è vero
+    solo se la chiave c'è E il flag KBOT_WEB_SEARCH è ON (se key presente ma enabled
+    falso → flag spento). Vedi lib/web_search.py."""
+    from .. import settings
+    from ..lib import web_search
+    return {
+        "enabled": web_search.enabled(),
+        "openai_key_present": bool(settings.OPENAI_API_KEY),
+        "model": settings.OPENAI_SEARCH_MODEL,
+        "fonte": "OpenAI Responses API (web_search) — eccezione 'no OpenAI' (OK Luca)",
+    }
+
+
 @router.get("/tools")
 @limiter.limit("30/minute")
 def list_tools(request: Request, dominio: str | None = None,
