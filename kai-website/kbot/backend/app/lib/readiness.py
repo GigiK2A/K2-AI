@@ -65,6 +65,50 @@ def format_missing_labels(campi: list[dict] | None) -> str:
     return "; ".join(lbl for lbl in (_label(c) for c in (campi or [])) if lbl)
 
 
+def _is_url(x: Any) -> bool:
+    return isinstance(x, str) and x.strip().lower().startswith(("http://", "https://"))
+
+
+def _value_plausible(prop: dict, v: Any) -> bool:
+    """Lenient: vero salvo violazioni PALESI. Oggi copre i campi che vogliono URL
+    (`format: uri`) ma ricevono testo libero — il caso reale: WebBoost `competitor`
+    esige URL, ma la chat trova NOMI. Tutto il resto passa (non si scarta a caso)."""
+    if not isinstance(prop, dict):
+        return True
+    types = prop.get("type")
+    types = types if isinstance(types, list) else [types]
+    if "array" in types and isinstance(v, list):
+        items = prop.get("items") or {}
+        if isinstance(items, dict) and items.get("format") == "uri":
+            return all(_is_url(x) for x in v)
+    if "string" in types and prop.get("format") == "uri":
+        return _is_url(v)
+    return True
+
+
+def drop_invalid_optional(form_schema: dict | None, inputs: dict | None) -> tuple[dict, list[str]]:
+    """Scarta dagli input i campi OPZIONALI il cui valore viola palesemente lo schema,
+    così un dato auto-estratto sbagliato (es. competitor=nomi vs campo che vuole URL) non
+    fa rifiutare la generazione dall'8e. I REQUIRED non si toccano MAI (li gestisce
+    `missing_required`, che blocca con un messaggio leggibile). Ritorna (inputs, scartati).
+
+    Self-adjusting: se l'8e allenta lo schema (competitor non più 'uri'), `_value_plausible`
+    ritorna vero → il campo NON viene scartato → i valori fluiscono."""
+    inputs = dict(inputs or {})
+    if not isinstance(form_schema, dict):
+        return inputs, []
+    props = form_schema.get("properties") or {}
+    required = set(form_schema.get("required") or [])
+    dropped: list[str] = []
+    for k, v in list(inputs.items()):
+        if k in required or k not in props:
+            continue
+        if not _value_plausible(props[k], v):
+            inputs.pop(k, None)
+            dropped.append(k)
+    return inputs, dropped
+
+
 def required_fields_hint(campi: list[dict] | None, boost_label: str | None = None) -> str:
     """Istruzione per il system prompt della chat: i campi che il boost instradato esige,
     così il bot li raccoglie PRIMA di emettere CONSULENZA_SUMMARY. Stringa vuota se il

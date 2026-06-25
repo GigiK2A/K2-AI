@@ -226,9 +226,11 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
     servizio = catalog.get_servizio(servizio_id)
 
     # Campi richiesti dal boost → auto-compilazione dai dati della conversazione.
+    form_schema = None
     try:
         form = await engine.get_form(servizio_id)
         campi = form.get("campi") or []
+        form_schema = form.get("schema")
     except engine.EngineError:
         campi = []
     inputs = autofill.extract_inputs(session, campi)
@@ -261,6 +263,13 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
                 sessions.update_session(body.sessionId, {"collected_data": collected})
             except Exception:
                 log.warning("persist web_research fallita (non bloccante)", exc_info=True)
+
+    # Scarta i campi OPZIONALI con valori palesemente invalidi vs schema 8e (es.
+    # competitor = NOMI contro un campo che esige URL): un dato opzionale sbagliato non
+    # deve far rifiutare la generazione. I required restano gestiti da missing_required.
+    inputs, _dropped_opt = readiness.drop_invalid_optional(form_schema, inputs)
+    if _dropped_opt:
+        log.info("auto: scartati opzionali invalidi %s (servizio %s)", _dropped_opt, servizio_id)
 
     # Pre-flight required (PRIMA del paywall): i campi OBBLIGATORI del boost devono
     # esserci PRIMA di spendere — e prima di far pagare — una generazione. Se la chat
