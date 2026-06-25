@@ -230,6 +230,35 @@ def test_a2_agent_dispatches_web_search(monkeypatch):
     assert len(trace.calls) == 1  # registrato in provenienza (contesto, non numeri EV)
 
 
+def test_drop_invalid_optional_competitor_uri():
+    from app.lib import readiness
+    # schema VECCHIO WebBoost: competitor OPZIONALE, items uri → i nomi (non-URL) si scartano
+    schema = {"required": ["url"], "properties": {
+        "url": {"type": "string", "format": "uri"},
+        "competitor": {"type": "array", "items": {"type": "string", "format": "uri"}}}}
+    out, dropped = readiness.drop_invalid_optional(schema, {"url": "https://x.it", "competitor": ["Sisem SRL", "BBC Energy"]})
+    assert dropped == ["competitor"]
+    assert "competitor" not in out and out["url"] == "https://x.it"
+
+
+def test_drop_keeps_competitor_when_schema_objects():
+    from app.lib import readiness
+    # schema NUOVO (post-fix 8e): items oggetti, niente uri → NON si scarta (self-adjusting)
+    schema = {"required": [], "properties": {
+        "competitor": {"type": "array", "items": {"type": "object", "properties": {"nome": {"type": "string"}}}}}}
+    out, dropped = readiness.drop_invalid_optional(schema, {"competitor": ["Sisem SRL", "BBC Energy"]})
+    assert dropped == [] and out["competitor"] == ["Sisem SRL", "BBC Energy"]
+
+
+def test_drop_never_touches_required():
+    from app.lib import readiness
+    # competitor REQUIRED + invalido → NON si tocca (lo gestisce missing_required, non il drop)
+    schema = {"required": ["competitor"], "properties": {
+        "competitor": {"type": "array", "items": {"type": "string", "format": "uri"}}}}
+    out, dropped = readiness.drop_invalid_optional(schema, {"competitor": ["nome non url"]})
+    assert dropped == [] and out == {"competitor": ["nome non url"]}
+
+
 def test_research_fills_competitor_with_sources(monkeypatch):
     monkeypatch.setenv("KBOT_WEB_SEARCH", "1")
     monkeypatch.setattr(research, "ANTHROPIC_API_KEY", "x")
