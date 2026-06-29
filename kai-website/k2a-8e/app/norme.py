@@ -15,6 +15,19 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vendor"))
 
 
+def is_available() -> bool:
+    """True se il corpus norme è caricato e interrogabile: FTS su un termine comune
+    delle NTC ('calcestruzzo'). Usato dall'health-check (cerca_riferimenti fa AND di
+    molti termini → inadatto come sonda di disponibilità)."""
+    try:
+        from k2a_norme_tecniche.schemas import SearchInput
+        from k2a_norme_tecniche.tools import search
+        out = search(SearchInput(query="calcestruzzo", limit=1))
+        return bool(list(getattr(out, "risultati", []) or []))
+    except Exception:
+        return False
+
+
 def cerca_riferimenti(inputs: dict, limit: int = 5) -> dict:
     try:
         from k2a_norme_tecniche.schemas import SearchInput
