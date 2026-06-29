@@ -45,6 +45,14 @@ def health():
         except Exception as exc:
             norm["queryable"] = False
             norm["error"] = str(exc)[:120]
+    # §3 — stato corpus norme tecniche (NTC/CEI/Eurocodici): FTS leggera best-effort.
+    norme_st = {"db_path_configured": bool(_os.environ.get("NORME_DB_PATH"))}
+    try:
+        from . import norme as _norme
+        norme_st["available"] = _norme.is_available()
+    except Exception as exc:  # noqa: BLE001
+        norme_st["available"] = False
+        norme_st["error"] = str(exc)[:120]
     return {
         "status": "ok",
         "version": ENGINE_VERSION,
@@ -53,6 +61,7 @@ def health():
         "entitlement": "enforced" if ENTITLEMENT_SECRET else "permissive",
         "filiera": "anthropic" if ANTHROPIC_API_KEY else "offline",
         "normattiva": norm,
+        "norme_tecniche": norme_st,
         "warnings": warnings,
     }
 
