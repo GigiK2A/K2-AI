@@ -2,6 +2,7 @@
 builder = "dockerfile"
 
 [deploy]
+startCommand = "sh seed_and_run.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
