@@ -364,13 +364,17 @@ _ASSUMPTION = re.compile(
     r"(?:assunzione|ipotes\w*|ipotizz\w*|scenario\s+illustrativo|illustrativ\w*|"
     r"a\s+titolo|da\s+validare|da\s+confermare)", re.I)
 # Numeri HARD-FINANCIAL: cifre-CLIENTE su cui si AGISCE economicamente (€, indici di
-# bilancio, ROI/payback/VAN/TIR, imposte). Restano 'block' anche sui boost qualitativi
+# bilancio, ROI/payback/VAN/TIR). Restano 'block' anche sui boost qualitativi
 # (strict=False): un "€50k di impatto" o un "ROI del 250%" fabbricato è pericoloso in
 # QUALSIASI report, non solo nei finanziari. I 'soft' (traffico/conversion %) sono
 # benchmark di settore → declassabili a warn quando il boost non è finanziario.
+# NB: le ALIQUOTE normative (IRES 24%, IRAP 3,9%, IVA 22%) NON sono qui: sono costanti
+# pubbliche di legge (TUIR), non cifre-cliente fabbricate — su un boost qualitativo
+# (es. orientamento fiscale del LegalBoost) sono warn, non block. Un IMPORTO in € resta
+# comunque hard via il simbolo '€' (es. "imposta dovuta €5.000" → block).
 _HARD_FINANCIAL = re.compile(
     r"(?:€|\beur\b|ebitda|utile|debit\w*|\bpfn\b|\bnfp\b|\broi\b|\broe\b|\bros\b|payback|"
-    r"\bvan\b|\btir\b|margine|fatturat\w*|ricav\w*|cagr|impost\w*|\bires\b|\birap\b|\biva\b|"
+    r"\bvan\b|\btir\b|margine|fatturat\w*|ricav\w*|cagr|"
     r"enterprise\s+value|valore\s+d'impresa|beneficio|risparmi\w*)", re.I)
 # PROMESSA/GARANZIA: un numero-risultato GARANTITO al cliente ("ti garantiamo +40%") è
 # una promessa fabbricata = liability, resta block ovunque. Distinta dal benchmark nudo
@@ -416,7 +420,17 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
                     r"(?:ricav|ebitda|utile|debito|fatturat|nfp|pfn).{0,20}" + re.escape(match.group(1)), value, re.I):
                 continue
             n = _num(match.group(1))
-            if n is None or round(n, 4) in known:
+            if n is None:
+                continue
+            # Match grounding tollerante al formato IT delle migliaia: "850.000" è parsato
+            # 850.0 da _num (nessuna virgola → il '.' resta decimale) ma può valere 850000
+            # (= input fatturato). Prova ENTRAMBE le letture: se UNA combacia con un numero
+            # grounded, il valore è coperto → niente falso positivo su un numero d'input.
+            cand = {round(n, 4)}
+            tok = match.group(1)
+            if re.fullmatch(r"-?\d{1,3}(?:\.\d{3})+", tok):
+                cand.add(round(float(tok.replace(".", "")), 4))
+            if cand & known:
                 continue
             # percentuali derivate possono essere presenti nei formula-fact; se
             # non lo sono, devono apparire come assunzione verificabile.
