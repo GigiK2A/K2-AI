@@ -457,6 +457,65 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
     return out[:20]
 
 
+_NUM_SCRUB_MARK = " (valori indicativi: ipotesi da confermare)"
+
+
+def _value_has_blocking_number(value: str, known: set) -> bool:
+    """True se `value` contiene un numero che unsupported_number_findings BLOCCHEREBBE
+    (stessa identica logica di rilevazione): contesto economico, non grounded, non gia'
+    marcato come ipotesi. Usato dallo scrub deterministico pre-gate."""
+    if not _QUANT_CONTEXT.search(value) or _ASSUMPTION.search(value):
+        return False
+    for m in _NUMBER.finditer(value):
+        suffix = (m.group(2) or "").lower()
+        pre_window = value[max(0, m.start() - 5):m.start()]
+        pre_currency = bool(re.search(r"(?:€|eur)\s*$", pre_window, re.I))
+        if not suffix and not pre_currency and not re.search(
+                r"(?:ricav|ebitda|utile|debito|fatturat|nfp|pfn).{0,20}" + re.escape(m.group(1)), value, re.I):
+            continue
+        n = _num(m.group(1))
+        if n is None:
+            continue
+        cand = {round(n, 4)}
+        tok = m.group(1)
+        if re.fullmatch(r"-?\d{1,3}(?:\.\d{3})+", tok):
+            cand.add(round(float(tok.replace(".", "")), 4))
+        if cand & known:
+            continue
+        return True
+    return False
+
+
+def scrub_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
+                             citations: list | None = None, *, strict: bool = False) -> dict:
+    """Marca i numeri non-grounded in contesto economico come illustrativi PRIMA del gate.
+
+    Scelta-utente resa deterministica: i boost QUALITATIVI possono contenere numeri
+    illustrativi SE etichettati onestamente. Il modello a volte scrive un importo non
+    presente in input/fact senza marcarlo → il gate lo bloccherebbe (numero_non_grounded)
+    e il report fallisce. Qui si appende un marker '(ipotesi da confermare)' alla frase
+    che contiene il numero: e' onesto (quel numero NON e' verificato) e il gate poi lo
+    esenta (via _ASSUMPTION). Il backstop resta: cio' che era grounded resta tale.
+
+    strict=True (boost FINANZIARI): NO-OP. Le loro cifre vanno bound/grounded davvero
+    (un'etichetta non basta), quindi il gate deve continuare a bloccarle."""
+    if strict:
+        return deliverable
+    known = grounded_numbers(inputs, facts, citations)
+    out = deepcopy(deliverable)
+
+    def walk(v):
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        if isinstance(v, str) and _value_has_blocking_number(v, known):
+            return v + _NUM_SCRUB_MARK
+        return v
+
+    return walk(out)
+
+
 def uncertain_fact_findings(deliverable: dict, strict: bool = True) -> list[dict]:
     full = "\n".join(str(v) for v in _walk(deliverable) if isinstance(v, str))
     return [{

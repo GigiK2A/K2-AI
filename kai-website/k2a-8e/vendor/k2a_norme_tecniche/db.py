@@ -7,10 +7,15 @@ paragrafi). Il file .db non e' versionato: e' ricostruibile dai chunks.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "norme_tecniche.db"
+# Path del .db: override via env NORME_DB_PATH (deploy 8e → volume /corpus, come
+# normattiva). Default = data/norme_tecniche.db (bundle locale / dev). Il .db non e'
+# versionato (binario): in prod arriva sul volume via download-al-boot (seed_corpus.py).
+DB_PATH = (Path(os.environ["NORME_DB_PATH"]) if os.environ.get("NORME_DB_PATH")
+           else Path(__file__).resolve().parent.parent.parent / "data" / "norme_tecniche.db")
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS documenti (

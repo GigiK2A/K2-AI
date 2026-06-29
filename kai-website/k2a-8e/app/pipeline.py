@@ -437,80 +437,108 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
 
         from .settings import VOCI_SHAPE_SKILLS
         generic = skill not in VOCI_SHAPE_SKILLS
-        if not generic:
-            # Voci-shape (LegalBoost/FiscoBoost): HYBRID prosa + meta strutturato.
-            sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
-            meta_struct = llm.generate_structured_meta(blueprint, facts, inputs)
-            offline = filiera_meta.get("mode") == "offline"
-            deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs, meta_struct, offline=offline)
-            filiera_meta = {**filiera_meta, "assembly": "hybrid" if meta_struct else "prose+deterministic",
-                            "structured_meta": bool(meta_struct)}
-        else:
-            # Altri boost: generazione PROFONDA per-sezione (profondità tipo report
-            # consulenziale). Fallback alla singola chiamata, poi refuse se invalido.
-            deliverable, filiera_meta = llm.generate_deliverable_deep(out_schema, blueprint, facts, inputs)
-            if not deliverable:
-                deliverable, fm2 = llm.generate_conforming(out_schema, blueprint, facts, inputs)
-                filiera_meta = {**filiera_meta, **fm2, "assembly": "generic-fallback"}
-            if not deliverable:
-                raise Refuse("validation_failed",
-                             "generazione non disponibile (offline o incompleta) per questo boost")
+        base_citazioni = list(citazioni or [])
+        # RETRY anti-flake: la generazione è non-deterministica (temperature default), quindi un
+        # grounding/validation fallito è spesso la sfortuna del singolo roll (un numero non
+        # grounded sfuggito al prompt). Rigenera fino a _MAX_GEN_TRIES; refuse solo se TUTTI i
+        # tentativi falliscono. Le success-path restano identiche (si esce al 1° tentativo); il
+        # costo extra (rigenerazione) ricade solo sui fallimenti, raro. Vale per tutti i boost.
+        _MAX_GEN_TRIES = 3
+        _refusal = None
+        _ok = False
+        offline_mode = False
+        for _attempt in range(_MAX_GEN_TRIES):
+            citazioni = list(base_citazioni)
+            if not generic:
+                # Voci-shape (LegalBoost/FiscoBoost): HYBRID prosa + meta strutturato.
+                sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
+                meta_struct = llm.generate_structured_meta(blueprint, facts, inputs)
+                offline = filiera_meta.get("mode") == "offline"
+                deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs, meta_struct, offline=offline)
+                filiera_meta = {**filiera_meta, "assembly": "hybrid" if meta_struct else "prose+deterministic",
+                                "structured_meta": bool(meta_struct)}
+            else:
+                # Altri boost: generazione PROFONDA per-sezione (profondità tipo report
+                # consulenziale). Fallback alla singola chiamata, poi refuse se invalido.
+                deliverable, filiera_meta = llm.generate_deliverable_deep(out_schema, blueprint, facts, inputs)
+                if not deliverable:
+                    deliverable, fm2 = llm.generate_conforming(out_schema, blueprint, facts, inputs)
+                    filiera_meta = {**filiera_meta, **fm2, "assembly": "generic-fallback"}
+                if not deliverable:
+                    raise Refuse("validation_failed",
+                                 "generazione non disponibile (offline o incompleta) per questo boost")
 
-        deliverable = quality.ensure_metadata(
-            deliverable, out_schema, inputs,
-            blueprint.get("pacchetto", {}).get("nome_commerciale", service_id),
-        )
-
-        # Binding deterministici per-skill (estratto in apply_deterministic_bindings,
-        # coperto da test_pipeline_bindings.py): sovrascrive gli slot col valore dei tool
-        # deterministici (quant/finance/tax/mep/elettrico/web/safety/build/norme).
-        deliverable, filiera_meta = apply_deterministic_bindings(
-            skill, deliverable, facts, inputs, filiera_meta)
-
-        # Scrub segnaposto template trapelati ([città]/[regione]/[nome]…) PRIMA del gate e
-        # del render: il deep-gen a volte li lascia su dati mancanti nonostante il prompt, e
-        # il gate li blocca (placeholder_leak). Neutralizzazione deterministica → il report si
-        # consegna pulito invece di fallire. Il gate resta come backstop su ciò che sfugge.
-        deliverable = quality.scrub_template_placeholders(deliverable, inputs)
-
-        # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
-        # voci-shape) solo per i boost voci-shape; i generici sono validati dallo
-        # schema.
-        jobs.update(job_id, status="validating")
-        r1 = validate.l1(blueprint)
-        r2 = {"pass": True} if generic else validate.l2(_lint_instance(blueprint), blueprint)
-        out_errs = sorted(Draft202012Validator(out_schema).iter_errors(deliverable),
-                          key=lambda e: list(e.path))
-        if not r1["pass"] or not r2["pass"] or out_errs:
-            jobs.update(
-                job_id, status="refused", refusal_reason="validation_failed",
-                validation={"L1": r1["pass"], "L2": r2["pass"],
-                            "output_schema_errors": [str(e.message) for e in out_errs[:5]],
-                            "L2_errori": r2.get("errori"), "L2_findings": r2.get("findings")},
+            deliverable = quality.ensure_metadata(
+                deliverable, out_schema, inputs,
+                blueprint.get("pacchetto", {}).get("nome_commerciale", service_id),
             )
-            return
 
-        # Gate di GROUNDING (integrità qualitativa) — accanto a L1/L2. Becca la
-        # classe di difetti che il linter STRUTTURALE non vede e che nessun calc.py
-        # intercetta sui boost qualitativi: segnaposto trapelati, numeri esterni
-        # asseriti senza citazione, cover non personalizzata, priorità tutte uguali
-        # (vedi report StrategyBoost reale). 'block' → non si consegna (fail-closed).
-        # §3b · ROUTE: verifica i riferimenti normativi contro il corpus → citazioni
-        # verbatim grounded (le norme reali); le confabulate restano scoperte per il CAGE.
-        citazioni = _enrich_citazioni_normattiva(deliverable, citazioni)
-        strict_grounding = skill in FINANCIAL_SKILLS
-        g_findings = (grounding.required_inputs_findings(form_schema, inputs, strict=strict_grounding)
-                      + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
-                                                      facts=facts, strict=strict_grounding))
-        g_blocks = grounding.blocks(g_findings)
-        # OFFLINE = deliverable segnaposto/demo (no LLM): contiene placeholder e gira su input
-        # minimi → i block del gate sono attesi e non vanno applicati (il gate è per i report
-        # REALI/online). Online: fail-closed come sempre.
-        offline_mode = (filiera_meta or {}).get("mode") == "offline"
-        if g_blocks and not offline_mode:
-            log.warning("grounding gate REFUSE job %s: %s", job_id, [b["dettaglio"] for b in g_blocks])
-            jobs.update(job_id, status="refused", refusal_reason="grounding_failed",
-                        validation={"grounding_block": g_blocks, "grounding_findings": g_findings})
+            # Binding deterministici per-skill (estratto in apply_deterministic_bindings,
+            # coperto da test_pipeline_bindings.py): sovrascrive gli slot col valore dei tool
+            # deterministici (quant/finance/tax/mep/elettrico/web/safety/build/norme).
+            deliverable, filiera_meta = apply_deterministic_bindings(
+                skill, deliverable, facts, inputs, filiera_meta)
+
+            # Scrub segnaposto template trapelati ([città]/[regione]/[nome]…) PRIMA del gate e
+            # del render: il deep-gen a volte li lascia su dati mancanti nonostante il prompt, e
+            # il gate li blocca (placeholder_leak). Neutralizzazione deterministica → il report si
+            # consegna pulito invece di fallire. Il gate resta come backstop su ciò che sfugge.
+            deliverable = quality.scrub_template_placeholders(deliverable, inputs)
+            # OFFLINE = deliverable segnaposto/demo (no LLM): gira su input minimi → i block del
+            # gate sono attesi e non vanno applicati (rigenerare non aiuta: niente retry).
+            offline_mode = (filiera_meta or {}).get("mode") == "offline"
+
+            # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
+            # voci-shape) solo per i boost voci-shape; i generici sono validati dallo schema.
+            jobs.update(job_id, status="validating")
+            r1 = validate.l1(blueprint)
+            r2 = {"pass": True} if generic else validate.l2(_lint_instance(blueprint), blueprint)
+            out_errs = sorted(Draft202012Validator(out_schema).iter_errors(deliverable),
+                              key=lambda e: list(e.path))
+            if not r1["pass"] or not r2["pass"] or out_errs:
+                _refusal = ("validation_failed",
+                            {"L1": r1["pass"], "L2": r2["pass"],
+                             "output_schema_errors": [str(e.message) for e in out_errs[:5]],
+                             "L2_errori": r2.get("errori"), "L2_findings": r2.get("findings")})
+                if offline_mode or _attempt == _MAX_GEN_TRIES - 1:
+                    break
+                log.warning("validation_failed job %s tentativo %d/%d → rigenero", job_id, _attempt + 1, _MAX_GEN_TRIES)
+                continue
+
+            # Gate di GROUNDING (integrità qualitativa) — accanto a L1/L2. Becca la
+            # classe di difetti che il linter STRUTTURALE non vede e che nessun calc.py
+            # intercetta sui boost qualitativi: segnaposto trapelati, numeri esterni
+            # asseriti senza citazione, cover non personalizzata, priorità tutte uguali
+            # (vedi report StrategyBoost reale). 'block' → non si consegna (fail-closed).
+            # §3b · ROUTE: verifica i riferimenti normativi contro il corpus → citazioni
+            # verbatim grounded (le norme reali); le confabulate restano scoperte per il CAGE.
+            citazioni = _enrich_citazioni_normattiva(deliverable, citazioni)
+            strict_grounding = skill in FINANCIAL_SKILLS
+            # Scrub deterministico: sui qualitativi (non-financial) etichetta i numeri non-grounded
+            # come illustrativi PRIMA del gate (scelta-utente) → il report si consegna invece di
+            # fallire su una cifra che il modello non ha marcato. Financial: no-op (restano strict).
+            deliverable = quality.scrub_ungrounded_numbers(deliverable, inputs, facts, citazioni, strict=strict_grounding)
+            g_findings = (grounding.required_inputs_findings(form_schema, inputs, strict=strict_grounding)
+                          + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
+                                                          facts=facts, strict=strict_grounding))
+            g_blocks = grounding.blocks(g_findings)
+            if g_blocks and not offline_mode:
+                _refusal = ("grounding_failed",
+                            {"grounding_block": g_blocks, "grounding_findings": g_findings})
+                if _attempt == _MAX_GEN_TRIES - 1:
+                    log.warning("grounding gate REFUSE job %s (esauriti %d tentativi): %s",
+                                job_id, _MAX_GEN_TRIES, [b["dettaglio"] for b in g_blocks])
+                    break
+                log.warning("grounding gate block job %s tentativo %d/%d → rigenero: %s",
+                            job_id, _attempt + 1, _MAX_GEN_TRIES, [b["dettaglio"] for b in g_blocks])
+                continue
+
+            _ok = True
+            break
+
+        if not _ok:
+            reason, val = _refusal or ("validation_failed", {})
+            jobs.update(job_id, status="refused", refusal_reason=reason, validation=val)
             return
 
         # Render HTML + PDF.
