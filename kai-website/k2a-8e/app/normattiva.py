@@ -146,9 +146,11 @@ _LABEL_TO_TIPO = {
     "dpcm": "decreto_presidente_consiglio_ministri",
     "l": "legge", "legge": "legge", "rd": "regio_decreto",
 }
-# Riferimento normativo nel testo (mirror della regex C2 del CAGE in grounding.py).
+# Riferimento normativo nel testo (mirror della regex C2 del CAGE in grounding.py, che
+# accetta anni a 2-4 cifre). L'anno può essere a 2 cifre ('D.Lgs 81/08', 'L. 300/70'):
+# va espanso a 4 cifre per matchare i filename del corpus (_FN_RE = \d{4}).
 _NORM_REF_RE = re.compile(
-    r"\b(d\.?\s?m\.?|d\.?\s?l\.?|d\.?\s?p\.?r\.?|d\.?\s?lgs\.?|legge|l\.)\s*(?:n\.?\s*)?(\d{1,4})\s*[/\-]\s*(\d{4})",
+    r"\b(d\.?\s?m\.?|d\.?\s?l\.?|d\.?\s?p\.?r\.?|d\.?\s?lgs\.?|legge|l\.)\s*(?:n\.?\s*)?(\d{1,4})\s*[/\-]\s*(\d{2,4})",
     re.I)
 
 
@@ -156,13 +158,23 @@ def _norm_label(label: str) -> str:
     return re.sub(r"[.\s]", "", label or "").lower()
 
 
+def _expand_year(y: int) -> int:
+    """Anno a 2 cifre → 4 cifre, pivot deterministico 30: 00-30 → 2000-2030, 31-99 →
+    1931-1999. Copre i casi reali (81/08→2008 TUS, 300/70→1970 Statuto, 231/01→2001,
+    206/05→2005) senza datetime (deterministico). Gli anni già a 4 cifre passano intatti."""
+    if y >= 100:
+        return y
+    return 2000 + y if y <= 30 else 1900 + y
+
+
 def extract_norm_refs(text: str) -> list[dict]:
-    """Estrae i riferimenti di legge da un testo (es. 'DPR 380/2001', 'DM 143/2013').
-    Solo anni a 4 cifre (gli unici non ambigui). Ritorna [{tipo, numero, anno, label}]."""
+    """Estrae i riferimenti di legge da un testo (es. 'DPR 380/2001', 'D.Lgs 81/08').
+    Anni a 2 cifre espansi a 4 (pivot 30) per matchare il corpus. Ritorna
+    [{tipo, numero, anno, label}]."""
     refs, seen = [], set()
     for m in _NORM_REF_RE.finditer(text or ""):
         tipo = _LABEL_TO_TIPO.get(_norm_label(m.group(1)))
-        numero, anno = m.group(2), int(m.group(3))
+        numero, anno = m.group(2), _expand_year(int(m.group(3)))
         key = (tipo, numero, anno)
         if tipo and key not in seen:
             seen.add(key)
