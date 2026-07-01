@@ -398,12 +398,17 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         if not blueprint or not out_schema:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
 
-        # Gate 0 (solo FULL): nessun report PAGATO parte con campi obbligatori mancanti,
-        # copertina anonima o bilancio non riconciliato. La PREVIEW gratuita resta permissiva
-        # (è l'assaggio: deve girare anche con input minimi/assenti, no leak del completo).
-        inputs, input_errors, quality_notes = quality.prepare_inputs(skill, form_schema, inputs)
-        if input_errors and auth_level != "PREVIEW":
-            raise Refuse("insufficient_or_inconsistent_input", "; ".join(input_errors[:12]))
+        # Gate 0. L'IDENTITÀ (nome cliente) blocca SEMPRE: serve a intestare il documento.
+        # La COMPLETEZZA/quadratura blocca solo in FULL; in PARTIAL (report preliminare)
+        # diventa ipotesi etichettata → si genera comunque con i dati disponibili invece
+        # del vicolo cieco. La PREVIEW gratuita resta permissiva (assaggio su input minimi).
+        inputs, identity_errors, content_errors, quality_notes = quality.prepare_inputs(skill, form_schema, inputs)
+        if identity_errors and auth_level != "PREVIEW":
+            raise Refuse("insufficient_or_inconsistent_input", "; ".join(identity_errors[:4]))
+        if content_errors and auth_level == "FULL":
+            raise Refuse("insufficient_or_inconsistent_input", "; ".join(content_errors[:12]))
+        # PARTIAL solo se c'è davvero un buco: se i dati ci sono tutti è un FULL a tutti gli effetti.
+        partial_mode = auth_level == "PARTIAL" and bool(content_errors)
 
         facts, citazioni = resolve(skill, inputs)
 
@@ -513,7 +518,10 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             # §3b · ROUTE: verifica i riferimenti normativi contro il corpus → citazioni
             # verbatim grounded (le norme reali); le confabulate restano scoperte per il CAGE.
             citazioni = _enrich_citazioni_normattiva(deliverable, citazioni)
-            strict_grounding = skill in FINANCIAL_SKILLS
+            # In PARTIAL i numeri non ancorati diventano ipotesi ETICHETTATE (illustrative),
+            # non un refuse: un report preliminare vive di stime dichiarate. Quindi anche i
+            # boost finanziari usano il grounding non-strict (scrub+label invece di block).
+            strict_grounding = skill in FINANCIAL_SKILLS and not partial_mode
             # Scrub deterministico: sui qualitativi (non-financial) etichetta i numeri non-grounded
             # come illustrativi PRIMA del gate (scelta-utente) → il report si consegna invece di
             # fallire su una cifra che il modello non ha marcato. Financial: no-op (restano strict).
@@ -553,10 +561,10 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             from .render import render_generic_pdf
             html_path.write_text("<pre>" + _json.dumps(deliverable, ensure_ascii=False, indent=2) + "</pre>",
                                  encoding="utf-8")
-            render_generic_pdf(deliverable, blueprint, citazioni, pdf_path)
+            render_generic_pdf(deliverable, blueprint, citazioni, pdf_path, preliminare=partial_mode)
         else:
             html_path.write_text(render_html(deliverable, blueprint, citazioni), encoding="utf-8")
-            render_pdf(deliverable, blueprint, citazioni, pdf_path)
+            render_pdf(deliverable, blueprint, citazioni, pdf_path, preliminare=partial_mode)
 
         bundle = []
         extra_outputs = {}
@@ -573,7 +581,10 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS",
                         "grounding": g_findings or "PASS"},
             citazioni=citazioni,
-            meta={"skill": skill, "blueprint_id": bp_id, "auth_level": "FULL",
+            meta={"skill": skill, "blueprint_id": bp_id,
+                  "auth_level": "PARTIAL" if partial_mode else "FULL",
+                  "preliminare": partial_mode,
+                  "assunzioni": content_errors if partial_mode else [],
                   "filiera": filiera_meta, "snapshot_version": assets.snapshot_version()},
         )
     except Refuse as r:

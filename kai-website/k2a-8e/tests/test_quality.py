@@ -78,12 +78,13 @@ def test_four_section_printed_liabilities_are_not_treated_as_debt():
 
 
 def test_missing_identity_blocks_all_reports():
-    _, errors, _ = quality.prepare_inputs(
+    _, identity_errors, content_errors, _ = quality.prepare_inputs(
         "flusso-strategyboost-pmi",
         {"type": "object", "required": ["obiettivo"], "properties": {"obiettivo": {"type": "string"}}},
         {"obiettivo": "crescita"},
     )
-    assert any("ragione_sociale" in e for e in errors)
+    # l'identità è un errore a sé (blocca SEMPRE), separato dalla completezza.
+    assert any("ragione_sociale" in e for e in identity_errors)
 
 
 def test_placeholder_and_unsupported_money_block():

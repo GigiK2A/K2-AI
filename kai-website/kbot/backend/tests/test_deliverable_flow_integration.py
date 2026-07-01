@@ -79,11 +79,11 @@ def test_advisor_routing_blocked_non_vendibile(monkeypatch):
     assert created["service_id"] == res["servizio_id"]
 
 
-def test_missing_required_field_returns_409_needs_input(monkeypatch):
-    """Pre-flight: il boost esige un campo OBBLIGATORIO che la chat non ha raccolto →
-    409 `needs_input` che lo NOMINA, SENZA spendere (né far pagare) una generazione che
-    l'8e rifiuterebbe come `insufficient_or_inconsistent_input`. È il bug reale
-    StrategyBoost (competitor/obiettivo mai chiesti) generalizzato a ogni boost."""
+def test_missing_non_identity_field_generates_preliminary(monkeypatch):
+    """Nuovo contratto: se manca un campo OBBLIGATORIO non-identità (e la ricerca web non
+    l'ha riempito), NON si blocca più con 409 → si genera un REPORT PRELIMINARE
+    (auth_level=PARTIAL): il cliente non esce mai a mani vuote (a pagamento come il completo).
+    Il campo mancante diventa ipotesi etichettata, non un vicolo cieco."""
     collected = {"boost_suggerito": "checkup_marketing",
                  "extractedData": {"reportType": "analisi marketing", "objective": "awareness"}}
     session = {"id": "sess-int-1", "user_id": None, "status": "paid", "collected_data": collected}
@@ -92,8 +92,12 @@ def test_missing_required_field_returns_409_needs_input(monkeypatch):
         return {"campi": [{"id": "obiettivo_strategico", "obbligatorio": True,
                            "label": "cosa vuole ottenere nei prossimi 1-3 anni"}]}
 
-    async def fake_create(**kw):
-        raise AssertionError("create_deliverable NON deve partire se manca un campo required")
+    created = {}
+
+    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level):
+        created["service_id"] = service_id
+        created["auth_level"] = auth_level
+        return {"job_id": "job-partial-1", "status": "routed"}
 
     monkeypatch.setattr(d.sessions, "get_session", lambda sid: session)
     monkeypatch.setattr(d.sessions, "update_session", lambda sid, patch: {**session, **patch})
@@ -102,12 +106,9 @@ def test_missing_required_field_returns_409_needs_input(monkeypatch):
     # autofill estrae solo la ragione sociale; il required `obiettivo_strategico` resta assente.
     monkeypatch.setattr(d.autofill, "extract_inputs", lambda *a, **k: {"ragione_sociale": "ACME Srl"})
 
-    with pytest.raises(HTTPException) as ei:
-        asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
-    assert ei.value.status_code == 409
-    assert ei.value.detail.get("reason") == "needs_input"
-    assert "obiettivo_strategico" in ei.value.detail.get("missing", [])
-    assert "cosa vuole ottenere" in ei.value.detail.get("message", "")
+    res = asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
+    assert res["job_id"] == "job-partial-1"
+    assert created["auth_level"] == "PARTIAL"   # generato in modalità preliminare, non 409
 
 
 def test_all_required_present_proceeds_to_generation(monkeypatch):

@@ -238,7 +238,13 @@ def normalize_finance_inputs(inputs: dict) -> tuple[dict, list[str], list[str]]:
     return out, errors, notes
 
 
-def prepare_inputs(skill: str, form_schema: dict, inputs: dict) -> tuple[dict, list[str], list[str]]:
+def prepare_inputs(skill: str, form_schema: dict, inputs: dict) -> tuple[dict, list[str], list[str], list[str]]:
+    """Ritorna (prepared, identity_errors, content_errors, notes).
+
+    identity_errors = manca il nome cliente (blocca SEMPRE: serve a intestare il
+    documento). content_errors = campi obbligatori mancanti o bilancio non
+    riconciliato: bloccano in FULL, ma in PARTIAL (report preliminare) diventano
+    ipotesi etichettate anziché refuse."""
     prepared = deepcopy(inputs or {})
     notes: list[str] = []
     identity_errors = [] if display_name(prepared) else [
@@ -248,8 +254,9 @@ def prepare_inputs(skill: str, form_schema: dict, inputs: dict) -> tuple[dict, l
         prepared, finance_errors, notes = normalize_finance_inputs(prepared)
         # Il campo audit e interno e non fa parte dello schema form.
         schema_input = {k: v for k, v in prepared.items() if k != "_quality_audit"}
-        return prepared, identity_errors + validate_required_inputs(form_schema, schema_input) + finance_errors, notes
-    return prepared, identity_errors + validate_required_inputs(form_schema, prepared), notes
+        content = validate_required_inputs(form_schema, schema_input) + finance_errors
+        return prepared, identity_errors, content, notes
+    return prepared, identity_errors, validate_required_inputs(form_schema, prepared), notes
 
 
 def today_iso() -> str:
