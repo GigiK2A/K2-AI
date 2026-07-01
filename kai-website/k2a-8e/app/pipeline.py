@@ -569,10 +569,18 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         bundle = []
         extra_outputs = {}
         if skill == "flusso-financeboost-pmi":
-            from .xlsx import render_finance_workbook
-            xlsx_path = render_finance_workbook(inputs, out_dir / "modello-finanziario.xlsx")
-            extra_outputs["xlsx_path"] = str(xlsx_path)
-            bundle.append({"formato": "xlsx", "path": str(xlsx_path), "formule_vive": True})
+            # Il modello Excel richiede le voci di bilancio. In PARTIAL (report preliminare)
+            # i bilanci possono mancare → NON far fallire l'intero job: si consegna il PDF
+            # preliminare senza il modello finanziario (che senza bilancio non ha senso).
+            try:
+                from .xlsx import render_finance_workbook
+                xlsx_path = render_finance_workbook(inputs, out_dir / "modello-finanziario.xlsx")
+                extra_outputs["xlsx_path"] = str(xlsx_path)
+                bundle.append({"formato": "xlsx", "path": str(xlsx_path), "formule_vive": True})
+            except Exception as exc:
+                if not partial_mode:
+                    raise  # in FULL i bilanci ci sono per definizione: un errore qui è reale
+                log.warning("xlsx finance saltato (preliminare senza bilanci): %s", exc)
 
         jobs.update(
             job_id, status="rendered",
