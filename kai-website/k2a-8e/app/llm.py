@@ -587,6 +587,14 @@ def _clamp_to_schema(val, schema: dict, root: dict):
     t = schema.get("type")
     if isinstance(t, list):
         t = t[0]
+    # COERCIONE di tipo (rete di sicurezza): il modello a volte mette una STRINGA dove lo
+    # schema vuole un ARRAY (es. sezione 'alert' di ControlBoost) → prima falliva la
+    # validazione, 3 retry, refuse. Incartiamo invece di fallire. Simmetrico: se vuole uno
+    # scalare ma arriva una lista di 1, la scartiamo.
+    if t == "array" and not isinstance(val, list):
+        val = [] if val in (None, "") else [val]
+    elif t in ("string", "integer", "number", "boolean") and isinstance(val, list):
+        val = val[0] if len(val) == 1 else " ".join(str(x) for x in val)
     # numeri: rientra nel range minimum/maximum
     if isinstance(val, (int, float)) and not isinstance(val, bool):
         if isinstance(schema.get("maximum"), (int, float)) and val > schema["maximum"]:
