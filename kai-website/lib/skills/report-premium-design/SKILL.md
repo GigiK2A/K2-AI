@@ -48,15 +48,31 @@ Tutti i tipi di `blocks` sono elencati alla §4. Devi usare **solo** quelli.
 
 ## 3. Principi di composizione
 
-1. **Apri sempre con `executive_summary`** (con o senza gauge). È il primo blocco dopo il banner del titolo.
-2. **Segui con metriche-chiave** quando esistono (`kpi_grid`). Massimo una `kpi_grid` per sezione narrativa, posizionata vicino al testo che la descrive.
-3. **Alterna narrativo + dati**: un blocco di testo (`narrative`, `two_column`) seguito da una tabella o grid quando porta valore.
-4. **Conclusioni come ultimo blocco** (`conclusions`).
-5. **Tra 6 e 10 blocchi totali**. Né troppo pochi (sembra un teaser), né troppi (overflow).
-6. **Ogni numero deve essere quantificato e plausibile**. Mai "X", "TBD" o placeholder.
-7. **Tono**: pragmatico, da pari a pari, in italiano corretto (è, à, ù, ò, ì). Mai marketing, mai "rivoluzionario", "all'avanguardia", "ecosistema".
-8. **Coerenza interna**: se in un blocco scrivi €31.500 ricavi, lo stesso numero deve apparire in altri blocchi (KPI, conclusioni) senza contraddizioni.
-9. **Adatta i titoli al dominio**: "KPI di Investimento" per un caso ricettivo, "Metriche di Performance" per uno SaaS, "Indici di Bilancio" per un'analisi finanziaria.
+### 3.0 Struttura a 3 livelli di lettura (OBBLIGATORIA)
+
+Il report NON è "piatto" (10 pagine tutte con lo stesso peso). Si organizza in **3 livelli** separati da bande `section_break`, così ogni lettore trova subito il suo strato:
+
+- **Livello 1 — Executive** (lettura 30 secondi, per chi decide): apri con `executive_dashboard` (punteggio + subscore + top-3 criticità/opportunità + verdetto). Un `section_break` con `layer:"executive"` lo introduce.
+- **Livello 2 — Analisi** (5-10 minuti, per il management): `benchmark_table`, `severity_matrix`, `data_table`, `two_column`, `financial_impact`, `recommendations`. Introdotto da `section_break` con `layer:"analysis"`.
+- **Livello 3 — Appendice tecnica** (per tecnici/auditor): `source_legend` con assunzioni, fonti, formule. Introdotto da `section_break` con `layer:"appendix"`.
+
+Chiudi il Livello 2 con un `decision_board` (la pagina che fa decidere) **prima** dell'appendice.
+
+### 3.1 Regole
+
+1. **Apri il Livello 1 con `executive_dashboard`** (non più `executive_summary` piatto): deve dare punteggio generale, 5 subscore standard, top-3 criticità, top-3 opportunità, verdetto secco. `executive_summary` resta valido solo per report brevi/qualitativi.
+2. **Meno testo, più densità**: max 30-40% testo, 60-70% blocchi visual/dato (card, score, matrici, tabelle). Mai 3 paragrafi di fila: spezza con una tabella o una matrice.
+3. **Scoring universale**: ogni report genera un punteggio 0-100 + subscore standardizzati (es. Salute finanziaria, Efficienza operativa, Potenziale di crescita, Esposizione al rischio, Prontezza AI). Adatta le etichette al dominio ma mantieni 4-6 subscore.
+4. **Severity su ogni criticità**: usa `severity_matrix` (Critical/High/Medium/Low + Effort + ROI). Trasforma l'analisi in supporto alle decisioni.
+5. **Distingui fatti da inferenze**: usa i tag affidabilità (`verified`/`inference`/`benchmark`/`assumption`) su KPI e nella `source_legend`. Non spacciare stime per dati certi.
+6. **Impatto economico obbligatorio** dove ha senso: `financial_impact` con costo dell'inazione vs upside potenziale (risparmio + ricavi addizionali).
+7. **Benchmark esterni**: confronta sempre il cliente col mercato via `benchmark_table` (Azienda vs Settore vs Delta).
+8. **Recommendation engine**: `recommendations` con orizzonti temporali (0-30 giorni / 1-3 mesi / 3-12 mesi). Rispondi a "cosa devo fare domani?".
+9. **Decision Board finale**: `decision_board` con stato, urgenza, investimento, ROI atteso, decisione consigliata.
+10. **Tra 8 e 12 blocchi totali** (incluse le 3 bande `section_break`). Ogni numero quantificato e plausibile — mai "X", "TBD", placeholder.
+11. **Tono**: pragmatico, da pari a pari, italiano corretto (è, à, ù, ò, ì). Mai marketing, mai "rivoluzionario", "all'avanguardia", "ecosistema".
+12. **Coerenza interna**: se scrivi €31.500 ricavi in un blocco, lo stesso numero appare identico altrove (KPI, dashboard, conclusioni).
+13. **Adatta i titoli al dominio** e attiva i **moduli verticali** della §9 (SWOT/Porter per strategy, DSCR/break-even per financial, compliance gaps per legal, funnel/CAC/LTV per marketing).
 
 ---
 
@@ -296,21 +312,183 @@ Blocco testuale full-width, solo se necessario per contestualizzazioni lunghe. U
 }
 ```
 
+### 4.10 `section_break` — banda di livello
+Divide il report nei 3 livelli di lettura. Breve per definizione.
+
+```json
+{
+  "type": "section_break",
+  "layer": "executive",
+  "title": "Livello 1 — Executive",
+  "subtitle": "lettura 30 secondi · per chi decide"
+}
+```
+
+`layer` accetta: `executive` (accento teal), `analysis` (grigio), `appendix` (grigio muto).
+
+### 4.11 `executive_dashboard` — cruscotto direzionale (Livello 1)
+Il blocco di apertura. Punteggio + subscore + top-3 + verdetto in una schermata.
+
+```json
+{
+  "type": "executive_dashboard",
+  "title": "Cruscotto direzionale",
+  "gauge": { "value": 74, "max": 100 },
+  "status": { "label": "Da ottimizzare", "variant": "warning" },
+  "priority": { "label": "Alta", "variant": "alert" },
+  "subscores": [
+    { "label": "Salute finanziaria", "value": 62, "trend": "down" },
+    { "label": "Efficienza operativa", "value": 78, "trend": "flat" },
+    { "label": "Potenziale di crescita", "value": 65, "trend": "up" },
+    { "label": "Esposizione al rischio", "value": 58, "trend": "down" },
+    { "label": "Prontezza AI", "value": 41, "trend": "down" }
+  ],
+  "problems": ["Margine operativo sotto media (-6 pt)", "Processi manuali", "CRM assente"],
+  "opportunities": ["Automazione preventivi", "Ottimizzazione pricing", "Cross-selling"],
+  "verdict": { "text": "Business solido ma sotto-ottimizzato: con 85k€ il margine recupera 6 punti in 14 mesi.", "decision": "Procedere", "variant": "ok" }
+}
+```
+
+`trend` accetta: `up` (triangolo verde), `flat` (trattino grigio), `down` (triangolo rosso). `variant` (status/priority/verdict): `ok`/`warning`/`alert`/`info`/`neutral`. 4-6 subscore, max 4 problems, max 4 opportunities.
+
+### 4.12 `benchmark_table` — confronto col settore
+KPI | Azienda | Settore | Delta. Il delta è colorato dal campo `tone`.
+
+```json
+{
+  "type": "benchmark_table",
+  "title": "Benchmark vs settore",
+  "intro": "Ingegneria / servizi professionali, campione Italia PMI 5-50 dipendenti.",
+  "columns": ["KPI", "Azienda", "Settore", "Delta"],
+  "rows": [
+    { "kpi": "Margine EBITDA", "company": "12%", "sector": "18%", "delta": "-6 pt", "tone": "alert" },
+    { "kpi": "Costo acquisizione", "company": "€300", "sector": "€210", "delta": "+€90", "tone": "alert" },
+    { "kpi": "Tasso rinnovo commesse", "company": "71%", "sector": "64%", "delta": "+7 pt", "tone": "ok" }
+  ],
+  "note": "Fonte benchmark: Mediobanca PMI 2024."
+}
+```
+
+`tone` del delta: `ok` (verde, favorevole), `alert` (rosso, sfavorevole), `neutral` (grigio). Scegli in base alla direzione favorevole del KPI, non al segno.
+
+### 4.13 `severity_matrix` — matrice priorità
+Ogni criticità con severity + effort + ROI. Trasforma l'analisi in decisione.
+
+```json
+{
+  "type": "severity_matrix",
+  "title": "Matrice priorità",
+  "items": [
+    { "problem": "Costi operativi alti", "severity": "Critical", "effort": "Medio", "roi": "Alto" },
+    { "problem": "CRM assente", "severity": "High", "effort": "Basso", "roi": "Alto" },
+    { "problem": "Branding datato", "severity": "Low", "effort": "Medio", "roi": "Medio" }
+  ]
+}
+```
+
+`severity` accetta: `Critical` (rosso), `High` (arancione), `Medium` (ambra), `Low` (grigio). `roi`: `Alto`/`Medio`/`Basso`.
+
+### 4.14 `financial_impact` — impatto economico
+Due pannelli: costo dell'inazione vs upside potenziale.
+
+```json
+{
+  "type": "financial_impact",
+  "title": "Impatto economico",
+  "inaction": { "label": "Se non agisci", "value": "-120k€/anno", "note": "margine eroso + ore perse su lavoro manuale" },
+  "action": { "label": "Se agisci", "value": "+280k€", "note": "80k€ risparmio operativo + 200k€ ricavi addizionali" }
+}
+```
+
+### 4.15 `recommendations` — azioni per orizzonte temporale
+Risponde a "cosa devo fare domani?". Raggruppa per tempo.
+
+```json
+{
+  "type": "recommendations",
+  "title": "Azioni raccomandate",
+  "horizons": [
+    { "label": "0-30 giorni", "tone": "alert", "items": ["Attivare agente AI su preventivi", "Installare CRM base"] },
+    { "label": "1-3 mesi", "tone": "warning", "items": ["Automazione documentale su commesse ripetitive", "Revisione pricing"] },
+    { "label": "3-12 mesi", "tone": "ok", "items": ["Cross-selling manutenzione", "Dashboard controllo di gestione"] }
+  ]
+}
+```
+
+`tone`: `alert` (immediato, rosso), `warning` (breve termine, ambra), `ok` (strategico, verde).
+
+### 4.16 `decision_board` — pagina decisionale (chiude il Livello 2)
+La board vuole questo: stato, urgenza, investimento, ROI, decisione.
+
+```json
+{
+  "type": "decision_board",
+  "title": "Decision Board",
+  "cells": [
+    { "label": "Stato attuale", "value": "Da ottimizzare", "variant": "warning" },
+    { "label": "Urgenza", "value": "Alta", "variant": "alert" },
+    { "label": "Investimento richiesto", "value": "85k€" },
+    { "label": "ROI atteso", "value": "14 mesi" },
+    { "label": "Decisione consigliata", "value": "Procedere", "variant": "ok" }
+  ]
+}
+```
+
+3-6 celle. `variant` colora il valore e (per ok/alert) lo sfondo cella.
+
+### 4.17 `source_legend` — affidabilità dati (Livello 3)
+Appendice tecnica: separa fatti certi da inferenze/benchmark/assunzioni.
+
+```json
+{
+  "type": "source_legend",
+  "title": "Affidabilità dei dati",
+  "items": [
+    { "tag": "verified", "text": "Fatturato 2.4M€", "note": "da bilancio depositato 2024" },
+    { "tag": "inference", "text": "EBITDA stimato 12%", "note": "proiezione su costi dichiarati" },
+    { "tag": "benchmark", "text": "Margine settore 18%", "note": "Mediobanca PMI 2024" },
+    { "tag": "assumption", "text": "Upside ricavi 200k€", "note": "assunzione conversione 15% base clienti" }
+  ]
+}
+```
+
+`tag`: `verified` (verde, dato misurato), `inference` (ambra, deduzione AI), `benchmark` (blu, confronto mercato), `assumption` (rosso, ipotesi).
+
 ---
 
 ## 5. Schema completo riassuntivo
 
-| Blocco | Quando usarlo |
-|---|---|
-| `executive_summary` | Primo blocco, sempre |
-| `kpi_grid` | Quando ci sono 2-6 metriche numeriche chiave |
-| `two_column` | Analisi laterali: dato + qualifier, contesto + insight |
-| `narrative_split` | Strategia / posizionamento con sidebar operativa |
-| `data_table` | Proiezioni, benchmark, scenari, comparativi numerici |
-| `action_list` | Roadmap, piano azione, step prioritari |
-| `risk_mitigation` | Rischi vs mitigazioni — sempre paired |
-| `narrative` | Contesto narrativo lungo (usare con parsimonia) |
-| `conclusions` | Ultimo blocco, sempre |
+| Blocco | Livello | Quando usarlo |
+|---|---|---|
+| `section_break` | tutti | Divide i 3 livelli di lettura (3 per report) |
+| `executive_dashboard` | 1 | Apertura: score + subscore + top-3 + verdetto |
+| `executive_summary` | 1 | Alternativa breve per report qualitativi |
+| `kpi_grid` | 2 | 2-6 metriche numeriche chiave |
+| `benchmark_table` | 2 | Confronto Azienda vs Settore vs Delta |
+| `severity_matrix` | 2 | Criticità con severity/effort/ROI |
+| `two_column` | 2 | Analisi laterali: dato + qualifier |
+| `narrative_split` | 2 | Strategia / posizionamento con sidebar |
+| `data_table` | 2 | Proiezioni, scenari, comparativi numerici |
+| `financial_impact` | 2 | Costo inazione vs upside |
+| `recommendations` | 2 | Azioni per orizzonte temporale |
+| `risk_mitigation` | 2 | Rischi vs mitigazioni (paired) |
+| `narrative` | 2 | Contesto narrativo lungo (parsimonia) |
+| `decision_board` | 2 | Pagina finale decisionale |
+| `source_legend` | 3 | Appendice: fatti vs inferenze, fonti |
+| `conclusions` | — | Chiusura alternativa a decision_board |
+
+---
+
+## 9. Moduli verticali per tipo di report
+
+Core comune (i blocchi sopra) + moduli specifici. Attiva quelli pertinenti al dominio, mappandoli sui blocchi disponibili:
+
+- **Strategy**: SWOT (`two_column` forze/debolezze + opportunità/minacce), Porter (`data_table` 5 forze), scenario planning (`data_table` scenari).
+- **Financial**: cash flow (`data_table`), ratios/indici (`kpi_grid`), DSCR + break-even (`kpi_grid` o `data_table`).
+- **Legal**: compliance gaps (`severity_matrix`), rischi regolatori (`risk_mitigation`), norme citate (`data_table`).
+- **Marketing**: funnel (`data_table`), CAC/ROAS/LTV (`kpi_grid` + `benchmark_table`), piano canali (`recommendations`).
+
+I moduli NON cambiano lo scheletro a 3 livelli: si inseriscono nel Livello 2.
 
 ---
 
@@ -329,19 +507,21 @@ Numeri: `€31.500` (italiano), non `€31,500` (anglosassone). Percentuali con 
 
 ```
 blocks: [
-  executive_summary (con gauge 75/100, 2 badges),
-  kpi_grid ("KPI di Investimento", 4 items),
-  two_column ("Analisi di Mercato — Umbria Centro", left=narrativa+table, right=badges+callout),
-  data_table ("Proiezioni Finanziarie Triennali", 3 rows, callout assunzioni),
-  narrative_split ("Strategia di Posizionamento e Naming", left con card naming, right con piano marketing),
-  action_list ("Piano di Azione Prioritario", 4 items),
-  risk_mitigation ("Analisi Rischi e Mitigazioni", 4 risks, 4 mitigations),
-  data_table ("Benchmark Competitivi Zona", 4 rows competitor, callout posizionamento),
-  conclusions ("Conclusioni e Raccomandazioni", left con raccomandazione, right con 3 milestones)
+  section_break (layer="executive", "Livello 1 — Executive"),
+  executive_dashboard (gauge 74/100, 5 subscore, top-3 criticità/opportunità, verdetto),
+  section_break (layer="analysis", "Livello 2 — Analisi"),
+  benchmark_table ("Benchmark vs settore", 4 righe Azienda/Settore/Delta),
+  severity_matrix ("Matrice priorità", 4 criticità con severity/effort/ROI),
+  data_table ("Proiezioni Finanziarie Triennali", 3 righe, callout assunzioni),
+  financial_impact (costo inazione vs upside),
+  recommendations (3 orizzonti: 0-30gg / 1-3m / 3-12m),
+  decision_board ("Decision Board", 5 celle),
+  section_break (layer="appendix", "Livello 3 — Appendice tecnica"),
+  source_legend ("Affidabilità dei dati", 4 item con tag)
 ]
 ```
 
-9 blocchi totali, ~9 pagine A4. Densità informativa massima senza overload visivo.
+11 blocchi totali (3 bande + 8 contenuto), ~10 pagine A4. Documento che fa decidere, non che spiega.
 
 ---
 

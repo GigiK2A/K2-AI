@@ -273,7 +273,65 @@ def _kpi_dashboard(deliverable, S) -> list:
             ST.kpi_dashboard(cards, S), Spacer(1, 6)]
 
 
+def _decision_board(deliverable, S) -> list:
+    """Board decisionale finale (Livello 2): derivata deterministicamente da
+    score + segnali (urgenza/priorità/rischio/investimento/ROI) già nel deliverable.
+    Chiude il report con 'cosa decidere'. Nessun dato inventato: solo estratti."""
+    score = _find_score(deliverable)
+
+    def find_kv(*hints, maxlen=28):
+        res = [None]
+        def walk(x):
+            if isinstance(x, dict):
+                for k, v in x.items():
+                    if isinstance(v, str) and 0 < len(v) <= maxlen and any(h in k.lower() for h in hints) and not res[0]:
+                        res[0] = v
+                    walk(v)
+            elif isinstance(x, list):
+                for v in x[:20]:
+                    walk(v)
+        walk(deliverable)
+        return res[0]
+
+    cells: list = []
+    if score:
+        sc = score[1]
+        tone = ST.GREEN if sc >= 70 else ST.AMBER if sc >= 45 else ST.RED
+        cells.append({"label": "Score generale", "value": f"{sc}/100", "tone": tone})
+    for hints, label, semaforo in [
+        (("urgenz",), "Urgenza", True),
+        (("priorit",), "Priorità", True),
+        (("rischio", "risk"), "Rischio", True),
+        (("investiment", "budget", "costo_intervent"), "Investimento", False),
+        (("roi", "ritorno", "payback", "recupero"), "ROI atteso", False),
+    ]:
+        val = find_kv(*hints)
+        if val and len(cells) < 6:
+            tone = ST.SEMAFORO.get(val.lower(), ST.NEUTRAL) if semaforo else ST.NEUTRAL
+            cells.append({"label": label, "value": val.capitalize()[:18], "tone": tone})
+    if score and len(cells) < 6:
+        sc = score[1]
+        dec = "Procedere" if sc >= 70 else ("Procedere con cautela" if sc >= 45 else "Intervento urgente")
+        tone = ST.GREEN if sc >= 70 else ST.AMBER if sc >= 45 else ST.RED
+        cells.append({"label": "Decisione", "value": dec, "tone": tone})
+    if len(cells) < 3:
+        return []
+    return [Spacer(1, 10), ST.decision_board(cells, S=S)]
+
+
 # ===================== appendice normativa + disclaimer ==================
+def _appendix(citazioni, deliverable, blueprint, S) -> list:
+    """Blocco Livello 3 — appendice tecnica: fonti, testi normativi, disclaimer.
+    Preceduto dalla banda di livello solo se c'è contenuto reale."""
+    inner: list = []
+    if citazioni:
+        inner += _fonti(citazioni, S) + _testi_normativi(citazioni, S)
+    inner += _disclaimer_inline(deliverable, blueprint, S)
+    if not inner:
+        return []
+    band = ST.layer_band("appendix", "Livello 3 — Appendice tecnica",
+                         "fonti, testi normativi, note metodologiche", S)
+    return [Spacer(1, 8), band] + inner
 def _fonti(citazioni, S):
     out = [Spacer(1, 4), _Heading("Fonti normative", S["h2"], "fonti")]
     for c in citazioni:
@@ -332,8 +390,12 @@ def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, am
     story = [NextPageTemplate("content"), PageBreak()]
     story += _methodology(S, ambito, has_citations)
     story += [PageBreak(), _Heading("Indice del report", S["h1"], "indice"), Spacer(1, 4), toc, PageBreak()]
+    story += [ST.layer_band("executive", "Livello 1 — Executive",
+                            "lettura 30 secondi · per chi decide", S), Spacer(1, 6)]
     story += _exec_summary(deliverable, S)
     story += _kpi_dashboard(deliverable, S)
+    story += [Spacer(1, 8), ST.layer_band("analysis", "Livello 2 — Analisi",
+                                          "5-10 minuti · per il management", S), Spacer(1, 6)]
     story += body_blocks
     story += _cta(S)
     doc.multiBuild(story)
@@ -383,9 +445,8 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
                  "Avvocato" if p.get("handoff_avvocato") else "—"] for p in deliverable["piano_azione"]]
         body.append(ST.premium_table(["#", "Azione", "Handoff"], rows, S,
                                       widths=[12 * mm, ST.CONTENT_W - 42 * mm, 30 * mm]))
-    if citazioni:
-        body += _fonti(citazioni, S) + _testi_normativi(citazioni, S)
-    body += _disclaimer_inline(deliverable, blueprint, S)
+    body += _decision_board(deliverable, S)
+    body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance", has_citations=bool(citazioni))
 
 
@@ -415,6 +476,10 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
             body.append(ST.heatmap(v, S)); body.append(Spacer(1, 4)); return
         if _is_list_of_dicts(v) and _has(v, "valore", "benchmark"):
             body.append(ST.kpi_table(v, S)); body.append(Spacer(1, 4)); return
+        # matrice priorità: criticità con severity/gravità + effort + ROI → tabella colorata
+        if (_is_list_of_dicts(v) and _has(v, "severity", "gravita", "livello")
+                and _has(v, "effort", "sforzo", "roi", "ritorno")):
+            body.append(ST.severity_matrix(v, S)); body.append(Spacer(1, 4)); return
         if _is_list_of_dicts(v) and _has(v, "descrizione", "gravita"):
             for it in v:
                 extra = " · ".join(str(it.get(k)) for k in ("norma_rif", "tipo") if it.get(k))
@@ -487,9 +552,8 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
         render_value(val, 1)
         body.append(Spacer(1, 4))
 
-    if citazioni:
-        body += _fonti(citazioni, S) + _testi_normativi(citazioni, S)
-    body += _disclaimer_inline(deliverable, blueprint, S)
+    body += _decision_board(deliverable, S)
+    body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "professionale", has_citations=bool(citazioni))
 
 

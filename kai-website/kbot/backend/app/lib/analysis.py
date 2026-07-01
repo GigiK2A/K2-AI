@@ -1113,6 +1113,15 @@ _REQUIRED_MIN_CHARS = {
     "data_table": 150,
     "executive_summary": 200,
     "kpi_grid": 80,
+    # Redesign v16 — blocchi decision-support
+    "section_break": 0,          # banda di livello: volutamente breve
+    "executive_dashboard": 200,
+    "benchmark_table": 80,
+    "severity_matrix": 80,
+    "financial_impact": 60,
+    "recommendations": 100,
+    "decision_board": 60,
+    "source_legend": 60,
 }
 
 
@@ -1129,9 +1138,18 @@ def _detect_missing_required_blocks(analysis: dict) -> List[Dict[str, Any]]:
     issues: List[Dict[str, Any]] = []
     blocks = analysis.get("blocks") or []
     present_types = {b.get("type") for b in blocks if isinstance(b, dict)}
+    # Redesign v16: equivalenti che soddisfano il requisito senza duplicare.
+    # apri con executive_summary O executive_dashboard; chiudi con
+    # conclusions O decision_board O source_legend.
+    _EQUIVALENTS = {
+        "executive_summary": {"executive_summary", "executive_dashboard"},
+        "conclusions": {"conclusions", "decision_board", "source_legend"},
+    }
     for required in _REQUIRED_BLOCK_TYPES:
-        if required not in present_types:
-            issues.append({
+        alternatives = _EQUIVALENTS.get(required, {required})
+        if present_types & alternatives:
+            continue
+        issues.append({
                 "block_idx": -1,
                 "block_type": required,
                 "reason": (
