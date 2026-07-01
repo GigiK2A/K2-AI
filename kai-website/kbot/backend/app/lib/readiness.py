@@ -103,7 +103,23 @@ def drop_invalid_optional(form_schema: dict | None, inputs: dict | None) -> tupl
     for k, v in list(inputs.items()):
         if k in required or k not in props:
             continue
-        if not _value_plausible(props[k], v):
+        prop = props[k]
+        # Array a ENUM: l'autofill a volte inventa valori FUORI enum (es.
+        # tratta_dati_personali=['anagrafe_cliente','email'] vs ammessi
+        # ['clienti','dipendenti',...]) → l'8e rifiuta un campo OPZIONALE = vicolo cieco.
+        # Sanitizza: tieni solo i valori ammessi; se resta vuoto, scarta il campo.
+        items = prop.get("items") if isinstance(prop, dict) else None
+        item_enum = items.get("enum") if isinstance(items, dict) else None
+        if item_enum and isinstance(v, list):
+            valid = [x for x in v if x in item_enum]
+            if valid != v:
+                if valid:
+                    inputs[k] = valid
+                else:
+                    inputs.pop(k, None)
+                    dropped.append(k)
+                continue
+        if not _value_plausible(prop, v):
             inputs.pop(k, None)
             dropped.append(k)
     return inputs, dropped

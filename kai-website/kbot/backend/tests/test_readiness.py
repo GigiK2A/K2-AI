@@ -110,3 +110,36 @@ def test_required_fields_hint_empty_when_no_required():
     assert readiness.required_fields_hint([], boost_label="X") == ""
     assert readiness.required_fields_hint(
         [{"id": "a", "obbligatorio": False, "label": "a"}], boost_label="X") == ""
+
+
+# --- Bug M: array a enum opzionale con valori inventati non deve far rifiutare l'8e ---
+_ENUM_SCHEMA = {
+    "type": "object",
+    "required": ["ragione_sociale"],
+    "properties": {
+        "ragione_sociale": {"type": "string"},
+        "tratta_dati_personali": {
+            "type": "array",
+            "items": {"type": "string",
+                      "enum": ["clienti", "dipendenti", "marketing", "fornitori", "videosorveglianza"]},
+        },
+    },
+}
+
+
+def test_drop_invalid_optional_sanitizes_enum_array_keeps_valid():
+    # autofill mescola valori validi ('clienti') e inventati ('email','ip') → filtra ai validi
+    inputs = {"ragione_sociale": "Moda Srl",
+              "tratta_dati_personali": ["clienti", "email", "marketing", "ip"]}
+    out, dropped = readiness.drop_invalid_optional(_ENUM_SCHEMA, inputs)
+    assert out["tratta_dati_personali"] == ["clienti", "marketing"]
+    assert "tratta_dati_personali" not in dropped  # sanitizzato, non scartato
+
+
+def test_drop_invalid_optional_drops_enum_array_when_all_invalid():
+    # tutti fuori enum (il caso reale del Test #5) → scarta il campo, niente refuse 8e
+    inputs = {"ragione_sociale": "Moda Srl",
+              "tratta_dati_personali": ["anagrafe_cliente", "email", "cronologia_acquisti", "ip"]}
+    out, dropped = readiness.drop_invalid_optional(_ENUM_SCHEMA, inputs)
+    assert "tratta_dati_personali" not in out
+    assert "tratta_dati_personali" in dropped
