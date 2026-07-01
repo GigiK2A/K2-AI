@@ -8,9 +8,15 @@ header (page 1) + footer (ogni pagina) via canvas onPage handlers.
 
 Schema input (compatibile col precedente):
 - analysis = {"meta": {...}, "blocks": [...], "footer": {...}}
-- Block types supportati: executive_summary, kpi_grid, two_column,
-  narrative_split, data_table, action_list, risk_mitigation,
+- Block types supportati: executive_summary, executive_dashboard,
+  kpi_grid, two_column, narrative_split, data_table, benchmark_table,
+  severity_matrix, financial_impact, recommendations, decision_board,
+  section_break, source_legend, action_list, risk_mitigation,
   conclusions, narrative.
+
+Redesign v16: struttura a 3 livelli di lettura (Executive / Analisi /
+Appendice) + scoring universale + severity + tag affidabilità dato +
+impatto economico + decision board. Vedi lib/skills/report-premium-design.
 """
 from __future__ import annotations
 
@@ -123,6 +129,19 @@ YELLOW_BG = colors.HexColor("#FBF7EE")
 YELLOW_BORDER = colors.HexColor("#E8D8B8")
 INFO = colors.HexColor("#3B4A6B")
 INFO_BG = colors.HexColor("#F4F5F8")
+
+# Severity scale (matrice priorità) — 4 livelli con tint dedicati.
+SEV_HIGH = colors.HexColor("#B4551E")      # arancione forte (High)
+SEV_HIGH_BG = colors.HexColor("#FBF2EC")
+# Critical → RED/RED_BG ; Medium → ACCENT_WARM/YELLOW_BG ; Low → TEXT_MUTED/SURFACE_2
+
+# Tag affidabilità dato (Livello 3 / inline) — 4 stati.
+TAG_META = {
+    "verified": (GREEN, "Dato verificato"),
+    "inference": (ACCENT_WARM, "Inferenza AI"),
+    "benchmark": (INFO, "Benchmark"),
+    "assumption": (RED, "Assunzione"),
+}
 
 PAGE_W, PAGE_H = A4
 MARGIN_X = 20 * mm                       # spec: 20mm L/R
@@ -1099,13 +1118,574 @@ class _SectionDivider(Flowable):
 
 
 # ---------------------------------------------------------------------------
+# Redesign v16 — blocchi decision-support (3 livelli lettura + scoring)
+# ---------------------------------------------------------------------------
+
+class _MiniBar(Flowable):
+    """Barra orizzontale piena (subscore) — track grigio + fill colorato."""
+    def __init__(self, pct: float, color, width: float = 40 * mm, height: float = 5):
+        super().__init__()
+        self.pct = max(0.0, min(pct, 1.0))
+        self.color = color
+        self.width = width
+        self.h = height
+
+    def wrap(self, aw, ah):
+        return self.width, self.h
+
+    def draw(self):
+        c = self.canv
+        r = self.h / 2
+        c.setFillColor(BORDER)
+        c.roundRect(0, 0, self.width, self.h, r, stroke=0, fill=1)
+        w = max(self.h, self.width * self.pct)
+        c.setFillColor(self.color)
+        c.roundRect(0, 0, w, self.h, r, stroke=0, fill=1)
+
+
+class _TrendMark(Flowable):
+    """Freccia trend disegnata (no glifi font a rischio tofu): up/flat/down."""
+    def __init__(self, trend: str, size: float = 8):
+        super().__init__()
+        self.trend = (trend or "flat").lower()
+        self.s = size
+
+    def wrap(self, aw, ah):
+        return self.s, self.s
+
+    def draw(self):
+        c = self.canv
+        s = self.s
+        if self.trend in ("up", "rising", "su"):
+            c.setFillColor(GREEN)
+            c.setStrokeColor(GREEN)
+            p = c.beginPath(); p.moveTo(0, 0); p.lineTo(s, 0); p.lineTo(s / 2, s); p.close()
+            c.drawPath(p, stroke=0, fill=1)
+        elif self.trend in ("down", "falling", "giu", "giù"):
+            c.setFillColor(RED)
+            p = c.beginPath(); p.moveTo(0, s); p.lineTo(s, s); p.lineTo(s / 2, 0); p.close()
+            c.drawPath(p, stroke=0, fill=1)
+        else:
+            c.setStrokeColor(TEXT_MUTED)
+            c.setLineWidth(1.4)
+            c.line(0, s / 2, s, s / 2)
+
+
+def _tag_html(tag: str, size: int = 11) -> str:
+    """Snippet inline `<font>•</font>` colorato per lo stato affidabilità."""
+    meta = TAG_META.get((tag or "").lower())
+    if not meta:
+        return ""
+    color = meta[0]
+    return f'<font color="{color.hexval()}" size="{size}">•</font>&nbsp;&nbsp;'
+
+
+def _pct(value, max_val) -> float:
+    try:
+        v = float(value); m = float(max_val or 100)
+        return max(0.0, min(v / m, 1.0)) if m else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _render_section_break(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Banda divisoria di LIVELLO (Executive / Analisi / Appendice tecnica).
+
+    Full-width, border-left accento, mono uppercase. Non è una card.
+    """
+    layer = (block.get("layer") or "").lower()
+    title = block.get("title") or ""
+    subtitle = block.get("subtitle") or ""
+    tone_map = {
+        "executive": (GOLD, colors.HexColor("#F0FBF9")),
+        "analysis": (TEXT_SOFT, SURFACE_2),
+        "analisi": (TEXT_SOFT, SURFACE_2),
+        "appendix": (TEXT_MUTED, SURFACE_2),
+        "appendice": (TEXT_MUTED, SURFACE_2),
+    }
+    accent, bg = tone_map.get(layer, (TEXT_SOFT, SURFACE_2))
+    label_style = ParagraphStyle(
+        "layer_label", fontName=_FONTS["mono"], fontSize=8.5, leading=11,
+        textColor=accent,
+    )
+    sub_style = ParagraphStyle(
+        "layer_sub", fontName=_FONTS["body"], fontSize=8.5, leading=11,
+        textColor=TEXT_MUTED,
+    )
+    cells = [[Paragraph(title.upper(), label_style)]]
+    if subtitle:
+        cells.append([Paragraph(subtitle, sub_style)])
+    inner = Table(cells, colWidths=[CONTENT_W - 12])
+    inner.setStyle(TableStyle([
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+    ]))
+    band = Table([[inner]], colWidths=[CONTENT_W])
+    band.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), bg),
+        ("LINEBEFORE", (0, 0), (0, -1), 3, accent),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    return [Spacer(1, 3 * mm), band, Spacer(1, 4 * mm)]
+
+
+def _render_executive_dashboard(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Cruscotto direzionale — Livello 1. Gauge + subscore + top3 + verdetto."""
+    flows: List[Flowable] = _section(
+        _render_block_title(block.get("title") or "Cruscotto direzionale", s), [Spacer(1, 1)]
+    )
+
+    gauge = block.get("gauge") or {}
+    g_val = gauge.get("value")
+    status = block.get("status") or {}
+    priority = block.get("priority") or {}
+    color_map = {"ok": GREEN, "success": GREEN, "warning": ACCENT_WARM,
+                 "alert": RED, "critical": RED, "neutral": TEXT_MUTED, "info": INFO}
+
+    # Colonna sinistra: gauge + status pill + priorità
+    left_cell: List[Flowable] = []
+    if g_val is not None:
+        try:
+            gv = int(g_val); gm = int(gauge.get("max") or 100)
+        except (TypeError, ValueError):
+            gv, gm = 0, 100
+        left_cell.append(GaugeArc(gv, gm))
+    if status.get("label"):
+        sc = color_map.get((status.get("variant") or "neutral").lower(), TEXT_MUTED)
+        st_style = ParagraphStyle("dash_status", fontName=_FONTS["body_sb"], fontSize=9,
+                                  leading=12, textColor=sc, alignment=TA_CENTER)
+        sdot = color_map.get((status.get("variant") or "neutral").lower(), TEXT_MUTED)
+        left_cell.append(Spacer(1, 2 * mm))
+        left_cell.append(_safe_paragraph(
+            f'<font color="{sdot.hexval()}">•</font>&nbsp;&nbsp;{_clean_inline(status["label"])}', st_style))
+    if priority.get("label"):
+        pc = color_map.get((priority.get("variant") or "neutral").lower(), TEXT_MUTED)
+        pr_style = ParagraphStyle("dash_prio", fontName=_FONTS["body"], fontSize=8,
+                                  leading=11, textColor=TEXT_MUTED, alignment=TA_CENTER)
+        left_cell.append(_safe_paragraph(
+            f'Priorità: <font color="{pc.hexval()}"><b>{_clean_inline(priority["label"])}</b></font>', pr_style))
+    if not left_cell:
+        left_cell = [Spacer(1, 1)]
+
+    # Colonna destra: subscore rows (label | value | bar | trend)
+    subs = [x for x in (block.get("subscores") or []) if isinstance(x, dict)][:6]
+    right_cell: List[Flowable] = []
+    if subs:
+        sub_lbl = ParagraphStyle("sub_lbl", fontName=_FONTS["body"], fontSize=8.5,
+                                 leading=11, textColor=TEXT_SOFT)
+        sub_val = ParagraphStyle("sub_val", fontName=_FONTS["mono"], fontSize=9,
+                                 leading=11, textColor=TEXT_DEEP, alignment=TA_RIGHT)
+        hdr = ParagraphStyle("sub_hdr", fontName=_FONTS["mono"], fontSize=7.5,
+                             leading=10, textColor=TEXT_MUTED)
+        right_cell.append(Paragraph("SUBSCORE STANDARD", hdr))
+        right_cell.append(Spacer(1, 2 * mm))
+        bar_w = CONTENT_W * 0.62 - 34 * mm - 30
+        rows = []
+        for sub in subs:
+            pct = _pct(sub.get("value"), sub.get("max") or 100)
+            color = GREEN if pct >= 0.7 else (ACCENT_WARM if pct >= 0.45 else RED)
+            rows.append([
+                Paragraph(_clean_inline(sub.get("label") or ""), sub_lbl),
+                Paragraph(str(sub.get("value") or ""), sub_val),
+                _MiniBar(pct, color, width=max(20 * mm, bar_w)),
+                _TrendMark(sub.get("trend") or "flat"),
+            ])
+        st = Table(rows, colWidths=[CONTENT_W * 0.62 - 34 * mm - 22 * mm - 22,
+                                    18, max(20 * mm, bar_w), 12])
+        st.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (1, -1), 6),
+            ("RIGHTPADDING", (2, 0), (2, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        right_cell.append(st)
+    if not right_cell:
+        right_cell = [Spacer(1, 1)]
+
+    top = Table([[left_cell, right_cell]],
+                colWidths=[CONTENT_W * 0.36, CONTENT_W * 0.64])
+    top.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (0, 0), (0, 0), "CENTER"),
+        ("LEFTPADDING", (0, 0), (0, 0), 0),
+        ("RIGHTPADDING", (0, 0), (0, 0), 10),
+        ("LEFTPADDING", (1, 0), (1, 0), 14),
+        ("RIGHTPADDING", (1, 0), (1, 0), 0),
+    ]))
+    flows.append(top)
+
+    # Top 3 criticità / opportunità
+    problems = [p for p in (block.get("problems") or []) if str(p).strip()][:4]
+    opportunities = [o for o in (block.get("opportunities") or []) if str(o).strip()][:4]
+    if problems or opportunities:
+        head_alert = ParagraphStyle("tt_alert", fontName=_FONTS["body_sb"], fontSize=8,
+                                    leading=11, textColor=RED, spaceAfter=2 * mm)
+        head_ok = ParagraphStyle("tt_ok", fontName=_FONTS["body_sb"], fontSize=8,
+                                 leading=11, textColor=GREEN, spaceAfter=2 * mm)
+
+        def _bullets(items, color):
+            out: List[Flowable] = []
+            for it in items:
+                out.append(_safe_paragraph(
+                    f'<font color="{color.hexval()}">•</font>&nbsp;&nbsp;{_clean_inline(str(it))}', s["body"]))
+            return out or [Spacer(1, 1)]
+
+        pl = [Paragraph("TOP 3 CRITICITÀ", head_alert)] + _bullets(problems, RED)
+        ol = [Paragraph("TOP 3 OPPORTUNITÀ", head_ok)] + _bullets(opportunities, GREEN)
+        grid = Table([[pl, ol]], colWidths=[CONTENT_W / 2, CONTENT_W / 2])
+        grid.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("BOX", (0, 0), (0, 0), 0.5, BORDER),
+            ("BOX", (1, 0), (1, 0), 0.5, BORDER),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        flows.append(Spacer(1, 5 * mm))
+        flows.append(grid)
+
+    # Verdetto
+    verdict = block.get("verdict") or {}
+    vtext = verdict.get("text") or verdict.get("body")
+    if vtext:
+        vc = color_map.get((verdict.get("variant") or "neutral").lower(), TEXT_DEEP)
+        decision = verdict.get("decision") or ""
+        html = f'<b>Verdetto:</b> {_clean_inline(vtext)}'
+        if decision:
+            html += f' <font color="{vc.hexval()}"><b>{_clean_inline(decision)}</b></font>'
+        panel = Table([[_safe_paragraph(html, s["body"])]], colWidths=[CONTENT_W - 24])
+        panel.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), SURFACE_2),
+            ("LINEBEFORE", (0, 0), (0, -1), 2.5, vc),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        flows.append(Spacer(1, 4 * mm))
+        flows.append(panel)
+    return _wrap_in_card(flows)
+
+
+def _render_benchmark_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Benchmark vs settore — KPI | Azienda | Settore | Delta (delta colorato)."""
+    rows_in = [r for r in (block.get("rows") or []) if isinstance(r, (dict, list))]
+    if not rows_in:
+        return []
+    cols = block.get("columns") or ["KPI", "Azienda", "Settore", "Delta"]
+    header = [Paragraph(_clean_inline(str(c)), s["table_th"]) for c in cols[:4]]
+    tone_color = {"ok": GREEN, "success": GREEN, "alert": RED, "critical": RED,
+                  "warning": ACCENT_WARM, "neutral": TEXT_MUTED}
+    body_rows = []
+    for r in rows_in[:14]:
+        if isinstance(r, dict):
+            kpi = r.get("kpi") or r.get("label") or ""
+            company = r.get("company") or r.get("azienda") or ""
+            sector = r.get("sector") or r.get("settore") or ""
+            delta = r.get("delta") or ""
+            tone = (r.get("tone") or "neutral").lower()
+        else:
+            kpi = r[0] if len(r) > 0 else ""
+            company = r[1] if len(r) > 1 else ""
+            sector = r[2] if len(r) > 2 else ""
+            delta = r[3] if len(r) > 3 else ""
+            tone = "neutral"
+        dc = tone_color.get(tone, TEXT_MUTED)
+        delta_style = ParagraphStyle("bm_delta", fontName=_FONTS["mono"], fontSize=9,
+                                     leading=12, textColor=dc, alignment=TA_RIGHT)
+        num_r = ParagraphStyle("bm_num", fontName=_FONTS["mono"], fontSize=9,
+                               leading=12, textColor=TEXT, alignment=TA_RIGHT)
+        num_m = ParagraphStyle("bm_numm", fontName=_FONTS["mono"], fontSize=9,
+                               leading=12, textColor=TEXT_MUTED, alignment=TA_RIGHT)
+        body_rows.append([
+            Paragraph(_clean_inline(str(kpi)), s["table_td_bold"]),
+            Paragraph(_clean_inline(str(company)), num_r),
+            Paragraph(_clean_inline(str(sector)), num_m),
+            Paragraph(f"<b>{_clean_inline(str(delta))}</b>", delta_style),
+        ])
+    col_w = [CONTENT_W * 0.40, CONTENT_W * 0.20, CONTENT_W * 0.20, CONTENT_W * 0.20]
+    tbl = Table([header] + body_rows, colWidths=col_w, repeatRows=1)
+    style_cmds: List[Any] = [
+        ("BACKGROUND", (0, 0), (-1, 0), TEXT_DEEP),
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.5, BORDER),
+    ]
+    for i in range(1, len(body_rows) + 1):
+        if i % 2 == 0:
+            style_cmds.append(("BACKGROUND", (0, i), (-1, i), SURFACE_2))
+    tbl.setStyle(TableStyle(style_cmds))
+    content: List[Flowable] = []
+    intro = block.get("intro")
+    if intro:
+        content.append(Paragraph(_clean_inline(intro), s["body_soft"]))
+        content.append(Spacer(1, 2 * mm))
+    content.append(tbl)
+    note = block.get("note")
+    if note:
+        content.append(Spacer(1, 2 * mm))
+        content.append(Paragraph(f"<i>{_clean_inline(note)}</i>", s["small"]))
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "Benchmark vs settore", s), content))
+
+
+def _render_severity_matrix(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Matrice priorità — Problema | Severity | Effort | ROI, severity a pill."""
+    items = [x for x in (block.get("items") or block.get("rows") or []) if isinstance(x, dict)]
+    if not items:
+        return []
+    sev_palette = {
+        "critical": (RED_BG, RED), "critica": (RED_BG, RED), "alta": (SEV_HIGH_BG, SEV_HIGH),
+        "high": (SEV_HIGH_BG, SEV_HIGH), "medium": (YELLOW_BG, ACCENT_WARM),
+        "media": (YELLOW_BG, ACCENT_WARM), "low": (SURFACE_2, TEXT_MUTED), "bassa": (SURFACE_2, TEXT_MUTED),
+    }
+    roi_color = {"alto": GREEN, "high": GREEN, "medio": TEXT_SOFT, "medium": TEXT_SOFT,
+                 "basso": TEXT_MUTED, "low": TEXT_MUTED}
+    header = [Paragraph(t, s["table_th"]) for t in ("PROBLEMA", "SEVERITY", "EFFORT", "ROI")]
+    rows = [header]
+    sev_cell_variants: List[tuple] = [None]
+    for it in items[:12]:
+        sev = (it.get("severity") or it.get("level") or "").strip()
+        bg, fg = sev_palette.get(sev.lower(), (SURFACE_2, TEXT_MUTED))
+        sev_style = ParagraphStyle("sev_pill", fontName=_FONTS["body_sb"], fontSize=8.5,
+                                   leading=11, textColor=fg, alignment=TA_CENTER)
+        effort = it.get("effort") or ""
+        roi = it.get("roi") or ""
+        rc = roi_color.get(str(roi).lower(), TEXT_SOFT)
+        roi_style = ParagraphStyle("roi_c", fontName=_FONTS["body_sb"], fontSize=9,
+                                   leading=12, textColor=rc)
+        rows.append([
+            Paragraph(_clean_inline(it.get("problem") or it.get("title") or it.get("label") or ""), s["table_td_bold"]),
+            Paragraph(_clean_inline(sev) or "—", sev_style),
+            Paragraph(_clean_inline(str(effort)), s["table_td"]),
+            Paragraph(_clean_inline(str(roi)), roi_style),
+        ])
+        sev_cell_variants.append((bg, fg))
+    col_w = [CONTENT_W * 0.46, CONTENT_W * 0.20, CONTENT_W * 0.17, CONTENT_W * 0.17]
+    tbl = Table(rows, colWidths=col_w, repeatRows=1)
+    style_cmds: List[Any] = [
+        ("BACKGROUND", (0, 0), (-1, 0), TEXT_DEEP),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (1, 1), (1, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.5, BORDER),
+    ]
+    for i, variant in enumerate(sev_cell_variants):
+        if variant is None:
+            continue
+        bg, _fg = variant
+        style_cmds.append(("BACKGROUND", (1, i), (1, i), bg))
+    tbl.setStyle(TableStyle(style_cmds))
+    content: List[Flowable] = []
+    intro = block.get("intro")
+    if intro:
+        content.append(Paragraph(_clean_inline(intro), s["body_soft"]))
+        content.append(Spacer(1, 2 * mm))
+    content.append(tbl)
+    return _wrap_in_card(_section(_render_block_title(block.get("title") or "Matrice priorità", s), content))
+
+
+def _render_financial_impact(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Impatto economico — 2 pannelli: costo inazione (rosso) vs upside (verde)."""
+    inaction = block.get("inaction") or {}
+    action = block.get("action") or {}
+    if not (inaction or action):
+        return []
+
+    def _panel(data: dict, accent, bg, border, default_label: str) -> List[Flowable]:
+        lbl = ParagraphStyle("fi_lbl", fontName=_FONTS["body_sb"], fontSize=8,
+                             leading=11, textColor=accent, spaceAfter=2 * mm)
+        big = ParagraphStyle("fi_big", fontName=_FONTS["title"], fontSize=24,
+                             leading=27, textColor=accent, spaceAfter=1 * mm)
+        note = ParagraphStyle("fi_note", fontName=_FONTS["body"], fontSize=8.5,
+                              leading=12, textColor=accent)
+        inner: List[Flowable] = [Paragraph((data.get("label") or default_label).upper(), lbl)]
+        if data.get("value"):
+            inner.append(Paragraph(_clean_inline(str(data["value"])), big))
+        if data.get("note"):
+            inner.append(Paragraph(_clean_inline(data["note"]), note))
+        cell = Table([[inner]], colWidths=[CONTENT_W / 2 - 6])
+        cell.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), bg),
+            ("BOX", (0, 0), (-1, -1), 0.5, border),
+            ("LEFTPADDING", (0, 0), (-1, -1), 14),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+            ("TOPPADDING", (0, 0), (-1, -1), 14),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        return [cell]
+
+    left = _panel(inaction, RED, RED_BG, RED_BORDER, "Se non agisci")
+    right = _panel(action, GREEN, GREEN_BG, GREEN_BORDER, "Se agisci")
+    grid = Table([[left, right]], colWidths=[CONTENT_W / 2, CONTENT_W / 2])
+    grid.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (0, 0), 0),
+        ("RIGHTPADDING", (0, 0), (0, 0), 6),
+        ("LEFTPADDING", (1, 0), (1, 0), 6),
+        ("RIGHTPADDING", (1, 0), (1, 0), 0),
+    ]))
+    return _wrap_in_card(_section(
+        _render_block_title(block.get("title") or "Impatto economico", s), [grid]))
+
+
+def _render_recommendations(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Azioni raccomandate per orizzonte temporale (0-30gg / 1-3m / 3-12m)."""
+    horizons = [h for h in (block.get("horizons") or []) if isinstance(h, dict)]
+    if not horizons:
+        return []
+    tone_color = {"alert": RED, "critical": RED, "warning": ACCENT_WARM,
+                  "ok": GREEN, "success": GREEN, "neutral": TEXT_SOFT, "info": INFO}
+    default_tones = [RED, ACCENT_WARM, GREEN]
+    flows: List[Flowable] = []
+    intro = block.get("intro")
+    if intro:
+        flows.append(Paragraph(_clean_inline(intro), s["body_soft"]))
+        flows.append(Spacer(1, 2 * mm))
+    for idx, h in enumerate(horizons[:5]):
+        color = tone_color.get((h.get("tone") or "").lower(), default_tones[idx % 3])
+        lbl_style = ParagraphStyle("rec_lbl", fontName=_FONTS["mono"], fontSize=8,
+                                   leading=11, textColor=color)
+        items = [str(x) for x in (h.get("items") or []) if str(x).strip()]
+        item_flows: List[Flowable] = []
+        for it in items[:8]:
+            item_flows.append(_bullet_paragraph(_clean_inline(it), s["body"]))
+        if not item_flows:
+            item_flows = [Spacer(1, 1)]
+        row = Table([[Paragraph((h.get("label") or "").upper(), lbl_style), item_flows]],
+                    colWidths=[32 * mm, CONTENT_W - 32 * mm])
+        row.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (0, 0), 0),
+            ("RIGHTPADDING", (0, 0), (0, 0), 10),
+            ("LEFTPADDING", (1, 0), (1, 0), 10),
+            ("RIGHTPADDING", (1, 0), (1, 0), 0),
+            ("LINEBEFORE", (1, 0), (1, 0), 2, color),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        flows.append(row)
+        if idx < min(len(horizons), 5) - 1:
+            flows.append(Spacer(1, 3 * mm))
+    return _wrap_in_card(_section(
+        _render_block_title(block.get("title") or "Azioni raccomandate", s), flows))
+
+
+def _render_decision_board(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Decision Board — riga finale decisionale (N celle, ultima evidenziata)."""
+    cells = [c for c in (block.get("cells") or block.get("items") or []) if isinstance(c, dict)]
+    if not cells:
+        return []
+    cells = cells[:6]
+    color_map = {"ok": GREEN, "success": GREEN, "warning": ACCENT_WARM,
+                 "alert": RED, "critical": RED, "neutral": TEXT_DEEP, "info": INFO}
+    lbl_style = ParagraphStyle("db_lbl", fontName=_FONTS["mono"], fontSize=7.5,
+                               leading=10, textColor=TEXT_MUTED, alignment=TA_LEFT)
+    row_cells: List[List[Flowable]] = []
+    n = len(cells)
+    col_w = CONTENT_W / n
+    style_cmds: List[Any] = [
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BACKGROUND", (0, 0), (-1, -1), WHITE),
+        ("LINEAFTER", (0, 0), (-2, -1), 0.5, BORDER),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 12),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+    ]
+    for i, c in enumerate(cells):
+        vc = color_map.get((c.get("variant") or "neutral").lower(), TEXT_DEEP)
+        val_style = ParagraphStyle(f"db_val_{i}", fontName=_FONTS["body_sb"], fontSize=11,
+                                   leading=14, textColor=vc)
+        stack = [Paragraph(_clean_inline(c.get("label") or ""), lbl_style), Spacer(1, 1.5 * mm),
+                 _safe_paragraph(_clean_inline(str(c.get("value") or "")), val_style)]
+        row_cells.append(stack)
+        variant = (c.get("variant") or "").lower()
+        if variant in ("ok", "success"):
+            style_cmds.append(("BACKGROUND", (i, 0), (i, 0), GREEN_BG))
+        elif variant in ("alert", "critical"):
+            style_cmds.append(("BACKGROUND", (i, 0), (i, 0), RED_BG))
+    tbl = Table([row_cells], colWidths=[col_w] * n)
+    tbl.setStyle(TableStyle(style_cmds))
+
+    head_style = ParagraphStyle("db_head", fontName=_FONTS["mono"], fontSize=9,
+                                leading=12, textColor=WHITE)
+    head = Table([[Paragraph((block.get("title") or "DECISION BOARD").upper(), head_style)]],
+                 colWidths=[CONTENT_W])
+    head.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), TEXT_DEEP),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    wrapper = Table([[head], [tbl]], colWidths=[CONTENT_W])
+    wrapper.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 1, TEXT_DEEP),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    return [Spacer(1, 4 * mm), KeepTogether([wrapper]), Spacer(1, 6 * mm), _SectionDivider()]
+
+
+def _render_source_legend(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flowable]:
+    """Legenda affidabilità dato + elenco fatti/inferenze/benchmark/assunzioni."""
+    flows: List[Flowable] = _section(
+        _render_block_title(block.get("title") or "Affidabilità dei dati", s), [Spacer(1, 1)])
+    # Legenda 4 stati su una riga
+    leg_style = ParagraphStyle("leg", fontName=_FONTS["body"], fontSize=8.5,
+                               leading=12, textColor=TEXT_SOFT)
+    legend_parts = []
+    for tag, (color, label) in TAG_META.items():
+        legend_parts.append(f'<font color="{color.hexval()}" size="11">•</font>&nbsp;{label}')
+    flows.append(_safe_paragraph("&nbsp;&nbsp;&nbsp;".join(legend_parts), leg_style))
+    flows.append(Spacer(1, 3 * mm))
+    items = [x for x in (block.get("items") or []) if isinstance(x, dict)]
+    for it in items[:20]:
+        tag_html = _tag_html(it.get("tag") or "", 11)
+        text = _clean_inline(it.get("text") or "")
+        note = _clean_inline(it.get("note") or "")
+        html = f'{tag_html}{text}'
+        if note:
+            html += f' <font color="{TEXT_MUTED.hexval()}">— {note}</font>'
+        flows.append(_safe_paragraph(html, s["body"]))
+    return _wrap_in_card(flows)
+
+
+# ---------------------------------------------------------------------------
 # Block dispatcher
 # ---------------------------------------------------------------------------
 
 _BLOCK_RENDERERS = {
     "executive_summary": _render_executive_summary,
+    "executive_dashboard": _render_executive_dashboard,
     "kpi_grid": _render_kpi_grid,
     "data_table": _render_data_table,
+    "benchmark_table": _render_benchmark_table,
+    "severity_matrix": _render_severity_matrix,
+    "financial_impact": _render_financial_impact,
+    "recommendations": _render_recommendations,
+    "decision_board": _render_decision_board,
+    "section_break": _render_section_break,
+    "source_legend": _render_source_legend,
     "two_column": _render_two_column,
     "narrative_split": _render_narrative_split,
     "action_list": _render_action_list,
@@ -1347,7 +1927,8 @@ def _normalize_blocks(blocks: list) -> list:
             log.warning("Block %r skipped: no content", btype)
             continue
         safe.append(b)
-    if not safe or safe[-1].get("type") != "conclusions":
+    _terminal = {"conclusions", "decision_board", "source_legend"}
+    if not safe or safe[-1].get("type") not in _terminal:
         safe.append({
             "type": "conclusions",
             "title": "Conclusioni e Prossimi Passi",
