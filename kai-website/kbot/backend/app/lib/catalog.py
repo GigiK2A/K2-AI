@@ -184,10 +184,13 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
     (("marketing", "brand", "awareness", "notorietà", "visibilità", "campagn", "funnel", "social",
       "lead generation", "acquisizione clienti", "studio di mercato", "competitor", "benchmark",
       "comunicazione", "pubblicità", "advertising"), "checkup_marketing"),
-    # NB: ex checkup_advisor, ma AdvisorBoost fallisce la validazione (schema
-    # numerico stringente) → instrado su ControlBoost finché non è irrobustito.
-    # AdvisorBoost resta scegliibile a mano dal selettore del pannello.
-    (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione"), "checkup_controllo"),
+    # Strategia/crescita → StrategyBoost (checkup_marketing = "Strategia e crescita"):
+    # è il suo scope esatto (posizionamento competitivo, canali di crescita, entry
+    # mercati). Prima puntava a ControlBoost (workaround di quando qui c'era
+    # checkup_advisor, che falliva la validazione) → una diagnosi strategica finiva
+    # sul "cruscotto direzionale" e il form chiedeva mese/costi_operativi = vicolo
+    # cieco. AdvisorBoost resta scegliibile a mano dal selettore del pannello.
+    (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione"), "checkup_marketing"),
 ]
 
 # Default quando nessuna keyword combacia: ControlBoost (cruscotto direzionale),

@@ -15,10 +15,7 @@ from typing import Optional
 
 from datetime import datetime, timezone
 
-import os
-
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .. import settings
@@ -481,48 +478,42 @@ async def status(job_id: str):
 
 @router.get("/deliverables/{job_id}/pdf")
 async def deliverable_pdf(job_id: str):
-    """Serve il PDF del deliverable generato dal motore 8e. Nel container unico 8e
-    e backend kbot condividono il filesystem → il PDF si legge dal path locale
-    prodotto dal 8e. Nessuna auth: job_id opaco, come lo status poll."""
+    """Serve il PDF del deliverable generato dal motore 8e. L'8e gira in un container
+    Railway SEPARATO: il filesystem NON è condiviso, quindi il PDF si scarica dai
+    byte via HTTP (engine.fetch_output) e non da un path locale. Nessuna auth:
+    job_id opaco, come lo status poll."""
+    from fastapi.responses import Response
     try:
-        job = await _get_job(job_id)
+        content, _ = await engine.fetch_output(job_id, "pdf")
     except engine.EngineError as e:
+        if str(e) == "not_found":
+            raise HTTPException(status_code=404, detail="pdf non disponibile")
+        if str(e) == "not_ready":
+            raise HTTPException(status_code=409, detail="documento non ancora pronto")
         raise HTTPException(status_code=502, detail=str(e))
-    if job.get("status") != "rendered":
-        raise HTTPException(status_code=409, detail="documento non ancora pronto")
-    pdf_path = (job.get("outputs") or {}).get("pdf_path")
-    if not pdf_path or not os.path.isfile(pdf_path):
-        raise HTTPException(status_code=404, detail="pdf non disponibile")
-    # Sicurezza: solo file sotto la out-dir del motore 8e (niente path traversal).
-    out_root = os.path.realpath(os.environ.get("K2A_8E_OUT_DIR", "/tmp/8e_out"))
-    if not os.path.realpath(pdf_path).startswith(out_root + os.sep):
-        raise HTTPException(status_code=403, detail="percorso non consentito")
-    return FileResponse(pdf_path, media_type="application/pdf", filename="report-k2ai.pdf")
+    return Response(content=content, media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="report-k2ai.pdf"'})
 
 
 @router.get("/deliverables/{job_id}/xlsx")
 async def deliverable_xlsx(job_id: str):
     """Excel 'modello vivo' del deliverable Boost — il 2° file del bundle (oltre al
-    PDF). Legge il deliverable.json prodotto dall'8e (filesystem condiviso, come il
-    PDF) e lo rende un Excel multi-foglio editabile (opzioni scorate, iniziative,
-    KPI...). On-demand: nessun costo di generazione, deterministico."""
+    PDF). Scarica il deliverable.json dall'8e via HTTP (filesystem NON condiviso,
+    l'8e è un servizio separato) e lo rende un Excel multi-foglio editabile
+    (opzioni scorate, iniziative, KPI...). On-demand, deterministico."""
     import json as _json
     from fastapi.responses import Response
     from ..lib.xlsx_renderer import render_deliverable_8e_xlsx
     try:
-        job = await _get_job(job_id)
+        raw, _ = await engine.fetch_output(job_id, "json")
     except engine.EngineError as e:
+        if str(e) == "not_found":
+            raise HTTPException(status_code=404, detail="modello Excel non disponibile per questo documento")
+        if str(e) == "not_ready":
+            raise HTTPException(status_code=409, detail="documento non ancora pronto")
         raise HTTPException(status_code=502, detail=str(e))
-    if job.get("status") != "rendered":
-        raise HTTPException(status_code=409, detail="documento non ancora pronto")
-    json_path = (job.get("outputs") or {}).get("json_path")
-    if not json_path or not os.path.isfile(json_path):
-        raise HTTPException(status_code=404, detail="modello Excel non disponibile per questo documento")
-    out_root = os.path.realpath(os.environ.get("K2A_8E_OUT_DIR", "/tmp/8e_out"))
-    if not os.path.realpath(json_path).startswith(out_root + os.sep):
-        raise HTTPException(status_code=403, detail="percorso non consentito")
     try:
-        deliverable = _json.loads(open(json_path, encoding="utf-8").read())
+        deliverable = _json.loads(raw.decode("utf-8"))
         data = render_deliverable_8e_xlsx(deliverable)
     except Exception as exc:
         log.warning("xlsx render fallito per %s: %s", job_id, exc)
@@ -555,21 +546,16 @@ async def save_deliverable(body: SaveDeliverableBody,
     if collected.get("deliverable_saved_job") == body.jobId and session.get("pdf_url"):
         return {"pdf_url": session["pdf_url"], "cached": True}
 
+    # Scarica il PDF dall'8e via HTTP (filesystem NON condiviso: servizio separato).
     try:
-        job = await _get_job(body.jobId)
+        content, _ = await engine.fetch_output(body.jobId, "pdf")
     except engine.EngineError as e:
+        if str(e) == "not_found":
+            raise HTTPException(status_code=404, detail="pdf non disponibile")
+        if str(e) == "not_ready":
+            raise HTTPException(status_code=409, detail="documento non ancora pronto")
         raise HTTPException(status_code=502, detail=str(e))
-    if job.get("status") != "rendered":
-        raise HTTPException(status_code=409, detail="documento non ancora pronto")
-    pdf_path = (job.get("outputs") or {}).get("pdf_path")
-    if not pdf_path or not os.path.isfile(pdf_path):
-        raise HTTPException(status_code=404, detail="pdf non disponibile")
-    out_root = os.path.realpath(os.environ.get("K2A_8E_OUT_DIR", "/tmp/8e_out"))
-    if not os.path.realpath(pdf_path).startswith(out_root + os.sep):
-        raise HTTPException(status_code=403, detail="percorso non consentito")
 
-    with open(pdf_path, "rb") as f:
-        content = f.read()
     public_url = upload_pdf(
         bucket=STORAGE_REPORTS_BUCKET,
         path=f"deliverables/{body.sessionId}/{body.jobId}.pdf",

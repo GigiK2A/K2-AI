@@ -109,6 +109,28 @@ async def get_deliverable(job_id: str) -> dict:
     return r.json()
 
 
+_FILE_TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+
+
+async def fetch_output(job_id: str, fmt: str = "pdf") -> tuple[bytes, str]:
+    """Scarica i BYTE di un output del deliverable (pdf/json/html/xlsx) dall'8e.
+
+    I file vivono sul filesystem del motore 8e (servizio Railway separato): il
+    backend K-BOT NON li condivide, quindi li deve scaricare via HTTP invece di
+    leggerli da un path locale. Ritorna (contenuto, content-type).
+    Solleva EngineError('not_found') su 404, EngineError su altri errori."""
+    async with httpx.AsyncClient(timeout=_FILE_TIMEOUT) as c:
+        r = await c.get(f"{ENGINE_8E_BASE_URL}/v1/deliverables/{job_id}/file",
+                        params={"fmt": fmt}, headers=_headers())
+    if r.status_code == 404:
+        raise EngineError("not_found")
+    if r.status_code == 409:
+        raise EngineError("not_ready")
+    if r.status_code != 200:
+        raise EngineError(f"8e file {r.status_code}: {r.text[:200]}")
+    return r.content, r.headers.get("content-type", "application/octet-stream")
+
+
 _FORM_CACHE: dict[str, tuple[float, dict]] = {}
 _FORM_TTL_S = 600  # 10 min: i form 8e sono semi-statici, ma un cambio schema lato 8e DEVE
                    # propagare al K-BOT. Prima la cache era eterna → uno schema aggiornato
