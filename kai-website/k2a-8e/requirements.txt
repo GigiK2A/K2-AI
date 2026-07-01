@@ -11,3 +11,6 @@ PyJWT>=2.8
 # Senza, gli hook deterministici di advisor/finance/fisco/mep crashano in esecuzione in prod.
 numpy>=1.26
 scipy>=1.11
+# FinanceBoost: app/xlsx.py genera modello-finanziario.xlsx (formule vive) con openpyxl.
+# Senza, render_finance_workbook crasha (ModuleNotFoundError) → il job FinanceBoost fallisce.
+openpyxl>=3.1

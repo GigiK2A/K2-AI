@@ -74,6 +74,37 @@ def _coerce(value: Any, tipo: Optional[str]) -> Any:
     return value
 
 
+def _as_num(x: Any) -> Optional[float]:
+    try:
+        return float(str(x).replace(".", "").replace(",", ".")) if isinstance(x, str) and x.count(",") == 1 \
+            else float(str(x).replace(",", ""))
+    except Exception:
+        return None
+
+
+def _bilancio_ha_attivo(b: Any) -> bool:
+    """Un bilancio VERO ha un attivo (stato patrimoniale). L'autofill a volte fabbrica un
+    bilancio da frammenti di chat (solo utile/debiti, attivo=0): non quadra e l'8e lo
+    rifiuta. Meglio scartarlo qui → il campo resta mancante → parte il report preliminare
+    (dati parziali + ipotesi) invece di numeri finti (es. utile scambiato per patrimonio netto).
+    Conservativo: scarta SOLO se non trova alcun attivo positivo (un SP reale ne ha sempre)."""
+    if not isinstance(b, dict):
+        return False
+    tot = 0.0
+    voci = b.get("voci")
+    if isinstance(voci, list):
+        for v in voci:
+            if isinstance(v, dict) and str(v.get("sezione", "")).lower().startswith("attiv"):
+                n = _as_num(v.get("valore") or v.get("importo"))
+                if n:
+                    tot += n
+    for k in ("attivo", "totale_attivo", "attivo_totale"):
+        n = _as_num(b.get(k))
+        if n:
+            tot += n
+    return tot > 0
+
+
 def extract_inputs(session: dict, campi: list[dict]) -> dict:
     """Conversazione + file caricati → dict di input conformi ai campi del boost.
 
@@ -156,6 +187,17 @@ def extract_inputs(session: dict, campi: list[dict]) -> dict:
             out[k] = _coerce(v, c.get("tipo"))
         except Exception:
             continue  # tipo non coercibile → salta il campo
+    # Bug-F: scarta bilanci fabbricati senza attivo (frammenti di chat, non un SP reale).
+    # Se nessun bilancio è valido, ometti il campo → il gate lo vede mancante → report
+    # preliminare (dati parziali) invece di alimentare il motore con numeri incoerenti.
+    if isinstance(out.get("bilanci"), list):
+        good = [b for b in out["bilanci"] if _bilancio_ha_attivo(b)]
+        if good:
+            out["bilanci"] = good
+        else:
+            out.pop("bilanci", None)
+            log.info("autofill: scartato bilancio senza attivo (fabbricato da frammenti) → preliminare")
+
     # ragione_sociale è un metadato trasversale (non un campo del form): il motore lo
     # richiede per personalizzare e identificare il report → tienilo se estratto.
     rs = data.get("ragione_sociale")

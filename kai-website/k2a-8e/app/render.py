@@ -381,13 +381,30 @@ def _cover_meta(deliverable, blueprint, default_titolo, sottotitolo, valore):
     }, modulo
 
 
-def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, ambito, has_citations: bool = False):
+def _preliminary_banner(S):
+    """Avviso in testa al documento quando è un REPORT PRELIMINARE (dati parziali):
+    l'utente deve capire subito che alcune voci sono stime da confermare."""
+    txt = ("<b>REPORT PRELIMINARE</b> — basato sui dati finora disponibili. Le voci "
+           "mancanti sono trattate come stime esplicite («valori indicativi: ipotesi da "
+           "confermare»). Completa i dati richiesti per la versione definitiva, senza ripagare.")
+    box = Table([[Paragraph(txt, S["small"])]], colWidths=[ST.CONTENT_W])
+    box.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), ST.WARM),
+                             ("BOX", (0, 0), (-1, -1), 1, ST.LINE),
+                             ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                             ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]))
+    return [box, Spacer(1, 8)]
+
+
+def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, ambito,
+           has_citations: bool = False, preliminare: bool = False):
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
     S = ST.styles()
     doc = _Doc(pdf_path, cover_meta, report_name)
     toc = TableOfContents()
     toc.levelStyles = [S["toc"]]
     story = [NextPageTemplate("content"), PageBreak()]
+    if preliminare:
+        story += _preliminary_banner(S)
     story += _methodology(S, ambito, has_citations)
     story += [PageBreak(), _Heading("Indice del report", S["h1"], "indice"), Spacer(1, 4), toc, PageBreak()]
     story += [ST.layer_band("executive", "Livello 1 — Executive",
@@ -414,7 +431,8 @@ def _disclaimer_inline(deliverable, blueprint, S):
 
 
 # ========================= LegalBoost (dedicato) =========================
-def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Path) -> None:
+def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Path,
+               preliminare: bool = False) -> None:
     S = ST.styles()
     cover_meta, report_name = _cover_meta(deliverable, blueprint, "LegalBoost",
                                           "Diagnosi legale e compliance",
@@ -447,7 +465,8 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
                                       widths=[12 * mm, ST.CONTENT_W - 42 * mm, 30 * mm]))
     body += _decision_board(deliverable, S)
     body += _appendix(citazioni, deliverable, blueprint, S)
-    _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance", has_citations=bool(citazioni))
+    _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance",
+           has_citations=bool(citazioni), preliminare=preliminare)
 
 
 # ========================= Generico (a componenti) =======================
@@ -459,7 +478,8 @@ def _has(items, *keys):
     return items and all(any(k in it for k in keys) for it in items[:2])
 
 
-def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Path) -> None:
+def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Path,
+                       preliminare: bool = False) -> None:
     S = ST.styles()
     cover_meta, report_name = _cover_meta(deliverable, blueprint, "Deliverable K2-AI",
                                           "Diagnosi professionale",
@@ -554,7 +574,8 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
 
     body += _decision_board(deliverable, S)
     body += _appendix(citazioni, deliverable, blueprint, S)
-    _build(pdf_path, cover_meta, report_name, body, deliverable, "professionale", has_citations=bool(citazioni))
+    _build(pdf_path, cover_meta, report_name, body, deliverable, "professionale",
+           has_citations=bool(citazioni), preliminare=preliminare)
 
 
 def render_html(deliverable: dict, blueprint: dict, citazioni: list) -> str:

@@ -277,20 +277,34 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
     # lascia decidere all'8e.)
     missing = readiness.missing_required(campi, inputs)
     needs_identity = not readiness.has_identity(inputs)  # il Gate 0 dell'8e esige il nome cliente
-    if missing or needs_identity:
-        labels = readiness.format_missing_labels(missing)
-        if needs_identity:
-            labels = "la ragione sociale (nome dell'azienda)" + (f"; {labels}" if labels else "")
-        miss_ids = (["ragione_sociale"] if needs_identity else []) + [c.get("id") for c in missing]
+    # Dedup (bug UX): se manca l'identità, non elencare ANCHE il campo 'ragione_sociale'
+    # del form → prima usciva doppio ("la ragione sociale; Ragione sociale o nome…").
+    missing_non_identity = [c for c in missing if c.get("id") != "ragione_sociale"]
+
+    auth_level = "FULL"
+    if needs_identity:
+        # UNICO blocco vero: senza il nome dell'azienda non possiamo intestare il documento.
+        labels = readiness.format_missing_labels(missing_non_identity)
+        msg = "la ragione sociale (nome dell'azienda)" + (f"; {labels}" if labels else "")
+        miss_ids = ["ragione_sociale"] + [c.get("id") for c in missing_non_identity]
         raise HTTPException(status_code=409, detail={
             "reason": "needs_input",
             "servizio_id": servizio_id,
             "missing": miss_ids,
             "message": (
-                f"Per generare «{servizio.get('label') or servizio_id}» mi servono ancora: "
-                f"{labels}. Scrivimeli in chat e premi di nuovo Genera."
+                f"Per generare «{servizio.get('label') or servizio_id}» mi serve almeno: "
+                f"{msg}. Scrivimelo in chat e premi di nuovo Genera."
             ),
         })
+    if missing_non_identity:
+        # Mancano campi ma NON l'identità → REPORT PRELIMINARE: si genera comunque con i
+        # dati disponibili + ipotesi etichettate, invece del vicolo cieco. A pagamento come
+        # il completo; l'utente completa i dati e raffina senza ripagare. La ricerca web ha
+        # già provato a riempire i campi pubblici (competitor/mercato) qui sopra.
+        auth_level = "PARTIAL"
+        collected["deliverable_preliminare"] = [c.get("id") for c in missing_non_identity]
+        log.info("auto: report PRELIMINARE per %s, campi stimati=%s",
+                 servizio_id, [c.get("id") for c in missing_non_identity])
 
     # Paywall reale (KBOT_FREE_MODE off): se non pagato → 402 con i dati per il
     # checkout del boost (il frontend apre Stripe e al ritorno genera).
@@ -318,7 +332,7 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
     try:
         res = await engine.create_deliverable(
             service_id=servizio_id, inputs=inputs,
-            entitlement_token=entitlement_token, tier=servizio.get("tipo"), auth_level="FULL",
+            entitlement_token=entitlement_token, tier=servizio.get("tipo"), auth_level=auth_level,
         )
     except engine.EnginePaymentRequired:
         raise HTTPException(status_code=402, detail="entitlement rifiutato dall'8e")
