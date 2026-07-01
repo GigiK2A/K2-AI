@@ -578,6 +578,117 @@ def section_number(num: int, title: str, S=None) -> Table:
     return t
 
 
+# ===================== REDESIGN v16 — decision support ==================
+# Coerente col report premium K-BOT (stessa struttura), palette 8e (oro/carbon).
+
+_LAYER_TONE = {
+    "executive": GOLD,
+    "analysis": TEXT_GRAY, "analisi": TEXT_GRAY,
+    "appendix": NEUTRAL, "appendice": NEUTRAL,
+}
+
+
+def layer_band(layer: str, title: str, subtitle: str = "", S=None) -> Table:
+    """Banda di livello di lettura (Executive / Analisi / Appendice) — full width."""
+    S = S or styles()
+    accent = _LAYER_TONE.get(str(layer).lower(), TEXT_GRAY)
+    bg = CREAM if str(layer).lower() == "executive" else WARM
+    inner = [Paragraph(f'<font name="{F_MONO}" size="8.5" color="{hx(accent)}">'
+                       f'{html_escape(title).upper()}</font>', S["kv"])]
+    if subtitle:
+        inner.append(Paragraph(f'<font name="{F_BODY}" size="8.5" color="{hx(NEUTRAL)}">'
+                               f'{html_escape(subtitle)}</font>', S["kv"]))
+    t = Table([["", inner]], colWidths=[3, CONTENT_W - 3], hAlign="LEFT")
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), accent),
+        ("BACKGROUND", (1, 0), (1, -1), bg),
+        ("LEFTPADDING", (1, 0), (1, -1), 12), ("RIGHTPADDING", (1, 0), (1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    return t
+
+
+def decision_board(cells: list[dict], title="Decision Board", S=None) -> Table:
+    """Board decisionale finale: header carbon + celle (label + valore colorato).
+    cells = [{label, value, tone?}]. L'ultima cella evidenziata se tone verde/rosso."""
+    S = S or styles()
+    cells = [c for c in cells if isinstance(c, dict)][:6]
+    if not cells:
+        return Spacer(0, 0)
+    head = Paragraph(f'<font name="{F_MONO}" size="9" color="white">{html_escape(title).upper()}</font>', S["kv"])
+    head_row = Table([[head]], colWidths=[CONTENT_W])
+    head_row.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), CARBON),
+                                  ("LEFTPADDING", (0, 0), (-1, -1), 14), ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+                                  ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]))
+    n = len(cells)
+    cw = CONTENT_W / n
+    row = []
+    style = [("VALIGN", (0, 0), (-1, -1), "TOP"),
+             ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+             ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+             ("TOPPADDING", (0, 0), (-1, -1), 12), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+             ("LINEAFTER", (0, 0), (-2, -1), 0.5, LINE)]
+    for i, c in enumerate(cells):
+        tone = c.get("tone") or NEUTRAL
+        stack = [Paragraph(f'<font name="{F_MONO}" size="7.5" color="{hx(NEUTRAL)}">'
+                           f'{html_escape(c.get("label", "")).upper()}</font>', S["kv"]),
+                 Spacer(1, 3),
+                 Paragraph(f'<font name="{F_BOLD}" size="11" color="{hx(tone if tone != NEUTRAL else CARBON)}">'
+                           f'{html_escape(c.get("value", ""))}</font>', S["kv"])]
+        row.append(stack)
+        if tone == GREEN:
+            style.append(("BACKGROUND", (i, 0), (i, 0), colors.HexColor("#F1F7F0")))
+        elif tone == RED:
+            style.append(("BACKGROUND", (i, 0), (i, 0), colors.HexColor("#FBF2F1")))
+    grid = Table([row], colWidths=[cw] * n)
+    grid.setStyle(TableStyle(style))
+    wrap = Table([[head_row], [grid]], colWidths=[CONTENT_W])
+    wrap.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 1, CARBON),
+                              ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                              ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
+    return wrap
+
+
+_SEV_TONE = {"critical": RED, "critica": RED, "alta": RED, "high": colors.HexColor("#C2410C"),
+             "media": AMBER, "medium": AMBER, "bassa": NEUTRAL, "low": NEUTRAL}
+
+
+def severity_matrix(items: list, S=None) -> Table:
+    """Matrice priorità: Problema | Severity | Effort | ROI (severity colorata)."""
+    S = S or styles()
+    rows_in = [it for it in items if isinstance(it, dict)]
+    if not rows_in:
+        return Spacer(0, 0)
+    head = [Paragraph(f'<font name="{F_BOLD}" size="8.5" color="{hx(CARBON)}">{h}</font>', S["kv"])
+            for h in ("Problema", "Severity", "Effort", "ROI")]
+    data = [head]
+    for it in rows_in[:12]:
+        sev = str(it.get("severity") or it.get("gravita") or it.get("livello") or "")
+        col = _SEV_TONE.get(sev.lower(), NEUTRAL)
+        prob = str(it.get("problema") or it.get("problem") or it.get("titolo") or it.get("descrizione") or "")
+        effort = str(it.get("effort") or it.get("sforzo") or "")
+        roi = str(it.get("roi") or it.get("ritorno") or "")
+        rc = SEMAFORO.get(roi.lower(), TEXT)
+        data.append([
+            Paragraph(f'<b>{html_escape(prob)}</b>', S["body"]),
+            Paragraph(f'<font name="{F_BOLD}" color="{hx(col)}">{html_escape(sev.capitalize())}</font>', S["body"]),
+            Paragraph(html_escape(effort), S["body"]),
+            Paragraph(f'<font color="{hx(rc)}">{html_escape(roi.capitalize())}</font>', S["body"]),
+        ])
+    widths = [CONTENT_W * w for w in (0.46, 0.20, 0.17, 0.17)]
+    t = Table(data, colWidths=widths, hAlign="LEFT", repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), CREAM),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.0, GOLD),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.4, LINE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, CARD]),
+        ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return t
+
+
 # ===================== COPERTINA + PAGINE FISSE ==========================
 def _kicker(canvas, x, y, text, size=7.5, color=GOLD_DK, spacing=1.4, right=None):
     """Etichetta uppercase con letter-spacing (look editoriale del riferimento).

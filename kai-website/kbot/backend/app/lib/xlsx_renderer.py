@@ -106,6 +106,65 @@ def _summary_lines(blocks: List[dict]) -> List[str]:
                     if body:
                         lines.append(body)
             lines.append("")
+        elif btype == "section_break":
+            lbl = _strip_html(b.get("title") or b.get("layer") or "")
+            if lbl:
+                lines.append("")
+                lines.append(f"=== {lbl.upper()} ===")
+        elif btype == "executive_dashboard":
+            lines.append((title or "Cruscotto direzionale").upper())
+            gauge = b.get("gauge") or {}
+            if gauge.get("value") not in (None, ""):
+                lines.append(f"Punteggio generale: {gauge.get('value')}/{gauge.get('max') or 100}")
+            status = b.get("status") or {}
+            if status.get("label"):
+                lines.append(f"Stato: {_strip_html(status.get('label'))}")
+            for sub in b.get("subscores") or []:
+                if isinstance(sub, dict) and sub.get("label"):
+                    lines.append(f"  • {_strip_html(sub.get('label'))}: {sub.get('value')}")
+            for p in b.get("problems") or []:
+                lines.append(f"  ▸ Criticità: {_strip_html(p)}")
+            for o in b.get("opportunities") or []:
+                lines.append(f"  ▸ Opportunità: {_strip_html(o)}")
+            verdict = b.get("verdict") or {}
+            if verdict.get("text"):
+                dec = _strip_html(verdict.get("decision") or "")
+                lines.append(f"Verdetto: {_strip_html(verdict.get('text'))}" + (f" → {dec}" if dec else ""))
+            lines.append("")
+        elif btype == "financial_impact":
+            lines.append((title or "Impatto economico").upper())
+            for key, dflt in (("inaction", "Se non agisci"), ("action", "Se agisci")):
+                d = b.get(key) or {}
+                if isinstance(d, dict) and (d.get("value") or d.get("note")):
+                    lbl = _strip_html(d.get("label") or dflt)
+                    val = _strip_html(d.get("value") or "")
+                    note = _strip_html(d.get("note") or "")
+                    lines.append(f"  • {lbl}: {val}" + (f" — {note}" if note else ""))
+            lines.append("")
+        elif btype == "recommendations":
+            lines.append((title or "Azioni raccomandate").upper())
+            for h in b.get("horizons") or []:
+                if not isinstance(h, dict):
+                    continue
+                lines.append(_strip_html(h.get("label") or ""))
+                for it in h.get("items") or []:
+                    lines.append(f"  • {_strip_html(it)}")
+            lines.append("")
+        elif btype == "decision_board":
+            lines.append((title or "Decision Board").upper())
+            for c in b.get("cells") or b.get("items") or []:
+                if isinstance(c, dict):
+                    lines.append(f"  • {_strip_html(c.get('label'))}: {_strip_html(c.get('value'))}")
+            lines.append("")
+        elif btype == "source_legend":
+            lines.append((title or "Affidabilità dei dati").upper())
+            for it in b.get("items") or []:
+                if isinstance(it, dict):
+                    tag = _strip_html(it.get("tag") or "")
+                    txt = _strip_html(it.get("text") or "")
+                    note = _strip_html(it.get("note") or "")
+                    lines.append(f"  [{tag}] {txt}" + (f" — {note}" if note else ""))
+            lines.append("")
         elif btype == "conclusions":
             lines.append(_strip_html(b.get("title") or "Conclusioni e prossimi passi").upper())
             left = b.get("left") or {}
@@ -126,6 +185,30 @@ def _summary_lines(blocks: List[dict]) -> List[str]:
                         lines.append(f"  • {label}: {items}" if items else f"  • {label}")
             lines.append("")
     return [ln for ln in lines]
+
+
+def _as_table_block(b: dict) -> dict | None:
+    """Normalizza benchmark_table / severity_matrix in {columns, rows} per un foglio."""
+    btype = b.get("type")
+    if btype == "benchmark_table":
+        cols = b.get("columns") or ["KPI", "Azienda", "Settore", "Delta"]
+        rows = []
+        for r in b.get("rows") or []:
+            if isinstance(r, dict):
+                rows.append([r.get("kpi") or r.get("label") or "", r.get("company") or r.get("azienda") or "",
+                             r.get("sector") or r.get("settore") or "", r.get("delta") or ""])
+            elif isinstance(r, list):
+                rows.append(r)
+        return {"title": b.get("title") or "Benchmark", "columns": cols[:4], "rows": rows}
+    if btype == "severity_matrix":
+        rows = []
+        for it in b.get("items") or b.get("rows") or []:
+            if isinstance(it, dict):
+                rows.append([it.get("problem") or it.get("title") or it.get("label") or "",
+                             it.get("severity") or it.get("level") or "", it.get("effort") or "", it.get("roi") or ""])
+        return {"title": b.get("title") or "Matrice priorità",
+                "columns": ["Problema", "Severity", "Effort", "ROI"], "rows": rows}
+    return None
 
 
 def render_xlsx(analysis: Dict[str, Any]) -> bytes:
@@ -160,11 +243,15 @@ def render_xlsx(analysis: Dict[str, Any]) -> bytes:
         row += 1
     ws.column_dimensions["A"].width = 110
 
-    # --- data_table blocks → one sheet each ---
+    # --- data_table / benchmark_table / severity_matrix blocks → one sheet each ---
     table_count = 0
-    for b in blocks:
-        if b.get("type") != "data_table":
-            continue
+    for raw_b in blocks:
+        if raw_b.get("type") == "data_table":
+            b = raw_b
+        else:
+            b = _as_table_block(raw_b)
+            if b is None:
+                continue
         table_count += 1
         columns = [_strip_html(c) for c in (b.get("columns") or [])]
         rows = b.get("rows") or []
