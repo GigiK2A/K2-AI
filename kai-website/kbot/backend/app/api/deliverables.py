@@ -207,9 +207,16 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
     collected = dict(session.get("collected_data") or {})
     servizio_id = body.servizioId or collected.get("boost_suggerito")
     if not servizio_id:
-        # ridedotto dal riepilogo/estratto della conversazione
+        # ridedotto dal riepilogo/estratto + TESTO UTENTE. L'intento esplicito vive nei
+        # messaggi: se il summary è sparso (o la chat è < 3 turni, quindi _recompute_boost
+        # non ha ancora fissato boost_suggerito), "salute finanziaria" deve comunque
+        # instradare a FinanceBoost, non cadere sul default ControlBoost.
         summary = {**(collected.get("extractedData") or {}), **collected}
-        sug = catalog.suggest_boost(summary)
+        _utext = " ".join(
+            str(m.get("content") or "") for m in (session.get("messages") or [])
+            if isinstance(m, dict) and m.get("role") == "user"
+        )[-2000:]
+        sug = catalog.suggest_boost(summary, user_text=_utext)
         servizio_id = sug["id"] if sug else None
     if not servizio_id or not catalog.is_8e_generabile(servizio_id):
         raise HTTPException(status_code=409, detail="nessun documento generabile per questa conversazione")
