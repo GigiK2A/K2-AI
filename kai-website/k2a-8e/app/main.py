@@ -3,12 +3,15 @@ from __future__ import annotations
 
 from typing import Optional
 
+import os as _os
+
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from . import assets, jobs, pipeline, entitlement, ratelimit
 from .auth import require_bearer
-from .settings import CATALOGO_CHIUSO, ENGINE_VERSION
+from .settings import CATALOGO_CHIUSO, ENGINE_VERSION, OUT_DIR
 
 app = FastAPI(title="K2-AI 8e", version=ENGINE_VERSION)
 
@@ -169,6 +172,47 @@ def render_external(body: RenderBody, response: Response):
     if (job or {}).get("status") == "refused":
         response.status_code = 422
     return job
+
+
+_FILE_FMT = {
+    "pdf": ("pdf_path", "application/pdf"),
+    "json": ("json_path", "application/json"),
+    "html": ("html_path", "text/html; charset=utf-8"),
+    "xlsx": ("xlsx_path", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+}
+
+
+@app.get("/v1/deliverables/{job_id}/file", dependencies=[Depends(require_bearer)])
+def download_output(job_id: str, fmt: str = "pdf"):
+    """Serve i BYTE del deliverable (pdf/json/html/xlsx) dal filesystem dell'8e.
+
+    Il backend K-BOT gira in un container Railway SEPARATO da questo motore: NON
+    condivide il filesystem, quindi non può leggere i path in outputs. Deve
+    scaricare i byte via questo endpoint. Path confinati dentro OUT_DIR."""
+    j = jobs.get(job_id)
+    if not j:
+        raise HTTPException(status_code=404, detail="unknown job")
+    if j.get("status") != "rendered":
+        raise HTTPException(status_code=409, detail="documento non ancora pronto")
+    outputs = j.get("outputs") or {}
+    fmt = (fmt or "pdf").lower()
+    spec = _FILE_FMT.get(fmt)
+    if not spec:
+        raise HTTPException(status_code=400, detail="fmt non supportato (pdf|json|html|xlsx)")
+    key, media = spec
+    path = outputs.get(key)
+    # xlsx può vivere solo nel bundle (es. modello-finanziario.xlsx del FinanceBoost).
+    if not path and fmt == "xlsx":
+        for b in (outputs.get("bundle") or []):
+            if b.get("formato") == "xlsx":
+                path = b.get("path")
+                break
+    if not path or not _os.path.isfile(path):
+        raise HTTPException(status_code=404, detail=f"{fmt} non disponibile")
+    root = _os.path.realpath(str(OUT_DIR))
+    if not _os.path.realpath(path).startswith(root + _os.sep):
+        raise HTTPException(status_code=403, detail="percorso non consentito")
+    return FileResponse(path, media_type=media, filename=_os.path.basename(path))
 
 
 @app.get("/v1/deliverables/{job_id}", dependencies=[Depends(require_bearer)])
