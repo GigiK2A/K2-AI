@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-06-24",
+  "updated_at": "2026-07-01",
   "description": "Scaletta blog + IG K2-AI. Source of truth unica per blog autopilot e n8n IG.",
   "rows": [
     {
@@ -83,9 +83,9 @@
       "url": "https://www.k2-ai.it/suite-ai/microapp-documenti-tecnici.html",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "",
-      "blog_pubblicato": "",
-      "blog_url": ""
+      "blog_slug": "microapp-documenti-tecnici-automatizzare-manuali-sop-schede-prodotto",
+      "blog_pubblicato": "2026-07-01",
+      "blog_url": "/blog/microapp-documenti-tecnici-automatizzare-manuali-sop-schede-prodotto"
     },
     {
       "row": 8,
