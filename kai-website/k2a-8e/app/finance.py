@@ -96,6 +96,12 @@ def _classify_attivo(d: str) -> str:
 def _classify_passivo(d: str) -> str:
     if "ammort" in d and ("fond" in d or "f.do" in d or "f/do" in d):
         return "fondi_ammortamento"
+    # PN dato come AGGREGATO (una riga "patrimonio netto"/"mezzi propri", non scomposto in
+    # capitale/riserve/utili). Senza questa regola cadeva su debiti_vari → il PN veniva
+    # contato come DEBITO, l'SP non quadrava e gli indici (leva, bancabilità) uscivano falsi.
+    if "patrimonio netto" in d or "patrimonio_netto" in d or "mezzi propri" in d \
+            or "capitale netto" in d or d.strip() == "equity" or d.strip() == "pn":
+        return "pn_aggregato"
     if "capital" in d:
         return "pn_capitale"
     if "riserv" in d:
@@ -108,6 +114,12 @@ def _classify_passivo(d: str) -> str:
         return "pn_utile_esercizio"
     if "tfr" in d or "fine rapporto" in d or "trattamento fine" in d:
         return "tfr"
+    # "debiti finanziari" / "posizione finanziaria" come AGGREGATO: prima cadeva su
+    # debiti_vari (la regola cercava 'finanziament', non 'finanziari') → PFN e bancabilità
+    # sottostimate. In sezione passivo "finanziar" = debito finanziario, non oneri (CE).
+    if "debiti finanziari" in d or "debito finanziario" in d or "indebitamento finanziar" in d \
+            or "posizione finanziaria" in d or "pfn" in d:
+        return "debiti_finanziari_ml"
     if any(w in d for w in ("mutui", "mutuo", "finanziament", "prestit", "obbligazion")):
         return "debiti_finanziari_ml"
     if "leasing" in d:
@@ -144,8 +156,11 @@ def _classify_ce(sezione: str, d: str) -> str:
     if ("oneri finanziar" in d or "interessi passiv" in d or
             ("finanziar" in d and "oneri" in d) or "commissioni e spese su factoring" in d):
         return "oneri_finanziari"
-    if ("imposte" in d and ("esercizio" in d or "reddito" in d)) or \
-            "ires" in d or "irap" in d:
+    # Imposte sul reddito (add-back per EBIT/EBITDA): "imposte esercizio/reddito", IRES,
+    # IRAP, o anche solo "imposte"/"imposte correnti" (aggregato di un riclassificato).
+    # Escluse le imposte INDIRETTE e l'imposta di bollo (costo operativo, non add-back).
+    if (("impost" in d and "indirett" not in d and "bollo" not in d and "registro" not in d)
+            or "ires" in d or "irap" in d):
         return "imposte"
     return "altri_costi_operativi"
 
@@ -179,7 +194,9 @@ def reclassify_bilancio(voci: list[dict], anno: Optional[int] = None,
             add(_classify_attivo(d), v, importo)
         elif sez == "passivo":
             cat = _classify_passivo(d)
-            if cat == "pn_utile_esercizio":
+            # pn_utile_esercizio e pn_aggregato includono già l'utile del periodo → non
+            # ri-sommarlo dalla sezione 'risultato' (evita doppio conteggio del PN).
+            if cat in ("pn_utile_esercizio", "pn_aggregato"):
                 has_utile_in_sp = True
             add(cat, v, importo)
         elif sez == "ricavi":
@@ -263,9 +280,10 @@ def reclassify_bilancio(voci: list[dict], anno: Optional[int] = None,
     # 4 sezioni → l'utile è una riga a sé (sezione 'risultato'); CEE → può già stare
     # dentro il PN sul passivo (pn_utile_esercizio): in tal caso NON ri-sommarlo.
     pn_da_sp = round(g("pn_capitale") + g("pn_riserve") + g("pn_utili_a_nuovo")
-                     + g("pn_utile_esercizio"), 2)
+                     + g("pn_utile_esercizio") + g("pn_aggregato"), 2)
     pn_components = any(agg.get(c) for c in
-                       ("pn_capitale", "pn_riserve", "pn_utili_a_nuovo", "pn_utile_esercizio"))
+                       ("pn_capitale", "pn_riserve", "pn_utili_a_nuovo", "pn_utile_esercizio",
+                        "pn_aggregato"))
     if not pn_components and utile_netto is None:
         patrimonio_netto = None
     else:
