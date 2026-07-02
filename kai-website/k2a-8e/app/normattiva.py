@@ -150,8 +150,22 @@ _LABEL_TO_TIPO = {
 # accetta anni a 2-4 cifre). L'anno può essere a 2 cifre ('D.Lgs 81/08', 'L. 300/70'):
 # va espanso a 4 cifre per matchare i filename del corpus (_FN_RE = \d{4}).
 _NORM_REF_RE = re.compile(
-    r"\b(d\.?\s?m\.?|d\.?\s?l\.?|d\.?\s?p\.?r\.?|d\.?\s?lgs\.?|legge|l\.)\s*(?:n\.?\s*)?(\d{1,4})\s*[/\-]\s*(\d{2,4})",
+    r"\b(d\.?\s?m\.?|d\.?\s?l\.?|d\.?\s?p\.?r\.?|d\.?\s?lgs\.?|legge|l\.)\s*(?:n\.?\s*)?(\d{1,4})\s*[/\-]\s*(\d{2,4})"
+    # articolo DOPO gli estremi ("L. 300/1970, art. 4", "D.Lgs 231/2001, art. 25-septies"):
+    # senza catturarlo, l'enrich agganciava il PRIMO chunk della legge nel corpus (es.
+    # art. 1 dello Statuto al posto dell'art. 4 sulla videosorveglianza) → citazione
+    # verbatim con articolo SBAGLIATO in un parere legale.
+    r"(?:\s*,?\s*artt?\.?\s*(\d+(?:\s*-\s*[a-z]+)?))?",
     re.I)
+
+# articolo PRIMA degli estremi ("art. 4 della L. 300/1970", "ex art. 13 del D.Lgs 81/2008"):
+# cercato in una finestra corta subito a monte del riferimento.
+_ART_BEFORE_RE = re.compile(r"artt?\.?\s*(\d+(?:\s*-\s*[a-z]+)?)\s*(?:,\s*)?(?:del(?:la|lo)?\s+|di\s+)?$", re.I)
+
+
+def _norm_art(a) -> str:
+    """Articolo normalizzato per confronto loose: '25-septies' ≡ '25 - septies' ≡ '25septies'."""
+    return re.sub(r"[^0-9a-z]", "", str(a or "").lower())
 
 
 def _norm_label(label: str) -> str:
@@ -168,17 +182,26 @@ def _expand_year(y: int) -> int:
 
 
 def extract_norm_refs(text: str) -> list[dict]:
-    """Estrae i riferimenti di legge da un testo (es. 'DPR 380/2001', 'D.Lgs 81/08').
-    Anni a 2 cifre espansi a 4 (pivot 30) per matchare il corpus. Ritorna
-    [{tipo, numero, anno, label}]."""
+    """Estrae i riferimenti di legge da un testo (es. 'DPR 380/2001', 'D.Lgs 81/08',
+    'art. 4 della L. 300/1970'). Anni a 2 cifre espansi a 4 (pivot 30) per matchare il
+    corpus. Cattura anche l'ARTICOLO (dopo o prima degli estremi) quando indicato, così
+    l'enrich cita il chunk giusto. Ritorna [{tipo, numero, anno, articolo?, label}]."""
+    text = text or ""
     refs, seen = [], set()
-    for m in _NORM_REF_RE.finditer(text or ""):
+    for m in _NORM_REF_RE.finditer(text):
         tipo = _LABEL_TO_TIPO.get(_norm_label(m.group(1)))
         numero, anno = m.group(2), _expand_year(int(m.group(3)))
-        key = (tipo, numero, anno)
+        articolo = m.group(4)
+        if not articolo:
+            b = _ART_BEFORE_RE.search(text[max(0, m.start() - 40):m.start()])
+            if b:
+                articolo = b.group(1)
+        articolo = re.sub(r"\s+", "", articolo) if articolo else None
+        key = (tipo, numero, anno, _norm_art(articolo))
         if tipo and key not in seen:
             seen.add(key)
-            refs.append({"tipo": tipo, "numero": numero, "anno": anno, "label": m.group(0).strip()})
+            refs.append({"tipo": tipo, "numero": numero, "anno": anno,
+                         "articolo": articolo, "label": m.group(0).strip()})
     return refs
 
 
@@ -217,8 +240,8 @@ def find_by_estremi(anno: int, numero: str, tipo: Optional[str] = None,
             continue                                   # token-match casuale: scarta
         if valid_tipi is not None and e.get("tipo") not in valid_tipi:
             continue                                   # tipo diverso (es. legge vs DM)
-        if articolo is not None and str(e.get("articolo")) != str(articolo):
-            continue
+        if articolo is not None and _norm_art(e.get("articolo")) != _norm_art(articolo):
+            continue                                   # articolo diverso (loose: '25-septies'≡'25septies')
         out.append({**e, "citazione": citazione(e), "testo": testo})
         if len(out) >= limit:
             break

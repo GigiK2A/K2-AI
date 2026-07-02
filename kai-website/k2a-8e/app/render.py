@@ -21,7 +21,8 @@ from reportlab.platypus.tableofcontents import TableOfContents
 
 from . import styling as ST
 
-_FONTE_LABEL = {"override_locale": "Normattiva", "akn_bulk_xml": "Normattiva", "normattiva": "Normattiva"}
+_FONTE_LABEL = {"override_locale": "Normattiva", "akn_bulk_xml": "Normattiva", "normattiva": "Normattiva",
+                "eur_lex": "EUR-Lex (norma UE — riferimento, testo non nel corpus)"}
 _SKIP_KEYS = {"meta", "metadata", "disclaimer", "files", "file_generati", "input", "allegati",
               "executive_summary", "sintesi"}
 
@@ -438,12 +439,33 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
                                           "Diagnosi legale e compliance",
                                           "Quadro dei rischi legali e priorità d'azione per la tua impresa.")
     sint = deliverable.get("sintesi", {})
+    voci = list(deliverable.get("voci", []))
+    # De-dup struttura (bug O): il blueprint LegalBoost ha le voci `sintesi_mappa_rischi`
+    # e `piano_azione_handoff`, ma il render emette GIÀ una sezione sintesi (heatmap) e
+    # una piano d'azione (tabella) → prima uscivano doppie ("01+02 · Sintesi…",
+    # "10+11 · Piano d'azione"). Qui si FONDONO: la prosa della voce sintesi entra nella
+    # sezione 01, la tabella del piano si aggancia alla voce piano (niente heading extra).
+    voce_sintesi = next((v for v in voci if v.get("id") == "sintesi_mappa_rischi"), None)
+    piano_ids = {"piano_azione_handoff"}
+
     body = [_Heading("01 · Sintesi e mappa rischi", S["h1"], "legal-1")]
+    if voce_sintesi and voce_sintesi.get("contenuto"):
+        body.append(Paragraph(_rich(str(voce_sintesi["contenuto"])), S["body"]))
     if sint.get("mappa_rischi"):
         body += [Spacer(1, 4), ST.heatmap(sint["mappa_rischi"], S), Spacer(1, 6)]
 
+    def _piano_table():
+        rows = [[str(p.get("priorita", "")), str(p.get("azione", "")),
+                 "Avvocato" if p.get("handoff_avvocato") else "—"]
+                for p in deliverable.get("piano_azione") or []]
+        return ST.premium_table(["#", "Azione", "Handoff"], rows, S,
+                                widths=[12 * mm, ST.CONTENT_W - 42 * mm, 30 * mm]) if rows else None
+
+    piano_reso = False
     n = 2
-    for v in deliverable.get("voci", []):
+    for v in voci:
+        if v is voce_sintesi:
+            continue  # già fusa nella sezione 01
         body.append(_Heading(f"{n:02d} · {str(v.get('titolo', ''))}", S["h1"], f"legal-{n}")); n += 1
         if v.get("contenuto"):
             body.append(Paragraph(_rich(str(v["contenuto"])), S["body"]))
@@ -455,14 +477,18 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
                 body.append(Spacer(1, 2))
         if v.get("azioni"):
             body.append(Spacer(1, 2)); body.append(ST.action_box(list(v["azioni"]), "Azioni consigliate", S))
+        if v.get("id") in piano_ids:
+            t = _piano_table()
+            if t:
+                body += [Spacer(1, 4), t]
+            piano_reso = True
         body.append(Spacer(1, 4))
 
-    if deliverable.get("piano_azione"):
+    if not piano_reso and deliverable.get("piano_azione"):
         body.append(_Heading(f"{n:02d} · Piano d'azione", S["h1"], f"legal-{n}"))
-        rows = [[str(p.get("priorita", "")), str(p.get("azione", "")),
-                 "Avvocato" if p.get("handoff_avvocato") else "—"] for p in deliverable["piano_azione"]]
-        body.append(ST.premium_table(["#", "Azione", "Handoff"], rows, S,
-                                      widths=[12 * mm, ST.CONTENT_W - 42 * mm, 30 * mm]))
+        t = _piano_table()
+        if t:
+            body.append(t)
     body += _decision_board(deliverable, S)
     body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance",
