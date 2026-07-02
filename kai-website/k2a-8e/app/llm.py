@@ -93,7 +93,11 @@ def _voci_block(voci: list[dict]) -> str:
     return "\n".join(lines)
 
 
-_SEZIONI_MAX_TOKENS = 32000   # headroom per 9 voci ricche in una risposta (Sonnet regge 64k)
+# max_tokens 16000: SOTTO la soglia oltre cui l'SDK Anthropic IMPONE lo streaming
+# ("Streaming is required for operations that may take longer than 10 minutes"). Non si
+# alza per far stare più voci: si generano a BATCH (vedi sotto).
+_SEZIONI_MAX_TOKENS = 16000
+_SEZIONI_BATCH = 3            # 3 voci ricche stanno comode in 16k → JSON completo e parsabile
 
 
 def generate_sezioni(
@@ -117,38 +121,45 @@ def generate_sezioni(
                     "Genera ora il JSON con la prosa per ogni voce.")
             resp = client.messages.create(
                 model=ANTHROPIC_MODEL,
-                max_tokens=_SEZIONI_MAX_TOKENS,   # 9 voci ricche NON stanno in 16k → troncamento
+                max_tokens=_SEZIONI_MAX_TOKENS,
                 system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
                 messages=[{"role": "user", "content": user}],
             )
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
             u = getattr(resp, "usage", None)
-            return (_parse_json_object(text), getattr(u, "output_tokens", 0) or 0,
-                    getattr(resp, "stop_reason", None) == "max_tokens")
+            return _parse_json_object(text), getattr(u, "output_tokens", 0) or 0
 
-        # BUG-FIX: prima 9 voci in UNA risposta > max_tokens → troncata → JSON illeggibile
-        # → OGNI voce cadeva su [BOZZA OFFLINE] pur con filiera anthropic OK. Ora le voci
-        # mancanti/mozzate si RIGENERANO in batch più piccoli (che stanno nei token).
+        # BUG-FIX: prima TUTTE le 9 voci in una risposta → > max_tokens → troncata → JSON
+        # illeggibile → ogni voce su [BOZZA OFFLINE] pur con anthropic OK. Ora si generano
+        # a BATCH di _SEZIONI_BATCH (ciascun batch sta nei token → JSON completo). Le voci
+        # ancora mancanti si rigenerano UNA per chiamata (massima granularità).
         out: dict[str, str] = {}
         tot_out = 0
-        pending = list(voci)
-        for attempt in range(3):
-            data, out_tok, truncated = _call(pending)
-            tot_out += out_tok
-            for v in pending:
+
+        def _collect(target):
+            nonlocal tot_out
+            data, tok = _call(target)
+            tot_out += tok
+            for v in target:
                 vid = v.get("id") or v.get("titolo")
                 val = str(data.get(vid) or "").strip()
-                if len(val) >= 60:                     # prosa reale, non vuota/mozzata
+                if vid not in out and len(val) >= 60:   # prosa reale, non vuota/mozzata
                     out[vid] = val
-            pending = [v for v in voci if (v.get("id") or v.get("titolo")) not in out]
-            if not pending:
-                break
-            log.warning("generate_sezioni: %d voci mancanti (troncato=%s) tentativo %d/3 → rigenero",
-                        len(pending), truncated, attempt + 1)
+
+        for i in range(0, len(voci), _SEZIONI_BATCH):
+            _collect(voci[i:i + _SEZIONI_BATCH])
+
+        pending = [v for v in voci if (v.get("id") or v.get("titolo")) not in out]
+        for v in pending:                               # retry granulare 1-a-1
+            for _ in range(2):
+                _collect([v])
+                if (v.get("id") or v.get("titolo")) in out:
+                    break
 
         degraded = [(v.get("id") or v.get("titolo")) for v in voci
                     if (v.get("id") or v.get("titolo")) not in out]
         if degraded:
+            log.warning("generate_sezioni: %d voci non generate dopo batch+retry: %s", len(degraded), degraded)
             # ultima spiaggia: bozza, ma `degraded_voci` fa BLOCCARE il job dal gate →
             # mai un report PAGATO con segnaposto (fail-loud invece di consegna silenziosa).
             off = _offline(voci, facts, inputs)

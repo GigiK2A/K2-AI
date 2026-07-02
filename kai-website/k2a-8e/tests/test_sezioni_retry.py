@@ -56,6 +56,14 @@ def test_truncated_first_response_regenerates_missing_voci(monkeypatch):
     assert all(len(v) >= 60 for v in out.values())
 
 
+def test_max_tokens_under_streaming_threshold():
+    # Regressione: max_tokens troppo alto (es. 32000) fa sollevare all'SDK
+    # "Streaming is required for operations that may take longer than 10 minutes"
+    # → generate_sezioni va in errore. Si resta sotto soglia e si generano a batch.
+    assert L._SEZIONI_MAX_TOKENS <= 16000
+    assert L._SEZIONI_BATCH <= 4
+
+
 def test_persistent_failure_flags_degraded(monkeypatch):
     # sempre tronco → dopo i retry restano voci non generate → degraded_voci valorizzato
     _patch_anthropic(monkeypatch, [('{"a":"tron', 16000, "max_tokens")])
