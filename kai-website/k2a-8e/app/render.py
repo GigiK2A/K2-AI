@@ -45,8 +45,19 @@ def _rich(s) -> str:
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s, flags=re.S)
     s = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"<i>\1</i>", s)  # *corsivo*
     s = re.sub(r"^\s*[-•]\s+", "", s)  # bullet residui a inizio riga
+    s = _strip_akn(s)
     s = _EMOJI.sub("", s)
     return s
+
+
+def _strip_akn(s: str) -> str:
+    """Rimuove il markup Akoma Ntoso/Normattiva trapelato dal testo di legge: ((171)) =
+    ancora di nota (rumore → via); ((testo)) = testo modificato da norma successiva →
+    tieni il testo, togli i doppi-tondi editoriali (non sono legge; sporcano il PDF,
+    visto su FiscoBoost nella sezione «Testi normativi verbatim»)."""
+    s = re.sub(r"\(\(\s*\d+\s*\)\)", "", s)       # ancore di nota ((171)), ((237))
+    s = re.sub(r"\(\(([^()]*?)\)\)", r"\1", s)     # ((testo)) → testo
+    return s.replace("((", "").replace("))", "")   # sweep dei doppi-tondi residui/annidati
 
 
 class _Heading(Paragraph):
@@ -350,7 +361,7 @@ def _testi_normativi(citazioni, S):
         return []
     out = [Spacer(1, 6), _Heading("Testi normativi (verbatim)", S["h2"], "verbatim")]
     for c in norm:
-        t = str(c.get("testo", ""))
+        t = _strip_akn(str(c.get("testo", "")))   # via il markup Akoma Ntoso ((...)) trapelato
         lines = t.split("\n")
         head = lines[0].lstrip("# ").strip() if lines else (c.get("riferimento") or "")
         body = ("\n".join(lines[1:]).strip() or t).replace("**", "")
@@ -592,6 +603,23 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
             continue
         # score scalari già mostrati nella dashboard → salta se top-level int 'score'
         if isinstance(val, (int, float)) and "score" in key.lower():
+            continue
+        # VOCI-SHAPE (es. FiscoBoost, stesso schema di LegalBoost): OGNI voce è una SEZIONE
+        # numerata col suo titolo reale, non tutte schiacciate sotto un unico "01 · Voci".
+        if key == "voci" and _is_list_of_dicts(val) and _has(val, "titolo", "id"):
+            for voce in val:
+                titolo = str(voce.get("titolo") or voce.get("nome") or _humanize(str(voce.get("id", "Sezione"))))
+                body.append(_Heading(f"{n:02d} · {html.escape(titolo)}", S["h1"], f"section-{n}")); n += 1
+                body.append(Spacer(1, 2))
+                if voce.get("contenuto"):
+                    body.append(Paragraph(_rich(str(voce["contenuto"])), S["body"]))
+                for sub in ("rischi", "rischi_opportunita", "azioni", "norme_citate", "fonti", "findings"):
+                    if voce.get(sub):
+                        if sub in ("azioni",) and isinstance(voce[sub], list) and all(isinstance(x, str) for x in voce[sub]):
+                            body.append(ST.action_box(list(voce[sub]), "Azioni consigliate", S))
+                        else:
+                            render_value(voce[sub], 1)
+                body.append(Spacer(1, 4))
             continue
         body.append(_Heading(f"{n:02d} · {_humanize(key)}", S["h1"], f"section-{n}")); n += 1
         body.append(Spacer(1, 2))
