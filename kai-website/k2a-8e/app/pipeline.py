@@ -456,10 +456,12 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         inputs, identity_errors, content_errors, quality_notes = quality.prepare_inputs(skill, form_schema, inputs)
         if identity_errors and auth_level != "PREVIEW":
             raise Refuse("insufficient_or_inconsistent_input", "; ".join(identity_errors[:4]))
-        if content_errors and auth_level == "FULL":
-            raise Refuse("insufficient_or_inconsistent_input", "; ".join(content_errors[:12]))
-        # PARTIAL solo se c'è davvero un buco: se i dati ci sono tutti è un FULL a tutti gli effetti.
-        partial_mode = auth_level == "PARTIAL" and bool(content_errors)
+        # NIENTE VICOLO CIECO (regola prodotto): gli errori di CONTENUTO — campi mancanti O
+        # bilancio riclassificato che non quadra — NON fanno più refuse nemmeno in FULL. Si
+        # degrada a PRELIMINARE con ipotesi etichettate + l'incoerenza segnalata, invece di
+        # un `insufficient_or_inconsistent_input` che lasciava il cliente a mani vuote. Solo
+        # l'identità resta bloccante (serve a intestare il documento). PREVIEW resta permissivo.
+        partial_mode = bool(content_errors) and auth_level != "PREVIEW"
 
         facts, citazioni = resolve(skill, inputs)
 
