@@ -625,6 +625,24 @@ def _clamp_to_schema(val, schema: dict, root: dict):
         val = [] if val in (None, "") else [val]
     elif t in ("string", "integer", "number", "boolean") and isinstance(val, list):
         val = val[0] if len(val) == 1 else " ".join(str(x) for x in val)
+    # OGGETTO dove lo schema vuole STRINGA: il modello a volte incarta il testo in
+    # {motivo/descrizione/...} (visto su FinanceBoost Gemma: "{'motivo': 'Impossibile...'}"
+    # is not of type 'string') → estrai il testo invece di far fallire la validazione.
+    if t == "string" and isinstance(val, dict):
+        val = str(val.get("motivo") or val.get("descrizione") or val.get("testo")
+                  or val.get("text") or val.get("valore")
+                  or "; ".join(str(x) for x in val.values() if x not in (None, "")))
+    # STRINGA dove lo schema vuole un NUMERO: estrai le cifre; se è un'etichetta di
+    # gravità/priorità ('Alta'/'Media'/'Bassa') mappala su scala (visto su Gemma:
+    # "'Alta' is not of type 'integer'").
+    elif t in ("integer", "number") and isinstance(val, str):
+        m = re.search(r"-?\d+(?:[.,]\d+)?", val)
+        if m:
+            num = float(m.group(0).replace(",", "."))
+            val = int(round(num)) if t == "integer" else num
+        else:
+            val = {"bassa": 1, "basso": 1, "media": 2, "medio": 2, "alta": 3, "alto": 3,
+                   "critica": 4, "critico": 4}.get(val.strip().lower(), 0)
     # numeri: rientra nel range minimum/maximum
     if isinstance(val, (int, float)) and not isinstance(val, bool):
         if isinstance(schema.get("maximum"), (int, float)) and val > schema["maximum"]:
