@@ -114,6 +114,13 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
                             "as_of": e.get("as_of"), "descrizione": e.get("descrizione")}
         else:
             facts[k] = {"valore": e, "tipo": tipo}
+
+    # FiscoBoost: mappa canonica decreto↔imposta nei fatti (l'LLM etichettava l'IVA come
+    # "TUIR" citando a memoria articoli non nello snapshot; ora ha il decreto giusto).
+    if skill == "flusso-fiscoboost-pmi":
+        facts["_riferimenti_normativi_fisco"] = {
+            "tipo": "riferimenti_normativi", "valore": tax.norme_riferimento(),
+        }
     return facts, citazioni
 
 

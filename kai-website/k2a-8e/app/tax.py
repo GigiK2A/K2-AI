@@ -198,6 +198,24 @@ def _num(v: Any) -> Optional[float]:
         return None
 
 
+# Mappa canonica DECRETO ↔ ambito d'imposta. L'LLM (specie modelli meno precisi) tende
+# a etichettare TUTTO come "TUIR", anche l'IVA (che è DPR 633/1972). Iniettata nei fatti
+# pre-generazione → il modello cita il decreto ESATTO invece di inventarlo a memoria.
+def norme_riferimento() -> str:
+    return (
+        "RIFERIMENTI NORMATIVI CANONICI (cita il DECRETO ESATTO, NON 'TUIR' come default):\n"
+        "- IVA (detraibilità, aliquote, esigibilità, rivalsa): DPR 633/1972 — es. art. 19 "
+        "detraibilità, art. 16 aliquote, art. 6 esigibilità. NON è il TUIR.\n"
+        "- Redditi d'impresa, IRES, IRPEF, ammortamenti, interessi passivi, competenza: TUIR "
+        "(DPR 917/1986) — es. art. 96 ROL/interessi, art. 102-103 ammortamenti, art. 108 spese, "
+        "art. 109 competenza, art. 77 IRES, art. 11 IRPEF, art. 87 PEX.\n"
+        "- IRAP (valore della produzione, aliquota): D.Lgs 446/1997 — es. art. 5, art. 16.\n"
+        "- Accertamento/riscossione: DPR 600/1973 e DPR 602/1973. Fatturazione elettronica: "
+        "D.Lgs 127/2015.\n"
+        "REGOLA: se non sei certo del decreto, NON scrivere 'TUIR' a caso — usa la mappa qui sopra."
+    )
+
+
 def aliquote_riepilogo() -> list[dict]:
     """Aliquote verificate (con provenance) da iniettare come riferimento — non LLM."""
     out = []
