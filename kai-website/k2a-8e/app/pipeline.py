@@ -7,6 +7,7 @@ validate(L1 libreria + L2 linter + output-schema) → render(HTML+PDF). Refuse e
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -325,17 +326,44 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
     (norma_non_citata) si spegne per quelle. Le norme NON trovate (confabulate o assenti,
     es. 'DM 143/2013' quando esiste solo L. 143/2013) restano flaggate. No-op onesto se il
     corpus non è disponibile (NORMATTIVA_DB_PATH assente)."""
-    if not normattiva.available():
-        return citazioni
     import json as _json
     full = _json.dumps(deliverable, ensure_ascii=False)
     enriched = list(citazioni)
+
+    # Norme UE (GDPR, AI Act, regolamenti): NON sono nel corpus Normattiva (solo
+    # legislazione italiana) → niente verbatim, ma vanno almeno in «Fonti normative»:
+    # un parere privacy che discute il GDPR 15 volte senza citarlo tra le fonti è
+    # incompleto (bug N1). Fonte marcata eur_lex, senza `testo` → il render la elenca
+    # nelle fonti e NON tra i testi verbatim (niente finto grounding).
+    _EU_CANON = {"2016/679": "Reg. (UE) 2016/679 (GDPR)",
+                 "2024/1689": "Reg. (UE) 2024/1689 (AI Act)"}
+    eu_found: dict[str, str] = {}
+    if re.search(r"\bGDPR\b|2016/679", full, re.I):
+        eu_found["2016/679"] = _EU_CANON["2016/679"]
+    if re.search(r"\bAI\s*Act\b|2024/1689", full, re.I):
+        eu_found["2024/1689"] = _EU_CANON["2024/1689"]
+    for m in re.finditer(r"reg(?:olamento)?\.?\s*\(?\s*ue\s*\)?\s*(?:n\.?\s*)?(\d{4})\s*/\s*(\d{1,4})", full, re.I):
+        key = f"{m.group(1)}/{m.group(2)}"
+        eu_found.setdefault(key, _EU_CANON.get(key, f"Reg. (UE) {key}"))
+    already = {str(c.get("riferimento") or "") for c in citazioni}
+    for key, rif in eu_found.items():
+        if not any(key in a or rif == a for a in already):
+            enriched.append({"riferimento": rif, "campo": "norma_ue", "fonte": "eur_lex"})
+
+    if not normattiva.available():
+        return enriched
     seen = {(c.get("tipo"), str(c.get("numero")), c.get("anno")) for c in citazioni}
     for ref in normattiva.extract_norm_refs(full):
         key = (ref["tipo"], ref["numero"], ref["anno"])
         if key in seen:
             continue
-        hits = normattiva.find_by_estremi(ref["anno"], ref["numero"], tipo=ref["tipo"], limit=1)
+        # Con l'ARTICOLO citato nel testo si aggancia QUEL chunk (bug N2: prima usciva il
+        # primo articolo della legge, es. art. 1 dello Statuto invece dell'art. 4).
+        # Fallback senza articolo se il chunk specifico non è nel corpus.
+        hits = normattiva.find_by_estremi(ref["anno"], ref["numero"], tipo=ref["tipo"],
+                                          articolo=ref.get("articolo"), limit=1)
+        if not hits and ref.get("articolo"):
+            hits = normattiva.find_by_estremi(ref["anno"], ref["numero"], tipo=ref["tipo"], limit=1)
         if not hits:
             continue                                   # norma assente/confabulata → il CAGE C2 la tiene flaggata
         h = hits[0]
