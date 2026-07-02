@@ -10,7 +10,15 @@ from .skills import load_skill_bundle
 from . import rag
 
 REPORT_TYPES_OVERVIEW = """TIPI DI ANALISI / REPORT che puoi produrre (K-BOT PREMIUM = SOLO analisi e report, NON proporre automazioni o implementazioni software):
-- Analisi di bilancio / salute finanziaria (flussi di cassa, margini, indici, solvibilità)
+- Analisi di bilancio / salute finanziaria e bancabilità (flussi di cassa, margini, indici, solvibilità)
+- Diagnosi fiscale-tributaria PMI (IVA, IRES/IRPEF, IRAP, ammortamenti, regimi, agevolazioni fiscali) — ORIENTAMENTO, non consulenza firmata; per l'ottimizzazione fiscale spinta rimanda al commercialista
+- Primo parere legale / compliance (contrattualistica, privacy/GDPR, 231, lavoro, IP/marchi) — ORIENTAMENTO, non consulenza legale firmata
+- Dossier agevolazioni e incentivi (bandi, crediti d'imposta, de minimis, Nuova Sabatini, Transizione 5.0, cumulabilità)
+- Controllo di gestione / cruscotto direzionale (KPI, budget, reporting economico mensile)
+- Diagnosi sicurezza sul lavoro (D.Lgs 81/08, cantieri, DVR, obblighi)
+- Iter edilizio / titoli abilitativi (permesso di costruire, SCIA, CILA, vincoli)
+- Diagnosi energetica (consumi, efficientamento, EGE)
+- Performance struttura ricettiva (hotel/B&B: occupazione, RevPAR, recensioni)
 - Analisi marketing (posizionamento, target, canali, funnel, customer journey)
 - Audit SEO (parole chiave, struttura sito, technical SEO, backlink, competitor)
 - Analisi competitiva / benchmark di settore
