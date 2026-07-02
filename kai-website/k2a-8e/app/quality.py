@@ -282,11 +282,22 @@ def ensure_metadata(deliverable: dict, output_schema: dict, inputs: dict, servic
         if candidate in (props.get(key, {}).get("properties", {}) if key in props else {}) or candidate == "azienda":
             meta[candidate] = name
             break
-    if "servizio" in (props.get(key, {}).get("properties", {}) if key in props else {}):
+    meta_props = props.get(key, {}).get("properties", {}) if key in props else {}
+    if "servizio" in meta_props:
         meta["servizio"] = service
-    if "data" in meta or key == "meta":
+    # Data di generazione: popola il/i campo/i data che lo schema DICHIARA (varia per boost:
+    # 'data' legacy, 'data_generazione' su cruscotto-direzionale, ...). Iniettare 'data' a
+    # tappeto rompeva ControlBoost: il suo schema usa 'data_generazione' + additionalProperties
+    # false → "'data' was unexpected" → validation_failed → REFUSE (vicolo cieco pagato).
+    date_fields = [f for f in ("data", "data_generazione", "data_elaborazione", "data_documento",
+                               "generated_at") if f in meta_props]
+    if date_fields:
+        for f in date_fields:
+            meta[f] = now_iso() if f == "generated_at" else today_iso()
+    elif props.get(key, {}).get("additionalProperties") is not False:
+        # schema senza campo-data dichiarato ma che consente extra → compat render (legge meta.data)
         meta["data"] = today_iso()
-    if "generated_at" in meta:
+    if "generated_at" in meta and "generated_at" not in date_fields:
         meta["generated_at"] = now_iso()
     return deliverable
 
