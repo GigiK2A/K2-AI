@@ -537,6 +537,23 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             # gate sono attesi e non vanno applicati (rigenerare non aiuta: niente retry).
             offline_mode = (filiera_meta or {}).get("mode") == "offline"
 
+            # SAFETY (mai un report PAGATO con segnaposto): se la filiera anthropic ha
+            # DEGRADATO delle voci (troncamento → [BOZZA OFFLINE]) pur non essendo in demo
+            # offline → è un fallimento, non una consegna. Rigenera e, se persiste, REFUSE
+            # (fail-loud) invece di spedire un placeholder spacciato per analisi reale.
+            degraded_voci = (filiera_meta or {}).get("degraded_voci") or []
+            if not offline_mode and (degraded_voci or "[BOZZA OFFLINE]" in str(deliverable)):
+                _refusal = ("filiera_degradata",
+                            {"reason": "sezioni non generate dalla filiera (troncamento/errore LLM)",
+                             "degraded_voci": degraded_voci})
+                if _attempt == _MAX_GEN_TRIES - 1:
+                    log.warning("job %s REFUSE filiera_degradata (esauriti %d tentativi): %s",
+                                job_id, _MAX_GEN_TRIES, degraded_voci or "[BOZZA OFFLINE]")
+                    break
+                log.warning("job %s: voci degradate %s tentativo %d/%d → rigenero",
+                            job_id, degraded_voci or "[BOZZA]", _attempt + 1, _MAX_GEN_TRIES)
+                continue
+
             # Validazione: L1 (libreria) + output-schema (jsonschema). L2 (linter
             # voci-shape) solo per i boost voci-shape; i generici sono validati dallo schema.
             jobs.update(job_id, status="validating")

@@ -93,6 +93,9 @@ def _voci_block(voci: list[dict]) -> str:
     return "\n".join(lines)
 
 
+_SEZIONI_MAX_TOKENS = 32000   # headroom per 9 voci ricche in una risposta (Sonnet regge 64k)
+
+
 def generate_sezioni(
     blueprint: dict, facts: dict[str, dict], inputs: dict
 ) -> tuple[dict[str, str], dict]:
@@ -105,38 +108,54 @@ def generate_sezioni(
         import anthropic
 
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        user = (
-            f"{_facts_block(facts)}\n\n{_voci_block(voci)}\n\n"
-            f"DATI CLIENTE (input form): {json.dumps(inputs, ensure_ascii=False)}\n\n"
-            "Genera ora il JSON con la prosa per ogni voce."
-        )
-        resp = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            # 9 voci a 180-240 parole + rischi/azioni: 8192 tronca → bozze offline.
-            max_tokens=16000,
-            system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": user}],
-        )
-        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-        data = _parse_json_object(text)
-        if getattr(resp, "stop_reason", None) == "max_tokens":
-            log.warning("filiera: risposta troncata (max_tokens), JSON parziale")
-        off = _offline(voci, facts, inputs)
-        out = {}
-        for v in voci:
-            vid = v.get("id") or v.get("titolo")
-            out[vid] = str(data.get(vid) or off.get(vid, "")).strip()
-        usage = getattr(resp, "usage", None)
-        meta = {
-            "mode": "anthropic",
-            "model": ANTHROPIC_MODEL,
-            "usage": {
-                "input_tokens": getattr(usage, "input_tokens", None),
-                "output_tokens": getattr(usage, "output_tokens", None),
-                "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", None),
-            } if usage else None,
-        }
-        return out, meta
+        facts_block = _facts_block(facts)
+        dati = json.dumps(inputs, ensure_ascii=False)
+
+        def _call(target: list[dict]):
+            user = (f"{facts_block}\n\n{_voci_block(target)}\n\n"
+                    f"DATI CLIENTE (input form): {dati}\n\n"
+                    "Genera ora il JSON con la prosa per ogni voce.")
+            resp = client.messages.create(
+                model=ANTHROPIC_MODEL,
+                max_tokens=_SEZIONI_MAX_TOKENS,   # 9 voci ricche NON stanno in 16k → troncamento
+                system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
+                messages=[{"role": "user", "content": user}],
+            )
+            text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+            u = getattr(resp, "usage", None)
+            return (_parse_json_object(text), getattr(u, "output_tokens", 0) or 0,
+                    getattr(resp, "stop_reason", None) == "max_tokens")
+
+        # BUG-FIX: prima 9 voci in UNA risposta > max_tokens → troncata → JSON illeggibile
+        # → OGNI voce cadeva su [BOZZA OFFLINE] pur con filiera anthropic OK. Ora le voci
+        # mancanti/mozzate si RIGENERANO in batch più piccoli (che stanno nei token).
+        out: dict[str, str] = {}
+        tot_out = 0
+        pending = list(voci)
+        for attempt in range(3):
+            data, out_tok, truncated = _call(pending)
+            tot_out += out_tok
+            for v in pending:
+                vid = v.get("id") or v.get("titolo")
+                val = str(data.get(vid) or "").strip()
+                if len(val) >= 60:                     # prosa reale, non vuota/mozzata
+                    out[vid] = val
+            pending = [v for v in voci if (v.get("id") or v.get("titolo")) not in out]
+            if not pending:
+                break
+            log.warning("generate_sezioni: %d voci mancanti (troncato=%s) tentativo %d/3 → rigenero",
+                        len(pending), truncated, attempt + 1)
+
+        degraded = [(v.get("id") or v.get("titolo")) for v in voci
+                    if (v.get("id") or v.get("titolo")) not in out]
+        if degraded:
+            # ultima spiaggia: bozza, ma `degraded_voci` fa BLOCCARE il job dal gate →
+            # mai un report PAGATO con segnaposto (fail-loud invece di consegna silenziosa).
+            off = _offline(voci, facts, inputs)
+            for vid in degraded:
+                out[vid] = off.get(vid, "")
+        return out, {"mode": "anthropic", "model": ANTHROPIC_MODEL,
+                     "output_tokens": tot_out, "degraded_voci": degraded}
     except Exception as exc:
         log.warning("filiera anthropic fallita: %s", exc)
         if ALLOW_OFFLINE_FALLBACK:
