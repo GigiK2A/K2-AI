@@ -528,22 +528,37 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
             with ThreadPoolExecutor(max_workers=min(6, len(rest))) as ex:
                 rows.extend(ex.map(_gen_section, rest))
 
+    degraded: list[str] = []
     for name, val, invalido, tok in rows:
         tot_out += tok
         if invalido:
             if name in required:
-                return None, {"mode": "anthropic", "warning": f"sezione_{name}_invalida"}
+                # NO-DEAD-END: una sezione required non valida NON fa più refuse. Ci mettiamo un
+                # placeholder schema-valido (poi il report esce PARZIALE, sezione marcata a valle):
+                # meglio un preliminare con un buco etichettato che un vicolo cieco su un pagato.
+                result[name] = _det_sample(props[name], output_schema, inputs, servizio, name)
+                degraded.append(name)
             continue  # sezione opzionale non conforme → skip
         result[name] = val
         sezioni_gen += 1
 
+    # required MAI generati (nessun roll valido) → placeholder valido, sezione degradata
+    for name in required:
+        if name not in result:
+            result[name] = _det_sample(props[name], output_schema, inputs, servizio, name)
+            degraded.append(name)
+
     # validazione finale dell'intero deliverable
     full_errs = list(Draft202012Validator(output_schema).iter_errors(result))
+    if full_errs:
+        # ultima rete: clampa il root intero (strip proprietà extra + coercizioni formali)
+        result = _clamp_to_schema(result, output_schema, output_schema)
+        full_errs = list(Draft202012Validator(output_schema).iter_errors(result))
     if full_errs:
         return None, {"mode": "anthropic", "warning": "deliverable_non_conforme",
                       "errors": [str(e.message) for e in full_errs[:3]]}
     return result, {"mode": "anthropic", "model": ANTHROPIC_MODEL, "assembly": "deep",
-                    "sezioni": sezioni_gen, "output_tokens": tot_out,
+                    "sezioni": sezioni_gen, "output_tokens": tot_out, "degraded_sections": degraded,
                     "cache_read_tokens": stats["cache_read"], "input_tokens": stats["input"],
                     "repairs": stats["repairs"]}
 
