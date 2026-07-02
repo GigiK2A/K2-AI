@@ -601,6 +601,18 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                                                           facts=facts, strict=strict_grounding))
             g_blocks = grounding.blocks(g_findings)
             if g_blocks and not offline_mode:
+                # NIENTE VICOLO CIECO: se i blocchi sono SOLO numeri non ancorati (delta %
+                # derivati, benchmark di settore, ROE anno-su-anno) — non allucinazioni di
+                # fatti-cliente — si ETICHETTANO illustrativi (scrub non-strict) e si consegna
+                # invece di rifiutare. I numeri-core dei finance restano deterministici. Solo
+                # i blocchi "duri" (placeholder, fatto-cliente confabulato) fanno refuse.
+                if all(b.get("code") == "numero_non_grounded" for b in g_blocks):
+                    deliverable = quality.scrub_ungrounded_numbers(
+                        deliverable, inputs, facts, citazioni, strict=False)
+                    log.info("grounding: %d numeri non-grounded etichettati illustrativi (no refuse) job %s",
+                             len(g_blocks), job_id)
+                    _ok = True
+                    break
                 _refusal = ("grounding_failed",
                             {"grounding_block": g_blocks, "grounding_findings": g_findings})
                 if _attempt == _MAX_GEN_TRIES - 1:
