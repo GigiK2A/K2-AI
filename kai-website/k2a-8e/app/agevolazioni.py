@@ -107,6 +107,31 @@ def _de_minimis_usato(form: dict) -> tuple[float, int]:
     return round(tot, 2), n
 
 
+def de_minimis_facts(form: dict) -> Optional[dict]:
+    """Plafond de minimis DETERMINISTICO da iniettare nei `facts` PRE-generazione (pipeline.resolve),
+    così la PROSA dell'LLM usa il residuo giusto e non lo ricalcola col vecchio massimale 200k.
+    None se il package non è disponibile."""
+    if not _AVAILABLE:
+        return None
+    usato, _ = _de_minimis_usato(form)
+    settore = _settore_deminimis(form)
+    if usato > 0:
+        aiuti = [AiutoDeMinimis(importo_eur=usato, data_concessione=date.today(),
+                                descrizione="aiuti pregressi (aggregato dal form)")]
+        dm = de_minimis_plafond(DeMinimisPlafondInput(settore=settore, aiuti_ricevuti=aiuti))
+    else:
+        dm = de_minimis_plafond(DeMinimisPlafondInput(settore=settore))
+    residuo = round(dm.plafond_residuo_eur, 2)
+    _it = lambda x: f"{x:,.0f}".replace(",", ".")  # 300000 → "300.000"
+    return {
+        "massimale_eur": dm.massimale_eur, "usato_eur": usato, "residuo_eur": residuo,
+        "riferimento": dm.riferimento_normativo,
+        "nota": (f"Plafond de minimis: massimale {_it(dm.massimale_eur)}€ (Reg. UE 2023/2831, dal "
+                 f"01/01/2024 — NON i vecchi 200.000€), aiuti pregressi {_it(usato)}€, residuo "
+                 f"{_it(residuo)}€. Usa SEMPRE questi valori nel testo, non ricalcolarli."),
+    }
+
+
 def compute_benefici(form: dict) -> Optional[dict]:
     """Ritorna {benefici:{scenari + dettaglio_per_strumento}, note, provenance} o None se il
     package non è disponibile."""

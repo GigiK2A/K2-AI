@@ -121,6 +121,13 @@ def resolve(skill: str, form: dict) -> tuple[dict, list[dict]]:
         facts["_riferimenti_normativi_fisco"] = {
             "tipo": "riferimenti_normativi", "valore": tax.norme_riferimento(),
         }
+    # AgevolazioniBoost: inietta il plafond de minimis DETERMINISTICO nei fatti così la PROSA
+    # usa il residuo giusto (massimale 300k Reg. UE 2023/2831 − pregressi) e non lo ricalcola
+    # col vecchio 200k. Il campo strutturato è già sovrascritto post-gen da apply_agevolazioni.
+    if skill == "flusso-agevolazioni-pmi":
+        dmf = agevolazioni.de_minimis_facts(form)
+        if dmf:
+            facts["_plafond_de_minimis"] = {"tipo": "agevolazione", "valore": dmf}
     return facts, citazioni
 
 
