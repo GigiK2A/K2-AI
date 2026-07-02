@@ -98,13 +98,16 @@ class _Doc(BaseDocTemplate):
 
 # ===================== blocchi fissi (metodologia, CTA) ==================
 def _methodology(S, ambito: str, has_citations: bool = False) -> list:
-    # La promessa "riferimenti normativi verbatim" si fa SOLO se ci sono citazioni
-    # grounded reali (LegalBoost/FiscoBoost). Asserirla su un report di strategia
-    # senza una sola citazione è un over-promise (e induce a fidarsi di fatti
-    # normativi che il modello ha inventato — vedi report StrategyBoost reale).
+    # La promessa "riferimenti normativi verbatim / tracciabilità" si fa SOLO nei report
+    # legale-compliance (LegalBoost/FiscoBoost) DOVE il testo di legge verbatim È la sostanza.
+    # Su un report di strategia/marketing (ambito "professionale") con una citazione
+    # incidentale (es. un solo rimando GDPR) l'asserzione è un over-promise: fa leggere come
+    # "verificati/tracciabili" anche numeri e COMPETITOR che il modello ha prodotto senza
+    # fonte (vedi report StrategyBoost reale: 5 competitor nominati senza web search).
+    strong = has_citations and ambito == "legale-compliance"
     fonti = ("parametri di settore e — dove applicabile — riferimenti normativi riportati "
              "verbatim dalla fonte ufficiale, per garantire tracciabilità e affidabilità delle valutazioni"
-             if has_citations else
+             if strong else
              "parametri di settore, distinguendo le evidenze verificate dalle inferenze qualitative")
     txt = (
         "Questo documento è stato prodotto da K2-AI, sistema di intelligenza artificiale "
