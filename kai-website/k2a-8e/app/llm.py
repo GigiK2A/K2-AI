@@ -673,7 +673,18 @@ def _clamp_to_schema(val, schema: dict, root: dict):
         return val
     if isinstance(val, dict) and t == "object":
         props = schema.get("properties", {})
-        return {k: (_clamp_to_schema(v, props[k], root) if k in props else v) for k, v in val.items()}
+        # additionalProperties:false → una chiave "vagante" prodotta dal modello (es. un wrapper
+        # 'data' visto su ControlBoost) fa fallire la validazione e, dopo i retry, un REFUSE =
+        # vicolo cieco per un report PAGATO. Rete di sicurezza: se lo schema vieta proprietà extra
+        # le SCARTIAMO invece di farle fallire; altrimenti le manteniamo com'erano.
+        strip_unknown = schema.get("additionalProperties", True) is False
+        out = {}
+        for k, v in val.items():
+            if k in props:
+                out[k] = _clamp_to_schema(v, props[k], root)
+            elif not strip_unknown:
+                out[k] = v
+        return out
     if isinstance(val, list) and t == "array":
         items = schema.get("items", {"type": "string"})
         out = [_clamp_to_schema(v, items, root) for v in val]

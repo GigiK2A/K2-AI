@@ -78,5 +78,22 @@ def main() -> int:
     return 1 if fail else 0
 
 
+def test_strip_unknown() -> int:
+    """additionalProperties:false + chiave vagante del modello (es. 'data' su ControlBoost) →
+    lo strip la scarta invece di far fallire la validazione (era un REFUSE, vicolo cieco)."""
+    sch = {"type": "object", "additionalProperties": False,
+           "properties": {"titolo": {"type": "string"}, "valore": {"type": "number"}}}
+    out = llm._clamp_to_schema({"titolo": "Cruscotto", "valore": "12.5", "data": {"x": 1}, "extra": "boh"}, sch, sch)
+    conforme = not list(Draft202012Validator(sch).iter_errors(out))
+    ok = "data" not in out and "extra" not in out and out.get("valore") == 12.5 and conforme
+    # schema permissivo → NON deve scartare le chiavi extra (nessuna regressione)
+    sch2 = {"type": "object", "properties": {"a": {"type": "string"}}}
+    out2 = llm._clamp_to_schema({"a": "x", "y": "keep"}, sch2, sch2)
+    ok = ok and out2.get("y") == "keep"
+    print("STRIP-UNKNOWN (additionalProperties:false): " + ("OK" if ok else "FAIL"), "→", out)
+    return 0 if ok else 1
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    rc = main() | test_strip_unknown()
+    sys.exit(rc)
