@@ -253,10 +253,18 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
     if skill == "flusso-financeboost-pmi":
         fb_reclass = finance.latest_reclass_from_inputs(inputs)
         if fb_reclass:
-            w = quant.resolve_quant_fact("wacc", inputs)
-            wacc_pct = w.get("valore") if (isinstance(w, dict) and w.get("tipo") == "valore_calcolato") else None
+            # WACC: se l'utente ne fornisce uno (es. "WACC 9,5%") HA LA PRECEDENZA sul CAPM del
+            # quant, così la sezione valutazione (EVA) non contraddice la prosa, che usa
+            # l'assunzione dell'utente. Senza input utente → CAPM deterministico del quant.
+            user_wacc = finance.user_wacc_from_inputs(inputs)
+            if user_wacc is not None:
+                wacc_pct = user_wacc
+            else:
+                w = quant.resolve_quant_fact("wacc", inputs)
+                wacc_pct = w.get("valore") if (isinstance(w, dict) and w.get("tipo") == "valore_calcolato") else None
             deliverable = finance.apply_financeboost_sections(deliverable, fb_reclass, wacc_pct)
-            filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True}
+            filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True,
+                            "wacc_fonte": "utente" if user_wacc is not None else "capm_quant"}
 
     # AgevolazioniBoost: i benefici (Sabatini/T5.0/de minimis) vengono dai tool
     # deterministici di k2a_agevolazioni, non dall'LLM (Fix #3). Cumulabilità segnalata.
