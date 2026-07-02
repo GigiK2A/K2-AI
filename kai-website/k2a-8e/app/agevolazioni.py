@@ -6,13 +6,16 @@ non scritti dall'LLM. Calcola ciò che il form consente; dichiara onesto il rest
 
 Cumulabilità: NON sommata alla cieca — gli scenari sono derivati da una regola dichiarata
 (base = miglior singolo strumento, no cumulo; massimo = somma con caveat di verifica).
-De minimis: massimale dal tool; il plafond residuo NON è calcolabile perché gli aiuti
-pregressi nel form sono testo libero, non importi strutturati.
+De minimis: massimale dal tool; il plafond residuo È calcolato dagli aiuti pregressi del
+form (`agevolazioni_gia_fruite`, testo libero → importi estratti con parser robusto) e
+SOVRASCRIVE `profilo_aziendale.de_minimis_residuo_eur` (numero deterministico, non dall'LLM).
 """
 from __future__ import annotations
 
 import pathlib
+import re
 import sys
+from datetime import date
 from typing import Any, Optional
 
 _VENDOR = pathlib.Path(__file__).resolve().parent.parent / "vendor"
@@ -22,7 +25,8 @@ try:
         sys.path.insert(0, str(_VENDOR))
     from k2a_agevolazioni.nuova_sabatini import NuovaSabatiniInput, nuova_sabatini
     from k2a_agevolazioni.transizione_5_0 import Transizione50Input, transizione_5_0
-    from k2a_agevolazioni.de_minimis import DeMinimisPlafondInput, de_minimis_plafond
+    from k2a_agevolazioni.de_minimis import (
+        AiutoDeMinimis, DeMinimisPlafondInput, de_minimis_plafond)
     _AVAILABLE = True
     _IMPORT_ERR = None
 except Exception as exc:  # pragma: no cover
@@ -68,6 +72,41 @@ def _settore_deminimis(form: dict) -> str:
     return "generale"
 
 
+# Aiuti de minimis pregressi: il form li porta come testo libero (`agevolazioni_gia_fruite`).
+# Estraiamo gli importi con un parser robusto (k/mila/mln, separatori IT/EN) per calcolare il
+# plafond residuo in modo deterministico. Soglia 1.000€: scarta i falsi positivi tipo
+# "Industria 5.0"/"Transizione 4.0" (i "4.0"/"5.0" NON sono importi).
+_MULT_EUR = {"k": 1e3, "mila": 1e3, "mln": 1e6, "mio": 1e6, "milione": 1e6, "milioni": 1e6, "m": 1e6}
+
+
+def _parse_eur_amount(text: Any) -> Optional[float]:
+    if not isinstance(text, str) or not text.strip():
+        return None
+    s = text.lower().replace("€", " ").replace("euro", " ")
+    for m in re.finditer(r"(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(mln|mila|mio|milioni|milione|k|m)?\b", s):
+        num_s, mult = m.group(1), m.group(2)
+        if re.fullmatch(r"\d{1,3}(?:[.,]\d{3})+", num_s):     # separatori delle migliaia
+            num = float(re.sub(r"[.,]", "", num_s))
+        else:
+            num = float(num_s.replace(",", "."))              # separatore decimale (o intero)
+        if mult:
+            num *= _MULT_EUR.get(mult, 1.0)
+        if num >= 1000:                                       # scarta "4.0"/"5.0" e spiccioli
+            return round(num, 2)
+    return None
+
+
+def _de_minimis_usato(form: dict) -> tuple[float, int]:
+    """Somma gli aiuti de minimis pregressi (`agevolazioni_gia_fruite`) → (usato_eur, n_rilevati)."""
+    tot, n = 0.0, 0
+    for item in (form.get("agevolazioni_gia_fruite") or []):
+        amt = _parse_eur_amount(item if isinstance(item, str) else str(item))
+        if amt:
+            tot += amt
+            n += 1
+    return round(tot, 2), n
+
+
 def compute_benefici(form: dict) -> Optional[dict]:
     """Ritorna {benefici:{scenari + dettaglio_per_strumento}, note, provenance} o None se il
     package non è disponibile."""
@@ -102,12 +141,28 @@ def compute_benefici(form: dict) -> Optional[dict]:
             provenance.append({"strumento": "transizione_5_0", "fonte": "k2a_agevolazioni",
                                "riferimento": t.riferimento_normativo, "avvertenze": list(t.avvertenze)})
 
-    # de minimis: massimale dal tool (contesto/vincolo, non un beneficio). Plafond residuo
-    # non calcolabile: gli aiuti pregressi nel form sono testo libero, non importi.
-    dm = de_minimis_plafond(DeMinimisPlafondInput(settore=_settore_deminimis(form)))
+    # de minimis: massimale + plafond residuo DETERMINISTICI. Gli aiuti pregressi arrivano come
+    # testo libero (`agevolazioni_gia_fruite`): ne estraiamo gli importi e li passiamo al tool come
+    # aiuti strutturati (data odierna → dentro la finestra mobile 3 anni, ipotesi prudente che
+    # minimizza il residuo). Il residuo sovrascrive il campo LLM (che altrimenti resta a 0).
+    usato_dm, n_dm = _de_minimis_usato(form)
+    settore_dm = _settore_deminimis(form)
+    if usato_dm > 0:
+        aiuti = [AiutoDeMinimis(importo_eur=usato_dm, data_concessione=date.today(),
+                                descrizione="aiuti pregressi (aggregato dal form)")]
+        dm = de_minimis_plafond(DeMinimisPlafondInput(settore=settore_dm, aiuti_ricevuti=aiuti))
+        dm_nota = (f"plafond residuo {dm.plafond_residuo_eur:.0f}€ = massimale {dm.massimale_eur:.0f}€ − "
+                   f"pregressi {usato_dm:.0f}€ (finestra mobile 3 anni; ipotesi prudente: pregressi "
+                   f"tutti entro finestra. Verificare date esatte e impresa unica su visura RNA).")
+    else:
+        dm = de_minimis_plafond(DeMinimisPlafondInput(settore=settore_dm))
+        dm_nota = ("nessun aiuto de minimis pregresso rilevato nel form → plafond residuo = massimale "
+                   "(verificare saldo effettivo su visura RNA).")
+    residuo_dm = round(dm.plafond_residuo_eur, 2)
     provenance.append({"strumento": "de_minimis", "fonte": "k2a_agevolazioni",
-                       "massimale_eur": dm.massimale_eur, "riferimento": dm.riferimento_normativo,
-                       "nota": "plafond residuo non calcolabile: aiuti pregressi non strutturati nel form"})
+                       "massimale_eur": dm.massimale_eur, "usato_eur": usato_dm,
+                       "residuo_eur": residuo_dm, "riferimento": dm.riferimento_normativo,
+                       "nota": dm_nota})
 
     benefits = [d["beneficio_lordo_eur"] for d in dettaglio
                 if isinstance(d.get("beneficio_lordo_eur"), (int, float))]
@@ -117,23 +172,28 @@ def compute_benefici(form: dict) -> Optional[dict]:
         ottimistico = round((base + massimo) / 2, 2)
         note = (f"Scenari: base = miglior singolo strumento (nessun cumulo); massimo = somma "
                 f"(CUMULABILITÀ DA VERIFICARE — Sabatini e Transizione 5.0 sullo stesso bene non "
-                f"sempre cumulabili). De minimis massimale {dm.massimale_eur:.0f}€.")
+                f"sempre cumulabili). De minimis massimale {dm.massimale_eur:.0f}€, "
+                f"residuo {residuo_dm:.0f}€ (usato {usato_dm:.0f}€).")
     else:
         base = ottimistico = massimo = 0.0
-        note = "Nessun investimento pianificato con importo nel form → benefici non stimabili."
+        note = (f"Nessun investimento pianificato con importo nel form → benefici non stimabili. "
+                f"De minimis massimale {dm.massimale_eur:.0f}€, residuo {residuo_dm:.0f}€.")
 
     return {
         "benefici": {
             "scenario_base_eur": base, "scenario_ottimistico_eur": ottimistico,
             "scenario_massimo_eur": massimo, "dettaglio_per_strumento": dettaglio,
         },
+        "de_minimis": {"massimale_eur": dm.massimale_eur, "usato_eur": usato_dm,
+                       "residuo_eur": residuo_dm, "n_aiuti_rilevati": n_dm},
         "note": note, "provenance": provenance,
     }
 
 
 def apply_agevolazioni(deliverable: dict, form: dict) -> tuple[dict, Optional[dict]]:
-    """Sovrascrive `benefici_stimati` del deliverable coi numeri deterministici dei tool.
-    Ritorna (deliverable, meta{note,provenance}) o (deliverable, None) se non disponibile."""
+    """Sovrascrive `benefici_stimati` + `profilo_aziendale.de_minimis_residuo_eur` del deliverable
+    coi numeri deterministici dei tool. Ritorna (deliverable, meta{note,provenance}) o
+    (deliverable, None) se il package non è disponibile."""
     if not isinstance(deliverable, dict):
         return deliverable, None
     c = compute_benefici(form)
@@ -141,4 +201,10 @@ def apply_agevolazioni(deliverable: dict, form: dict) -> tuple[dict, Optional[di
         return deliverable, None
     out = dict(deliverable)
     out["benefici_stimati"] = c["benefici"]
+    # Plafond residuo de minimis: numero deterministico → sovrascrive il valore LLM (spesso 0).
+    dm = c.get("de_minimis")
+    if dm and isinstance(out.get("profilo_aziendale"), dict):
+        prof = dict(out["profilo_aziendale"])
+        prof["de_minimis_residuo_eur"] = dm["residuo_eur"]
+        out["profilo_aziendale"] = prof
     return out, {"note": c["note"], "provenance": c["provenance"]}
