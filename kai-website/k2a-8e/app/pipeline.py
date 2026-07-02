@@ -357,21 +357,37 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
         key = (ref["tipo"], ref["numero"], ref["anno"])
         if key in seen:
             continue
-        # Con l'ARTICOLO citato nel testo si aggancia QUEL chunk (bug N2: prima usciva il
-        # primo articolo della legge, es. art. 1 dello Statuto invece dell'art. 4).
-        # Fallback senza articolo se il chunk specifico non è nel corpus.
+        # Con l'ARTICOLO citato nel testo si aggancia QUEL chunk (bug N2: prima usciva
+        # sempre il primo articolo della legge, es. art. 1 dello Statuto invece
+        # dell'art. 4 sulla videosorveglianza).
+        articolo = ref.get("articolo")
         hits = normattiva.find_by_estremi(ref["anno"], ref["numero"], tipo=ref["tipo"],
-                                          articolo=ref.get("articolo"), limit=1)
-        if not hits and ref.get("articolo"):
+                                          articolo=articolo, limit=1)
+        if hits and articolo:
+            # Articolo esplicito e trovato → verbatim di QUEL chunk.
+            h = hits[0]
+            seen.add(key)
+            enriched.append({
+                "riferimento": h["citazione"], "campo": "norma_verificata", "fonte": "normattiva",
+                "tipo": h.get("tipo"), "numero": h.get("numero"), "anno": h.get("anno"),
+                "articolo": h.get("articolo"), "testo": (h.get("testo") or "")[:1200],
+            })
+            continue
+        # Articolo NON indicato nel testo (o chunk specifico assente): la norma si
+        # verifica che ESISTA nel corpus e va in fonti SENZA asserire un articolo a
+        # caso né un verbatim arbitrario (bug N2: 'L. 300/1970, art. 1' spacciato come
+        # citazione quando il testo parlava d'altro). Norma davvero assente → skip
+        # (confabulata: il CAGE C2 la tiene flaggata).
+        if not hits:
             hits = normattiva.find_by_estremi(ref["anno"], ref["numero"], tipo=ref["tipo"], limit=1)
         if not hits:
-            continue                                   # norma assente/confabulata → il CAGE C2 la tiene flaggata
+            continue
         h = hits[0]
         seen.add(key)
         enriched.append({
-            "riferimento": h["citazione"], "campo": "norma_verificata", "fonte": "normattiva",
+            "riferimento": normattiva.citazione({**h, "articolo": None}),
+            "campo": "norma_verificata", "fonte": "normattiva",
             "tipo": h.get("tipo"), "numero": h.get("numero"), "anno": h.get("anno"),
-            "articolo": h.get("articolo"), "testo": (h.get("testo") or "")[:1200],
         })
     return enriched
 
