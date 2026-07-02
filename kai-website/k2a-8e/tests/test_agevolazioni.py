@@ -74,6 +74,10 @@ check("profilo.de_minimis_residuo_eur sovrascritto 0 → 180000", deliv_dm2["pro
 # Nessun pregresso → residuo = massimale (mai 0)
 cdm0 = agevolazioni.compute_benefici({**FORM, "agevolazioni_gia_fruite": []})
 check("nessun pregresso → residuo = massimale (300k), mai 0", cdm0["de_minimis"]["residuo_eur"] == 300000.0)
+# de_minimis_facts: iniezione PRE-gen per la prosa (evita che l'LLM usi il vecchio 200k → 80k)
+dmf = agevolazioni.de_minimis_facts(FORM_DM)
+check("de_minimis_facts residuo = 180000", dmf["residuo_eur"] == 180000.0)
+check("de_minimis_facts nota inchioda 300k e vieta ricalcolo", "300.000" in dmf["nota"] and "200.000" in dmf["nota"])
 
 print("\nTEST AGEVOLAZIONI " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)
