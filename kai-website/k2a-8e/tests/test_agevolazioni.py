@@ -55,5 +55,25 @@ check("benefici_stimati sovrascritto (non più 9999999)", deliv2["benefici_stima
 check("dettaglio deterministico (no 'inventato')", not any(d.get("strumento_id") == "inventato" for d in deliv2["benefici_stimati"]["dettaglio_per_strumento"]))
 check("meta porta provenance", bool(meta) and "provenance" in meta)
 
+print("── de minimis: plafond residuo DETERMINISTICO da agevolazioni_gia_fruite (bug residuo=0) ──")
+# Parser importi da testo libero
+check("parse '120k' → 120000", agevolazioni._parse_eur_amount("120k") == 120000.0)
+check("parse 'de minimis 120.000€' → 120000", agevolazioni._parse_eur_amount("de minimis 120.000€") == 120000.0)
+check("parse 'Industria 5.0' → None (no falso positivo)", agevolazioni._parse_eur_amount("Industria 5.0") is None)
+check("parse 'credito 4.0 da 35.000' → 35000", agevolazioni._parse_eur_amount("credito 4.0 da 35.000") == 35000.0)
+# Scenario NeuroForge: 120k usati su massimale 300k → residuo 180k
+FORM_DM = {**FORM, "agevolazioni_gia_fruite": ["de minimis: negli ultimi 3 anni abbiamo preso 120k"]}
+cdm = agevolazioni.compute_benefici(FORM_DM)
+check("de minimis massimale = 300.000", cdm["de_minimis"]["massimale_eur"] == 300000.0)
+check("de minimis usato = 120.000 (estratto dal testo)", cdm["de_minimis"]["usato_eur"] == 120000.0)
+check("de minimis residuo = 180.000 (300k − 120k), NON 0", cdm["de_minimis"]["residuo_eur"] == 180000.0)
+# apply_agevolazioni sovrascrive il campo LLM (che qui è 0, il bug)
+deliv_dm = {"profilo_aziendale": {"de_minimis_residuo_eur": 0}, "benefici_stimati": {}}
+deliv_dm2, _ = agevolazioni.apply_agevolazioni(deliv_dm, FORM_DM)
+check("profilo.de_minimis_residuo_eur sovrascritto 0 → 180000", deliv_dm2["profilo_aziendale"]["de_minimis_residuo_eur"] == 180000.0)
+# Nessun pregresso → residuo = massimale (mai 0)
+cdm0 = agevolazioni.compute_benefici({**FORM, "agevolazioni_gia_fruite": []})
+check("nessun pregresso → residuo = massimale (300k), mai 0", cdm0["de_minimis"]["residuo_eur"] == 300000.0)
+
 print("\nTEST AGEVOLAZIONI " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)
