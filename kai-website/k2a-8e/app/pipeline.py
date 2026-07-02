@@ -552,6 +552,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             deliverable, filiera_meta = apply_deterministic_bindings(
                 skill, deliverable, facts, inputs, filiera_meta)
 
+            # NO-DEAD-END: se la generazione ha DEGRADATO delle sezioni required (placeholder
+            # schema-valido al posto di contenuto non producibile dai dati sparsi) → il report
+            # esce PRELIMINARE, non pieno. Meglio un preliminare onesto che un refuse (vicolo
+            # cieco su un pagato). Diverso da degraded_voci (troncamento → fail-loud, sotto).
+            if (filiera_meta or {}).get("degraded_sections"):
+                partial_mode = True
+
             # Scrub segnaposto template trapelati ([città]/[regione]/[nome]…) PRIMA del gate e
             # del render: il deep-gen a volte li lascia su dati mancanti nonostante il prompt, e
             # il gate li blocca (placeholder_leak). Neutralizzazione deterministica → il report si
