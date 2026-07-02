@@ -246,5 +246,11 @@ check("riclassificazione sovrascritta (deterministica)", "stato_patrimoniale" in
 check("marginalita sovrascritta (BEP non più 999999)", deliv2["marginalita"].get("bep_valore") is None)
 check("valutazione sovrascritta (wacc 7.0 non 99)", approx(deliv2["valutazione_performance"]["wacc"], 7.0))
 
+print("── user_wacc_from_inputs: WACC utente batte il CAPM (bug S5: prosa 9,5% vs EVA 11,24) ──")
+check("estrae 'WACC 9,5%' → 9.5", approx(finance.user_wacc_from_inputs({"note": "il consulente usa WACC 9,5%"}), 9.5))
+check("estrae 'tasso di sconto 8%' → 8.0", approx(finance.user_wacc_from_inputs({"a": "tasso di sconto 8%"}), 8.0))
+check("nessun WACC nel testo → None (fallback CAPM)", finance.user_wacc_from_inputs({"a": "EBITDA 720k margine 15%"}) is None)
+check("WACC assurdo 250% → None (bound sanità)", finance.user_wacc_from_inputs({"a": "wacc 250%"}) is None)
+
 print("\nTEST FINANCE " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)

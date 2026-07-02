@@ -19,6 +19,8 @@ l'estrazione è incompleta/sbagliata → si SEGNALA, non si consegna come se fos
 """
 from __future__ import annotations
 
+import json
+import re
 from typing import Any, Optional
 
 # ───────────────────────── helper numerici ─────────────────────────
@@ -481,8 +483,27 @@ def build_marginalita(reclass: dict) -> dict:
     }
 
 
+def user_wacc_from_inputs(inputs: dict) -> Optional[float]:
+    """WACC/tasso di sconto FORNITO dall'utente, estratto dal testo degli input (il form non ha
+    un campo WACC dedicato → l'assunzione vive nel testo libero letto anche dall'LLM). Ha la
+    precedenza sul CAPM del quant, così la sezione valutazione non contraddice la prosa (che usa
+    l'assunzione dell'utente). Ritorna la percentuale (es. 9.5) o None. Bound 0<w≤40 per sanità."""
+    if not isinstance(inputs, dict):
+        return None
+    blob = json.dumps(inputs, ensure_ascii=False).lower()
+    for pat in (r"wacc[^0-9%]{0,15}(\d{1,2}(?:[.,]\d+)?)\s*%",
+                r"tasso di sconto[^0-9%]{0,15}(\d{1,2}(?:[.,]\d+)?)\s*%",
+                r"costo del capitale[^0-9%]{0,15}(\d{1,2}(?:[.,]\d+)?)\s*%"):
+        m = re.search(pat, blob)
+        if m:
+            v = float(m.group(1).replace(",", "."))
+            if 0 < v <= 40:
+                return round(v, 2)
+    return None
+
+
 def build_valutazione(reclass: dict, wacc_pct: Optional[float]) -> dict:
-    """ROI scomposto (Du Pont) ed EVA deterministici dal bilancio + WACC (dal quant).
+    """ROI scomposto (Du Pont) ed EVA deterministici dal bilancio + WACC (utente o quant).
     EVA solo se il WACC è disponibile (mai inventato)."""
     ce, sp = reclass.get("ce", {}), reclass.get("sp", {})
     ebit, ricavi, ta = ce.get("ebit"), ce.get("ricavi"), sp.get("totale_attivo")
