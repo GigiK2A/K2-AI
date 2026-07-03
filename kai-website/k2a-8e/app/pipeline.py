@@ -12,7 +12,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import (advisor, agevolazioni, assets, budget, build, calc, elettrico, finance,
+from . import (advisor, agevolazioni, assets, budget, build, calc, control, elettrico, finance,
                freshness, grounding, host, jobs, llm, mep, norme, normattiva, quality, quant,
                safety, tax, validate, web)
 from .render import render_html, render_pdf
@@ -296,6 +296,14 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
         deliverable, host_meta = host.apply_hostboost(deliverable, inputs)
         if host_meta:
             filiera_meta = {**filiera_meta, "hostboost": host_meta}
+
+    # ControlBoost (cruscotto): le 4 prospettive KPI Balanced Scorecard + alert + trend sono
+    # DETERMINISTICHE dai dati operativi del mese (margine/cash-flow/DSO/utilizzo/churn…), non
+    # scritte dall'LLM che le lasciava vuote (→ refuse '[] should be non-empty') o inventate.
+    if skill == "cruscotto-direzionale":
+        deliverable, ctrl_meta = control.apply_controlboost(deliverable, inputs)
+        if ctrl_meta:
+            filiera_meta = {**filiera_meta, "controlboost": ctrl_meta}
 
     # FiscoBoost: il carico fiscale viene dal motore tax deterministico (tabelle
     # verificate), non dall'LLM (Fix #2/#4). IRAP/addizionali escluse con nota onesta.
