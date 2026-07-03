@@ -276,6 +276,22 @@ check("indici contengono D/E finanziario", any("D/E finanz" in i["nome"] for i i
 check("meta.periodo = 'Esercizio 2024' (non 'FinanceBoost')", _deliv["meta"]["periodo"] == "Esercizio 2024")
 check("meta.azienda popolata", _deliv["meta"].get("azienda") == "Test Srl")
 
+print("── quadratura KO: nota in limitazioni SENZA placeholder 'FinanceBoost' davanti ──")
+_inp_ko = {"ragione_sociale": "Furbetti", "bilanci": [{"anno": 2024, "voci": [
+    {"sezione": "attivo", "descrizione": "BANCHE", "importo": 300000},
+    {"sezione": "attivo", "descrizione": "IMPIANTI", "importo": 300000},
+    {"sezione": "passivo", "descrizione": "CAPITALE SOCIALE", "importo": 100000},
+    {"sezione": "passivo", "descrizione": "MUTUI", "importo": 200000},
+    {"sezione": "ricavi", "descrizione": "RICAVI", "importo": 900000},
+    {"sezione": "costi", "descrizione": "COSTI", "importo": 820000},
+    {"sezione": "risultato", "descrizione": "UTILE", "importo": 80000}]}]}
+_rko = finance.latest_reclass_from_inputs(_inp_ko)
+_dko = finance.apply_to_financeboost({"limitazioni": "FinanceBoost", "indici": [], "meta": {}}, _rko, _inp_ko)
+check("quadratura non torna → nota presente", "quadratura" in _dko["limitazioni"].lower())
+check("placeholder 'FinanceBoost' NON in testa alle limitazioni", not _dko["limitazioni"].startswith("FinanceBoost"))
+_dok = finance.apply_to_financeboost({"limitazioni": "Analisi sui dati forniti.", "indici": [], "meta": {}}, _rko, _inp_ko)
+check("limitazioni REALI conservate (non strippate)", _dok["limitazioni"].startswith("Analisi sui dati forniti."))
+
 print("── periodo_from_inputs: PARTIAL (aggregati, NO voci) → periodo dall'anno, non 'FinanceBoost' ──")
 check("bilancio aggregato senza voci → 'Esercizio 2024'",
       finance.periodo_from_inputs({"bilanci": [{"anno": 2024, "fatturato": 500000}]}) == "Esercizio 2024")
