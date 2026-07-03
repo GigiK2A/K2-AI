@@ -270,12 +270,16 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
             deliverable = finance.apply_to_financeboost(deliverable, fb_reclass, inputs)
             filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True,
                             "wacc_fonte": "utente" if user_wacc is not None else "capm_quant"}
-        elif isinstance(deliverable.get("indici"), list):
-            # PARTIAL senza bilancio strutturato (solo aggregati): niente indici CALCOLABILI →
-            # svuota il placeholder LLM ('FinanceBoost: 1', un indice FINTO in un report pagato).
-            # `indici` non ha minItems → [] è valido; le limitazioni spiegano già il perché.
-            deliverable = {**deliverable, "indici": []}
-            filiera_meta = {**filiera_meta, "indici_non_calcolabili": "bilancio non strutturato"}
+        else:
+            # PARTIAL senza bilancio strutturato (solo aggregati): apply_financeboost_sections/
+            # apply_to_financeboost NON girano, quindi TUTTE le sezioni quantitative (indici,
+            # riclassificazione, valutazione, scenari) restano i placeholder dell'LLM ('FinanceBoost:1',
+            # 'Voce: FinanceBoost', 'EVA 1' — numeri INVENTATI in un pagato) e `meta.periodo` resta
+            # 'FinanceBoost' sulla cover. Le svuotiamo/fissiamo in modo deterministico; restano le
+            # sezioni qualitative (executive_summary, piano_azione, limitazioni).
+            deliverable, _part_meta = finance.neutralize_financeboost_partial(deliverable, inputs)
+            if _part_meta:
+                filiera_meta = {**filiera_meta, **_part_meta}
 
     # AgevolazioniBoost: i benefici (Sabatini/T5.0/de minimis) vengono dai tool
     # deterministici di k2a_agevolazioni, non dall'LLM (Fix #3). Cumulabilità segnalata.

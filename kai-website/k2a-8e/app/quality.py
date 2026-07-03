@@ -330,28 +330,89 @@ _SCRUB_SUBS: list[tuple] = [
 _SCRUB_CATCHALL = re.compile(r"\[\s*[a-zàèéìòù][a-zàèéìòù _/]{1,30}\]")
 
 
+_BOOST_NAME_RX = re.compile(r"^[A-Z][A-Za-z]{2,}Boost$")
+
+
+def _is_boost_name_leak(s: str, servizio: str) -> bool:
+    """True se la stringa-foglia è ESATTAMENTE il nome di un boost/servizio (es.
+    'FinanceBoost') — un placeholder trapelato dallo schema-example, MAI un
+    contenuto legittimo (un'azione o un KPI non si chiamano 'FinanceBoost'). Solo
+    match ESATTO sull'intero valore: una frase che *cita* il boost resta intatta."""
+    t = (s or "").strip()
+    return bool(t) and (t == servizio or bool(_BOOST_NAME_RX.match(t)))
+
+
+# liste NARRATIVE: ogni item DEVE avere testo (azione, rischio, raccomandazione…).
+# Un item senza testo dopo lo scrub (es. {priorita:1} rimasto quando 'azione' era il
+# leak 'FinanceBoost' → svuotato) è degenere: nel PDF esce '· Piano azione / Priorita: 1'.
+# NON tocchiamo le liste NON-narrative (serie numeriche/coordinate di grafici).
+_NARRATIVE_LIST_KEYS = {
+    "piano_azione", "azioni", "azioni_prioritarie", "azioni_consigliate", "top_azioni",
+    "raccomandazioni", "rischi", "rischi_opportunita", "findings", "interventi",
+}
+
+
+def _has_text(v) -> bool:
+    """True se c'è ALMENO una stringa non vuota (numeri/bool NON contano come testo)."""
+    if isinstance(v, str):
+        return bool(v.strip())
+    if isinstance(v, dict):
+        return any(_has_text(x) for x in v.values())
+    if isinstance(v, list):
+        return any(_has_text(x) for x in v)
+    return False
+
+
+def _compact_empties(v, key: str = ""):
+    """Toglie dalle liste gli item diventati vuoti dopo lo scrub (stringa '' o dict
+    tutto-vuoto). Nelle liste NARRATIVE toglie anche i dict SENZA testo (solo numeri):
+    un bullet/azione senza testo nel PDF è peggio di assente."""
+    if isinstance(v, list):
+        out = [_compact_empties(x, key) for x in v]
+        res = []
+        for x in out:
+            if x in (None, "", [], {}):
+                continue
+            if isinstance(x, dict) and all(y in (None, "", [], {}) for y in x.values()):
+                continue
+            if key in _NARRATIVE_LIST_KEYS and isinstance(x, dict) and not _has_text(x):
+                continue  # item narrativo senza testo (es. {priorita:1}) → degenere
+            res.append(x)
+        return res
+    if isinstance(v, dict):
+        return {k: _compact_empties(x, k) for k, x in v.items()}
+    return v
+
+
 def scrub_template_placeholders(deliverable: dict, inputs: dict) -> dict:
     """Neutralizza i segnaposto template trapelati dal LLM prima del gate/render. Deterministico."""
     name = display_name(inputs) or "l'azienda"
     myyyy = date.today().strftime("%m/%Y")
     yyyy = date.today().strftime("%Y")
+    servizio = str((deliverable.get("meta") or deliverable.get("metadata") or {}).get("servizio") or "")
 
-    def fix(s: str) -> str:
+    def fix(s: str, boost_scrub: bool) -> str:
+        # nome-boost trapelato come intero valore-foglia (es. 'FinanceBoost') → vuoto,
+        # poi _compact_empties lo toglie da liste e il render salta i campi vuoti. MA
+        # solo nel BODY: in meta/metadata 'FinanceBoost' è il valore CORRETTO di
+        # `servizio` (spesso uno schema `const`) — svuotarlo fa fallire la validazione.
+        if boost_scrub and _is_boost_name_leak(s, servizio):
+            return ""
         for rx, tmpl in _SCRUB_SUBS:
             val = tmpl.format(name=name, myyyy=myyyy, yyyy=yyyy)
             s = rx.sub(lambda _m, _v=val: _v, s)        # lambda ⇒ replacement letterale (no backref)
         return _SCRUB_CATCHALL.sub(lambda _m: "dato non indicato", s)
 
-    def walk(v):
+    def walk(v, in_meta: bool = False):
         if isinstance(v, str):
-            return fix(v)
+            return fix(v, boost_scrub=not in_meta)
         if isinstance(v, dict):
-            return {k: walk(x) for k, x in v.items()}
+            return {k: walk(x, in_meta or k in ("meta", "metadata")) for k, x in v.items()}
         if isinstance(v, list):
-            return [walk(x) for x in v]
+            return [walk(x, in_meta) for x in v]
         return v
 
-    return walk(deliverable)
+    return _compact_empties(walk(deliverable))
 
 
 def grounded_numbers(inputs: dict, facts: dict, citations: list | None = None) -> set[float]:
