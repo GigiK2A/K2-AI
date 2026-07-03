@@ -79,5 +79,17 @@ dmf = agevolazioni.de_minimis_facts(FORM_DM)
 check("de_minimis_facts residuo = 180000", dmf["residuo_eur"] == 180000.0)
 check("de_minimis_facts nota inchioda 300k e vieta ricalcolo", "300.000" in dmf["nota"] and "200.000" in dmf["nota"])
 
+print("── Transizione 5.0 storico: 3 scaglioni investimento (2,5M/10M/50M), NON 2 (bug over-credito) ──")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vendor"))
+from k2a_agevolazioni.transizione_5_0 import Transizione50Input, transizione_5_0  # noqa: E402
+# 5M @12% processo → 2,5M@40% (1M) + 2,5M@20% (500k) = 1,5M (prima dava 5M@40% = 2M, +500k errato)
+t5 = transizione_5_0(Transizione50Input(investimento_eur=5000000, anno_investimento=2024, aliquota_imposta_pct=24, riduzione_consumi_pct=12, ambito="processo"))
+check("T5.0 5M@12% → credito 1.500.000 (non 2.000.000)", t5.credito_imposta_eur == 1500000.0)
+check("T5.0 usa 3 scaglioni (primo a 2,5M, non 10M)", len(t5.dettaglio_scaglioni) == 2 and t5.dettaglio_scaglioni[0]["quota_investimento_eur"] == 2500000.0)
+check("T5.0 aliquote per scaglione = 3 valori [40,20,10]", t5.aliquote_per_scaglione_pct == [40.0, 20.0, 10.0])
+# 1M @8% processo → tutto nel 1° scaglione @35% = 350k
+t5b = transizione_5_0(Transizione50Input(investimento_eur=1000000, anno_investimento=2024, aliquota_imposta_pct=24, riduzione_consumi_pct=8, ambito="processo"))
+check("T5.0 1M@8% → credito 350.000 (1° scaglione @35%)", t5b.credito_imposta_eur == 350000.0)
+
 print("\nTEST AGEVOLAZIONI " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)

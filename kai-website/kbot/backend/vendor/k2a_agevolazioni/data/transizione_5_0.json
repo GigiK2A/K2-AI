@@ -8,12 +8,36 @@
   "iperammortamento_2026": {
     "norma": "L. 199/2025, commi 427-436 (+ DL 38/2026 correttivo)",
     "natura": "Maggiorazione del costo deducibile ai fini IRES/IRPEF (ammortamento/leasing) — NON credito d'imposta",
-    "finestra": {"da": "2026-01-01", "a": "2028-09-30", "nota": "bene realizzato/in funzione entro il termine (art. 109 TUIR); nessuna 'prenotazione'"},
+    "finestra": {
+      "da": "2026-01-01",
+      "a": "2028-09-30",
+      "nota": "bene realizzato/in funzione entro il termine (art. 109 TUIR); nessuna 'prenotazione'"
+    },
     "scaglioni_maggiorazione": [
-      {"da": 0, "a": 2500000, "maggiorazione_pct": 180, "label": "fino a 2,5 M€"},
-      {"da": 2500000, "a": 10000000, "maggiorazione_pct": 100, "label": "2,5–10 M€"},
-      {"da": 10000000, "a": 20000000, "maggiorazione_pct": 50, "label": "10–20 M€"},
-      {"da": 20000000, "a": null, "maggiorazione_pct": 0, "label": "oltre 20 M€ (nessuna)"}
+      {
+        "da": 0,
+        "a": 2500000,
+        "maggiorazione_pct": 180,
+        "label": "fino a 2,5 M€"
+      },
+      {
+        "da": 2500000,
+        "a": 10000000,
+        "maggiorazione_pct": 100,
+        "label": "2,5–10 M€"
+      },
+      {
+        "da": 10000000,
+        "a": 20000000,
+        "maggiorazione_pct": 50,
+        "label": "10–20 M€"
+      },
+      {
+        "da": 20000000,
+        "a": null,
+        "maggiorazione_pct": 0,
+        "label": "oltre 20 M€ (nessuna)"
+      }
     ],
     "beni_ammissibili": "Materiali/immateriali nuovi Allegati IV e V L. 199/2025 (non più All. A/B L. 232/2016), interconnessi; + beni per autoproduzione energia rinnovabile per autoconsumo (incl. stoccaggio; FV solo moduli individuati).",
     "premio_energetico": "ELIMINATO in sede parlamentare (la bozza prevedeva fino a +220% per risparmio ≥3% struttura/5% processo → NON approvato). NESSUNA fascia di risparmio energetico nel calcolo.",
@@ -28,21 +52,91 @@
     "code_residue": "Credito non utilizzato → compensazione F24 in 5 quote 2026-2030; comunicazione di completamento entro 28/02/2026.",
     "tetto_massimo_progetto_eur": 50000000,
     "scaglioni_investimento_eur": [
-      {"da": 0, "a": 10000000, "label": "fino a 10 M€"},
-      {"da": 10000000, "a": 50000000, "label": "da 10 a 50 M€"}
+      {
+        "da": 0,
+        "a": 2500000,
+        "label": "fino a 2,5 M€"
+      },
+      {
+        "da": 2500000,
+        "a": 10000000,
+        "label": "da 2,5 a 10 M€"
+      },
+      {
+        "da": 10000000,
+        "a": 50000000,
+        "label": "da 10 a 50 M€"
+      }
     ],
     "fasce_riduzione": {
       "struttura": [
-        {"min_pct": 3, "max_pct": 6, "label": "3%-6% struttura produttiva", "aliquote_per_scaglione": [35, 5]},
-        {"min_pct": 6, "max_pct": 10, "label": "6%-10% struttura produttiva", "aliquote_per_scaglione": [40, 10]},
-        {"min_pct": 10, "max_pct": null, "label": ">10% struttura produttiva", "aliquote_per_scaglione": [45, 15]}
+        {
+          "min_pct": 3,
+          "max_pct": 6,
+          "label": "3%-6% struttura produttiva",
+          "aliquote_per_scaglione": [
+            35,
+            15,
+            5
+          ]
+        },
+        {
+          "min_pct": 6,
+          "max_pct": 10,
+          "label": "6%-10% struttura produttiva",
+          "aliquote_per_scaglione": [
+            40,
+            20,
+            10
+          ]
+        },
+        {
+          "min_pct": 10,
+          "max_pct": null,
+          "label": ">10% struttura produttiva",
+          "aliquote_per_scaglione": [
+            45,
+            25,
+            15
+          ]
+        }
       ],
       "processo": [
-        {"min_pct": 5, "max_pct": 10, "label": "5%-10% processo interessato", "aliquote_per_scaglione": [35, 5]},
-        {"min_pct": 10, "max_pct": 15, "label": "10%-15% processo interessato", "aliquote_per_scaglione": [40, 10]},
-        {"min_pct": 15, "max_pct": null, "label": ">15% processo interessato", "aliquote_per_scaglione": [45, 15]}
+        {
+          "min_pct": 5,
+          "max_pct": 10,
+          "label": "5%-10% processo interessato",
+          "aliquote_per_scaglione": [
+            35,
+            15,
+            5
+          ]
+        },
+        {
+          "min_pct": 10,
+          "max_pct": 15,
+          "label": "10%-15% processo interessato",
+          "aliquote_per_scaglione": [
+            40,
+            20,
+            10
+          ]
+        },
+        {
+          "min_pct": 15,
+          "max_pct": null,
+          "label": ">15% processo interessato",
+          "aliquote_per_scaglione": [
+            45,
+            25,
+            15
+          ]
+        }
       ]
     },
-    "soglie_minime_accesso": {"struttura_pct": 3, "processo_pct": 5}
+    "soglie_minime_accesso": {
+      "struttura_pct": 3,
+      "processo_pct": 5
+    }
   }
 }
