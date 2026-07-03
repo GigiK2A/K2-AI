@@ -161,6 +161,12 @@ def boost_per_tag(tag: str) -> Optional[dict]:
 
 
 # ---- Selettore di catalogo: conversazione → Boost 8e ---------------------
+# Negazione IMMEDIATA prima di una keyword (entro ~3 parole): 'non ho bilancio',
+# 'senza fatturato', 'né numeri né dati' → NON è intento per quel boost. Ancorata a fine
+# stringa (si applica al testo PRIMA della keyword). Vedi _match in suggest_boost.
+_NEGATED_BEFORE = re.compile(r"\b(?:non|senza|niente|nessun\w*|né|nè|mai|privo di|manca\w*)\b"
+                             r"(?:\s+\S+){0,3}\s*$")
+
 # Mappa keyword → servizio_id (tutti 8e-generabili). Primo match vince. I domini
 # specifici (legale, fiscale, edilizia, energia, sicurezza...) PRIMA dei generici
 # (controllo, marketing, strategia), così "due diligence M&A" non finisce su
@@ -223,9 +229,16 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False,
         # "edilizia" nominato di sfuggita), che con il vecchio first-match-per-ordine dirottava
         # un'analisi marketing su BuildBoost. A PARITÀ vince il primo gruppo (ordine-dominio).
         # \b a inizio keyword: niente match parziali ("nda" dentro "aziendale").
+        # NEGAZIONE: una keyword preceduta da 'non/senza/né/niente/nessun' entro ~3 parole NON
+        # è intento — 'non ho bilancio né fatturato' NON deve instradare a FinanceBoost (l'utente
+        # dice che quei dati NON ce li ha). Senza questo, un «senza dati» finiva su FinanceBoost.
         best_sid, best_score = None, 0
         for keys, sid in _BOOST_KEYWORDS:
-            score = sum(len(re.findall(r"\b" + re.escape(k), text)) for k in keys)
+            score = 0
+            for k in keys:
+                for mt in re.finditer(r"\b" + re.escape(k), text):
+                    if not _NEGATED_BEFORE.search(text[max(0, mt.start() - 40):mt.start()]):
+                        score += 1
             if score > best_score:
                 best_sid, best_score = sid, score
         return best_sid
