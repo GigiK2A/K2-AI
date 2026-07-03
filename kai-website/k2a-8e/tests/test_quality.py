@@ -267,3 +267,37 @@ def test_finance_xlsx_has_live_formulas(tmp_path):
     assert wb["Indici"]["B2"].value.startswith("=IFERROR(")
     assert wb["Scenari"]["D2"].value.startswith("=IF(")
     assert wb["Scenari"]["B2"].value is None
+
+
+def test_scrub_strips_boost_name_leaf_leaks():
+    # Gemma/LLM a volte echeggia il nome-boost dallo schema-example dentro campi-contenuto
+    # (azione/KPI). Match ESATTO sull'intero valore → via; una frase che lo cita resta.
+    d = {
+        "meta": {"servizio": "FinanceBoost"},
+        "executive_summary": {"score_globale": 45, "top_azioni": ["Monitorare il cash flow", "FinanceBoost"]},
+        "piano_azione": [
+            {"priorita": 1, "azione": "FinanceBoost", "impatto_stimato": "FinanceBoost", "tempi": "FinanceBoost"},
+            {"priorita": 2, "azione": "Fornire il bilancio strutturato", "impatto_stimato": "Alto", "tempi": "2 settimane"},
+        ],
+        "nota": "Il modulo FinanceBoost analizza la solidità patrimoniale.",
+    }
+    out = quality.scrub_template_placeholders(d, {"ragione_sociale": "X Srl"})
+    assert out["executive_summary"]["top_azioni"] == ["Monitorare il cash flow"]  # leak tolto, azione buona resta
+    # l'item con azione='FinanceBoost'→'' resta SENZA testo (solo priorita:1) → degenere → tolto
+    assert len(out["piano_azione"]) == 1
+    assert out["piano_azione"][0]["azione"] == "Fornire il bilancio strutturato"   # item buono intatto
+    assert "FinanceBoost" in out["nota"]                                           # frase legittima NON toccata
+    assert out["meta"]["servizio"] == "FinanceBoost"                               # meta.servizio (const schema) NON svuotato
+
+
+def test_scrub_does_not_touch_generic_words():
+    d = {"meta": {"servizio": "FinanceBoost"}, "x": ["Boost vendite", "Boosting", "WebBoost"]}
+    out = quality.scrub_template_placeholders(d, {})
+    assert out["x"] == ["Boost vendite", "Boosting"]  # 'WebBoost' (nome-boost esatto) via; le altre restano
+
+
+def test_compact_does_not_drop_numeric_series():
+    # una lista NON-narrativa di punti numerici (serie/grafico) NON va compattata
+    d = {"meta": {"servizio": "WebBoost"}, "serie_mensile": [{"mese": 1, "valore": 100}, {"mese": 2, "valore": 0}]}
+    out = quality.scrub_template_placeholders(d, {})
+    assert out["serie_mensile"] == [{"mese": 1, "valore": 100}, {"mese": 2, "valore": 0}]

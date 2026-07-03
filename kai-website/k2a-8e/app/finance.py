@@ -550,6 +550,63 @@ def latest_reclass_from_inputs(inputs: dict) -> Optional[dict]:
     return reclassify_bilancio(b["voci"], b.get("anno"))
 
 
+def periodo_from_inputs(inputs: dict) -> Optional[str]:
+    """`Esercizio <anno>` dall'anno del bilancio più recente presente nel form,
+    ANCHE senza voci (report PARTIAL: solo aggregati). None se nessun anno.
+    Serve a togliere il controllo del campo `meta.periodo` all'LLM quando la via
+    deterministica completa (apply_to_financeboost) non gira — altrimenti sulla
+    cover resta il placeholder ('FinanceBoost')."""
+    if not isinstance(inputs, dict):
+        return None
+    bilanci = inputs.get("bilanci")
+    if not isinstance(bilanci, list):
+        return None
+    anni = [int(_num(b.get("anno"))) for b in bilanci
+            if isinstance(b, dict) and _num(b.get("anno")) is not None
+            and 1990 <= _num(b.get("anno")) <= 2100]
+    return f"Esercizio {max(anni)}" if anni else None
+
+
+def neutralize_financeboost_partial(deliverable: dict, inputs: dict) -> tuple[dict, dict]:
+    """Report PARTIAL (solo aggregati, NIENTE bilancio strutturato): le sezioni
+    QUANTITATIVE del FinanceBoost non sono calcolabili e la via deterministica
+    completa (apply_financeboost_sections/apply_to_financeboost) NON gira. Senza
+    questa pulizia restano i placeholder dell'LLM — indici 'FinanceBoost: 1',
+    riclassificazione 'Voce: FinanceBoost', EVA 1 — numeri INVENTATI in un report
+    pagato. Le svuotiamo a shape schema-valida (il render salta le sezioni vuote) e
+    fissiamo `meta.periodo` deterministico. Restano le sezioni QUALITATIVE
+    (executive_summary, piano_azione, limitazioni), oneste su dati parziali.
+    Ritorna (deliverable_pulito, meta_filiera)."""
+    if not isinstance(deliverable, dict):
+        return deliverable, {}
+    out = dict(deliverable)
+    meta_f: dict = {}
+    # sezioni che richiedono un bilancio riclassificato → non producibili qui
+    if isinstance(out.get("indici"), list):
+        out["indici"] = []
+        meta_f["indici_non_calcolabili"] = "bilancio non strutturato"
+    if isinstance(out.get("scenari"), list):
+        # proiezioni ricavi/EBITDA/cash-flow: proiettare cifre esatte su dati parziali
+        # = fabbricare. Meglio vuoto + nota nelle limitazioni.
+        out["scenari"] = []
+        meta_f["scenari_non_derivabili"] = "bilancio non strutturato"
+    if isinstance(out.get("riclassificazione"), dict):
+        # required subfields → shape valida ma vuota (il render la salta se all-empty)
+        out["riclassificazione"] = {"anni": [], "stato_patrimoniale": [], "conto_economico": []}
+    if isinstance(out.get("marginalita"), dict):
+        out["marginalita"] = {}
+    if isinstance(out.get("valutazione_performance"), dict):
+        out["valutazione_performance"] = {}
+    # periodo/cover: deterministico, mai 'FinanceBoost'
+    periodo = periodo_from_inputs(inputs)
+    meta = dict(out.get("meta") or {})
+    meta["periodo"] = periodo or "Periodo non determinato (dati parziali)"
+    if periodo:
+        meta["data"] = periodo
+    out["meta"] = meta
+    return out, meta_f
+
+
 def apply_to_financeboost(deliverable: dict, reclass: dict, inputs: dict) -> dict:
     """Sovrascrive nel deliverable FinanceBoost ciò che DEVE essere deterministico:
     la tabella `indici` (computata, non scritta dall'LLM), `meta.azienda`/`meta.data`,

@@ -262,5 +262,39 @@ check("indici contengono D/E finanziario", any("D/E finanz" in i["nome"] for i i
 check("meta.periodo = 'Esercizio 2024' (non 'FinanceBoost')", _deliv["meta"]["periodo"] == "Esercizio 2024")
 check("meta.azienda popolata", _deliv["meta"].get("azienda") == "Test Srl")
 
+print("── periodo_from_inputs: PARTIAL (aggregati, NO voci) → periodo dall'anno, non 'FinanceBoost' ──")
+check("bilancio aggregato senza voci → 'Esercizio 2024'",
+      finance.periodo_from_inputs({"bilanci": [{"anno": 2024, "fatturato": 500000}]}) == "Esercizio 2024")
+check("più anni → prende il più recente",
+      finance.periodo_from_inputs({"bilanci": [{"anno": 2022}, {"anno": 2024}, {"anno": 2023}]}) == "Esercizio 2024")
+check("nessun anno → None (la pipeline mette label onesto)",
+      finance.periodo_from_inputs({"bilanci": [{"fatturato": 500000}]}) is None)
+check("niente bilanci → None", finance.periodo_from_inputs({"note": "solo fatturato a voce"}) is None)
+check("anno assurdo (fuori 1990-2100) scartato → None",
+      finance.periodo_from_inputs({"bilanci": [{"anno": 12}]}) is None)
+
+print("── neutralize_financeboost_partial: svuota le sezioni quantitative + fissa periodo (no 'FinanceBoost') ──")
+_llm_partial = {
+    "meta": {"servizio": "FinanceBoost", "periodo": "FinanceBoost"},
+    "executive_summary": {"score_globale": 45, "semafori_aree": [{"area": "Solidità", "semaforo": "rosso"}]},
+    "indici": [{"nome": "FinanceBoost", "valore": 1, "benchmark": 1, "semaforo": "verde"}],
+    "riclassificazione": {"anni": [], "stato_patrimoniale": [{"voce": "FinanceBoost"}], "conto_economico": [{"voce": "FinanceBoost"}]},
+    "marginalita": {"stima_da_aggregati": False},
+    "valutazione_performance": {"eva": 1},
+    "scenari": [{"nome": "base", "ricavi_proiettati": 1, "sensitivity": [{"variabile": "FinanceBoost", "impatto": 1}]}],
+    "piano_azione": [{"priorita": 1, "azione": "Fornire il bilancio strutturato"}],
+    "limitazioni": "Analisi preliminare: manca il bilancio.",
+}
+_clean, _mf = finance.neutralize_financeboost_partial(_llm_partial, {"bilanci": [{"anno": 2024, "fatturato": 500000}]})
+check("indici svuotati (no placeholder 'FinanceBoost:1')", _clean["indici"] == [])
+check("scenari svuotati (no proiezioni inventate)", _clean["scenari"] == [])
+check("riclassificazione svuotata a shape valida", _clean["riclassificazione"] == {"anni": [], "stato_patrimoniale": [], "conto_economico": []})
+check("valutazione_performance svuotata (no 'EVA 1')", _clean["valutazione_performance"] == {})
+check("marginalita svuotata", _clean["marginalita"] == {})
+check("meta.periodo deterministico da anno ('Esercizio 2024')", _clean["meta"]["periodo"] == "Esercizio 2024")
+check("sezioni qualitative CONSERVATE (piano_azione, limitazioni)",
+      _clean["piano_azione"] and _clean["limitazioni"] and _clean["executive_summary"]["score_globale"] == 45)
+check("meta filiera segnala indici/scenari non calcolabili", "indici_non_calcolabili" in _mf and "scenari_non_derivabili" in _mf)
+
 print("\nTEST FINANCE " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)

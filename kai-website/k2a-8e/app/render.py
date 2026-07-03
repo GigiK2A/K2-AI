@@ -514,6 +514,20 @@ def _is_list_of_dicts(v):
     return isinstance(v, list) and v and all(isinstance(x, dict) for x in v)
 
 
+def _effectively_empty(v):
+    """True se la sezione non ha NIENTE da stampare: vuota, o un dict/list i cui
+    valori sono tutti (ricorsivamente) vuoti. Serve a saltare una sezione required
+    ma svuotata (es. FinanceBoost PARTIAL: `riclassificazione` con anni/SP/CE = [])
+    che altrimenti stamperebbe un heading nudo. `0` e `False` NON sono vuoti."""
+    if v in (None, "", [], {}):
+        return True
+    if isinstance(v, dict):
+        return all(_effectively_empty(x) for x in v.values())
+    if isinstance(v, list):
+        return all(_effectively_empty(x) for x in v)
+    return False
+
+
 def _has(items, *keys):
     return items and all(any(k in it for k in keys) for it in items[:2])
 
@@ -602,7 +616,7 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
     # sezioni top-level → divisori numerati (salta exec/score già nell'header)
     n = 1
     for key, val in deliverable.items():
-        if key in _SKIP_KEYS or val in (None, "", [], {}):
+        if key in _SKIP_KEYS or _effectively_empty(val):
             continue
         # score scalari già mostrati nella dashboard → salta se top-level int 'score'
         if isinstance(val, (int, float)) and "score" in key.lower():
