@@ -528,6 +528,20 @@ def _effectively_empty(v):
     return False
 
 
+def _voce_has_text(voce: dict) -> bool:
+    """True se una voce (voci-shape) ha TESTO reale da stampare. Guarda SOLO i campi che
+    portano contenuto (prosa + descrizioni/azioni/findings), NON lo scaffolding enum
+    (tipo/gravita/fonte/status/id) che il placeholder degradato riempie sempre."""
+    parts = [str(voce.get("contenuto") or "")]
+    for it in (voce.get("rischi_opportunita") or []) + (voce.get("rischi") or []):
+        parts.append(str(it.get("descrizione") or it.get("testo") or "") if isinstance(it, dict) else str(it))
+    for it in (voce.get("azioni") or []):
+        parts.append(it if isinstance(it, str) else str(it.get("azione") or it.get("descrizione") or ""))
+    for it in (voce.get("findings") or []):
+        parts.append(it if isinstance(it, str) else str(it.get("descrizione") or it.get("titolo") or ""))
+    return any(p.strip() for p in parts)
+
+
 def _has(items, *keys):
     return items and all(any(k in it for k in keys) for it in items[:2])
 
@@ -625,6 +639,12 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
         # numerata col suo titolo reale, non tutte schiacciate sotto un unico "01 · Voci".
         if key == "voci" and _is_list_of_dicts(val) and _has(val, "titolo", "id"):
             for voce in val:
+                # salta la voce SENZA testo reale: è il placeholder degradato (#89 no-dead-end
+                # su una voce non prodotta) — contenuto/descrizioni vuoti, riempiti solo di
+                # scaffolding enum (tipo='rischio', gravita='bassa', fonte='normattiva') e di un
+                # id-codice. Altrimenti stampa un heading nudo ('02 · K2AI-2026 / Bassa rischio').
+                if not _voce_has_text(voce):
+                    continue
                 titolo = str(voce.get("titolo") or voce.get("nome") or _humanize(str(voce.get("id", "Sezione"))))
                 body.append(_Heading(f"{n:02d} · {html.escape(titolo)}", S["h1"], f"section-{n}")); n += 1
                 body.append(Spacer(1, 2))
