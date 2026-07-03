@@ -108,6 +108,7 @@ def _reclass_from_voci(row: dict) -> dict | None:
         "imposte": ce.get("imposte"), "oneri_finanziari": ce.get("oneri_finanziari"),
         "ammortamenti_svalutazioni": ce.get("ammortamenti"),
         "totale_attivo": sp.get("totale_attivo"), "attivo_corrente": sp.get("attivo_corrente"),
+        "rimanenze": sp.get("rimanenze"),  # → Excel B10 + quick ratio (acid test) corretto
         "passivo_corrente": sp.get("passivo_corrente"),
         "patrimonio_netto": sp.get("patrimonio_netto"),
         "debiti_finanziari": sp.get("debiti_finanziari"),

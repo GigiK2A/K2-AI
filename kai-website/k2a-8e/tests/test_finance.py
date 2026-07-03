@@ -194,6 +194,20 @@ check("PFN presente e semaforo verde (cassa netta)", pfn_i and pfn_i["semaforo"]
 print("── Caso degenere build_indici su bilancio vuoto: nessun crash ──")
 check("build_indici([]) gestito (lista, eventualmente vuota)", isinstance(finance.build_indici(empty), list))
 
+print("── Rimanenze classificate a sé → quick ratio ≠ current (acid test corretto) ──")
+_vr = [{"sezione": "attivo", "descrizione": "BANCHE", "importo": 180000},
+       {"sezione": "attivo", "descrizione": "CREDITI V/CLIENTI", "importo": 320000},
+       {"sezione": "attivo", "descrizione": "RIMANENZE DI MAGAZZINO", "importo": 150000},
+       {"sezione": "passivo", "descrizione": "FORNITORI", "importo": 210000},
+       {"sezione": "passivo", "descrizione": "CAPITALE SOCIALE", "importo": 440000}]
+_rr = finance.reclassify_bilancio(_vr, 2024)
+check("rimanenze estratte (150.000), non finite in altri_crediti", approx(_rr["sp"]["rimanenze"], 150000))
+check("attivo corrente le include ancora (650.000)", approx(_rr["sp"]["attivo_corrente"], 650000))
+check("current ratio = 650/210 ≈ 3,10", approx(_rr["indici"]["current_ratio"], 3.10, tol=0.02))
+check("quick ratio = (650-150)/210 ≈ 2,38 (esclude le rimanenze)", approx(_rr["indici"]["quick_ratio"], 2.38, tol=0.02))
+check("'attrezzature commerciali' NON è rimanenze (substring 'merci' scartato)",
+      finance._classify_attivo("attrezzature industriali e commerciali") == "immobilizzazioni_lorde")
+
 print("── Integrazione pipeline: reclass dagli inputs + override deliverable ──")
 inputs = {"ragione_sociale": "K2A S.r.l.s.", "settore_ateco": "engineering",
           "bilanci": [{"anno": 2023, "voci": []}, {"anno": 2024, "voci": VOCI}]}
