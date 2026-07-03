@@ -645,7 +645,11 @@ def apply_to_financeboost(deliverable: dict, reclass: dict, inputs: dict) -> dic
     if quad.get("ok") is False:
         nota = (f"Attenzione: la quadratura del bilancio non torna "
                 f"(delta {quad.get('delta')}€): dati estratti da verificare.")
-        out["limitazioni"] = (str(out.get("limitazioni") or "").strip() + " " + nota).strip()
+        # La nota si aggancia alle limitazioni ESISTENTI, ma se l'LLM ci ha messo un
+        # placeholder (es. 'FinanceBoost' su dati poveri) lo strippiamo prima: niente
+        # 'FinanceBoost Attenzione: …' in un report pagato. Regex ancorata all'inizio.
+        _lim = re.sub(r"^\s*[A-Z][A-Za-z]{2,}Boost\b[\s:.-]*", "", str(out.get("limitazioni") or "")).strip()
+        out["limitazioni"] = (_lim + " " + nota).strip() if _lim else nota
     return out
 
 
