@@ -263,6 +263,11 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
                 w = quant.resolve_quant_fact("wacc", inputs)
                 wacc_pct = w.get("valore") if (isinstance(w, dict) and w.get("tipo") == "valore_calcolato") else None
             deliverable = finance.apply_financeboost_sections(deliverable, fb_reclass, wacc_pct)
+            # ANCHE la tabella `indici` (D/E, ROE, ROS, current ratio, PFN…) + meta.periodo/azienda
+            # + nota quadratura: deterministici. Senza questa call il campo `indici` restava il
+            # PLACEHOLDER dell'LLM ('FinanceBoost: 1') e il periodo sulla cover era 'FinanceBoost'
+            # invece di 'Esercizio 2024' (regressione: apply_to_financeboost non era più chiamato).
+            deliverable = finance.apply_to_financeboost(deliverable, fb_reclass, inputs)
             filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True,
                             "wacc_fonte": "utente" if user_wacc is not None else "capm_quant"}
 
