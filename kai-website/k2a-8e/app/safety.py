@@ -66,13 +66,39 @@ def bind_costi_sicurezza(deliverable: dict) -> dict:
             "provenance": "somma deterministica delle componenti (no prezzario Allegato XV)"}
 
 
+def bind_obblighi(deliverable: dict, inputs: dict) -> Optional[dict]:
+    """Obblighi Titolo IV D.Lgs 81/08 DETERMINISTICI (no LLM): con PIÙ imprese esecutrici
+    (anche non contemporanee, art.90 c.3-4) scattano INSIEME CSP, CSE e PSC (art.100) — l'LLM
+    ne sbagliava la coerenza (es. PSC+CSE sì ma CSP no, impossibile: è il CSP che redige il PSC).
+    Notifica preliminare (art.99): con >1 impresa OPPURE entità ≥200 uomini-giorno OPPURE rischi
+    particolari Allegato XI. None se manca `num_imprese` (senza il dato non si asserisce)."""
+    ob = deliverable.get("obblighi")
+    if not isinstance(ob, dict) or not isinstance(inputs, dict):
+        return None
+    cant = deliverable.get("cantiere") or {}
+    n_imprese = _num(inputs.get("num_imprese"))
+    if n_imprese is None:
+        n_imprese = _num(cant.get("num_imprese"))
+    if n_imprese is None:
+        return None
+    ug = _num(inputs.get("uomini_giorno")) or _num(cant.get("uomini_giorno"))
+    rs = inputs.get("rischi_speciali") or cant.get("rischi_speciali") or []
+    has_rischi = bool(rs) if isinstance(rs, (list, str)) else False
+    piu_imprese = n_imprese > 1
+    ob["psc_necessario"] = piu_imprese
+    ob["csp_necessario"] = piu_imprese          # ⇐ coerente con PSC: stessa condizione
+    ob["cse_necessario"] = piu_imprese
+    ob["notifica_necessaria"] = bool(piu_imprese or (ug is not None and ug >= 200) or has_rischi)
+    deliverable["obblighi"] = ob
+    return {"num_imprese": n_imprese, "piu_imprese": piu_imprese, "uomini_giorno": ug,
+            "fonte": "art. 90/99/100 D.Lgs 81/2008 (Titolo IV)"}
+
+
 def flag_costi_non_validati(deliverable: dict) -> list[str]:
     flags: list[str] = []
     cs = deliverable.get("costi_sicurezza")
     if isinstance(cs, dict) and any(_num(cs.get(k)) is not None for k in _COMPONENTI):
         flags.append("costi_sicurezza.* (apprestamenti/dpi/…): stima LLM (nessun prezzario Allegato XV) — totale e incidenza sono però somme deterministiche")
-    if isinstance(deliverable.get("soglie"), (dict, list)) or "psc" in str(deliverable).lower():
-        flags.append("obbligo PSC/CSP/CSE: non asserito deterministicamente (serve algoritmo art.90/99 + uomini-giorno verificati)")
     return flags
 
 
@@ -81,10 +107,13 @@ def apply_safety(deliverable: dict, inputs: dict) -> tuple[dict, Optional[dict]]
         return deliverable, None
     n_rischi = bind_rischi(deliverable)
     costi_meta = bind_costi_sicurezza(deliverable)
+    obblighi_meta = bind_obblighi(deliverable, inputs)
     flags = flag_costi_non_validati(deliverable)
     return deliverable, {
         "rischi_ricalcolati_pxd": n_rischi,
         "costi_sicurezza": costi_meta,
+        "obblighi_titolo_iv": obblighi_meta,
         "voci_non_validate": flags,
-        "note": "R=P×D + totale/incidenza deterministici; singole voci di costo = stima LLM (tool prezzario assente)",
+        "note": "R=P×D + totale/incidenza + obblighi PSC/CSP/CSE/notifica deterministici; "
+                "singole voci di costo = stima LLM (tool prezzario assente)",
     }

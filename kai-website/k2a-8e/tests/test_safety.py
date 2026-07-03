@@ -50,5 +50,20 @@ print("── senza p/d: rischio non toccato (no fabbricazione) ──")
 out2, _ = safety.apply_safety({"rischi": [{"voce": "x", "r": 5}]}, {})
 check("rischio senza p/d resta com'è", out2["rischi"][0].get("r") == 5)
 
+print("── obblighi Titolo IV deterministici (art. 90/99 D.Lgs 81/08) ──")
+d = {"obblighi": {"psc_necessario": True, "csp_necessario": False, "cse_necessario": True, "notifica_necessaria": True}}
+safety.apply_safety(d, {"num_imprese": 4, "uomini_giorno": 450, "rischi_speciali": ["caduta"]})
+check("4 imprese → PSC=CSP=CSE tutti True (era incoerente: PSC sì, CSP no)",
+      d["obblighi"]["psc_necessario"] and d["obblighi"]["csp_necessario"] and d["obblighi"]["cse_necessario"])
+d1 = {"obblighi": {"psc_necessario": True, "csp_necessario": True, "cse_necessario": True, "notifica_necessaria": True}}
+safety.apply_safety(d1, {"num_imprese": 1, "uomini_giorno": 40, "rischi_speciali": []})
+check("1 impresa/pochi ug/no rischi → nessun coordinatore né notifica", not any(d1["obblighi"].values()))
+d2b = {"obblighi": {"notifica_necessaria": False, "psc_necessario": False, "csp_necessario": False, "cse_necessario": False}}
+safety.apply_safety(d2b, {"num_imprese": 1, "uomini_giorno": 250, "rischi_speciali": []})
+check("1 impresa ma ≥200 uomini-giorno → notifica preliminare (art. 99)", d2b["obblighi"]["notifica_necessaria"])
+d3b = {"obblighi": {"psc_necessario": True}}
+safety.apply_safety(d3b, {"uomini_giorno": 300})
+check("senza num_imprese → non asserito (resta LLM)", d3b["obblighi"] == {"psc_necessario": True})
+
 print("\nTEST SAFETY " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)
