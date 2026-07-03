@@ -93,6 +93,19 @@ def test_legit_finance_stays_finance_with_user_text():
     assert out is not None and out["id"] == "checkup_finanziario", out
 
 
+def test_negated_financial_terms_do_not_route_to_finance():
+    """QA S9 «senza dati»: l'utente dice che NON ha bilancio/fatturato. I termini NEGATI non
+    sono intento → NON deve instradare a FinanceBoost (che poi chiede proprio quei dati)."""
+    out = catalog.suggest_boost(
+        {}, user_text="consulenza aziendale servizi, non ho numeri né fatturato né bilancio, voglio un report")
+    assert out is None or out["id"] != "checkup_finanziario", out
+    out2 = catalog.suggest_boost({}, user_text="vorrei un'analisi ma senza bilancio e senza fatturato")
+    assert out2 is None or out2["id"] != "checkup_finanziario", out2
+    # positivo: la finanza NON negata resta finanza (nessuna regressione)
+    out3 = catalog.suggest_boost({}, user_text="analisi del bilancio e cash flow, margini e liquidità")
+    assert out3 is not None and out3["id"] == "checkup_finanziario", out3
+
+
 def test_user_intent_marketing_seo_beats_sector_edilizia():
     """BUG live giu 2026 #2 (studio rinnovabili+edilizia): l'utente chiede marketing+SEO ma
     nomina il SETTORE 'edilizia'/'rinnovabili'. Lo score-based di _match deve far vincere
