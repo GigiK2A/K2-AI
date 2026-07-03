@@ -56,9 +56,9 @@
           "type": "object",
           "required": ["adr", "occupancy", "revpar"],
           "properties": {
-            "adr": { "type": "number", "minimum": 0 },
-            "occupancy": { "type": "number", "minimum": 0, "maximum": 1 },
-            "revpar": { "type": "number", "minimum": 0 },
+            "adr": { "type": ["number", "null"], "minimum": 0 },
+            "occupancy": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+            "revpar": { "type": ["number", "null"], "minimum": 0 },
             "trevpar": { "type": ["number", "null"], "minimum": 0 },
             "goppar": { "type": ["number", "null"] },
             "alos": { "type": ["number", "null"], "minimum": 0 },
@@ -71,7 +71,7 @@
         },
         "mensile": {
           "type": "array",
-          "minItems": 12,
+          "minItems": 0,
           "maxItems": 24,
           "items": {
             "type": "object",

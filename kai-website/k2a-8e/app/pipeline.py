@@ -13,7 +13,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from . import (advisor, agevolazioni, assets, budget, build, calc, elettrico, finance,
-               freshness, grounding, jobs, llm, mep, norme, normattiva, quality, quant,
+               freshness, grounding, host, jobs, llm, mep, norme, normattiva, quality, quant,
                safety, tax, validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
@@ -287,6 +287,15 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
         deliverable, agev_meta = agevolazioni.apply_agevolazioni(deliverable, inputs)
         if agev_meta:
             filiera_meta = {**filiera_meta, "agevolazioni": agev_meta}
+
+    # HostBoost: i KPI ricettivi (ADR/RevPAR/occupancy/GOPPAR) sono DETERMINISTICI
+    # (metriche_hospitality / KPI dichiarati + RevPAR derivato), non scritti dall'LLM che
+    # su dati parziali metteva un placeholder ('adr':1,'revpar':1…). Ciò che non è
+    # calcolabile resta null (onesto), mai 1.
+    if skill == "flusso-hostboost-ricettive":
+        deliverable, host_meta = host.apply_hostboost(deliverable, inputs)
+        if host_meta:
+            filiera_meta = {**filiera_meta, "hostboost": host_meta}
 
     # FiscoBoost: il carico fiscale viene dal motore tax deterministico (tabelle
     # verificate), non dall'LLM (Fix #2/#4). IRAP/addizionali escluse con nota onesta.
