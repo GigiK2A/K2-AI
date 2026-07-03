@@ -670,6 +670,18 @@ def _clamp_to_schema(val, schema: dict, root: dict):
     t = schema.get("type")
     if isinstance(t, list):
         t = t[0]
+    # JSON DOPPIO-SERIALIZZATO: il modello (specie i piccoli/locali tipo Gemma) a volte mette
+    # il JSON DENTRO una stringa ('[{...}]' o '{...}') dove lo schema vuole array/object → prima
+    # falliva la validazione ('… is not of type object', voci FiscoBoost). Prova a RI-PARSARLO.
+    if t in ("array", "object") and isinstance(val, str):
+        _s = val.strip()
+        if (t == "array" and _s.startswith("[")) or (t == "object" and _s.startswith("{")):
+            try:
+                _parsed = json.loads(_s)
+                if (t == "array" and isinstance(_parsed, list)) or (t == "object" and isinstance(_parsed, dict)):
+                    val = _parsed
+            except ValueError:
+                pass
     # COERCIONE di tipo (rete di sicurezza): il modello a volte mette una STRINGA dove lo
     # schema vuole un ARRAY (es. sezione 'alert' di ControlBoost) → prima falliva la
     # validazione, 3 retry, refuse. Incartiamo invece di fallire. Simmetrico: se vuole uno
