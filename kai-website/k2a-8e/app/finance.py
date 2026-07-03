@@ -84,6 +84,15 @@ def _classify_attivo(d: str) -> str:
         return "liquidita"
     if "client" in d and "fornit" not in d:
         return "crediti_clienti"
+    # Rimanenze/magazzino: attivo corrente MA da tenere SEPARATO — il quick ratio (acid test)
+    # le esclude per definizione. Prima cadevano in 'altri_crediti' (contate nel corrente ma
+    # mai sottratte dal quick ratio, che restava = current ratio; e semanticamente un credito).
+    # NB: match a SUBSTRING (come tutto il classificatore) → niente 'merci' ('com-merci-ali'
+    # è un'ATTREZZATURA, non magazzino) né 'scorte' isolato ambiguo: solo termini inequivoci.
+    if any(w in d for w in ("rimanenz", "magazzino", "materie prime", "materia prima",
+                            "semilavorat", "prodotti finit", "prodotti in corso", "giacenz",
+                            "scorte di magazzino", "merci in magazzino", "merce in magazzino")):
+        return "rimanenze"
     if any(w in d for w in ("impiant", "macchinar", "attrezzatur", "immobilizz",
                             "immater", "software", "mobili", "macchine", "telefonia",
                             "automezz", "autovettur", "fabbricat", "terren",
@@ -259,8 +268,9 @@ def reclassify_bilancio(voci: list[dict], anno: Optional[int] = None,
     liquidita = g("liquidita")
     crediti_clienti = g("crediti_clienti")
     altri_crediti = g("altri_crediti")
+    rimanenze = g("rimanenze")
     ratei_attivi = g("ratei_attivi")
-    attivo_corrente = round(liquidita + crediti_clienti + altri_crediti + ratei_attivi, 2)
+    attivo_corrente = round(liquidita + crediti_clienti + altri_crediti + rimanenze + ratei_attivi, 2)
     totale_attivo = round(immob_nette + attivo_corrente, 2)
 
     df_correnti = g("debiti_finanziari_correnti")
@@ -299,6 +309,7 @@ def reclassify_bilancio(voci: list[dict], anno: Optional[int] = None,
         "liquidita": _m(liquidita),
         "crediti_clienti": _m(crediti_clienti),
         "altri_crediti": _m(altri_crediti),
+        "rimanenze": _m(rimanenze),
         "attivo_corrente": _m(attivo_corrente),
         "totale_attivo": _m(totale_attivo),
         "patrimonio_netto": patrimonio_netto,
@@ -337,7 +348,8 @@ def reclassify_bilancio(voci: list[dict], anno: Optional[int] = None,
         "roi": _p(_div(ebit, totale_attivo)) if totale_attivo else None,
         "ebitda_margin": _p(_div(ebitda, ricavi)) if ricavi else None,
         "current_ratio": _r(_div(attivo_corrente, passivo_corrente)),
-        "quick_ratio": _r(_div(attivo_corrente, passivo_corrente)),  # no rimanenze separate
+        # acid test: attivo corrente MENO le rimanenze (ora classificate separatamente).
+        "quick_ratio": _r(_div(round(attivo_corrente - rimanenze, 2), passivo_corrente)),
         "ccn": _m(round(attivo_corrente - passivo_corrente, 2)) if passivo_corrente else None,
         "pfn": _m(round(debiti_finanziari - liquidita, 2)),
         "interest_coverage": _r(_div(ebit, oneri_fin)) if oneri_fin else None,
