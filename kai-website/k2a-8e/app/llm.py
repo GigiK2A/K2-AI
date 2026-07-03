@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from typing import Optional
 
@@ -24,6 +25,15 @@ from .settings import (ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ANTHROPIC_MODEL_LIGHT
                        ALLOW_OFFLINE_FALLBACK)
 
 log = logging.getLogger("8e.llm")
+
+# Cap opzionale ai max_tokens (default 0 = nessun cap → comportamento invariato in prod). Serve per
+# far girare la filiera su modelli LOCALI a basso context (es. Gemma su LM Studio, ctx 4096) senza
+# toccare Claude: `K2A_8E_MAX_TOKENS_CAP=1500`. Solo per test; la prod resta senza cap su Claude.
+_MAXTOK_CAP = int(os.environ.get("K2A_8E_MAX_TOKENS_CAP") or 0)
+
+
+def _cap_tok(n: int) -> int:
+    return min(n, _MAXTOK_CAP) if _MAXTOK_CAP else n
 
 _SYSTEM = (
     "Sei il generatore di un deliverable legale-compliance per PMI italiane (LegalBoost).\n"
@@ -100,7 +110,7 @@ def _voci_block(voci: list[dict]) -> str:
 # max_tokens 16000: SOTTO la soglia oltre cui l'SDK Anthropic IMPONE lo streaming
 # ("Streaming is required for operations that may take longer than 10 minutes"). Non si
 # alza per far stare più voci: si generano a BATCH (vedi sotto).
-_SEZIONI_MAX_TOKENS = 16000
+_SEZIONI_MAX_TOKENS = _cap_tok(16000)
 _SEZIONI_BATCH = 3            # 3 voci ricche stanno comode in 16k → JSON completo e parsabile
 
 
@@ -219,7 +229,7 @@ def generate_deliverable_legal(
             "piano_azione[{priorita:int,azione,handoff_avvocato:bool}], disclaimer."
         )
         resp = client.messages.create(
-            model=ANTHROPIC_MODEL, max_tokens=16000,  # doc completo 9 voci ricche
+            model=ANTHROPIC_MODEL, max_tokens=_cap_tok(16000),  # doc completo 9 voci ricche
             system=[{"type": "text", "text": _SYSTEM_LEGAL_FULL, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
         )
@@ -451,7 +461,7 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
                  or "$ref" in sub_json
                  or sub_json.count('"type": "array"') >= 1
                  or len(sub.get("properties", {})) >= 4)
-        maxtok = 32000 if heavy else 20000
+        maxtok = _cap_tok(32000 if heavy else 20000)
         light = _is_light_section(sub)  # tiering: sezioni meccaniche → modello economico
         analytical.append((name, sub, sub_compact_json, sub_val, user, maxtok, light))
 
