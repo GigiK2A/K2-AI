@@ -252,5 +252,15 @@ check("estrae 'tasso di sconto 8%' → 8.0", approx(finance.user_wacc_from_input
 check("nessun WACC nel testo → None (fallback CAPM)", finance.user_wacc_from_inputs({"a": "EBITDA 720k margine 15%"}) is None)
 check("WACC assurdo 250% → None (bound sanità)", finance.user_wacc_from_inputs({"a": "wacc 250%"}) is None)
 
+print("── apply_to_financeboost: tabella indici + meta.periodo deterministici (bug placeholder 'FinanceBoost:1') ──")
+_inp = {"ragione_sociale": "Test Srl", "bilanci": [{"anno": 2024, "voci": VOCI}]}
+_r = finance.latest_reclass_from_inputs(_inp)
+_deliv = {"indici": [{"nome": "FinanceBoost", "valore": 1, "benchmark": 1, "semaforo": "verde"}], "meta": {"periodo": "FinanceBoost"}}
+_deliv = finance.apply_to_financeboost(_deliv, _r, _inp)
+check("indici SOVRASCRITTI con quelli veri (>=4, non il placeholder)", len(_deliv["indici"]) >= 4 and not any(i["nome"] == "FinanceBoost" for i in _deliv["indici"]))
+check("indici contengono D/E finanziario", any("D/E finanz" in i["nome"] for i in _deliv["indici"]))
+check("meta.periodo = 'Esercizio 2024' (non 'FinanceBoost')", _deliv["meta"]["periodo"] == "Esercizio 2024")
+check("meta.azienda popolata", _deliv["meta"].get("azienda") == "Test Srl")
+
 print("\nTEST FINANCE " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)
