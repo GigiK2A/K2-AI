@@ -53,6 +53,27 @@ deliv = {"benefici_stimati": {"scenario_massimo_eur": 9999999, "dettaglio_per_st
 deliv2, meta = agevolazioni.apply_agevolazioni(deliv, FORM)
 check("benefici_stimati sovrascritto (non più 9999999)", deliv2["benefici_stimati"]["scenario_massimo_eur"] != 9999999)
 check("dettaglio deterministico (no 'inventato')", not any(d.get("strumento_id") == "inventato" for d in deliv2["benefici_stimati"]["dettaglio_per_strumento"]))
+
+print("── _canon_tipo: etichette libere dell'LLM → tipo canonico (altrimenti beneficio 0) ──")
+check("'server GPU per training' → macchinari (hardware, non formazione)", agevolazioni._canon_tipo("server GPU per training") == "macchinari")
+check("'licenze software gestionale' → software", agevolazioni._canon_tipo("licenze software gestionale") == "software")
+check("'progetto R&S' → rd (esplicito)", agevolazioni._canon_tipo("progetto R&S") == "rd")
+check("'impianto fotovoltaico' → efficienza (non macchinari)", agevolazioni._canon_tipo("impianto fotovoltaico") == "efficienza_energetica")
+check("'macchinari' canonico resta 'macchinari'", agevolazioni._canon_tipo("macchinari") == "macchinari")
+check("label ignota → None (no falso positivo)", agevolazioni._canon_tipo("consulenza marketing") is None)
+c_free = agevolazioni.compute_benefici({"settore_ateco": "62", "investimenti_pianificati": [
+    {"tipo": "server GPU", "importo_stimato": 250000}, {"tipo": "licenze software", "importo_stimato": 150000}]})
+check("label libere → benefici REALI (>0), non 0 per tipo non riconosciuto", c_free["benefici"]["scenario_massimo_eur"] > 0)
+
+print("── apply_agevolazioni: niente '0.0' fuorviante quando i benefici non sono calcolabili ──")
+deliv_zero = {"benefici_stimati": {"scenario_base_eur": 0.0, "scenario_ottimistico_eur": 0.0,
+              "scenario_massimo_eur": 0.0, "dettaglio_per_strumento": []},
+              "profilo_aziendale": {"de_minimis_residuo_eur": 0}}
+dz, _ = agevolazioni.apply_agevolazioni(deliv_zero, {"settore_ateco": "62", "agevolazioni_gia_fruite": ["de minimis 90000"]})
+bz = dz["benefici_stimati"]
+check("scenari '0.0' RIMOSSI (non spacciati per risposta)", "scenario_massimo_eur" not in bz)
+check("nota onesta presente (come ottenere il calcolo)", "non stimabili" in bz.get("nota", "").lower())
+check("de minimis residuo comunque deterministico (210k)", dz["profilo_aziendale"]["de_minimis_residuo_eur"] == 210000.0)
 check("meta porta provenance", bool(meta) and "provenance" in meta)
 
 print("── de minimis: plafond residuo DETERMINISTICO da agevolazioni_gia_fruite (bug residuo=0) ──")
