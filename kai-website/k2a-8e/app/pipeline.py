@@ -270,6 +270,12 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
             deliverable = finance.apply_to_financeboost(deliverable, fb_reclass, inputs)
             filiera_meta = {**filiera_meta, "financeboost_sezioni_deterministiche": True,
                             "wacc_fonte": "utente" if user_wacc is not None else "capm_quant"}
+        elif isinstance(deliverable.get("indici"), list):
+            # PARTIAL senza bilancio strutturato (solo aggregati): niente indici CALCOLABILI →
+            # svuota il placeholder LLM ('FinanceBoost: 1', un indice FINTO in un report pagato).
+            # `indici` non ha minItems → [] è valido; le limitazioni spiegano già il perché.
+            deliverable = {**deliverable, "indici": []}
+            filiera_meta = {**filiera_meta, "indici_non_calcolabili": "bilancio non strutturato"}
 
     # AgevolazioniBoost: i benefici (Sabatini/T5.0/de minimis) vengono dai tool
     # deterministici di k2a_agevolazioni, non dall'LLM (Fix #3). Cumulabilità segnalata.
