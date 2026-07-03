@@ -35,6 +35,27 @@ _MAXTOK_CAP = int(os.environ.get("K2A_8E_MAX_TOKENS_CAP") or 0)
 def _cap_tok(n: int) -> int:
     return min(n, _MAXTOK_CAP) if _MAXTOK_CAP else n
 
+
+# Modalità PROMPT COMPACT: attiva quando c'è un cap sui token (= modello locale a basso context,
+# es. Gemma@4096). Tronca fatti + dati cliente + schema per-sezione così ogni chiamata sta nei 4096
+# senza "Context size exceeded". Le REGOLE anti-allucinazione restano (contano anche su Gemma); i
+# numeri deterministici arrivano comunque dai binder post-gen. Default: prod invariato (cap 0 → off).
+_PROMPT_COMPACT = _MAXTOK_CAP > 0
+_FACTS_CAP = int(os.environ.get("K2A_8E_FACTS_CHAR_CAP") or (2200 if _PROMPT_COMPACT else 0))
+_CLI_CAP = int(os.environ.get("K2A_8E_CLI_CHAR_CAP") or (1200 if _PROMPT_COMPACT else 0))
+_SCHEMA_CAP = int(os.environ.get("K2A_8E_SCHEMA_CHAR_CAP") or (1500 if _PROMPT_COMPACT else 4000))
+
+# Regole COMPATTE per modelli a basso context (l'essenziale anti-allucinazione; ~120 token vs 660).
+_RULES_COMPACT = (
+    "REGOLE (ogni sezione): conformati ESATTAMENTE al sotto-schema (required/tipi/enum); "
+    "restituisci SOLO il contenuto della sezione (NON incartato nel suo nome). NON inventare "
+    "numeri o citazioni: usa i FATTI; dato mancante → 'non specificato' o etichetta '(ipotesi "
+    "esplicita)'. NIENTE segnaposto [campo]. Prosa densa, orientamento non vincolante.\n\n")
+
+
+def _trunc(s: str, cap: int) -> str:
+    return s if not cap or len(s) <= cap else s[:cap] + " …[troncato per context ridotto]"
+
 _SYSTEM = (
     "Sei il generatore di un deliverable legale-compliance per PMI italiane (LegalBoost).\n"
     "REGOLE ASSOLUTE:\n"
@@ -385,8 +406,8 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     except Exception as exc:
         return None, {"mode": "offline", "reason": str(exc)}
 
-    facts_blk = _facts_block(facts)
-    cli = json.dumps(inputs, ensure_ascii=False)
+    facts_blk = _trunc(_facts_block(facts), _FACTS_CAP)
+    cli = _trunc(json.dumps(inputs, ensure_ascii=False), _CLI_CAP)
     # $defs vive nella RADICE: va propagato sia al modello (così vede la forma dei
     # $ref) sia al validatore della singola sezione (altrimenti '#/$defs/...' non
     # risolve → PointerToNowhere → refuse erroneo su ogni schema con $defs).
@@ -396,9 +417,12 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     # per ogni sezione → cache_control li fa ri-pagare UNA volta sola invece di ×N
     # (taglio input ~50-70% su doc multi-sezione). La parte variabile (sezione +
     # sotto-schema) va nel messaggio user.
+    _intro = (f"Sei un consulente senior che redige le sezioni di un deliverable {servizio} "
+              "PREMIUM per una PMI italiana (documento da 8-12 pagine).\n")
     facts_system = (
-        f"Sei un consulente senior che redige le sezioni di un deliverable {servizio} "
-        "PREMIUM per una PMI italiana (documento da 8-12 pagine).\n"
+        _intro + _RULES_COMPACT + f"{facts_blk}\n\nDATI CLIENTE: {cli}"
+    ) if _PROMPT_COMPACT else (
+        _intro +
         "REGOLE (per OGNI sezione):\n"
         "- Conformati ESATTAMENTE al sotto-schema JSON fornito (required, tipi, enum).\n"
         "- Restituisci SOLO il CONTENUTO della sezione, NON incartato nel suo nome: "
@@ -451,7 +475,7 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
             sub_val["$defs"] = root_defs
         sub_compact_json = json.dumps(sub_compact, ensure_ascii=False)
         user = (f"Genera la sezione «{name}» del deliverable. SOTTO-SCHEMA:\n"
-                f"{sub_compact_json[:4000]}\n\n"
+                f"{sub_compact_json[:_SCHEMA_CAP]}\n\n"
                 "Rispondi SOLO con il JSON della sezione — contenuto diretto, NON incartato "
                 f"nella chiave «{name}».")
         # max_tokens è un CEILING (paghi solo i token generati): alto per NON troncare;
