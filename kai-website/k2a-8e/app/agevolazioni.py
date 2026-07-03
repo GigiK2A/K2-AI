@@ -54,12 +54,45 @@ def _num(v: Any) -> Optional[float]:
     return None
 
 
+# L'autofill/LLM etichetta gli investimenti con parole libere ('server GPU', 'hardware',
+# 'sviluppo software', 'R&S'…). I tool riconoscono solo i tipi canonici (macchinari/software/
+# efficienza_energetica/rd). Normalizziamo i sinonimi → altrimenti un 'server GPU' non attiva
+# né Sabatini né Transizione 5.0 e il beneficio esce 0 pur essendo un bene agevolabile.
+# Ordine INTENZIONALE: le categorie specifiche (green/R&S/formazione) prima delle generiche
+# (software/macchinari), così 'impianto fotovoltaico' → efficienza (non macchinari) e 'sviluppo
+# software' → R&S (development, non un acquisto software agevolabile → conservativo, niente
+# beneficio inventato). 'impiant' generico NON è in macchinari: troppo ambiguo.
+_TIPO_SYNONYMS = (
+    ("efficienza_energetica", ("efficienza energ", "fotovoltaic", "rinnovabil", "risparmio energetic",
+                               "coibent", "pompa di calore", "colonnine")),
+    ("rd", ("ricerca e sviluppo", "r&d", "r&s", "r & d", "r & s", "prototip", "brevett")),
+    ("formazione", ("formazion", "corsi", "upskill", "addestrament del personale")),
+    ("software", ("software", "licenz", "applicativ", "gestionale", "cloud", "saas")),
+    ("macchinari", ("macchinar", "server", "gpu", "hardware", "attrezzatur", "computer", "workstation",
+                    "bene strumentale", "beni strumentali", "impianto di produzione")),
+)
+
+
+def _canon_tipo(raw: Any) -> Optional[str]:
+    """Mappa un'etichetta libera al tipo canonico del form. Se è già canonico, lo tiene."""
+    t = str(raw or "").strip().lower()
+    if not t:
+        return None
+    if t in ("macchinari", "software", "brevetti", "formazione", "efficienza_energetica",
+             "rd", "assunzioni", "export", "edilizia"):
+        return t
+    for canon, keys in _TIPO_SYNONYMS:
+        if any(k in t for k in keys):
+            return canon
+    return None
+
+
 def _investment_sums(form: dict) -> dict:
     sums: dict[str, float] = {}
     for it in (form.get("investimenti_pianificati") or []):
         if not isinstance(it, dict):
             continue
-        imp, tipo = _num(it.get("importo_stimato")), it.get("tipo")
+        imp, tipo = _num(it.get("importo_stimato")), _canon_tipo(it.get("tipo"))
         if imp and imp > 0 and tipo:
             sums[tipo] = sums.get(tipo, 0.0) + imp
     return sums
@@ -225,7 +258,22 @@ def apply_agevolazioni(deliverable: dict, form: dict) -> tuple[dict, Optional[di
     if not c:
         return deliverable, None
     out = dict(deliverable)
-    out["benefici_stimati"] = c["benefici"]
+    ben = dict(c["benefici"])
+    # Se NESSUNO strumento è calcolabile (nessun investimento per tipologia nel form) NON
+    # mostrare '0.0' negli scenari — su un report pagato "Scenario massimo: 0,00€" legge come
+    # "non hai diritto a niente", falso: manca solo l'input. Sostituiamo con uno stato onesto
+    # (niente scenari fittizi) + nota che dice COME ottenere il calcolo. Vedi il pattern
+    # FinanceBoost PARTIAL: niente numeri fuorvianti su dati mancanti.
+    if not ben.get("dettaglio_per_strumento"):
+        ben = {
+            "dettaglio_per_strumento": [],
+            "nota": ("Benefici non stimabili: nel form non risultano investimenti pianificati per "
+                     "tipologia. Indica gli importi per tipo (macchinari, software, ricerca e "
+                     "sviluppo, efficienza energetica) e il calcolo dei contributi — Nuova Sabatini, "
+                     "Transizione 5.0, credito R&S — parte in automatico. "
+                     f"Plafond de minimis residuo: {c['de_minimis']['residuo_eur']:.0f}€."),
+        }
+    out["benefici_stimati"] = ben
     # Plafond residuo de minimis: numero deterministico → sovrascrive il valore LLM (spesso 0).
     dm = c.get("de_minimis")
     if dm and isinstance(out.get("profilo_aziendale"), dict):
