@@ -718,4 +718,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         jobs.update(job_id, status="refused", refusal_reason=r.reason, error=r.message)
     except Exception as exc:
         log.exception("pipeline error")
-        jobs.update(job_id, status="error", error=str(exc))
+        # Errore tecnico inatteso (upstream LLM giù, timeout, context superato…): all'utente va un
+        # messaggio PULITO e azionabile, NON la stringa API grezza (es. 'Error code: 500 Context
+        # size has been exceeded', che confonde e trapela il backend). Il dettaglio grezzo resta
+        # nei log + in `error_detail` per il debug.
+        jobs.update(job_id, status="error",
+                    error="La generazione non è riuscita per un problema tecnico temporaneo. "
+                          "Riprova tra poco; se persiste, semplifica o accorcia la richiesta.",
+                    error_detail=str(exc))
