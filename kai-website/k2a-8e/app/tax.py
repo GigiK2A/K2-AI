@@ -40,6 +40,11 @@ def _pct(valore: Any) -> Optional[float]:
     return float(m.group(1).replace(",", ".")) if m else None
 
 
+def _eur_it(x: float) -> str:
+    """72000 → '€ 72.000' (migliaia col punto, stile IT). Nessuna cifra decimale."""
+    return "€ " + format(int(round(x)), ",d").replace(",", ".")
+
+
 def _find(imposta: str, *substr: str) -> Optional[dict]:
     """Prima voce verified di `imposta` la cui descrizione contiene TUTTI i substring."""
     for e in _tables().get("voci_verified", []):
@@ -260,6 +265,46 @@ def apply_fiscoboost(deliverable: dict, form: dict) -> tuple[dict, Optional[dict
         red = ires(imponibile) if fg in _SOC_CAPITALI else irpef_lorda(imponibile)
         sintesi["carico_fiscale_stimato"] = red["imposta_eur"]
     out["sintesi"] = sintesi
+
+    # Il numero-cardine di una diagnosi fiscale (l'imposta sul reddito) e il PERIMETRO del
+    # calcolo (IRAP/addizionali escluse, con perché) vivevano solo in `sintesi.carico_fiscale_
+    # stimato` (che il render NON mostra) e in questo `meta` (interno). Risultato: il report
+    # rispondeva "quante tasse?" senza mai mostrare la cifra né il caveat. Inietto una VOCE
+    # deterministica (voci-shape) → il numero e le esclusioni si vedono SEMPRE, a prescindere
+    # dall'LLM (che a volte tronca/parafrasa). Prepend: è la voce di testa del report.
+    if red is not None:
+        contenuto = (
+            f"Imposta sul reddito stimata — {red['imposta']} {red['aliquota_pct']:g}% "
+            f"su {_eur_it(imponibile)} di imponibile (utile ante imposte): "
+            f"**{_eur_it(red['imposta_eur'])}**.\n\n"
+            "Perimetro del calcolo — voci escluse (non stimate al buio, si evita di gonfiare o "
+            "sottostimare il dovuto):\n"
+            "• IRAP esclusa: richiede il valore della produzione netta, non presente nel form "
+            "(calcolabile con un bilancio completo via FinanceBoost). Per una PMI con costo del "
+            "personale rilevante l'IRAP è un'imposta aggiuntiva NON trascurabile.\n"
+            "• Addizionali IRPEF regionale/comunale escluse (dipendono dal Comune/Regione).\n"
+            "• Imponibile = utile ante imposte, proxy della base fiscale: la base IRES definitiva "
+            "va corretta con le variazioni fiscali (costi indeducibili, ammortamenti, ecc.)."
+        )
+    else:
+        contenuto = (
+            "Carico fiscale NON stimabile: manca l'imponibile (utile ante imposte, oppure "
+            "fatturato − costi) nel form. Fornisci l'utile ante imposte per il calcolo IRES/IRPEF "
+            "deterministico. IRAP e addizionali restano comunque fuori perimetro (richiedono il "
+            "valore della produzione netta e i dati locality)."
+        )
+    tax_voce = {
+        "id": "carico-fiscale-stimato",
+        "titolo": "Carico fiscale stimato — imposta sul reddito e perimetro",
+        "contenuto": contenuto,
+        "rischi_opportunita": [],
+        "azioni": [],
+        "fonti": ([{"riferimento": f"{red['imposta']} {red['aliquota_pct']:g}% — tabelle fiscali "
+                    f"K2-AI (as_of {_as_of()})", "fonte": "catalogo"}] if red is not None else []),
+    }
+    voci = list(out.get("voci") or [])
+    if not any(isinstance(v, dict) and v.get("id") == "carico-fiscale-stimato" for v in voci):
+        out["voci"] = [tax_voce, *voci]
 
     meta = {
         "carico_fiscale_stimato": sintesi["carico_fiscale_stimato"],

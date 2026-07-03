@@ -81,5 +81,17 @@ check("senza imponibile → carico None (non inventato)", out2["sintesi"]["caric
 out3, _ = tax.apply_fiscoboost({"sintesi": {}}, {"forma_giuridica": "srl", "fatturato": 200000, "costi_totali": 150000})
 check("imponibile = fatturato-costi (50.000) → IRES 12.000", approx(out3["sintesi"]["carico_fiscale_stimato"], 12000))
 
+print("── apply_fiscoboost: VOCE deterministica col carico VISIBILE (il render non mostra sintesi.carico) ──")
+tv = out["voci"][0]
+check("prima voce = carico-fiscale-stimato", tv.get("id") == "carico-fiscale-stimato")
+check("la cifra IRES è nel contenuto visibile (24.000)", "24.000" in tv["contenuto"])
+check("l'imponibile è nel contenuto (100.000)", "100.000" in tv["contenuto"])
+check("IRAP dichiarata esclusa NEL testo visibile (non solo in meta)", "IRAP" in tv["contenuto"] and "esclus" in tv["contenuto"].lower())
+check("voce valida: contenuto + fonti catalogo", tv["contenuto"] and tv["fonti"] and tv["fonti"][0]["fonte"] == "catalogo")
+check("non duplica se rilanciato (idempotente)", len(tax.apply_fiscoboost(out, form)[0]["voci"]) == len(out["voci"]))
+# senza imponibile → voce che SPIEGA perché manca (no dead-end, no numero inventato)
+check("no-imponibile → voce spiega 'NON stimabile'", "NON stimabile" in out2["voci"][0]["contenuto"])
+check("no-imponibile → nessuna cifra inventata", out2["voci"][0]["fonti"] == [])
+
 print("\nTEST TAX " + ("PASS ✅" if ok else "FAIL ❌"))
 sys.exit(0 if ok else 1)
