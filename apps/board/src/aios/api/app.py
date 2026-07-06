@@ -457,17 +457,21 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                             "error": "chat non disponibile"})
                 return
             _invalidate_cache()   # eventuali scritture della chat → cockpit le vede dopo
-            finals: dict[str, str] = {}
+            # Ogni evento 'done' è UN turno (agente in un giro, o la sintesi): li salvo TUTTI
+            # in ordine → il trascritto del dibattito è ricostruibile e diventa memoria.
+            turns: list[tuple[str, str]] = []
             try:
                 for ev in chat.stream(body.text, body.agents, history):
                     if ev.get("phase") == "done" and ev.get("agent"):
-                        finals[ev["agent"]] = ev.get("text") or ""
+                        txt = ev.get("text") or ""
+                        if txt.strip():
+                            turns.append((ev["agent"], txt))
                     yield _sse(ev)
             except Exception as exc:
                 yield _sse({"phase": "error", "agent": "", "error": str(exc)[:200]})
-            # Persistenza post-streaming: risposte degli agenti + aggiornamento sessione.
+            # Persistenza post-streaming: ogni turno del dibattito + aggiornamento sessione.
             if sid and client is not None:
-                for ag, txt in finals.items():
+                for ag, txt in turns:
                     try:
                         client.insert("aios_chat_messages",
                                       {"session_id": sid, "role": "assistant",
