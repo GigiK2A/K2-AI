@@ -55,9 +55,12 @@ def compute_npv_irr(inp: NpvIrrInput) -> NpvIrrOutput:
     for t, cf in enumerate(cfs):
         cum += cf
         if cum >= 0 and payback is None:
-            # interpola
-            prev = cum - cf
-            payback = (t - 1) + (-prev / cf) if cf != 0 else float(t)
+            if t == 0:
+                payback = 0.0  # già in pari al primo flusso: nessun attraversamento da interpolare
+            else:
+                # interpola
+                prev = cum - cf
+                payback = (t - 1) + (-prev / cf) if cf != 0 else float(t)
             break
 
     cum_d, dpayback = 0.0, None
@@ -65,8 +68,11 @@ def compute_npv_irr(inp: NpvIrrInput) -> NpvIrrOutput:
         pv = cf / (1 + inp.discount_rate) ** t
         cum_d += pv
         if cum_d >= 0 and dpayback is None:
-            prev = cum_d - pv
-            dpayback = (t - 1) + (-prev / pv) if pv != 0 else float(t)
+            if t == 0:
+                dpayback = 0.0  # già in pari al primo flusso scontato: nessuna interpolazione
+            else:
+                prev = cum_d - pv
+                dpayback = (t - 1) + (-prev / pv) if pv != 0 else float(t)
             break
 
     # Profitability Index = PV(inflows) / |CF_0|

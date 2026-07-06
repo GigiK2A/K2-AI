@@ -272,9 +272,12 @@ def apply_fiscoboost(deliverable: dict, form: dict) -> tuple[dict, Optional[dict
     # rispondeva "quante tasse?" senza mai mostrare la cifra né il caveat. Inietto una VOCE
     # deterministica (voci-shape) → il numero e le esclusioni si vedono SEMPRE, a prescindere
     # dall'LLM (che a volte tronca/parafrasa). Prepend: è la voce di testa del report.
+    # IRES espone 'aliquota_pct', IRPEF (progressiva) espone 'aliquota_media_pct':
+    # un unico accesso robusto evita il KeyError sui soggetti IRPEF (ditta/SNC/SAS).
+    _aliq = (red or {}).get("aliquota_pct") or (red or {}).get("aliquota_media_pct") or 0
     if red is not None:
         contenuto = (
-            f"Imposta sul reddito stimata — {red['imposta']} {red['aliquota_pct']:g}% "
+            f"Imposta sul reddito stimata — {red['imposta']} {_aliq:g}% "
             f"su {_eur_it(imponibile)} di imponibile (utile ante imposte): "
             f"**{_eur_it(red['imposta_eur'])}**.\n\n"
             "Perimetro del calcolo — voci escluse (non stimate al buio, si evita di gonfiare o "
@@ -299,7 +302,7 @@ def apply_fiscoboost(deliverable: dict, form: dict) -> tuple[dict, Optional[dict
         "contenuto": contenuto,
         "rischi_opportunita": [],
         "azioni": [],
-        "fonti": ([{"riferimento": f"{red['imposta']} {red['aliquota_pct']:g}% — tabelle fiscali "
+        "fonti": ([{"riferimento": f"{red['imposta']} {_aliq:g}% — tabelle fiscali "
                     f"K2-AI (as_of {_as_of()})", "fonte": "catalogo"}] if red is not None else []),
     }
     voci = list(out.get("voci") or [])

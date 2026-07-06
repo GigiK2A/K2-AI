@@ -6,12 +6,22 @@ corrente + 2 precedenti (regola del previgente Reg. 1407/2013).
 """
 from __future__ import annotations
 import json
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Literal
 from pydantic import BaseModel, Field
 
 _SOGLIE = json.loads((Path(__file__).parent / "data" / "de_minimis_soglie.json").read_text())
+
+
+def _shift_anni(d: date, delta_anni: int) -> date:
+    """Sposta la data di `delta_anni` anni civili (data-a-data), non 365 giorni fissi.
+    Così la finestra mobile di 3 anni resta esatta anche attraversando i bisestili.
+    Il 29/02 su anno non bisestile ripiega sul 28/02."""
+    try:
+        return d.replace(year=d.year + delta_anni)
+    except ValueError:  # 29/02 → anno target non bisestile
+        return d.replace(year=d.year + delta_anni, day=28)
 
 
 class AiutoDeMinimis(BaseModel):
@@ -69,7 +79,7 @@ def de_minimis_plafond(inp: DeMinimisPlafondInput) -> DeMinimisPlafondOutput:
     data_rif = inp.data_riferimento or date.today()
     # Finestra mobile 3 anni: [data_rif - 3 anni + 1 giorno ; data_rif]
     # (qualsiasi periodo di 3 anni — Reg. 2023/2831 art.3 §2)
-    finestra_inizio = data_rif - timedelta(days=3 * 365)
+    finestra_inizio = _shift_anni(data_rif, -3)
     finestra_fine = data_rif
 
     dentro: list[dict] = []
@@ -103,7 +113,7 @@ def de_minimis_plafond(inp: DeMinimisPlafondInput) -> DeMinimisPlafondOutput:
         ]
         if dentro_date:
             piu_vecchio = min(dentro_date, key=lambda a: a.data_concessione)
-            data_uscita = piu_vecchio.data_concessione + timedelta(days=3 * 365)
+            data_uscita = _shift_anni(piu_vecchio.data_concessione, 3)
             prossima = {
                 "data": data_uscita.isoformat(),
                 "importo_liberato_eur": piu_vecchio.importo_eur,

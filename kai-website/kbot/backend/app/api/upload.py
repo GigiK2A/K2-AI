@@ -25,8 +25,45 @@ router = APIRouter()
 log = logging.getLogger(__name__)
 
 MAX_BYTES = 20 * 1024 * 1024  # 20 MB per file (bilanci/relazioni finanziarie PDF arrivano spesso a 10-15 MB)
+MAX_FILES_PER_REQUEST = 10    # cap sul numero di file per richiesta (anti-abuso)
+MAX_TOTAL_BYTES = 60 * 1024 * 1024  # 60 MB aggregati per richiesta
 TEXT_LIMIT = 60_000
 PDF_LIMIT = 200_000  # bilanci/relazioni 50-200 pagine: serve testo abbondante
+
+# M8 — whitelist tipi ammessi. L'app estrae testo/OCR da PDF, fogli, CSV e immagini,
+# oltre a documenti Office (docx). Estensioni + content-type ammessi; tutto il resto
+# è rifiutato (415) PRIMA di decodificare/uploadare.
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".xlsx", ".xls", ".csv", ".png", ".jpg", ".jpeg", ".gif", ".webp",
+    ".docx", ".txt", ".md", ".json", ".xml",
+}
+ALLOWED_CONTENT_TYPES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # xlsx
+    "application/vnd.ms-excel",  # xls
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # docx
+    "text/csv", "text/plain", "text/markdown", "application/json",
+    "text/xml", "application/xml",
+    "image/png", "image/jpeg", "image/gif", "image/webp",
+}
+
+
+def _validate_file_kind(name: str, content_type: str) -> None:
+    """Rifiuta (415) i file il cui tipo non è nella whitelist. Un file è ammesso se
+    l'estensione È consentita; se manca un'estensione riconosciuta si ripiega sul
+    content-type dichiarato. Blocca eseguibili, archivi, svg, html, ecc."""
+    import os
+
+    ext = os.path.splitext(name or "")[1].lower()
+    ctype = (content_type or "").split(";", 1)[0].strip().lower()
+    if ext:
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(status_code=415, detail=f"{name}: tipo di file non supportato ({ext})")
+        return
+    # Nessuna estensione utile → decide il content-type dichiarato.
+    if ctype and ctype in ALLOWED_CONTENT_TYPES:
+        return
+    raise HTTPException(status_code=415, detail=f"{name}: tipo di file non supportato")
 
 # OCR fallback caps. We rasterize each page and ship the PNG to Claude Vision;
 # at ~30-60k tokens/page this becomes expensive fast. We cap pages to keep the
@@ -279,15 +316,25 @@ def upload(
     if owner and (not user or user.id != owner):
         raise HTTPException(status_code=403, detail="not your session")
 
+    # M8 — cap sul numero di file per richiesta (anti-abuso: OCR/Vision è costoso).
+    if len(body.files) > MAX_FILES_PER_REQUEST:
+        raise HTTPException(status_code=400, detail=f"troppi file: max {MAX_FILES_PER_REQUEST} per richiesta")
+
     client = get_admin_client()
     _ensure_bucket(client)
     storage = client.storage.from_(STORAGE_UPLOADS_BUCKET)
 
     saved = []
+    total_bytes = 0
     for f in body.files:
+        # M8 — whitelist tipo file: rifiuta (415) PRIMA di decodificare/uploadare.
+        _validate_file_kind(f.name, f.type or "")
         data = _decode_b64(f.base64)
         if len(data) > MAX_BYTES:
             raise HTTPException(status_code=413, detail=f"{f.name}: exceeds 20 MB")
+        total_bytes += len(data)
+        if total_bytes > MAX_TOTAL_BYTES:
+            raise HTTPException(status_code=413, detail="dimensione totale della richiesta eccessiva")
 
         clean = _clean_filename(f.name)
         path = f"{body.sessionId}/{int(time.time() * 1000)}-{clean}"

@@ -32,10 +32,19 @@ def _num(v: Any) -> Optional[float]:
         return None
     if isinstance(v, (int, float)):
         return float(v)
-    try:
-        return float(str(v).replace("€", "").replace(" ", "").replace(".", "").replace(",", "."))
-    except ValueError:
-        return None
+    if isinstance(v, str):
+        s = v.strip().replace("€", "").replace("%", "").replace(" ", "")
+        if "," in s and "." in s:
+            s = s.replace(".", "").replace(",", ".")
+        elif "," in s:
+            s = s.replace(",", ".")
+        elif s.count(".") > 1:
+            s = s.replace(".", "")  # più punti, nessuna virgola → separatori migliaia IT
+        try:
+            return float(s)
+        except ValueError:
+            return None
+    return None
 
 
 def _van_tir_payback(costo_netto: float, risparmio_annuo: float,

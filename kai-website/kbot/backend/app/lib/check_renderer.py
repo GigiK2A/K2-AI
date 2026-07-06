@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 import io
+import logging
 import re
 from datetime import date
 from pathlib import Path
@@ -23,6 +24,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
+
+log = logging.getLogger(__name__)
 
 _ASSETS = Path(__file__).resolve().parents[1] / "assets"
 _FONTS = _ASSETS / "fonts"
@@ -54,13 +57,15 @@ def _register_fonts() -> None:
             p = _FONTS / fn
             if p.exists():
                 pdfmetrics.registerFont(TTFont(name, str(p)))
+            else:
+                log.warning("Font brand mancante: %s (%s) — fallback a Helvetica", name, p)
         names = pdfmetrics.getRegisteredFontNames()
         if "DMSans" in names:
             F_BODY, F_BOLD = "DMSans", "DMSans-Bold"
         if "Syne" in names:
             F_TITLE = "Syne"
     except Exception:
-        pass
+        log.warning("Registrazione font brand fallita — fallback a Helvetica", exc_info=True)
 
 
 _register_fonts()
@@ -103,7 +108,18 @@ def _fmt(v: Any) -> str:
 
 
 def _is_money(key: str) -> bool:
-    return any(t in key.lower() for t in ("eur", "€", "importo", "massimale", "plafond", "valore", "costo"))
+    k = key.lower()
+    # Escludi metriche NON monetarie che condividono radici ("costo_percentuale",
+    # "valore_soglia", *_pct, *_ratio, indici): un substring match le promuoveva a €.
+    if any(t in k for t in ("percentuale", "soglia", "ratio", "indice", "pct")) or k.endswith("%"):
+        return False
+    if "€" in k or "importo" in k:
+        return True
+    return (
+        k.endswith("_eur") or k.endswith("_euro") or k == "eur" or k == "euro"
+        or any(k.endswith(sfx) for sfx in ("_massimale", "_plafond", "_valore", "_costo"))
+        or k in ("massimale", "plafond", "valore", "costo")
+    )
 
 
 # ---- header brandizzato (band scura) ----
@@ -189,7 +205,11 @@ def _kv_table(d: dict, S) -> Table | None:
 
 
 def _table_of_dicts(rows: list, S) -> Table:
-    cols = list({k for x in rows for k in x if not isinstance(x[k], (dict, list))})
+    cols: list = []
+    for x in rows:
+        for k in x:
+            if k not in cols and not isinstance(x[k], (dict, list)):
+                cols.append(k)
     head = [Paragraph(f'<font name="{F_BOLD}" size="8" color="{"#0B0D0E"}">{_human(c)}</font>', S["cell"]) for c in cols]
     data = [head] + [[Paragraph(_fmt(x.get(c, "")), S["cell"]) for c in cols] for x in rows]
     t = Table(data, colWidths=[CONTENT_W / max(len(cols), 1)] * len(cols), hAlign="LEFT", repeatRows=1)

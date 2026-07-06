@@ -132,7 +132,7 @@ _C2_NORMA = re.compile(
 
 def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
                        inputs: dict | None = None, facts: dict | None = None,
-                       strict: bool = True) -> list[dict]:
+                       strict: bool = True, strict_norme: bool = False) -> list[dict]:
     citazioni = citazioni or []
     findings: list[dict] = []
     full = "\n".join(_walk_strings(deliverable))
@@ -177,7 +177,11 @@ def integrity_findings(deliverable: dict, *, citazioni: list | None = None,
         ref = re.sub(r"\s+", " ", m.group(0)).strip()
         num = m.group(2)
         if num not in grounded_nums and ref.lower() not in grounded_low:
-            findings.append({"code": "norma_non_citata", "classe": "C2", "severity": "warn",
+            # Boost legali/fiscali (strict_norme=True): una norma asserita a memoria e non
+            # verificata contro il corpus è un difetto DURO (il cliente ci agisce legalmente)
+            # → 'block', non si consegna. Sugli altri boost resta 'warn' (annotazione).
+            findings.append({"code": "norma_non_citata", "classe": "C2",
+                             "severity": "block" if strict_norme else "warn",
                              "dettaglio": f"riferimento normativo '{ref}' asserito senza citazione grounded "
                                           f"(rischio norma da recall / superata, es. minimi tariffari aboliti dal DL 1/2012)"})
 

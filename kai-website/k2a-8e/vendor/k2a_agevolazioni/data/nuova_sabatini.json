@@ -3,7 +3,7 @@
   "_data_validita": "2024-01-01",
   "_disclaimer": "Tassi convenzionali di calcolo del contributo soggetti ad aggiornamento per circolare MIMIT. Verificare i tassi vigenti e i limiti di finanziamento prima dell'uso ufficiale.",
   "_da_aggiornare_2026": "Nuova Sabatini RESTA vigente e potenziata dalla LdB 2026, cumulabile con l'iperammortamento (no doppio finanziamento sullo stesso costo). I parametri sotto sono tarati 2024: i valori vigenti 2026 (tasso convenzionale, durata, limiti) NON sono ancora forniti da fonte verificata → DA AGGIORNARE prima dell'uso 2026, non stimati a memoria (D-028).",
-  "_da_validare": false,
+  "_da_validare": true,
   "tassi_riferimento_annui_pct": {
     "ordinario": 2.75,
     "industria_4_0": 3.575,

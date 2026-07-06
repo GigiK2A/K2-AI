@@ -136,10 +136,14 @@ def indici_bancabilita(inp: BancabilitaInput) -> BancabilitaOutput:
     else:
         avvertenze.append("DSCR non calcolato: 'servizio_debito_annuo' non fornito. Indicatore escluso dal punteggio.")
 
-    # Note su EBITDA negativo (rende PFN/EBITDA e interest coverage non significativi)
+    # Note su EBITDA negativo: PFN/EBITDA non è numericamente significativo, ma NON va escluso
+    # dal punteggio (escluderlo alleggerirebbe il rating proprio nel caso peggiore). Lo forziamo
+    # a score 0 col suo peso nel denominatore — coerente con interest_coverage che entra a 0.
+    forza_score_zero: set[str] = set()
     if inp.ebitda <= 0:
         valori["pfn_ebitda"] = None
-        avvertenze.append("EBITDA ≤ 0: PFN/EBITDA non significativo, escluso dal punteggio (segnale fortemente negativo).")
+        forza_score_zero.add("pfn_ebitda")
+        avvertenze.append("EBITDA ≤ 0: PFN/EBITDA non significativo, valutato 'critico' (score 0) col suo peso nel punteggio (segnale fortemente negativo).")
 
     # Costruzione indicatori + scoring pesato sui soli disponibili
     indicatori: list[IndicatoreOut] = []
@@ -149,6 +153,16 @@ def indici_bancabilita(inp: BancabilitaInput) -> BancabilitaOutput:
     for key, cfg in _DATA["indicatori"].items():
         v = valori.get(key)
         if v is None:
+            if key in forza_score_zero:
+                # valore non numerico ma segnale critico noto → score 0 CON peso (non escluso)
+                somma_pesata += 0 * cfg["peso"]
+                peso_totale += cfg["peso"]
+                critici.append(cfg["label"])
+                indicatori.append(IndicatoreOut(
+                    indicatore=key, label=cfg["label"], categoria=cfg["categoria"],
+                    valore=None, valutazione=_BANDA_LABEL[0], score=0, peso=cfg["peso"],
+                    soglie=cfg["soglie"], formula=cfg["formula"]))
+                continue
             indicatori.append(IndicatoreOut(
                 indicatore=key, label=cfg["label"], categoria=cfg["categoria"],
                 valore=None, valutazione="n.d.", score=None, peso=cfg["peso"],

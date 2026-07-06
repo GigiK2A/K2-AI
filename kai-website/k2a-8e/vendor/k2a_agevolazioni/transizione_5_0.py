@@ -162,6 +162,16 @@ def _transizione_storico(inp: Transizione50Input) -> Transizione50Output:
             riferimento_normativo=_STOR["_fonte"], trace={"soglia_minima_pct": soglia_min})
 
     fascia = _seleziona_fascia(inp.ambito, inp.riduzione_consumi_pct)
+    if fascia is None:
+        avvertenze.append(
+            f"NON CALCOLABILE: nessuna fascia di riduzione applicabile per ambito '{inp.ambito}' "
+            f"e risparmio {inp.riduzione_consumi_pct:.2f}% (fuori dagli intervalli previsti dal DM attuativo).")
+        return Transizione50Output(
+            regime="transizione_5_0_storico", ammissibile=False, investimento_eur=inp.investimento_eur,
+            investimento_agevolabile_eur=0.0, eccedenza_oltre_tetto_eur=0.0, dettaglio_scaglioni=[],
+            credito_imposta_eur=0.0, decreto_attuativo="n/a", avvertenze=avvertenze,
+            riferimento_normativo=_STOR["_fonte"],
+            trace={"regime": "storico", "riduzione_consumi_pct": inp.riduzione_consumi_pct, "fascia": None})
     aliquote = fascia["aliquote_per_scaglione"]
     tetto = float(_STOR["tetto_massimo_progetto_eur"])
     agevolabile = min(inp.investimento_eur, tetto)

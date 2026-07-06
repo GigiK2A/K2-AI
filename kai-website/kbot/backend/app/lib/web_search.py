@@ -100,11 +100,14 @@ def run_openai_search(query: str) -> str:
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        # Timeout esplicito: il default SDK è 600s → una singola ricerca appesa
+        # bloccherebbe la chat e la generazione. Cap a 30s + 1 solo retry.
+        client = OpenAI(api_key=OPENAI_API_KEY, timeout=30.0, max_retries=1)
         resp = client.responses.create(
             model=OPENAI_SEARCH_MODEL,
             tools=[{"type": "web_search"}],
             input=query,
+            timeout=30.0,
         )
         text = (getattr(resp, "output_text", "") or "").strip()
         cites = _extract_citations(resp)

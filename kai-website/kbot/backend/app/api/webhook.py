@@ -16,6 +16,7 @@ from ..lib import sessions
 from ..lib.supabase_admin import get_admin_client
 from ..settings import (
     INTERNAL_API_KEY,
+    INTERNAL_BASE_URL,
     REPORT_PRICE_EUR_CENTS,
     STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET,
@@ -25,9 +26,11 @@ router = APIRouter()
 log = logging.getLogger(__name__)
 
 
-def _internal_pdf_url(request: Request) -> str:
-    # Same host the webhook was hit on.
-    base = str(request.base_url).rstrip("/")
+def _internal_pdf_url() -> str:
+    # M12 — base URL da settings (loopback), NON da request.base_url: quest'ultima
+    # dipende dall'header Host (spoofabile) e ci farebbe spedire l'INTERNAL_API_KEY
+    # verso un host arbitrario controllato dall'attaccante.
+    base = INTERNAL_BASE_URL.rstrip("/")
     return f"{base}/api/kbot/generate-pdf"
 
 
@@ -183,7 +186,7 @@ async def stripe_webhook(
         try:
             async with httpx.AsyncClient(timeout=120) as client:
                 await client.post(
-                    _internal_pdf_url(request),
+                    _internal_pdf_url(),
                     headers={"x-internal-key": INTERNAL_API_KEY},
                     json={"session_id": kbot_session_id},
                 )

@@ -149,7 +149,9 @@ def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Res
         return {"status": "refused", "reason": r.reason, "message": r.message}
 
     job_id = jobs.create(body.service_id, blueprint_id, confidence)
-    bg.add_task(pipeline.run, job_id, body.service_id, body.inputs, auth_level)
+    # C5 — watchdog: run_with_timeout esegue pipeline.run con un tetto JOB_TIMEOUT_S e
+    # marca il job 'error' se la filiera si appende, invece di lasciarlo 'running' per sempre.
+    bg.add_task(jobs.run_with_timeout, job_id, body.service_id, body.inputs, auth_level)
     return {"job_id": job_id, "status": "routed", "auth_level": auth_level,
             "routed_blueprint": blueprint_id, "confidence": confidence}
 

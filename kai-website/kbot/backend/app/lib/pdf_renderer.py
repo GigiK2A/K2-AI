@@ -1385,8 +1385,9 @@ def _render_benchmark_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[F
     header = [Paragraph(_clean_inline(str(c)), s["table_th"]) for c in cols[:4]]
     tone_color = {"ok": GREEN, "success": GREEN, "alert": RED, "critical": RED,
                   "warning": ACCENT_WARM, "neutral": TEXT_MUTED}
+    _BM_CAP = 14
     body_rows = []
-    for r in rows_in[:14]:
+    for r in rows_in[:_BM_CAP]:
         if isinstance(r, dict):
             kpi = r.get("kpi") or r.get("label") or ""
             company = r.get("company") or r.get("azienda") or ""
@@ -1434,6 +1435,12 @@ def _render_benchmark_table(block: dict, s: Dict[str, ParagraphStyle]) -> List[F
         content.append(Paragraph(_clean_inline(intro), s["body_soft"]))
         content.append(Spacer(1, 2 * mm))
     content.append(tbl)
+    if len(rows_in) > _BM_CAP:
+        extra = len(rows_in) - _BM_CAP
+        content.append(Spacer(1, 2 * mm))
+        content.append(Paragraph(
+            f'<font color="{TEXT_MUTED.hexval()}">… e altri {extra} '
+            f'element{"o" if extra == 1 else "i"} (vedi versione integrale)</font>', s["small"]))
     note = block.get("note")
     if note:
         content.append(Spacer(1, 2 * mm))
@@ -1456,7 +1463,8 @@ def _render_severity_matrix(block: dict, s: Dict[str, ParagraphStyle]) -> List[F
     header = [Paragraph(t, s["table_th"]) for t in ("PROBLEMA", "SEVERITY", "EFFORT", "ROI")]
     rows = [header]
     sev_cell_variants: List[tuple] = [None]
-    for it in items[:12]:
+    _SM_CAP = 12
+    for it in items[:_SM_CAP]:
         sev = (it.get("severity") or it.get("level") or "").strip()
         bg, fg = sev_palette.get(sev.lower(), (SURFACE_2, TEXT_MUTED))
         sev_style = ParagraphStyle("sev_pill", fontName=_FONTS["body_sb"], fontSize=8.5,
@@ -1497,6 +1505,12 @@ def _render_severity_matrix(block: dict, s: Dict[str, ParagraphStyle]) -> List[F
         content.append(Paragraph(_clean_inline(intro), s["body_soft"]))
         content.append(Spacer(1, 2 * mm))
     content.append(tbl)
+    if len(items) > _SM_CAP:
+        extra = len(items) - _SM_CAP
+        content.append(Spacer(1, 2 * mm))
+        content.append(Paragraph(
+            f'<font color="{TEXT_MUTED.hexval()}">… e altri {extra} '
+            f'element{"o" if extra == 1 else "i"} (vedi versione integrale)</font>', s["small"]))
     return _wrap_in_card(_section(_render_block_title(block.get("title") or "Matrice priorità", s), content))
 
 
@@ -1659,7 +1673,8 @@ def _render_source_legend(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flo
     flows.append(_safe_paragraph("&nbsp;&nbsp;&nbsp;".join(legend_parts), leg_style))
     flows.append(Spacer(1, 3 * mm))
     items = [x for x in (block.get("items") or []) if isinstance(x, dict)]
-    for it in items[:20]:
+    _CAP = 20
+    for it in items[:_CAP]:
         tag_html = _tag_html(it.get("tag") or "", 11)
         text = _clean_inline(it.get("text") or "")
         note = _clean_inline(it.get("note") or "")
@@ -1667,6 +1682,13 @@ def _render_source_legend(block: dict, s: Dict[str, ParagraphStyle]) -> List[Flo
         if note:
             html += f' <font color="{TEXT_MUTED.hexval()}">— {note}</font>'
         flows.append(_safe_paragraph(html, s["body"]))
+    if len(items) > _CAP:
+        extra = len(items) - _CAP
+        flows.append(Spacer(1, 1 * mm))
+        flows.append(_safe_paragraph(
+            f'<font color="{TEXT_MUTED.hexval()}">… e altri {extra} '
+            f'element{"o" if extra == 1 else "i"} (vedi versione integrale)</font>',
+            s["small"]))
     return _wrap_in_card(flows)
 
 
@@ -1782,13 +1804,34 @@ def _draw_footer(c: Canvas, doc: BaseDocTemplate) -> None:
     if code:
         c.setFont(_FONTS["mono"], 7.5)
         c.drawRightString(PAGE_W - MARGIN_X, footer_h - 11, code)
-    # Riga 2 (bottom): disclaimer full-width, italic
+    # Riga 2 (bottom): disclaimer full-width, italic.
+    # Misura la larghezza REALE (non stimata) e, se eccede, wrappa su 2 righe
+    # spezzando sugli spazi; solo se nemmeno 2 righe bastano riduce il font —
+    # mai troncare il testo legale con "…".
     if disclaimer:
-        c.setFont(_FONTS["body_it"], 7)
+        font, size = _FONTS["body_it"], 7.0
         avail = PAGE_W - 2 * MARGIN_X
-        max_chars = int(avail / 3.2)
-        short = disclaimer if len(disclaimer) <= max_chars else disclaimer[:max_chars - 1] + "…"
-        c.drawString(MARGIN_X, footer_h - 23, short)
+        if c.stringWidth(disclaimer, font, size) <= avail:
+            c.setFont(font, size)
+            c.drawString(MARGIN_X, footer_h - 23, disclaimer)
+        else:
+            # Prova a comporlo su 2 righe; riduci il corpo finché entrambe stanno.
+            lines: List[str] = []
+            for trial in (7.0, 6.5, 6.0, 5.5):
+                lines = _wrap_by_width(c, disclaimer, font, trial, avail)
+                if len(lines) <= 2:
+                    size = trial
+                    break
+            else:
+                # Testo ancora troppo lungo: tieni le prime 2 righe al corpo minimo
+                # (nessun troncamento di parole — solo overflow oltre la 2ª riga).
+                size = 5.5
+                lines = lines[:2]
+            c.setFont(font, size)
+            # 2 righe strette dentro l'altezza footer: y=footer_h-19 e footer_h-27
+            base_y = footer_h - 19 if len(lines) > 1 else footer_h - 23
+            for i, ln in enumerate(lines[:2]):
+                c.drawString(MARGIN_X, base_y - i * (size + 1.5), ln)
     c.restoreState()
 
 
@@ -1814,6 +1857,24 @@ def _wrap_text(text: str, max_chars: int) -> List[str]:
             cur = cur + " " + w
         else:
             lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+def _wrap_by_width(c: Canvas, text: str, font: str, size: float, max_w: float) -> List[str]:
+    """Word-wrap misurando la larghezza reale (canvas.stringWidth), non i caratteri."""
+    words = text.split()
+    lines: List[str] = []
+    cur = ""
+    for w in words:
+        candidate = w if not cur else cur + " " + w
+        if c.stringWidth(candidate, font, size) <= max_w:
+            cur = candidate
+        else:
+            if cur:
+                lines.append(cur)
             cur = w
     if cur:
         lines.append(cur)

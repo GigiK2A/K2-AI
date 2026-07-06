@@ -55,12 +55,14 @@ def _decode(token: str) -> dict:
     if jwks is not None:
         try:
             signing_key = jwks.get_signing_key_from_jwt(token).key
-            unverified_header = jwt.get_unverified_header(token)
-            alg = unverified_header.get("alg", "ES256")
+            # H6 — algorithm allow-list FISSA: NON derivare l'algoritmo dall'header
+            # (non fidato) del JWT, altrimenti un attaccante può forzare la verifica
+            # verso un algoritmo debole/inatteso (alg-confusion). Supabase firma
+            # asimmetrico con ES256 (ECC P-256) o RS256.
             return jwt.decode(
                 token,
                 signing_key,
-                algorithms=[alg],
+                algorithms=["ES256", "RS256"],
                 audience="authenticated",
                 options={"verify_exp": True, "verify_aud": True},
             )

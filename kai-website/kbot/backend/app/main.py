@@ -33,12 +33,14 @@ from .api import (
 from .lib.analytics import track_server
 from .lib.limiter import limiter
 from .lib.logger import configure_logging, init_sentry
-from .settings import CORS_ORIGINS
+from .settings import CORS_ORIGINS, assert_paywall_safe
 
 log = logging.getLogger(__name__)
 
 configure_logging()
 _SENTRY_ON = init_sentry()
+# Guard anti-misconfig: paywall bypass in produzione → ERROR visibile all'avvio.
+assert_paywall_safe()
 
 app = FastAPI(title="K2-AI K-BOT backend", version="2.0.0")
 app.state.limiter = limiter

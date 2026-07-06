@@ -61,6 +61,18 @@ FRONTEND_URL = _env("FRONTEND_URL", default="http://localhost:3000")
 SITE_URL = _env("NEXT_PUBLIC_SITE_URL", "SITE_URL", default="https://www.k2-ai.it")
 INTERNAL_API_KEY = _env("INTERNAL_API_KEY")
 
+# Porta locale del backend (Railway inietta PORT). Default 8000 come da uvicorn dev.
+PORT = int(_env("PORT", default="8000") or "8000")
+
+# M12 — base URL per le chiamate INTERNE server-to-server (es. webhook Stripe →
+# generate-pdf con INTERNAL_API_KEY). NON derivare mai da request.base_url (dipende
+# dall'header Host, spoofabile → l'INTERNAL_API_KEY finirebbe a un host attaccante).
+# Il backend chiama sé stesso su loopback. Override esplicito con INTERNAL_BASE_URL.
+INTERNAL_BASE_URL = _env("INTERNAL_BASE_URL", default=f"http://127.0.0.1:{PORT}")
+
+# Ambiente di deploy (production/staging/dev). Usato dal guard paywall all'avvio.
+ENVIRONMENT = _env("ENVIRONMENT", "ENV", "RAILWAY_ENVIRONMENT", default="development")
+
 # FREE MODE = bypass del paywall, SOLO per demo/dev. Default OFF (=produzione):
 # la generazione dei deliverable 8e richiede pagamento (vedi _mint_entitlement →
 # 402 se non pagato). Per una demo: KBOT_FREE_MODE=1 + K2A_8E_ENTITLEMENT_DEV=true.
@@ -134,3 +146,36 @@ MAX_MESSAGE_CHARS = int(_env("MAX_MESSAGE_CHARS", default="900") or "900")
 # PostHog Cloud EU (server-side). Empty → analytics disabled (no-op).
 POSTHOG_API_KEY = _env("POSTHOG_API_KEY")
 POSTHOG_HOST = _env("POSTHOG_HOST", default="https://eu.i.posthog.com")
+
+
+def _is_production() -> bool:
+    return (ENVIRONMENT or "").strip().lower() in ("production", "prod")
+
+
+def paywall_bypass_active() -> bool:
+    """True se un flag di bypass del paywall è attivo (demo/dev)."""
+    return bool(KBOT_FREE_MODE or KBOT_FAKE_PAYMENT)
+
+
+def assert_paywall_safe() -> None:
+    """Guard anti-misconfig: in produzione un flag di bypass del paywall
+    (KBOT_FREE_MODE / KBOT_FAKE_PAYMENT) è quasi certamente un errore e
+    aprirebbe la generazione dei deliverable senza pagamento. Logga un ERROR
+    ben visibile all'avvio. NON solleva (per non far crashare il deploy se
+    fosse volontario), ma il messaggio è impossibile da ignorare nei log.
+    """
+    if _is_production() and paywall_bypass_active():
+        import logging
+
+        _active = [
+            name for name, on in (
+                ("KBOT_FREE_MODE", KBOT_FREE_MODE),
+                ("KBOT_FAKE_PAYMENT", KBOT_FAKE_PAYMENT),
+            ) if on
+        ]
+        logging.getLogger(__name__).error(
+            "SECURITY: paywall BYPASS attivo in PRODUCTION (%s). I deliverable 8e "
+            "verrebbero generati SENZA pagamento. Disattiva questi flag o correggi "
+            "ENVIRONMENT se non è davvero produzione.",
+            ", ".join(_active),
+        )

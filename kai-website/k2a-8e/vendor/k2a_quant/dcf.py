@@ -36,6 +36,9 @@ def compute_dcf(inp: DcfInput) -> DcfOutput:
     if inp.terminal_method == "gordon":
         if inp.wacc <= inp.g_perpetual:
             raise ValueError("WACC deve essere > g per Gordon Growth.")
+        if inp.fcf[-1] <= 0:
+            raise ValueError("FCF_N ≤ 0: terminal value di Gordon non applicabile (darebbe TV/EV negativi). "
+                             "Usare terminal_method='exit_multiple' o normalizzare l'FCF terminale.")
         tv = inp.fcf[-1] * (1 + inp.g_perpetual) / (inp.wacc - inp.g_perpetual)
         tv_formula = "FCF_N × (1+g) / (WACC - g)"
     else:
