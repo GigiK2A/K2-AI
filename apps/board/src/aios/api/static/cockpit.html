@@ -200,7 +200,10 @@
   <div class="chatp-h">
     <div><div class="font-extrabold text-[14px]">Chat con gli agenti</div>
       <div class="text-[11px] text-slate-400">scegli con chi parlare · valuta ed esegue (L1)</div></div>
-    <button id="chatClose" class="w-7 h-7 rounded-lg btn-sec grid place-items-center">✕</button>
+    <div class="flex items-center gap-1.5">
+      <button id="chatNew" class="w-7 h-7 rounded-lg btn-sec grid place-items-center text-[16px]" title="Nuova chat">＋</button>
+      <button id="chatClose" class="w-7 h-7 rounded-lg btn-sec grid place-items-center">✕</button>
+    </div>
   </div>
   <div id="chatAgents" class="cagents"></div>
   <div id="chatLog" class="chatp-log"></div>
@@ -1023,13 +1026,19 @@ async function runAgent(){
 // ---------------- CHAT MULTI-AGENTE (streaming reale) ----------------
 let CHAT_BUSY=false;
 const CHAT_AGENTS=new Set();     // vuoto = auto (il router sceglie l'agente giusto)
-const CBUF={};                    // buffer testo per-agente durante lo streaming
 function chatMsg(html,who){const log=$("chatLog");const d=document.createElement("div");d.className="cmsg "+who;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
 function scrollChat(){const l=$("chatLog");if(l)l.scrollTop=l.scrollHeight;}
-function chatOpen(){$("chatPanel").classList.add("open");$("chatInput").focus();renderAgentChips();
-  if(!$("chatLog").dataset.greeted){$("chatLog").dataset.greeted="1";
-    chatMsg("Ciao! Scegli con chi parlare qui sopra — <b>Auto</b> instrada da solo, oppure spunta uno o più agenti e lavorano in parallelo. Le azioni interne sicure partono subito; esterne, delete e schema DB te le faccio confermare.","ai");}}
+async function chatOpen(){$("chatPanel").classList.add("open");$("chatInput").focus();renderAgentChips();
+  if(CHAT_BUSY)return;const log=$("chatLog");
+  if(CHATP_SID){   // stessa sessione attiva della pagina Chat AI → mostra lo storico
+    log.innerHTML='<div class="cp-empty">Carico…</div>';
+    let d={};try{d=await jget("/api/chat/sessions/"+CHATP_SID);}catch(e){d={messages:[]};}
+    const ag=d.session&&d.session.agents;CHAT_AGENTS.clear();if(Array.isArray(ag))ag.forEach(x=>CHAT_AGENTS.add(x));renderAgentChips();
+    histInto(log,d.messages||[],scrollChat);
+  }else{log.innerHTML="";
+    chatMsg("Ciao! Scegli con chi parlare qui sopra. Le conversazioni si <b>salvano</b>: le ritrovi in «💬 Chat AI» dal menu. Azioni interne sicure subito; esterne/delete/schema in conferma.","ai");}}
 function chatClose(){$("chatPanel").classList.remove("open");}
+async function chatNew(){CHATP_SID=null;await ensureSession();$("chatLog").innerHTML='<div class="cp-empty">Nuova chat — scrivi il primo messaggio.</div>';$("chatInput").focus();}
 // selettore agenti: Auto (vuoto) + i 6 domini; multi-selezione
 function renderAgentChips(){const el=$("chatAgents");if(!el)return;const auto=CHAT_AGENTS.size===0;
   let h=`<div class="cag ${auto?'on':''}" data-ag="auto">✨ Auto</div>`;
@@ -1039,58 +1048,16 @@ function renderAgentChips(){const el=$("chatAgents");if(!el)return;const auto=CH
     if(a==='auto')CHAT_AGENTS.clear();else{CHAT_AGENTS.has(a)?CHAT_AGENTS.delete(a):CHAT_AGENTS.add(a);}
     renderAgentChips();});}
 function toolLabel(t){if(t==='esegui')return 'esegui azione';if(t==='carica_skill')return 'apre una skill';if(t==='cerca_skill')return 'cerca una skill';if(t==='calcola')return 'calcola (numeri veri)';if(t==='web_search')return 'cerca sul web';return TBL[t]||String(t||'tool').replace(/^leggi_/,'').replace(/_/g,' ');}
-function agentRow(dom){const m=META[dom]||{ico:'•',label:dom};
-  return `<div class="carow queue" id="car-${dom}"><div class="carow-h"><span class="cadot"></span>
-    <span class="caname">${m.ico} ${esc(m.label)}</span><span class="castat" id="cas-${dom}">in coda</span></div>
-    <div class="catext" id="cat-${dom}"></div><div class="caact" id="caa-${dom}"></div></div>`;}
-function setCar(dom,state,stat){const r=$("car-"+dom);if(!r)return;r.className="carow "+state;const s=$("cas-"+dom);if(s&&stat!=null)s.textContent=stat;}
-function appendCar(dom,txt){CBUF[dom]=(CBUF[dom]||"")+txt;const t=$("cat-"+dom);if(t){t.innerHTML=mdLite(CBUF[dom]);t.classList.add("cur","md");}scrollChat();}
-function renderAzioni(dom,azioni){const box=$("caa-"+dom);if(!box||!azioni||!azioni.length)return;let h="";
-  azioni.forEach(a=>{
-    if(a.stato==='eseguito')h+=`<div class="ok">✓ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">(${esc(a.tabella||'')} ${esc(a.op||'')})</span></div>`;
-    else if(a.stato==='rifiutato')h+=`<div class="bad">✕ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">${esc(a.motivo||'')}</span></div>`;});
-  box.innerHTML=h;
-  azioni.filter(a=>a.stato==='da_confermare').forEach(c=>{
-    const w=document.createElement("div");w.className="mt-1";
-    w.innerHTML=`<div class="warn">⚠ Da confermare: ${esc(c.descrizione)} <span class="text-slate-400 text-[11px]">${esc(c.tipo||'')}</span></div>`;
-    const b=document.createElement("button");b.className="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg mt-1";b.textContent="Conferma ed esegui";
-    b.onclick=async()=>{b.disabled=true;b.textContent="…";let o={};try{o=await jpost("/api/command/confirm",{id:c.id});}catch(e){o={ok:false,errore:"rete"};}
-      b.outerHTML=o.ok?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||(o.esito&&o.esito.errore)||"non eseguito"))+'</span>');load();};
-    w.appendChild(b);box.appendChild(w);});}
-function handleEv(ev,ctx){const dom=ev.agent,ph=ev.phase;
-  if(ph==='start'){ctx.stack.innerHTML=(ev.agents||[]).map(agentRow).join("");(ev.agents||[]).forEach(d=>CBUF[d]="");scrollChat();return;}
-  if(ph==='all_done'||!dom)return;
-  if(ph==='thinking')setCar(dom,'run','💭 sta pensando…');
-  else if(ph==='tool')setCar(dom,'run','🔧 sta usando '+toolLabel(ev.tool));
-  else if(ph==='tool_run')setCar(dom,'run','⚙️ '+toolLabel(ev.tool));
-  else if(ph==='writing')setCar(dom,'run','✍️ sta scrivendo…');
-  else if(ph==='delta')appendCar(dom,ev.text||"");
-  else if(ph==='done'){setCar(dom,'done','✓ fatto');const t=$("cat-"+dom);if(t)t.classList.remove("cur");renderAzioni(dom,ev.azioni);}
-  else if(ph==='error'){setCar(dom,'err','✕ errore');const t=$("cat-"+dom);if(t){t.classList.remove("cur");t.textContent=ev.error||"errore";}}
-  scrollChat();}
 async function chatSend(){
   if(CHAT_BUSY)return;const inp=$("chatInput");const t=(inp.value||"").trim();if(!t)return;
-  inp.value="";chatMsg(esc(t),"me");CHAT_BUSY=true;
-  const agents=CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto";
-  const holder=chatMsg('<div class="castack"></div>',"ai");
-  holder.style.maxWidth="100%";holder.style.background="transparent";holder.style.border="none";holder.style.padding="0";
-  const ctx={stack:holder.querySelector(".castack")};
-  ctx.stack.innerHTML='<div class="text-slate-400 text-[12px]">…preparo gli agenti</div>';
-  try{
-    const res=await fetch("/api/chat/stream",{method:"POST",headers:{"Content-Type":"application/json",...authHdr()},body:JSON.stringify({text:t,agents})});
-    if(res.status===401){on401();throw new Error("401");}
-    if(!res.body)throw new Error("no stream");
-    const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
-    while(true){const {value,done}=await reader.read();if(done)break;
-      buf+=dec.decode(value,{stream:true});let i;
-      while((i=buf.indexOf("\n\n"))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);
-        if(!line.startsWith("data:"))continue;
-        let ev;try{ev=JSON.parse(line.slice(5).trim());}catch(e){continue;}
-        handleEv(ev,ctx);}}
-  }catch(e){ctx.stack.insertAdjacentHTML("beforeend",'<div class="bad text-[12px]">Errore di rete nello streaming.</div>');}
+  inp.value="";CHAT_BUSY=true;const log=$("chatLog");
+  const empt=log.querySelector(".cp-empty");if(empt)empt.remove();
+  addUserMsg(log,t,scrollChat);
+  await streamInto(log,scrollChat,t);   // crea/continua la sessione attiva + persiste
   CHAT_BUSY=false;$("chatInput").focus();load();
 }
 function wireChat(){const L=$("chatLauncher");if(!L)return;L.onclick=chatOpen;$("chatClose").onclick=chatClose;$("chatSend").onclick=chatSend;
+  const nb=$("chatNew");if(nb)nb.onclick=chatNew;
   renderAgentChips();
   $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")chatSend();});}
 
@@ -1114,8 +1081,8 @@ function renderAzioniInto(box,azioni){if(!box||!azioni||!azioni.length)return;le
     b.onclick=async()=>{b.disabled=true;b.textContent="…";let o={};try{o=await jpost("/api/command/confirm",{id:c.id});}catch(e){o={ok:false,errore:"rete"};}
       b.outerHTML=o.ok?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||"non eseguito"))+'</span>');};
     w.appendChild(b);box.appendChild(w);});}
-function cpHandleEv(ev,ctx){const dom=ev.agent,ph=ev.phase;
-  if(ph==="start"){(ev.agents||[]).forEach(d=>{const r=makeAgentRow(d);ctx.stack.appendChild(r.row);ctx.rows[d]=r;});cpScroll();return;}
+function cpHandleEv(ev,ctx){const dom=ev.agent,ph=ev.phase;const sc=ctx.scroll||cpScroll;
+  if(ph==="start"){(ev.agents||[]).forEach(d=>{const r=makeAgentRow(d);ctx.stack.appendChild(r.row);ctx.rows[d]=r;});sc();return;}
   if(ph==="all_done"||!dom)return;const r=ctx.rows[dom];if(!r)return;
   const set=(st,tx)=>{r.row.className="carow "+st;r.stat.textContent=tx;};
   if(ph==="thinking")set("run","💭 sta pensando…");
@@ -1125,16 +1092,38 @@ function cpHandleEv(ev,ctx){const dom=ev.agent,ph=ev.phase;
   else if(ph==="delta"){r.buf+=(ev.text||"");r.text.innerHTML=mdLite(r.buf);r.text.classList.add("cur","md");}
   else if(ph==="done"){set("done","✓ fatto");r.text.classList.remove("cur");renderAzioniInto(r.act,ev.azioni);}
   else if(ph==="error"){set("err","✕ errore");r.text.textContent=ev.error||"errore";}
-  cpScroll();}
-function cpAddUser(txt){const d=document.createElement("div");d.className="cp-umsg";d.textContent=txt;cpConv().appendChild(d);cpScroll();}
-function cpRenderHistory(msgs){const c=cpConv();c.innerHTML="";
-  if(!msgs||!msgs.length){c.innerHTML='<div class="cp-empty">Conversazione vuota — scrivi il primo messaggio qui sotto.</div>';return;}
-  msgs.forEach(m=>{if(m.role==="user"){cpAddUser(m.content||"");}
+  sc();}
+// ---- helper condivisi bolla + pagina (una sola sessione attiva: CHATP_SID) ----
+function addUserMsg(el,txt,scrollFn){const d=document.createElement("div");d.className="cp-umsg";d.textContent=txt;el.appendChild(d);(scrollFn||cpScroll)();}
+function histInto(el,msgs,scrollFn){el.innerHTML="";
+  if(!msgs||!msgs.length){el.innerHTML='<div class="cp-empty">Conversazione vuota — scrivi il primo messaggio qui sotto.</div>';return;}
+  msgs.forEach(m=>{if(m.role==="user"){addUserMsg(el,m.content||"",scrollFn);}
     else{const m2=META[m.agent]||{ico:"•",label:m.agent||"AI"};
       const row=document.createElement("div");row.className="carow done";
       row.innerHTML=`<div class="carow-h"><span class="cadot"></span><span class="caname">${m2.ico} ${esc(m2.label)}</span><span class="castat">✓</span></div><div class="catext md">${mdLite(m.content||"")}</div>`;
-      c.appendChild(row);}});
-  cpScroll();}
+      el.appendChild(row);}});
+  (scrollFn||cpScroll)();}
+async function ensureSession(){
+  if(CHATP_SID)return CHATP_SID;
+  let s={};try{s=await jpost("/api/chat/sessions",{agents:CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto"});}catch(e){}
+  if(s&&s.id)CHATP_SID=s.id;return CHATP_SID;}
+// streaming condiviso: crea/continua la sessione attiva e renderizza il turno in `container`
+async function streamInto(container,scrollFn,text){
+  const agents=CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto";const sid=await ensureSession();
+  const turn=document.createElement("div");turn.className="cp-turn";container.appendChild(turn);
+  const ctx={stack:turn,rows:{},scroll:scrollFn};(scrollFn||cpScroll)();
+  try{
+    const res=await fetch("/api/chat/stream",{method:"POST",headers:{"Content-Type":"application/json",...authHdr()},body:JSON.stringify({text,agents,session_id:sid})});
+    if(res.status===401){on401();throw new Error("401");}
+    if(!res.body)throw new Error("no stream");
+    const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
+    while(true){const {value,done}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});let i;
+      while((i=buf.indexOf("\n\n"))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);
+        if(!line.startsWith("data:"))continue;let ev;try{ev=JSON.parse(line.slice(5).trim());}catch(e){continue;}
+        cpHandleEv(ev,ctx);}}
+  }catch(e){turn.insertAdjacentHTML("beforeend",'<div class="bad text-[12px]">Errore di rete.</div>');}}
+function cpRenderHistory(msgs){histInto(cpConv(),msgs,cpScroll);}
 async function cpLoadSessions(sel){let rows=[];try{rows=await jget("/api/chat/sessions");}catch(e){rows=[];}
   const list=$("cp-list");if(!list)return;
   if(!rows.length){list.innerHTML='<div class="text-[12px] text-slate-400 px-2 py-3">Nessuna chat salvata.</div>';return;}
@@ -1163,24 +1152,10 @@ function cpRenderChips(){const el=$("cp-agents");if(!el)return;const auto=CHAT_A
     if(a==='auto')CHAT_AGENTS.clear();else{CHAT_AGENTS.has(a)?CHAT_AGENTS.delete(a):CHAT_AGENTS.add(a);}cpRenderChips();});}
 async function cpSend(){
   if(CHATP_BUSY)return;const inp=$("cp-input");const t=(inp.value||"").trim();if(!t)return;
-  if(!CHATP_SID){await cpNew();if(!CHATP_SID)return;}
   inp.value="";CHATP_BUSY=true;
   const empt=cpConv().querySelector(".cp-empty");if(empt)empt.remove();
-  cpAddUser(t);
-  const turn=document.createElement("div");turn.className="cp-turn";cpConv().appendChild(turn);
-  const ctx={stack:turn,rows:{}};
-  const agents=CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto";
-  try{
-    const res=await fetch("/api/chat/stream",{method:"POST",headers:{"Content-Type":"application/json",...authHdr()},body:JSON.stringify({text:t,agents,session_id:CHATP_SID})});
-    if(res.status===401){on401();throw new Error("401");}
-    if(!res.body)throw new Error("no stream");
-    const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
-    while(true){const {value,done}=await reader.read();if(done)break;
-      buf+=dec.decode(value,{stream:true});let i;
-      while((i=buf.indexOf("\n\n"))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);
-        if(!line.startsWith("data:"))continue;let ev;try{ev=JSON.parse(line.slice(5).trim());}catch(e){continue;}
-        cpHandleEv(ev,ctx);}}
-  }catch(e){turn.insertAdjacentHTML("beforeend",'<div class="bad text-[12px]">Errore di rete.</div>');}
+  addUserMsg(cpConv(),t,cpScroll);
+  await streamInto(cpConv(),cpScroll,t);   // ensureSession crea/continua la sessione attiva
   CHATP_BUSY=false;$("cp-input").focus();cpLoadSessions(CHATP_SID);load2();}
 function load2(){/* refresh silenzioso decisioni/overview dopo azioni chat */try{if(typeof loadOverview==="function"&&VIEW==="overview")loadOverview();}catch(e){}}
 async function loadChatPage(){
