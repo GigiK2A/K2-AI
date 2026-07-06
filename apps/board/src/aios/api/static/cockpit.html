@@ -117,6 +117,21 @@
   .catext.md{white-space:normal}
   .carow.run .catext.cur::after{content:"▍";color:#2563EB;animation:ppulse 1s infinite;margin-left:1px}
   .caact{margin-top:6px;font-size:11.5px;line-height:1.5}
+  /* pagina Chat AI dedicata */
+  .cpwrap{display:grid;grid-template-columns:232px 1fr;gap:16px;height:calc(100vh - 150px);min-height:460px}
+  .cpside{display:flex;flex-direction:column;overflow:hidden;padding:12px}
+  .cpmain{display:flex;flex-direction:column;overflow:hidden;padding:0}
+  #cp-list{overflow-y:auto;flex:1;margin-top:8px;display:flex;flex-direction:column;gap:2px}
+  .cp-item{position:relative;padding:9px 11px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+  .cp-item:hover{background:#f1f5f9}.cp-item.on{background:#eff4ff;border-color:#dbe7fb}
+  .cp-title{font-size:12.5px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px}
+  .cp-date{font-size:10.5px;color:#94a3b8;margin-top:1px}
+  .cp-del{position:absolute;top:8px;right:7px;opacity:0;font-size:12px;background:none;border:none;cursor:pointer;line-height:1}
+  .cp-item:hover .cp-del{opacity:.55}.cp-del:hover{opacity:1}
+  #cp-conv{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:#F8FAFC}
+  .cp-umsg{align-self:flex-end;max-width:85%;background:#2563EB;color:#fff;padding:9px 12px;border-radius:14px;border-bottom-right-radius:4px;font-size:13px;line-height:1.45;word-break:break-word}
+  .cp-turn{display:flex;flex-direction:column;gap:8px}
+  .cp-empty{margin:auto;text-align:center;color:#94a3b8;font-size:13px;max-width:280px}
   /* overlay ricerca prospect (feedback realtime) */
   .povl{position:fixed;inset:0;z-index:82;display:grid;place-items:center}
   .povl-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}
@@ -139,6 +154,7 @@
     <nav id="nav" class="space-y-1 flex-1 overflow-auto">
       <div class="navi" data-view="overview">🏠 Overview</div>
       <div class="navi" data-view="agents">🤖 AI Agents</div>
+      <div class="navi" data-view="chat">💬 Chat AI</div>
       <div data-group="domains" class="space-y-1"></div>
       <div class="text-[10px] font-bold text-slate-300 px-3 pt-3 pb-1 tracking-widest">SYSTEM</div>
       <div class="navi" data-view="dom:operations">📋 Projects</div>
@@ -989,6 +1005,7 @@ async function convDiscard(id){
 async function load(){
   if(VIEW==="overview")return loadOverview();
   if(VIEW==="agents")return loadAgents();
+  if(VIEW==="chat")return loadChatPage();
   if(VIEW==="conversazioni")return loadConversazioni();
   if(VIEW==="documents")return loadDocuments();
   if(VIEW==="analytics")return loadAnalytics();
@@ -1076,6 +1093,118 @@ async function chatSend(){
 function wireChat(){const L=$("chatLauncher");if(!L)return;L.onclick=chatOpen;$("chatClose").onclick=chatClose;$("chatSend").onclick=chatSend;
   renderAgentChips();
   $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")chatSend();});}
+
+// ================= PAGINA CHAT AI (persistente, con storico) =================
+let CHATP_SID=null, CHATP_BUSY=false;
+function cpConv(){return $("cp-conv");}
+function cpScroll(){const c=cpConv();if(c)c.scrollTop=c.scrollHeight;}
+function cpDate(s){try{return new Date(s).toLocaleString("it-IT",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});}catch(e){return"";}}
+// righe agente con RIFERIMENTI agli elementi (niente id globali → nessuna collisione tra turni)
+function makeAgentRow(dom){const m=META[dom]||{ico:"•",label:dom};
+  const row=document.createElement("div");row.className="carow queue";
+  row.innerHTML=`<div class="carow-h"><span class="cadot"></span><span class="caname">${m.ico} ${esc(m.label)}</span><span class="castat">in coda</span></div><div class="catext"></div><div class="caact"></div>`;
+  return {row,stat:row.querySelector(".castat"),text:row.querySelector(".catext"),act:row.querySelector(".caact"),buf:""};}
+function renderAzioniInto(box,azioni){if(!box||!azioni||!azioni.length)return;let h="";
+  azioni.forEach(a=>{if(a.stato==="eseguito")h+=`<div class="ok">✓ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">(${esc(a.tabella||"")} ${esc(a.op||"")})</span></div>`;
+    else if(a.stato==="rifiutato")h+=`<div class="bad">✕ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">${esc(a.motivo||"")}</span></div>`;});
+  box.innerHTML=h;
+  azioni.filter(a=>a.stato==="da_confermare").forEach(c=>{const w=document.createElement("div");w.className="mt-1";
+    w.innerHTML=`<div class="warn">⚠ Da confermare: ${esc(c.descrizione)} <span class="text-slate-400 text-[11px]">${esc(c.tipo||"")}</span></div>`;
+    const b=document.createElement("button");b.className="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg mt-1";b.textContent="Conferma ed esegui";
+    b.onclick=async()=>{b.disabled=true;b.textContent="…";let o={};try{o=await jpost("/api/command/confirm",{id:c.id});}catch(e){o={ok:false,errore:"rete"};}
+      b.outerHTML=o.ok?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||"non eseguito"))+'</span>');};
+    w.appendChild(b);box.appendChild(w);});}
+function cpHandleEv(ev,ctx){const dom=ev.agent,ph=ev.phase;
+  if(ph==="start"){(ev.agents||[]).forEach(d=>{const r=makeAgentRow(d);ctx.stack.appendChild(r.row);ctx.rows[d]=r;});cpScroll();return;}
+  if(ph==="all_done"||!dom)return;const r=ctx.rows[dom];if(!r)return;
+  const set=(st,tx)=>{r.row.className="carow "+st;r.stat.textContent=tx;};
+  if(ph==="thinking")set("run","💭 sta pensando…");
+  else if(ph==="tool")set("run","🔧 sta usando "+toolLabel(ev.tool));
+  else if(ph==="tool_run")set("run","⚙️ "+toolLabel(ev.tool));
+  else if(ph==="writing")set("run","✍️ sta scrivendo…");
+  else if(ph==="delta"){r.buf+=(ev.text||"");r.text.innerHTML=mdLite(r.buf);r.text.classList.add("cur","md");}
+  else if(ph==="done"){set("done","✓ fatto");r.text.classList.remove("cur");renderAzioniInto(r.act,ev.azioni);}
+  else if(ph==="error"){set("err","✕ errore");r.text.textContent=ev.error||"errore";}
+  cpScroll();}
+function cpAddUser(txt){const d=document.createElement("div");d.className="cp-umsg";d.textContent=txt;cpConv().appendChild(d);cpScroll();}
+function cpRenderHistory(msgs){const c=cpConv();c.innerHTML="";
+  if(!msgs||!msgs.length){c.innerHTML='<div class="cp-empty">Conversazione vuota — scrivi il primo messaggio qui sotto.</div>';return;}
+  msgs.forEach(m=>{if(m.role==="user"){cpAddUser(m.content||"");}
+    else{const m2=META[m.agent]||{ico:"•",label:m.agent||"AI"};
+      const row=document.createElement("div");row.className="carow done";
+      row.innerHTML=`<div class="carow-h"><span class="cadot"></span><span class="caname">${m2.ico} ${esc(m2.label)}</span><span class="castat">✓</span></div><div class="catext md">${mdLite(m.content||"")}</div>`;
+      c.appendChild(row);}});
+  cpScroll();}
+async function cpLoadSessions(sel){let rows=[];try{rows=await jget("/api/chat/sessions");}catch(e){rows=[];}
+  const list=$("cp-list");if(!list)return;
+  if(!rows.length){list.innerHTML='<div class="text-[12px] text-slate-400 px-2 py-3">Nessuna chat salvata.</div>';return;}
+  list.innerHTML=rows.map(s=>`<div class="cp-item ${s.id===sel?'on':''}" data-sid="${s.id}">
+     <div class="cp-title">${esc(s.title||'Nuova chat')}</div><div class="cp-date">${cpDate(s.updated_at)}</div>
+     <button class="cp-del" data-sid="${s.id}" title="Elimina">🗑</button></div>`).join("");
+  list.querySelectorAll(".cp-item").forEach(it=>it.onclick=e=>{if(e.target.closest(".cp-del"))return;cpSelect(it.dataset.sid);});
+  list.querySelectorAll(".cp-del").forEach(b=>b.onclick=async e=>{e.stopPropagation();
+    if(!confirm("Eliminare questa conversazione?"))return;
+    try{await fetch("/api/chat/sessions/"+b.dataset.sid,{method:"DELETE",headers:authHdr()});}catch(e){}
+    if(CHATP_SID===b.dataset.sid){CHATP_SID=null;cpConv().innerHTML='<div class="cp-empty">Scegli una conversazione o creane una nuova.</div>';}
+    cpLoadSessions(CHATP_SID);});}
+async function cpSelect(sid){CHATP_SID=sid;
+  $("cp-list").querySelectorAll(".cp-item").forEach(it=>it.classList.toggle("on",it.dataset.sid===sid));
+  cpConv().innerHTML='<div class="cp-empty">Carico…</div>';
+  let d={};try{d=await jget("/api/chat/sessions/"+sid);}catch(e){d={messages:[]};}
+  const ag=d.session&&d.session.agents;CHAT_AGENTS.clear();if(Array.isArray(ag))ag.forEach(x=>CHAT_AGENTS.add(x));cpRenderChips();
+  cpRenderHistory(d.messages||[]);}
+async function cpNew(){let s={};try{s=await jpost("/api/chat/sessions",{agents:CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto"});}catch(e){}
+  if(s&&s.id){CHATP_SID=s.id;await cpLoadSessions(s.id);cpConv().innerHTML='<div class="cp-empty">Nuova chat — scrivi il primo messaggio.</div>';$("cp-input").focus();}}
+function cpRenderChips(){const el=$("cp-agents");if(!el)return;const auto=CHAT_AGENTS.size===0;
+  let h=`<div class="cag ${auto?'on':''}" data-ag="auto">✨ Auto</div>`;
+  h+=AGENTS6.map(d=>{const m=META[d]||{ico:'•',label:d};return `<div class="cag ${CHAT_AGENTS.has(d)?'on':''}" data-ag="${d}">${m.ico} ${esc(m.label)}</div>`;}).join("");
+  el.innerHTML=h;
+  el.querySelectorAll(".cag").forEach(c=>c.onclick=()=>{const a=c.dataset.ag;
+    if(a==='auto')CHAT_AGENTS.clear();else{CHAT_AGENTS.has(a)?CHAT_AGENTS.delete(a):CHAT_AGENTS.add(a);}cpRenderChips();});}
+async function cpSend(){
+  if(CHATP_BUSY)return;const inp=$("cp-input");const t=(inp.value||"").trim();if(!t)return;
+  if(!CHATP_SID){await cpNew();if(!CHATP_SID)return;}
+  inp.value="";CHATP_BUSY=true;
+  const empt=cpConv().querySelector(".cp-empty");if(empt)empt.remove();
+  cpAddUser(t);
+  const turn=document.createElement("div");turn.className="cp-turn";cpConv().appendChild(turn);
+  const ctx={stack:turn,rows:{}};
+  const agents=CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto";
+  try{
+    const res=await fetch("/api/chat/stream",{method:"POST",headers:{"Content-Type":"application/json",...authHdr()},body:JSON.stringify({text:t,agents,session_id:CHATP_SID})});
+    if(res.status===401){on401();throw new Error("401");}
+    if(!res.body)throw new Error("no stream");
+    const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
+    while(true){const {value,done}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});let i;
+      while((i=buf.indexOf("\n\n"))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);
+        if(!line.startsWith("data:"))continue;let ev;try{ev=JSON.parse(line.slice(5).trim());}catch(e){continue;}
+        cpHandleEv(ev,ctx);}}
+  }catch(e){turn.insertAdjacentHTML("beforeend",'<div class="bad text-[12px]">Errore di rete.</div>');}
+  CHATP_BUSY=false;$("cp-input").focus();cpLoadSessions(CHATP_SID);load2();}
+function load2(){/* refresh silenzioso decisioni/overview dopo azioni chat */try{if(typeof loadOverview==="function"&&VIEW==="overview")loadOverview();}catch(e){}}
+async function loadChatPage(){
+  setHeader("Chat AI","conversazioni persistenti con gli agenti · memoria per-reparto",false);markNav();killCharts();
+  $("view").innerHTML=`<div class="cpwrap">
+    <div class="card cpside">
+      <button id="cp-new" class="w-full bg-brand text-white rounded-xl px-3 py-2.5 text-[13px] font-bold">＋ Nuova chat</button>
+      <div id="cp-list"></div>
+    </div>
+    <div class="card cpmain">
+      <div id="cp-agents" class="cagents"></div>
+      <div id="cp-conv"><div class="cp-empty">Scegli una conversazione o creane una nuova.</div></div>
+      <div class="chatp-in" style="border-top:1px solid #f1f5f9">
+        <input id="cp-input" placeholder="Scrivi agli agenti…" autocomplete="off">
+        <button id="cp-send" class="bg-brand text-white rounded-lg px-3 font-semibold">➤</button>
+      </div>
+    </div></div>`;
+  cpRenderChips();
+  $("cp-new").onclick=cpNew;$("cp-send").onclick=cpSend;
+  $("cp-input").addEventListener("keydown",e=>{if(e.key==="Enter")cpSend();});
+  let rows=[];try{rows=await jget("/api/chat/sessions");}catch(e){}
+  await cpLoadSessions(rows[0]&&rows[0].id);
+  if(rows[0]&&rows[0].id)cpSelect(rows[0].id);   // apri l'ultima conversazione
+}
 (async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();wireChat();})();
 </script>
 </body>

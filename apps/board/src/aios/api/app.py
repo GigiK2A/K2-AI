@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import json
+from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Path as FPath, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -78,6 +79,13 @@ class ChatStreamBody(BaseModel):
     text: str
     # "auto" (o assente) = il router sceglie un agente; lista di domini = quegli agenti
     # in parallelo (marketing, vendite, finance, operations, legal, hr).
+    agents: list[str] | str | None = None
+    # se presente, la conversazione è PERSISTENTE: carica lo storico e salva i turni.
+    session_id: str | None = None
+
+
+class ChatSessionBody(BaseModel):
+    title: str | None = None
     agents: list[str] | str | None = None
 
 
@@ -352,15 +360,96 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                     "valutazione": "", "eseguite": [], "da_confermare": [], "rifiutate": []}
         return platform.commands.handle(body.text, actor="cockpit").to_dict()
 
+    def _chat_client():
+        return getattr(kernel, "_supabase", None)
+
+    @app.get("/api/chat/sessions")
+    def chat_sessions(_=Depends(_require_auth)) -> list[dict[str, Any]]:
+        """Elenco delle conversazioni salvate (più recenti prima)."""
+        client = _chat_client()
+        if client is None:
+            return []
+        try:
+            return client.select("aios_chat_sessions",
+                                  {"select": "id,title,agents,updated_at,created_at",
+                                   "order": "updated_at.desc", "limit": "100"})
+        except Exception:
+            return []
+
+    @app.post("/api/chat/sessions")
+    def chat_session_create(body: ChatSessionBody,
+                            _=Depends(_require_auth)) -> dict[str, Any]:
+        """Crea una nuova conversazione vuota, ritorna il suo id."""
+        client = _chat_client()
+        if client is None:
+            return {"error": "storage non disponibile"}
+        row = {"title": (body.title or "Nuova chat")[:120],
+               "agents": body.agents if body.agents is not None else "auto"}
+        try:
+            out = client.insert("aios_chat_sessions", row)
+            return out[0] if out else {"error": "insert fallita"}
+        except Exception as exc:
+            return {"error": str(exc)[:160]}
+
+    @app.get("/api/chat/sessions/{sid}")
+    def chat_session_get(sid: str, _=Depends(_require_auth)) -> dict[str, Any]:
+        """Una conversazione con tutti i suoi messaggi (in ordine)."""
+        client = _chat_client()
+        if client is None:
+            return {"session": None, "messages": []}
+        try:
+            sess = client.select("aios_chat_sessions",
+                                  {"select": "*", "id": f"eq.{sid}"})
+            msgs = client.select("aios_chat_messages",
+                                 {"select": "role,agent,content,created_at",
+                                  "session_id": f"eq.{sid}", "order": "id.asc",
+                                  "limit": "500"})
+            return {"session": sess[0] if sess else None, "messages": msgs}
+        except Exception as exc:
+            return {"session": None, "messages": [], "error": str(exc)[:160]}
+
+    @app.delete("/api/chat/sessions/{sid}")
+    def chat_session_delete(sid: str, _=Depends(_require_auth)) -> dict[str, Any]:
+        client = _chat_client()
+        if client is None:
+            return {"ok": False}
+        try:
+            client.delete("aios_chat_sessions", {"id": f"eq.{sid}"})  # cascade sui messaggi
+            return {"ok": True}
+        except Exception as exc:
+            return {"ok": False, "errore": str(exc)[:160]}
+
     @app.post("/api/chat/stream")
     def chat_stream(body: ChatStreamBody, _=Depends(_require_auth)) -> StreamingResponse:
         """Chat multi-agente in streaming (SSE). Ogni evento è una riga `data: {...}`:
         start/thinking/tool/writing/delta/tool_run/done/error/all_done, taggato `agent`.
+        Con `session_id` la conversazione è PERSISTENTE: carica lo storico (memoria
+        per-agente) e salva il messaggio utente + le risposte di ogni agente.
         Le azioni sensibili finiscono in coda e si confermano via /api/command/confirm."""
         chat = getattr(platform, "chat", None) if platform is not None else None
+        client = _chat_client()
+        sid = (body.session_id or "").strip() or None
 
         def _sse(ev: dict) -> str:
             return "data: " + json.dumps(ev, ensure_ascii=False, default=str) + "\n\n"
+
+        # Storico (per la memoria) + salvataggio del turno utente, PRIMA dello streaming.
+        history: list[dict] = []
+        first_msg = True
+        if sid and client is not None:
+            try:
+                history = client.select("aios_chat_messages",
+                                        {"select": "role,agent,content",
+                                         "session_id": f"eq.{sid}", "order": "id.asc",
+                                         "limit": "200"})
+                first_msg = not history
+            except Exception:
+                history = []
+            try:
+                client.insert("aios_chat_messages",
+                              {"session_id": sid, "role": "user", "content": body.text})
+            except Exception:
+                pass
 
         def gen():
             if chat is None:
@@ -368,11 +457,32 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                             "error": "chat non disponibile"})
                 return
             _invalidate_cache()   # eventuali scritture della chat → cockpit le vede dopo
+            finals: dict[str, str] = {}
             try:
-                for ev in chat.stream(body.text, body.agents):
+                for ev in chat.stream(body.text, body.agents, history):
+                    if ev.get("phase") == "done" and ev.get("agent"):
+                        finals[ev["agent"]] = ev.get("text") or ""
                     yield _sse(ev)
             except Exception as exc:
                 yield _sse({"phase": "error", "agent": "", "error": str(exc)[:200]})
+            # Persistenza post-streaming: risposte degli agenti + aggiornamento sessione.
+            if sid and client is not None:
+                for ag, txt in finals.items():
+                    try:
+                        client.insert("aios_chat_messages",
+                                      {"session_id": sid, "role": "assistant",
+                                       "agent": ag, "content": txt})
+                    except Exception:
+                        pass
+                patch: dict[str, Any] = {
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "agents": body.agents if body.agents is not None else "auto"}
+                if first_msg and body.text.strip():
+                    patch["title"] = body.text.strip()[:80]
+                try:
+                    client.update("aios_chat_sessions", {"id": f"eq.{sid}"}, patch)
+                except Exception:
+                    pass
 
         return StreamingResponse(gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-store",
