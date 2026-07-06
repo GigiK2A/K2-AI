@@ -1021,6 +1021,7 @@ function cpScroll(){const c=cpConv();if(c)c.scrollTop=c.scrollHeight;}
 function cpDate(s){try{return new Date(s).toLocaleString("it-IT",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});}catch(e){return"";}}
 // etichetta di uno speaker (dominio o sintesi) + eventuale giro
 function speakerLabel(agent,round){
+  if(agent==="ceo")return {ico:"👔",label:"CEO",syn:true};
   if(agent==="sintesi")return {ico:"🧭",label:"Sintesi",syn:true};
   const m=META[agent]||{ico:"•",label:agent||"AI"};
   return {ico:m.ico,label:m.label+(round>1?` · giro ${round}`:""),syn:false};}
@@ -1040,6 +1041,10 @@ function renderAzioniInto(box,azioni){if(!box||!azioni||!azioni.length)return;le
       b.outerHTML=o.ok?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||"non eseguito"))+'</span>');};
     w.appendChild(b);box.appendChild(w);});}
 function cpHandleEv(ev,ctx){const ph=ev.phase;const sc=ctx.scroll||cpScroll;
+  if(ph==="triage"){const m=ev.motivo?(" — "+ev.motivo):"";
+    const t=ev.modo==="rispondi"?("👔 Il CEO risponde"+m)
+      :("👔 Il CEO consulta "+((ev.agenti||[]).map(d=>(META[d]||{label:d}).label).join(", ")||"il reparto competente")+m);
+    ctx.stack.insertAdjacentHTML("beforeend",`<div class="cp-note">${esc(t)}</div>`);sc();return;}
   if(ph==="start"){const ags=(ev.agents||[]);
     if(ags.length>1)ctx.stack.insertAdjacentHTML("beforeend",`<div class="cp-note">🗣️ Discussione tra ${ags.map(d=>(META[d]||{label:d}).label).join(", ")} — poi sintesi</div>`);
     sc();return;}
