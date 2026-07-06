@@ -195,23 +195,7 @@
   </div>
 </div>
 
-<div id="chatLauncher" title="Chat con l'AI">💬</div>
-<div id="chatPanel" class="chatp">
-  <div class="chatp-h">
-    <div><div class="font-extrabold text-[14px]">Chat con gli agenti</div>
-      <div class="text-[11px] text-slate-400">scegli con chi parlare · valuta ed esegue (L1)</div></div>
-    <div class="flex items-center gap-1.5">
-      <button id="chatNew" class="w-7 h-7 rounded-lg btn-sec grid place-items-center text-[16px]" title="Nuova chat">＋</button>
-      <button id="chatClose" class="w-7 h-7 rounded-lg btn-sec grid place-items-center">✕</button>
-    </div>
-  </div>
-  <div id="chatAgents" class="cagents"></div>
-  <div id="chatLog" class="chatp-log"></div>
-  <div class="chatp-in">
-    <input id="chatInput" placeholder="Es. allunga le caption delle bozze…" autocomplete="off">
-    <button id="chatSend" class="bg-brand text-white rounded-lg px-3 font-semibold">➤</button>
-  </div>
-</div>
+<!-- Bolla chat flottante rimossa: la chat vive nella pagina dedicata «💬 Chat AI» (nav). -->
 
 <script>
 const $=id=>document.getElementById(id);
@@ -1023,44 +1007,9 @@ async function runAgent(){
   catch(e){alert("errore");}
   btn.textContent=old;btn.disabled=false;load();
 }
-// ---------------- CHAT MULTI-AGENTE (streaming reale) ----------------
-let CHAT_BUSY=false;
+// ---------------- CHAT: stato condiviso + util ----------------
 const CHAT_AGENTS=new Set();     // vuoto = auto (il router sceglie l'agente giusto)
-function chatMsg(html,who){const log=$("chatLog");const d=document.createElement("div");d.className="cmsg "+who;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
-function scrollChat(){const l=$("chatLog");if(l)l.scrollTop=l.scrollHeight;}
-async function chatOpen(){$("chatPanel").classList.add("open");$("chatInput").focus();renderAgentChips();
-  if(CHAT_BUSY)return;const log=$("chatLog");
-  if(CHATP_SID){   // stessa sessione attiva della pagina Chat AI → mostra lo storico
-    log.innerHTML='<div class="cp-empty">Carico…</div>';
-    let d={};try{d=await jget("/api/chat/sessions/"+CHATP_SID);}catch(e){d={messages:[]};}
-    const ag=d.session&&d.session.agents;CHAT_AGENTS.clear();if(Array.isArray(ag))ag.forEach(x=>CHAT_AGENTS.add(x));renderAgentChips();
-    histInto(log,d.messages||[],scrollChat);
-  }else{log.innerHTML="";
-    chatMsg("Ciao! Scegli con chi parlare qui sopra. Le conversazioni si <b>salvano</b>: le ritrovi in «💬 Chat AI» dal menu. Azioni interne sicure subito; esterne/delete/schema in conferma.","ai");}}
-function chatClose(){$("chatPanel").classList.remove("open");}
-async function chatNew(){CHATP_SID=null;await ensureSession();$("chatLog").innerHTML='<div class="cp-empty">Nuova chat — scrivi il primo messaggio.</div>';$("chatInput").focus();}
-// selettore agenti: Auto (vuoto) + i 6 domini; multi-selezione
-function renderAgentChips(){const el=$("chatAgents");if(!el)return;const auto=CHAT_AGENTS.size===0;
-  let h=`<div class="cag ${auto?'on':''}" data-ag="auto">✨ Auto</div>`;
-  h+=AGENTS6.map(d=>{const m=META[d]||{ico:'•',label:d};return `<div class="cag ${CHAT_AGENTS.has(d)?'on':''}" data-ag="${d}">${m.ico} ${esc(m.label)}</div>`;}).join("");
-  el.innerHTML=h;
-  el.querySelectorAll(".cag").forEach(c=>c.onclick=()=>{const a=c.dataset.ag;
-    if(a==='auto')CHAT_AGENTS.clear();else{CHAT_AGENTS.has(a)?CHAT_AGENTS.delete(a):CHAT_AGENTS.add(a);}
-    renderAgentChips();});}
 function toolLabel(t){if(t==='esegui')return 'esegui azione';if(t==='carica_skill')return 'apre una skill';if(t==='cerca_skill')return 'cerca una skill';if(t==='calcola')return 'calcola (numeri veri)';if(t==='web_search')return 'cerca sul web';return TBL[t]||String(t||'tool').replace(/^leggi_/,'').replace(/_/g,' ');}
-async function chatSend(){
-  if(CHAT_BUSY)return;const inp=$("chatInput");const t=(inp.value||"").trim();if(!t)return;
-  inp.value="";CHAT_BUSY=true;const log=$("chatLog");
-  const empt=log.querySelector(".cp-empty");if(empt)empt.remove();
-  addUserMsg(log,t,scrollChat);
-  await streamInto(log,scrollChat,t);   // crea/continua la sessione attiva + persiste
-  CHAT_BUSY=false;$("chatInput").focus();load();
-}
-function wireChat(){const L=$("chatLauncher");if(!L)return;L.onclick=chatOpen;$("chatClose").onclick=chatClose;$("chatSend").onclick=chatSend;
-  const nb=$("chatNew");if(nb)nb.onclick=chatNew;
-  renderAgentChips();
-  $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")chatSend();});}
-
 // ================= PAGINA CHAT AI (persistente, con storico) =================
 let CHATP_SID=null, CHATP_BUSY=false;
 function cpConv(){return $("cp-conv");}
@@ -1180,7 +1129,7 @@ async function loadChatPage(){
   await cpLoadSessions(rows[0]&&rows[0].id);
   if(rows[0]&&rows[0].id)cpSelect(rows[0].id);   // apri l'ultima conversazione
 }
-(async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();wireChat();})();
+(async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();})();
 </script>
 </body>
 </html>
