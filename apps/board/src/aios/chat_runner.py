@@ -92,6 +92,32 @@ _CERCA_SKILL_DEF = {
                      "required": ["query"]},
 }
 
+_CALCOLA_DEF = {
+    "name": "calcola",
+    "description": (
+        "Calcolo DETERMINISTICO (motore 8e, numeri veri con provenance normativa; "
+        "NON stimare a occhio). Operazioni:\n"
+        "- 'indici_bilancio' params {voci:[{sezione:'attivo'|'passivo'|'ricavi'|'costi'|"
+        "'risultato', descrizione, importo}], anno?, wacc_pct?} → riclassificazione, "
+        "indici (D/E, ROE, ROS, current/quick ratio, EBITDA margin), valutazione;\n"
+        "- 'carico_fiscale' params {forma_giuridica, imponibile_eur, "
+        "valore_produzione_irap_eur?, anno?} → IRES/IRPEF + IRAP;\n"
+        "- 'imposta' params {tipo:'irpef'|'ires'|'irap'|'iva', base?, tipo_iva?};\n"
+        "- 'aliquote' → aliquote correnti + riferimenti normativi."),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "operazione": {"type": "string",
+                           "enum": ["indici_bilancio", "carico_fiscale", "imposta", "aliquote"]},
+            "params": {"type": "object"},
+        },
+        "required": ["operazione"],
+        "additionalProperties": True,
+    },
+}
+# I calcolatori vendorizzati coprono finanza/fisco → tool esposto a questi reparti.
+_CALCOLA_DOMINI = {"finance"}
+
 _FORBIDDEN = ("fuori dal perimetro consentito (solo allowlist; mai control-plane o "
               "registri immutabili; delete solo per id)")
 
@@ -137,6 +163,8 @@ class ChatAgent:
         if self.orch.skills is not None:      # skill invocabili (progressive disclosure)
             defs.append(_CARICA_SKILL_DEF)
             defs.append(_CERCA_SKILL_DEF)
+        if self.dominio in _CALCOLA_DOMINI:   # calcolatori deterministici 8e (numeri veri)
+            defs.append(_CALCOLA_DEF)
         return defs
 
     def _sensor_args(self, tname: str) -> dict:
@@ -150,6 +178,10 @@ class ChatAgent:
             return self._do_action(tinput or {})
         if name in ("carica_skill", "cerca_skill"):
             return self._skill_tool(name, tinput or {})
+        if name == "calcola":
+            from aios import quant
+            return quant.calcola(str((tinput or {}).get("operazione") or ""),
+                                 (tinput or {}).get("params") or {})
         names = set(self.kernel.tools.names())
         if name in names:
             args = tinput or self._sensor_args(name)
@@ -225,6 +257,10 @@ class ChatAgent:
     # ---- contesto (system) ----
     def _system_prompt(self) -> str:
         out = self.system + _CHAT_PREAMBLE
+        if self.dominio in _CALCOLA_DOMINI:
+            out += ("\n\n# NUMERI VERI — hai il tool `calcola` (motore deterministico 8e). "
+                    "Per indici di bilancio, carico fiscale (IRES/IRPEF/IRAP), aliquote: "
+                    "USA `calcola`, NON stimare a memoria. Cita i numeri che ti restituisce.")
         skills = self.orch.skills
         if skills is not None:
             try:
@@ -248,7 +284,8 @@ class ChatAgent:
         try:
             for ev in self.llm.stream_agentic(
                     system=self._system_prompt(), user=user,
-                    tools=self._tool_defs(), tool_exec=self._exec_tool):
+                    tools=self._tool_defs(), tool_exec=self._exec_tool,
+                    web_search=bool(self.orch.web)):
                 if ev.get("phase") == "done":
                     ev = {**ev, "azioni": list(self.azioni)}
                 yield ev
@@ -261,11 +298,12 @@ class ChatOrchestrator:
     eventi in un unico stream taggato per agente."""
 
     def __init__(self, platform: Any, llm: Any, llm_strong: Any = None,
-                 skills: Any = None) -> None:
+                 skills: Any = None, web_search: bool = False) -> None:
         self.platform = platform
         self.llm = llm
         self.llm_strong = llm_strong or llm
         self.skills = skills
+        self.web = web_search       # web search nativa Claude per gli agenti chat
         self.kernel = platform.kernel
         self.router = getattr(platform, "commands", None)   # CommandRouter (attuatore+coda)
         self.lock = threading.Lock()

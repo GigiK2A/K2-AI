@@ -984,7 +984,7 @@ function renderAgentChips(){const el=$("chatAgents");if(!el)return;const auto=CH
   el.querySelectorAll(".cag").forEach(c=>c.onclick=()=>{const a=c.dataset.ag;
     if(a==='auto')CHAT_AGENTS.clear();else{CHAT_AGENTS.has(a)?CHAT_AGENTS.delete(a):CHAT_AGENTS.add(a);}
     renderAgentChips();});}
-function toolLabel(t){if(t==='esegui')return 'esegui azione';if(t==='carica_skill')return 'apre una skill';if(t==='cerca_skill')return 'cerca una skill';return TBL[t]||String(t||'tool').replace(/^leggi_/,'').replace(/_/g,' ');}
+function toolLabel(t){if(t==='esegui')return 'esegui azione';if(t==='carica_skill')return 'apre una skill';if(t==='cerca_skill')return 'cerca una skill';if(t==='calcola')return 'calcola (numeri veri)';if(t==='web_search')return 'cerca sul web';return TBL[t]||String(t||'tool').replace(/^leggi_/,'').replace(/_/g,' ');}
 function agentRow(dom){const m=META[dom]||{ico:'•',label:dom};
   return `<div class="carow queue" id="car-${dom}"><div class="carow-h"><span class="cadot"></span>
     <span class="caname">${m.ico} ${esc(m.label)}</span><span class="castat" id="cas-${dom}">in coda</span></div>
