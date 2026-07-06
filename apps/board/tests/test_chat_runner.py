@@ -39,6 +39,8 @@ class FakeStreamLLM:
     def __init__(self, script):
         self.script = list(script)          # list[(tool_name, input_dict)]
         self.calls = []
+        # decisione del CEO in modalità auto (schema con 'modo'); default: consulta i due
+        self.triage = {"modo": "consulta", "agenti": ["finance", "marketing"]}
 
     def stream_agentic(self, *, system, user, tools, tool_exec, max_iters=6,
                        max_tokens=None, web_search=False, history=None):
@@ -53,8 +55,10 @@ class FakeStreamLLM:
         yield {"phase": "done", "text": "fatto"}
 
     def complete_json(self, *, system, user, schema=None):
-        # giudice di convergenza del dibattito: fa convergere (stop dopo il 2° giro)
-        return {"converged": True}
+        props = (schema or {}).get("properties", {})
+        if "modo" in props:                 # triage del CEO
+            return dict(self.triage)
+        return {"converged": True}          # giudice convergenza dibattito
 
 
 def _orch(script):
@@ -105,8 +109,8 @@ def test_multi_agent_debate_rounds_and_synthesis():
     # entrambi gli agenti hanno parlato
     spoke = {e.get("agent") for e in ev if e.get("phase") == "done"}
     assert "finance" in spoke and "marketing" in spoke
-    # SINTESI conclusiva presente
-    assert any(e.get("agent") == "sintesi" and e.get("phase") == "done" for e in ev)
+    # CHIUSURA del CEO presente
+    assert any(e.get("agent") == "ceo" and e.get("phase") == "done" for e in ev)
     # finance ha parlato in ≥2 turni distinti (giro 1 e giro 2 → chiavi diverse)
     fin_keys = {e.get("key") for e in ev if e.get("agent") == "finance" and e.get("key")}
     assert len(fin_keys) >= 2
@@ -115,10 +119,39 @@ def test_multi_agent_debate_rounds_and_synthesis():
 def test_single_agent_is_one_to_one():
     orch, _ = _orch([])
     ev = _events(orch, "come sono i ricavi?", ["finance"])
-    # 1-1: nessun giro, nessuna sintesi; un solo done finance
+    # 1-1: nessun giro, nessuna chiusura CEO; un solo done finance
     assert not any(e["phase"] == "round" for e in ev)
-    assert not any(e.get("agent") == "sintesi" for e in ev)
+    assert not any(e.get("agent") == "ceo" for e in ev)
     assert _done(ev, "finance")["text"] == "fatto" and ev[-1]["phase"] == "all_done"
+
+
+# ---- CEO-led (modalità auto): il CEO decide se rispondere o consultare ----
+def test_ceo_auto_answers_directly():
+    orch, _ = _orch([])
+    orch.llm.triage = {"modo": "rispondi"}
+    ev = _events(orch, "ok, confermi?", "auto")
+    assert any(e["phase"] == "triage" and e["modo"] == "rispondi" for e in ev)
+    assert _done(ev, "ceo")["text"] == "fatto"          # risponde il CEO
+    assert not any(e["phase"] == "round" for e in ev)    # nessun dibattito
+    assert not any(e.get("agent") in ("finance", "marketing") for e in ev)
+
+
+def test_ceo_auto_consults_subset():
+    orch, _ = _orch([])
+    orch.llm.triage = {"modo": "consulta", "agenti": ["finance", "marketing"]}
+    ev = _events(orch, "che facciamo per la crescita?", "auto")
+    assert any(e["phase"] == "triage" and e["modo"] == "consulta" for e in ev)
+    assert any(e["phase"] == "round" for e in ev)        # dibattito
+    spoke = {e.get("agent") for e in ev if e.get("phase") == "done"}
+    assert {"finance", "marketing", "ceo"} <= spoke       # reparti + chiusura CEO
+
+
+def test_ceo_auto_consult_single_no_debate():
+    orch, _ = _orch([])
+    orch.llm.triage = {"modo": "consulta", "agenti": ["finance"]}
+    ev = _events(orch, "quanti lead abbiamo?", "auto")
+    assert not any(e["phase"] == "round" for e in ev)     # un reparto → 1-1, niente dibattito
+    assert _done(ev, "finance")["text"] == "fatto"
 
 
 # ---- sicurezza `esegui` (identica al CommandRouter) ----
