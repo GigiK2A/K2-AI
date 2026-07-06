@@ -97,7 +97,7 @@ class AnthropicLLM:
 
     def stream_agentic(self, *, system: str, user: str, tools: list[dict],
                        tool_exec, max_iters: int = 6, max_tokens: int | None = None,
-                       web_search: bool = False):
+                       web_search: bool = False, history: list[dict] | None = None):
         """Loop tool-use REALE con streaming. Generatore di eventi (dict) mappati sui
         veri segnali dello streaming Anthropic, così la UI mostra stati veri:
           {phase:'thinking'}            — turno aperto, il modello sta ragionando
@@ -113,7 +113,8 @@ class AnthropicLLM:
         if web_search:   # web search NATIVA di Claude (server-tool Anthropic, non OpenAI)
             all_tools.append({"type": "web_search_20250305",
                               "name": "web_search", "max_uses": 4})
-        messages: list[dict] = [{"role": "user", "content": user}]
+        # history = turni precedenti [{role, content}] → memoria conversazionale
+        messages: list[dict] = list(history or []) + [{"role": "user", "content": user}]
         for _ in range(max_iters):
             yield {"phase": "thinking"}
             text_started = False

@@ -276,8 +276,26 @@ class ChatAgent:
                         "cercare in tutta la libreria (~300 skill, ogni reparto).")
         return out
 
+    def _history_for_agent(self, history: list[dict] | None) -> list[dict]:
+        """Ricostruisce il thread 1-1 di QUESTO agente con l'owner dallo storico sessione:
+        tutti i messaggi 'user' + le risposte 'assistant' del proprio dominio, in ordine.
+        Cap agli ultimi 20 turni e 4000 char/turno per limitare il contesto."""
+        if not history:
+            return []
+        out: list[dict] = []
+        for m in history:
+            role = m.get("role")
+            content = str(m.get("content") or "").strip()
+            if not content:
+                continue
+            if role == "user":
+                out.append({"role": "user", "content": content[:4000]})
+            elif role == "assistant" and m.get("agent") == self.dominio:
+                out.append({"role": "assistant", "content": content[:4000]})
+        return out[-20:]
+
     # ---- loop streaming ----
-    def stream(self, text: str) -> Iterator[dict]:
+    def stream(self, text: str, history: list[dict] | None = None) -> Iterator[dict]:
         """Genera gli eventi del turno per QUESTO agente (non taggati: lo fa l'orch.)."""
         user = (f"ISTRUZIONE OWNER: {text}\n\n"
                 "Leggi i dati reali coi tuoi sensori e, se corretto, agisci con `esegui`.")
@@ -285,7 +303,8 @@ class ChatAgent:
             for ev in self.llm.stream_agentic(
                     system=self._system_prompt(), user=user,
                     tools=self._tool_defs(), tool_exec=self._exec_tool,
-                    web_search=bool(self.orch.web)):
+                    web_search=bool(self.orch.web),
+                    history=self._history_for_agent(history)):
                 if ev.get("phase") == "done":
                     ev = {**ev, "azioni": list(self.azioni)}
                 yield ev
@@ -342,7 +361,8 @@ class ChatOrchestrator:
         return self.llm_strong if any(k in tl for k in _STRONG_HINTS) else self.llm
 
     # ---- stream multiplexato ----
-    def stream(self, text: str, agents: Any = None) -> Iterator[dict]:
+    def stream(self, text: str, agents: Any = None,
+               history: list[dict] | None = None) -> Iterator[dict]:
         if not text or not text.strip():
             yield {"phase": "error", "agent": "", "error": "istruzione vuota"}
             return
@@ -354,7 +374,7 @@ class ChatOrchestrator:
         def work(dom: str) -> None:
             try:
                 agent = ChatAgent(self, dom, llm)
-                for ev in agent.stream(text):
+                for ev in agent.stream(text, history):
                     q.put({**ev, "agent": dom})
             except Exception as exc:
                 q.put({"agent": dom, "phase": "error", "error": str(exc)[:200]})

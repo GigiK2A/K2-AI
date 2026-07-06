@@ -41,8 +41,8 @@ class FakeStreamLLM:
         self.calls = []
 
     def stream_agentic(self, *, system, user, tools, tool_exec, max_iters=6,
-                       max_tokens=None, web_search=False):
-        self.calls.append((system, user))
+                       max_tokens=None, web_search=False, history=None):
+        self.calls.append((system, user, history))
         yield {"phase": "thinking"}
         for name, inp in self.script:
             yield {"phase": "tool", "tool": name}
@@ -140,6 +140,21 @@ def test_empty_text_yields_error():
     orch, _ = _orch([])
     ev = _events(orch, "   ", None)
     assert ev and ev[0]["phase"] == "error"
+
+
+# ---- memoria conversazionale: ogni agente rivede SOLO il proprio thread ----
+def test_history_threaded_per_agent():
+    hist = [{"role": "user", "agent": None, "content": "ciao finance"},
+            {"role": "assistant", "agent": "finance", "content": "risposta finance"},
+            {"role": "assistant", "agent": "marketing", "content": "risposta marketing"},
+            {"role": "user", "content": "e adesso?"}]
+    orch, _ = _orch([])
+    list(orch.stream("continua", ["finance"], hist))
+    _sys, _user, h = orch.llm.calls[-1]        # la fake registra anche la history
+    pairs = [(m["role"], m["content"]) for m in h]
+    assert ("assistant", "risposta finance") in pairs       # la SUA risposta
+    assert ("assistant", "risposta marketing") not in pairs  # non quella altrui
+    assert ("user", "ciao finance") in pairs and ("user", "e adesso?") in pairs
 
 
 # ---- skill invocabili (progressive disclosure sulla libreria vendorizzata) ----
