@@ -40,7 +40,8 @@ class FakeStreamLLM:
         self.script = list(script)          # list[(tool_name, input_dict)]
         self.calls = []
 
-    def stream_agentic(self, *, system, user, tools, tool_exec, max_iters=6, max_tokens=None):
+    def stream_agentic(self, *, system, user, tools, tool_exec, max_iters=6,
+                       max_tokens=None, web_search=False):
         self.calls.append((system, user))
         yield {"phase": "thinking"}
         for name, inp in self.script:
@@ -170,3 +171,27 @@ def test_system_prompt_has_domain_skill_index():
     orch.skills = SkillLibrary()
     sysp = ChatAgent(orch, "finance", None)._system_prompt()
     assert "SKILL DISPONIBILI" in sysp and "cerca_skill" in sysp
+
+
+# ---- calcolatori deterministici 8e (tool `calcola`, solo finance) ----
+def test_calcola_tool_only_for_finance():
+    from aios.chat_runner import ChatAgent
+    orch, _ = _orch([])
+    fin = [t["name"] for t in ChatAgent(orch, "finance", None)._tool_defs()]
+    hr = [t["name"] for t in ChatAgent(orch, "hr", None)._tool_defs()]
+    assert "calcola" in fin and "calcola" not in hr
+
+
+def test_calcola_returns_real_numbers():
+    from aios.chat_runner import ChatAgent
+    orch, _ = _orch([])
+    a = ChatAgent(orch, "finance", None)
+    # carico fiscale SRL: IRES 24% di 100k = 24000
+    r = a._exec_tool("calcola", {"operazione": "carico_fiscale",
+                                 "params": {"forma_giuridica": "srl",
+                                            "imponibile_eur": 100000,
+                                            "valore_produzione_irap_eur": 120000}})
+    ires = next(d for d in r["dettaglio"] if d["imposta"] == "IRES")
+    assert ires["imposta_eur"] == 24000.0 and r["totale_eur"] == 28680.0
+    # operazione sconosciuta → errore gestito (no crash)
+    assert "error" in a._exec_tool("calcola", {"operazione": "boh"})

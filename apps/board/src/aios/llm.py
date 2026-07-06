@@ -96,7 +96,8 @@ class AnthropicLLM:
         return _robust_json(text)
 
     def stream_agentic(self, *, system: str, user: str, tools: list[dict],
-                       tool_exec, max_iters: int = 6, max_tokens: int | None = None):
+                       tool_exec, max_iters: int = 6, max_tokens: int | None = None,
+                       web_search: bool = False):
         """Loop tool-use REALE con streaming. Generatore di eventi (dict) mappati sui
         veri segnali dello streaming Anthropic, così la UI mostra stati veri:
           {phase:'thinking'}            — turno aperto, il modello sta ragionando
@@ -108,19 +109,26 @@ class AnthropicLLM:
         `tools`: tool def in formato Anthropic. `tool_exec(name, input)->risultato`
         esegue il tool (sensore o azione) e ritorna un valore JSON-serializzabile."""
         mt = max_tokens or self._max_tokens
+        all_tools = list(tools)
+        if web_search:   # web search NATIVA di Claude (server-tool Anthropic, non OpenAI)
+            all_tools.append({"type": "web_search_20250305",
+                              "name": "web_search", "max_uses": 4})
         messages: list[dict] = [{"role": "user", "content": user}]
         for _ in range(max_iters):
             yield {"phase": "thinking"}
             text_started = False
             with self._client.messages.stream(
                     model=self._model, max_tokens=mt, system=system,
-                    messages=messages, tools=tools) as stream:
+                    messages=messages, tools=all_tools) as stream:
                 for ev in stream:
                     et = getattr(ev, "type", "")
                     if et == "content_block_start":
                         cb = getattr(ev, "content_block", None)
-                        if getattr(cb, "type", "") == "tool_use":
+                        ct = getattr(cb, "type", "")
+                        if ct == "tool_use":
                             yield {"phase": "tool", "tool": getattr(cb, "name", "")}
+                        elif ct == "server_tool_use":   # es. web_search: lo esegue Anthropic
+                            yield {"phase": "tool", "tool": getattr(cb, "name", "web_search")}
                     elif et == "content_block_delta":
                         d = getattr(ev, "delta", None)
                         if getattr(d, "type", "") == "text_delta":
@@ -129,21 +137,17 @@ class AnthropicLLM:
                                 text_started = True
                             yield {"phase": "delta", "text": getattr(d, "text", "")}
                 final = stream.get_final_message()
+            # solo i tool CUSTOM richiedono un risultato da noi; i server-tool (web_search)
+            # li ha già eseguiti Anthropic dentro il turno.
             tool_uses = [b for b in final.content if getattr(b, "type", "") == "tool_use"]
             text = "".join(getattr(b, "text", "") for b in final.content
                            if getattr(b, "type", "") == "text")
             if not tool_uses:
                 yield {"phase": "done", "text": text}
                 return
-            # ricostruisco il turno assistant (testo + tool_use) per il prossimo giro
-            acontent: list[dict] = []
-            for b in final.content:
-                if getattr(b, "type", "") == "text":
-                    acontent.append({"type": "text", "text": b.text})
-                elif getattr(b, "type", "") == "tool_use":
-                    acontent.append({"type": "tool_use", "id": b.id,
-                                     "name": b.name, "input": b.input})
-            messages.append({"role": "assistant", "content": acontent})
+            # Passo i blocchi originali del turno assistant (testo + tool_use + eventuali
+            # server_tool_use/result) così com'è: l'SDK li ri-serializza correttamente.
+            messages.append({"role": "assistant", "content": final.content})
             results = []
             for tu in tool_uses:
                 yield {"phase": "tool_run", "tool": tu.name}

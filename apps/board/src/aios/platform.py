@@ -158,7 +158,8 @@ def build_platform() -> Platform:
     # Chat multi-agente in streaming: parli con uno/alcuni/tutti gli agenti in parallelo,
     # con stato reale (pensa/usa tool/scrive). Riusa attuatore+coda del CommandRouter.
     from aios.chat_runner import ChatOrchestrator
-    platform.chat = ChatOrchestrator(platform, llm, llm_strong, skills=skills)
+    platform.chat = ChatOrchestrator(platform, llm, llm_strong, skills=skills,
+                                     web_search=True)
     # Prospecting: ricerca web (Sonnet + web search) → qualifica → bozza (mai inviata)
     llm_web = AnthropicLLM(model="claude-sonnet-4-6", max_tokens=4096, enable_web_search=True)
     def _suite():
