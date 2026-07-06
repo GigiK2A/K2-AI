@@ -182,9 +182,16 @@ def main() -> int:
 
     print(f"\nDEEP happy-path: {ok}/{len(generic)} conformi")
 
-    # --- 2) REFUSE: fake che rompe una sezione required → deve rifiutare ---
-    refuse_ok = 0
-    refuse_tot = 0
+    # --- 2) NO-DEAD-END: fake che rompe una sezione required → NON deve dare vicolo cieco.
+    # Contratto (vedi llm.generate_deliverable_deep, righe ~570-583): una sezione required
+    # non valida NON rifiuta più a questo livello — viene messa a placeholder schema-valido
+    # e MARCATA in `meta["degraded_sections"]` (report preliminare), e il refuse vero vive
+    # A VALLE (gate grounding/quality della pipeline, rafforzato per legale/fisco e numeri
+    # hard-financial). Il fallimento da evitare è la consegna PULITA di spazzatura NON
+    # marcata: qui verifichiamo che ogni sezione garbage sia o rifiutata (result None) o
+    # segnalata come degradata.
+    degrade_ok = 0
+    degrade_tot = 0
     fake2 = _install_fake(lambda name, sub: "questo non è JSON conforme {{{")
     for skill in generic:
         osch = assets.load_output_schema(skill)
@@ -192,17 +199,23 @@ def main() -> int:
             continue
         req = osch.get("required", list(osch.get("properties", {})))
         # serve almeno una sezione required che NON sia meta/metadata
-        if not [r for r in req if r not in ("meta", "metadata")]:
+        req_non_meta = [r for r in req if r not in ("meta", "metadata")]
+        if not req_non_meta:
             continue
-        refuse_tot += 1
+        degrade_tot += 1
         fake2._SCHEMA = osch
         result, meta = llm.generate_deliverable_deep(osch, bp_stub, facts, inputs)
-        if result is None:
-            refuse_ok += 1
+        degraded = set((meta or {}).get("degraded_sections") or [])
+        # Corretto: o rifiuta (result None), o consegna un preliminare con ALMENO una
+        # sezione marcata degradata. Le sezioni deterministiche (binder/meta) restano
+        # valide anche con LLM garbage: legittimo, non è un dead-end. Il fallimento da
+        # evitare è la consegna PULITA con degraded_sections vuoto = garbage non marcata.
+        if result is None or degraded:
+            degrade_ok += 1
         else:
-            print(f"  REFUSE FAIL {skill}: ha consegnato invece di rifiutare")
+            print(f"  NO-DEAD-END FAIL {skill}: consegnato senza marcare alcuna sezione degradata")
 
-    print(f"REFUSE su sezione invalida: {refuse_ok}/{refuse_tot} rifiutati correttamente")
+    print(f"NO-DEAD-END su sezione invalida: {degrade_ok}/{degrade_tot} gestiti correttamente")
 
     # --- 3) meta compilato deterministico senza LLM ---
     osch = assets.load_output_schema(generic[0])
@@ -221,7 +234,7 @@ def main() -> int:
             meta_ok = bool("Acme" in blob or result.get(mkey))
             print(f"meta deterministico ({generic[0]}): {result.get(mkey)}")
 
-    bad = bool(fail) or refuse_ok != refuse_tot or ok != len(generic) or not meta_ok
+    bad = bool(fail) or degrade_ok != degrade_tot or ok != len(generic) or not meta_ok
     if fail:
         print("\nFALLIMENTI happy-path:")
         for s, e in fail:
