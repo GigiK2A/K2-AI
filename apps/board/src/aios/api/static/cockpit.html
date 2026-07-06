@@ -103,6 +103,18 @@
   .castat{font-size:10.5px;color:#64748b;font-weight:600;margin-left:auto}
   .catext{font-size:12.5px;line-height:1.5;margin-top:6px;white-space:pre-wrap;word-break:break-word;color:#0f172a}
   .catext:empty{display:none}
+  /* markdown renderizzato nelle bolle chat */
+  .catext h1,.catext h2,.catext h3{font-weight:800;margin:.55em 0 .25em;line-height:1.25;color:#0f172a}
+  .catext h1{font-size:15px}.catext h2{font-size:14px}.catext h3{font-size:12.5px}
+  .catext strong{font-weight:700}.catext em{font-style:italic}
+  .catext code{background:#f1f5f9;border-radius:4px;padding:.5px 4px;font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .catext ul,.catext ol{margin:.3em 0;padding-left:1.15em}.catext li{margin:.12em 0}
+  .catext hr{border:none;border-top:1px solid #e6eaf2;margin:.6em 0}
+  .catext p{margin:.35em 0}.catext p:first-child{margin-top:0}
+  .catext table{border-collapse:collapse;margin:.45em 0;font-size:11.5px;display:block;overflow-x:auto;max-width:100%}
+  .catext th,.catext td{border:1px solid #e6eaf2;padding:3px 7px;text-align:left}
+  .catext th{background:#f8fafc;font-weight:700}
+  .catext.md{white-space:normal}
   .carow.run .catext.cur::after{content:"▍";color:#2563EB;animation:ppulse 1s infinite;margin-left:1px}
   .caact{margin-top:6px;font-size:11.5px;line-height:1.5}
   /* overlay ricerca prospect (feedback realtime) */
@@ -186,6 +198,31 @@
 const $=id=>document.getElementById(id);
 const NUM=x=>(x===undefined||x===null||x===""||Number.isNaN(x))?"—":x;
 const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+// Renderer markdown leggero per le bolle chat (escape PRIMA, poi formattazione → no XSS).
+// Gestisce: heading, grassetto/corsivo/code, liste, hr, tabelle GitHub. Tollerante al
+// markdown incompleto (streaming): ri-renderizza tutto il buffer a ogni token.
+function mdInline(s){return s
+  .replace(/`([^`]+)`/g,'<code>$1</code>')
+  .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+  .replace(/__([^_]+)__/g,'<strong>$1</strong>')
+  .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g,'$1<em>$2</em>');}
+function mdLite(src){
+  const L=esc(src).split(/\r?\n/);let h="",i=0;
+  const rowCells=r=>r.trim().replace(/^\||\|$/g,"").split("|").map(c=>c.trim());
+  while(i<L.length){const ln=L[i];
+    if(/^\s*\|.*\|\s*$/.test(ln)){const t=[];while(i<L.length&&/^\s*\|.*\|\s*$/.test(L[i])){t.push(L[i]);i++;}
+      const rows=t.map(rowCells);let sep=rows.findIndex(r=>r.length&&r.every(c=>/^:?-{2,}:?$/.test(c)));
+      let head=null,body=rows;if(sep>0){head=rows[sep-1];body=rows.slice(sep+1);}
+      let tb="<table>";if(head)tb+="<thead><tr>"+head.map(c=>`<th>${mdInline(c)}</th>`).join("")+"</tr></thead>";
+      tb+="<tbody>"+body.map(r=>"<tr>"+r.map(c=>`<td>${mdInline(c)}</td>`).join("")+"</tr>").join("")+"</tbody></table>";h+=tb;continue;}
+    if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(ln)){h+="<hr>";i++;continue;}
+    const hd=ln.match(/^\s*(#{1,6})\s+(.*)$/);if(hd){const lv=Math.min(hd[1].length,3);h+=`<h${lv}>${mdInline(hd[2])}</h${lv}>`;i++;continue;}
+    if(/^\s*[-*+]\s+/.test(ln)){const it=[];while(i<L.length&&/^\s*[-*+]\s+/.test(L[i])){it.push(L[i].replace(/^\s*[-*+]\s+/,""));i++;}h+="<ul>"+it.map(x=>`<li>${mdInline(x)}</li>`).join("")+"</ul>";continue;}
+    if(/^\s*\d+\.\s+/.test(ln)){const it=[];while(i<L.length&&/^\s*\d+\.\s+/.test(L[i])){it.push(L[i].replace(/^\s*\d+\.\s+/,""));i++;}h+="<ol>"+it.map(x=>`<li>${mdInline(x)}</li>`).join("")+"</ol>";continue;}
+    if(/^\s*$/.test(ln)){i++;continue;}
+    const p=[];while(i<L.length&&!/^\s*$/.test(L[i])&&!/^\s*\|.*\|\s*$/.test(L[i])&&!/^\s*#{1,6}\s+/.test(L[i])&&!/^\s*[-*+]\s+/.test(L[i])&&!/^\s*\d+\.\s+/.test(L[i])&&!/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(L[i])){p.push(L[i]);i++;}
+    h+="<p>"+p.map(mdInline).join("<br>")+"</p>";}
+  return h;}
 const eur=n=>(n==null||Number.isNaN(n))?"—":"€"+Number(n).toLocaleString("it-IT");
 /* Auth: in produzione le API vogliono il bearer AIOS_API_TOKEN. Il token lo
    inserisci una volta (prompt) e resta nel browser (localStorage), NON nell'HTML.
@@ -990,7 +1027,7 @@ function agentRow(dom){const m=META[dom]||{ico:'•',label:dom};
     <span class="caname">${m.ico} ${esc(m.label)}</span><span class="castat" id="cas-${dom}">in coda</span></div>
     <div class="catext" id="cat-${dom}"></div><div class="caact" id="caa-${dom}"></div></div>`;}
 function setCar(dom,state,stat){const r=$("car-"+dom);if(!r)return;r.className="carow "+state;const s=$("cas-"+dom);if(s&&stat!=null)s.textContent=stat;}
-function appendCar(dom,txt){CBUF[dom]=(CBUF[dom]||"")+txt;const t=$("cat-"+dom);if(t){t.textContent=CBUF[dom];t.classList.add("cur");}scrollChat();}
+function appendCar(dom,txt){CBUF[dom]=(CBUF[dom]||"")+txt;const t=$("cat-"+dom);if(t){t.innerHTML=mdLite(CBUF[dom]);t.classList.add("cur","md");}scrollChat();}
 function renderAzioni(dom,azioni){const box=$("caa-"+dom);if(!box||!azioni||!azioni.length)return;let h="";
   azioni.forEach(a=>{
     if(a.stato==='eseguito')h+=`<div class="ok">✓ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">(${esc(a.tabella||'')} ${esc(a.op||'')})</span></div>`;
