@@ -30,7 +30,29 @@ def _strip_html(value: Any) -> str:
 
 _EURO_RE = re.compile(r"^€\s*(-?[\d.]+(?:,\d+)?)$")
 _PCT_RE = re.compile(r"^(-?[\d.]+(?:,\d+)?)\s*%$")
-_NUM_RE = re.compile(r"^-?[\d.]+(?:,\d+)?$")
+# Ramo numerico ambiguo: richiede la VIRGOLA come separatore decimale, così i
+# separatori-migliaia '.' sono disambiguati ("1.234,50" → 1234.5) e le stringhe
+# con soli punti ("2024", "12.34" ATECO, "1.2" versione) NON vengono coerciti.
+_NUM_RE = re.compile(r"^-?\d{1,3}(?:\.\d{3})*,\d+$|^-?\d+,\d+$")
+# Identificatori da preservare come testo anche se "sembrano" numeri.
+_YEAR_RE = re.compile(r"^\d{4}$")            # anni: 2024
+_ATECO_RE = re.compile(r"^\d{2}\.\d{2}")     # codici ATECO: 62.01, 71.12.10
+_LEADING_ZERO_RE = re.compile(r"^-?0\d")     # zeri iniziali: 007, 01.50 (versioni/ID)
+_INT_RE = re.compile(r"^-?\d+$")             # interi nudi senza separatori: 40000, -5
+
+
+def _is_identifier(text: str) -> bool:
+    """True per stringhe chiaramente identificative (anni/codici/versioni/ID)."""
+    # Un numero valido con decimale-virgola e migliaia-punto (es. "1.000.000,00")
+    # non è un identificatore anche se ha più punti: la virgola lo disambigua.
+    if _NUM_RE.match(text):
+        return False
+    if _YEAR_RE.match(text) or _ATECO_RE.match(text) or _LEADING_ZERO_RE.match(text):
+        return True
+    # più di un '.' senza virgola decimale → non è un numero (versioni, codici gerarchici)
+    if text.count(".") > 1:
+        return True
+    return False
 
 
 def _typed_cell(value: Any) -> tuple[Any, str | None]:
@@ -40,8 +62,21 @@ def _typed_cell(value: Any) -> tuple[Any, str | None]:
     text = _strip_html(value)
     if text.startswith("="):
         return text, None
+    # Interi nudi senza separatori ("40000", "-5") sono numeri NON ambigui → coercizli
+    # a int sommabile, salvo anni a 4 cifre ("2024") e ID con zero iniziale ("007"),
+    # che restano testo. Recupera il caso comune (importi interi emessi dall'LLM) che il
+    # ramo _NUM_RE — che richiede la virgola decimale — lascerebbe altrimenti come testo.
+    if _INT_RE.match(text) and not _YEAR_RE.match(text) and not _LEADING_ZERO_RE.match(text):
+        try:
+            return int(text), '#,##0'
+        except ValueError:
+            pass
+    # € e % restano affidabili (delimitatori espliciti); il ramo numerico puro
+    # è ambiguo, quindi preserviamo come testo gli identificatori prima di provarlo.
     for rx, fmt, scale in ((_EURO_RE, '€ #,##0.00;[Red](€ #,##0.00);-', 1),
                            (_PCT_RE, '0.0%', 100), (_NUM_RE, '#,##0.00;[Red](#,##0.00);-', 1)):
+        if rx is _NUM_RE and _is_identifier(text):
+            break  # anno/ATECO/versione/ID → resta testo, niente coercizione
         m = rx.match(text)
         if not m:
             continue

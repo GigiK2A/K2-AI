@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -32,18 +31,30 @@ _EMPTY: dict = {
 }
 
 
-@lru_cache(maxsize=1)
+# Cache manuale: memoizza SOLO una lettura VALIDA. Con @lru_cache un fallimento
+# transitorio a startup (I/O race) memoizzava _EMPTY per tutta la vita del processo
+# → routing default e PREZZI A 0 per sempre. Ora il ramo d'errore ritorna il fallback
+# SENZA cacharlo: una lettura successiva può ancora avere successo.
+_CATALOG_CACHE: Optional[dict] = None
+
+
 def load_catalog() -> dict:
+    global _CATALOG_CACHE
+    if _CATALOG_CACHE is not None:
+        return _CATALOG_CACHE
     try:
-        return json.loads(Path(CATALOG_PATH).read_text(encoding="utf-8"))
+        data = json.loads(Path(CATALOG_PATH).read_text(encoding="utf-8"))
     except Exception as exc:
         log.error("Catalog load failed (%s): %s", CATALOG_PATH, exc)
-        return dict(_EMPTY)
+        return dict(_EMPTY)  # NON cachato → riprova alla prossima chiamata
+    _CATALOG_CACHE = data
+    return _CATALOG_CACHE
 
 
 def invalidate() -> None:
     """Svuota la cache (chiamare dopo un redeploy che aggiorna catalog.json)."""
-    load_catalog.cache_clear()
+    global _CATALOG_CACHE
+    _CATALOG_CACHE = None
 
 
 def catalog_version() -> str:
@@ -161,11 +172,44 @@ def boost_per_tag(tag: str) -> Optional[dict]:
 
 
 # ---- Selettore di catalogo: conversazione → Boost 8e ---------------------
-# Negazione IMMEDIATA prima di una keyword (entro ~3 parole): 'non ho bilancio',
-# 'senza fatturato', 'né numeri né dati' → NON è intento per quel boost. Ancorata a fine
-# stringa (si applica al testo PRIMA della keyword). Vedi _match in suggest_boost.
-_NEGATED_BEFORE = re.compile(r"\b(?:non|senza|niente|nessun\w*|né|nè|mai|privo di|manca\w*)\b"
-                             r"(?:\s+\S+){0,3}\s*$")
+# Negazione prima di una keyword: 'non ho bilancio', 'senza fatturato', 'non ho nessun
+# tipo di documento tipo il bilancio' → NON è intento per quel boost. Cerchiamo un
+# marcatore di negazione nelle ULTIME ~6 PAROLE INTERE prima della keyword (non su uno
+# slice a caratteri fissi, che era cieco oltre ~3 token o quando tagliava le parole).
+# Vedi _NEGATION_MARKERS e _negated_before in suggest_boost.
+_NEGATION_MARKERS = frozenset((
+    "non", "senza", "niente", "nessun", "nessuna", "nessuno", "nessun'",
+    "né", "nè", "mai", "privo", "priva", "manca", "mancano", "mancante",
+    "manco", "assenza", "assente", "sprovvisto", "sprovvista", "no",
+))
+_NEG_WINDOW_WORDS = 6  # quante parole intere guardare a ritroso dalla keyword
+
+# Apostrofi curvi → dritto: le keyword (es. "credito d'imposta", "cessione d'azienda")
+# usano l'apostrofo ASCII; un testo utente con '’'/'‘' non combaciava con re.escape.
+_APOSTROPHES = {"’": "'", "‘": "'", "ʼ": "'", "´": "'", "`": "'"}
+
+
+def _normalize_text(text: str) -> str:
+    """Minuscolo + apostrofi curvi normalizzati a ASCII: rende il match keyword
+    tollerante alla forma tipografica dell'apostrofo."""
+    text = (text or "").lower()
+    for src, dst in _APOSTROPHES.items():
+        if src in text:
+            text = text.replace(src, dst)
+    return text
+
+
+def _negated_before(text: str, kw_start: int) -> bool:
+    """True se un marcatore di negazione compare nelle ultime ~6 parole INTERE prima
+    della keyword. Lavora su parole, non su uno slice a caratteri fissi: coglie
+    'non ho nessun tipo di documento tipo il bilancio' (negazione lontana dalla keyword)."""
+    before_words = text[:kw_start].split()[-_NEG_WINDOW_WORDS:]
+    for w in before_words:
+        # strip punteggiatura ai bordi ('non,' → 'non'); tiene l'apostrofo interno.
+        token = w.strip(".,;:!?()[]\"'«»").lower()
+        if token in _NEGATION_MARKERS:
+            return True
+    return False
 
 # Mappa keyword → servizio_id (tutti 8e-generabili). Primo match vince. I domini
 # specifici (legale, fiscale, edilizia, energia, sicurezza...) PRIMA dei generici
@@ -185,7 +229,11 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
     (("sicurezz", "dvr", "antincendio", "81/08", "rspp", "infortun"), "checkup_sicurezza_safetyboost"),
     (("hotel", "ricettiv", "ristorant", "hospitality", "struttura ricettiva", "albergo", "b&b"), "checkup_hospitality"),
     (("seo", "sito web", "posizionamento organico", "keyword", "traffico organico", "reputazione online", "sentiment"), "checkup_seo"),
-    (("bilanci", "finanziar", "cash flow", "liquidità", "bancabil", "margini", "solvibil", "rating", "investiment", "roi", "payback"), "checkup_finanziario"),
+    # "roi" rimosso come keyword singola: falsi positivi su contesti marketing ("ROI campagna")
+    # dirottavano un'analisi marketing su FinanceBoost. Il finanziario resta coperto dalle
+    # keyword forti (bilanci/cash flow/margini/bancabilità/…). "investiment" tenuto: nel
+    # dubbio un investimento è più finanziario che marketing, e ha co-keyword forti a fianco.
+    (("bilanci", "finanziar", "cash flow", "liquidità", "bancabil", "margini", "solvibil", "rating", "investiment", "payback"), "checkup_finanziario"),
     (("controllo di gestione", "kpi", "cruscotto", "reporting direzionale", "monitoraggio"), "checkup_controllo"),
     (("marketing", "brand", "awareness", "notorietà", "visibilità", "campagn", "funnel", "social",
       "lead generation", "acquisizione clienti", "studio di mercato", "competitor", "benchmark",
@@ -237,7 +285,7 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False,
             score = 0
             for k in keys:
                 for mt in re.finditer(r"\b" + re.escape(k), text):
-                    if not _NEGATED_BEFORE.search(text[max(0, mt.start() - 40):mt.start()]):
+                    if not _negated_before(text, mt.start()):
                         score += 1
             if score > best_score:
                 best_sid, best_score = sid, score
@@ -248,17 +296,17 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False,
     # frasi come "acquisizione clienti" NON devono dirottare un report di marketing su
     # BuildBoost o LegalBoost DD. Il testo utente è davanti: l'arbitro resta l'ordine dei
     # gruppi keyword (domini specifici prima), così "parere SEO" batte "analisi bilancio".
-    intent = (str(user_text or "") + " "
-              + " ".join(str(summary.get(k) or "") for k in ("reportType", "deliverableType"))).lower()
+    intent = _normalize_text(str(user_text or "") + " "
+              + " ".join(str(summary.get(k) or "") for k in ("reportType", "deliverableType")))
     chosen = _match(intent)
     # PASS 2 — fallback sull'intero riepilogo se l'intento non è già instradabile.
     if not chosen:
-        full = " ".join(
+        full = _normalize_text(" ".join(
             str(summary.get(k) or "")
             for k in ("reportType", "deliverableType", "objective", "businessType", "scope", "notes")
-        ).lower()
+        ))
         if user_text:
-            full = str(user_text).lower() + " " + full
+            full = _normalize_text(str(user_text)) + " " + full
         chosen = _match(full)
     if not chosen and explicit_only:
         return None          # nessun match esplicito → il chiamante tiene il boost corrente

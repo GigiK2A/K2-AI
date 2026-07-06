@@ -37,12 +37,72 @@ def has_identity(inputs: dict | None) -> bool:
     return bool(desc) and len(desc) <= 100
 
 
-def missing_required(campi: list[dict] | None, inputs: dict | None) -> list[dict]:
-    """I campi del form marcati `obbligatorio` il cui valore è assente/vuoto negli input.
+def _looks_numeric(s: str) -> bool:
+    """Vero se la stringa è un numero, tollerando i separatori IT ('1.234.567', '1.234,56')
+    e EN ('1,234.56', '1234.56'). Mirror leggero di autofill._as_num (readiness resta
+    puro, niente import di autofill che dipende da settings)."""
+    s = s.strip()
+    if not s:
+        return False
+    has_dot, has_comma = "." in s, "," in s
+    if has_dot and has_comma:
+        s = s.replace(".", "").replace(",", ".") if s.rfind(",") > s.rfind(".") else s.replace(",", "")
+    elif has_comma:
+        s = s.replace(",", ".") if s.count(",") == 1 else s.replace(",", "")
+    elif has_dot and s.count(".") > 1:
+        s = s.replace(".", "")
+    try:
+        float(s)
+        return True
+    except Exception:
+        return False
 
-    `campi` è la proiezione 8e di `/v1/form` ({id, obbligatorio, label, ...}); `inputs`
-    è il dict auto-compilato dalla conversazione. Combacia col Gate 0 dell'8e
-    (`validate_required_inputs`): un required assente = report non generabile."""
+
+_IMPLAUSIBLE_TEXT = {"non lo so", "non so", "boh", "non saprei", "?", "n.d.", "n/d",
+                     "nd", "non disponibile", "non ho", "non ce l'ho", "sconosciuto",
+                     "da definire", "tbd", "-", "—", "non pervenuto", "non applicabile"}
+
+
+def _campo_value_plausible(campo: dict, v: Any) -> bool:
+    """Plausibilità di un valore per un CAMPO del form 8e (shape {id, tipo, enum, ...},
+    diversa dal JSON-schema `prop` di `_value_plausible`). Lenient: vero salvo violazioni
+    PALESI. Serve a bocciare i required 'presenti ma spazzatura' (es. fatturato='non lo so')
+    che passavano il pre-flight, facevano pagare e venivano rifiutati a valle dall'8e.
+
+    ATTENZIONE: 0 / 0.0 / False sono valori LEGITTIMI per numeri/booleani → mai scartati."""
+    tipo = str(campo.get("tipo") or "").strip().lower()
+    # Booleani: qualunque bool è valido (False incluso).
+    if tipo == "boolean":
+        return isinstance(v, bool) or str(v).strip().lower() in (
+            "true", "false", "si", "sì", "no", "yes", "1", "0")
+    # Numerici: 0 è legittimo. Boccia solo se NON convertibile a numero (testo libero).
+    if tipo in ("integer", "number"):
+        if isinstance(v, bool):
+            return False  # un bool in un campo numerico è un errore di estrazione
+        if isinstance(v, (int, float)):
+            return True
+        return _looks_numeric(str(v))
+    # Enum: il valore deve essere tra quelli ammessi.
+    enum = campo.get("enum")
+    if isinstance(enum, (list, tuple)) and enum:
+        if isinstance(v, list):
+            return bool(v) and all(x in enum for x in v)
+        return v in enum
+    # Testo libero: boccia solo i non-valori palesi ('non lo so', '?', 'n/d').
+    if isinstance(v, str):
+        if v.strip().lower() in _IMPLAUSIBLE_TEXT:
+            return False
+    return True
+
+
+def missing_required(campi: list[dict] | None, inputs: dict | None) -> list[dict]:
+    """I campi del form marcati `obbligatorio` il cui valore è assente/vuoto O IMPLAUSIBILE.
+
+    `campi` è la proiezione 8e di `/v1/form` ({id, obbligatorio, label, tipo, enum, ...});
+    `inputs` è il dict auto-compilato dalla conversazione. Combacia col Gate 0 dell'8e
+    (`validate_required_inputs`): un required assente = report non generabile. In più
+    NOMINA i required presenti ma implausibili (es. fatturato='non lo so'), che il gate
+    dell'8e rifiuterebbe DOPO il pagamento → qui evitiamo il vicolo cieco pagato."""
     inputs = inputs or {}
     out: list[dict] = []
     for c in campi or []:
@@ -51,7 +111,8 @@ def missing_required(campi: list[dict] | None, inputs: dict | None) -> list[dict
         cid = c.get("id")
         if not cid:
             continue
-        if inputs.get(cid) in _EMPTY:
+        v = inputs.get(cid)
+        if v in _EMPTY or not _campo_value_plausible(c, v):
             out.append(c)
     return out
 

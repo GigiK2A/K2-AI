@@ -44,6 +44,17 @@ FINANCIAL_SKILLS = frozenset({
     "check-fiscale-express",          # scoring fiscale: coerenza con la famiglia tax
 })
 
+# Boost LEGALI/FISCALI: il cliente AGISCE legalmente sul contenuto → un riferimento
+# normativo asserito a memoria e NON verificato contro il corpus (CAGE C2 norma_non_citata)
+# è un difetto DURO, non un'annotazione. Su questi boost il grounding gira con strict_norme=True
+# → norma_non_citata diventa 'block' (non si consegna una norma da recall / potenzialmente
+# superata). Sugli altri boost resta 'warn' (annotazione).
+_NORMATIVE_SKILLS = frozenset({
+    "flusso-legalboost-pmi", "check-legale-express",
+    "flusso-fiscoboost-pmi", "check-fiscale-express",
+    "flusso-agevolazioni-pmi",
+})
+
 
 class Refuse(Exception):
     def __init__(self, reason: str, message: str):
@@ -396,9 +407,16 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
         eu_found["2016/679"] = _EU_CANON["2016/679"]
     if re.search(r"\bAI\s*Act\b|2024/1689", full, re.I):
         eu_found["2024/1689"] = _EU_CANON["2024/1689"]
+    # M9: SOLO i regolamenti UE nella whitelist canonica (_EU_CANON) vengono promossi a
+    # fonte grounded 'eur_lex'. Un 'Reg. (UE) NNNN/N' generico trovato nel testo può essere
+    # un numero INVENTATO dall'LLM: promuoverlo a citazione lo spaccia per verificato e ne
+    # ancora il numero (finisce in grounded_nums → spegne il finding C2). I reg. fuori
+    # whitelist NON entrano nelle citazioni grounded: restano nel testo, dove il CAGE è
+    # libero di flaggarli. GDPR/AI Act (whitelist) restano in Fonti → fix N1 salvo.
     for m in re.finditer(r"reg(?:olamento)?\.?\s*\(?\s*ue\s*\)?\s*(?:n\.?\s*)?(\d{4})\s*/\s*(\d{1,4})", full, re.I):
         key = f"{m.group(1)}/{m.group(2)}"
-        eu_found.setdefault(key, _EU_CANON.get(key, f"Reg. (UE) {key}"))
+        if key in _EU_CANON:
+            eu_found.setdefault(key, _EU_CANON[key])
     already = {str(c.get("riferimento") or "") for c in citazioni}
     for key, rif in eu_found.items():
         if not any(key in a or rif == a for a in already):
@@ -417,8 +435,14 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
         articolo = ref.get("articolo")
         hits = normattiva.find_by_estremi(ref["anno"], ref["numero"], tipo=ref["tipo"],
                                           articolo=articolo, limit=1)
-        if hits and articolo:
-            # Articolo esplicito e trovato → verbatim di QUEL chunk.
+        # M1-norma (difensivo): senza `tipo` determinato find_by_estremi NON filtra per tipo
+        # (valid_tipi=None) → può agganciare una norma OMONIMA di tipo diverso (es. 'DM 143/2013'
+        # che matcha la L. 143/2013) e restituirne il verbatim, spacciando come citazione un
+        # testo di un'altra norma. Quando il tipo è indeterminato NON promuoviamo il verbatim:
+        # la citazione resta un riferimento senza `testo` (sotto), che non ancora nulla di falso.
+        tipo_noto = bool(ref.get("tipo"))
+        if hits and articolo and tipo_noto:
+            # Articolo esplicito, tipo noto e trovato → verbatim di QUEL chunk.
             h = hits[0]
             seen.add(key)
             enriched.append({
@@ -460,9 +484,10 @@ def render_external(service_id: str, deliverable: dict, citazioni: list | None =
     inputs = inputs or {}
     citazioni = _enrich_citazioni_normattiva(deliverable, list(citazioni or []))
     strict_grounding = skill in FINANCIAL_SKILLS
+    strict_norme = skill in _NORMATIVE_SKILLS
     g_findings = (grounding.required_inputs_findings(form_schema, inputs, strict=strict_grounding)
                   + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
-                                                  strict=strict_grounding))
+                                                  strict=strict_grounding, strict_norme=strict_norme))
     job_id = jobs.create(service_id, bp_id, 1.0)
     if grounding.blocks(g_findings):
         jobs.update(job_id, status="refused", refusal_reason="grounding_failed",
@@ -646,13 +671,23 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             # non un refuse: un report preliminare vive di stime dichiarate. Quindi anche i
             # boost finanziari usano il grounding non-strict (scrub+label invece di block).
             strict_grounding = skill in FINANCIAL_SKILLS and not partial_mode
-            # Scrub deterministico: sui qualitativi (non-financial) etichetta i numeri non-grounded
-            # come illustrativi PRIMA del gate (scelta-utente) → il report si consegna invece di
-            # fallire su una cifra che il modello non ha marcato. Financial: no-op (restano strict).
-            deliverable = quality.scrub_ungrounded_numbers(deliverable, inputs, facts, citazioni, strict=strict_grounding)
+            # Boost legali/fiscali: le norme asserite a memoria bloccano SEMPRE (anche in
+            # PARTIAL: una norma potenzialmente superata non è un'ipotesi etichettabile).
+            strict_norme = skill in _NORMATIVE_SKILLS
+            # H4: un boost FINANZIARIO in PARTIAL non deve poter ETICHETTARE come "ipotesi" i
+            # numeri HARD (€/EBITDA/ROI…) fabbricati dall'LLM: lo scrub li marcherebbe come
+            # assunzioni → il gate li esenterebbe (via _ASSUMPTION) e uscirebbero al posto di un
+            # 'block'. Sui finanziari lo scrub resta NO-OP (strict=True) SEMPRE, anche in PARTIAL:
+            # così unsupported_number_findings (hard→block a prescindere) blocca l'EBITDA
+            # fabbricato, mentre i benchmark morbidi (settore %) restano 'warn' nel gate. I
+            # numeri legittimi restano deterministici via i binder finance/tax; se un binder
+            # non copre un derivato in PARTIAL, meglio il refuse onesto della cifra inventata.
+            scrub_strict = strict_grounding or (skill in FINANCIAL_SKILLS)
+            deliverable = quality.scrub_ungrounded_numbers(deliverable, inputs, facts, citazioni, strict=scrub_strict)
             g_findings = (grounding.required_inputs_findings(form_schema, inputs, strict=strict_grounding)
                           + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
-                                                          facts=facts, strict=strict_grounding))
+                                                          facts=facts, strict=strict_grounding,
+                                                          strict_norme=strict_norme))
             g_blocks = grounding.blocks(g_findings)
             if g_blocks and not offline_mode:
                 # NIENTE VICOLO CIECO: se i blocchi sono SOLO numeri non ancorati (delta %
@@ -660,7 +695,12 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                 # fatti-cliente — si ETICHETTANO illustrativi (scrub non-strict) e si consegna
                 # invece di rifiutare. I numeri-core dei finance restano deterministici. Solo
                 # i blocchi "duri" (placeholder, fatto-cliente confabulato) fanno refuse.
-                if all(b.get("code") == "numero_non_grounded" for b in g_blocks):
+                # H4: NON su boost FINANZIARI. Su questi un numero_non_grounded è una cifra HARD
+                # (€/EBITDA/ROI) fabbricata su cui il cliente agisce: va bloccata, non etichettata
+                # "ipotesi" e consegnata (anche in PARTIAL). L'escape label-and-deliver resta solo
+                # per i qualitativi (delta/benchmark morbidi).
+                if skill not in FINANCIAL_SKILLS and all(
+                        b.get("code") == "numero_non_grounded" for b in g_blocks):
                     deliverable = quality.scrub_ungrounded_numbers(
                         deliverable, inputs, facts, citazioni, strict=False)
                     log.info("grounding: %d numeri non-grounded etichettati illustrativi (no refuse) job %s",

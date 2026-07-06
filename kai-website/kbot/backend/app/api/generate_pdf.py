@@ -15,6 +15,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
@@ -33,17 +34,27 @@ from ..settings import INTERNAL_API_KEY, STORAGE_REPORTS_BUCKET
 
 
 def _make_friendly_filename(analysis: dict, session: dict) -> str:
-    """Genera filename leggibile dal titolo report invece di UUID.
+    """Genera lo STORAGE PATH del report: leggibile (slug dal titolo) ma NON
+    indovinabile né collidente tra clienti.
 
-    Es: "Audit SEO Tecnico — K2-AI" → "audit-seo-tecnico-k2-ai-20260518.pdf"
-    Fallback su 'report-{date}' se titolo mancante.
+    Es: "abcd1234/audit-seo-tecnico-k2-ai-20260518-9f3a1c2e.pdf"
+
+    C3 — il vecchio path `slug-YYYYMMDD.pdf` era prevedibile e, con upsert su un
+    bucket pubblico, un altro cliente con lo stesso titolo/giorno avrebbe
+    SOVRASCRITTO il file (collisione cross-cliente) o potuto ENUMERARLO. Ora il
+    path è prefissato con l'id sessione e suffissato con un token uuid4 casuale:
+    univoco per sessione e non enumerabile. Nota infra (follow-up): il bucket
+    dovrebbe essere PRIVATO + signed URL — vedi report.
     """
     title = (analysis.get("meta", {}) or {}).get("title") or "report"
     slug = re.sub(r"[^a-zA-Z0-9\s-]", "", title.lower())
     slug = re.sub(r"\s+", "-", slug.strip())
     slug = re.sub(r"-+", "-", slug)[:60].strip("-") or "report"
     date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
-    return f"{slug}-{date_str}.pdf"
+    session_id = str(session.get("id") or "")
+    prefix = re.sub(r"[^a-zA-Z0-9-]", "", session_id)[:8] or "anon"
+    rand = uuid4().hex[:8]
+    return f"{prefix}/{slug}-{date_str}-{rand}.pdf"
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -87,18 +98,20 @@ def generate_pdf(
         return {"pdf_url": cached_url, "cached": True}
 
     # 1. LLM analysis JSON.
+    #    M1 — dettaglio dell'eccezione solo nei log (log.exception), non nel detail
+    #    HTTP: può contenere prompt/percorsi/chiavi interne. Al client, messaggio generico.
     try:
         analysis = generate_analysis_json(session)
-    except Exception as exc:
+    except Exception:
         log.exception("Analysis generation failed")
-        raise HTTPException(status_code=502, detail=f"analysis failed: {exc}")
+        raise HTTPException(status_code=502, detail="generazione analisi non riuscita")
 
     # 2. PDF rendering.
     try:
         pdf_bytes = render_pdf(analysis, session_id=session["id"])
-    except Exception as exc:
+    except Exception:
         log.exception("PDF rendering failed")
-        raise HTTPException(status_code=500, detail=f"pdf rendering failed: {exc}")
+        raise HTTPException(status_code=500, detail="rendering PDF non riuscito")
 
     # 3. Upload to Supabase Storage.
     storage_path = _make_friendly_filename(analysis, session)
@@ -108,9 +121,9 @@ def generate_pdf(
             path=storage_path,
             content=pdf_bytes,
         )
-    except Exception as exc:
+    except Exception:
         log.exception("Storage upload failed")
-        raise HTTPException(status_code=500, detail=f"storage upload failed: {exc}")
+        raise HTTPException(status_code=500, detail="salvataggio del report non riuscito")
 
     # 4. Persist URL + status + the analysis JSON, so the same paid deliverable
     #    can be re-rendered to Excel/Word later without another LLM call.

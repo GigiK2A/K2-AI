@@ -71,7 +71,7 @@ async def create_deliverable(
         r = await c.post(f"{ENGINE_8E_BASE_URL}/v1/deliverables",
                          json=payload, headers=_headers())
 
-    if r.status_code == 202:
+    if r.status_code in (200, 202):  # 202 async (contratto), 200 sync valido: entrambi OK
         return r.json()
     if r.status_code == 402:
         raise EnginePaymentRequired(r.json().get("service_id", service_id))

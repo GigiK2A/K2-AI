@@ -68,6 +68,18 @@ def _consuma_crediti(service_id: str, user: AuthUser) -> int:
                             detail={"error": "insufficient_credits", "saldo": saldo, "costo": costo})
     return saldo
 
+
+def _refund_crediti(user: AuthUser, costo: int, service_id: str) -> None:
+    """Ri-accredita i crediti di un check fallito DOPO l'addebito (tool 500/504): il
+    cliente non deve pagare per un output che non riceve. Best-effort: un errore di
+    rimborso non deve mascherare l'eccezione originale che stiamo per ri-sollevare."""
+    if costo <= 0:
+        return
+    try:
+        billing_store.grant_credits(user.id, costo, reason="refund", ref=service_id)
+    except Exception:  # pragma: no cover - il refund non deve nascondere l'errore reale
+        pass
+
 # service_id del catalogo (strato consumo) → nome modulo nel package agevolazioni
 SERVICE_TO_MODULE = {
     "de_minimis": "de_minimis",
@@ -159,8 +171,15 @@ def run_check(request: Request, service_id: str, body: CheckBody,
         inp = meta["input_model"](**body.inputs)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"input non valido: {exc}")
+    costo = _load_costi().get(service_id) or 0
     saldo = _consuma_crediti(service_id, user)  # gate crediti server-side (402/403)
-    out = run_tool_safely(meta["fn"], inp)  # timeout + cap concorrenza
+    # I crediti sono già addebitati: se il tool solleva (500/504), rimborsa prima di
+    # ri-sollevare, altrimenti il cliente paga per un output che non riceve.
+    try:
+        out = run_tool_safely(meta["fn"], inp)  # timeout + cap concorrenza
+    except Exception:
+        _refund_crediti(user, costo, service_id)
+        raise
     result = out.model_dump(mode="json") if isinstance(out, BaseModel) else out
     return {"service_id": service_id, "strato": "consumo", "deterministico": True,
             "saldo_crediti": saldo, "result": result}
@@ -178,11 +197,17 @@ def run_check_document(request: Request, service_id: str, body: CheckBody,
         inp = meta["input_model"](**body.inputs)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"input non valido: {exc}")
+    costo = _load_costi().get(service_id) or 0
     _consuma_crediti(service_id, user)  # gate crediti server-side (402/403)
-    out = run_tool_safely(meta["fn"], inp)  # timeout + cap concorrenza
-    result = out.model_dump(mode="json") if isinstance(out, BaseModel) else out
-    from ..lib.check_renderer import render_check_pdf
-    label = service_id.replace("_", " ").title()
-    pdf = render_check_pdf(service_id, label, body.inputs, result)
+    # Rimborsa se il calcolo o il render sollevano dopo l'addebito (no output = no charge).
+    try:
+        out = run_tool_safely(meta["fn"], inp)  # timeout + cap concorrenza
+        result = out.model_dump(mode="json") if isinstance(out, BaseModel) else out
+        from ..lib.check_renderer import render_check_pdf
+        label = service_id.replace("_", " ").title()
+        pdf = render_check_pdf(service_id, label, body.inputs, result)
+    except Exception:
+        _refund_crediti(user, costo, service_id)
+        raise
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'inline; filename="{service_id}.pdf"'})

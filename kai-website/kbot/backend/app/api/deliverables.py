@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from .. import settings
 from ..lib import engine, sessions, catalog, entitlement, autofill, readiness, research
 from ..lib.auth import AuthUser, optional_user, require_user
-from ..lib.storage import upload_pdf
+from ..lib.storage import upload_pdf, upload_bytes, download_bytes
 from ..lib.supabase_admin import get_admin_client
 from ..settings import STORAGE_REPORTS_BUCKET
 
@@ -60,6 +60,70 @@ def _check_ownership(session: dict, user: Optional[AuthUser]) -> None:
         raise HTTPException(status_code=403, detail="not your session")
 
 
+def _session_for_job(job_id: str) -> Optional[dict]:
+    """Reverse-lookup: la sessione che possiede questo job_id 8e/agente.
+
+    Il job viene persistito su `collected_data.deliverable_job_id` da create/auto
+    (stesso file). Interroghiamo `kbot_sessions` filtrando sul campo JSONB. Ritorna
+    la riga sessione oppure None se nessuna sessione rivendica il job.
+    """
+    try:
+        client = get_admin_client()
+        res = (
+            client.table("kbot_sessions")
+            .select("*")
+            .eq("collected_data->>deliverable_job_id", job_id)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        return rows[0] if rows else None
+    except Exception:
+        # Errore di lookup → trattiamo come "non verificabile" a valle (fail-closed).
+        log.warning("lookup sessione per job %s fallito", job_id, exc_info=True)
+        return None
+
+
+def _authorize_job_download(job_id: str, user: Optional[AuthUser]) -> dict:
+    """Gate C1 per i download di deliverable (pdf/xlsx/stato): lega il job alla
+    sessione proprietaria e ne verifica pagamento + (quando possibile) ownership.
+
+    Il `job_id` da solo NON è più autorizzazione sufficiente (era IDOR + bypass
+    paywall): chi lo indovinasse/intercettasse poteva scaricare il documento di un
+    altro cliente SENZA aver pagato. Ora:
+      1. risolviamo la sessione che possiede il job (persistita a generazione);
+      2. **paywall** — la sessione DEVE essere pagata (402), salvo KBOT_FREE_MODE.
+         Questo chiude il bypass del paywall a prescindere dall'autenticazione;
+      3. **ownership** — se il chiamante presenta un JWT valido, DEVE essere il
+         proprietario della sessione (403).
+
+    VINCOLO ARCHITETTURALE (perché non si impone SEMPRE il JWT): PDF ed Excel
+    vengono scaricati via NAVIGAZIONE del browser (`<a href>` / apertura tab) e il
+    polling di stato via `fetch` senza header — nessuno dei due può allegare un
+    `Authorization: Bearer`. Imporre il JWT qui romperebbe tutti i download legittimi.
+    Quindi: paywall SEMPRE (fail-closed) + ownership imposta solo quando un token è
+    presente. Il `job_id` resta la capability opaca per la navigazione anonima, ma
+    non basta più a superare il paywall né a leggere una sessione altrui se ti
+    autentichi come un altro utente. Irrobustimento futuro (signed URL / token
+    per-job) è un follow-up infra.
+
+    FAIL-CLOSED: se nessuna sessione rivendica il job (job orfano/legacy generato
+    prima di questo binding, o lookup fallito) NON serviamo il file → 403. Meglio
+    negare un raro download legacy che lasciare aperto un accesso non pagato.
+    """
+    session = _session_for_job(job_id)
+    if not session:
+        raise HTTPException(status_code=403, detail="download non autorizzato per questo job")
+    # Ownership: imposta SOLO se il chiamante è autenticato (JWT presente e valido).
+    # Con user=None (navigazione browser) non possiamo distinguere → resta il paywall.
+    if user is not None and session.get("user_id") and session["user_id"] != user.id:
+        raise HTTPException(status_code=403, detail="not your session")
+    # Paywall: SEMPRE, anche senza autenticazione. Chiude il bypass IDOR-paywall.
+    if session.get("status") != "paid" and not settings.KBOT_FREE_MODE:
+        raise HTTPException(status_code=402, detail="documento non pagato")
+    return session
+
+
 def _mint_entitlement(session: dict, servizio_id: str, tier: Optional[str] = None) -> Optional[str]:
     """Entitlement JWT (G1) se il servizio risulta pagato. Firmato HS256, verificato
     stateless dall'8e. Fallback al placeholder solo se il segreto non è configurato
@@ -88,6 +152,55 @@ async def _get_job(job_id: str) -> dict:
             raise HTTPException(status_code=404, detail="job non trovato")
         return j
     return await engine.get_deliverable(job_id)
+
+
+def _durable_pdf_path(session_id: str, job_id: str) -> str:
+    return f"deliverables/{session_id}/{job_id}.pdf"
+
+
+def _durable_json_path(session_id: str, job_id: str) -> str:
+    return f"deliverables/{session_id}/{job_id}.json"
+
+
+async def _persist_durable(session: dict, job_id: str, job: dict) -> None:
+    """C4 — appena l'8e riporta il job 'rendered', persiste PDF+JSON su Supabase
+    Storage così il deliverable PAGATO sopravvive a un restart dell'8e (il job store
+    dell'8e è in-memory: al redeploy Railway il job sparisce e il polling andrebbe in
+    404 → vicolo cieco su un documento già pagato). Idempotente (salta se già salvato
+    per questo job) e best-effort assoluto: non deve MAI rompere il polling di stato.
+    """
+    sid = str(session.get("id") or session.get("session_id") or "")
+    if not sid or not job_id:
+        return
+    if (job or {}).get("status") != "rendered":
+        return
+    collected = dict(session.get("collected_data") or {})
+    if collected.get("deliverable_saved_job") == job_id and collected.get("deliverable_pdf_url"):
+        return  # già durevole per questo job
+    try:
+        content, _ = await engine.fetch_output(job_id, "pdf")
+        pdf_url = upload_bytes(bucket=STORAGE_REPORTS_BUCKET,
+                               path=_durable_pdf_path(sid, job_id), content=content,
+                               content_type="application/pdf")
+        collected["deliverable_pdf_url"] = pdf_url
+    except Exception:
+        log.warning("C4 auto-save PDF fallita per job %s (best-effort)", job_id, exc_info=True)
+        return  # senza PDF durevole non marchiamo saved: si riproverà al prossimo poll
+    # JSON (per il modello Excel on-demand): best-effort separato, non blocca il PDF.
+    try:
+        raw, _ = await engine.fetch_output(job_id, "json")
+        upload_bytes(bucket=STORAGE_REPORTS_BUCKET,
+                     path=_durable_json_path(sid, job_id), content=raw,
+                     content_type="application/json")
+        collected["deliverable_json_saved"] = True
+    except Exception:
+        log.warning("C4 auto-save JSON fallita per job %s (best-effort)", job_id, exc_info=True)
+    collected["deliverable_saved_job"] = job_id
+    try:
+        sessions.update_session(sid, {"pdf_url": collected.get("deliverable_pdf_url"),
+                                      "collected_data": collected})
+    except Exception:
+        log.warning("C4 persist URL durevoli fallita per job %s", job_id, exc_info=True)
 
 
 async def _maybe_route_agent(session: dict, servizio_id: str, servizio: dict,
@@ -167,8 +280,10 @@ async def create(body: DeliverableBody, bg: BackgroundTasks,
     except engine.EngineRefused as r:
         raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})
     except engine.EngineError as e:
-        log.warning("8e error: %s", e)
-        raise HTTPException(status_code=502, detail=f"motore non disponibile · {str(e)[:140]}")
+        # M1 — non esporre il dettaglio grezzo dell'errore 8e al client (può contenere
+        # URL/host interni). Loggato sopra con contesto; al client messaggio generico.
+        log.warning("8e error: %s", e, exc_info=True)
+        raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
 
     # Persisti il job dentro collected_data (JSONB esistente), NON come colonne
     # top-level: deliverable_job_id/deliverable_service NON esistono come colonne
@@ -179,6 +294,12 @@ async def create(body: DeliverableBody, bg: BackgroundTasks,
         collected = dict(session.get("collected_data") or {})
         collected["deliverable_job_id"] = res.get("job_id")
         collected["deliverable_service"] = body.servizioId
+        # C4 — persisti input+auth_level: permettono di RIGENERARE gratis (sessione già
+        # pagata) se il job va perso a un restart dell'8e, senza rifare l'autofill.
+        collected["deliverable_inputs"] = body.inputs
+        collected["deliverable_auth_level"] = "FULL"
+        collected.pop("deliverable_saved_job", None)  # nuovo job → invalida la copia durevole vecchia
+        collected.pop("deliverable_pdf_url", None)
         sessions.update_session(body.sessionId, {"collected_data": collected})
     except Exception:
         log.warning("persist deliverable job fallita (non bloccante)", exc_info=True)
@@ -346,13 +467,20 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
     except engine.EngineRefused as r:
         raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})
     except engine.EngineError as e:
-        log.warning("8e error: %s", e)
-        raise HTTPException(status_code=502, detail=f"motore non disponibile · {str(e)[:140]}")
+        # M1 — non esporre il dettaglio grezzo dell'errore 8e al client (può contenere
+        # URL/host interni). Loggato sopra con contesto; al client messaggio generico.
+        log.warning("8e error: %s", e, exc_info=True)
+        raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
 
     try:
         collected["deliverable_job_id"] = res.get("job_id")
         collected["deliverable_service"] = servizio_id
         collected["deliverable_label"] = servizio.get("label")
+        # C4 — input+auth_level per la rigenerazione gratuita post-restart (vedi /recover).
+        collected["deliverable_inputs"] = inputs
+        collected["deliverable_auth_level"] = auth_level
+        collected.pop("deliverable_saved_job", None)  # nuovo job → copia durevole vecchia non valida
+        collected.pop("deliverable_pdf_url", None)
         sessions.update_session(body.sessionId, {"collected_data": collected})
     except Exception:
         log.warning("persist deliverable job (auto) fallita (non bloccante)", exc_info=True)
@@ -483,56 +611,106 @@ async def create_preview(body: PreviewBody, user: AuthUser = Depends(require_use
     except engine.EngineRefused as r:
         raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})
     except engine.EngineError as e:
-        log.warning("8e preview error: %s", e)
-        raise HTTPException(status_code=502, detail=f"motore non disponibile · {str(e)[:140]}")
+        log.warning("8e preview error: %s", e, exc_info=True)
+        raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
 
     return {**res, "preview_count": new_count, "preview_limit": PREVIEW_LIMIT_MESE}
 
 
 @router.get("/deliverables/{job_id}")
-async def status(job_id: str):
+async def status(job_id: str, user: Optional[AuthUser] = Depends(optional_user)):
+    # C1 — il polling di stato espone outputs/citazioni del deliverable: legato a
+    # sessione+owner+pagamento come i download.
+    session = _authorize_job_download(job_id, user)
+    from ..lib import agent_jobs
     try:
-        return await _get_job(job_id)
-    except engine.EngineError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        job = await _get_job(job_id)
+    except engine.EngineError:
+        # C4 — job perso sul motore 8e (store in-memory azzerato da un restart/redeploy).
+        # NON è un vicolo cieco su un documento pagato:
+        collected = session.get("collected_data") or {}
+        if collected.get("deliverable_pdf_url"):
+            # …ne abbiamo una copia DUREVOLE su Storage → il documento è pronto lo stesso.
+            return {"status": "rendered", "recovered": True,
+                    "pdf_url": collected.get("deliverable_pdf_url"),
+                    "outputs": {"pdf": True,
+                                "xlsx": bool(collected.get("deliverable_json_saved"))}}
+        # …nessuna copia: segnaliamo RIGENERABILE (già pagato, nessun riaddebito) invece
+        # di un 502 muto → il frontend può rilanciare via POST /deliverables/recover.
+        log.warning("engine status error for job %s → recoverable", job_id, exc_info=True)
+        return {"status": "expired", "recoverable": True,
+                "servizio_id": collected.get("deliverable_service"),
+                "message": "La generazione è scaduta sul motore. Rilancia il documento: "
+                           "è già pagato, non ti verrà riaddebitato."}
+    # C4 — appena renderizzato, rendi il deliverable DUREVOLE (best-effort, non blocca
+    # la risposta): da qui in poi sopravvive a un restart dell'8e. Solo job 8e, non A2.
+    if isinstance(job, dict) and job.get("status") == "rendered" and not agent_jobs.is_agent_job(job_id):
+        try:
+            await _persist_durable(session, job_id, job)
+        except Exception:
+            log.warning("persist durable (status) fallita job %s", job_id, exc_info=True)
+    return job
 
 
 @router.get("/deliverables/{job_id}/pdf")
-async def deliverable_pdf(job_id: str):
+async def deliverable_pdf(job_id: str, user: Optional[AuthUser] = Depends(optional_user)):
     """Serve il PDF del deliverable generato dal motore 8e. L'8e gira in un container
     Railway SEPARATO: il filesystem NON è condiviso, quindi il PDF si scarica dai
-    byte via HTTP (engine.fetch_output) e non da un path locale. Nessuna auth:
-    job_id opaco, come lo status poll."""
+    byte via HTTP (engine.fetch_output) e non da un path locale.
+
+    C1 — download legato a sessione+owner+pagamento: il `job_id` da solo non basta
+    più (era IDOR + bypass paywall)."""
     from fastapi.responses import Response
+    session = _authorize_job_download(job_id, user)
     try:
         content, _ = await engine.fetch_output(job_id, "pdf")
     except engine.EngineError as e:
-        if str(e) == "not_found":
-            raise HTTPException(status_code=404, detail="pdf non disponibile")
         if str(e) == "not_ready":
             raise HTTPException(status_code=409, detail="documento non ancora pronto")
-        raise HTTPException(status_code=502, detail=str(e))
+        # C4 — job perso sull'8e (restart): servi la copia DUREVOLE su Storage se c'è.
+        sid = str(session.get("id") or "")
+        durable = download_bytes(bucket=STORAGE_REPORTS_BUCKET,
+                                 path=_durable_pdf_path(sid, job_id)) if sid else None
+        if durable:
+            return Response(content=durable, media_type="application/pdf",
+                            headers={"Content-Disposition": 'attachment; filename="report-k2ai.pdf"'})
+        if str(e) == "not_found":
+            raise HTTPException(status_code=404, detail="pdf non disponibile")
+        # M1 — messaggio generico al client; dettaglio nei log.
+        log.warning("fetch_output error for job %s", job_id, exc_info=True)
+        raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
     return Response(content=content, media_type="application/pdf",
                     headers={"Content-Disposition": 'attachment; filename="report-k2ai.pdf"'})
 
 
 @router.get("/deliverables/{job_id}/xlsx")
-async def deliverable_xlsx(job_id: str):
+async def deliverable_xlsx(job_id: str, user: Optional[AuthUser] = Depends(optional_user)):
     """Excel 'modello vivo' del deliverable Boost — il 2° file del bundle (oltre al
     PDF). Scarica il deliverable.json dall'8e via HTTP (filesystem NON condiviso,
     l'8e è un servizio separato) e lo rende un Excel multi-foglio editabile
-    (opzioni scorate, iniziative, KPI...). On-demand, deterministico."""
+    (opzioni scorate, iniziative, KPI...). On-demand, deterministico.
+
+    C1 — download legato a sessione+owner+pagamento (vedi deliverable_pdf)."""
     import json as _json
     from fastapi.responses import Response
     from ..lib.xlsx_renderer import render_deliverable_8e_xlsx
+    session = _authorize_job_download(job_id, user)
+    raw = None
     try:
         raw, _ = await engine.fetch_output(job_id, "json")
     except engine.EngineError as e:
-        if str(e) == "not_found":
-            raise HTTPException(status_code=404, detail="modello Excel non disponibile per questo documento")
         if str(e) == "not_ready":
             raise HTTPException(status_code=409, detail="documento non ancora pronto")
-        raise HTTPException(status_code=502, detail=str(e))
+        # C4 — job perso sull'8e (restart): rileggi il JSON DUREVOLE su Storage se c'è.
+        sid = str(session.get("id") or "")
+        raw = download_bytes(bucket=STORAGE_REPORTS_BUCKET,
+                             path=_durable_json_path(sid, job_id)) if sid else None
+        if raw is None:
+            if str(e) == "not_found":
+                raise HTTPException(status_code=404, detail="modello Excel non disponibile per questo documento")
+            # M1 — messaggio generico al client; dettaglio nei log.
+            log.warning("fetch_output error for job %s", job_id, exc_info=True)
+            raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
     try:
         deliverable = _json.loads(raw.decode("utf-8"))
         data = render_deliverable_8e_xlsx(deliverable)
@@ -575,7 +753,9 @@ async def save_deliverable(body: SaveDeliverableBody,
             raise HTTPException(status_code=404, detail="pdf non disponibile")
         if str(e) == "not_ready":
             raise HTTPException(status_code=409, detail="documento non ancora pronto")
-        raise HTTPException(status_code=502, detail=str(e))
+        # M1 — messaggio generico al client; dettaglio nei log.
+        log.warning("fetch_output error for job %s", body.jobId, exc_info=True)
+        raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
 
     public_url = upload_pdf(
         bucket=STORAGE_REPORTS_BUCKET,
@@ -593,6 +773,88 @@ async def save_deliverable(body: SaveDeliverableBody,
     return {"pdf_url": public_url}
 
 
+class RecoverBody(BaseModel):
+    sessionId: str = Field(..., alias="session_id")
+
+    class Config:
+        populate_by_name = True
+
+
+@router.post("/deliverables/recover")
+async def recover_deliverable(body: RecoverBody,
+                              user: Optional[AuthUser] = Depends(optional_user)):
+    """C4 — recupera un deliverable pagato il cui job è andato perso a un restart
+    dell'8e (store job in-memory). NON riaddebita: la sessione è già pagata, si
+    re-minta l'entitlement e si rilancia la generazione con gli STESSI input persistiti.
+
+    Ordine (anti-storm): (1) se esiste una copia DUREVOLE su Storage → è già pronto;
+    (2) se il job corrente è ancora vivo sull'8e → lo si restituisce (niente doppione);
+    (3) altrimenti si rigenera. Gate ownership + paywall come gli altri endpoint.
+    """
+    session = sessions.get_session(body.sessionId)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    _check_ownership(session, user)
+
+    collected = dict(session.get("collected_data") or {})
+    servizio_id = collected.get("deliverable_service")
+    if not servizio_id:
+        raise HTTPException(status_code=409, detail="nessun documento da recuperare per questa sessione")
+
+    # (1) copia durevole già presente → pronto, niente rigenerazione.
+    if collected.get("deliverable_pdf_url"):
+        return {"status": "rendered", "recovered": True,
+                "pdf_url": collected.get("deliverable_pdf_url"),
+                "job_id": collected.get("deliverable_saved_job"),
+                "servizio_id": servizio_id}
+
+    # (2) job corrente ancora vivo sull'8e → restituiscilo (evita doppioni/storm).
+    cur = collected.get("deliverable_job_id")
+    if cur:
+        try:
+            j = await _get_job(cur)
+            if isinstance(j, dict) and j.get("status") in ("routed", "running", "validating", "rendered"):
+                return {**j, "job_id": cur, "servizio_id": servizio_id}
+        except engine.EngineError:
+            pass  # perso → si rigenera sotto
+
+    # (3) rigenerazione: paywall (già pagato → token) + input persistiti (o re-autofill).
+    servizio = catalog.get_servizio(servizio_id) or {}
+    entitlement_token = _mint_entitlement(session, servizio_id, tier=servizio.get("tipo"))
+    if not entitlement_token:
+        raise HTTPException(status_code=402, detail="documento non pagato")
+    inputs = collected.get("deliverable_inputs") or {}
+    auth_level = collected.get("deliverable_auth_level") or "FULL"
+    if not inputs:
+        try:
+            campi = (await engine.get_form(servizio_id)).get("campi") or []
+        except engine.EngineError:
+            campi = []
+        inputs = autofill.extract_inputs(session, campi)
+        if not inputs.get("ragione_sociale"):
+            _name = _session_company(session)
+            if _name:
+                inputs["ragione_sociale"] = _name
+    try:
+        res = await engine.create_deliverable(
+            service_id=servizio_id, inputs=inputs,
+            entitlement_token=entitlement_token, tier=servizio.get("tipo"), auth_level=auth_level,
+        )
+    except engine.EngineRefused as r:
+        raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})
+    except engine.EngineError as e:
+        log.warning("recover 8e error per %s: %s", servizio_id, e, exc_info=True)
+        raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
+
+    collected["deliverable_job_id"] = res.get("job_id")
+    collected.pop("deliverable_saved_job", None)
+    try:
+        sessions.update_session(body.sessionId, {"collected_data": collected})
+    except Exception:
+        log.warning("persist recover job fallita (non bloccante)", exc_info=True)
+    return {**res, "recovered": True, "servizio_id": servizio_id, "label": servizio.get("label")}
+
+
 @router.get("/deliverables/form/{servizio_id}")
 async def deliverable_form(servizio_id: str):
     """Campi che il deliverable richiede — il frontend li mostra per raccogliere
@@ -602,7 +864,8 @@ async def deliverable_form(servizio_id: str):
     try:
         return await engine.get_form(servizio_id)
     except engine.EngineError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        log.warning("get_form error for %s", servizio_id, exc_info=True)
+        raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
 
 
 @router.get("/engine/health")

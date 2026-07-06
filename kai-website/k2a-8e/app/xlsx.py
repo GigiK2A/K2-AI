@@ -41,7 +41,7 @@ def render_finance_workbook(inputs: dict, path: Path) -> Path:
     ws.freeze_panes = "A3"
 
     ind = wb.create_sheet("Indici")
-    ind.append(["Indice", "Valore", "Formula", "Stato dati"])
+    ind.append(["Indice", "Valore", "Descrizione", "Stato dati"])
     for c in ind[1]:
         c.fill = PatternFill("solid", fgColor="0C7A6F"); c.font = Font(color="FFFFFF", bold=True)
     ref = lambda key: f"'Input bilancio'!B{input_rows[key]}"

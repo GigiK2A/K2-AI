@@ -101,10 +101,15 @@ def validate_url(url: str) -> None:
         raise UrlFetchError(f"Host non consentito: {host}")
 
     # Resolve via getaddrinfo (covers IPv4 + IPv6) and reject any disallowed address.
+    # M7: se la risoluzione fallisce dobbiamo BLOCCARE (fail-closed), non lasciar
+    # proseguire httpx: un dominio che non risolve qui potrebbe risolvere in httpx
+    # (resolver/timing diverso) verso un IP interno mai validato (SSRF).
     try:
         infos = socket.getaddrinfo(host, None)
-    except socket.gaierror:
-        return  # let httpx fail naturally on a real fetch
+    except socket.gaierror as exc:
+        raise UrlFetchError(f"Host non risolvibile: {host}") from exc
+    if not infos:
+        raise UrlFetchError(f"Host non risolvibile: {host}")
     for info in infos:
         sockaddr = info[4]
         ip_str = sockaddr[0]

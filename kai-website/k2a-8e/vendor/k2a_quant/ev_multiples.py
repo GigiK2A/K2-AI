@@ -39,8 +39,14 @@ def ev_from_multiples(settore: str, ebitda_eur: float, ricavi_eur: float, snapsh
         ev = ebitda_eur * mult
         metodo = f"EV/EBITDA {mult}x"
     else:
+        # EBITDA≤0 → fallback su EV/Ricavi; ma senza ricavi positivi non c'è base valutabile:
+        # tornare EV=0 sarebbe una stima falsa. Errore onesto, coerente col resto del tool.
+        if ricavi_eur is None or ricavi_eur <= 0:
+            return calc_result("ev_from_multiples", inputs, snapshot_as_of=asof,
+                               errore={"code": "dati_insufficienti", "settore": settore,
+                                       "messaggio": "EBITDA non positivo e ricavi assenti o ≤0: nessuna base per la valutazione settoriale (né EV/EBITDA né EV/Ricavi). Fornire ricavi positivi o usare metodi alternativi (asset-based)."})
         mult = sec["ev_sales"]
-        ev = (ricavi_eur or 0) * mult
+        ev = ricavi_eur * mult
         metodo = f"EV/Ricavi {mult}x (EBITDA non positivo)"
 
     warnings = ["settore_fallback_default"] if fallback else []

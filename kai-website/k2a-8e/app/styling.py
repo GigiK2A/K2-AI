@@ -6,6 +6,7 @@ insight/action box, risk card, roadmap, tabelle premium, header/footer, CTA fina
 """
 from __future__ import annotations
 
+import logging
 import os
 
 from reportlab.graphics.shapes import Circle, Drawing, Line, Rect, String, Wedge
@@ -40,6 +41,8 @@ SEMAFORO = {"verde": GREEN, "giallo": AMBER, "rosso": RED,
             "basso": GREEN, "medio": AMBER, "alto": RED}
 TONE = {"positivo": GREEN, "attenzione": AMBER, "critico": RED, "info": BLUE, "neutro": NEUTRAL}
 
+log = logging.getLogger(__name__)
+
 PAGE_W, PAGE_H = A4
 MARGIN = 18 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN
@@ -61,6 +64,8 @@ def _register_fonts() -> None:
             p = os.path.join(_FONTS, fn)
             if os.path.exists(p):
                 pdfmetrics.registerFont(TTFont(name, p))
+            else:
+                log.warning("Font brand mancante: %s (%s) — fallback a Helvetica", name, p)
         pdfmetrics.registerFontFamily("DMSans", normal="DMSans", bold="DMSans-Bold",
                                       italic="DMSans-Italic", boldItalic="DMSans-Bold")
         if "DMSans" in pdfmetrics.getRegisteredFontNames():
@@ -70,7 +75,7 @@ def _register_fonts() -> None:
         if "DMMono" in pdfmetrics.getRegisteredFontNames():
             F_MONO = "DMMono"
     except Exception:
-        pass
+        log.warning("Registrazione font brand fallita — fallback a Helvetica", exc_info=True)
 
 
 _register_fonts()
@@ -817,5 +822,5 @@ def footer(canvas, doc, report_name="K2-AI"):
     canvas.setFillColor(NEUTRAL); canvas.setFont(F_BODY, 7.5)
     canvas.drawString(MARGIN, 9.5 * mm, f"{report_name} · K2-AI · riservato")
     canvas.drawCentredString(PAGE_W / 2, 9.5 * mm, "Documento confidenziale")
-    canvas.drawRightString(PAGE_W - MARGIN, 9.5 * mm, f"pag. {doc.page - 1}")
+    canvas.drawRightString(PAGE_W - MARGIN, 9.5 * mm, f"pag. {max(1, doc.page - 1)}")
     canvas.restoreState()

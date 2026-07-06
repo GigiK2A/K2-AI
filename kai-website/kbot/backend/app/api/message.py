@@ -141,12 +141,24 @@ def _recompute_boost(collected: dict, merged_messages: list, summary: Optional[d
         )[-2000:]
         _base = summary or (collected.get("extractedData") or {})
         _explicit = _catalog.suggest_boost(_base, explicit_only=True, user_text=_utext)
+        _current = collected.get("boost_suggerito")
         if _explicit is not None:
             collected["boost_suggerito"] = _explicit["id"]
             collected["boost_suggerito_label"] = _explicit.get("label")
-        elif not collected.get("boost_suggerito") and not collected.get("tag_pillar"):
+        elif not _current and not collected.get("tag_pillar"):
+            # Nessun boost ancora scelto e nessun tag pillar → primo routing (anche default).
             _boost = _catalog.suggest_boost(_base, user_text=_utext)
             if _boost:
+                collected["boost_suggerito"] = _boost["id"]
+                collected["boost_suggerito_label"] = _boost.get("label")
+        elif _current:
+            # Boost già scelto ma nessun match ESPLICITO ora: l'utente può aver cambiato
+            # argomento in modo non-esplicito (con tag_pillar presente il ramo sopra non
+            # scattava → boost STANTIO). Valuta un match non-esplicito e aggiorna SOLO se è
+            # chiaramente diverso e NON è il fallback generico (niente oscillazioni deboli).
+            _boost = _catalog.suggest_boost(_base, user_text=_utext)
+            if (_boost and _boost["id"] != _current
+                    and _boost["id"] != _catalog._BOOST_DEFAULT):
                 collected["boost_suggerito"] = _boost["id"]
                 collected["boost_suggerito_label"] = _boost.get("label")
     except Exception:

@@ -75,9 +75,46 @@ def _coerce(value: Any, tipo: Optional[str]) -> Any:
 
 
 def _as_num(x: Any) -> Optional[float]:
+    """Parsing numerico locale-aware. Gestisce sia il formato IT ('1.234.567',
+    '1.234,56') sia EN ('1234.56', '40000'). Prima '1.234.567' → None (i punti-migliaia
+    italiani venivano interpretati come decimali) → un bilancio VERO veniva scartato e la
+    sessione degradava a PARTIAL."""
+    if isinstance(x, (int, float)):
+        try:
+            return float(x)
+        except Exception:
+            return None
+    s = str(x).strip()
+    if not s:
+        return None
+    has_dot, has_comma = "." in s, "," in s
     try:
-        return float(str(x).replace(".", "").replace(",", ".")) if isinstance(x, str) and x.count(",") == 1 \
-            else float(str(x).replace(",", ""))
+        if has_dot and has_comma:
+            # Il separatore DECIMALE è l'ultimo che compare. Formato IT '1.234,56'
+            # (virgola decimale) vs EN '1,234.56' (punto decimale).
+            if s.rfind(",") > s.rfind("."):        # IT: punti = migliaia, virgola = decimale
+                s = s.replace(".", "").replace(",", ".")
+            else:                                    # EN: virgole = migliaia, punto = decimale
+                s = s.replace(",", "")
+        elif has_comma:
+            # Solo virgole: se una sola ed è decimale ('1234,56') → punto decimale;
+            # se multiple → migliaia ('1,234,567').
+            if s.count(",") == 1:
+                s = s.replace(",", ".")
+            else:
+                s = s.replace(",", "")
+        elif has_dot:
+            # Solo punti: multipli = migliaia IT ('1.234.567'); singolo con !=3 cifre
+            # dopo = decimale ('1234.56'); singolo con esattamente 3 cifre dopo è
+            # ambiguo ('1.234') → trattiamo come migliaia (caso reale nei bilanci IT).
+            if s.count(".") > 1:
+                s = s.replace(".", "")
+            else:
+                intpart, decpart = s.split(".")
+                if len(decpart) == 3 and intpart.lstrip("-+").isdigit():
+                    s = s.replace(".", "")           # '1.234' → migliaia
+                # altrimenti lascia il punto come decimale ('1234.56', '12.5')
+        return float(s)
     except Exception:
         return None
 

@@ -10,7 +10,7 @@ class WaccInput(BaseModel):
     equity: float = Field(..., gt=0, description="Equity (E) in EUR")
     debt: float = Field(..., ge=0, description="Debt (D) in EUR")
     cost_of_debt_pretax: float = Field(..., description="Kd pre-tax, decimale")
-    tax_rate: float = Field(0.24, description="Aliquota fiscale effettiva (IRES+IRAP eff.)")
+    tax_rate: float = Field(0.279, description="Aliquota fiscale effettiva (IRES+IRAP eff.), coerente snapshot Italia")
 
 
 class WaccOutput(BaseModel):

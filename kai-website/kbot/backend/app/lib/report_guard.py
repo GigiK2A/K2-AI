@@ -13,6 +13,29 @@ _BROKEN = re.compile(
     r"(?:\[\s*BOZZA\s+OFFLINE\s*\]|Segnaposto deterministico|override_locale|"
     r"ANTHROPIC_API_KEY|\bTBD\b|\bTODO\b|\[\s*(?:cliente|citt[aà]|regione)\s*\])", re.I)
 _GENERIC_META = {"", "cliente", "azienda", "nome cliente / progetto", "—", "-", "n/d"}
+
+# Disclaimer footer di default (fail-safe): iniettato se il modello lo omette o produce un
+# testo privo di riserva. Le keyword di riserva usano lo STEM ("verific" copre verificare/
+# verificate/verifica…, "sostitu" copre non sostituisce/sostitutivo) così un disclaimer
+# genuino con inflessione diversa NON viene sovrascritto inutilmente.
+_DISCLAIMER_KEYWORDS = ("verific", "non sostitu", "sostitu", "orientament")
+_DEFAULT_DISCLAIMER = (
+    "Documento generato a scopo di orientamento sulla base dei dati raccolti in sessione e "
+    "di benchmark di mercato. Non sostituisce una consulenza professionale: verificare con "
+    "strumenti, fonti e professionisti dedicati prima di decisioni operative."
+)
+
+
+def _ensure_footer_disclaimer(analysis: dict) -> None:
+    """Fail-safe NON bloccante: se manca un disclaimer footer valido, iniettane uno di
+    default. Non solleva mai — un report per il resto valido non deve fallire per questo."""
+    footer = analysis.get("footer")
+    if not isinstance(footer, dict):
+        footer = {}
+        analysis["footer"] = footer
+    disc = str(footer.get("disclaimer") or "").strip()
+    if not disc or not any(k in disc.lower() for k in _DISCLAIMER_KEYWORDS):
+        footer["disclaimer"] = _DEFAULT_DISCLAIMER
 _PROJECTION = re.compile(r"(?:proiez|scenario|forecast|prevision|stimat[oa])", re.I)
 _ASSUMPTION = re.compile(r"(?:assunzion|ipotesi esplicita|scenario illustrativo|da validare)", re.I)
 _NUMBER = re.compile(r"(?:€\s*)?\d+(?:[.,]\d+)?\s*(?:%|€|x\b)?", re.I)
@@ -41,6 +64,10 @@ def _meta_has_client(meta: dict) -> bool:
 
 
 def validate_report(analysis: dict, category: str = "generic") -> dict:
+    # Fail-safe deterministico: garantisci sempre un disclaimer footer (NON blocca).
+    if isinstance(analysis, dict):
+        _ensure_footer_disclaimer(analysis)
+
     errors: list[str] = []
     flat = "\n".join(_strings(analysis))
     if _BROKEN.search(flat):

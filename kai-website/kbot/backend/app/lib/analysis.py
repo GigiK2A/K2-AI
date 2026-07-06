@@ -692,6 +692,8 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
     report_type_raw = extracted.get("reportType") or collected.get("reportType") or ""
     profile = _build_report_profile(report_type_raw)
     log.info("Report profile: reportType=%r → category=%s", report_type_raw, profile["category"])
+    # La coercizione sede→Perugia vale solo se il cliente analizzato è K2-AI (vedi M11).
+    client_is_k2ai = _client_is_k2ai(session)
 
     history = compact_messages(
         session.get("messages") or [],
@@ -858,8 +860,8 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
     if ANTHROPIC_PDF_MULTI_CALL:
         try:
             parsed = _generate_multi_call(client, system_blocks, user_message)
-            parsed = _sanitize_hallucinations(parsed)
-            parsed = _validate_and_repair(parsed, client, system_blocks, user_message)
+            parsed = _sanitize_hallucinations(parsed, client_is_k2ai=client_is_k2ai)
+            parsed = _validate_and_repair(parsed, client, system_blocks, user_message, client_is_k2ai)
             return validate_report(parsed, profile["category"])
         except (ValueError, json.JSONDecodeError, RuntimeError) as exc:
             log.warning("Multi-call generation failed (%s), falling back to single-call", exc)
@@ -869,9 +871,9 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
         raise RuntimeError("LLM returned no text block (web_search loop esaurito)")
     try:
         parsed = _extract_json(raw)
-        parsed = _sanitize_hallucinations(parsed)
+        parsed = _sanitize_hallucinations(parsed, client_is_k2ai=client_is_k2ai)
         # Pipeline validation: rigenera blocchi problematici prima del render.
-        parsed = _validate_and_repair(parsed, client, system_blocks, user_message)
+        parsed = _validate_and_repair(parsed, client, system_blocks, user_message, client_is_k2ai)
         return validate_report(parsed, profile["category"])
     except (ValueError, json.JSONDecodeError) as exc:
         # JSON troncato o malformato (max_tokens esaurito, virgola mancante, ecc).
@@ -892,7 +894,9 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
             timeout=240.0,
         )
         repaired = "".join(b.text for b in retry.content if getattr(b, "type", "") == "text")
-        return validate_report(_sanitize_hallucinations(_extract_json(repaired)), profile["category"])
+        return validate_report(
+            _sanitize_hallucinations(_extract_json(repaired), client_is_k2ai=client_is_k2ai),
+            profile["category"])
 
 
 # Pattern di hallucination tipici da bonificare post-generation.
@@ -907,6 +911,26 @@ _KEYWORD_POS_RE = re.compile(
 )
 _PERUGIA_HINT = re.compile(r"(Perugia|03655920548)", re.IGNORECASE)
 _FORBIDDEN_CITIES = re.compile(r"\b(Milano|Roma|Torino|Napoli|Bologna)\b\s*(?:/Italia|,?\s*Italia)?", re.IGNORECASE)
+# La coercizione sede→Perugia vale SOLO quando il CLIENTE analizzato è K2-AI (l'unico la cui
+# sede va forzata a Perugia). Riconoscimento sul NOME/P.IVA del cliente, non sulla mera
+# presenza di 'Perugia' nel JSON: un cliente reale a Milano non va falsificato a Perugia.
+_K2AI_CLIENT = re.compile(r"\bk2[\s\-.]?a(?:i|\b)|k2a\b|03655920548", re.IGNORECASE)
+
+
+def _client_is_k2ai(session: Optional[dict]) -> bool:
+    """True se il soggetto ANALIZZATO è K2-AI (per nome cliente o P.IVA), unico caso in cui
+    la sede va coercita a Perugia. Legge i campi identità del cliente dalla sessione."""
+    if not isinstance(session, dict):
+        return False
+    collected = session.get("collected_data") or {}
+    extracted = collected.get("extractedData") or {}
+    for src in (collected, extracted):
+        for k in ("ragione_sociale", "companyName", "businessName", "clientName",
+                  "denominazione", "azienda", "partita_iva", "piva", "vat"):
+            val = src.get(k)
+            if isinstance(val, str) and _K2AI_CLIENT.search(val):
+                return True
+    return False
 _UNSOURCED_PCT_RE = re.compile(r"(\d+\s*%)\s+(?:di|delle|degli)\s+(?:PMI|aziende|imprese)\b(?!.{0,80}(?:fonte|http|istat|anitec|polimi|politecnico))", re.IGNORECASE)
 
 
@@ -1004,18 +1028,21 @@ def _normalize_kpi_blocks(analysis: Dict[str, Any]) -> int:
     return fixed
 
 
-def _sanitize_hallucinations(analysis: Dict[str, Any]) -> Dict[str, Any]:
+def _sanitize_hallucinations(analysis: Dict[str, Any], client_is_k2ai: bool = False) -> Dict[str, Any]:
     """Catch-all regex per pattern di hallucination che Sonnet emette nonostante
     il prompt. Sostituisce numeri secchi con tag "[non verificato]" e applica
-    correzioni context-aware (es. sede K2-AI = Perugia)."""
+    correzioni context-aware (es. sede K2-AI = Perugia).
+
+    `client_is_k2ai`: la coercizione città→Perugia scatta SOLO se il cliente analizzato è
+    K2-AI. Prima bastava la stringa 'Perugia'/P.IVA K2-AI OVUNQUE nel JSON → falsificava la
+    sede di un cliente reale diverso (es. Milano→Perugia). Ora serve l'identità del cliente."""
     ctx: dict = {"fixed": 0}
     # KPI normalize PRIMA del walk ricorsivo: evita doppia tag inline.
     kpi_fixed = _normalize_kpi_blocks(analysis)
     if kpi_fixed:
         log.info("Post-gen sanitizer normalized %d KPI items", kpi_fixed)
-    # Detection sede K2-AI dal flatten dell'intero JSON (cerca P.IVA o "Perugia").
-    flat = json.dumps(analysis, ensure_ascii=False)
-    ctx["force_perugia"] = bool(_PERUGIA_HINT.search(flat))
+    # force_perugia SOLO se il CLIENTE è K2-AI (non sulla mera presenza della stringa nel JSON).
+    ctx["force_perugia"] = bool(client_is_k2ai)
     cleaned = _sanitize_recursive(analysis, ctx)
     if ctx["fixed"]:
         log.info("Post-gen sanitizer fixed %d hallucination patterns", ctx["fixed"])
@@ -1302,6 +1329,7 @@ def _validate_and_repair(
     client: anthropic.Anthropic,
     system_blocks: list,
     user_message: str,
+    client_is_k2ai: bool = False,
 ) -> dict:
     """Pipeline validation completa post-gen.
 
@@ -1333,4 +1361,4 @@ def _validate_and_repair(
             else:
                 analysis["blocks"].append(repaired)
             log.info("Inserted missing required block (type=%s, pos=%s)", issue["block_type"], pos)
-    return _sanitize_hallucinations(analysis)
+    return _sanitize_hallucinations(analysis, client_is_k2ai=client_is_k2ai)
