@@ -38,6 +38,7 @@ class Platform:
         self.kernel = kernel
         self.agents = agents
         self.commands = commands   # CommandRouter (chat a istruzioni), impostato dopo
+        self.chat = None           # ChatOrchestrator (chat multi-agente streaming)
 
     def domains(self) -> list[str]:
         return list(self.agents)
@@ -154,6 +155,10 @@ def build_platform() -> Platform:
     }
     platform = Platform(k, agents)
     platform.commands = CommandRouter(platform, llm, llm_strong)   # chat a istruzioni
+    # Chat multi-agente in streaming: parli con uno/alcuni/tutti gli agenti in parallelo,
+    # con stato reale (pensa/usa tool/scrive). Riusa attuatore+coda del CommandRouter.
+    from aios.chat_runner import ChatOrchestrator
+    platform.chat = ChatOrchestrator(platform, llm, llm_strong, skills=skills)
     # Prospecting: ricerca web (Sonnet + web search) → qualifica → bozza (mai inviata)
     llm_web = AnthropicLLM(model="claude-sonnet-4-6", max_tokens=4096, enable_web_search=True)
     def _suite():

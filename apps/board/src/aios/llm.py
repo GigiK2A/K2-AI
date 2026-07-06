@@ -94,3 +94,65 @@ class AnthropicLLM:
         # fallback: parse any text
         text = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text")
         return _robust_json(text)
+
+    def stream_agentic(self, *, system: str, user: str, tools: list[dict],
+                       tool_exec, max_iters: int = 6, max_tokens: int | None = None):
+        """Loop tool-use REALE con streaming. Generatore di eventi (dict) mappati sui
+        veri segnali dello streaming Anthropic, così la UI mostra stati veri:
+          {phase:'thinking'}            — turno aperto, il modello sta ragionando
+          {phase:'tool', tool}          — il modello ha deciso di usare un tool
+          {phase:'writing'}             — inizia a produrre testo
+          {phase:'delta', text}         — token di testo (stream live)
+          {phase:'tool_run', tool}      — eseguo il tool sui dati reali
+          {phase:'done', text}          — fine (nessun altro tool richiesto)
+        `tools`: tool def in formato Anthropic. `tool_exec(name, input)->risultato`
+        esegue il tool (sensore o azione) e ritorna un valore JSON-serializzabile."""
+        mt = max_tokens or self._max_tokens
+        messages: list[dict] = [{"role": "user", "content": user}]
+        for _ in range(max_iters):
+            yield {"phase": "thinking"}
+            text_started = False
+            with self._client.messages.stream(
+                    model=self._model, max_tokens=mt, system=system,
+                    messages=messages, tools=tools) as stream:
+                for ev in stream:
+                    et = getattr(ev, "type", "")
+                    if et == "content_block_start":
+                        cb = getattr(ev, "content_block", None)
+                        if getattr(cb, "type", "") == "tool_use":
+                            yield {"phase": "tool", "tool": getattr(cb, "name", "")}
+                    elif et == "content_block_delta":
+                        d = getattr(ev, "delta", None)
+                        if getattr(d, "type", "") == "text_delta":
+                            if not text_started:
+                                yield {"phase": "writing"}
+                                text_started = True
+                            yield {"phase": "delta", "text": getattr(d, "text", "")}
+                final = stream.get_final_message()
+            tool_uses = [b for b in final.content if getattr(b, "type", "") == "tool_use"]
+            text = "".join(getattr(b, "text", "") for b in final.content
+                           if getattr(b, "type", "") == "text")
+            if not tool_uses:
+                yield {"phase": "done", "text": text}
+                return
+            # ricostruisco il turno assistant (testo + tool_use) per il prossimo giro
+            acontent: list[dict] = []
+            for b in final.content:
+                if getattr(b, "type", "") == "text":
+                    acontent.append({"type": "text", "text": b.text})
+                elif getattr(b, "type", "") == "tool_use":
+                    acontent.append({"type": "tool_use", "id": b.id,
+                                     "name": b.name, "input": b.input})
+            messages.append({"role": "assistant", "content": acontent})
+            results = []
+            for tu in tool_uses:
+                yield {"phase": "tool_run", "tool": tu.name}
+                try:
+                    out = tool_exec(tu.name, dict(tu.input))
+                except Exception as exc:
+                    out = {"error": str(exc)}
+                results.append({"type": "tool_result", "tool_use_id": tu.id,
+                                "content": json.dumps(out, ensure_ascii=False,
+                                                      default=str)[:6000]})
+            messages.append({"role": "user", "content": results})
+        yield {"phase": "done", "text": "(troppi passaggi, mi fermo qui)"}

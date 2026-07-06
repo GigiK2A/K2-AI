@@ -7,9 +7,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, Any
 
+import json
+
 from fastapi import Depends, FastAPI, HTTPException, Path as FPath, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from aios.kernel import Kernel
@@ -70,6 +72,13 @@ class ResolveBody(BaseModel):
 
 class CommandBody(BaseModel):
     text: str
+
+
+class ChatStreamBody(BaseModel):
+    text: str
+    # "auto" (o assente) = il router sceglie un agente; lista di domini = quegli agenti
+    # in parallelo (marketing, vendite, finance, operations, legal, hr).
+    agents: list[str] | str | None = None
 
 
 class ConfirmBody(BaseModel):
@@ -342,6 +351,32 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             return {"fattibile": False, "risposta": "Comandi non disponibili.",
                     "valutazione": "", "eseguite": [], "da_confermare": [], "rifiutate": []}
         return platform.commands.handle(body.text, actor="cockpit").to_dict()
+
+    @app.post("/api/chat/stream")
+    def chat_stream(body: ChatStreamBody, _=Depends(_require_auth)) -> StreamingResponse:
+        """Chat multi-agente in streaming (SSE). Ogni evento è una riga `data: {...}`:
+        start/thinking/tool/writing/delta/tool_run/done/error/all_done, taggato `agent`.
+        Le azioni sensibili finiscono in coda e si confermano via /api/command/confirm."""
+        chat = getattr(platform, "chat", None) if platform is not None else None
+
+        def _sse(ev: dict) -> str:
+            return "data: " + json.dumps(ev, ensure_ascii=False, default=str) + "\n\n"
+
+        def gen():
+            if chat is None:
+                yield _sse({"phase": "error", "agent": "",
+                            "error": "chat non disponibile"})
+                return
+            _invalidate_cache()   # eventuali scritture della chat → cockpit le vede dopo
+            try:
+                for ev in chat.stream(body.text, body.agents):
+                    yield _sse(ev)
+            except Exception as exc:
+                yield _sse({"phase": "error", "agent": "", "error": str(exc)[:200]})
+
+        return StreamingResponse(gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-store",
+                                          "X-Accel-Buffering": "no"})
 
     @app.post("/api/command/confirm")
     def command_confirm(body: ConfirmBody, _=Depends(_require_auth)) -> dict[str, Any]:

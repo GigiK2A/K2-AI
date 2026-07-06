@@ -85,6 +85,26 @@
   .cmsg.me{align-self:flex-end;background:#2563EB;color:#fff;border-bottom-right-radius:4px}
   .cmsg.ai{align-self:flex-start;background:#fff;border:1px solid #E6EAF2;border-bottom-left-radius:4px}
   .cmsg .ok{color:#16A34A;font-weight:700}.cmsg .warn{color:#D97706;font-weight:700}.cmsg .bad{color:#DC2626;font-weight:700}
+  /* selettore agenti chat */
+  .cagents{display:flex;flex-wrap:wrap;gap:5px;padding:9px 12px;border-bottom:1px solid #f1f5f9;background:#fff}
+  .cag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid #E6EAF2;color:#64748b;cursor:pointer;user-select:none;transition:all .15s;white-space:nowrap}
+  .cag:hover{border-color:#c7d2e5}
+  .cag.on{background:#eff4ff;border-color:#2563EB;color:#2563EB}
+  /* righe stato per-agente (streaming reale) */
+  .castack{display:flex;flex-direction:column;gap:8px;width:100%}
+  .carow{border:1px solid #E6EAF2;border-radius:12px;padding:8px 10px;background:#fff;transition:border-color .25s,box-shadow .25s}
+  .carow.run{border-color:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.12)}
+  .carow.done{border-color:#16A34A44}.carow.err{border-color:#DC262644}
+  .carow-h{display:flex;align-items:center;gap:6px}
+  .cadot{width:7px;height:7px;border-radius:999px;background:#cbd5e1;flex-shrink:0}
+  .carow.run .cadot{background:#2563EB;animation:ppulse 1.1s ease-in-out infinite}
+  .carow.done .cadot{background:#16A34A}.carow.err .cadot{background:#DC2626}
+  .caname{font-size:11.5px;font-weight:800;color:#0f172a}
+  .castat{font-size:10.5px;color:#64748b;font-weight:600;margin-left:auto}
+  .catext{font-size:12.5px;line-height:1.5;margin-top:6px;white-space:pre-wrap;word-break:break-word;color:#0f172a}
+  .catext:empty{display:none}
+  .carow.run .catext.cur::after{content:"▍";color:#2563EB;animation:ppulse 1s infinite;margin-left:1px}
+  .caact{margin-top:6px;font-size:11.5px;line-height:1.5}
   /* overlay ricerca prospect (feedback realtime) */
   .povl{position:fixed;inset:0;z-index:82;display:grid;place-items:center}
   .povl-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}
@@ -150,10 +170,11 @@
 <div id="chatLauncher" title="Chat con l'AI">💬</div>
 <div id="chatPanel" class="chatp">
   <div class="chatp-h">
-    <div><div class="font-extrabold text-[14px]">Assistente K2-AI</div>
-      <div class="text-[11px] text-slate-400">dimmi cosa fare · valuta ed esegue (L1)</div></div>
+    <div><div class="font-extrabold text-[14px]">Chat con gli agenti</div>
+      <div class="text-[11px] text-slate-400">scegli con chi parlare · valuta ed esegue (L1)</div></div>
     <button id="chatClose" class="w-7 h-7 rounded-lg btn-sec grid place-items-center">✕</button>
   </div>
+  <div id="chatAgents" class="cagents"></div>
   <div id="chatLog" class="chatp-log"></div>
   <div class="chatp-in">
     <input id="chatInput" placeholder="Es. allunga le caption delle bozze…" autocomplete="off">
@@ -945,39 +966,78 @@ async function runAgent(){
   catch(e){alert("errore");}
   btn.textContent=old;btn.disabled=false;load();
 }
-// ---------------- CHAT A ISTRUZIONI ----------------
+// ---------------- CHAT MULTI-AGENTE (streaming reale) ----------------
 let CHAT_BUSY=false;
+const CHAT_AGENTS=new Set();     // vuoto = auto (il router sceglie l'agente giusto)
+const CBUF={};                    // buffer testo per-agente durante lo streaming
 function chatMsg(html,who){const log=$("chatLog");const d=document.createElement("div");d.className="cmsg "+who;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
-function chatOpen(){$("chatPanel").classList.add("open");$("chatInput").focus();
+function scrollChat(){const l=$("chatLog");if(l)l.scrollTop=l.scrollHeight;}
+function chatOpen(){$("chatPanel").classList.add("open");$("chatInput").focus();renderAgentChips();
   if(!$("chatLog").dataset.greeted){$("chatLog").dataset.greeted="1";
-    chatMsg("Ciao! Dimmi cosa vuoi fare — valuto sui dati reali e, se è corretto, lo faccio. Le azioni interne sicure partono subito; quelle esterne (n8n/pubblicazioni) te le faccio confermare.","ai");}}
+    chatMsg("Ciao! Scegli con chi parlare qui sopra — <b>Auto</b> instrada da solo, oppure spunta uno o più agenti e lavorano in parallelo. Le azioni interne sicure partono subito; esterne, delete e schema DB te le faccio confermare.","ai");}}
 function chatClose(){$("chatPanel").classList.remove("open");}
-function renderCmd(r){
-  let h="";
-  if(r.valutazione)h+=`<div class="text-slate-500 text-[12px] mb-1">${esc(r.valutazione)}</div>`;
-  if(r.risposta)h+=`<div class="mb-1">${esc(r.risposta)}</div>`;
-  if(!r.fattibile&&!((r.eseguite||[]).length)&&!((r.da_confermare||[]).length))h+=`<div class="warn">Non eseguito.</div>`;
-  (r.eseguite||[]).forEach(e=>{h+=`<div class="ok">✓ Fatto: ${esc(e.descrizione)} <span class="text-slate-400 text-[11px]">(${esc(e.tabella||"")} ${esc(e.op||"")})</span></div>`;});
-  (r.rifiutate||[]).forEach(x=>{h+=`<div class="bad">✕ Rifiutato: ${esc(x.descrizione)} <span class="text-slate-400 text-[11px]">${esc(x.motivo||"")}</span></div>`;});
-  const d=chatMsg(h||"(nessuna azione)","ai");
-  (r.da_confermare||[]).forEach(c=>{
-    const w=document.createElement("div");w.className="mt-2";
-    w.innerHTML=`<div class="warn">⚠ Da confermare: ${esc(c.descrizione)} <span class="text-slate-400 text-[11px]">${esc(c.tipo||"")}</span></div>`;
+// selettore agenti: Auto (vuoto) + i 6 domini; multi-selezione
+function renderAgentChips(){const el=$("chatAgents");if(!el)return;const auto=CHAT_AGENTS.size===0;
+  let h=`<div class="cag ${auto?'on':''}" data-ag="auto">✨ Auto</div>`;
+  h+=AGENTS6.map(d=>{const m=META[d]||{ico:'•',label:d};return `<div class="cag ${CHAT_AGENTS.has(d)?'on':''}" data-ag="${d}">${m.ico} ${esc(m.label)}</div>`;}).join("");
+  el.innerHTML=h;
+  el.querySelectorAll(".cag").forEach(c=>c.onclick=()=>{const a=c.dataset.ag;
+    if(a==='auto')CHAT_AGENTS.clear();else{CHAT_AGENTS.has(a)?CHAT_AGENTS.delete(a):CHAT_AGENTS.add(a);}
+    renderAgentChips();});}
+function toolLabel(t){if(t==='esegui')return 'esegui azione';if(t==='carica_skill')return 'apre una skill';if(t==='cerca_skill')return 'cerca una skill';return TBL[t]||String(t||'tool').replace(/^leggi_/,'').replace(/_/g,' ');}
+function agentRow(dom){const m=META[dom]||{ico:'•',label:dom};
+  return `<div class="carow queue" id="car-${dom}"><div class="carow-h"><span class="cadot"></span>
+    <span class="caname">${m.ico} ${esc(m.label)}</span><span class="castat" id="cas-${dom}">in coda</span></div>
+    <div class="catext" id="cat-${dom}"></div><div class="caact" id="caa-${dom}"></div></div>`;}
+function setCar(dom,state,stat){const r=$("car-"+dom);if(!r)return;r.className="carow "+state;const s=$("cas-"+dom);if(s&&stat!=null)s.textContent=stat;}
+function appendCar(dom,txt){CBUF[dom]=(CBUF[dom]||"")+txt;const t=$("cat-"+dom);if(t){t.textContent=CBUF[dom];t.classList.add("cur");}scrollChat();}
+function renderAzioni(dom,azioni){const box=$("caa-"+dom);if(!box||!azioni||!azioni.length)return;let h="";
+  azioni.forEach(a=>{
+    if(a.stato==='eseguito')h+=`<div class="ok">✓ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">(${esc(a.tabella||'')} ${esc(a.op||'')})</span></div>`;
+    else if(a.stato==='rifiutato')h+=`<div class="bad">✕ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">${esc(a.motivo||'')}</span></div>`;});
+  box.innerHTML=h;
+  azioni.filter(a=>a.stato==='da_confermare').forEach(c=>{
+    const w=document.createElement("div");w.className="mt-1";
+    w.innerHTML=`<div class="warn">⚠ Da confermare: ${esc(c.descrizione)} <span class="text-slate-400 text-[11px]">${esc(c.tipo||'')}</span></div>`;
     const b=document.createElement("button");b.className="btn-app text-[12px] font-semibold px-3 py-1.5 rounded-lg mt-1";b.textContent="Conferma ed esegui";
     b.onclick=async()=>{b.disabled=true;b.textContent="…";let o={};try{o=await jpost("/api/command/confirm",{id:c.id});}catch(e){o={ok:false,errore:"rete"};}
-      const okc=o.ok;b.outerHTML=okc?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||(o.esito&&o.esito.errore)||"non eseguito"))+'</span>');load();};
-    w.appendChild(b);d.appendChild(w);
-  });
-  load();
-}
+      b.outerHTML=o.ok?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||(o.esito&&o.esito.errore)||"non eseguito"))+'</span>');load();};
+    w.appendChild(b);box.appendChild(w);});}
+function handleEv(ev,ctx){const dom=ev.agent,ph=ev.phase;
+  if(ph==='start'){ctx.stack.innerHTML=(ev.agents||[]).map(agentRow).join("");(ev.agents||[]).forEach(d=>CBUF[d]="");scrollChat();return;}
+  if(ph==='all_done'||!dom)return;
+  if(ph==='thinking')setCar(dom,'run','💭 sta pensando…');
+  else if(ph==='tool')setCar(dom,'run','🔧 sta usando '+toolLabel(ev.tool));
+  else if(ph==='tool_run')setCar(dom,'run','⚙️ '+toolLabel(ev.tool));
+  else if(ph==='writing')setCar(dom,'run','✍️ sta scrivendo…');
+  else if(ph==='delta')appendCar(dom,ev.text||"");
+  else if(ph==='done'){setCar(dom,'done','✓ fatto');const t=$("cat-"+dom);if(t)t.classList.remove("cur");renderAzioni(dom,ev.azioni);}
+  else if(ph==='error'){setCar(dom,'err','✕ errore');const t=$("cat-"+dom);if(t){t.classList.remove("cur");t.textContent=ev.error||"errore";}}
+  scrollChat();}
 async function chatSend(){
   if(CHAT_BUSY)return;const inp=$("chatInput");const t=(inp.value||"").trim();if(!t)return;
   inp.value="";chatMsg(esc(t),"me");CHAT_BUSY=true;
-  const thinking=chatMsg("<span class='text-slate-400'>…sto valutando sui dati reali</span>","ai");
-  let r={};try{r=await jpost("/api/command",{text:t});}catch(e){r={risposta:"Errore di rete.",fattibile:false};}
-  thinking.remove();renderCmd(r);CHAT_BUSY=false;$("chatInput").focus();
+  const agents=CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto";
+  const holder=chatMsg('<div class="castack"></div>',"ai");
+  holder.style.maxWidth="100%";holder.style.background="transparent";holder.style.border="none";holder.style.padding="0";
+  const ctx={stack:holder.querySelector(".castack")};
+  ctx.stack.innerHTML='<div class="text-slate-400 text-[12px]">…preparo gli agenti</div>';
+  try{
+    const res=await fetch("/api/chat/stream",{method:"POST",headers:{"Content-Type":"application/json",...authHdr()},body:JSON.stringify({text:t,agents})});
+    if(res.status===401){on401();throw new Error("401");}
+    if(!res.body)throw new Error("no stream");
+    const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
+    while(true){const {value,done}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});let i;
+      while((i=buf.indexOf("\n\n"))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+2);
+        if(!line.startsWith("data:"))continue;
+        let ev;try{ev=JSON.parse(line.slice(5).trim());}catch(e){continue;}
+        handleEv(ev,ctx);}}
+  }catch(e){ctx.stack.insertAdjacentHTML("beforeend",'<div class="bad text-[12px]">Errore di rete nello streaming.</div>');}
+  CHAT_BUSY=false;$("chatInput").focus();load();
 }
 function wireChat(){const L=$("chatLauncher");if(!L)return;L.onclick=chatOpen;$("chatClose").onclick=chatClose;$("chatSend").onclick=chatSend;
+  renderAgentChips();
   $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")chatSend();});}
 (async()=>{try{const d=await jget("/api/domini");DOMAINS=d.domini||[];}catch(e){DOMAINS=["marketing"];}buildNav();load();wireChat();})();
 </script>
