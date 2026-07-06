@@ -132,6 +132,10 @@
   .cp-umsg{align-self:flex-end;max-width:85%;background:#2563EB;color:#fff;padding:9px 12px;border-radius:14px;border-bottom-right-radius:4px;font-size:13px;line-height:1.45;word-break:break-word}
   .cp-turn{display:flex;flex-direction:column;gap:8px}
   .cp-empty{margin:auto;text-align:center;color:#94a3b8;font-size:13px;max-width:280px}
+  .cp-note{font-size:11.5px;color:#64748b;background:#eef2f9;border-radius:8px;padding:5px 9px;align-self:flex-start;font-weight:600}
+  .cp-round{font-size:10.5px;font-weight:800;color:#94a3b8;text-align:center;letter-spacing:.04em;margin:3px 0}
+  .carow.carow-syn{border-color:#C9A227;background:linear-gradient(180deg,#fffdf5,#fff);box-shadow:0 8px 22px -14px rgba(201,162,39,.5)}
+  .carow.carow-syn .caname{color:#8a6d13}
   /* overlay ricerca prospect (feedback realtime) */
   .povl{position:fixed;inset:0;z-index:82;display:grid;place-items:center}
   .povl-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}
@@ -1015,11 +1019,16 @@ let CHATP_SID=null, CHATP_BUSY=false;
 function cpConv(){return $("cp-conv");}
 function cpScroll(){const c=cpConv();if(c)c.scrollTop=c.scrollHeight;}
 function cpDate(s){try{return new Date(s).toLocaleString("it-IT",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});}catch(e){return"";}}
-// righe agente con RIFERIMENTI agli elementi (niente id globali → nessuna collisione tra turni)
-function makeAgentRow(dom){const m=META[dom]||{ico:"•",label:dom};
-  const row=document.createElement("div");row.className="carow queue";
-  row.innerHTML=`<div class="carow-h"><span class="cadot"></span><span class="caname">${m.ico} ${esc(m.label)}</span><span class="castat">in coda</span></div><div class="catext"></div><div class="caact"></div>`;
-  return {row,stat:row.querySelector(".castat"),text:row.querySelector(".catext"),act:row.querySelector(".caact"),buf:""};}
+// etichetta di uno speaker (dominio o sintesi) + eventuale giro
+function speakerLabel(agent,round){
+  if(agent==="sintesi")return {ico:"🧭",label:"Sintesi",syn:true};
+  const m=META[agent]||{ico:"•",label:agent||"AI"};
+  return {ico:m.ico,label:m.label+(round>1?` · giro ${round}`:""),syn:false};}
+// riga speaker con RIFERIMENTI agli elementi (niente id globali → nessuna collisione tra turni)
+function makeSpeakerRow(agent,round){const L=speakerLabel(agent,round);
+  const row=document.createElement("div");row.className="carow queue"+(L.syn?" carow-syn":"");
+  row.innerHTML=`<div class="carow-h"><span class="cadot"></span><span class="caname">${L.ico} ${esc(L.label)}</span><span class="castat">in coda</span></div><div class="catext"></div><div class="caact"></div>`;
+  return {row,stat:row.querySelector(".castat"),text:row.querySelector(".catext"),act:row.querySelector(".caact"),syn:L.syn,buf:""};}
 function renderAzioniInto(box,azioni){if(!box||!azioni||!azioni.length)return;let h="";
   azioni.forEach(a=>{if(a.stato==="eseguito")h+=`<div class="ok">✓ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">(${esc(a.tabella||"")} ${esc(a.op||"")})</span></div>`;
     else if(a.stato==="rifiutato")h+=`<div class="bad">✕ ${esc(a.descrizione)} <span class="text-slate-400 text-[11px]">${esc(a.motivo||"")}</span></div>`;});
@@ -1030,16 +1039,23 @@ function renderAzioniInto(box,azioni){if(!box||!azioni||!azioni.length)return;le
     b.onclick=async()=>{b.disabled=true;b.textContent="…";let o={};try{o=await jpost("/api/command/confirm",{id:c.id});}catch(e){o={ok:false,errore:"rete"};}
       b.outerHTML=o.ok?'<span class="ok">✓ eseguito</span>':('<span class="bad">✕ '+esc((o.errore||"non eseguito"))+'</span>');};
     w.appendChild(b);box.appendChild(w);});}
-function cpHandleEv(ev,ctx){const dom=ev.agent,ph=ev.phase;const sc=ctx.scroll||cpScroll;
-  if(ph==="start"){(ev.agents||[]).forEach(d=>{const r=makeAgentRow(d);ctx.stack.appendChild(r.row);ctx.rows[d]=r;});sc();return;}
-  if(ph==="all_done"||!dom)return;const r=ctx.rows[dom];if(!r)return;
-  const set=(st,tx)=>{r.row.className="carow "+st;r.stat.textContent=tx;};
+function cpHandleEv(ev,ctx){const ph=ev.phase;const sc=ctx.scroll||cpScroll;
+  if(ph==="start"){const ags=(ev.agents||[]);
+    if(ags.length>1)ctx.stack.insertAdjacentHTML("beforeend",`<div class="cp-note">🗣️ Discussione tra ${ags.map(d=>(META[d]||{label:d}).label).join(", ")} — poi sintesi</div>`);
+    sc();return;}
+  if(ph==="round"){if((ev.agents||[]).length>1)ctx.stack.insertAdjacentHTML("beforeend",`<div class="cp-round">— Giro ${ev.round} —</div>`);sc();return;}
+  if(ph==="all_done")return;
+  const key=ev.key||ev.agent;if(!key)return;
+  let r=ctx.rows[key];
+  if(!r){r=makeSpeakerRow(ev.agent,ev.round);ctx.stack.appendChild(r.row);ctx.rows[key]=r;}
+  const base="carow"+(r.syn?" carow-syn":"");
+  const set=(st,tx)=>{r.row.className=base+" "+st;r.stat.textContent=tx;};
   if(ph==="thinking")set("run","💭 sta pensando…");
   else if(ph==="tool")set("run","🔧 sta usando "+toolLabel(ev.tool));
   else if(ph==="tool_run")set("run","⚙️ "+toolLabel(ev.tool));
   else if(ph==="writing")set("run","✍️ sta scrivendo…");
   else if(ph==="delta"){r.buf+=(ev.text||"");r.text.innerHTML=mdLite(r.buf);r.text.classList.add("cur","md");}
-  else if(ph==="done"){set("done","✓ fatto");r.text.classList.remove("cur");renderAzioniInto(r.act,ev.azioni);}
+  else if(ph==="done"){set("done","✓");r.text.classList.remove("cur");renderAzioniInto(r.act,ev.azioni);}
   else if(ph==="error"){set("err","✕ errore");r.text.textContent=ev.error||"errore";}
   sc();}
 // ---- helper condivisi bolla + pagina (una sola sessione attiva: CHATP_SID) ----
@@ -1047,9 +1063,9 @@ function addUserMsg(el,txt,scrollFn){const d=document.createElement("div");d.cla
 function histInto(el,msgs,scrollFn){el.innerHTML="";
   if(!msgs||!msgs.length){el.innerHTML='<div class="cp-empty">Conversazione vuota — scrivi il primo messaggio qui sotto.</div>';return;}
   msgs.forEach(m=>{if(m.role==="user"){addUserMsg(el,m.content||"",scrollFn);}
-    else{const m2=META[m.agent]||{ico:"•",label:m.agent||"AI"};
-      const row=document.createElement("div");row.className="carow done";
-      row.innerHTML=`<div class="carow-h"><span class="cadot"></span><span class="caname">${m2.ico} ${esc(m2.label)}</span><span class="castat">✓</span></div><div class="catext md">${mdLite(m.content||"")}</div>`;
+    else{const L=speakerLabel(m.agent);
+      const row=document.createElement("div");row.className="carow done"+(L.syn?" carow-syn":"");
+      row.innerHTML=`<div class="carow-h"><span class="cadot"></span><span class="caname">${L.ico} ${esc(L.label)}</span><span class="castat">✓</span></div><div class="catext md">${mdLite(m.content||"")}</div>`;
       el.appendChild(row);}});
   (scrollFn||cpScroll)();}
 async function ensureSession(){

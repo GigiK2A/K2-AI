@@ -9,16 +9,15 @@ Architettura:
   La sicurezza è identica al resto del board: ogni `esegui` passa dall'ATTUATORE via
   CommandRouter (`_classify`/`_exec_internal`/`_queue`) → allowlist, interne sicure
   subito, esterne/delete/DDL in conferma, fuori-perimetro rifiutate.
-- ChatOrchestrator: risolve i destinatari (auto = router; oppure la lista scelta
-  dall'utente) e li fa girare in PARALLELO su thread, multiplexando i loro eventi in
-  una coda unica; ogni evento è taggato col nome dell'agente.
+- ChatOrchestrator: risolve i destinatari. UN agente → chat 1-1. PIÙ agenti → DIBATTITO
+  SEQUENZIALE su trascritto condiviso (turni: ognuno legge chi ha parlato prima e reagisce),
+  più giri finché convergono o max, poi una SINTESI conclusiva.
 
 La conferma delle azioni sensibili riusa la coda esistente del CommandRouter e
 l'endpoint `/api/command/confirm` — nessun nuovo meccanismo di approvazione.
 """
 from __future__ import annotations
 
-import queue
 import threading
 from typing import Any, Iterator
 
@@ -124,6 +123,11 @@ _FORBIDDEN = ("fuori dal perimetro consentito (solo allowlist; mai control-plane
 # Istruzione delicata → modello forte (Sonnet), come nel CommandRouter.
 _STRONG_HINTS = (" schema", "tabella", "colonna", "migrazione", "alter", "ddl",
                  " bug", "codice", "errore", "refactor", "n8n", "workflow", "automazion")
+
+_SYNTH_SYS = ("Sei il coordinatore esecutivo di K2-AI (PMI italiana). Sintetizzi una "
+              "discussione tra reparti in UNA decisione chiara e azionabile: integri i "
+              "punti, evidenzi accordi e trade-off, chiudi coi prossimi passi. Pragmatico, "
+              "numeri quando ci sono, niente buzzword, non ripetere pari pari gli interventi.")
 
 
 class ChatAgent:
@@ -295,16 +299,23 @@ class ChatAgent:
         return out[-20:]
 
     # ---- loop streaming ----
-    def stream(self, text: str, history: list[dict] | None = None) -> Iterator[dict]:
-        """Genera gli eventi del turno per QUESTO agente (non taggati: lo fa l'orch.)."""
-        user = (f"ISTRUZIONE OWNER: {text}\n\n"
-                "Leggi i dati reali coi tuoi sensori e, se corretto, agisci con `esegui`.")
+    def stream(self, text: str | None, history: list[dict] | None = None,
+               user_prompt: str | None = None) -> Iterator[dict]:
+        """Genera gli eventi del turno per QUESTO agente (non taggati: lo fa l'orch.).
+        `user_prompt` (dibattito): messaggio utente già composto col trascritto condiviso →
+        in quel caso lo storico è nel prompt (history nativa vuota). Altrimenti (1-1):
+        prompt di default + storico per-agente nativo."""
+        if user_prompt is not None:
+            user, hist = user_prompt, []
+        else:
+            user = (f"ISTRUZIONE OWNER: {text}\n\n"
+                    "Leggi i dati reali coi tuoi sensori e, se corretto, agisci con `esegui`.")
+            hist = self._history_for_agent(history)
         try:
             for ev in self.llm.stream_agentic(
                     system=self._system_prompt(), user=user,
                     tools=self._tool_defs(), tool_exec=self._exec_tool,
-                    web_search=bool(self.orch.web),
-                    history=self._history_for_agent(history)):
+                    web_search=bool(self.orch.web), history=hist):
                 if ev.get("phase") == "done":
                     ev = {**ev, "azioni": list(self.azioni)}
                 yield ev
@@ -313,8 +324,10 @@ class ChatAgent:
 
 
 class ChatOrchestrator:
-    """Risolve i destinatari e fa girare gli agenti in parallelo, multiplexando gli
-    eventi in un unico stream taggato per agente."""
+    """Risolve i destinatari e conduce la conversazione. UN agente → chat 1-1. PIÙ agenti
+    → DIBATTITO: turni SEQUENZIALI su un trascritto condiviso (ognuno legge chi ha parlato
+    prima e reagisce), più giri finché convergono, poi una SINTESI conclusiva. Gli eventi
+    sono taggati per speaker (`key` = dominio#giro, o 'synthesis')."""
 
     def __init__(self, platform: Any, llm: Any, llm_strong: Any = None,
                  skills: Any = None, web_search: bool = False) -> None:
@@ -360,7 +373,89 @@ class ChatOrchestrator:
         tl = " " + (text or "").lower() + " "
         return self.llm_strong if any(k in tl for k in _STRONG_HINTS) else self.llm
 
-    # ---- stream multiplexato ----
+    # ---- trascritto condiviso (dibattito) ----
+    @staticmethod
+    def _label(agent: str) -> str:
+        return {"marketing": "Marketing", "vendite": "Vendite", "finance": "Finance",
+                "operations": "Operations", "legal": "Legal", "hr": "HR",
+                "owner": "Owner", "sintesi": "Sintesi"}.get(agent, agent.capitalize())
+
+    def _transcript_from_history(self, history: list[dict] | None) -> list[dict]:
+        out: list[dict] = []
+        for m in (history or []):
+            c = str(m.get("content") or "").strip()
+            if not c:
+                continue
+            sp = "owner" if m.get("role") == "user" else (m.get("agent") or "ai")
+            out.append({"speaker": sp, "text": c})
+        return out[-24:]
+
+    def _fmt(self, transcript: list[dict], cap: int = 7000) -> str:
+        txt = "\n\n".join(f"[{self._label(t['speaker'])}]: {t['text']}" for t in transcript)
+        return txt[-cap:]
+
+    def _debate_prompt(self, dom: str, text: str, transcript: list[dict], rnd: int) -> str:
+        base = (f"ISTRUZIONE DELL'OWNER: {text}\n\n"
+                f"Sei il responsabile {self._label(dom)} e partecipi a una DISCUSSIONE "
+                "operativa tra reparti di K2-AI. Discussione finora:\n\n"
+                f"<discussione>\n{self._fmt(transcript)}\n</discussione>\n\n")
+        if rnd <= 1:
+            task = ("Dai il tuo contributo dal punto di vista del tuo reparto. Leggi i dati "
+                    "reali coi sensori se serve, usa `calcola` per i numeri, agisci con "
+                    "`esegui` se opportuno. È una conversazione: conciso e concreto, non un report.")
+        else:
+            task = ("REAGISCI a quanto hanno detto gli altri reparti: sei d'accordo? Cosa "
+                    "aggiungi, correggi o contesti dal tuo punto di vista? Rivolgiti a loro per "
+                    "nome quando serve. Se non hai nulla di nuovo, dillo in una riga "
+                    "('Concordo, nulla da aggiungere.'). Conciso.")
+        return base + task
+
+    def _speaker(self, dom: str, user_prompt: str, llm: Any, key: str, rnd: int):
+        """Un intervento: yield eventi taggati (agent/key/round), RITORNA il testo finale."""
+        final = ""
+        for ev in ChatAgent(self, dom, llm).stream(None, user_prompt=user_prompt):
+            if ev.get("phase") == "done":
+                final = ev.get("text") or ""
+            yield {**ev, "agent": dom, "key": key, "round": rnd}
+        return final
+
+    def _converged(self, transcript: list[dict], targets: list[str]) -> bool:
+        """Gli ultimi interventi mostrano consenso / nessun punto nuovo? (giudice Haiku)."""
+        last = transcript[-len(targets):]
+        cj = getattr(self.llm, "complete_json", None)
+        if not last or cj is None:
+            return False
+        try:
+            r = cj(system="Valuti se una discussione tra reparti aziendali ha raggiunto "
+                          "consenso e non emergono punti NUOVI e rilevanti.",
+                   user=("Ultimi interventi:\n" + self._fmt(last, cap=4000)
+                         + "\n\nHanno converso (accordo + nessun nuovo punto)?"),
+                   schema={"type": "object", "properties": {"converged": {"type": "boolean"}},
+                           "required": ["converged"]})
+            return bool(r.get("converged"))
+        except Exception:
+            return False
+
+    def _synthesis(self, text: str, transcript: list[dict], targets: list[str]):
+        """Voce di chiusura: integra la discussione in una decisione unica (Sonnet)."""
+        up = ("I reparti " + ", ".join(self._label(d) for d in targets) + " hanno discusso "
+              "l'istruzione dell'owner. Produci una SINTESI conclusiva UNICA: la "
+              "raccomandazione/decisione che integra i punti chiave di ciascun reparto, "
+              "evidenzia accordi e trade-off e chiude coi prossimi passi concreti.\n\n"
+              f"ISTRUZIONE OWNER: {text}\n\n<discussione>\n{self._fmt(transcript)}\n</discussione>")
+        final = ""
+        try:
+            for ev in self.llm_strong.stream_agentic(
+                    system=_SYNTH_SYS, user=up, tools=[], tool_exec=lambda n, i: {}):
+                if ev.get("phase") == "done":
+                    final = ev.get("text") or ""
+                yield {**ev, "agent": "sintesi", "key": "synthesis", "round": 0}
+        except Exception as exc:
+            yield {"phase": "error", "agent": "sintesi", "key": "synthesis",
+                   "error": str(exc)[:200]}
+        return final
+
+    # ---- stream principale ----
     def stream(self, text: str, agents: Any = None,
                history: list[dict] | None = None) -> Iterator[dict]:
         if not text or not text.strip():
@@ -369,26 +464,32 @@ class ChatOrchestrator:
         targets = self.resolve_targets(text, agents)
         llm = self._pick_llm(text)
         yield {"phase": "start", "agents": targets}
-        q: "queue.Queue[dict]" = queue.Queue()
 
-        def work(dom: str) -> None:
+        # UN agente → conversazione 1-1 (storico per-agente nativo).
+        if len(targets) == 1:
+            dom = targets[0]
             try:
-                agent = ChatAgent(self, dom, llm)
-                for ev in agent.stream(text, history):
-                    q.put({**ev, "agent": dom})
+                for ev in ChatAgent(self, dom, llm).stream(text, history):
+                    yield {**ev, "agent": dom, "key": dom}
             except Exception as exc:
-                q.put({"agent": dom, "phase": "error", "error": str(exc)[:200]})
-            finally:
-                q.put({"agent": dom, "phase": "_end"})
+                yield {"phase": "error", "agent": dom, "key": dom, "error": str(exc)[:200]}
+            yield {"phase": "all_done", "agents": targets}
+            return
 
-        threads = [threading.Thread(target=work, args=(d,), daemon=True) for d in targets]
-        for t in threads:
-            t.start()
-        ended = 0
-        while ended < len(targets):
-            ev = q.get()
-            if ev.get("phase") == "_end":
-                ended += 1
-                continue
-            yield ev
+        # PIÙ agenti → DIBATTITO sequenziale su trascritto condiviso: ognuno legge chi ha
+        # parlato prima e reagisce; giri finché convergono (giudice) o max; poi SINTESI.
+        transcript = self._transcript_from_history(history)
+        transcript.append({"speaker": "owner", "text": text})
+        MAX_ROUNDS = 3
+        for rnd in range(1, MAX_ROUNDS + 1):
+            yield {"phase": "round", "round": rnd, "agents": targets}
+            for dom in targets:
+                final = yield from self._speaker(
+                    dom, self._debate_prompt(dom, text, transcript, rnd),
+                    llm, f"{dom}#r{rnd}", rnd)
+                if final.strip():
+                    transcript.append({"speaker": dom, "text": final})
+            if rnd >= 2 and self._converged(transcript, targets):
+                break
+        yield from self._synthesis(text, transcript, targets)
         yield {"phase": "all_done", "agents": targets}

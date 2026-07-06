@@ -52,6 +52,10 @@ class FakeStreamLLM:
         yield {"phase": "delta", "text": "ok"}
         yield {"phase": "done", "text": "fatto"}
 
+    def complete_json(self, *, system, user, schema=None):
+        # giudice di convergenza del dibattito: fa convergere (stop dopo il 2° giro)
+        return {"converged": True}
+
 
 def _orch(script):
     k = Kernel()
@@ -90,18 +94,31 @@ def test_resolve_manual_multi_validated_dedup():
     assert orch.resolve_targets("x", ["finance", "bogus", "finance"]) == ["finance"]
 
 
-# ---- fan-out parallelo ----
-def test_multi_agent_parallel_each_streams_done():
+# ---- dibattito multi-agente (turni sequenziali + giri + sintesi) ----
+def test_multi_agent_debate_rounds_and_synthesis():
     orch, _ = _orch([])
-    ev = _events(orch, "fai un check", ["finance", "marketing"])
-    start = ev[0]
-    assert start["phase"] == "start" and set(start["agents"]) == {"finance", "marketing"}
+    ev = _events(orch, "che facciamo per la crescita?", ["finance", "marketing"])
+    assert ev[0]["phase"] == "start" and set(ev[0]["agents"]) == {"finance", "marketing"}
     assert ev[-1]["phase"] == "all_done"
-    # ogni agente ha prodotto un proprio done + almeno un thinking taggato
-    assert _done(ev, "finance")["text"] == "fatto"
-    assert _done(ev, "marketing")["text"] == "fatto"
-    assert any(e.get("phase") == "thinking" and e.get("agent") == "finance" for e in ev)
-    assert any(e.get("phase") == "thinking" and e.get("agent") == "marketing" for e in ev)
+    # ci sono i marcatori di GIRO
+    assert any(e["phase"] == "round" for e in ev)
+    # entrambi gli agenti hanno parlato
+    spoke = {e.get("agent") for e in ev if e.get("phase") == "done"}
+    assert "finance" in spoke and "marketing" in spoke
+    # SINTESI conclusiva presente
+    assert any(e.get("agent") == "sintesi" and e.get("phase") == "done" for e in ev)
+    # finance ha parlato in ≥2 turni distinti (giro 1 e giro 2 → chiavi diverse)
+    fin_keys = {e.get("key") for e in ev if e.get("agent") == "finance" and e.get("key")}
+    assert len(fin_keys) >= 2
+
+
+def test_single_agent_is_one_to_one():
+    orch, _ = _orch([])
+    ev = _events(orch, "come sono i ricavi?", ["finance"])
+    # 1-1: nessun giro, nessuna sintesi; un solo done finance
+    assert not any(e["phase"] == "round" for e in ev)
+    assert not any(e.get("agent") == "sintesi" for e in ev)
+    assert _done(ev, "finance")["text"] == "fatto" and ev[-1]["phase"] == "all_done"
 
 
 # ---- sicurezza `esegui` (identica al CommandRouter) ----
