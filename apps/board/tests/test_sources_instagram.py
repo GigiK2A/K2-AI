@@ -41,3 +41,29 @@ def test_graph_error_raises():
     c = make_client({"/v21.0/999?": {"error": {"message": "bad token"}}})
     with pytest.raises(InstagramError):
         c.account()
+
+
+def test_expired_token_gives_friendly_message():
+    c = make_client({"/v21.0/999?": {"error": {
+        "message": "Error validating access token: session invalidated",
+        "code": 190}}})
+    with pytest.raises(InstagramError) as ei:
+        c.account()
+    m = str(ei.value)
+    assert "AIOS_IG_TOKEN" in m and "RINNOVATO" in m.upper()
+
+
+def test_http_400_body_is_read(monkeypatch):
+    # Meta risponde 400 con l'errore vero nel body: _urllib_fetch deve leggerlo,
+    # non far propagare un generico "HTTP 400".
+    import io
+    import urllib.error
+    from aios.sources import instagram
+
+    def boom(url, timeout=20):
+        body = io.BytesIO(b'{"error":{"message":"session invalidated","code":190}}')
+        raise urllib.error.HTTPError(url, 400, "Bad Request", {}, body)
+
+    monkeypatch.setattr(instagram.urllib.request, "urlopen", boom)
+    data = instagram._urllib_fetch("http://x")
+    assert data["error"]["code"] == 190
