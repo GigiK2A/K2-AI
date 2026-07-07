@@ -18,7 +18,7 @@ from aios.sources.sales import lead_tools
 from aios.sources.domains import (finance_tools, operations_tools,
                                   legal_tools, hr_tools, catalog_tools)
 from aios.sources.outputs import output_tool
-from aios.sources.n8n import n8n_tool, n8n_workflows_tool
+from aios.sources.n8n import n8n_tool, n8n_workflows_tool, n8n_executions_tool
 from aios.command import CommandRouter
 from aios.prospecting import Prospector, prospects_tool
 from aios.tools import Tool
@@ -85,6 +85,26 @@ def build_platform() -> Platform:
         k.register_tool(t)
     k.register_tool(n8n_tool())         # braccio esecutore esterno (env-gated)
     k.register_tool(n8n_workflows_tool())  # sensore: elenco workflow n8n (readonly)
+    k.register_tool(n8n_executions_tool())  # sensore: esecuzioni (partite? errori?)
+
+    # Lettura GENERICA di qualsiasi tabella Supabase (service key = accesso pieno).
+    # Readonly: filtri PostgREST opzionali (es. {"stato":"eq.usato"}), cap a 200 righe.
+    def _leggi_tabella(tabella: str | None = None, filtri: dict | None = None,
+                       limit: int = 50, ordine: str | None = None, **_):
+        if not tabella:
+            return {"error": "specifica 'tabella'"}
+        params = {"select": "*", "limit": str(max(1, min(int(limit or 50), 200)))}
+        if ordine:
+            params["order"] = str(ordine)
+        if isinstance(filtri, dict):
+            for kk, vv in filtri.items():
+                params[str(kk)] = str(vv)
+        try:
+            return client.select(str(tabella), params)
+        except Exception as exc:
+            return {"error": str(exc)[:200]}
+    k.register_tool(Tool(name="leggi_tabella", action_type=None, readonly=True,
+                         run=_leggi_tabella))
     k.register_tool(prospects_tool(client))  # sensore: prospect marketing (readonly)
     from aios.competitor_scout import competitors_tool
     k.register_tool(competitors_tool(client))  # sensore: competitor trovati (readonly)
