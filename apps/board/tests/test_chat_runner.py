@@ -45,8 +45,9 @@ class FakeStreamLLM:
         self.skill_pick = None  # nome skill scelta dall'LLM (schema 'skill'); None → 'nessuna'
 
     def stream_agentic(self, *, system, user, tools, tool_exec, max_iters=6,
-                       max_tokens=None, web_search=False, history=None):
+                       max_tokens=None, web_search=False, history=None, media=None):
         self.calls.append((system, user, history))
+        self.last_media = media
         yield {"phase": "thinking"}
         for name, inp in self.script:
             yield {"phase": "tool", "tool": name}

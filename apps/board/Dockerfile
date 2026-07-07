@@ -19,7 +19,8 @@ WORKDIR /app
 # Dipendenze esplicite (no build del pacchetto): l'app gira da /app/src via
 # PYTHONPATH, così i file dati — cockpit.html, skills SKILL.md — restano leggibili
 # da disco senza configurare package-data. (Tenere allineato a pyproject.toml.)
-RUN pip install "psycopg[binary]>=3.1" "anthropic>=0.40" "fastapi>=0.110" "uvicorn>=0.29" "playwright>=1.40"
+RUN pip install "psycopg[binary]>=3.1" "anthropic>=0.40" "fastapi>=0.110" "uvicorn>=0.29" "playwright>=1.40" \
+    "python-docx>=1.1" "openpyxl>=3.1"
 
 # Chromium headless per /api/screenshot (HTML→PNG slide IG). --with-deps installa
 # le librerie di sistema. Browser sotto /ms-playwright leggibile dall'utente non-root.

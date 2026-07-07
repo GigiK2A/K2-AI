@@ -82,6 +82,9 @@ class ChatStreamBody(BaseModel):
     agents: list[str] | str | None = None
     # se presente, la conversazione è PERSISTENTE: carica lo storico e salva i turni.
     session_id: str | None = None
+    # allegati INLINE (non persistiti): [{name, media_type, data(base64)}]. Immagini e PDF
+    # vanno nativi a Claude; Word/Excel/CSV/txt vengono estratti in testo.
+    attachments: list[dict[str, Any]] | None = None
 
 
 class ChatSessionBody(BaseModel):
@@ -100,6 +103,41 @@ class ProspectBody(BaseModel):
 class SendDraftBody(BaseModel):
     subject: str | None = None
     body: str | None = None
+
+
+def _process_attachments(atts: list[dict] | None):
+    """Allegati inline → (blocchi media Claude, testo estratto, nomi file).
+    Immagini e PDF diventano blocchi nativi (Claude li 'vede'); Word/Excel/CSV/txt
+    vengono estratti in testo e iniettati nel prompt. Max 8 file."""
+    media: list[dict] = []
+    texts: list[str] = []
+    names: list[str] = []
+    for a in (atts or [])[:8]:
+        if not isinstance(a, dict):
+            continue
+        name = str(a.get("name") or "file")
+        mt = str(a.get("media_type") or "").lower()
+        data = a.get("data") or ""
+        if not data:
+            continue
+        names.append(name)
+        if mt.startswith("image/"):
+            media.append({"type": "image", "source": {"type": "base64",
+                          "media_type": mt, "data": data}})
+        elif mt == "application/pdf" or name.lower().endswith(".pdf"):
+            media.append({"type": "document", "source": {"type": "base64",
+                          "media_type": "application/pdf", "data": data}})
+        else:
+            try:
+                from aios.attachments import extract_text
+                t = extract_text(name, mt, data)
+            except Exception:
+                t = ""
+            if t:
+                texts.append(f"### {name}\n{t}")
+    doc_text = ("\n\n# ALLEGATI (contenuto estratto dall'owner)\n" + "\n\n".join(texts)
+                + "\nUsa questo contenuto per rispondere.") if texts else ""
+    return media, doc_text, names
 
 
 def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
@@ -433,6 +471,12 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         def _sse(ev: dict) -> str:
             return "data: " + json.dumps(ev, ensure_ascii=False, default=str) + "\n\n"
 
+        # Allegati INLINE: immagini/PDF → blocchi nativi Claude; Office/CSV/txt → testo.
+        media_blocks, doc_text, att_names = _process_attachments(body.attachments)
+        request_text = body.text + doc_text                 # testo visto dagli agenti ORA
+        user_persist = body.text + (("\n[allegati: " + ", ".join(att_names) + "]")
+                                    if att_names else "")     # nello storico solo i nomi
+
         # Storico (per la memoria) + salvataggio del turno utente, PRIMA dello streaming.
         history: list[dict] = []
         first_msg = True
@@ -447,7 +491,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                 history = []
             try:
                 client.insert("aios_chat_messages",
-                              {"session_id": sid, "role": "user", "content": body.text})
+                              {"session_id": sid, "role": "user", "content": user_persist})
             except Exception:
                 pass
 
@@ -461,7 +505,7 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             # in ordine → il trascritto del dibattito è ricostruibile e diventa memoria.
             turns: list[tuple[str, str]] = []
             try:
-                for ev in chat.stream(body.text, body.agents, history):
+                for ev in chat.stream(request_text, body.agents, history, media=media_blocks):
                     if ev.get("phase") == "done" and ev.get("agent"):
                         txt = ev.get("text") or ""
                         if txt.strip():
