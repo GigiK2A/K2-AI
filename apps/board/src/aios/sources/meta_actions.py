@@ -35,16 +35,23 @@ Poster = Callable[[str, dict, str], dict]
 
 
 def _http_post(path: str, data: dict, token: str) -> dict[str, Any]:
+    # Stesso problema IPv6 dei sensori IG su alcuni container: forziamo IPv4 attorno alla POST.
+    from aios.sources.instagram import _gai_lock, _ipv4_getaddrinfo, _orig_getaddrinfo
     body = urllib.parse.urlencode({**data, "access_token": token}).encode("utf-8")
     req = urllib.request.Request(f"{GRAPH}/{VER}/{path}", data=body)
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
-            return json.loads(r.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
+    with _gai_lock:
+        import socket
+        socket.getaddrinfo = _ipv4_getaddrinfo
         try:
-            return json.loads(exc.read().decode("utf-8"))
-        except Exception:
-            return {"error": {"message": f"HTTP {exc.code}"}}
+            with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            try:
+                return json.loads(exc.read().decode("utf-8"))
+            except Exception:
+                return {"error": {"message": f"HTTP {exc.code}"}}
+        finally:
+            socket.getaddrinfo = _orig_getaddrinfo
 
 
 def _err(resp: Any) -> str:

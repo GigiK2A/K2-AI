@@ -93,3 +93,31 @@ def test_latest_comments_skips_zero_and_flattens():
     assert out[0]["text"] == "Interessante"
     assert out[0]["post_caption"] == "K2-AI Gazette"
     assert out[0]["replies"] == ["grazie!"]
+
+
+def test_ipv4_getaddrinfo_filters_v6():
+    import socket
+    from aios.sources import instagram as ig
+    fake = [
+        (socket.AF_INET6, 1, 6, "", ("::1", 443, 0, 0)),
+        (socket.AF_INET, 1, 6, "", ("1.2.3.4", 443)),
+    ]
+    orig = ig._orig_getaddrinfo
+    ig._orig_getaddrinfo = lambda *a, **k: fake
+    try:
+        out = ig._ipv4_getaddrinfo("graph.facebook.com", 443)
+        assert all(r[0] == socket.AF_INET for r in out) and len(out) == 1
+    finally:
+        ig._orig_getaddrinfo = orig
+
+
+def test_ipv4_getaddrinfo_falls_back_when_no_v4():
+    import socket
+    from aios.sources import instagram as ig
+    only6 = [(socket.AF_INET6, 1, 6, "", ("::1", 443, 0, 0))]
+    orig = ig._orig_getaddrinfo
+    ig._orig_getaddrinfo = lambda *a, **k: only6
+    try:
+        assert ig._ipv4_getaddrinfo("x", 443) == only6   # nessun IPv4 → non svuota
+    finally:
+        ig._orig_getaddrinfo = orig
