@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any, Callable
@@ -11,12 +12,34 @@ Fetcher = Callable[[str], dict[str, Any]]
 
 
 def _urllib_fetch(url: str) -> dict[str, Any]:
-    with urllib.request.urlopen(url, timeout=20) as resp:  # noqa: S310
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(url, timeout=20) as resp:  # noqa: S310
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        # Meta manda il VERO errore (es. token invalidato) nel body anche sui 4xx:
+        # senza leggerlo qui, resterebbe un generico "HTTP 400 Bad Request".
+        try:
+            return json.loads(exc.read().decode("utf-8"))
+        except Exception:
+            raise
 
 
 class InstagramError(RuntimeError):
     pass
+
+
+def _friendly_ig_error(err: Any) -> str:
+    """Traduce l'errore Graph API in un messaggio chiaro per l'agente/owner.
+    In particolare il token scaduto/invalidato (code 190) — la causa più comune."""
+    if not isinstance(err, dict):
+        return str(err)
+    code = err.get("code")
+    msg = str(err.get("message") or "")
+    if code == 190 or "access token" in msg.lower() or "session" in msg.lower():
+        return ("Token Instagram scaduto o invalidato dalla Meta API: va RINNOVATO "
+                "(variabile AIOS_IG_TOKEN sul servizio k2-ai-board). "
+                f"Dettaglio Meta: {msg}")
+    return msg or str(err)
 
 
 class InstagramClient:
@@ -33,7 +56,7 @@ class InstagramClient:
         url = f"{GRAPH}/{self._version}/{path}?{urllib.parse.urlencode(q)}"
         data = self._fetch(url)
         if isinstance(data, dict) and "error" in data:
-            raise InstagramError(str(data["error"]))
+            raise InstagramError(_friendly_ig_error(data["error"]))
         return data
 
     def account(self) -> dict[str, Any]:
