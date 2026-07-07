@@ -67,3 +67,29 @@ def test_http_400_body_is_read(monkeypatch):
     monkeypatch.setattr(instagram.urllib.request, "urlopen", boom)
     data = instagram._urllib_fetch("http://x")
     assert data["error"]["code"] == 190
+
+
+def test_comments_returns_text():
+    c = make_client({"/17_1/comments?": {"data": [
+        {"id": "c1", "text": "Bel post!", "username": "mario"},
+    ]}})
+    cm = c.comments("17_1")
+    assert cm[0]["text"] == "Bel post!" and cm[0]["username"] == "mario"
+
+
+def test_latest_comments_skips_zero_and_flattens():
+    c = make_client({
+        "/999/media?": {"data": [
+            {"id": "A", "comments_count": 1, "caption": "K2-AI Gazette", "permalink": "http://p/A"},
+            {"id": "B", "comments_count": 0, "caption": "no", "permalink": "http://p/B"},
+        ]},
+        "/A/comments?": {"data": [
+            {"id": "c1", "text": "Interessante", "username": "lucia",
+             "replies": {"data": [{"text": "grazie!"}]}},
+        ]},
+    })
+    out = c.latest_comments()
+    assert len(out) == 1                       # post B (0 commenti) saltato
+    assert out[0]["text"] == "Interessante"
+    assert out[0]["post_caption"] == "K2-AI Gazette"
+    assert out[0]["replies"] == ["grazie!"]

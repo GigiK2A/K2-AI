@@ -21,6 +21,12 @@ def instagram_tools(client: Any) -> list[Tool]:
              run=lambda **_: client.account()),
         Tool(name="leggi_post_ig", action_type=None, readonly=True,
              run=lambda limit=10, **_: client.recent_media(limit=limit)),
+        # Testo effettivo dei commenti (non solo il conteggio). Senza media_id scorre i
+        # post recenti con commenti; con media_id legge quel post specifico.
+        Tool(name="leggi_commenti_ig", action_type=None, readonly=True,
+             run=lambda media_id=None, limit=25, **_: (
+                 client.comments(str(media_id), limit=limit) if media_id
+                 else client.latest_comments(per_post=limit))),
     ]
 
 

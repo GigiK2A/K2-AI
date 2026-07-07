@@ -71,6 +71,41 @@ class InstagramClient:
         })
         return data.get("data", [])
 
+    def comments(self, media_id: str, limit: int = 25) -> list[dict[str, Any]]:
+        """Testo dei commenti sotto un post (+ risposte). comments_count dà solo il numero,
+        questo dà il CONTENUTO effettivo, per poter rispondere."""
+        data = self._get(f"{media_id}/comments", {
+            "fields": "id,text,username,timestamp,like_count,"
+                      "replies{id,text,username,timestamp}",
+            "limit": str(limit),
+        })
+        return data.get("data", [])
+
+    def latest_comments(self, media_limit: int = 10,
+                        per_post: int = 25) -> list[dict[str, Any]]:
+        """Scorre i post recenti CHE HANNO commenti e ne legge il testo. Ritorna una lista
+        piatta {post_id, post_caption, permalink, comment_id, text, username, timestamp,
+        replies}. Così l'agente vede subito 'cosa dicono i commenti' senza id manuali."""
+        out: list[dict[str, Any]] = []
+        for m in self.recent_media(limit=media_limit):
+            if not (m.get("comments_count") or 0):
+                continue
+            cap = (m.get("caption") or "")[:80]
+            try:
+                for c in self.comments(m["id"], limit=per_post):
+                    out.append({
+                        "post_id": m.get("id"), "post_caption": cap,
+                        "permalink": m.get("permalink"),
+                        "comment_id": c.get("id"), "text": c.get("text"),
+                        "username": c.get("username"), "timestamp": c.get("timestamp"),
+                        "like_count": c.get("like_count"),
+                        "replies": [r.get("text") for r in
+                                    ((c.get("replies") or {}).get("data") or [])],
+                    })
+            except InstagramError:
+                continue
+        return out
+
     def business_discovery(self, username: str, media_limit: int = 6) -> dict[str, Any]:
         fields = (
             f"business_discovery.username({username})"
