@@ -47,7 +47,19 @@ def _fake_fetch(content: bytes, ctype: str):
     return _f
 
 
+def _bypass_c1_gate(monkeypatch):
+    """C1 — i download ora passano da _authorize_job_download (sessione+owner+
+    pagamento) prima di fetch_output. Questi test isolano il BEHAVIOUR di download
+    via HTTP: mockano il gate su una sessione PAGATA (l'auth C1 è coperta a parte in
+    test_e2e/test_security). Senza mock il gate tenterebbe una query Supabase reale."""
+    monkeypatch.setattr(
+        d, "_authorize_job_download",
+        lambda job_id, user: {"id": "sess-x", "status": "paid", "collected_data": {}},
+    )
+
+
 def test_pdf_download_streams_bytes_from_engine(monkeypatch):
+    _bypass_c1_gate(monkeypatch)
     fetch = _fake_fetch(b"%PDF-1.4 fake", "application/pdf")
     monkeypatch.setattr(d.engine, "fetch_output", fetch)
     resp = asyncio.run(d.deliverable_pdf("job-x"))
@@ -57,6 +69,10 @@ def test_pdf_download_streams_bytes_from_engine(monkeypatch):
 
 
 def test_pdf_download_404_when_engine_missing(monkeypatch):
+    _bypass_c1_gate(monkeypatch)
+    # C4 — su not_found l'endpoint prova la copia durevole su Storage: qui non c'è.
+    monkeypatch.setattr(d, "download_bytes", lambda **kw: None)
+
     async def _f(job_id, fmt="pdf"):
         raise d.engine.EngineError("not_found")
     monkeypatch.setattr(d.engine, "fetch_output", _f)
@@ -66,6 +82,7 @@ def test_pdf_download_404_when_engine_missing(monkeypatch):
 
 
 def test_xlsx_download_fetches_json_and_renders(monkeypatch):
+    _bypass_c1_gate(monkeypatch)
     # deliverable minimale che il renderer xlsx sa gestire (nessun foglio obbligatorio).
     fetch = _fake_fetch(b'{"titolo":"X","sezioni":[]}', "application/json")
     monkeypatch.setattr(d.engine, "fetch_output", fetch)

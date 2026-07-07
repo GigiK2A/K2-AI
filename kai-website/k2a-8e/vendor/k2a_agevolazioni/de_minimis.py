@@ -77,8 +77,10 @@ def de_minimis_plafond(inp: DeMinimisPlafondInput) -> DeMinimisPlafondOutput:
         )
 
     data_rif = inp.data_riferimento or date.today()
-    # Finestra mobile 3 anni: [data_rif - 3 anni + 1 giorno ; data_rif]
-    # (qualsiasi periodo di 3 anni — Reg. 2023/2831 art.3 §2)
+    # Finestra mobile 3 anni: [data_rif - 3 anni ; data_rif], estremi INCLUSI (<=).
+    # (qualsiasi periodo di 3 anni — Reg. 2023/2831 art.3 §2). Scelta CONSERVATIVA:
+    # l'aiuto concesso esattamente 3 anni prima è contato "dentro" → usato più alto →
+    # residuo più basso → nessun rischio di sforare il tetto de minimis.
     finestra_inizio = _shift_anni(data_rif, -3)
     finestra_fine = data_rif
 
