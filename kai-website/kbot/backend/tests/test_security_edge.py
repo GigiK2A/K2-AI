@@ -275,9 +275,9 @@ def _make_pdf_with_text(text: str) -> bytes:
 # ===========================================================================
 
 @pytest.mark.parametrize("bad_name", [
-    "../../etc/passwd",
-    "..\\..\\windows\\system32\\cmd.exe",
-    "/etc/shadow",
+    "../../etc/passwd.pdf",
+    "..\\..\\windows\\system32\\cmd.pdf",  # traversal Windows con estensione AMMESSA
+    "/etc/shadow.pdf",
     "foo\x00.pdf",
     "report\r\n.pdf",
     "🚀💣🔥.pdf",
@@ -286,6 +286,9 @@ def _make_pdf_with_text(text: str) -> bytes:
     "a" * 600 + ".pdf",  # extreme length
 ])
 def test_upload_handles_hostile_filename(client, bad_name):
+    # Nomi ostili con estensione AMMESSA (.pdf): il boundary di sicurezza qui è la
+    # SANITIZZAZIONE DEL PATH (no escape dalla dir di sessione). Le estensioni non
+    # ammesse (.exe/.sh…) sono rifiutate a monte con 415 → vedi test dedicato.
     sid = _make_session(client)
     data = b"hello"
     r = client.post("/api/kbot/upload", json={
@@ -293,7 +296,8 @@ def test_upload_handles_hostile_filename(client, bad_name):
         "files": [{"name": bad_name, "type": "text/plain",
                    "size": len(data), "base64": _b64(data)}],
     })
-    # MUST not 500; MUST not write outside session directory.
+    # MUST not 500; MUST not write outside session directory. (type text/plain →
+    # estrazione via path TESTO, niente Vision/OCR; l'estensione .pdf passa il gate M8.)
     assert r.status_code == 200, f"hostile name caused {r.status_code}: {r.text[:200]}"
     f = r.json()["files"][0]
     # path must be scoped under sessionId/
@@ -303,6 +307,24 @@ def test_upload_handles_hostile_filename(client, bad_name):
     assert "\x00" not in f["path"]
     # original name preserved (for display) — but the storage path is sanitized
     # which is the security boundary we care about.
+
+
+@pytest.mark.parametrize("bad_name,bad_type", [
+    ("malware.exe", "application/octet-stream"),
+    ("script.sh", "text/plain"),
+    ("payload.bin", "application/octet-stream"),
+])
+def test_upload_rejects_disallowed_extension_415(client, bad_name, bad_type):
+    # M8 — la whitelist MIME/estensioni rifiuta i tipi non ammessi con 415, PRIMA
+    # di decodificare e prima del cap dimensione. Difesa in profondità sull'upload.
+    sid = _make_session(client)
+    data = b"hello"
+    r = client.post("/api/kbot/upload", json={
+        "session_id": sid,
+        "files": [{"name": bad_name, "type": bad_type,
+                   "size": len(data), "base64": _b64(data)}],
+    })
+    assert r.status_code == 415, f"{bad_name} should be 415, got {r.status_code}: {r.text[:200]}"
 
 
 # ===========================================================================
@@ -775,8 +797,12 @@ def test_generate_pdf_storage_failure_500(client, monkeypatch):
         "/api/kbot/generate-pdf",
         json={"session_id": sid, "test_mode": True},
     )
-    assert r.status_code == 500
-    assert "storage" in r.json().get("detail", "").lower()
+    assert r.status_code == 500  # fail-closed: nessun report parziale servito
+    # M1 — il dettaglio interno (Supabase/storage/traceback) NON deve leakare al
+    # client; solo un messaggio generico. Il dettaglio vive nei log server-side.
+    detail = r.json().get("detail", "").lower()
+    assert "supabase" not in detail and "storage" not in detail, f"leak: {detail!r}"
+    assert "salvataggio" in detail or "non riuscito" in detail, detail
 
 
 # ===========================================================================

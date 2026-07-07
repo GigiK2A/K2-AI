@@ -330,16 +330,17 @@ def test_upload_15mb_accepted(client):
 
 
 def test_upload_25mb_rejected(client):
-    data = b"X" * (25 * 1024 * 1024)
+    # Tipo PDF (permesso dalla whitelist MIME M8) così il file supera il gate-tipo e
+    # colpisce il CAP DIMENSIONE (413) — che è ciò che questo test verifica. Un tipo
+    # non ammesso verrebbe rifiutato prima con 415 (coperto da test dedicato).
+    data = b"%PDF-1.4\n" + b"X" * (25 * 1024 * 1024)
     sid = _make_session(client)
     r = client.post("/api/kbot/upload", json={
         "session_id": sid,
-        "files": [{"name": "huge.bin", "type": "application/octet-stream",
+        "files": [{"name": "huge.pdf", "type": "application/pdf",
                    "size": len(data), "base64": _b64(data)}],
     })
     assert r.status_code == 413, f"25MB should be rejected, got {r.status_code}"
-    # BUG CHECK: upload.py:186 hardcodes "3 MB" in the error string despite
-    # MAX_BYTES=20MB. Misleading to users.
     detail = r.json().get("detail", "")
     assert "20" in detail, f"error message lies about cap: {detail!r}"
 
