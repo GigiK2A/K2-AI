@@ -130,3 +130,43 @@ def n8n_workflows_tool() -> Tool:
     """Sensore readonly: elenco workflow n8n (degrada a [] senza API)."""
     return Tool(name="leggi_n8n_workflows", action_type=None, readonly=True,
                 run=lambda **_: list_workflows())
+
+
+def list_executions(workflow_id: str | None = None, solo_errori: bool = False,
+                    limit: int = 20) -> dict[str, Any]:
+    """Esecuzioni recenti dei workflow: per verificare se sono PARTITI e con che ESITO
+    (success/error/running). `solo_errori`=True filtra i falliti. Serve N8N_API_URL/KEY."""
+    lim = max(1, min(int(limit or 20), 100))
+    path = f"/executions?limit={lim}"
+    if workflow_id:
+        path += f"&workflowId={workflow_id}"
+    if solo_errori:
+        path += "&status=error"
+    r = _api("GET", path)
+    if not r.get("ok"):
+        return {"ok": False, "errore": r.get("errore"), "esecuzioni": []}
+    items = (r.get("data") or {}).get("data") or []
+    out = []
+    for e in items if isinstance(items, list) else []:
+        # n8n recenti espongono 'status'; nei più vecchi lo deduciamo da finished
+        status = e.get("status")
+        if not status:
+            status = "success" if e.get("finished") else ("error" if e.get("stoppedAt") else "running")
+        out.append({"id": e.get("id"), "workflowId": e.get("workflowId"),
+                    "status": status, "startedAt": e.get("startedAt"),
+                    "stoppedAt": e.get("stoppedAt"), "mode": e.get("mode")})
+    errori = sum(1 for x in out if str(x["status"]).lower() in ("error", "failed", "crashed"))
+    return {"ok": True, "totale": len(out), "errori": errori, "esecuzioni": out}
+
+
+def get_execution(execution_id: str) -> dict[str, Any]:
+    """Dettaglio di una esecuzione (con dati) — per capire QUALE nodo ha dato errore."""
+    r = _api("GET", f"/executions/{execution_id}?includeData=true")
+    return r.get("data", {}) if r.get("ok") else r
+
+
+def n8n_executions_tool() -> Tool:
+    """Sensore readonly: esecuzioni recenti (partite? errori?). Degrada senza API."""
+    return Tool(name="leggi_n8n_esecuzioni", action_type=None, readonly=True,
+                run=lambda workflow_id=None, solo_errori=False, limit=20, **_:
+                    list_executions(workflow_id, bool(solo_errori), limit))

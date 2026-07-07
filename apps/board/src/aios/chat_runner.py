@@ -130,6 +130,30 @@ _CALCOLA_DEF = {
 # I calcolatori vendorizzati coprono finanza/fisco → tool esposto a questi reparti.
 _CALCOLA_DOMINI = {"finance"}
 
+# Tool trasversali a TUTTI gli agenti (registrati in platform.py). Lettura Supabase di
+# qualsiasi tabella + verifica stato dei workflow n8n.
+_BASE_TOOL_DEFS = [
+    {"name": "leggi_tabella",
+     "description": ("Leggi QUALSIASI tabella Supabase (sola lettura). params: {tabella, "
+                     "filtri? (PostgREST, es. {\"stato\":\"eq.usato\",\"canale\":\"eq.instagram\"}), "
+                     "ordine? (es. \"created_at.desc\"), limit? (max 200)}."),
+     "input_schema": {"type": "object", "properties": {
+         "tabella": {"type": "string"}, "filtri": {"type": "object"},
+         "ordine": {"type": "string"}, "limit": {"type": "integer"}},
+         "required": ["tabella"], "additionalProperties": True}},
+    {"name": "leggi_n8n_workflows",
+     "description": "Elenca i workflow n8n (id, nome, attivo).",
+     "input_schema": {"type": "object", "properties": {}, "additionalProperties": True}},
+    {"name": "leggi_n8n_esecuzioni",
+     "description": ("Verifica se i workflow n8n sono PARTITI e con che ESITO "
+                     "(success/error/running). params: {workflow_id?, solo_errori? (bool), "
+                     "limit? (max 100)}. Usalo dopo aver avviato un workflow per controllare "
+                     "che sia andato a buon fine o se c'è un errore."),
+     "input_schema": {"type": "object", "properties": {
+         "workflow_id": {"type": "string"}, "solo_errori": {"type": "boolean"},
+         "limit": {"type": "integer"}}, "additionalProperties": True}},
+]
+
 _FORBIDDEN = ("fuori dal perimetro consentito (solo allowlist; mai control-plane o "
               "registri immutabili; delete solo per id)")
 
@@ -200,6 +224,11 @@ class ChatAgent:
             defs.append(_CERCA_SKILL_DEF)
         if self.dominio in _CALCOLA_DOMINI:   # calcolatori deterministici 8e (numeri veri)
             defs.append(_CALCOLA_DEF)
+        # tool TRASVERSALI a tutti gli agenti (se registrati): lettura Supabase generica +
+        # verifica esecuzioni n8n. Così ogni reparto legge qualsiasi tabella e controlla i workflow.
+        for td in _BASE_TOOL_DEFS:
+            if td["name"] in names:
+                defs.append(td)
         return defs
 
     def _sensor_args(self, tname: str) -> dict:

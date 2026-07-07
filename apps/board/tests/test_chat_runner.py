@@ -304,3 +304,17 @@ def test_calcola_returns_real_numbers():
     assert ires["imposta_eur"] == 24000.0 and r["totale_eur"] == 28680.0
     # operazione sconosciuta → errore gestito (no crash)
     assert "error" in a._exec_tool("calcola", {"operazione": "boh"})
+
+
+# ---- tool trasversali (lettura Supabase generica + n8n) esposti a tutti gli agenti ----
+def test_base_tools_exposed_to_every_agent():
+    from aios.chat_runner import ChatAgent
+    orch, _ = _orch([])
+    orch.kernel.register_tool(Tool(name="leggi_tabella", action_type=None, readonly=True,
+                                   run=lambda **k: [{"tab": k.get("tabella")}]))
+    orch.kernel.register_tool(Tool(name="leggi_n8n_esecuzioni", action_type=None,
+                                   readonly=True, run=lambda **k: {"esecuzioni": []}))
+    a = ChatAgent(orch, "hr", None)          # anche un reparto senza sensori IG/finance
+    names = [t["name"] for t in a._tool_defs()]
+    assert "leggi_tabella" in names and "leggi_n8n_esecuzioni" in names
+    assert a._exec_tool("leggi_tabella", {"tabella": "topics"}) == [{"tab": "topics"}]
