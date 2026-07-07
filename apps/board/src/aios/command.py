@@ -302,7 +302,8 @@ class CommandRouter:
             out = trigger_n8n(str(n8n.get("workflow", "default")), n8n.get("payload") or {})
             self._audit("integrazioni.n8n", "executed", actor,
                         {"workflow": n8n.get("workflow"), "ok": out.get("ok")})
-            return {"ok": out.get("ok", False), "tipo": "n8n", "esito": out}
+            return {"ok": out.get("ok", False), "tipo": "n8n", "esito": out,
+                    "errore": out.get("errore") or out.get("error")}
         if p["kind"] == "n8n_manage":
             from aios.sources.n8n import manage_workflow
             m = p.get("mng") or {}
@@ -310,10 +311,16 @@ class CommandRouter:
                                   definition=m.get("definition"))
             self._audit("integrazioni.n8n_manage", "executed", actor,
                         {"op": m.get("op"), "workflow_id": m.get("workflow_id"), "ok": out.get("ok")})
-            return {"ok": out.get("ok", False), "tipo": "n8n_manage", "esito": out}
+            return {"ok": out.get("ok", False), "tipo": "n8n_manage", "esito": out,
+                    "errore": out.get("errore") or out.get("error")}
         try:
             out = self._exec_internal(p["azione"], actor)
-            return {"ok": out.get("ok", False), "tipo": "interna", "esito": out}
+            # bubble su l'errore reale (es. Graph API): senza, l'UI mostra "non eseguito" muto
+            err = out.get("errore") or out.get("error")
+            if not err and not out.get("ok"):
+                esito = out.get("esito") if isinstance(out.get("esito"), dict) else {}
+                err = esito.get("errore") or esito.get("error")
+            return {"ok": out.get("ok", False), "tipo": "interna", "esito": out, "errore": err}
         except Exception as exc:
             return {"ok": False, "errore": str(exc)[:160]}
 
