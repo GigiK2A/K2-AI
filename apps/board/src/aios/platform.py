@@ -105,6 +105,27 @@ def build_platform() -> Platform:
             return {"error": str(exc)[:200]}
     k.register_tool(Tool(name="leggi_tabella", action_type=None, readonly=True,
                          run=_leggi_tabella))
+
+    # Generazione immagini (GPT Image) → caricata su Storage → URL pubblico pronto per
+    # essere pubblicato con `esegui` pubblica_post. Env: OPENAI_API_KEY.
+    def _genera_immagine(prompt: str | None = None, **_):
+        if not prompt:
+            return {"error": "specifica 'prompt' (descrizione dell'immagine)"}
+        from aios.image_gen import generate_image
+        from aios.storage import upload_public
+        g = generate_image(str(prompt))
+        if not g.get("ok"):
+            return {"error": g.get("errore")}
+        if g.get("url"):
+            return {"ok": True, "url": g["url"],
+                    "nota": "immagine generata (URL OpenAI, temporaneo)"}
+        up = upload_public("ai-image.png", "image/png", g.get("b64", ""))
+        if not up.get("ok"):
+            return {"error": "immagine generata ma upload fallito: " + str(up.get("errore"))}
+        return {"ok": True, "url": up["url"],
+                "nota": "immagine generata e caricata — usa questo url in pubblica_post"}
+    k.register_tool(Tool(name="genera_immagine", action_type=None, readonly=True,
+                         run=_genera_immagine))
     k.register_tool(prospects_tool(client))  # sensore: prospect marketing (readonly)
     from aios.competitor_scout import competitors_tool
     k.register_tool(competitors_tool(client))  # sensore: competitor trovati (readonly)
