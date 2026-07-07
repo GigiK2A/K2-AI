@@ -175,3 +175,19 @@ class SkillLibrary:
         if self._domain_cache is None:
             self._domain_cache = self._build_domain_map()
         return list(self._domain_cache.get(domain, []))[:k]
+
+    def pick_for(self, domain: str, query: str, k: int = 1) -> list[str]:
+        """Le skill del REPARTO più pertinenti a QUESTA richiesta (metodo da applicare).
+        Ranking = match della query su nome+descrizione tra le skill del dominio; se
+        nulla combacia, ripiega sulle skill di default del reparto."""
+        cands = self.for_domain(domain, 40)
+        terms = [t for t in re.split(r"[^a-zà-ù0-9]+", (query or "").lower()) if len(t) > 2]
+        scored: list[tuple[int, str]] = []
+        for n in cands:
+            hay = (n.replace("-", " ") + " " + self.describe(n)).lower()
+            s = sum((2 if t in n.replace("-", " ") else 1) for t in terms if t in hay)
+            if s:
+                scored.append((s, n))
+        scored.sort(key=lambda x: (-x[0], x[1]))
+        picked = [n for _s, n in scored[:k]]
+        return picked or self.for_domain(domain, k)

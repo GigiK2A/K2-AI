@@ -130,24 +130,30 @@ _CEO_SYS = ("Sei il CEO di K2-AI (PMI italiana). Conosci le posizioni dei repart
             "decisione azionabile con i prossimi passi, senza ripetere pari pari gli interventi.")
 
 # Triage del CEO (modalità Auto): rispondere lui o convocare i reparti rilevanti.
+# Bias forte verso 'rispondi': il CEO è competente e ha i metodi (skill); convoca solo
+# quando serve davvero un'analisi di reparto o una decisione contesa tra funzioni.
 _CEO_TRIAGE_SYS = (
-    "Sei il CEO di K2-AI. Ricevi una richiesta dell'owner e conosci la discussione finora "
-    "tra i reparti. Decidi come gestirla:\n"
-    "- modo='rispondi' SE puoi rispondere tu: domanda semplice, una conferma, un chiarimento, "
-    "o qualcosa GIÀ discussa di cui conosci le posizioni dei reparti.\n"
-    "- modo='consulta' SE serve nuovo input/analisi/decisione o un dato che non hai: indica in "
-    "'agenti' SOLO i reparti davvero rilevanti (tra: marketing, vendite, finance, operations, "
-    "legal, hr). NON convocare tutti se non serve.\n"
-    "Nel dubbio su numeri/dati specifici, consulta il reparto competente.")
+    "Sei il CEO di K2-AI: competente, operativo, e hai a disposizione i metodi (skill) "
+    "dell'azienda. Gestisci TU la maggior parte delle richieste.\n"
+    "- modo='rispondi' (DEFAULT) per: come si fa una cosa, un consiglio operativo, un piano, "
+    "un chiarimento, una conferma, un follow-up di un discorso in corso, o qualcosa che sai "
+    "già fare applicando il metodo giusto. La maggior parte dei messaggi è questo.\n"
+    "- modo='consulta' SOLO se serve davvero un'analisi specialistica di reparto o un dato che "
+    "non puoi produrre tu, o una decisione contesa tra funzioni diverse. In 'agenti' metti il "
+    "MINIMO indispensabile (spesso UN solo reparto tra: marketing, vendite, finance, operations, "
+    "legal, hr).\n"
+    "Non convocare riunioni per cose che sai già fare. Nel dubbio: rispondi tu.")
 
 
 class ChatAgent:
     """Un agente di dominio che risponde in chat come loop agentico streaming."""
 
-    def __init__(self, orch: "ChatOrchestrator", dominio: str, llm: Any) -> None:
+    def __init__(self, orch: "ChatOrchestrator", dominio: str, llm: Any,
+                 request: str = "") -> None:
         self.orch = orch
         self.dominio = dominio
         self.llm = llm
+        self.request = request or ""     # richiesta owner → scelta della skill/metodo
         self.actor = f"chat_{dominio}"
         self.kernel = orch.kernel
         self.azioni: list[dict] = []   # esiti delle azioni `esegui` di questo turno
@@ -278,17 +284,19 @@ class ChatAgent:
                     "USA `calcola`, NON stimare a memoria. Cita i numeri che ti restituisce.")
         skills = self.orch.skills
         if skills is not None:
+            # METODO PRE-CARICATO: l'LLM sceglie la skill del reparto più adatta alla
+            # richiesta → l'agente risponde SEGUENDO un metodo vero, non improvvisando.
+            picked = self.orch._choose_skill(self.request, self.dominio)
+            out += self.orch._skill_method(picked)
+            # indice compatto delle altre skill del reparto (per approfondire via carica_skill)
             try:
-                names = list(dict.fromkeys(
-                    list(self.skill_focus) + skills.for_domain(self.dominio, 12)))
+                idx = [n for n in skills.for_domain(self.dominio, 10) if n not in picked]
             except Exception:
-                names = list(self.skill_focus)
-            if names:
-                out += ("\n\n# SKILL DISPONIBILI (metodi operativi K2-AI — carica il "
-                        "testo con carica_skill PRIMA di applicarne uno; non citarle "
-                        "senza averle lette)\n" + skills.index(names)
-                        + "\n\nNon trovi quella giusta qui? Usa cerca_skill(query) per "
-                        "cercare in tutta la libreria (~300 skill, ogni reparto).")
+                idx = []
+            if idx:
+                out += ("\n\n# ALTRE SKILL DEL REPARTO (se il metodo sopra non basta, "
+                        "caricale con carica_skill; o cerca_skill per tutta la libreria):\n"
+                        + skills.index(idx, desc_len=80))
         return out
 
     def _history_for_agent(self, history: list[dict] | None) -> list[dict]:
@@ -421,10 +429,71 @@ class ChatOrchestrator:
                     "('Concordo, nulla da aggiungere.'). Conciso.")
         return base + task
 
-    def _speaker(self, dom: str, user_prompt: str, llm: Any, key: str, rnd: int):
+    def _skill_method(self, names: list[str]) -> str:
+        """Blocco 'metodo da applicare' col testo pieno delle skill scelte → così l'agente
+        segue un metodo vero invece di improvvisare. Vuoto se niente skill."""
+        if not self.skills or not names:
+            return ""
+        blocks = []
+        for n in names:
+            try:
+                blocks.append(f"## {n}\n" + self.skills.load(n)[:2500])
+            except Exception:
+                pass
+        if not blocks:
+            return ""
+        return ("\n\n# METODO K2-AI DA APPLICARE (segui questo procedimento, non improvvisare "
+                "né fare premesse generiche):\n" + "\n\n".join(blocks)
+                + "\n\nApplica il metodo sopra alla richiesta: professionale, concreto, coi "
+                "passi del metodo.")
+
+    def _choose_skill(self, request: str, domain: str | None) -> list[str]:
+        """Sceglie la skill (metodo) più adatta alla richiesta. È l'LLM a decidere dalla
+        rosa pertinente (giudizio, non keyword); se non può, ripiego deterministico."""
+        if not self.skills:
+            return []
+        try:
+            cands = (self.skills.for_domain(domain, 25) if domain
+                     else [h["nome"] for h in self.skills.search(request, 12)])
+        except Exception:
+            cands = []
+        if not cands:
+            return []
+        cj = getattr(self.llm, "complete_json", None)
+        if cj is not None:
+            try:
+                r = cj(system=("Scegli il METODO (skill) più adatto a svolgere la richiesta, "
+                               "dalla lista. Rispondi col NOME ESATTO di UNA skill, oppure "
+                               "'nessuna' se davvero nessuna è pertinente."),
+                       user=(f"RICHIESTA: {request}\n\nMETODI DISPONIBILI:\n"
+                             + self.skills.index(cands, desc_len=110)
+                             + "\n\nNome della skill più adatta:"),
+                       schema={"type": "object", "properties": {"skill": {"type": "string"}},
+                               "required": ["skill"]})
+                name = str(r.get("skill") or "").strip()
+                if name in cands:
+                    return [name]
+                if name.lower() in ("nessuna", "none", ""):
+                    return []               # l'LLM dice: nessun metodo calza → non forzare
+            except Exception:
+                pass
+        # ripiego deterministico (no-LLM o risposta non valida)
+        try:
+            return (self.skills.pick_for(domain, request, 1) if domain
+                    else [h["nome"] for h in self.skills.search(request, 1)])
+        except Exception:
+            return []
+
+    def _ceo_method(self, text: str) -> str:
+        """Metodo pre-caricato per il CEO: la skill più pertinente su tutta la libreria."""
+        return self._skill_method(self._choose_skill(text, None))
+
+    def _speaker(self, dom: str, user_prompt: str, llm: Any, key: str, rnd: int,
+                 request: str = ""):
         """Un intervento: yield eventi taggati (agent/key/round), RITORNA il testo finale."""
         final = ""
-        for ev in ChatAgent(self, dom, llm).stream(None, user_prompt=user_prompt):
+        agent = ChatAgent(self, dom, llm, request=request)
+        for ev in agent.stream(None, user_prompt=user_prompt):
             if ev.get("phase") == "done":
                 final = ev.get("text") or ""
             yield {**ev, "agent": dom, "key": key, "round": rnd}
@@ -451,8 +520,9 @@ class ChatOrchestrator:
         """Il CEO chiude la discussione: integra i pareri in UNA decisione (Sonnet)."""
         up = ("I reparti " + ", ".join(self._label(d) for d in targets) + " hanno discusso "
               "la richiesta dell'owner. Come CEO, chiudi con UNA decisione unica che integra "
-              "i punti chiave, evidenzia accordi e trade-off e dà i prossimi passi concreti.\n\n"
-              f"RICHIESTA OWNER: {text}\n\n<discussione>\n{self._fmt(transcript)}\n</discussione>")
+              "i punti chiave, evidenzia accordi e trade-off e dà i prossimi passi concreti."
+              + self._ceo_method(text)
+              + f"\n\nRICHIESTA OWNER: {text}\n\n<discussione>\n{self._fmt(transcript)}\n</discussione>")
         return (yield from self._ceo_voice(up))
 
     def _ceo_answer(self, text: str, transcript: list[dict]):
@@ -461,9 +531,10 @@ class ChatOrchestrator:
         up = (f"RICHIESTA OWNER: {text}\n\n"
               + (f"CONTESTO (posizioni dei reparti finora):\n<discussione>\n{ctx}\n</discussione>\n\n"
                  if ctx else "")
-              + "Rispondi tu direttamente come CEO, sulla base di quanto sai dai reparti: "
-                "conciso e deciso. Se ti manca un dato specifico, dillo e proponi di consultare "
-                "il reparto competente.")
+              + "Rispondi tu direttamente come CEO, professionale e concreto, applicando il "
+                "metodo qui sotto. Se ti manca un dato specifico, dillo e proponi di consultare "
+                "il reparto competente."
+              + self._ceo_method(text))
         return (yield from self._ceo_voice(up))
 
     def _ceo_voice(self, user_prompt: str):
@@ -501,23 +572,24 @@ class ChatOrchestrator:
     # ---- flussi conversazione ----
     def _one_to_one(self, dom: str, text: str, history: list[dict] | None, llm: Any):
         try:
-            for ev in ChatAgent(self, dom, llm).stream(text, history):
+            for ev in ChatAgent(self, dom, llm, request=text).stream(text, history):
                 yield {**ev, "agent": dom, "key": dom}
         except Exception as exc:
             yield {"phase": "error", "agent": dom, "key": dom, "error": str(exc)[:200]}
 
     def _debate(self, text: str, targets: list[str], transcript: list[dict], llm: Any):
-        """Dibattito sequenziale su trascritto condiviso + chiusura del CEO."""
+        """Dibattito sequenziale su trascritto condiviso + chiusura del CEO. Si ferma appena
+        i reparti convergono (anche dopo 1 solo giro): niente giri di parole se sono d'accordo."""
         MAX_ROUNDS = 3
         for rnd in range(1, MAX_ROUNDS + 1):
             yield {"phase": "round", "round": rnd, "agents": targets}
             for dom in targets:
                 final = yield from self._speaker(
                     dom, self._debate_prompt(dom, text, transcript, rnd),
-                    llm, f"{dom}#r{rnd}", rnd)
+                    llm, f"{dom}#r{rnd}", rnd, request=text)
                 if final.strip():
                     transcript.append({"speaker": dom, "text": final})
-            if rnd >= 2 and self._converged(transcript, targets):
+            if self._converged(transcript, targets):   # accordo → stop (anche dopo il 1° giro)
                 break
         yield from self._ceo_close(text, transcript, targets)
 

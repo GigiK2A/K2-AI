@@ -41,6 +41,8 @@ class FakeStreamLLM:
         self.calls = []
         # decisione del CEO in modalità auto (schema con 'modo'); default: consulta i due
         self.triage = {"modo": "consulta", "agenti": ["finance", "marketing"]}
+        self.converged = True   # giudice convergenza dibattito (default: converge subito)
+        self.skill_pick = None  # nome skill scelta dall'LLM (schema 'skill'); None → 'nessuna'
 
     def stream_agentic(self, *, system, user, tools, tool_exec, max_iters=6,
                        max_tokens=None, web_search=False, history=None):
@@ -58,7 +60,9 @@ class FakeStreamLLM:
         props = (schema or {}).get("properties", {})
         if "modo" in props:                 # triage del CEO
             return dict(self.triage)
-        return {"converged": True}          # giudice convergenza dibattito
+        if "skill" in props:                 # scelta del metodo/skill
+            return {"skill": self.skill_pick or "nessuna"}
+        return {"converged": self.converged}   # giudice convergenza dibattito
 
 
 def _orch(script):
@@ -98,22 +102,27 @@ def test_resolve_manual_multi_validated_dedup():
     assert orch.resolve_targets("x", ["finance", "bogus", "finance"]) == ["finance"]
 
 
-# ---- dibattito multi-agente (turni sequenziali + giri + sintesi) ----
-def test_multi_agent_debate_rounds_and_synthesis():
-    orch, _ = _orch([])
+# ---- dibattito multi-agente (turni sequenziali + giri + chiusura CEO) ----
+def test_multi_agent_debate_converges_and_ceo_closes():
+    orch, _ = _orch([])   # converged=True → si ferma dopo il 1° giro (niente giri di parole)
     ev = _events(orch, "che facciamo per la crescita?", ["finance", "marketing"])
     assert ev[0]["phase"] == "start" and set(ev[0]["agents"]) == {"finance", "marketing"}
     assert ev[-1]["phase"] == "all_done"
-    # ci sono i marcatori di GIRO
     assert any(e["phase"] == "round" for e in ev)
-    # entrambi gli agenti hanno parlato
     spoke = {e.get("agent") for e in ev if e.get("phase") == "done"}
-    assert "finance" in spoke and "marketing" in spoke
-    # CHIUSURA del CEO presente
-    assert any(e.get("agent") == "ceo" and e.get("phase") == "done" for e in ev)
-    # finance ha parlato in ≥2 turni distinti (giro 1 e giro 2 → chiavi diverse)
+    assert {"finance", "marketing", "ceo"} <= spoke       # reparti + chiusura CEO
+    # accordo dopo 1 giro → finance ha parlato UNA volta (non trascina)
     fin_keys = {e.get("key") for e in ev if e.get("agent") == "finance" and e.get("key")}
-    assert len(fin_keys) >= 2
+    assert len(fin_keys) == 1
+
+
+def test_debate_multiround_when_not_converged():
+    orch, _ = _orch([])
+    orch.llm.converged = False        # nessun accordo → più giri (fino a MAX_ROUNDS=3)
+    ev = _events(orch, "questione contesa", ["finance", "marketing"])
+    fin_keys = {e.get("key") for e in ev if e.get("agent") == "finance" and e.get("key")}
+    assert len(fin_keys) >= 2          # finance reagisce in più giri
+    assert any(e.get("agent") == "ceo" and e.get("phase") == "done" for e in ev)
 
 
 def test_single_agent_is_one_to_one():
@@ -229,13 +238,26 @@ def test_skill_tools_search_and_load():
     assert "error" in miss and "forse" in miss
 
 
-def test_system_prompt_has_domain_skill_index():
+def test_system_prompt_preloads_chosen_skill():
     from aios.chat_runner import ChatAgent
     from aios.skills import SkillLibrary
     orch, _ = _orch([])
     orch.skills = SkillLibrary()
-    sysp = ChatAgent(orch, "finance", None)._system_prompt()
-    assert "SKILL DISPONIBILI" in sysp and "cerca_skill" in sysp
+    fin_skill = orch.skills.for_domain("finance", 1)[0]
+    orch.llm.skill_pick = fin_skill                      # l'LLM sceglie questa skill
+    sysp = ChatAgent(orch, "finance", None, request="analisi di bilancio")._system_prompt()
+    assert "METODO K2-AI DA APPLICARE" in sysp and fin_skill in sysp  # metodo pre-caricato
+    assert "cerca_skill" in sysp                          # altre skill accessibili
+
+
+def test_choose_skill_respects_nessuna():
+    from aios.chat_runner import ChatAgent
+    from aios.skills import SkillLibrary
+    orch, _ = _orch([])
+    orch.skills = SkillLibrary()
+    orch.llm.skill_pick = None                            # l'LLM dice 'nessuna'
+    sysp = ChatAgent(orch, "finance", None, request="ciao")._system_prompt()
+    assert "METODO K2-AI DA APPLICARE" not in sysp        # non forza un metodo irrilevante
 
 
 # ---- calcolatori deterministici 8e (tool `calcola`, solo finance) ----
