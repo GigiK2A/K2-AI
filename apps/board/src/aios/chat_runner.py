@@ -49,13 +49,19 @@ _CHAT_PREAMBLE = (
 _ESEGUI_DEF = {
     "name": "esegui",
     "description": (
-        "Esegui un'azione concreta nel tuo reparto. Tre forme:\n"
-        "1) scrittura interna: {tabella, op:'insert'|'update'|'delete', match, dati} "
-        "(update/delete richiedono match; delete solo per id);\n"
-        "2) azione esterna (pubblicare/inviare): {canale:'n8n', workflow, payload};\n"
-        "3) modifica schema DB non distruttiva: {sql:'ALTER TABLE ... ADD COLUMN ...'}.\n"
-        "Le interne sicure partono subito; esterne, delete e DDL vanno in conferma; "
-        "ciò che è fuori perimetro viene rifiutato. Metti sempre 'descrizione'."),
+        "Esegui un'azione concreta. Forme:\n"
+        "1) scrittura interna: {tabella, op:'insert'|'update'|'delete', match, dati};\n"
+        "2) azione esterna (workflow): {canale:'n8n', workflow, payload};\n"
+        "3) schema DB non distruttivo: {sql:'ALTER TABLE ... ADD COLUMN ...'};\n"
+        "4) INSTAGRAM — pubblica un post: {canale:'instagram', azione:'pubblica_post', "
+        "caption, image_url}  (image_url = immagine a URL PUBBLICO, obbligatoria);\n"
+        "5) INSTAGRAM — rispondi a un commento: {canale:'instagram', "
+        "azione:'rispondi_commento', comment_id, message};\n"
+        "6) ADS Meta — crea campagna: {canale:'meta_ads', azione:'crea_campagna', nome, "
+        "obiettivo:'traffico'|'lead'|'engagement'|'notorieta'|'vendite'}. La campagna nasce "
+        "SEMPRE in PAUSA: non spende finché l'owner non la attiva in Ads Manager.\n"
+        "Le interne sicure partono subito; Instagram/Ads, esterne, delete e DDL vanno SEMPRE "
+        "in conferma dell'owner; fuori perimetro = rifiutato. Metti sempre 'descrizione'."),
     "input_schema": {
         "type": "object",
         "properties": {
@@ -68,6 +74,13 @@ _ESEGUI_DEF = {
             "workflow": {"type": "string"},
             "payload": {"type": "object"},
             "sql": {"type": "string"},
+            "azione": {"type": "string"},
+            "caption": {"type": "string"},
+            "image_url": {"type": "string"},
+            "comment_id": {"type": "string"},
+            "message": {"type": "string"},
+            "nome": {"type": "string"},
+            "obiettivo": {"type": "string"},
         },
         "required": ["descrizione"],
         "additionalProperties": True,
@@ -218,9 +231,14 @@ class ChatAgent:
         Serializza l'accesso al router con un lock (più agenti girano in parallelo)."""
         router = self.orch.router
         descr = str(tinput.get("descrizione") or "azione")
+        canale = str(tinput.get("canale") or "").lower()
         if tinput.get("sql"):
             az: dict = {"tipo": "ddl", "sql": str(tinput.get("sql"))}
-        elif tinput.get("canale") or tinput.get("workflow"):
+        elif canale in ("instagram", "meta_ads", "meta"):
+            # azione Meta (publish/commento/ads): porta tutti i campi utili all'attuatore
+            az = {k: v for k, v in tinput.items() if k != "descrizione" and v is not None}
+            az["canale"] = canale
+        elif canale or tinput.get("workflow"):
             az = {"canale": (tinput.get("canale") or "n8n"),
                   "workflow": tinput.get("workflow") or "k2ai",
                   "payload": tinput.get("payload") or {}}
@@ -256,7 +274,15 @@ class ChatAgent:
     def _confirm_label(az: dict) -> str:
         if az.get("tipo") == "ddl":
             return "modifica schema DB (DDL)"
-        if str(az.get("canale") or "").lower() in ("n8n", "esterno", "external", "webhook"):
+        canale = str(az.get("canale") or "").lower()
+        if canale in ("instagram", "meta_ads", "meta"):
+            azm = str(az.get("azione") or "").lower()
+            if "campagn" in azm or "ads" in azm or canale == "meta_ads":
+                return "🟠 crea campagna ADS Meta (in PAUSA, non spende)"
+            if "commento" in azm or "reply" in azm:
+                return "🌐 rispondi a un commento Instagram"
+            return "🌐 PUBBLICA un post su Instagram"
+        if canale in ("n8n", "esterno", "external", "webhook"):
             return f"esterna (n8n · {az.get('workflow') or '?'})"
         if str(az.get("op") or "").lower() == "delete":
             return f"cancellazione ({az.get('tabella')})"

@@ -79,18 +79,28 @@ _APPEND_ONLY = {"finance_journal", "privacy_registro_trattamenti", "board_revenu
 
 # Canali esterni riconosciuti per un'azione (instradata a n8n, non al DB).
 _EXTERNAL_CANALI = {"n8n", "esterno", "external", "webhook"}
+# Canali Meta (Instagram publish/commenti, Ads) → API Meta dirette, sempre su conferma.
+_META_CANALI = {"instagram", "meta_ads", "meta"}
 
 # delete consentita SOLO per chiave d'identità (riga singola), mai per colonne generiche
 # (status/sector/...) → impossibile una cancellazione di massa.
 _DELETE_KEYS = {"id", "uuid"}
 
 
-def is_external_action(action: Any) -> bool:
-    """True se l'azione va eseguita FUORI dal DB (pubblica/invia/social) via n8n.
-    Richiede un 'canale' ESPLICITO: una chiave 'workflow' da sola non basta (evita
-    che un campo vagante dell'LLM instradi per sbaglio all'esterno)."""
+def is_meta_action(action: Any) -> bool:
     return (isinstance(action, dict)
-            and str(action.get("canale") or "").lower() in _EXTERNAL_CANALI)
+            and str(action.get("canale") or "").lower() in _META_CANALI)
+
+
+def is_external_action(action: Any) -> bool:
+    """True se l'azione va eseguita FUORI dal DB (pubblica/invia/social/ads). Richiede un
+    'canale' ESPLICITO: una chiave 'workflow' da sola non basta (evita che un campo vagante
+    dell'LLM instradi per sbaglio all'esterno). Include n8n e i canali Meta → tutte queste
+    passano SEMPRE per la conferma umana."""
+    if not isinstance(action, dict):
+        return False
+    c = str(action.get("canale") or "").lower()
+    return c in _EXTERNAL_CANALI or c in _META_CANALI
 
 
 class ActuatorError(RuntimeError):
@@ -274,6 +284,13 @@ def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
     guardata; altrimenti insert/update di righe su tabella allowlist."""
     if isinstance(action, dict) and (action.get("tipo") == "ddl" or action.get("sql")):
         return apply_ddl(str(action.get("sql", "")))
+    # Azione META (Instagram publish/commenti, Ads) → API Meta dirette. Gira solo qui,
+    # cioè sotto approvazione umana. Le ads sono create SEMPRE in PAUSA (non spendono).
+    if is_meta_action(action):
+        from aios.sources.meta_actions import apply as meta_apply
+        out = meta_apply(action)
+        return {"ok": bool(out.get("ok")), "canale": "meta", "esito": out,
+                "errore": out.get("errore")}
     # Azione ESTERNA (pubblica/invia/social/gestionale) → instradata a n8n. Gira solo
     # qui, cioè sotto approvazione umana (apply_action è chiamata all'approve).
     if is_external_action(action):
