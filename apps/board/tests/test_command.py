@@ -177,3 +177,19 @@ def test_n8n_manage_delete_refused():
     r, client = _router(plan)
     res = r.handle("cancella il workflow n8n")
     assert not res.eseguite and not res.da_confermare and len(res.rifiutate) == 1
+
+
+def test_confirm_surfaces_meta_error(monkeypatch):
+    # Azione Meta (rispondi_commento) fallita → l'errore VERO deve risalire in "errore"
+    # (prima restava sepolto in esito → UI "non eseguito" muto). Path reale: chat_runner
+    # accoda con router._queue("internal", az=<azione meta>) poi confirm.
+    monkeypatch.setenv("AIOS_IG_TOKEN", "T")
+    monkeypatch.setattr("aios.sources.meta_actions.apply",
+                        lambda action, **k: {"ok": False, "errore": "(#10) permesso mancante"})
+    r, _ = _router({"valutazione": "", "fattibile": True, "risposta": "", "azioni": []})
+    az = {"canale": "instagram", "azione": "rispondi_commento",
+          "comment_id": "17_9", "message": "Grazie!"}
+    tok = r._queue("internal", "rispondi al commento IG", "chat_marketing", az=az)
+    out = r.confirm(tok)
+    assert out["ok"] is False
+    assert "permesso mancante" in (out.get("errore") or "")   # non più muto
