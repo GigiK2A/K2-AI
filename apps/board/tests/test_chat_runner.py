@@ -186,6 +186,27 @@ def test_esegui_external_goes_to_confirm_not_executed():
     assert client.writes == []                       # niente eseguito senza conferma
 
 
+def test_esegui_instagram_publish_needs_confirm():
+    # pubblicare su Instagram è azione Meta esterna → SEMPRE conferma, mai auto
+    script = [("esegui", {"descrizione": "pubblica il post", "canale": "instagram",
+                          "azione": "pubblica_post", "caption": "ciao",
+                          "image_url": "http://img/x.jpg"})]
+    orch, client = _orch(script)
+    ev = _events(orch, "pubblica su instagram", ["marketing"])
+    az = _done(ev, "marketing")["azioni"]
+    assert az[0]["stato"] == "da_confermare" and client.writes == []
+    assert "instagram" in az[0]["tipo"].lower() or "Instagram" in az[0]["tipo"]
+
+
+def test_esegui_ads_campaign_needs_confirm():
+    script = [("esegui", {"descrizione": "campagna lead", "canale": "meta_ads",
+                          "azione": "crea_campagna", "nome": "Promo", "obiettivo": "lead"})]
+    orch, client = _orch(script)
+    ev = _events(orch, "crea una campagna ads", ["marketing"])
+    az = _done(ev, "marketing")["azioni"]
+    assert az[0]["stato"] == "da_confermare" and "ADS" in az[0]["tipo"].upper()
+
+
 def test_esegui_forbidden_control_plane_refused():
     script = [("esegui", {"descrizione": "alza autonomia",
                           "tabella": "aios_policy_state", "op": "insert",
