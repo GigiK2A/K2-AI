@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import socket
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -10,18 +12,34 @@ GRAPH = "https://graph.facebook.com"
 
 Fetcher = Callable[[str], dict[str, Any]]
 
+# Alcuni container (es. Railway) non hanno rotta IPv6: se graph.facebook.com risolve a un
+# AAAA, la connessione muore con "Network unreachable" (ENETUNREACH) anche a servizio sano.
+# Forziamo IPv4 attorno al fetch, con lock per non lasciare l'override globale appeso.
+_gai_lock = threading.Lock()
+_orig_getaddrinfo = socket.getaddrinfo
+
+
+def _ipv4_getaddrinfo(*args, **kwargs):
+    res = _orig_getaddrinfo(*args, **kwargs)
+    v4 = [r for r in res if r[0] == socket.AF_INET]
+    return v4 or res            # se non c'è IPv4, lascia la lista originale
+
 
 def _urllib_fetch(url: str) -> dict[str, Any]:
-    try:
-        with urllib.request.urlopen(url, timeout=20) as resp:  # noqa: S310
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        # Meta manda il VERO errore (es. token invalidato) nel body anche sui 4xx:
-        # senza leggerlo qui, resterebbe un generico "HTTP 400 Bad Request".
+    with _gai_lock:
+        socket.getaddrinfo = _ipv4_getaddrinfo
         try:
-            return json.loads(exc.read().decode("utf-8"))
-        except Exception:
-            raise
+            with urllib.request.urlopen(url, timeout=20) as resp:  # noqa: S310
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            # Meta manda il VERO errore (es. token invalidato) nel body anche sui 4xx:
+            # senza leggerlo qui, resterebbe un generico "HTTP 400 Bad Request".
+            try:
+                return json.loads(exc.read().decode("utf-8"))
+            except Exception:
+                raise
+        finally:
+            socket.getaddrinfo = _orig_getaddrinfo
 
 
 class InstagramError(RuntimeError):
