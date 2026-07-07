@@ -149,11 +149,12 @@ class ChatAgent:
     """Un agente di dominio che risponde in chat come loop agentico streaming."""
 
     def __init__(self, orch: "ChatOrchestrator", dominio: str, llm: Any,
-                 request: str = "") -> None:
+                 request: str = "", media: list[dict] | None = None) -> None:
         self.orch = orch
         self.dominio = dominio
         self.llm = llm
         self.request = request or ""     # richiesta owner → scelta della skill/metodo
+        self.media = media               # allegati (immagini/PDF) per questo turno
         self.actor = f"chat_{dominio}"
         self.kernel = orch.kernel
         self.azioni: list[dict] = []   # esiti delle azioni `esegui` di questo turno
@@ -334,7 +335,7 @@ class ChatAgent:
             for ev in self.llm.stream_agentic(
                     system=self._system_prompt(), user=user,
                     tools=self._tool_defs(), tool_exec=self._exec_tool,
-                    web_search=bool(self.orch.web), history=hist):
+                    web_search=bool(self.orch.web), history=hist, media=self.media):
                 if ev.get("phase") == "done":
                     ev = {**ev, "azioni": list(self.azioni)}
                 yield ev
@@ -489,10 +490,10 @@ class ChatOrchestrator:
         return self._skill_method(self._choose_skill(text, None))
 
     def _speaker(self, dom: str, user_prompt: str, llm: Any, key: str, rnd: int,
-                 request: str = ""):
+                 request: str = "", media: list[dict] | None = None):
         """Un intervento: yield eventi taggati (agent/key/round), RITORNA il testo finale."""
         final = ""
-        agent = ChatAgent(self, dom, llm, request=request)
+        agent = ChatAgent(self, dom, llm, request=request, media=media)
         for ev in agent.stream(None, user_prompt=user_prompt):
             if ev.get("phase") == "done":
                 final = ev.get("text") or ""
@@ -516,16 +517,17 @@ class ChatOrchestrator:
         except Exception:
             return False
 
-    def _ceo_close(self, text: str, transcript: list[dict], targets: list[str]):
+    def _ceo_close(self, text: str, transcript: list[dict], targets: list[str],
+                   media: list[dict] | None = None):
         """Il CEO chiude la discussione: integra i pareri in UNA decisione (Sonnet)."""
         up = ("I reparti " + ", ".join(self._label(d) for d in targets) + " hanno discusso "
               "la richiesta dell'owner. Come CEO, chiudi con UNA decisione unica che integra "
               "i punti chiave, evidenzia accordi e trade-off e dà i prossimi passi concreti."
               + self._ceo_method(text)
               + f"\n\nRICHIESTA OWNER: {text}\n\n<discussione>\n{self._fmt(transcript)}\n</discussione>")
-        return (yield from self._ceo_voice(up))
+        return (yield from self._ceo_voice(up, media))
 
-    def _ceo_answer(self, text: str, transcript: list[dict]):
+    def _ceo_answer(self, text: str, transcript: list[dict], media: list[dict] | None = None):
         """Il CEO risponde DIRETTAMENTE (info/conferma/già discussa), senza convocare i reparti."""
         ctx = self._fmt(transcript) if transcript else ""
         up = (f"RICHIESTA OWNER: {text}\n\n"
@@ -535,14 +537,15 @@ class ChatOrchestrator:
                 "metodo qui sotto. Se ti manca un dato specifico, dillo e proponi di consultare "
                 "il reparto competente."
               + self._ceo_method(text))
-        return (yield from self._ceo_voice(up))
+        return (yield from self._ceo_voice(up, media))
 
-    def _ceo_voice(self, user_prompt: str):
+    def _ceo_voice(self, user_prompt: str, media: list[dict] | None = None):
         """Voce del CEO in streaming (nessun tool); yield eventi keyed 'ceo', ritorna il testo."""
         final = ""
         try:
             for ev in self.llm_strong.stream_agentic(
-                    system=_CEO_SYS, user=user_prompt, tools=[], tool_exec=lambda n, i: {}):
+                    system=_CEO_SYS, user=user_prompt, tools=[], tool_exec=lambda n, i: {},
+                    media=media):
                 if ev.get("phase") == "done":
                     final = ev.get("text") or ""
                 yield {**ev, "agent": "ceo", "key": "ceo", "round": 0}
@@ -570,14 +573,16 @@ class ChatOrchestrator:
             return {"modo": "consulta", "agenti": [self._route_one(text)], "motivo": ""}
 
     # ---- flussi conversazione ----
-    def _one_to_one(self, dom: str, text: str, history: list[dict] | None, llm: Any):
+    def _one_to_one(self, dom: str, text: str, history: list[dict] | None, llm: Any,
+                    media: list[dict] | None = None):
         try:
-            for ev in ChatAgent(self, dom, llm, request=text).stream(text, history):
+            for ev in ChatAgent(self, dom, llm, request=text, media=media).stream(text, history):
                 yield {**ev, "agent": dom, "key": dom}
         except Exception as exc:
             yield {"phase": "error", "agent": dom, "key": dom, "error": str(exc)[:200]}
 
-    def _debate(self, text: str, targets: list[str], transcript: list[dict], llm: Any):
+    def _debate(self, text: str, targets: list[str], transcript: list[dict], llm: Any,
+                media: list[dict] | None = None):
         """Dibattito sequenziale su trascritto condiviso + chiusura del CEO. Si ferma appena
         i reparti convergono (anche dopo 1 solo giro): niente giri di parole se sono d'accordo."""
         MAX_ROUNDS = 3
@@ -586,16 +591,17 @@ class ChatOrchestrator:
             for dom in targets:
                 final = yield from self._speaker(
                     dom, self._debate_prompt(dom, text, transcript, rnd),
-                    llm, f"{dom}#r{rnd}", rnd, request=text)
+                    llm, f"{dom}#r{rnd}", rnd, request=text, media=media)
                 if final.strip():
                     transcript.append({"speaker": dom, "text": final})
             if self._converged(transcript, targets):   # accordo → stop (anche dopo il 1° giro)
                 break
-        yield from self._ceo_close(text, transcript, targets)
+        yield from self._ceo_close(text, transcript, targets, media)
 
     # ---- stream principale ----
     def stream(self, text: str, agents: Any = None,
-               history: list[dict] | None = None) -> Iterator[dict]:
+               history: list[dict] | None = None,
+               media: list[dict] | None = None) -> Iterator[dict]:
         if not text or not text.strip():
             yield {"phase": "error", "agent": "", "error": "istruzione vuota"}
             return
@@ -607,11 +613,11 @@ class ChatOrchestrator:
             targets = self.resolve_targets(text, agents)
             yield {"phase": "start", "agents": targets}
             if len(targets) == 1:
-                yield from self._one_to_one(targets[0], text, history, llm)
+                yield from self._one_to_one(targets[0], text, history, llm, media)
             else:
                 transcript = self._transcript_from_history(history)
                 transcript.append({"speaker": "owner", "text": text})
-                yield from self._debate(text, targets, transcript, llm)
+                yield from self._debate(text, targets, transcript, llm, media)
             yield {"phase": "all_done", "agents": targets}
             return
 
@@ -623,7 +629,7 @@ class ChatOrchestrator:
 
         if tri["modo"] == "rispondi":     # il CEO risponde direttamente
             yield {"phase": "start", "agents": ["ceo"]}
-            yield from self._ceo_answer(text, transcript)
+            yield from self._ceo_answer(text, transcript, media)
             yield {"phase": "all_done", "agents": ["ceo"]}
             return
 
@@ -631,8 +637,8 @@ class ChatOrchestrator:
         targets = tri.get("agenti") or [self._route_one(text)]
         yield {"phase": "start", "agents": targets}
         if len(targets) == 1:             # un reparto basta → risponde lui
-            yield from self._one_to_one(targets[0], text, history, llm)
+            yield from self._one_to_one(targets[0], text, history, llm, media)
         else:                             # più reparti → dibattito + chiusura CEO
             transcript.append({"speaker": "owner", "text": text})
-            yield from self._debate(text, targets, transcript, llm)
+            yield from self._debate(text, targets, transcript, llm, media)
         yield {"phase": "all_done", "agents": targets}

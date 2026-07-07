@@ -132,6 +132,15 @@
   .cp-umsg{align-self:flex-end;max-width:85%;background:#2563EB;color:#fff;padding:9px 12px;border-radius:14px;border-bottom-right-radius:4px;font-size:13px;line-height:1.45;word-break:break-word}
   .cp-turn{display:flex;flex-direction:column;gap:8px}
   .cp-empty{margin:auto;text-align:center;color:#94a3b8;font-size:13px;max-width:280px}
+  /* allegati chat */
+  .cp-att{display:none;flex-wrap:wrap;gap:5px;padding:8px 12px 0}
+  .cp-attchip{font-size:11px;background:#eef2f9;border-radius:8px;padding:3px 8px;color:#334155;white-space:nowrap}
+  .cp-attchip b{cursor:pointer;color:#94a3b8;margin-left:4px}.cp-attchip b:hover{color:#DC2626}
+  .cp-clip{width:40px;flex-shrink:0;font-size:17px;background:#fff;border:1px solid #E6EAF2;border-radius:12px;cursor:pointer}
+  .cp-clip:hover{background:#f1f5f9}
+  .cp-umsg-att{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px}
+  .cp-umsg-att img{max-width:150px;max-height:150px;border-radius:8px;display:block}
+  .cp-umsg-att .cp-attchip{background:rgba(255,255,255,.22);color:#fff}
   .cp-note{font-size:11.5px;color:#64748b;background:#eef2f9;border-radius:8px;padding:5px 9px;align-self:flex-start;font-weight:600}
   .cp-round{font-size:10.5px;font-weight:800;color:#94a3b8;text-align:center;letter-spacing:.04em;margin:3px 0}
   .carow.carow-syn{border-color:#C9A227;background:linear-gradient(180deg,#fffdf5,#fff);box-shadow:0 8px 22px -14px rgba(201,162,39,.5)}
@@ -1064,7 +1073,25 @@ function cpHandleEv(ev,ctx){const ph=ev.phase;const sc=ctx.scroll||cpScroll;
   else if(ph==="error"){set("err","✕ errore");r.text.textContent=ev.error||"errore";}
   sc();}
 // ---- helper condivisi bolla + pagina (una sola sessione attiva: CHATP_SID) ----
-function addUserMsg(el,txt,scrollFn){const d=document.createElement("div");d.className="cp-umsg";d.textContent=txt;el.appendChild(d);(scrollFn||cpScroll)();}
+let CHATP_ATT=[];   // allegati in attesa: [{name, media_type, data(base64)}]
+function addUserMsg(el,txt,scrollFn,atts){const d=document.createElement("div");d.className="cp-umsg";
+  if(txt)d.appendChild(document.createTextNode(txt));
+  if(atts&&atts.length){const w=document.createElement("div");w.className="cp-umsg-att";
+    w.innerHTML=atts.map(a=>(a.media_type||"").startsWith("image/")
+      ?`<img src="data:${a.media_type};base64,${a.data}" alt="${esc(a.name)}">`
+      :`<span class="cp-attchip">📄 ${esc(a.name)}</span>`).join("");
+    d.appendChild(w);}
+  el.appendChild(d);(scrollFn||cpScroll)();}
+function cpRenderAtt(){const el=$("cp-att");if(!el)return;
+  el.innerHTML=CHATP_ATT.map((a,i)=>`<span class="cp-attchip">${(a.media_type||'').startsWith('image/')?'🖼':'📄'} ${esc(a.name)} <b data-i="${i}">✕</b></span>`).join("");
+  el.querySelectorAll("b[data-i]").forEach(b=>b.onclick=()=>{CHATP_ATT.splice(+b.dataset.i,1);cpRenderAtt();});
+  el.style.display=CHATP_ATT.length?"flex":"none";}
+function cpAddFiles(files){[...files].forEach(f=>{
+  if(f.size>12*1024*1024){alert("File troppo grande (max 12MB): "+f.name);return;}
+  const r=new FileReader();
+  r.onload=()=>{const s=String(r.result);const b64=s.slice(s.indexOf(",")+1);
+    CHATP_ATT.push({name:f.name,media_type:f.type||"application/octet-stream",data:b64});cpRenderAtt();};
+  r.readAsDataURL(f);});}
 function histInto(el,msgs,scrollFn){el.innerHTML="";
   if(!msgs||!msgs.length){el.innerHTML='<div class="cp-empty">Conversazione vuota — scrivi il primo messaggio qui sotto.</div>';return;}
   msgs.forEach(m=>{if(m.role==="user"){addUserMsg(el,m.content||"",scrollFn);}
@@ -1078,12 +1105,12 @@ async function ensureSession(){
   let s={};try{s=await jpost("/api/chat/sessions",{agents:CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto"});}catch(e){}
   if(s&&s.id)CHATP_SID=s.id;return CHATP_SID;}
 // streaming condiviso: crea/continua la sessione attiva e renderizza il turno in `container`
-async function streamInto(container,scrollFn,text){
+async function streamInto(container,scrollFn,text,atts){
   const agents=CHAT_AGENTS.size?[...CHAT_AGENTS]:"auto";const sid=await ensureSession();
   const turn=document.createElement("div");turn.className="cp-turn";container.appendChild(turn);
   const ctx={stack:turn,rows:{},scroll:scrollFn};(scrollFn||cpScroll)();
   try{
-    const res=await fetch("/api/chat/stream",{method:"POST",headers:{"Content-Type":"application/json",...authHdr()},body:JSON.stringify({text,agents,session_id:sid})});
+    const res=await fetch("/api/chat/stream",{method:"POST",headers:{"Content-Type":"application/json",...authHdr()},body:JSON.stringify({text,agents,session_id:sid,attachments:atts||[]})});
     if(res.status===401){on401();throw new Error("401");}
     if(!res.body)throw new Error("no stream");
     const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
@@ -1121,11 +1148,14 @@ function cpRenderChips(){const el=$("cp-agents");if(!el)return;const auto=CHAT_A
   el.querySelectorAll(".cag").forEach(c=>c.onclick=()=>{const a=c.dataset.ag;
     if(a==='auto')CHAT_AGENTS.clear();else{CHAT_AGENTS.has(a)?CHAT_AGENTS.delete(a):CHAT_AGENTS.add(a);}cpRenderChips();});}
 async function cpSend(){
-  if(CHATP_BUSY)return;const inp=$("cp-input");const t=(inp.value||"").trim();if(!t)return;
+  if(CHATP_BUSY)return;const inp=$("cp-input");let t=(inp.value||"").trim();
+  if(!t && !CHATP_ATT.length)return;
+  if(!t)t="Dai un'occhiata a questo allegato.";      // invio con solo allegato
+  const atts=CHATP_ATT.slice();CHATP_ATT=[];cpRenderAtt();
   inp.value="";CHATP_BUSY=true;
   const empt=cpConv().querySelector(".cp-empty");if(empt)empt.remove();
-  addUserMsg(cpConv(),t,cpScroll);
-  await streamInto(cpConv(),cpScroll,t);   // ensureSession crea/continua la sessione attiva
+  addUserMsg(cpConv(),t,cpScroll,atts);
+  await streamInto(cpConv(),cpScroll,t,atts);   // ensureSession crea/continua la sessione attiva
   CHATP_BUSY=false;$("cp-input").focus();cpLoadSessions(CHATP_SID);load2();}
 function load2(){/* refresh silenzioso decisioni/overview dopo azioni chat */try{if(typeof loadOverview==="function"&&VIEW==="overview")loadOverview();}catch(e){}}
 async function loadChatPage(){
@@ -1138,13 +1168,19 @@ async function loadChatPage(){
     <div class="card cpmain">
       <div id="cp-agents" class="cagents"></div>
       <div id="cp-conv"><div class="cp-empty">Scegli una conversazione o creane una nuova.</div></div>
+      <div id="cp-att" class="cp-att"></div>
       <div class="chatp-in" style="border-top:1px solid #f1f5f9">
-        <input id="cp-input" placeholder="Scrivi agli agenti…" autocomplete="off">
+        <input type="file" id="cp-file" multiple hidden
+          accept="image/*,application/pdf,.docx,.xlsx,.csv,.txt,.md,.json">
+        <button id="cp-clip" class="cp-clip" title="Allega foto o documenti">📎</button>
+        <input id="cp-input" placeholder="Scrivi agli agenti… (o allega foto/documenti)" autocomplete="off">
         <button id="cp-send" class="bg-brand text-white rounded-lg px-3 font-semibold">➤</button>
       </div>
     </div></div>`;
-  cpRenderChips();
+  cpRenderChips();CHATP_ATT=[];cpRenderAtt();
   $("cp-new").onclick=cpNew;$("cp-send").onclick=cpSend;
+  $("cp-clip").onclick=()=>$("cp-file").click();
+  $("cp-file").onchange=e=>{cpAddFiles(e.target.files);e.target.value="";};
   $("cp-input").addEventListener("keydown",e=>{if(e.key==="Enter")cpSend();});
   let rows=[];try{rows=await jget("/api/chat/sessions");}catch(e){}
   await cpLoadSessions(rows[0]&&rows[0].id);
