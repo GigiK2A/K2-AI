@@ -27,9 +27,16 @@ DOMINI = ["marketing", "vendite", "finance", "operations", "legal", "hr"]
 # validare la scelta manuale. Marketing non ha DomainConfig → sensori/sistema di ripiego.
 _MK_SENSORS: list[tuple[str, dict]] = [
     ("leggi_calendario", {}), ("leggi_post_ig", {"limit": 6}),
+    ("leggi_commenti_ig", {}),
     ("leggi_servizi", {}), ("leggi_topics", {}), ("leggi_iscritti", {}),
     ("leggi_analytics", {}), ("leggi_prospects", {}), ("leggi_ranking_seo", {}),
 ]
+# Descrizioni sensori dove il nome non basta (l'agente deve sapere cosa fa/che input prende)
+_SENSOR_DESC = {
+    "leggi_commenti_ig": ("Legge il TESTO dei commenti sotto i post Instagram (non solo il "
+                          "numero). Senza parametri scorre i post recenti con commenti e ne "
+                          "riporta il contenuto; con {media_id} legge quel post specifico."),
+}
 _MK_SYSTEM = (
     "Sei il responsabile Marketing di K2-AI (PMI italiana, AI operativa per PMI). "
     "Cresci il brand e i contenuti con pragmatismo, numeri e zero buzzword. "
@@ -226,7 +233,8 @@ class ChatAgent:
             if tname in names:
                 defs.append({
                     "name": tname,
-                    "description": f"Sensore di reparto (sola lettura): {tname}.",
+                    "description": _SENSOR_DESC.get(
+                        tname, f"Sensore di reparto (sola lettura): {tname}."),
                     "input_schema": {"type": "object", "properties": {},
                                      "additionalProperties": True},
                 })
