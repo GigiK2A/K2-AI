@@ -112,6 +112,7 @@ def _process_attachments(atts: list[dict] | None):
     media: list[dict] = []
     texts: list[str] = []
     names: list[str] = []
+    image_urls: list[str] = []
     for a in (atts or [])[:8]:
         if not isinstance(a, dict):
             continue
@@ -124,6 +125,14 @@ def _process_attachments(atts: list[dict] | None):
         if mt.startswith("image/"):
             media.append({"type": "image", "source": {"type": "base64",
                           "media_type": mt, "data": data}})
+            # carico su Storage → URL pubblico, così l'agente può PUBBLICARLA su Instagram
+            try:
+                from aios.storage import upload_public
+                up = upload_public(name, mt, data)
+                if up.get("ok") and up.get("url"):
+                    image_urls.append(up["url"])
+            except Exception:
+                pass
         elif mt == "application/pdf" or name.lower().endswith(".pdf"):
             media.append({"type": "document", "source": {"type": "base64",
                           "media_type": "application/pdf", "data": data}})
@@ -137,6 +146,10 @@ def _process_attachments(atts: list[dict] | None):
                 texts.append(f"### {name}\n{t}")
     doc_text = ("\n\n# ALLEGATI (contenuto estratto dall'owner)\n" + "\n\n".join(texts)
                 + "\nUsa questo contenuto per rispondere.") if texts else ""
+    if image_urls:
+        doc_text += ("\n\n# IMMAGINI ALLEGATE (URL pubblici già caricati — usali come "
+                     "image_url in `esegui` pubblica_post se l'owner chiede di pubblicarle "
+                     "su Instagram):\n" + "\n".join(image_urls))
     return media, doc_text, names
 
 

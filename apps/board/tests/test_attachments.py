@@ -44,3 +44,25 @@ def test_process_office_becomes_text_not_media():
 
 def test_process_empty():
     assert _process_attachments(None) == ([], "", [])
+
+
+def test_storage_ext():
+    from aios import storage
+    assert storage._ext("a.PNG", "") == ".png"
+    assert storage._ext("x", "image/webp") == ".webp"
+
+
+def test_storage_not_configured(monkeypatch):
+    from aios import storage
+    monkeypatch.delenv("AIOS_SUPABASE_URL", raising=False)
+    monkeypatch.delenv("AIOS_SUPABASE_SERVICE_KEY", raising=False)
+    assert storage.upload_public("a.png", "image/png", "AAAA")["ok"] is False
+
+
+def test_image_uploaded_url_injected(monkeypatch):
+    monkeypatch.setattr("aios.storage.upload_public",
+                        lambda name, mt, data: {"ok": True, "url": "https://x/pub/i.png"})
+    media, doc, names = _process_attachments(
+        [{"name": "foto.png", "media_type": "image/png", "data": "AAAA"}])
+    assert media and media[0]["type"] == "image"
+    assert "IMMAGINI ALLEGATE" in doc and "https://x/pub/i.png" in doc
