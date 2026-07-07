@@ -152,6 +152,13 @@ _BASE_TOOL_DEFS = [
      "input_schema": {"type": "object", "properties": {
          "workflow_id": {"type": "string"}, "solo_errori": {"type": "boolean"},
          "limit": {"type": "integer"}}, "additionalProperties": True}},
+    {"name": "genera_immagine",
+     "description": ("Genera un'immagine con l'AI (GPT Image) da una descrizione testuale; "
+                     "ritorna un URL pubblico già caricato, usabile come image_url in "
+                     "`esegui` pubblica_post. params: {prompt}. Descrivi bene soggetto, stile, "
+                     "testo eventuale, formato."),
+     "input_schema": {"type": "object", "properties": {"prompt": {"type": "string"}},
+                      "required": ["prompt"], "additionalProperties": True}},
 ]
 
 _FORBIDDEN = ("fuori dal perimetro consentito (solo allowlist; mai control-plane o "
@@ -170,16 +177,21 @@ _CEO_SYS = ("Sei il CEO di K2-AI (PMI italiana). Conosci le posizioni dei repart
 # Bias forte verso 'rispondi': il CEO è competente e ha i metodi (skill); convoca solo
 # quando serve davvero un'analisi di reparto o una decisione contesa tra funzioni.
 _CEO_TRIAGE_SYS = (
-    "Sei il CEO di K2-AI: competente, operativo, e hai a disposizione i metodi (skill) "
-    "dell'azienda. Gestisci TU la maggior parte delle richieste.\n"
-    "- modo='rispondi' (DEFAULT) per: come si fa una cosa, un consiglio operativo, un piano, "
-    "un chiarimento, una conferma, un follow-up di un discorso in corso, o qualcosa che sai "
-    "già fare applicando il metodo giusto. La maggior parte dei messaggi è questo.\n"
-    "- modo='consulta' SOLO se serve davvero un'analisi specialistica di reparto o un dato che "
-    "non puoi produrre tu, o una decisione contesa tra funzioni diverse. In 'agenti' metti il "
-    "MINIMO indispensabile (spesso UN solo reparto tra: marketing, vendite, finance, operations, "
-    "legal, hr).\n"
-    "Non convocare riunioni per cose che sai già fare. Nel dubbio: rispondi tu.")
+    "Sei il CEO di K2-AI: competente, operativo, e coordini un team di specialisti "
+    "(marketing, vendite, finance, operations, legal, hr). Il tuo lavoro è decidere se una "
+    "richiesta la gestisci tu o se serve lo specialista.\n"
+    "- modo='rispondi' per il GENERICO: una domanda ampia, un consiglio di alto livello, un "
+    "chiarimento, una conferma, un follow-up di un discorso in corso, come impostare un lavoro, "
+    "una richiesta trasversale che non entra nel dettaglio di un reparto.\n"
+    "- modo='consulta' quando si ENTRA NEL DETTAGLIO di un dominio: un'analisi specialistica, "
+    "un dato/numero di reparto, un deliverable concreto (post, campagna, calcolo, contratto, "
+    "report, workflow), l'uso di uno strumento specifico, o competenza verticale che è propria "
+    "di quel reparto. In questi casi passa la parola a chi di dovere. In 'agenti' metti il "
+    "MINIMO: di norma UN SOLO reparto (marketing, vendite, finance, operations, legal, hr); "
+    "più di uno solo se la richiesta è davvero contesa tra funzioni.\n"
+    "Regola pratica: appena la richiesta diventa specifica/operativa di un reparto, consulta "
+    "quel reparto invece di rispondere in proprio. Il generico lo tieni tu, il dettaglio lo "
+    "porti allo specialista.")
 
 
 class ChatAgent:

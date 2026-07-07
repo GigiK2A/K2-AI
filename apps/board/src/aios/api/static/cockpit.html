@@ -142,6 +142,7 @@
   .cp-umsg-att img{max-width:150px;max-height:150px;border-radius:8px;display:block}
   .cp-umsg-att .cp-attchip{background:rgba(255,255,255,.22);color:#fff}
   .cp-note{font-size:11.5px;color:#64748b;background:#eef2f9;border-radius:8px;padding:5px 9px;align-self:flex-start;font-weight:600}
+  .cp-handoff{color:#7c3aed;background:#f3eefe;border-left:3px solid #7c3aed}
   .cp-round{font-size:10.5px;font-weight:800;color:#94a3b8;text-align:center;letter-spacing:.04em;margin:3px 0}
   .carow.carow-syn{border-color:#C9A227;background:linear-gradient(180deg,#fffdf5,#fff);box-shadow:0 8px 22px -14px rgba(201,162,39,.5)}
   .carow.carow-syn .caname{color:#8a6d13}
@@ -1051,9 +1052,12 @@ function renderAzioniInto(box,azioni){if(!box||!azioni||!azioni.length)return;le
     w.appendChild(b);box.appendChild(w);});}
 function cpHandleEv(ev,ctx){const ph=ev.phase;const sc=ctx.scroll||cpScroll;
   if(ph==="triage"){const m=ev.motivo?(" — "+ev.motivo):"";
-    const t=ev.modo==="rispondi"?("👔 Il CEO risponde"+m)
-      :("👔 Il CEO consulta "+((ev.agenti||[]).map(d=>(META[d]||{label:d}).label).join(", ")||"il reparto competente")+m);
-    ctx.stack.insertAdjacentHTML("beforeend",`<div class="cp-note">${esc(t)}</div>`);sc();return;}
+    const ags=(ev.agenti||[]).map(d=>(META[d]||{label:d}).label);
+    let t,cls="cp-note";
+    if(ev.modo==="rispondi"){t="👔 Il CEO risponde";}
+    else if(ags.length<=1){t="👔 Il CEO passa la parola a "+(ags[0]||"il reparto competente");cls="cp-note cp-handoff";}
+    else{t="👔 Il CEO coinvolge "+ags.join(", ");cls="cp-note cp-handoff";}
+    ctx.stack.insertAdjacentHTML("beforeend",`<div class="${cls}">${esc(t+m)}</div>`);sc();return;}
   if(ph==="start"){const ags=(ev.agents||[]);
     if(ags.length>1)ctx.stack.insertAdjacentHTML("beforeend",`<div class="cp-note">🗣️ Discussione tra ${ags.map(d=>(META[d]||{label:d}).label).join(", ")} — poi sintesi</div>`);
     sc();return;}
