@@ -35,6 +35,22 @@ def _humanize(key: str) -> str:
     return str(key).replace("_", " ").strip().capitalize()
 
 
+def _scalar_str(v) -> str:
+    """Scalare → testo da stampare: bool in Sì/No (mai 'True' raw in un report pagato),
+    numeri in formato italiano (migliaia col punto, decimali con virgola)."""
+    if isinstance(v, bool):
+        return "Sì" if v else "No"
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
+    if isinstance(v, int) and 1900 <= v <= 2100:
+        return str(v)                     # anno: mai '2.024'
+    if isinstance(v, int) and abs(v) >= 1000:
+        return f"{v:,}".replace(",", ".")
+    if isinstance(v, float):
+        return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return str(v)
+
+
 _EMOJI = re.compile(r"[\U0001F000-\U0001FAFF☀-➿←-⇿⬀-⯿️�]")
 
 
@@ -560,10 +576,13 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
                    "posizione_azienda", "posizione_competitor"}
 
     def render_value(v, level=0, skip_keys=()):
-        if _is_list_of_dicts(v) and _has(v, "semaforo"):
-            body.append(ST.heatmap(v, S)); body.append(Spacer(1, 4)); return
+        # kpi_table PRIMA della heatmap: gli indici hanno {nome, valore, benchmark, semaforo}
+        # e la heatmap stampa SOLO nome+colore → card colorate senza numero in un report
+        # pagato (bug prod 8 lug). La heatmap resta per le liste solo-semaforo (mappa_aree).
         if _is_list_of_dicts(v) and _has(v, "valore", "benchmark"):
             body.append(ST.kpi_table(v, S)); body.append(Spacer(1, 4)); return
+        if _is_list_of_dicts(v) and _has(v, "semaforo"):
+            body.append(ST.heatmap(v, S)); body.append(Spacer(1, 4)); return
         # matrice priorità: criticità con severity/gravità + effort + ROI → tabella colorata
         if (_is_list_of_dicts(v) and _has(v, "severity", "gravita", "livello")
                 and _has(v, "effort", "sforzo", "roi", "ritorno")):
@@ -597,11 +616,18 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
             for k, vv in v.items():
                 if vv in (None, "", [], {}) or k in skip_keys:
                     continue
-                if isinstance(vv, (dict, list)):
+                # lista di SCALARI (anni: [2024], valori: [690000]) → inline sulla stessa
+                # riga, NON heading+ricorsione (che li perdeva: heading 'Anni' vuoto,
+                # 'Voce:' senza numeri — bug prod 8 lug).
+                if isinstance(vv, list) and vv and all(
+                        isinstance(x, (int, float, str)) and not isinstance(x, bool) for x in vv):
+                    joined = ", ".join(_scalar_str(x) for x in vv)
+                    body.append(Paragraph(f"<b>{html.escape(_humanize(k))}:</b> {_rich(joined)}", S["bullet"]))
+                elif isinstance(vv, (dict, list)):
                     body.append(Paragraph(html.escape(_humanize(k)), S["h3"] if level else S["h2"]))
                     render_value(vv, level + 1, skip_keys)
                 else:
-                    body.append(Paragraph(f"<b>{html.escape(_humanize(k))}:</b> {_rich(str(vv))}", S["bullet"]))
+                    body.append(Paragraph(f"<b>{html.escape(_humanize(k))}:</b> {_rich(_scalar_str(vv))}", S["bullet"]))
         elif isinstance(v, list):
             for item in v[:40]:
                 if isinstance(item, dict):
@@ -617,13 +643,19 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
                         if kk in ("titolo", "nome", "area", "contenuto", "rischi", "rischi_opportunita",
                                   "azioni", "norme_citate", "fonti", "findings") or vv in (None, "", [], {}) or kk in skip_keys:
                             continue
-                        if isinstance(vv, (dict, list)):
+                        if isinstance(vv, list) and vv and all(
+                                isinstance(x, (int, float, str)) and not isinstance(x, bool) for x in vv):
+                            joined = ", ".join(_scalar_str(x) for x in vv)
+                            body.append(Paragraph(f"<b>{html.escape(_humanize(kk))}:</b> {_rich(joined)}", S["bullet"]))
+                        elif isinstance(vv, (dict, list)):
                             render_value(vv, level + 1, skip_keys)
                         else:
-                            body.append(Paragraph(f"<b>{html.escape(_humanize(kk))}:</b> {_rich(str(vv))}", S["bullet"]))
+                            body.append(Paragraph(f"<b>{html.escape(_humanize(kk))}:</b> {_rich(_scalar_str(vv))}", S["bullet"]))
                     body.append(Spacer(1, 2))
-                elif isinstance(item, str):
-                    body.append(Paragraph(f'<font color="{ST.hx(ST.GOLD_DK)}">•</font> {_rich(item)}', S["bullet"]))
+                elif item is not None and not isinstance(item, (dict, list)):
+                    # anche gli scalari nudi (numeri) si stampano — prima solo str → i
+                    # numeri in lista sparivano silenziosamente
+                    body.append(Paragraph(f'<font color="{ST.hx(ST.GOLD_DK)}">•</font> {_rich(_scalar_str(item))}', S["bullet"]))
         else:
             body.append(Paragraph(html.escape(str(v)), S["body"]))
 
@@ -660,6 +692,16 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
             continue
         body.append(_Heading(f"{n:02d} · {_humanize(key)}", S["h1"], f"section-{n}")); n += 1
         body.append(Spacer(1, 2))
+        # Sezioni-PROIEZIONE (scenari, forecast, sensitivity): i numeri sono per natura
+        # ipotesi di scenario, non consuntivi — nota esplicita sotto il titolo, così un
+        # 'ricavi proiettati 2.250.000' non si legge come dato verificato (QA prod 8 lug:
+        # KPI/target di scenario presentati come quasi-definitivi).
+        if re.search(r"scenari|proiezion|sensitivity|forecast|previsional", key.lower()):
+            body.append(Paragraph(
+                "<i>Valori di scenario: proiezioni indicative su ipotesi dichiarate "
+                "(da confermare con dati consuntivi) — non sono dati verificati.</i>",
+                S["bullet"]))
+            body.append(Spacer(1, 2))
         render_value(val, 1)
         body.append(Spacer(1, 4))
 

@@ -482,7 +482,8 @@ def score_bars(items: list, S=None, *, label_key="forza", score_key="scoring",
 
 def semaforo_dot(stato: str) -> str:
     col = SEMAFORO.get(str(stato).lower(), NEUTRAL)
-    return f'<font color="{hx(col)}">●</font> {html_escape(str(stato).capitalize())}'
+    # '•' (U+2022): presente nei font imbarcati — '●' usciva come glifo tofu nel PDF
+    return f'<font color="{hx(col)}" size="12">•</font> {html_escape(str(stato).capitalize())}'
 
 
 def heatmap(items: list, S, area_key="area", sem_key="semaforo") -> Table:

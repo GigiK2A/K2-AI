@@ -243,7 +243,10 @@ check("riclass CE contiene EBITDA 121.861",
       any("ebitda" in row["voce"].lower() and approx(row["valori"][0], 121861.50) for row in ric["conto_economico"]))
 
 mar = finance.build_marginalita(r)
-check("marginalita: stima_da_aggregati=True (BEP non derivabile dagli aggregati)", mar.get("stima_da_aggregati") is True)
+# 8 lug: NIENTE flag 'stima_da_aggregati' — con tutto None stampava 'Stima da
+# aggregati: True' come unica riga della sezione. All-None → il render la salta.
+check("marginalita: nessun flag booleano residuo (sezione all-None → saltata dal render)",
+      "stima_da_aggregati" not in mar and all(v is None for v in mar.values()))
 check("marginalita: BEP onesto = None (non inventato)", mar.get("bep_valore") is None)
 
 val = finance.build_valutazione(r, 7.0)

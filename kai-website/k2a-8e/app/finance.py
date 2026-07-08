@@ -386,14 +386,27 @@ def to_bilancio_fields(reclass: dict) -> dict:
 
 def enrich_bilancio(b: dict) -> dict:
     """Se il bilancio porta le VOCI grezze, deriva gli aggregati deterministicamente e li
-    SOVRASCRIVE (le voci battono gli aggregati LLM, anche sbagliati). Senza voci → invariato."""
+    SOVRASCRIVE (le voci battono gli aggregati LLM, anche sbagliati). Senza voci → invariato.
+
+    ECCEZIONE (bug prod 8 lug 2026 — PN -165k inventato): se la QUADRATURA della
+    riclassificazione NON torna, le voci sono estratte/classificate male (autofill) e i
+    derivati sono garbage (PN 500k del cliente finito nell'attivo → PN derivato -165k,
+    D/E -2,61, 'ricapitalizzare urgentemente'). In quel caso gli aggregati GIÀ PRESENTI
+    nel bilancio (forniti dall'utente) VINCONO sui derivati; i derivati riempiono solo i
+    buchi. La riclassificazione resta in _reclass (con warnings) per la nota di quadratura."""
     if not isinstance(b, dict):
         return b
     voci = b.get("voci")
     if not isinstance(voci, list) or not voci:
         return b
     reclass = reclassify_bilancio(voci, b.get("anno"))
-    return {**b, **to_bilancio_fields(reclass), "_reclass": reclass}
+    derived = to_bilancio_fields(reclass)
+    quad_ok = bool((reclass.get("quadratura") or {}).get("ok"))
+    if not quad_ok:
+        # voci inaffidabili → il fornito batte il derivato (derived solo come fallback)
+        merged = {k: v for k, v in derived.items() if b.get(k) is None}
+        return {**b, **merged, "_reclass": reclass, "_reclass_untrusted": True}
+    return {**b, **derived, "_reclass": reclass}
 
 
 # ───────────────────────── indici per il report (computati) ─────────────────────────
@@ -488,10 +501,12 @@ def build_riclassificazione(reclass: dict) -> dict:
 def build_marginalita(reclass: dict) -> dict:
     """BEP / leva operativa richiedono la divisione costi fissi/variabili (contabilità
     analitica), NON derivabile dagli aggregati di bilancio → onestamente null + flag."""
+    # tutto None → NIENTE flag 'stima_da_aggregati': una sezione con il solo booleano
+    # stampava 'Stima da aggregati: True' e nient'altro (bug prod 8 lug). All-None →
+    # il render la salta per intero (_effectively_empty).
     return {
         "margine_contribuzione": None, "costi_fissi": None, "costi_variabili": None,
         "bep_valore": None, "bep_quantita": None, "leva_operativa": None, "margine_sicurezza": None,
-        "stima_da_aggregati": True,
     }
 
 
@@ -543,6 +558,63 @@ def apply_financeboost_sections(deliverable: dict, reclass: dict, wacc_pct: Opti
     out["marginalita"] = build_marginalita(reclass)
     out["valutazione_performance"] = build_valutazione(reclass, wacc_pct)
     return out
+
+
+def reclass_from_aggregates(b: dict) -> Optional[dict]:
+    """Reclass-shaped dict dagli AGGREGATI forniti dall'utente (PN, EBITDA, ricavi…),
+    per quando le voci grezze esistono ma la quadratura NON torna (estrazione/autofill
+    inaffidabile — bug prod 8 lug 2026: PN 500k del cliente → PN derivato -165k).
+    I numeri dell'utente battono i derivati garbage: indici computati SOLO da ciò che
+    ha fornito (D/E, ROE, EBITDA margin…), il resto onestamente None. Nessuna quadratura
+    verificabile → ok=None (non è un bilancio a voci)."""
+    if not isinstance(b, dict):
+        return None
+    def n(k):
+        return _num(b.get(k))
+    ricavi, ebitda, ebit = n("ricavi"), n("ebitda"), n("reddito_operativo")
+    utile, ta = n("utile_netto"), n("totale_attivo")
+    ac, pc = n("attivo_corrente"), n("passivo_corrente")
+    pn, df = n("patrimonio_netto"), n("debiti_finanziari")
+    if not any(v is not None for v in (ricavi, ebitda, utile, pn, df)):
+        return None
+    sp = {"totale_attivo": ta, "attivo_corrente": ac, "passivo_corrente": pc,
+          "patrimonio_netto": pn, "debiti_finanziari": df, "debiti_terzi": None,
+          "immobilizzazioni_nette": None, "liquidita": None}
+    ce = {"ricavi": ricavi, "ebitda": ebitda, "ebit": ebit, "utile_netto": utile}
+    indici = {
+        "de": _r(_div(df, pn)),
+        "de_totale": None,          # debiti totali non forniti come aggregato
+        "roe": _p(_div(utile, pn)),
+        "ros": _p(_div(ebit, ricavi)) if ricavi else None,
+        "roi": _p(_div(ebit, ta)) if ta else None,
+        "ebitda_margin": _p(_div(ebitda, ricavi)) if ricavi else None,
+        "current_ratio": _r(_div(ac, pc)),
+        "quick_ratio": None,        # rimanenze non note dagli aggregati
+        "ccn": _m(round(ac - pc, 2)) if (ac is not None and pc) else None,
+        "pfn": None, "interest_coverage": None,
+        "autonomia_finanziaria": _p(_div(pn, ta)) if ta else None,
+        "dso": None,
+    }
+    return {"anno": b.get("anno"), "sp": sp, "ce": ce, "indici": indici,
+            "quadratura": {"ok": None}, "classificazione": [],
+            "warnings": ["indici da AGGREGATI forniti dal cliente (voci grezze scartate: "
+                         "quadratura non rispettata)"],
+            "fonte": "aggregati_cliente"}
+
+
+def latest_aggregates_from_inputs(inputs: dict) -> Optional[dict]:
+    """Il bilancio più recente del form (anche SENZA voci) → reclass dagli aggregati."""
+    if not isinstance(inputs, dict):
+        return None
+    bilanci = inputs.get("bilanci")
+    if not isinstance(bilanci, list) or not bilanci:
+        return None
+    cand = [b for b in bilanci if isinstance(b, dict)]
+    if not cand:
+        return None
+    with_year = [b for b in cand if _num(b.get("anno")) is not None]
+    b = max(with_year, key=lambda x: _num(x.get("anno"))) if with_year else cand[-1]
+    return reclass_from_aggregates(b)
 
 
 def latest_reclass_from_inputs(inputs: dict) -> Optional[dict]:

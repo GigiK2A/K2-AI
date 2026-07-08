@@ -250,6 +250,13 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
     Estratto da run() per essere testabile in isolamento (senza jobs/validazione/render).
     Ogni hook è no-op se il deliverable non ha gli slot attesi. Vedi test_pipeline_bindings.py.
     """
+    # Sanitizer TRASVERSALE (bug prod 8 lug: 'Impatto: 2024.0'): un anno trapelato in un
+    # campo numerico percent-like corrompe la voce → si scarta prima di ogni binding.
+    deliverable, _n_impl = quality.sanitize_implausible_numbers(deliverable, inputs)
+    if _n_impl:
+        filiera_meta = {**filiera_meta, "valori_implausibili_rimossi": _n_impl}
+        log.info("bindings: %d valori anno-trapelato rimossi da campi percent-like", _n_impl)
+
     # Binding strutturale (Fix #0 Fase 2): gli slot numerici di valutazione vengono
     # SOVRASCRITTI col valore del quant deterministico (non ri-emessi dall'LLM).
     # Chiude INV1/P0-1/P0-2; la provenance (call_id/as_of) finisce nel meta del job.
@@ -274,6 +281,19 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
     # (finance.py) + WACC dal quant — non scritte dall'LLM (chiude P0-2/P0-6).
     if skill == "flusso-financeboost-pmi":
         fb_reclass = finance.latest_reclass_from_inputs(inputs)
+        # QUADRATURA KO = voci estratte/classificate male (autofill) → i derivati sono
+        # GARBAGE (bug prod 8 lug: PN cliente 500k → PN derivato -165k, 'ricapitalizzare').
+        # Fallback: reclass dagli AGGREGATI forniti dall'utente (D/E, ROE, EBITDA margin
+        # veri), portandosi dietro quadratura+warnings del reclass fallito per la nota
+        # 'dati estratti da verificare' nelle limitazioni.
+        if fb_reclass and (fb_reclass.get("quadratura") or {}).get("ok") is False:
+            _agg = finance.latest_aggregates_from_inputs(inputs)
+            if _agg:
+                _agg["quadratura"] = fb_reclass.get("quadratura")
+                _agg["warnings"] = list(fb_reclass.get("warnings") or []) + list(_agg.get("warnings") or [])
+                fb_reclass = _agg
+                filiera_meta = {**filiera_meta, "financeboost_fallback_aggregati": True}
+                log.warning("financeboost: quadratura KO → indici dagli aggregati cliente job %s", job_id)
         if fb_reclass:
             # WACC: se l'utente ne fornisce uno (es. "WACC 9,5%") HA LA PRECEDENZA sul CAPM del
             # quant, così la sezione valutazione (EVA) non contraddice la prosa, che usa
