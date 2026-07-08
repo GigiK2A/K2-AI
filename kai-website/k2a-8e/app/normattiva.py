@@ -130,13 +130,21 @@ def search(query: str, limit: int = 5) -> list[dict]:
 # di uno scan LIKE su 62k righe (~5 min). Niente indice extra sul DB di Luca.
 
 # tipo canonico → varianti del prefisso-file nel corpus (forme estese E abbreviate).
+# NB legge↔decreto_legislativo (8 lug 2026): lo scraper del corpus (scarica_articoli.py)
+# salva i DECRETI LEGISLATIVI col prefisso file 'legge_YYYY_N' (convenzione voluta: mappa
+# `"decreto.legislativo": "legge"`). Così un D.Lgs citato ('D.Lgs 206/2005', Codice del
+# Consumo) NON si agganciava al chunk 'legge_2005_206' → find_by_estremi rifiutava sul tipo
+# → grounding REFUSE sui parere legali (bug prod). I due tipi sono resi RECIPROCAMENTE
+# compatibili: il corpus non li distingue, quindi il filtro non deve. Restano DISTINTI DM /
+# DPCM / DPR / RD → la guardia originale (un 'DM 143/2013' inventato NON aggancia la
+# 'L. 143/2013' omonima) è preservata.
 _TIPO_ALIASES = {
     "decreto_ministeriale": {"decreto_ministeriale", "dm"},
-    "decreto_legislativo": {"decreto_legislativo", "dlgs", "d_lgs"},
+    "decreto_legislativo": {"decreto_legislativo", "dlgs", "d_lgs", "legge", "l"},
     "decreto_legge": {"decreto_legge", "dl"},
     "decreto_presidente_repubblica": {"decreto_presidente_repubblica", "dpr"},
     "decreto_presidente_consiglio_ministri": {"decreto_presidente_consiglio_ministri", "dpcm"},
-    "legge": {"legge", "l"},
+    "legge": {"legge", "l", "decreto_legislativo", "dlgs", "d_lgs"},
     "regio_decreto": {"regio_decreto", "rd"},
 }
 # label testuale (es. 'D.Lgs', 'DM') normalizzata → tipo canonico.
