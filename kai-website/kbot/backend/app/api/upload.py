@@ -242,6 +242,49 @@ def _decode_b64(payload: str) -> bytes:
         raise HTTPException(status_code=400, detail=f"invalid base64: {exc}") from exc
 
 
+def _extract_xlsx(content: bytes) -> tuple[str, list[dict]]:
+    """Testo da un file Excel: ogni foglio → righe TAB-separate (celle vuote saltate a
+    fine riga). Legge i VALORI (data_only=True: se il file ha le formule calcolate, prende
+    il risultato). Un foglio = una 'pagina' per il chunking a valle."""
+    from io import BytesIO
+    from openpyxl import load_workbook
+    wb = load_workbook(BytesIO(content), data_only=True, read_only=True)
+    pages: list[dict] = []
+    parts: list[str] = []
+    for i, ws in enumerate(wb.worksheets, 1):
+        rows_txt: list[str] = []
+        for row in ws.iter_rows(values_only=True):
+            cells = ["" if c is None else str(c) for c in row]
+            while cells and cells[-1] == "":
+                cells.pop()
+            if cells:
+                rows_txt.append("\t".join(cells))
+        if rows_txt:
+            sheet_txt = f"### Foglio: {ws.title}\n" + "\n".join(rows_txt)
+            parts.append(sheet_txt)
+            pages.append({"n": i, "text": sheet_txt})
+    try:
+        wb.close()
+    except Exception:
+        pass
+    return "\n\n".join(parts), pages
+
+
+def _extract_docx(content: bytes) -> str:
+    """Testo da un .docx: paragrafi + celle delle tabelle (un bilancio in Word sta spesso
+    in tabelle → vanno lette anch'esse, non solo i paragrafi)."""
+    from io import BytesIO
+    import docx  # python-docx
+    doc = docx.Document(BytesIO(content))
+    parts = [p.text for p in doc.paragraphs if p.text and p.text.strip()]
+    for tbl in doc.tables:
+        for row in tbl.rows:
+            cells = [c.text.strip() for c in row.cells]
+            if any(cells):
+                parts.append("\t".join(cells))
+    return "\n".join(parts)
+
+
 def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str, list[dict]]:
     """Return (extracted_text, extracted_summary, method, pages).
 
@@ -252,6 +295,9 @@ def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str, 
     lower = name.lower()
     is_pdf = mime == "application/pdf" or lower.endswith(".pdf")
     is_text = mime.startswith("text/") or lower.endswith((".txt", ".md", ".csv", ".json", ".xml"))
+    is_xlsx = ("spreadsheetml" in mime or "ms-excel" in mime
+               or lower.endswith((".xlsx", ".xlsm", ".xls")))
+    is_docx = ("wordprocessingml" in mime or lower.endswith(".docx"))
 
     if is_text:
         try:
@@ -259,6 +305,25 @@ def _extract_text(content: bytes, name: str, mime: str) -> tuple[str, str, str, 
             return text, "", "text-decode", [{"n": 1, "text": text}]
         except Exception:
             pass
+
+    # Excel: whitelistato ma prima SENZA parser → un bilancio .xlsx cadeva nel fallback
+    # "Nessun testo estraibile" (bug 8 lug: file bilancio non letto). Estraiamo ogni foglio
+    # come righe TAB-separate: l'LLM autofill trascrive poi le voci (bilanci) dal testo.
+    if is_xlsx:
+        try:
+            text, pages = _extract_xlsx(content)
+            if text.strip():
+                return text[:PDF_LIMIT], "", "xlsx-parse", pages
+        except Exception as exc:
+            log.warning("xlsx-parse failed for %s: %s", name, exc)
+
+    if is_docx:
+        try:
+            text = _extract_docx(content)
+            if text.strip():
+                return text[:PDF_LIMIT], "", "docx-parse", [{"n": 1, "text": text[:PDF_LIMIT]}]
+        except Exception as exc:
+            log.warning("docx-parse failed for %s: %s", name, exc)
 
     if is_pdf:
         try:
