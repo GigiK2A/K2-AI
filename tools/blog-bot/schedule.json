@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-07-01",
+  "updated_at": "2026-07-08",
   "description": "Scaletta blog + IG K2-AI. Source of truth unica per blog autopilot e n8n IG.",
   "rows": [
     {
@@ -97,9 +97,9 @@
       "url": "https://www.k2-ai.it/suite-ai/ai-customer-service-ticket.html",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "",
-      "blog_pubblicato": "",
-      "blog_url": ""
+      "blog_slug": "ai-customer-service-ticket-gestione-tempi",
+      "blog_pubblicato": "2026-07-08",
+      "blog_url": "/blog/ai-customer-service-ticket-gestione-tempi"
     },
     {
       "row": 9,
