@@ -442,8 +442,8 @@ _QUANT_CONTEXT = re.compile(
 # parola debole 'stima'/'stimato' (una stima spacciata per quasi-fatto resta bloccata, vedi
 # test_financial_strict_not_loosened_by_weak_estimate_word) né un numero NUDO.
 _ASSUMPTION = re.compile(
-    r"(?:assunzione|ipotes\w*|ipotizz\w*|scenario\s+illustrativo|illustrativ\w*|"
-    r"a\s+titolo|da\s+validare|da\s+confermare)", re.I)
+    r"(?:assunzione|assuntiv\w*|ipotes\w*|ipotizz\w*|scenario\s+(?:illustrativo|assuntivo)|"
+    r"illustrativ\w*|a\s+titolo|da\s+validare|da\s+confermare)", re.I)
 # Numeri HARD-FINANCIAL: cifre-CLIENTE su cui si AGISCE economicamente (€, indici di
 # bilancio, ROI/payback/VAN/TIR). Restano 'block' anche sui boost qualitativi
 # (strict=False): un "€50k di impatto" o un "ROI del 250%" fabbricato è pericoloso in
@@ -538,7 +538,10 @@ def unsupported_number_findings(deliverable: dict, inputs: dict, facts: dict,
     return out[:20]
 
 
-_NUM_SCRUB_MARK = " (valori indicativi: ipotesi da confermare)"
+# Framing esplicito richiesto dall'owner (QA 8 lug): i numeri-target non ancorati NON
+# devono leggersi come KPI quasi-definitivi → tag "SCENARIO ASSUNTIVO". Contiene ancora
+# "ipotesi da confermare" così _ASSUMPTION (gate) continua a esentarli.
+_NUM_SCRUB_MARK = " (SCENARIO ASSUNTIVO — ipotesi da confermare)"
 
 
 def _value_has_blocking_number(value: str, known: set) -> bool:
