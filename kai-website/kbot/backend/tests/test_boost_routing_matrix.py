@@ -122,6 +122,34 @@ def test_user_intent_marketing_seo_beats_sector_edilizia():
     assert out["id"] in ("checkup_seo", "checkup_marketing"), out
 
 
+def test_mna_conversation_routes_to_dd_not_finance():
+    """BUG prod 8 lug 2026: «sto valutando di acquistare un'azienda di telecomunicazioni» +
+    conversazione piena di parole finance INCIDENTALI (bilancio/payback/utile) instradava a
+    FinanceBoost, il cui gate fail-closed blocca le proiezioni post-fusione → grounding_failed
+    dopo il pagamento (vicolo cieco). Le frasi M&A ora hanno le forme verbali + peso di
+    dominio: una frase M&A esplicita batte le parole finance di contorno."""
+    out = catalog.suggest_boost({}, user_text=(
+        "Sto valutando di acquistare una azienda di telecomunicazioni. Fattibilità economica, "
+        "utile post-fusione, sinergie, payback, prezzo di acquisizione, bilancio del target. Procediamo"))
+    assert out is not None and out["id"] == "checkup_legale_dd", out
+    # variante con apostrofo tipografico
+    out2 = catalog.suggest_boost({}, user_text=(
+        "sto valutando di acquistare un’azienda concorrente, ho il suo bilancio, "
+        "voglio capire margini e payback"))
+    assert out2 is not None and out2["id"] == "checkup_legale_dd", out2
+
+
+def test_mna_weight_does_not_hijack_marketing_or_finance():
+    """Il peso DD non deve dirottare: 'acquisizione clienti' resta marketing; finance puro
+    resta finance."""
+    out = catalog.suggest_boost({}, user_text=(
+        "strategia di acquisizione clienti, funnel marketing e campagne social"))
+    assert out is not None and out["id"] == "checkup_marketing", out
+    out2 = catalog.suggest_boost({}, user_text=(
+        "analisi del bilancio e cash flow, margini e liquidità, bancabilità"))
+    assert out2 is not None and out2["id"] == "checkup_finanziario", out2
+
+
 if __name__ == "__main__":
     import sys as _s
     _s.exit(1 if run() else 0)

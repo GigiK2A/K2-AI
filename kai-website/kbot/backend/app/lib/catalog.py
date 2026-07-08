@@ -217,9 +217,19 @@ def _negated_before(text: str, kw_start: int) -> bool:
 # StrategyBoost. È il routing deterministico che trasforma il K-BOT in un
 # selettore del catalogo di Luca: a fine conversazione propone il deliverable.
 _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
+    # M&A: incluse le forme VERBALI reali ("sto valutando di acquistare un'azienda") — prima
+    # c'erano solo i sostantivi ("acquisizione di azienda") e l'ask M&A tipico non matchava
+    # nulla qui, mentre le parole finance INCIDENTALI (bilancio/payback/utile, presenti in
+    # OGNI conversazione M&A) accumulavano score → FinanceBoost, il cui gate fail-closed
+    # blocca le proiezioni post-fusione → vicolo cieco in prod (bug 8 lug).
     (("due diligence", "m&a", "fusione", "acquisizione di azienda", "acquisizione aziendale",
       "acquisizione societaria", "acquisto di azienda", "cessione d'azienda", "cessione di ramo",
-      "cessione di quote"), "checkup_legale_dd"),
+      "cessione di quote",
+      "acquistare un'azienda", "acquistare una azienda", "acquisire un'azienda",
+      "acquisire una azienda", "acquistare una società", "acquisire una società",
+      "comprare un'azienda", "comprare una azienda", "acquistare un competitor",
+      "acquisire un competitor", "azienda target", "società target", "acquisizione del target",
+      "post-fusione", "post fusione"), "checkup_legale_dd"),
     (("contratt", "nda", "clausol", "contract review", "review legale"), "checkup_legale_review"),
     (("legale", "avvocat", "causa", "contenzioso", "parere legale", "diffida"), "primo_parere_legale"),
     (("fiscal", "iva", "tribut", "tasse", "imposte", "f24", "dichiarazione dei redditi"), "checkup_fiscale"),
@@ -246,6 +256,13 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
     # cieco. AdvisorBoost resta scegliibile a mano dal selettore del pannello.
     (("strateg", "crescita", "business plan", "piano industriale", "fattibilità", "espansione"), "checkup_marketing"),
 ]
+
+# Peso per gruppo nello score: una frase M&A ("acquistare un'azienda", "due diligence") è un
+# marcatore di DOMINIO fortissimo, mentre le parole finance (bilancio/payback/margini) sono
+# INCIDENTALI in ogni conversazione M&A — senza peso vincevano per accumulo e l'ask M&A
+# finiva su FinanceBoost (gate fail-closed sulle proiezioni → vicolo cieco). ×4: regge fino
+# a 3 keyword finance incidentali per ogni frase M&A esplicita.
+_GROUP_WEIGHT: dict[str, int] = {"checkup_legale_dd": 4}
 
 # Default quando nessuna keyword combacia: ControlBoost (cruscotto direzionale),
 # generico e robusto. NB: ex checkup_advisor, ma AdvisorBoost ha lo schema più
@@ -287,6 +304,7 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False,
                 for mt in re.finditer(r"\b" + re.escape(k), text):
                     if not _negated_before(text, mt.start()):
                         score += 1
+            score *= _GROUP_WEIGHT.get(sid, 1)
             if score > best_score:
                 best_sid, best_score = sid, score
         return best_sid
