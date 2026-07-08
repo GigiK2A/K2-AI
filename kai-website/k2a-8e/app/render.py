@@ -54,10 +54,14 @@ def _scalar_str(v) -> str:
 _EMOJI = re.compile(r"[\U0001F000-\U0001FAFF☀-➿←-⇿⬀-⯿️�]")
 
 
+_fix_spacing = ST.fix_spacing  # normalizzatore punteggiatura condiviso (def in styling.py)
+
+
 def _rich(s) -> str:
     """Prosa → markup reportlab: escape, **grassetto** reale, via le emoji non
     renderizzabili. I modelli a volte scrivono markdown/emoji: qui si normalizza."""
-    s = html.escape(str(s if s is not None else ""))
+    s = _fix_spacing(str(s if s is not None else ""))
+    s = html.escape(s)
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s, flags=re.S)
     s = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"<i>\1</i>", s)  # *corsivo*
     s = re.sub(r"^\s*[-•]\s+", "", s)  # bullet residui a inizio riga
@@ -262,6 +266,16 @@ def _exec_summary(deliverable, S) -> list:
         out.append(Spacer(1, 4))
     if azioni:
         out.append(ST.action_box(azioni, "Azioni consigliate", S))
+        # QA owner 8 lug: i target numerici nelle azioni (CAC, break-even mese, n. contratti,
+        # importi-obiettivo) si leggevano come KPI quasi-definitivi. Se le azioni contengono
+        # cifre → caption esplicita che sono ipotesi di scenario, non consuntivi. Niente
+        # caption sulle azioni puramente qualitative (nessuna cifra = niente falso allarme).
+        if any(re.search(r"\d", str(a)) for a in azioni):
+            out.append(Spacer(1, 3))
+            out.append(Paragraph(
+                '<font size="8" color="#8A7A55"><b>SCENARIO ASSUNTIVO</b> · le soglie e i '
+                "target citati (KPI, tempi, importi-obiettivo) sono ipotesi da validare sui "
+                "dati reali, non valori consuntivi.</font>", S["bullet"]))
     return out
 
 
@@ -698,8 +712,8 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
         # KPI/target di scenario presentati come quasi-definitivi).
         if re.search(r"scenari|proiezion|sensitivity|forecast|previsional", key.lower()):
             body.append(Paragraph(
-                "<i>Valori di scenario: proiezioni indicative su ipotesi dichiarate "
-                "(da confermare con dati consuntivi) — non sono dati verificati.</i>",
+                "<b>SCENARIO ASSUNTIVO</b> — <i>proiezioni indicative su ipotesi "
+                "dichiarate (da confermare sui dati consuntivi): non sono dati verificati.</i>",
                 S["bullet"]))
             body.append(Spacer(1, 2))
         render_value(val, 1)

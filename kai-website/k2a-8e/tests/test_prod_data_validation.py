@@ -75,6 +75,25 @@ check("campo monetario mai toccato", out["piano"][0]["impatto_eur"] == 2024)
 mar = finance.build_marginalita({})
 check("marginalita senza flag bool residuo", "stima_da_aggregati" not in mar)
 
+# ── typography: spazio dopo punteggiatura ripristinato (bug 'liquidità;enza') ───
+from app import styling  # noqa: E402
+fs = styling.fix_spacing
+check("';senza' → '; senza'", fs("liquidità;senza x") == "liquidità; senza x")
+check("':current' → ': current'", fs("CCN:current") == "CCN: current")
+check("',liberare' → ', liberare'", fs("scadenze,liberare") == "scadenze, liberare")
+check("'madre.Investimento' → 'madre. Investimento'", fs("madre.Investimento") == "madre. Investimento")
+# guardie: numeri/sigle/URL intatti
+check("decimale 1,16 intatto", fs("ratio 1,16 base") == "ratio 1,16 base")
+check("art.90 intatto", fs("art.90 TUIR") == "art.90 TUIR")
+check("sigla S.R.L.S. intatta", fs("K2A S.R.L.S. sede") == "K2A S.R.L.S. sede")
+check("URL intatto", fs("https://k2-ai.it/x") == "https://k2-ai.it/x")
+
+# ── marker SCENARIO ASSUNTIVO + gate lo esenta ancora ──────────────────────────
+scr = quality.scrub_ungrounded_numbers({"a": "target CAC <8000 EUR al mese 18"}, {}, {}, [], strict=False)
+mk = scr["a"]
+check("marker mostra 'SCENARIO ASSUNTIVO'", "SCENARIO ASSUNTIVO" in mk)
+check("gate esenta il marker (regex _ASSUMPTION)", bool(quality._ASSUMPTION.search(mk)))
+
 print()
 if FAILS:
     print(f"TEST PROD-DATA-VALIDATION FAIL ❌ ({len(FAILS)})")
