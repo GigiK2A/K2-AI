@@ -55,6 +55,17 @@ _NORMATIVE_SKILLS = frozenset({
     "flusso-agevolazioni-pmi",
 })
 
+# Codici di finding di CLASSE-VALORE: un numero-cliente non ancorato o un fatto-cliente
+# supposto. Policy owner (8 lug 2026): NESSUN valore blocca mai → si etichettano illustrativi
+# e si consegna (scrub non-strict). NON includono i difetti duri di forma/liability
+# (placeholder_leak, cover_non_personalizzata, norma_non_citata, analisi_archetipo…) che
+# restano fail-loud.
+_VALUE_BLOCK_CODES = frozenset({
+    "numero_non_grounded",
+    "numero_esterno_non_grounded",
+    "fatto_cliente_ipotetico",
+})
+
 
 class Refuse(Exception):
     def __init__(self, reason: str, message: str):
@@ -690,21 +701,20 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                                                           strict_norme=strict_norme))
             g_blocks = grounding.blocks(g_findings)
             if g_blocks and not offline_mode:
-                # NIENTE VICOLO CIECO: se i blocchi sono SOLO numeri non ancorati (delta %
-                # derivati, benchmark di settore, ROE anno-su-anno) — non allucinazioni di
-                # fatti-cliente — si ETICHETTANO illustrativi (scrub non-strict) e si consegna
-                # invece di rifiutare. I numeri-core dei finance restano deterministici. Solo
-                # i blocchi "duri" (placeholder, fatto-cliente confabulato) fanno refuse.
-                # H4: NON su boost FINANZIARI. Su questi un numero_non_grounded è una cifra HARD
-                # (€/EBITDA/ROI) fabbricata su cui il cliente agisce: va bloccata, non etichettata
-                # "ipotesi" e consegnata (anche in PARTIAL). L'escape label-and-deliver resta solo
-                # per i qualitativi (delta/benchmark morbidi).
-                if skill not in FINANCIAL_SKILLS and all(
-                        b.get("code") == "numero_non_grounded" for b in g_blocks):
+                # POLICY OWNER (8 lug 2026, Luca): il gate NON deve MAI bloccare sui VALORI. Un
+                # numero-cliente non ancorato (concentrazione 15%, retention 100%, persino un
+                # €/EBITDA/ROI fabbricato) non fa più refuse: si ETICHETTA illustrativo ('(ipotesi
+                # da confermare)', scrub non-strict) e SI CONSEGNA — per QUALSIASI boost, anche i
+                # finanziari (prima esclusi da questo escape → vicolo cieco pagato). Meglio un
+                # valore dichiarato-illustrativo che un report che non esce. I numeri-core restano
+                # deterministici via i binder finance/tax dove esistono. Restano fail-loud SOLO i
+                # blocchi NON-valore (placeholder trapelato, cover anonima, norma confabulata,
+                # analisi-archetipo): non sono "valori", sono difetti duri di forma/liability.
+                if all(b.get("code") in _VALUE_BLOCK_CODES for b in g_blocks):
                     deliverable = quality.scrub_ungrounded_numbers(
                         deliverable, inputs, facts, citazioni, strict=False)
-                    log.info("grounding: %d numeri non-grounded etichettati illustrativi (no refuse) job %s",
-                             len(g_blocks), job_id)
+                    log.info("grounding: %d valori non-grounded etichettati illustrativi (no refuse, "
+                             "policy owner) job %s", len(g_blocks), job_id)
                     _ok = True
                     break
                 _refusal = ("grounding_failed",
