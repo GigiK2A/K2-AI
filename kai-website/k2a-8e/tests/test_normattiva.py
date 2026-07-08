@@ -159,9 +159,11 @@ def test_enrich_citazioni_pipeline():
         assert "D.Lgs 81/2008" in rif                     # verificata
         assert "143/2013" not in rif                      # confabulata DM → NON aggiunta
         assert all(c.get("fonte") == "normattiva" for c in out)
-        # senza corpus → no-op (ritorna le citazioni invariate)
+        # senza corpus → no-op sui riferimenti FUORI whitelist (i codici noti vengono
+        # promossi a fonte nota a prescindere dal corpus, testato in test_codici_noti).
         _set_db(None)
-        assert _enrich_citazioni_normattiva(deliv, [{"x": 1}]) == [{"x": 1}]
+        deliv_niche = {"sez": {"t": "Si richiama il D.M. 199/2015 (norma di settore)."}}
+        assert _enrich_citazioni_normattiva(deliv_niche, [{"x": 1}]) == [{"x": 1}]
     finally:
         _set_db(None)
         db.unlink(missing_ok=True)

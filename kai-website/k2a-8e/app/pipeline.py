@@ -416,6 +416,72 @@ def _normalize_inputs(inputs: dict) -> dict:
     return out
 
 
+# Codici / testi unici italiani NOTI e STABILI. Come i regolamenti UE (_EU_CANON),
+# citarli per nome è sicuro anche SENZA verbatim dal corpus: sono numeri REALI e arcinoti,
+# non "norme da recall" confabulate. Quando il corpus normattiva NON li aggancia (buco di
+# copertura), vengono promossi a FONTE NOTA (in «Fonti normative», senza testo verbatim) →
+# il gate C2 non li blocca. Le norme FUORI whitelist (DL spot, numeri meno noti) restano
+# strict → block se non grounded (una norma oscura confabulata deve ancora fermarsi).
+# Chiave: (tipo da normattiva._LABEL_TO_TIPO, numero-str, anno-int). Owner-approved 8 lug.
+_CODICI_NOTI: dict[tuple[str, str, int], str] = {
+    ("decreto_legislativo", "206", 2005): "Codice del Consumo (D.Lgs. 206/2005)",
+    ("decreto_legislativo", "196", 2003): "Codice in materia di protezione dei dati personali (D.Lgs. 196/2003)",
+    ("decreto_legislativo", "30", 2005): "Codice della Proprietà Industriale (D.Lgs. 30/2005)",
+    ("decreto_legislativo", "446", 1997): "Istituzione dell'IRAP (D.Lgs. 446/1997)",
+    ("decreto_legislativo", "36", 2023): "Codice dei Contratti Pubblici (D.Lgs. 36/2023)",
+    ("decreto_legislativo", "50", 2016): "Codice dei Contratti Pubblici 2016 — abrogato dal D.Lgs. 36/2023 (D.Lgs. 50/2016)",
+    ("decreto_legislativo", "231", 2001): "Responsabilità amministrativa degli enti (D.Lgs. 231/2001)",
+    ("decreto_legislativo", "82", 2005): "Codice dell'Amministrazione Digitale (D.Lgs. 82/2005)",
+    ("decreto_legislativo", "152", 2006): "Codice dell'Ambiente (D.Lgs. 152/2006)",
+    ("decreto_legislativo", "81", 2008): "Testo Unico Sicurezza sul Lavoro (D.Lgs. 81/2008)",
+    ("decreto_legislativo", "209", 2005): "Codice delle Assicurazioni Private (D.Lgs. 209/2005)",
+    ("decreto_legislativo", "385", 1993): "Testo Unico Bancario (D.Lgs. 385/1993)",
+    ("decreto_legislativo", "58", 1998): "Testo Unico della Finanza (D.Lgs. 58/1998)",
+    ("decreto_legislativo", "14", 2019): "Codice della Crisi d'Impresa e dell'Insolvenza (D.Lgs. 14/2019)",
+    ("decreto_legislativo", "117", 2017): "Codice del Terzo Settore (D.Lgs. 117/2017)",
+    ("decreto_legislativo", "42", 2004): "Codice dei Beni Culturali e del Paesaggio (D.Lgs. 42/2004)",
+    ("decreto_legislativo", "165", 2001): "Testo Unico sul Pubblico Impiego (D.Lgs. 165/2001)",
+    ("decreto_legislativo", "33", 2013): "Trasparenza della P.A. (D.Lgs. 33/2013)",
+    ("decreto_legislativo", "74", 2000): "Reati in materia di imposte sui redditi e IVA (D.Lgs. 74/2000)",
+    ("decreto_legislativo", "175", 2016): "Testo Unico società a partecipazione pubblica (D.Lgs. 175/2016)",
+    ("legge", "633", 1941): "Legge sul diritto d'autore (L. 633/1941)",
+    ("legge", "300", 1970): "Statuto dei Lavoratori (L. 300/1970)",
+    ("legge", "241", 1990): "Legge sul procedimento amministrativo (L. 241/1990)",
+    ("decreto_presidente_repubblica", "633", 1972): "Disciplina dell'IVA (DPR 633/1972)",
+    ("decreto_presidente_repubblica", "917", 1986): "Testo Unico delle Imposte sui Redditi — TUIR (DPR 917/1986)",
+    ("decreto_presidente_repubblica", "445", 2000): "Testo Unico documentazione amministrativa (DPR 445/2000)",
+    ("decreto_presidente_repubblica", "380", 2001): "Testo Unico dell'Edilizia (DPR 380/2001)",
+    ("decreto_presidente_repubblica", "600", 1973): "Accertamento delle imposte sui redditi (DPR 600/1973)",
+    ("decreto_presidente_repubblica", "131", 1986): "Testo Unico dell'imposta di registro (DPR 131/1986)",
+    ("regio_decreto", "262", 1942): "Codice Civile (R.D. 262/1942)",
+    ("regio_decreto", "267", 1942): "Legge Fallimentare — in gran parte superata dal Codice della Crisi D.Lgs. 14/2019 (R.D. 267/1942)",
+}
+
+
+def _promote_codici_noti(full: str, enriched: list[dict]) -> None:
+    """Promuove i codici/TU italiani NOTI (whitelist _CODICI_NOTI) a FONTE NOTA quando il
+    testo li cita ma NESSUNA citazione (né corpus né altro) li ha già agganciati. I numeri
+    sono arcinoti → citarli è sicuro anche senza verbatim. Aggiunge una citazione senza
+    `testo` (va in Fonti, non tra i verbatim) → il gate C2 non blocca quel numero. Va
+    chiamata DOPO l'aggancio al corpus: se il corpus ha già il verbatim (fonte 'normattiva')
+    quello vince e NON si aggiunge il doppione noto. NON tocca le norme fuori whitelist."""
+    grounded_blob = " ".join(
+        str(c.get("riferimento") or "") + " " + str(c.get("citazione") or "") for c in enriched)
+    for ref in normattiva.extract_norm_refs(full):
+        try:
+            key = (ref["tipo"], str(ref["numero"]), int(ref["anno"]))
+        except (TypeError, ValueError):
+            continue
+        canon = _CODICI_NOTI.get(key)
+        if not canon:
+            continue
+        estremi = f"{ref['numero']}/{ref['anno']}"
+        if estremi in grounded_blob:      # già agganciato (corpus o UE) → niente doppione
+            continue
+        enriched.append({"riferimento": canon, "campo": "codice_noto", "fonte": "codice_noto"})
+        grounded_blob += " " + canon      # evita duplicati tra ref multipli dello stesso codice
+
+
 def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> list[dict]:
     """§3b — verifica i riferimenti di legge del deliverable contro il corpus Normattiva.
     Le norme TROVATE diventano citazioni grounded col testo verbatim → il CAGE C2
@@ -454,6 +520,8 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
             enriched.append({"riferimento": rif, "campo": "norma_ue", "fonte": "eur_lex"})
 
     if not normattiva.available():
+        # Corpus giù: i codici noti si promuovono comunque (numeri arcinoti).
+        _promote_codici_noti(full, enriched)
         return enriched
     seen = {(c.get("tipo"), str(c.get("numero")), c.get("anno")) for c in citazioni}
     for ref in normattiva.extract_norm_refs(full):
@@ -498,6 +566,8 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
             "campo": "norma_verificata", "fonte": "normattiva",
             "tipo": h.get("tipo"), "numero": h.get("numero"), "anno": h.get("anno"),
         })
+    # DOPO l'aggancio al corpus: i codici noti NON già grounded col verbatim → fonte nota.
+    _promote_codici_noti(full, enriched)
     return enriched
 
 

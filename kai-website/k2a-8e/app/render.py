@@ -22,7 +22,8 @@ from reportlab.platypus.tableofcontents import TableOfContents
 from . import styling as ST
 
 _FONTE_LABEL = {"override_locale": "Normattiva", "akn_bulk_xml": "Normattiva", "normattiva": "Normattiva",
-                "eur_lex": "EUR-Lex (norma UE — riferimento, testo non nel corpus)"}
+                "eur_lex": "EUR-Lex (norma UE — riferimento, testo non nel corpus)",
+                "codice_noto": "codice/testo unico noto (riferimento — verificare il testo vigente)"}
 _SKIP_KEYS = {"meta", "metadata", "disclaimer", "files", "file_generati", "input", "allegati",
               "executive_summary", "sintesi"}
 
