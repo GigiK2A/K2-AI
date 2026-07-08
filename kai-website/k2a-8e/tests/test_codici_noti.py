@@ -70,6 +70,19 @@ check("relabel: Codice del Consumo col nome canonico + articolo",
 check("relabel: norma fuori whitelist resta invariata",
       _canon_riferimento({"tipo": "decreto_legge", "numero": "145", "anno": 2013}, "D.L. 145/2013") == "D.L. 145/2013")
 
+# ── supplemento bundlato: norme aggiunte non ancora nel corpus canonico (633/1941 diritto
+#    d'autore + DL) si agganciano col verbatim via il fallback di find_by_estremi ──
+if _N._supp_path():
+    hh = _N.find_by_estremi(1941, "633", tipo="legge", limit=1)
+    check("supplemento: 633/1941 grounded col verbatim reale",
+          bool(hh) and "opere dell'ingegno" in (hh[0].get("testo", "").lower()))
+    check("supplemento: DL 145/2013 grounded",
+          bool(_N.find_by_estremi(2013, "145", tipo="decreto_legge", limit=1)))
+    check("available() resta sul corpus principale (supplemento = fallback interno)",
+          _N.available() == (_N._db_path() is not None))
+else:
+    print("  --  supplemento non presente (skip test bundle)")
+
 print()
 if FAILS:
     print(f"TEST CODICI-NOTI FAIL ❌ ({len(FAILS)})")

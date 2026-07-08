@@ -155,8 +155,10 @@ def test_enrich_citazioni_pipeline():
                               "(D.Lgs 81/2008). Tariffe ex DM 143/2013."}}
         out = _enrich_citazioni_normattiva(deliv, [])
         rif = " | ".join(c.get("riferimento", "") for c in out)
-        assert "D.P.R. 380/2001" in rif                   # verificata
-        assert "D.Lgs 81/2008" in rif                     # verificata
+        # verificate col corpus → presenti per estremi (il riferimento esce col nome
+        # canonico via _canon_riferimento: 'Testo Unico dell'Edilizia (DPR 380/2001)').
+        assert "380/2001" in rif                          # DPR 380/2001 verificato
+        assert "81/2008" in rif                           # D.Lgs 81/2008 verificato
         assert "143/2013" not in rif                      # confabulata DM → NON aggiunta
         assert all(c.get("fonte") == "normattiva" for c in out)
         # senza corpus → no-op sui riferimenti FUORI whitelist (i codici noti vengono
