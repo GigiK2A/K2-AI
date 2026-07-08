@@ -1,0 +1,35 @@
+# Payload `railway up` dalla ROOT del repo (il servizio k2-ai-website ha
+# rootDirectory=kai-website → lo snapshot deve contenere kai-website/ al top level).
+# Escludiamo tutto ciò che la build del sito non usa: senza, l'upload (~700MB+)
+# andava in 'operation timed out' (8 lug 2026).
+
+# Spazzatura macOS (AppleDouble + indici Finder), migliaia di file sul volume.
+._*
+.DS_Store
+
+# Pesi da build/venv: i .gitignore ANNIDATI (kai-website/.gitignore, kbot/…) non
+# sembrano rispettati dal walker del CLI quando si carica dalla root → ridichiarati
+# qui (senza: dentro il payload finivano ~8GB di venv → timeout).
+.venv/
+venv/
+node_modules/
+.next/
+__pycache__/
+*.pyc
+dist/
+.git/
+
+# Alberi estranei al servizio website (deploy separati o repo di lavoro).
+apps/
+ai-board/
+docs/
+skills sito k2-ai 2/
+tools/
+k2a-8e-agent-poc/
+k2a-quant-patch/
+
+# Dentro kai-website: pesi mai referenziati da Dockerfile/runtime (vedi
+# kai-website/.railwayignore per il razionale).
+kai-website/kbot/assets/
+kai-website/kbot/data/
+kai-website/k2a-8e/_out/
