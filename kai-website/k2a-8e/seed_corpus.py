@@ -30,8 +30,22 @@ for url_env, path_env in PAIRS:
     if not url or not dst:
         continue
     if os.path.exists(dst):
-        print(f"[seed] {path_env} gia' presente — skip")
-        continue
+        # FORCE-REFRESH (8 lug 2026): il file c'e' gia', ma se l'asset e' stato RIPUBBLICATO
+        # (corpus aggiornato) la dimensione remota differisce da quella locale → ri-scarico.
+        # Cosi' aggiornare il corpus in prod = ri-caricare l'asset del release (nessun
+        # bisogno di cancellare a mano il file sul volume). Se la HEAD fallisce o le
+        # dimensioni coincidono → skip (idempotente, comportamento storico).
+        local_size = os.path.getsize(dst)
+        remote_size = 0
+        try:
+            h = httpx.head(url, headers=base_headers, follow_redirects=True, timeout=30)
+            remote_size = int(h.headers.get("content-length") or 0)
+        except Exception as e:  # noqa: BLE001
+            print(f"[seed] {path_env} HEAD fallita ({e}) — mantengo il file presente, skip")
+        if not remote_size or remote_size == local_size:
+            print(f"[seed] {path_env} gia' presente e allineato ({local_size} b) — skip")
+            continue
+        print(f"[seed] {path_env} disallineato (locale {local_size} vs remoto {remote_size}) — ri-scarico")
     tmp = dst + ".part"
     try:
         n = 0
