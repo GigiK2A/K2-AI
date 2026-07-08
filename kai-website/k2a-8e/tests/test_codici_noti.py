@@ -51,6 +51,25 @@ check("codici noti senza 'testo' (no finto verbatim)",
 # timeout legale alzato (240s tagliava i parere ~7-8 min)
 check("JOB_TIMEOUT_S >= 600 (copre generazione legale)", settings.JOB_TIMEOUT_S >= 600)
 
+# ── fix mistag corpus: lo scraper salva i D.Lgs come 'legge_YYYY_N' → legge↔dlgs
+#    resi reciprocamente compatibili nel filtro tipo; DM/DPR restano DISTINTI (guardia) ──
+from app import normattiva as _N  # noqa: E402
+check("alias: decreto_legislativo accetta 'legge'", "legge" in _N._TIPO_ALIASES["decreto_legislativo"])
+check("alias: legge accetta 'decreto_legislativo'", "decreto_legislativo" in _N._TIPO_ALIASES["legge"])
+check("guardia: DM NON accetta 'legge' (niente falso positivo DM↔L)",
+      "legge" not in _N._TIPO_ALIASES["decreto_ministeriale"])
+check("guardia: DPR resta distinto", "legge" not in _N._TIPO_ALIASES["decreto_presidente_repubblica"])
+
+# relabel canonico: un D.Lgs noto agganciato dal corpus (che lo tiene come 'legge_') esce
+# col nome/tipo giusto, non 'L. 206/2005'
+from app.pipeline import _canon_riferimento  # noqa: E402
+_lab = _canon_riferimento({"tipo": "decreto_legislativo", "numero": "206", "anno": 2005, "articolo": "18"},
+                          "L. 206/2005, art. 18")
+check("relabel: Codice del Consumo col nome canonico + articolo",
+      "Codice del Consumo" in _lab and "D.Lgs" in _lab and "art. 18" in _lab)
+check("relabel: norma fuori whitelist resta invariata",
+      _canon_riferimento({"tipo": "decreto_legge", "numero": "145", "anno": 2013}, "D.L. 145/2013") == "D.L. 145/2013")
+
 print()
 if FAILS:
     print(f"TEST CODICI-NOTI FAIL ❌ ({len(FAILS)})")
