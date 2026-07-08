@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import date, datetime, timezone
+import json
 import math
 import re
 from typing import Any, Iterable
@@ -594,6 +595,64 @@ def scrub_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
         return v
 
     return walk(out)
+
+
+# ── Sanitizer valori implausibili (bug prod 8 lug 2026: 'Impatto: 2024.0') ─────────
+# L'LLM a volte fa trapelare un ANNO in un campo numerico percent-like (impatto,
+# probabilità, scostamento). Regola precisa (zero falsi positivi su 'impatto 2000€'):
+# il valore è un intero che coincide con un anno NOTO al job (anni bilancio negli input
+# o anno corrente ±1) dentro una chiave percent-like → la voce è corrotta e si scarta.
+_PERCENTLIKE_KEY = re.compile(
+    r"(^|_)(impatto|probabilita|percentuale|scostamento(_percentuale)?|peso)($|_)")
+
+
+def _known_years(inputs: dict) -> set[int]:
+    years = {datetime.now().year - 1, datetime.now().year, datetime.now().year + 1}
+    blob = json.dumps(inputs or {}, ensure_ascii=False, default=str)
+    for m in re.finditer(r"\b(19\d{2}|20\d{2})\b", blob):
+        years.add(int(m.group(1)))
+    return years
+
+
+def sanitize_implausible_numbers(deliverable: dict, inputs: dict) -> tuple[dict, int]:
+    """Rimuove i valori anno-trapelato dai campi percent-like, per QUALSIASI boost.
+    Se il campo corrotto sta in un elemento di lista, l'elemento viene eliminato
+    (schema-safe); altrimenti il valore diventa None. Ritorna (deliverable, n_rimossi)."""
+    if not isinstance(deliverable, dict):
+        return deliverable, 0
+    years = _known_years(inputs)
+    removed = 0
+
+    def _is_year_leak(k, v):
+        lk = str(k).lower()
+        if re.search(r"eur|euro|importo|valore|anno", lk):
+            return False               # campi monetari/anno legittimi: mai toccati
+        return (_PERCENTLIKE_KEY.search(lk)
+                and isinstance(v, (int, float)) and not isinstance(v, bool)
+                and float(v) == int(v) and int(v) in years)
+
+    def walk(v):
+        nonlocal removed
+        if isinstance(v, dict):
+            out = {}
+            for k, x in v.items():
+                if _is_year_leak(k, x):
+                    removed += 1
+                    out[k] = None
+                else:
+                    out[k] = walk(x)
+            return out
+        if isinstance(v, list):
+            kept = []
+            for item in v:
+                if isinstance(item, dict) and any(_is_year_leak(k, x) for k, x in item.items()):
+                    removed += 1        # elemento corrotto → via (schema-safe sulle array)
+                    continue
+                kept.append(walk(item))
+            return kept
+        return v
+
+    return walk(deepcopy(deliverable)), removed
 
 
 def uncertain_fact_findings(deliverable: dict, strict: bool = True) -> list[dict]:
