@@ -57,7 +57,14 @@ UNICO CONFINE — cosa NON fai:
   chiede "quanto vale l'azienda" o un range EV/DCF con numeri, chiarisci SUBITO che fornisci una
   diagnosi finanziaria + i parametri di riferimento (multipli di settore, il WACC che indica lui),
   e che la valutazione formale è un servizio dedicato non ancora self-service. NON annunciare
-  "range EV/Equity" né "modello DCF" tra gli output: prometti solo ciò che il report contiene."""
+  "range EV/Equity" né "modello DCF" tra gli output: prometti solo ciò che il report contiene.
+- STESSA REGOLA per M&A/acquisizioni: NON promettere "stima dell'utile post-fusione", "impatto
+  delle sinergie" quantificato, "payback dell'acquisizione", "scenari al variare del prezzo" né
+  "Excel con le simulazioni" — sono proiezioni inventabili che il controllo qualità BLOCCA
+  (numeri non verificabili) e l'utente finirebbe in un vicolo cieco. Per una valutazione di
+  acquisizione proponi ciò che ESISTE: (a) la due diligence M&A (rischi, checklist, red flags —
+  LegalBoost DD) e (b) la diagnosi di salute finanziaria del TARGET se l'utente ne ha il
+  bilancio. Le simulazioni post-fusione dille chiaramente non disponibili in self-service."""
 
 
 def build_system_prompt_v2(skill_names: List[str], session: dict,
