@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 from reportlab.graphics.shapes import Circle, Drawing, Line, Rect, String, Wedge
 from reportlab.lib import colors
@@ -85,9 +86,25 @@ def hx(c) -> str:
     return "#" + c.hexval()[2:]
 
 
+def fix_spacing(s: str) -> str:
+    """Ripristina lo spazio dopo la punteggiatura quando il modello lo omette
+    ('CCN:current' → 'CCN: current', 'liquidità;senza' → 'liquidità; senza',
+    'scadenze,liberare' → 'scadenze, liberare', 'madre.Investimento' →
+    'madre. Investimento'). Deterministico, su TUTTA la prosa (passa da html_escape,
+    usato da action_box/kpi_table/risk_card/heatmap e dal render generico).
+    Guardie: numeri (1,16 · 3.6 · 9:30 · art.90), sigle (S.R.L.), URL (://) restano
+    intatti — le regole scattano SOLO quando alla punteggiatura segue una LETTERA."""
+    s = re.sub(r"([;:])(?=[A-Za-zÀ-ÿ])", r"\1 ", s)                 # ; : + lettera
+    s = re.sub(r",(?=[A-Za-zÀ-ÿ])", ", ", s)                        # , + lettera (non 1,16)
+    s = re.sub(r"([a-zà-ÿ]{2})\.(?=[A-ZÀ-Ÿ][a-zà-ÿ])", r"\1. ", s)  # fine-frase minuscola.Maiuscola
+    return s
+
+
 def html_escape(s) -> str:
     import html as _h
-    return _h.escape(str(s if s is not None else ""))
+    # fix_spacing PRIMA dell'escape: sul testo grezzo (nessuna entità ancora) — dopo
+    # l'escape un '&amp;' finirebbe con ';' e la regola ';+lettera' romperebbe l'entità.
+    return _h.escape(fix_spacing(str(s if s is not None else "")))
 
 
 def styles() -> dict:
