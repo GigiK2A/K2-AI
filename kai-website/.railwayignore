@@ -1,0 +1,17 @@
+# Payload di `railway up` per il servizio k2-ai-website: escludiamo ciò che la build
+# NON usa — l'upload da ~700MB andava in timeout (8 lug 2026). Il CLI rispetta anche
+# .gitignore (quindi .venv/_out/node_modules sono già fuori); qui solo gli extra.
+
+# Spazzatura macOS (AppleDouble + indici Finder): ~4000 file inutili nel payload.
+._*
+.DS_Store
+
+# Skill vendorizzate di studio (276MB): nessun COPY nel Dockerfile né riferimento a runtime.
+kbot/assets/
+
+# Dati runtime di sviluppo locale (chat_memory, leads.jsonl, uploads): non vanno
+# dentro un'immagine — né per peso né per privacy.
+kbot/data/
+
+# Output dei job QA locali del motore 8e (ridondante con .gitignore, per sicurezza).
+k2a-8e/_out/
