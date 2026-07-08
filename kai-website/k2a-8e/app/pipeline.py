@@ -458,6 +458,23 @@ _CODICI_NOTI: dict[tuple[str, str, int], str] = {
 }
 
 
+def _canon_riferimento(ref: dict, fallback: str) -> str:
+    """Etichetta di citazione col NOME CANONICO quando gli estremi (dal testo, tipo
+    corretto) sono un codice noto. Il corpus salva i D.Lgs come 'legge_YYYY_N' → la
+    citazione dal filename uscirebbe 'L. 206/2005'; qui la rimettiamo a 'Codice del
+    Consumo (D.Lgs. 206/2005), art. N' (nome canonico + articolo). Fuori whitelist →
+    resta la citazione del corpus."""
+    try:
+        key = (ref.get("tipo"), str(ref.get("numero")), int(ref.get("anno")))
+    except (TypeError, ValueError):
+        return fallback
+    canon = _CODICI_NOTI.get(key)
+    if not canon:
+        return fallback
+    art = ref.get("articolo")
+    return f"{canon}, art. {art}" if art else canon
+
+
 def _promote_codici_noti(full: str, enriched: list[dict]) -> None:
     """Promuove i codici/TU italiani NOTI (whitelist _CODICI_NOTI) a FONTE NOTA quando il
     testo li cita ma NESSUNA citazione (né corpus né altro) li ha già agganciati. I numeri
@@ -545,7 +562,8 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
             h = hits[0]
             seen.add(key)
             enriched.append({
-                "riferimento": h["citazione"], "campo": "norma_verificata", "fonte": "normattiva",
+                "riferimento": _canon_riferimento(ref, h["citazione"]),
+                "campo": "norma_verificata", "fonte": "normattiva",
                 "tipo": h.get("tipo"), "numero": h.get("numero"), "anno": h.get("anno"),
                 "articolo": h.get("articolo"), "testo": (h.get("testo") or "")[:1200],
             })
@@ -562,7 +580,7 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
         h = hits[0]
         seen.add(key)
         enriched.append({
-            "riferimento": normattiva.citazione({**h, "articolo": None}),
+            "riferimento": _canon_riferimento(ref, normattiva.citazione({**h, "articolo": None})),
             "campo": "norma_verificata", "fonte": "normattiva",
             "tipo": h.get("tipo"), "numero": h.get("numero"), "anno": h.get("anno"),
         })
