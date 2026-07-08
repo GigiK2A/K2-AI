@@ -51,8 +51,24 @@ def _db_path() -> Optional[Path]:
     return path if path.is_file() else None
 
 
+# SUPPLEMENTO bundlato (8 lug 2026): DB piccolo (~3MB) impacchettato NELL'IMMAGINE con le
+# norme aggiunte che NON sono ancora nel corpus canonico su volume (es. L.633/1941 diritto
+# d'autore + alcuni DL). Serve a portare quelle norme in prod SENZA ri-seedare 1.8GB sul
+# volume (che richiederebbe accesso al release canonico). find_by_estremi interroga PRIMA
+# il corpus principale, POI il supplemento. Quando il corpus canonico verrà ri-seedato col
+# completo, il supplemento diventa ridondante (nessun doppio: si ferma al primo hit).
+_SUPP_PATH = Path(__file__).resolve().parent.parent / "data" / "normattiva_supplement.db"
+
+
+def _supp_path() -> Optional[Path]:
+    return _SUPP_PATH if _SUPP_PATH.is_file() else None
+
+
 def available() -> bool:
-    """True solo se il corpus è raggiungibile: altrimenti il motore degrada onesto."""
+    """True se il corpus PRINCIPALE è raggiungibile (semantica storica: in prod il volume
+    c'è sempre). Il supplemento bundlato NON conta qui — è un fallback interno a
+    find_by_estremi, non un corpus autonomo — così `available()` resta l'indicatore del
+    corpus completo e i chiamanti a monte non cambiano comportamento."""
     return _db_path() is not None
 
 
@@ -213,19 +229,8 @@ def extract_norm_refs(text: str) -> list[dict]:
     return refs
 
 
-def find_by_estremi(anno: int, numero: str, tipo: Optional[str] = None,
-                    articolo: Optional[str] = None, limit: int = 3) -> list[dict]:
-    """Cerca una norma per estremi (anno, numero) — per VERIFICARE un riferimento citato
-    nel deliverable. Filtra per `tipo` (alias-aware: 'decreto_ministeriale' ≡ 'dm') così
-    una norma confabulata ('DM 143/2013' quando esiste solo L. 143/2013) NON viene
-    verificata. Ritorna [] se il corpus non ha quella norma. FTS column-scoped, veloce."""
-    db = _db_path()
-    if not db or not anno or not numero:
-        return []
-    num = re.sub(r"\D", "", str(numero))
-    if not num:
-        return []
-    valid_tipi = _TIPO_ALIASES.get(tipo) if tipo else None
+def _query_estremi(db: Path, anno: int, num: str, valid_tipi, articolo, limit: int) -> list[dict]:
+    """Interroga UN db (principale o supplemento) per estremi. Stessa logica di filtro."""
     try:
         con = sqlite3.connect(f"file:{db}?immutable=1", uri=True, timeout=20)
     except sqlite3.Error:
@@ -251,6 +256,29 @@ def find_by_estremi(anno: int, numero: str, tipo: Optional[str] = None,
         if articolo is not None and _norm_art(e.get("articolo")) != _norm_art(articolo):
             continue                                   # articolo diverso (loose: '25-septies'≡'25septies')
         out.append({**e, "citazione": citazione(e), "testo": testo})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def find_by_estremi(anno: int, numero: str, tipo: Optional[str] = None,
+                    articolo: Optional[str] = None, limit: int = 3) -> list[dict]:
+    """Cerca una norma per estremi (anno, numero) — per VERIFICARE un riferimento citato
+    nel deliverable. Filtra per `tipo` (alias-aware: 'decreto_ministeriale' ≡ 'dm') così
+    una norma confabulata ('DM 143/2013' quando esiste solo L. 143/2013) NON viene
+    verificata. Interroga il corpus PRINCIPALE poi, se non basta, il SUPPLEMENTO bundlato
+    (norme aggiunte non ancora nel volume). Ritorna [] se nessuno dei due ha la norma."""
+    if not anno or not numero:
+        return []
+    num = re.sub(r"\D", "", str(numero))
+    if not num:
+        return []
+    valid_tipi = _TIPO_ALIASES.get(tipo) if tipo else None
+    out: list[dict] = []
+    for db in (_db_path(), _supp_path()):
+        if db is None:
+            continue
+        out.extend(_query_estremi(db, anno, num, valid_tipi, articolo, limit - len(out)))
         if len(out) >= limit:
             break
     return out
