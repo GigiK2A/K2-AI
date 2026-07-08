@@ -69,7 +69,11 @@ CATALOGO_CHIUSO = {
 VOCI_SHAPE_SKILLS = {"flusso-legalboost-pmi"}
 
 CONFIDENCE_REFUSE_THRESHOLD = 0.4
-JOB_TIMEOUT_S = int(os.environ.get("K2A_8E_JOB_TIMEOUT", "240"))
+# 240s (4 min) tagliava i LEGALI: LegalBoost/parere genera in ~7-8 min (corpus
+# normattiva + verbatim) e ogni retry del gate è una rigenerazione completa → timeout
+# garantito. 600s (10 min) copre una generazione legale piena con margine. Ogni job ha
+# il suo pool (max_workers=1) → alzarlo NON blocca gli altri job. Tunabile via env.
+JOB_TIMEOUT_S = int(os.environ.get("K2A_8E_JOB_TIMEOUT", "600"))
 
 # Rate-limit per chiave Bearer su /v1/deliverables (anti-abuse). 0 = disattivo.
 RL_MAX = int(os.environ.get("K2A_8E_RL_MAX", "30"))
