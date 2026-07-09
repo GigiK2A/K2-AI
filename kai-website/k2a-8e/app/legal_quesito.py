@@ -175,6 +175,23 @@ META_HINT = (
 )
 
 
+_SEV_PENALTY = {"alta": 22, "media": 12, "bassa": 5}
+
+
+def fallback_score(voci_out: list[dict] | None) -> int:
+    """Score DETERMINISTICO dai rischi già assemblati, per quando `structured_meta`
+    (LLM) non fornisce uno score valido. Sostituisce lo score=-1 che violava
+    l'output-schema (score_compliance min 0) → `validation_failed` → 3 rigenerazioni
+    legali complete → TIMEOUT 600s: un vicolo cieco su un report PAGATO (bug prod
+    quesito data-breach — `structured_meta` troncava a max_tokens su prompt lungo).
+    Derivato dalla gravità dei rischi reali (non cosmetico); neutro se non ci sono rischi."""
+    sev = [str(r.get("gravita")) for v in (voci_out or []) for r in (v.get("rischi") or [])]
+    if not sev:
+        return 60
+    pen = sum(_SEV_PENALTY.get(s, 12) for s in sev)
+    return max(40, 100 - min(pen, 60))
+
+
 def piano_azione(voci_meta: dict | None, voci: list[dict], inputs: dict | None = None) -> list[dict]:
     """Deriva `piano_azione` dalle azioni realmente prodotte per le voci (meta strutturato),
     in ordine di rilevanza (ordine voci). Sostituisce l'azione HARD-CODED che LegalBoost

@@ -201,10 +201,12 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
         mappa = []
     score = (meta_struct or {}).get("score")
     if not isinstance(score, int) or not (0 <= score <= 100):
-        # ONLINE senza score valido dall'LLM → -1 forza il refuse (mai score cosmetico
-        # in un report reale/pagato). OFFLINE è un placeholder/demo (nessun LLM, sezioni
-        # segnaposto): usa uno score-segnaposto valido per far girare la pipeline end-to-end.
-        score = 50 if offline else -1
+        # NIENTE score=-1: viola l'output-schema (min 0) → validation_failed → 3
+        # rigenerazioni legali complete → TIMEOUT 600s = vicolo cieco su un PAGATO (bug
+        # prod quesito data-breach: structured_meta troncava → nessuno score → -1 → loop).
+        # OFFLINE = placeholder 50 (demo). ONLINE = score DETERMINISTICO dai rischi reali
+        # (mai cosmetico) → il report esce all'attempt-1, niente loop né timeout.
+        score = 50 if offline else legal_quesito.fallback_score(voci_out)
     return {
         "meta": {
             "servizio": "LegalBoost", "versione": "1.0.0", "data": quality.today_iso(),

@@ -117,6 +117,20 @@ check("norme_citate agganciate alla voce analisi (schema ok anche se vuote)",
       isinstance(norme_analisi, list))
 
 
+print("── FIX TIMEOUT: assemble ONLINE senza meta valido → NIENTE score=-1 (era il dead-end) ──")
+# Riproduce il bug prod: structured_meta troncato/None → assemble metteva score=-1 →
+# viola output-schema (min 0) → validation_failed → 3 rigenerazioni → timeout 600s.
+deliv_nm = pipeline.assemble_legalboost(bpq, sezioni, [], INPUTS_QUESITO, None, offline=False)
+sc = deliv_nm["sintesi"]["score_compliance"]
+check(f"score online-no-meta in [0,100] (era -1): {sc}", isinstance(sc, int) and 0 <= sc <= 100)
+errs_nm = sorted(Draft202012Validator(out_schema).iter_errors(deliv_nm), key=lambda e: list(e.path))
+check("deliverable online-no-meta valida output-schema (niente loop rigenerazione→timeout)", not errs_nm)
+if errs_nm:
+    print("     errori:", [str(e.message) for e in errs_nm[:3]])
+check("fallback_score deterministico in range", 0 <= legal_quesito.fallback_score(deliv_nm["voci"]) <= 100)
+check("fallback_score senza rischi = 60 (neutro)", legal_quesito.fallback_score([]) == 60)
+
+
 print("── piano_azione: fallback offline è NEUTRO (mai l'azione contrattuale) ──")
 piano_vuoto = legal_quesito.piano_azione({}, bpq["voci"], INPUTS_QUESITO)
 check("fallback ha ≥1 azione", len(piano_vuoto) >= 1)

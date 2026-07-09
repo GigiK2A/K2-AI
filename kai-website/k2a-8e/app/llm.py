@@ -895,8 +895,11 @@ def generate_structured_meta(blueprint: dict, facts: dict[str, dict], inputs: di
             + (legal_quesito.META_HINT if caso else "")
         )
         user = f"{caso}Voci:\n{voci_spec}\n\nDati: {json.dumps(inputs, ensure_ascii=False)}\nUna entry voci_meta per id."
+        # 8000 (era 4096): con un quesito lungo + 8 voci il JSON meta (score+mappa+voci_meta)
+        # sforava 4096 → troncato → parse KO → None → score=-1 in assemble → validation_failed
+        # loop → timeout 600s. 8000 dà margine così lo score REALE dell'LLM arriva all'attempt-1.
         resp = client.messages.create(
-            model=ANTHROPIC_MODEL, max_tokens=4096,
+            model=ANTHROPIC_MODEL, max_tokens=_cap_tok(8000),
             system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
         )
