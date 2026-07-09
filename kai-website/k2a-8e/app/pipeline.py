@@ -460,6 +460,9 @@ _CODICI_NOTI: dict[tuple[str, str, int], str] = {
     ("decreto_presidente_repubblica", "600", 1973): "Accertamento delle imposte sui redditi (DPR 600/1973)",
     ("decreto_presidente_repubblica", "131", 1986): "Testo Unico dell'imposta di registro (DPR 131/1986)",
     ("regio_decreto", "262", 1942): "Codice Civile (R.D. 262/1942)",
+    ("regio_decreto", "1398", 1930): "Codice Penale (R.D. 1398/1930)",
+    ("regio_decreto", "1443", 1940): "Codice di Procedura Civile (R.D. 1443/1940)",
+    ("decreto_presidente_repubblica", "447", 1988): "Codice di Procedura Penale (D.P.R. 447/1988)",
     ("regio_decreto", "267", 1942): "Legge Fallimentare — in gran parte superata dal Codice della Crisi D.Lgs. 14/2019 (R.D. 267/1942)",
 }
 
@@ -505,6 +508,22 @@ def _promote_codici_noti(full: str, enriched: list[dict]) -> None:
         grounded_blob += " " + canon      # evita duplicati tra ref multipli dello stesso codice
 
 
+def _cit_referenced(cit: dict, full: str) -> bool:
+    """True se l'articolo di una citazione di BASE (placeholder-fatto dello snapshot) è
+    davvero richiamato nel deliverable. LegalBoost iniettava 3 fatti FISSI (cc_1341,
+    cc_1342, dlgs231_25septies) in OGNI parere → l'appendice verbatim mostrava art.
+    25-septies (omicidio colposo/sicurezza lavoro) anche su un caso di diffamazione (bug
+    credibilità). Conservativo: se non estrae un articolo, tiene la citazione."""
+    rif = str(cit.get("riferimento") or cit.get("campo") or "")
+    # Suffisso SOLO con trattino ('25-septies'): con re.I un '[-\\s]?[a-z]+' ingoiava la parola
+    # dopo il numero ('1341 Codice' → '1341codice') e scartava anche i placeholder citati.
+    m = re.search(r"art\.?\s*(\d+(?:-[a-z]+)?)", rif, re.I)
+    if not m:
+        return True
+    art = re.sub(r"[^0-9a-z]", "", m.group(1).lower())
+    return bool(art) and art in re.sub(r"[^0-9a-z]", "", full.lower())
+
+
 def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> list[dict]:
     """§3b — verifica i riferimenti di legge del deliverable contro il corpus Normattiva.
     Le norme TROVATE diventano citazioni grounded col testo verbatim → il CAGE C2
@@ -513,6 +532,11 @@ def _enrich_citazioni_normattiva(deliverable: dict, citazioni: list[dict]) -> li
     corpus non è disponibile (NORMATTIVA_DB_PATH assente)."""
     import json as _json
     full = _json.dumps(deliverable, ensure_ascii=False)
+    # I placeholder-fatti FISSI di LegalBoost (cc_1341/cc_1342/dlgs231_25septies) entrano in
+    # OGNI parere → l'appendice verbatim mostrava art. 25-septies (sicurezza lavoro) anche su
+    # un caso di diffamazione. Teniamo una citazione di base SOLO se il suo articolo è davvero
+    # richiamato nel deliverable; le fuori-tema si scartano (fix credibilità A1/E1).
+    citazioni = [c for c in citazioni if _cit_referenced(c, full)]
     enriched = list(citazioni)
 
     # Norme UE (GDPR, AI Act, regolamenti): NON sono nel corpus Normattiva (solo

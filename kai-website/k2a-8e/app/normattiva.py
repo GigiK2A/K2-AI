@@ -136,7 +136,7 @@ def search(query: str, limit: int = 5) -> list[dict]:
     for file, testo, snippet, rank in rows:
         e = _estremi(file)
         out.append({**e, "citazione": citazione(e), "snippet": snippet,
-                    "testo": testo, "rank": round(rank, 4) if rank is not None else None})
+                    "testo": _clean_testo(testo), "rank": round(rank, 4) if rank is not None else None})
     return out
 
 
@@ -170,6 +170,47 @@ _LABEL_TO_TIPO = {
     "dpcm": "decreto_presidente_consiglio_ministri",
     "l": "legge", "legge": "legge", "rd": "regio_decreto",
 }
+# CODICI citati per ABBREVIAZIONE (c.p., c.c., c.p.c., c.p.p.) o per nome. Il corpus li
+# indicizza per estremi del R.D./D.P.R. istitutivo (es. Codice Penale = R.D. 1398/1930 →
+# file 'regio_decreto_1930_1398_art_595'), MA i pareri li citano come 'art. 595 c.p.' — che
+# la regex estremi NON riconosce (nessun numero/anno). Senza questa mappa le norme PIÙ citate
+# (595 c.p. diffamazione, 2043 c.c., 700 c.p.c.) non venivano MAI agganciate al corpus → il
+# parere le citava a memoria, senza verbatim, e l'appendice mostrava solo i placeholder fissi.
+# Estremi verificati sul corpus canonico (2026-06-24): i chunk esistono con questi (tipo,num,anno).
+_CODICE_ESTREMI: dict[str, tuple[str, str, int]] = {
+    "cp":  ("regio_decreto", "1398", 1930),                 # Codice Penale
+    "cc":  ("regio_decreto", "262", 1942),                  # Codice Civile
+    "cpc": ("regio_decreto", "1443", 1940),                 # Codice di Procedura Civile
+    "cpp": ("decreto_presidente_repubblica", "447", 1988),  # Codice di Procedura Penale
+}
+# 'art. 595 c.p.', 'artt. 1341-1342 c.c.', 'art. 700 c.p.c.', 'ex art. 2043 del codice civile'.
+# L'articolo (primo, se lista/range) sta PRIMA dell'abbreviazione. Le alternative lunghe (cpc/
+# cpp) precedono quelle corte (cp/cc); il lookahead (?![a-z]) evita i falsi positivi che
+# proseguono con lettere (c.p.i. = Cod. Prop. Industriale, c.c.n.l., c.p.a.).
+_CODICE_REF_RE = re.compile(
+    r"artt?\.?\s*(\d+(?:[-\s]?[a-z]+)?)"
+    r"(?:\s*(?:[-,]|\be\b)\s*\d+(?:[-\s]?[a-z]+)?)*"
+    r"\s*(c\.?\s?p\.?\s?c|c\.?\s?p\.?\s?p|cod(?:ice)?\.?\s*di\s*procedura\s*civile|"
+    r"cod(?:ice)?\.?\s*di\s*procedura\s*penale|c\.?\s?p|cod(?:ice)?\.?\s*penale|"
+    r"c\.?\s?c|cod(?:ice)?\.?\s*civile)\.?(?![a-z])",
+    re.I)
+
+
+def _norm_code(s: str) -> str:
+    s = re.sub(r"[^a-z]", "", (s or "").lower())
+    if s in _CODICE_ESTREMI:
+        return s
+    if "proceduracivile" in s:
+        return "cpc"
+    if "procedurapenale" in s:
+        return "cpp"
+    if "penale" in s:
+        return "cp"
+    if "civile" in s:
+        return "cc"
+    return ""
+
+
 # Riferimento normativo nel testo (mirror della regex C2 del CAGE in grounding.py, che
 # accetta anni a 2-4 cifre). L'anno può essere a 2 cifre ('D.Lgs 81/08', 'L. 300/70'):
 # va espanso a 4 cifre per matchare i filename del corpus (_FN_RE = \d{4}).
@@ -226,7 +267,31 @@ def extract_norm_refs(text: str) -> list[dict]:
             seen.add(key)
             refs.append({"tipo": tipo, "numero": numero, "anno": anno,
                          "articolo": articolo, "label": m.group(0).strip()})
+    # CODICI per abbreviazione/nome ('art. 595 c.p.' → R.D. 1398/1930, art. 595): mappa
+    # l'abbreviazione sugli estremi del corpus così find_by_estremi aggancia il verbatim.
+    for m in _CODICE_REF_RE.finditer(text):
+        est = _CODICE_ESTREMI.get(_norm_code(m.group(2)))
+        if not est:
+            continue
+        tipo, numero, anno = est
+        articolo = re.sub(r"\s+", "", m.group(1)) if m.group(1) else None
+        key = (tipo, numero, anno, _norm_art(articolo))
+        if key not in seen:
+            seen.add(key)
+            refs.append({"tipo": tipo, "numero": numero, "anno": anno,
+                         "articolo": articolo, "label": m.group(0).strip()})
     return refs
+
+
+# I chunk del corpus canonico (collezione "Codici" AKN) portano un frontmatter YAML
+# ('---\ntipo:...\ntitolo_norma: Codice Penale\n...---\n\n# Art. 595 ...') PRIMA del testo
+# di legge. Va rimosso o finirebbe stampato verbatim nell'appendice del parere (metadati
+# interni spacciati per legge). Il supplemento bundlato NON ha frontmatter → no-op lì.
+_FRONTMATTER_RE = re.compile(r"^﻿?\s*---\s*\n.*?\n---\s*\n+", re.S)
+
+
+def _clean_testo(t: str) -> str:
+    return _FRONTMATTER_RE.sub("", t or "", count=1).lstrip()
 
 
 def _query_estremi(db: Path, anno: int, num: str, valid_tipi, articolo, limit: int) -> list[dict]:
@@ -237,9 +302,18 @@ def _query_estremi(db: Path, anno: int, num: str, valid_tipi, articolo, limit: i
         return []
     try:
         con.execute("PRAGMA busy_timeout=20000")
+        # Includi il NUMERO d'articolo nella MATCH quando indicato: i grandi Codici (Penale
+        # ~750 artt., Civile ~3000, tutti sotto lo stesso anno/numero) hanno migliaia di chunk
+        # → un LIMIT senza l'articolo restituiva 8 chunk a caso e il filtro scartava tutto
+        # (l'art. 595 c.p. non veniva MAI agganciato). 'file:595' usa l'indice FTS e centra
+        # il chunk giusto. Il filtro sotto conferma comunque l'articolo esatto (595 vs 595-bis).
+        match = f"file:{int(anno)} AND file:{num}"
+        artnum = re.sub(r"\D", "", str(articolo)) if articolo else ""
+        if artnum:
+            match += f" AND file:{artnum}"
         rows = con.execute(
             "SELECT file, testo FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT ?",
-            (f"file:{int(anno)} AND file:{num}", max(1, int(limit)) * 8),
+            (match, max(1, int(limit)) * 8),
         ).fetchall()
     except sqlite3.OperationalError:
         return []
@@ -255,7 +329,7 @@ def _query_estremi(db: Path, anno: int, num: str, valid_tipi, articolo, limit: i
             continue                                   # tipo diverso (es. legge vs DM)
         if articolo is not None and _norm_art(e.get("articolo")) != _norm_art(articolo):
             continue                                   # articolo diverso (loose: '25-septies'≡'25septies')
-        out.append({**e, "citazione": citazione(e), "testo": testo})
+        out.append({**e, "citazione": citazione(e), "testo": _clean_testo(testo)})
         if len(out) >= limit:
             break
     return out
