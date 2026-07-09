@@ -11,12 +11,14 @@ nel report e (best-effort) nella tabella `n8n_watchdog_log` su Supabase.
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 import time
 from typing import Any, Callable
 
 from aios.sources.n8n import (list_executions, get_execution, list_workflows,
-                              restart_workflow, n8n_api_enabled)
+                              get_workflow, restart_workflow, n8n_api_enabled)
 
 # Errori su cui il riavvio ha senso (transitori). Default = strutturale (serve l'owner):
 # meglio non riavviare in loop qualcosa che rifallirà comunque.
@@ -154,10 +156,56 @@ def _log(log_client: Any, row: dict) -> None:
         pass
 
 
+def _iso_ts(iso: str | None) -> float | None:
+    if not iso:
+        return None
+    try:
+        from datetime import datetime
+        return datetime.fromisoformat(str(iso).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+
+
+def _publishes_to_ig(workflow_def: Any) -> bool:
+    """True se il workflow ha un nodo che PUBBLICA su Instagram (media_publish /
+    instagram_content_publish). Serve a capire se un riavvio farebbe uscire un post vero."""
+    if not isinstance(workflow_def, dict):
+        return False
+    for n in (workflow_def.get("nodes") or []):
+        blob = json.dumps(n.get("parameters") or {}).lower()
+        if "media_publish" in blob or "instagram_content_publish" in blob:
+            return True
+    return False
+
+
+def _default_published_check(workflow_id: str, since_iso: str | None) -> bool:
+    """Per i workflow che pubblicano su IG: dice se il post è GIÀ USCITO dopo l'inizio
+    dell'esecuzione fallita (così il riavvio non crea un doppione). Se non pubblica su IG,
+    o non è verificabile, ritorna False (nessun blocco: il riavvio procede)."""
+    try:
+        gw = get_workflow(workflow_id)
+        if not _publishes_to_ig(gw):
+            return False
+        since = _iso_ts(since_iso)
+        if since is None:
+            return False
+        from aios.sources.instagram import InstagramClient
+        ig = InstagramClient(token=os.environ.get("AIOS_IG_TOKEN", ""),
+                             ig_user_id=os.environ.get("AIOS_IG_USER_ID", "17841429842127461"))
+        for p in ig.recent_media(limit=10):
+            ts = _iso_ts(p.get("timestamp"))
+            if ts is not None and ts >= since:
+                return True        # un post è uscito dopo l'inizio del run fallito → già fatto
+        return False
+    except Exception:
+        return False               # nel dubbio non blocco (il tetto retry limita i danni)
+
+
 def check_and_heal(*, log_client: Any = None, retry_cap: int = 2, retrigger: bool = True,
                    limit: int = DEFAULT_LIMIT,
                    list_exec: Callable = list_executions, get_exec: Callable = get_execution,
                    list_wf: Callable = list_workflows, restart: Callable = restart_workflow,
+                   published_check: Callable = _default_published_check,
                    now: float | None = None) -> dict[str, Any]:
     """Giro del watchdog: legge le esecuzioni recenti, riavvia i transitori (con tetto),
     propone i fix per gli strutturali/bloccati. Ritorna un report strutturato."""
@@ -179,7 +227,7 @@ def check_and_heal(*, log_client: Any = None, retry_cap: int = 2, retrigger: boo
         pass
 
     latest = _latest_per_workflow(res.get("esecuzioni") or [])
-    ok_count, riavviati, proposte = 0, [], []
+    ok_count, riavviati, proposte, gia_pubblicati = 0, [], [], []
 
     for e in latest:
         wid = str(e.get("workflowId") or "")
@@ -211,6 +259,15 @@ def check_and_heal(*, log_client: Any = None, retry_cap: int = 2, retrigger: boo
                                      "suggerimento": (f"Già riavviato {already} volte oggi senza "
                                                       "successo: serve un intervento manuale.")})
                     continue
+                # se il workflow PUBBLICA in esterno e il post è già uscito → NON ripubblicare
+                if published_check(wid, e.get("startedAt")):
+                    gia_pubblicati.append({"workflow": wname, "workflow_id": wid, "nodo": node,
+                                           "nota": "il post risulta già pubblicato dopo il run "
+                                                   "fallito — riavvio saltato per non fare doppioni"})
+                    _log(log_client, {"giorno": day, "workflow_id": wid, "workflow": wname,
+                                      "azione": "skip_gia_pubblicato", "esito": "ok",
+                                      "errore": msg[:300]})
+                    continue
                 out = restart(wid, wname)
                 riavviato = bool(out.get("ok"))
                 riavviati.append({"workflow": wname, "workflow_id": wid, "nodo": node,
@@ -227,6 +284,7 @@ def check_and_heal(*, log_client: Any = None, retry_cap: int = 2, retrigger: boo
                                   "azione": "proposta", "esito": "in_attesa", "errore": msg[:300]})
 
     return {"ok": True, "giorno": day, "controllati": len(latest), "in_ordine": ok_count,
-            "riavviati": riavviati, "proposte": proposte,
+            "riavviati": riavviati, "proposte": proposte, "gia_pubblicati": gia_pubblicati,
             "riassunto": (f"{len(latest)} workflow controllati · {ok_count} ok · "
-                          f"{len(riavviati)} riavviati · {len(proposte)} da vedere")}
+                          f"{len(riavviati)} riavviati · {len(gia_pubblicati)} già pubblicati · "
+                          f"{len(proposte)} da vedere")}
