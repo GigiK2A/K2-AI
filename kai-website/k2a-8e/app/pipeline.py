@@ -886,6 +886,16 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             jobs.update(job_id, status="refused", refusal_reason=reason, validation=val)
             return
 
+        # Allegati operativi (report legali su QUESITO): documenti per l'avvocato + checklist
+        # prove + timeline eventi. UNA chiamata leggera FUORI dal retry (dopo il gate), no-op se
+        # non quesito o offline → il render salta la sezione. Il fallimento non blocca il report.
+        allegati = None
+        if not generic and not offline_mode and legal_quesito.is_quesito(inputs):
+            try:
+                allegati = llm.generate_allegati(facts, inputs)
+            except Exception as exc:
+                log.warning("allegati saltati (job %s): %s", job_id, exc)
+
         # Render HTML + PDF.
         out_dir = OUT_DIR / job_id
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -901,7 +911,7 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             render_generic_pdf(deliverable, blueprint, citazioni, pdf_path, preliminare=partial_mode)
         else:
             html_path.write_text(render_html(deliverable, blueprint, citazioni), encoding="utf-8")
-            render_pdf(deliverable, blueprint, citazioni, pdf_path, preliminare=partial_mode)
+            render_pdf(deliverable, blueprint, citazioni, pdf_path, preliminare=partial_mode, allegati=allegati)
 
         bundle = []
         extra_outputs = {}

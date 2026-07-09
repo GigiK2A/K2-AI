@@ -569,9 +569,33 @@ def _decision_matrix(mappa_rischi, S) -> list:
             Spacer(1, 6)]
 
 
+def _allegati_block(allegati, S) -> list:
+    """Allegati operativi (report legali su quesito): documenti per l'avvocato + checklist
+    prove + timeline eventi — dati derivati dal caso, NON template legali (diffide ecc.).
+    Vuoto se non forniti."""
+    if not isinstance(allegati, dict):
+        return []
+    docs = [str(d).strip() for d in (allegati.get("elenco_documenti") or []) if str(d).strip()]
+    prove = [str(p).strip() for p in (allegati.get("checklist_prove") or []) if str(p).strip()]
+    tl = [t for t in (allegati.get("timeline") or []) if isinstance(t, dict) and str(t.get("evento") or "").strip()]
+    if not (docs or prove or tl):
+        return []
+    out = [_Heading("Allegati operativi", S["h1"], "allegati")]
+    if prove:
+        out += [ST.action_box(prove[:8], "Checklist — prove da raccogliere e conservare subito", S), Spacer(1, 4)]
+    if docs:
+        out += [ST.action_box(docs[:8], "Documenti da consegnare al legale", S), Spacer(1, 4)]
+    if tl:
+        rows = [[str(t.get("quando") or "—"), str(t.get("evento") or "").strip()] for t in tl[:10]]
+        out += [Paragraph("Timeline degli eventi", S["h3"]),
+                ST.premium_table(["Quando", "Evento"], rows, S, widths=[38 * mm, ST.CONTENT_W - 38 * mm]),
+                Spacer(1, 4)]
+    return out
+
+
 # ========================= LegalBoost (dedicato) =========================
 def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Path,
-               preliminare: bool = False) -> None:
+               preliminare: bool = False, allegati: dict | None = None) -> None:
     S = ST.styles()
     cover_meta, report_name = _cover_meta(deliverable, blueprint, "LegalBoost",
                                           "Diagnosi legale e compliance",
@@ -630,6 +654,7 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
         t = _piano_table()
         if t:
             body.append(t)
+    body += _allegati_block(allegati, S)
     body += _decision_board(deliverable, S, "legale-compliance")
     body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance",

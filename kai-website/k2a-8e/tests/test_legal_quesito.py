@@ -163,6 +163,13 @@ _mx = _R._decision_matrix([{"area": "Reputazione", "semaforo": "rosso"},
 check("matrice generata da mappa non vuota", len(_mx) > 0)
 check("matrice vuota se nessun rischio", _R._decision_matrix([], _S) == [])
 
+print("── allegati operativi: documenti/prove/timeline resi, vuoto se assenti ──")
+_alg = {"elenco_documenti": ["Contratto", "Email/PEC col cliente"],
+        "checklist_prove": ["Screenshot con data"],
+        "timeline": [{"quando": "6 mesi dopo", "evento": "Pubblicazione dell'annuncio"}]}
+check("allegati resi da dati presenti", len(_R._allegati_block(_alg, _S)) > 0)
+check("allegati vuoti se None/assenti", _R._allegati_block(None, _S) == [] and _R._allegati_block({}, _S) == [])
+
 
 print("── piano_azione: fallback offline è NEUTRO (mai l'azione contrattuale) ──")
 piano_vuoto = legal_quesito.piano_azione({}, bpq["voci"], INPUTS_QUESITO)

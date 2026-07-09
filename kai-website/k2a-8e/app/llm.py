@@ -912,6 +912,42 @@ def generate_structured_meta(blueprint: dict, facts: dict[str, dict], inputs: di
     return None
 
 
+def generate_allegati(facts: dict[str, dict], inputs: dict) -> Optional[dict]:
+    """Allegati operativi per un parere legale su QUESITO: documenti da consegnare
+    all'avvocato + checklist prove da raccogliere + timeline eventi. SOLO dati derivati dal
+    caso — NIENTE modelli di lettera/diffida (documenti legali che il cliente potrebbe
+    spedire). None fuori dal quesito o su errore (il render salta la sezione)."""
+    caso = legal_quesito.caso_block(inputs)
+    if not ANTHROPIC_API_KEY or not caso:
+        return None
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        sysmsg = (
+            "Dal CASO estrai SOLO allegati operativi per una PMI, in JSON:\n"
+            '{"elenco_documenti":[str], "checklist_prove":[str], '
+            '"timeline":[{"quando":str,"evento":str}]}.\n'
+            "- elenco_documenti: documenti/atti da consegnare all'avvocato per il caso.\n"
+            "- checklist_prove: evidenze da raccogliere e conservare SUBITO.\n"
+            "- timeline: cronologia degli eventi DICHIARATI (solo quelli noti dal caso; niente "
+            "date inventate — 'quando' può essere descrittivo, es. 'alla scoperta').\n"
+            "Concreto e specifico al caso, max 8 voci per lista. NIENTE modelli di lettera, "
+            "diffida o risposta. Rispondi SOLO col JSON."
+        )
+        resp = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=_cap_tok(2000),
+            system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": f"{caso}Genera gli allegati operativi (JSON)."}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        data = _parse_json_object(text)
+        if any(data.get(k) for k in ("elenco_documenti", "checklist_prove", "timeline")):
+            return data
+    except Exception as exc:
+        log.warning("generate_allegati fallita: %s", exc)
+    return None
+
+
 def generate_preview(blueprint: dict, facts: dict[str, dict], inputs: dict) -> dict:
     """Compone SOLO l'assaggio: score + criticità #1 reale. NON il documento.
 
