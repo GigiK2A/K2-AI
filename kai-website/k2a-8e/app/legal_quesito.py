@@ -17,6 +17,7 @@ Modulo SENZA dipendenze pesanti (nessun import di llm/anthropic) per evitare cic
 from __future__ import annotations
 
 import copy
+import re
 
 LEGAL_SKILL = "flusso-legalboost-pmi"
 
@@ -160,6 +161,16 @@ SYSTEM = (
     "caso non le tocca: se un'area non c'entra, dillo in una riga e passa oltre.\n"
     "- Rispondi alle domande del cliente in modo diretto e motivato, con scenari A/B/C dove la "
     "condotta dipende da condizioni (es. soglie di rischio, termini).\n"
+    "- MAI NUMERI DI SENTENZA: non citare 'Cass. 4873/2020', 'sentenza n. X/AAAA', numeri di "
+    "Cassazione o estremi giurisprudenziali. NON hai una banca dati di giurisprudenza → un "
+    "numero sarebbe inventato e non verificabile (il cliente lo citerebbe in un atto). Al "
+    "massimo 'secondo l'orientamento consolidato della Cassazione' SENZA numero.\n"
+    "- NIENTE pseudo-precisione: NON assegnare percentuali di probabilità (es. '60-70%') né "
+    "importi in euro per danni o costi legali (es. '€5.000-20.000'). Usa bande qualitative "
+    "(probabile/possibile/improbabile, rischio basso/medio/alto) e rimanda i costi al preventivo "
+    "dell'avvocato; il danno si QUANTIFICA sulle prove del caso, non si stima a priori.\n"
+    "- Distingui i TERMINI DI LEGGE (con la norma: es. querela entro 3 mesi ex art. 124 c.p.) "
+    "dalle tempistiche OPERATIVE consigliate (dichiarale come tali, non come termini di legge).\n"
     "- Tono autorevole e chiaro per un titolare d'impresa; è orientamento, NON consulenza "
     "legale (D-034).\n"
     "- LUNGHEZZA: ~180-260 parole per voce, su più paragrafi. Prosa densa, niente riempitivo.\n"
@@ -173,6 +184,37 @@ META_HINT = (
     "gravità/rischio del caso (0=rischio massimo, 100=nessun rischio); la `mappa_rischi` "
     "elenca SOLO le aree effettivamente toccate dal caso, non un audit completo."
 )
+
+
+# Numeri di SENTENZA confabulati: il corpus ha le LEGGI, non la giurisprudenza → 'Cass.
+# 4873/2020' è inventato dal modello e non verificabile (rischio: il cliente lo cita in un
+# atto). Si neutralizza deterministicamente col riferimento generico all'orientamento (che
+# resta corretto). Ancorato su 'Cass'/'sentenza' → NON tocca i numeri di legge (595 c.p.,
+# D.Lgs 231/2001, Reg. UE 2016/679).
+_CASS_NUM_RE = re.compile(
+    r"\bCass(?:azione)?\.?(?:\s*(?:pen|penale|civ|civile|sez|sezione|ss\.?\s?uu|sezioni\s+unite)\.?,?)*"
+    r"\.?\s*(?:n\.?\s*)?\d{1,6}\s*/\s*\d{2,4}", re.I)
+_SENT_NUM_RE = re.compile(r"\bsentenz[ae]\s+(?:n\.?\s*)?\d{1,6}\s*/\s*\d{2,4}", re.I)
+
+
+def _scrub_str(s: str) -> str:
+    s = _CASS_NUM_RE.sub("orientamento consolidato della Cassazione", s)
+    s = _SENT_NUM_RE.sub("un orientamento giurisprudenziale consolidato", s)
+    return s
+
+
+def scrub_giurisprudenza(deliverable):
+    """Neutralizza i NUMERI di sentenza (Cass. N/AAAA, sentenza n. X/AAAA) in TUTTE le stringhe
+    del deliverable. Il corpus normativo non contiene giurisprudenza: un numero di sentenza è
+    confabulato e non verificabile (rischio legale). Non tocca norme/numeri di legge (ancoraggio
+    su 'Cass'/'sentenza'). Deterministico, per QUALSIASI parere legale (audit e quesito)."""
+    if isinstance(deliverable, str):
+        return _scrub_str(deliverable)
+    if isinstance(deliverable, list):
+        return [scrub_giurisprudenza(v) for v in deliverable]
+    if isinstance(deliverable, dict):
+        return {k: scrub_giurisprudenza(v) for k, v in deliverable.items()}
+    return deliverable
 
 
 _SEV_PENALTY = {"alta": 22, "media": 12, "bassa": 5}

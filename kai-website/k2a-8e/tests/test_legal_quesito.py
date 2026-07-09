@@ -131,6 +131,19 @@ check("fallback_score deterministico in range", 0 <= legal_quesito.fallback_scor
 check("fallback_score senza rischi = 60 (neutro)", legal_quesito.fallback_score([]) == 60)
 
 
+print("── scrub giurisprudenza: numeri di sentenza inventati neutralizzati, leggi intatte ──")
+scr = legal_quesito.scrub_giurisprudenza({"voci": [{"contenuto":
+    "La diffamazione online (Cass. Pen. 4873/2020) e la sentenza n. 99/2018 rilevano; "
+    "condotta ex art. 595 c.p., illecito art. 2043 c.c., D.Lgs 231/2001, Reg. UE 2016/679."}]})
+txt = scr["voci"][0]["contenuto"]
+check("numero Cassazione rimosso", "4873/2020" not in txt and "99/2018" not in txt)
+check("riferimento all'orientamento conservato", "Cassazione" in txt)
+check("norme/numeri di legge INTATTI (595 c.p., 2043 c.c., 231/2001, 2016/679)",
+      all(x in txt for x in ("art. 595 c.p.", "art. 2043 c.c.", "231/2001", "2016/679")))
+check("guardrail nel system quesito (sentenze + pseudo-precisione + termini)",
+      all(k in legal_quesito.SYSTEM for k in ("MAI NUMERI DI SENTENZA", "pseudo-precisione", "TERMINI DI LEGGE")))
+
+
 print("── piano_azione: fallback offline è NEUTRO (mai l'azione contrattuale) ──")
 piano_vuoto = legal_quesito.piano_azione({}, bpq["voci"], INPUTS_QUESITO)
 check("fallback ha ≥1 azione", len(piano_vuoto) >= 1)

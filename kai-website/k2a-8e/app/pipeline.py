@@ -777,6 +777,12 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             # il gate li blocca (placeholder_leak). Neutralizzazione deterministica → il report si
             # consegna pulito invece di fallire. Il gate resta come backstop su ciò che sfugge.
             deliverable = quality.scrub_template_placeholders(deliverable, inputs)
+            # Boost legali: neutralizza i NUMERI di sentenza confabulati (Cass. N/AAAA) — il
+            # corpus ha le leggi, non la giurisprudenza, quindi un numero è inventato e non
+            # verificabile (rischio: il cliente lo cita in un atto). Diventa 'orientamento
+            # consolidato della Cassazione' (corretto). Non tocca i numeri di legge.
+            if skill in _NORMATIVE_SKILLS:
+                deliverable = legal_quesito.scrub_giurisprudenza(deliverable)
             # OFFLINE = deliverable segnaposto/demo (no LLM): gira su input minimi → i block del
             # gate sono attesi e non vanno applicati (rigenerare non aiuta: niente retry).
             offline_mode = (filiera_meta or {}).get("mode") == "offline"
