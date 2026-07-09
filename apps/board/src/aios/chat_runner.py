@@ -166,6 +166,13 @@ _BASE_TOOL_DEFS = [
                      "testo eventuale, formato."),
      "input_schema": {"type": "object", "properties": {"prompt": {"type": "string"}},
                       "required": ["prompt"], "additionalProperties": True}},
+    {"name": "controlla_workflow_n8n",
+     "description": ("Watchdog: controlla lo stato dei workflow n8n, RIAVVIA da solo i "
+                     "fallimenti transitori (rete/5xx/rate-limit) con un tetto ai retry, e "
+                     "PROPONE il fix per quelli strutturali o bloccati (senza toccarli). "
+                     "Nessun parametro. Usalo quando l'owner chiede di controllare/sistemare "
+                     "i workflow o se qualcosa si è bloccato."),
+     "input_schema": {"type": "object", "properties": {}, "additionalProperties": True}},
 ]
 
 _FORBIDDEN = ("fuori dal perimetro consentito (solo allowlist; mai control-plane o "
