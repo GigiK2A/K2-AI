@@ -126,6 +126,17 @@ def build_platform() -> Platform:
                 "nota": "immagine generata e caricata — usa questo url in pubblica_post"}
     k.register_tool(Tool(name="genera_immagine", action_type=None, readonly=True,
                          run=_genera_immagine))
+
+    # Watchdog n8n: controlla le esecuzioni, riavvia i fallimenti transitori (con tetto),
+    # propone i fix per gli strutturali. Lanciabile a mano dalla chat oltre che dallo scheduler.
+    def _controlla_workflow(**_):
+        from aios.n8n_watchdog import check_and_heal
+        try:
+            return check_and_heal(log_client=client)
+        except Exception as exc:
+            return {"ok": False, "errore": str(exc)[:200]}
+    k.register_tool(Tool(name="controlla_workflow_n8n", action_type=None, readonly=True,
+                         run=_controlla_workflow))
     k.register_tool(prospects_tool(client))  # sensore: prospect marketing (readonly)
     from aios.competitor_scout import competitors_tool
     k.register_tool(competitors_tool(client))  # sensore: competitor trovati (readonly)
