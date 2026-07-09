@@ -131,17 +131,31 @@ check("fallback_score deterministico in range", 0 <= legal_quesito.fallback_scor
 check("fallback_score senza rischi = 60 (neutro)", legal_quesito.fallback_score([]) == 60)
 
 
-print("── scrub giurisprudenza: numeri di sentenza inventati neutralizzati, leggi intatte ──")
-scr = legal_quesito.scrub_giurisprudenza({"voci": [{"contenuto":
-    "La diffamazione online (Cass. Pen. 4873/2020) e la sentenza n. 99/2018 rilevano; "
-    "condotta ex art. 595 c.p., illecito art. 2043 c.c., D.Lgs 231/2001, Reg. UE 2016/679."}]})
+print("── scrub_legal: sentenze + percentuali + € stimati neutralizzati, norme intatte ──")
+scr = legal_quesito.scrub_legal({"voci": [{"contenuto":
+    "Diffamazione MEDIO-ALTA (60-70%) online (Cass. Pen. 4873/2020) e sentenza n. 99/2018; "
+    "perdita 10-30% dei contatti; risarcimento €5.000–€20.000, costi €3.000-8.000. "
+    "Condotta ex art. 595 c.p., art. 2043 c.c.; il socio detiene il 25% del capitale; IVA 22%."}]})
 txt = scr["voci"][0]["contenuto"]
 check("numero Cassazione rimosso", "4873/2020" not in txt and "99/2018" not in txt)
-check("riferimento all'orientamento conservato", "Cassazione" in txt)
-check("norme/numeri di legge INTATTI (595 c.p., 2043 c.c., 231/2001, 2016/679)",
-      all(x in txt for x in ("art. 595 c.p.", "art. 2043 c.c.", "231/2001", "2016/679")))
-check("guardrail nel system quesito (sentenze + pseudo-precisione + termini)",
-      all(k in legal_quesito.SYSTEM for k in ("MAI NUMERI DI SENTENZA", "pseudo-precisione", "TERMINI DI LEGGE")))
+check("percentuali di probabilità rimosse (60-70%, 10-30%)", "60-70%" not in txt and "10-30%" not in txt)
+check("range € stimati sostituiti", "€5.000" not in txt and "€3.000" not in txt)
+check("banda qualitativa conservata ('MEDIO-ALTA')", "MEDIO-ALTA" in txt)
+check("norme intatte (595 c.p., 2043 c.c.)", "art. 595 c.p." in txt and "art. 2043 c.c." in txt)
+check("percentuale-SOGLIA singola NON toccata (25% capitale, IVA 22%)",
+      "25% del capitale" in txt and "22%" in txt)
+check("guardrail nel system (sentenze + pseudo-precisione + probabilistico + neutralità)",
+      all(k in legal_quesito.SYSTEM for k in
+          ("MAI NUMERI DI SENTENZA", "pseudo-precisione", "PROBABILISTICO", "NEUTRALITÀ")))
+
+print("── hard-stop: banner alta criticità su ≥2 trigger ──")
+import app.render as _R  # noqa: E402
+_S = _R.ST.styles()
+alto = {"voci": [{"contenuto": "possibile reato, data breach e coinvolgimento del Garante; "
+                  "urge la conservazione delle prove"}]}
+basso = {"voci": [{"contenuto": "revisione di una clausola contrattuale ordinaria"}]}
+check("caso ad alta criticità → banner presente", len(_R._hard_stop_banner(alto, _S)) > 0)
+check("caso ordinario → nessun banner", _R._hard_stop_banner(basso, _S) == [])
 
 
 print("── piano_azione: fallback offline è NEUTRO (mai l'azione contrattuale) ──")

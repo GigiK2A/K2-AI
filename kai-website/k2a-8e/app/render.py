@@ -468,14 +468,48 @@ def _preliminary_banner(S):
     return [box, Spacer(1, 8)]
 
 
+# Trigger di ALTA CRITICITÀ (hard-stop): profili penali, violazioni dati, autorità,
+# stampa, conservazione prove. Se il caso ne tocca ≥2 distinti, il report APRE con un
+# avviso di intervento professionale urgente (l'AI non deve "continuare l'analisi" come
+# se fosse un caso ordinario).
+_HARD_STOP_RE = re.compile(
+    r"\b(reato|penale|querela|denuncia|data breach|violazione dei dati|indagine|"
+    r"perquisizione|sequestro|giornalist|autorit[àa] giudiziaria|procura della repubblica|"
+    r"ispezione|diffida|whistleblow|conservazione (?:delle )?prove|sanzione penale|"
+    r"minacce? legali|misura cautelare|garante)\b", re.I)
+
+
+def _hard_stop_banner(deliverable, S) -> list:
+    """Avviso di apertura per i casi ad ALTA CRITICITÀ (≥2 trigger distinti): l'utente deve
+    capire SUBITO che serve un avvocato ora, non a valle di un report ordinario."""
+    import json as _json
+    hits = {m.group(1).lower() for m in _HARD_STOP_RE.finditer(_json.dumps(deliverable, ensure_ascii=False))}
+    if len(hits) < 2:
+        return []
+    txt = ("<b>ATTENZIONE — CASO AD ALTA CRITICITÀ.</b> Il caso presenta elementi (profili "
+           "penali, violazioni di dati, coinvolgimento di autorità o esigenze di conservazione "
+           "delle prove) che richiedono l'intervento IMMEDIATO di un avvocato. Questo documento "
+           "è un primo orientamento e NON sostituisce l'assistenza legale: usalo come base di "
+           "lavoro col professionista, non come decisione autonoma.")
+    box = Table([[Paragraph(txt, S["small"])]], colWidths=[ST.CONTENT_W])
+    box.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), ST.WARM),
+                             ("BOX", (0, 0), (-1, -1), 1.2, ST.RED),
+                             ("LINEABOVE", (0, 0), (-1, 0), 3, ST.RED),
+                             ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                             ("TOPPADDING", (0, 0), (-1, -1), 9), ("BOTTOMPADDING", (0, 0), (-1, -1), 9)]))
+    return [box, Spacer(1, 8)]
+
+
 def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, ambito,
-           has_citations: bool = False, preliminare: bool = False):
+           has_citations: bool = False, preliminare: bool = False, alert: bool = False):
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
     S = ST.styles()
     doc = _Doc(pdf_path, cover_meta, report_name)
     toc = TableOfContents()
     toc.levelStyles = [S["toc"]]
     story = [NextPageTemplate("content"), PageBreak()]
+    if alert:
+        story += _hard_stop_banner(deliverable, S)
     if preliminare:
         story += _preliminary_banner(S)
     story += _methodology(S, ambito, has_citations)
@@ -567,7 +601,7 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
     body += _decision_board(deliverable, S, "legale-compliance")
     body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance",
-           has_citations=bool(citazioni), preliminare=preliminare)
+           has_citations=bool(citazioni), preliminare=preliminare, alert=True)
 
 
 # ========================= Generico (a componenti) =======================

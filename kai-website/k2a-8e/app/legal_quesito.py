@@ -175,6 +175,14 @@ SYSTEM = (
     "dell'avvocato; il danno si QUANTIFICA sulle prove del caso, non si stima a priori.\n"
     "- Distingui i TERMINI DI LEGGE (con la norma: es. querela entro 3 mesi ex art. 124 c.p.) "
     "dalle tempistiche OPERATIVE consigliate (dichiarale come tali, non come termini di legge).\n"
+    "- LINGUAGGIO PROBABILISTICO, mai apodittico: usa 'potrebbe costituire', 'potrebbe "
+    "suggerire', 'occorre verificare', 'sulla base delle sole informazioni disponibili non è "
+    "possibile concludere'. NON affermare mai 'il cliente/la controparte è in mala fede', 'le "
+    "accuse sono false', 'la diffamazione è provata', 'hai ragione': non hai gli elementi.\n"
+    "- NEUTRALITÀ (non schierarti con chi chiede il parere): analizza il caso da terzo, "
+    "segnalando anche i punti DEBOLI della posizione del cliente e le tesi della controparte. "
+    "Ricorda sempre che le valutazioni si fondano SOLO sui fatti dichiarati e possono mutare con "
+    "l'analisi documentale e la verifica del professionista.\n"
     "- Tono autorevole e chiaro per un titolare d'impresa; è orientamento, NON consulenza "
     "legale (D-034).\n"
     "- LUNGHEZZA: ~180-260 parole per voce, su più paragrafi. Prosa densa, niente riempitivo.\n"
@@ -201,23 +209,40 @@ _CASS_NUM_RE = re.compile(
 _SENT_NUM_RE = re.compile(r"\bsentenz[ae]\s+(?:n\.?\s*)?\d{1,6}\s*/\s*\d{2,4}", re.I)
 
 
+# PSEUDO-PRECISIONE su un parere legale (rischio credibilità + fuorviante):
+# - PERCENTUALI DI PROBABILITÀ ('(60-70%)', 'perdita 10-30%'): non c'è un modello statistico
+#   dietro → si rimuove il numero e resta la banda qualitativa (MEDIO-ALTA…). Si tolgono SOLO
+#   le percentuali fra parentesi e i RANGE (60-70%): una percentuale SINGOLA ('25% del capitale',
+#   'IVA 22%') può essere una soglia di legge → NON si tocca.
+# - IMPORTI € STIMATI a RANGE ('€5.000–€20.000', 'costi €3.000-8.000'): inventati senza dati →
+#   sostituiti con un rinvio al professionista. Gli importi € SINGOLI (sanzione da norma) restano.
+_PCT_PAREN_RE = re.compile(r"\s*\(\s*\d{1,3}(?:\s*[-–]\s*\d{1,3})?\s*%\s*\)")
+_PCT_RANGE_RE = re.compile(r"(?:\bdel(?:l['’])?\s+|\bdi\s+)?\d{1,3}\s*[-–]\s*\d{1,3}\s*%")
+_EUR_RANGE_RE = re.compile(r"€\s*[\d.]+\s*[-–]\s*€?\s*[\d.]+")
+
+
 def _scrub_str(s: str) -> str:
     s = _CASS_NUM_RE.sub("orientamento consolidato della Cassazione", s)
     s = _SENT_NUM_RE.sub("un orientamento giurisprudenziale consolidato", s)
+    s = _PCT_PAREN_RE.sub("", s)
+    s = _PCT_RANGE_RE.sub("in misura non quantificabile a priori", s)
+    s = _EUR_RANGE_RE.sub("(importo da quantificare in base al caso e col professionista)", s)
+    s = re.sub(r"  +", " ", s).replace(" ,", ",").replace(" .", ".")
     return s
 
 
-def scrub_giurisprudenza(deliverable):
-    """Neutralizza i NUMERI di sentenza (Cass. N/AAAA, sentenza n. X/AAAA) in TUTTE le stringhe
-    del deliverable. Il corpus normativo non contiene giurisprudenza: un numero di sentenza è
-    confabulato e non verificabile (rischio legale). Non tocca norme/numeri di legge (ancoraggio
-    su 'Cass'/'sentenza'). Deterministico, per QUALSIASI parere legale (audit e quesito)."""
+def scrub_legal(deliverable):
+    """Neutralizza deterministicamente in TUTTE le stringhe del deliverable legale la
+    PSEUDO-PRECISIONE che il gate prompt non garantisce: numeri di sentenza confabulati
+    (Cass. N/AAAA), percentuali di probabilità e importi € stimati a range. Non tocca i
+    numeri di legge, le percentuali-soglia singole né gli importi € singoli. Per QUALSIASI
+    parere legale (audit e quesito)."""
     if isinstance(deliverable, str):
         return _scrub_str(deliverable)
     if isinstance(deliverable, list):
-        return [scrub_giurisprudenza(v) for v in deliverable]
+        return [scrub_legal(v) for v in deliverable]
     if isinstance(deliverable, dict):
-        return {k: scrub_giurisprudenza(v) for k, v in deliverable.items()}
+        return {k: scrub_legal(v) for k, v in deliverable.items()}
     return deliverable
 
 
