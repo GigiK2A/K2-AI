@@ -4,6 +4,7 @@
   "type": "object",
   "required": ["forma_giuridica", "settore_ateco", "n_dipendenti"],
   "properties": {
+    "quesito": { "type": "string", "description": "Il caso, l'incidente o la domanda legale specifica che il cliente porta, nelle sue parole (es. 'un dipendente ha inviato per errore a un fornitore un file con i dati di 300 clienti: dobbiamo notificare al Garante?'). Trascrivi il problema e le domande poste; se il cliente pone un caso concreto è il dato PIÙ importante. Ometti se non c'è un caso specifico (richiesta di audit legale generale)." },
     "forma_giuridica": { "type": "string", "enum": ["ditta_individuale", "snc", "sas", "srl", "srls", "spa", "cooperativa", "altro"] },
     "settore_ateco": { "type": "string", "description": "codice ATECO o descrizione settore" },
     "n_dipendenti": { "type": "integer", "minimum": 0 },
