@@ -537,6 +537,38 @@ def _disclaimer_inline(deliverable, blueprint, S):
     return [Spacer(1, 6), box]
 
 
+# semaforo → (livello, urgenza, avvocato) per la matrice decisionale legale.
+_SEMAFORO_MATRIX = {
+    "rosso": ("Alto", "Alta", "Sì, subito"),
+    "giallo": ("Medio", "Media", "Consigliato"),
+    "verde": ("Basso", "Bassa", "Facoltativo"),
+}
+
+
+def _decision_matrix(mappa_rischi, S) -> list:
+    """Matrice decisionale (report legali): la mappa rischi come TABELLA azionabile —
+    Area | Livello | Urgenza | Avvocato — derivata SOLO dal semaforo reale (nessun
+    accostamento inventato). Sostituisce la heatmap: stessi dati + colonne per decidere."""
+    rows = []
+    for m in mappa_rischi or []:
+        if not isinstance(m, dict):
+            continue
+        area = str(m.get("area") or "").strip()
+        if not area:
+            continue
+        liv, urg, avv = _SEMAFORO_MATRIX.get(str(m.get("semaforo", "")).lower(),
+                                             ("Medio", "Media", "Consigliato"))
+        rows.append([area, liv, urg, avv])
+    if not rows:
+        return []
+    t = ST.premium_table(["Area di rischio", "Livello", "Urgenza", "Avvocato"], rows, S,
+                         widths=[ST.CONTENT_W - 78 * mm, 26 * mm, 26 * mm, 26 * mm])
+    return [Spacer(1, 4), Paragraph("Matrice decisionale", S["h3"]), Spacer(1, 2), t, Spacer(1, 2),
+            Paragraph('<font size="7" color="#8A7A55">Livello e urgenza derivano dal rischio per '
+                      "area; le azioni di dettaglio sono nel Piano d'azione.</font>", S["bullet"]),
+            Spacer(1, 6)]
+
+
 # ========================= LegalBoost (dedicato) =========================
 def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Path,
                preliminare: bool = False) -> None:
@@ -561,7 +593,7 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
     if voce_sintesi and voce_sintesi.get("contenuto"):
         body.append(Paragraph(_rich(str(voce_sintesi["contenuto"])), S["body"]))
     if sint.get("mappa_rischi"):
-        body += [Spacer(1, 4), ST.heatmap(sint["mappa_rischi"], S), Spacer(1, 6)]
+        body += _decision_matrix(sint["mappa_rischi"], S)
 
     def _piano_table():
         rows = [[str(p.get("priorita", "")), str(p.get("azione", "")),
