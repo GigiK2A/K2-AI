@@ -42,7 +42,7 @@ BOOST_PLACEHOLDERS_PATH = ROOT / "grounding" / "boost_placeholders.json"
 CATALOG_PATH = Path(os.environ.get("K2A_8E_CATALOG", str(ROOT / "catalog" / "catalog.json"))).resolve()
 
 OUT_DIR = Path(os.environ.get("K2A_8E_OUT_DIR", str(ROOT / "_out"))).resolve()
-ENGINE_VERSION = os.environ.get("K2A_8E_VERSION", "0.2.1-legalboost-quesito")
+ENGINE_VERSION = os.environ.get("K2A_8E_VERSION", "0.2.4-legal-polish")
 
 # --- Catalogo chiuso Phase-1: SOLO LegalBoost (pilota) -------------------
 # manifest mappa 15 service_id → skill. In Phase-1 sono instradabili solo i

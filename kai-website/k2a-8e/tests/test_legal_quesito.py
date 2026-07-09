@@ -131,11 +131,38 @@ check("fallback_score deterministico in range", 0 <= legal_quesito.fallback_scor
 check("fallback_score senza rischi = 60 (neutro)", legal_quesito.fallback_score([]) == 60)
 
 
+print("── scrub giurisprudenza: numeri di sentenza inventati neutralizzati, leggi intatte ──")
+scr = legal_quesito.scrub_giurisprudenza({"voci": [{"contenuto":
+    "La diffamazione online (Cass. Pen. 4873/2020) e la sentenza n. 99/2018 rilevano; "
+    "condotta ex art. 595 c.p., illecito art. 2043 c.c., D.Lgs 231/2001, Reg. UE 2016/679."}]})
+txt = scr["voci"][0]["contenuto"]
+check("numero Cassazione rimosso", "4873/2020" not in txt and "99/2018" not in txt)
+check("riferimento all'orientamento conservato", "Cassazione" in txt)
+check("norme/numeri di legge INTATTI (595 c.p., 2043 c.c., 231/2001, 2016/679)",
+      all(x in txt for x in ("art. 595 c.p.", "art. 2043 c.c.", "231/2001", "2016/679")))
+check("guardrail nel system quesito (sentenze + pseudo-precisione + termini)",
+      all(k in legal_quesito.SYSTEM for k in ("MAI NUMERI DI SENTENZA", "pseudo-precisione", "TERMINI DI LEGGE")))
+
+
 print("── piano_azione: fallback offline è NEUTRO (mai l'azione contrattuale) ──")
 piano_vuoto = legal_quesito.piano_azione({}, bpq["voci"], INPUTS_QUESITO)
 check("fallback ha ≥1 azione", len(piano_vuoto) >= 1)
 check("fallback non contrattuale",
       not any("1341" in p["azione"] for p in piano_vuoto))
+
+print("── piano_azione: scarta gli scenari-header e accorcia (fix tabella troncata) ──")
+_vm = {"sintesi_mappa_rischi": {"rischi": [], "azioni": [
+    "SCENARIO A (PRIORITARIO): raccolta prove immediata e diffida legale con richiesta rimozione",
+    "RISPOSTA DIRETTA: le recensioni superano il diritto di critica se prive di prove",
+    "Acquisire il testo integrale delle recensioni con timestamp di pubblicazione entro 48 ore, "
+    "salvando screenshot autenticati, URL e metadati visibili, per cristallizzare la prova prima "
+    "di ogni azione (questo testo è volutamente molto lungo per verificare l'accorciamento)"]}}
+_piano = legal_quesito.piano_azione(_vm, bpq["voci"], INPUTS_QUESITO)
+_az = [p["azione"] for p in _piano]
+check("scenari-header ('SCENARIO A', 'RISPOSTA DIRETTA') scartati",
+      not any(a.upper().startswith(("SCENARIO", "RISPOSTA DIRETTA")) for a in _az))
+check("azione operativa tenuta", any("Acquisire il testo" in a for a in _az))
+check("azioni accorciate (nessuna oltre ~135 char)", all(len(a) <= 135 for a in _az))
 
 
 print("── regressione AUDIT: assemble senza quesito → 9 voci, norme sulle aree audit ──")

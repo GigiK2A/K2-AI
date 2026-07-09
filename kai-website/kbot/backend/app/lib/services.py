@@ -72,9 +72,14 @@ def get_service_skills(service_id: Optional[str]) -> List[str]:
 # solo BASE_SKILL ("diagnosi-ai-operativa-pmi") indipendentemente dall'intent
 # reale dell'utente (es. audit SEO).
 _INTENT_KEYWORDS: Dict[str, List[str]] = {
-    "P01": ["email", "crm", "lead generation", "outreach", "campagna email", "sales pipeline", "agenti email"],
+    "P01": ["email marketing", "sequenza email", "automazione email", "gestione email", "crm",
+            "lead generation", "outreach", "campagna email", "sales pipeline", "agenti email"],
     "P02": ["amministr", "fatture", "fatturazione elettronica", "contabilità", "riconciliazion", "scadenz", "bilancio", "bilanci", "analisi bilancio", "budget", "forecast"],
-    "P03": ["contratto", "contratti", "legale", "gdpr", "privacy policy", "nda", "diritto societario", "antitrust"],
+    "P03": ["contratto", "contratti", "legale", "gdpr", "privacy policy", "nda", "diritto societario", "antitrust",
+            # incidenti/quesiti legali specifici → devono caricare le skill legali, non finire su BASE_SKILL
+            "whistleblowing", "segnalazione", "data breach", "violazione dei dati", "furto di dati",
+            "furto di documenti", "segreto commerciale", "concorrenza sleale", "diffida", "pec",
+            "licenziamento", "contenzioso", "garante", "ex dipendente", "parere legale"],
     "P04": ["ingegneria", "progettazione", "cantiere", "strutturale", "psc", "direzione lavori", "capitolato"],
     "P05": ["microapp", "documento tecnico", "template generation", "runbook", "documentation"],
     "P06": ["customer service", "ticket", "supporto cliente", "knowledge base helpdesk", "sentiment"],
