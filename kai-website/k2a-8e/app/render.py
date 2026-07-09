@@ -243,15 +243,38 @@ def _collect_list(d, *hints, limit=5):
     return [o for o in out if o][:limit]
 
 
-def _exec_summary(deliverable, S) -> list:
-    """Executive Summary visuale: gauge score + sintesi + evidenze + azioni."""
+def _risk_chip(score: int, S) -> Table:
+    """Livello di rischio del CASO al posto del gauge numerico (report legali): uno 'score
+    45/100' su un caso legale è un numero muto/black-box (non è un audit di compliance). La
+    banda deriva dallo score (più basso = più rischio) e si legge subito."""
+    band, tone = (("BASSO", ST.GREEN) if score >= 70 else
+                  ("MEDIO-ALTO", ST.AMBER) if score >= 45 else ("ALTO", ST.RED))
+    inner = [Paragraph(f'<font name="{ST.F_BOLD}" size="8" color="{ST.hx(ST.GOLD_DK)}">'
+                       f'LIVELLO DI RISCHIO DEL CASO</font>', S["kv"]), Spacer(1, 4),
+             Paragraph(f'<font name="{ST.F_BOLD}" size="17" color="{ST.hx(tone)}">{band}</font>', S["body"]),
+             Spacer(1, 2),
+             Paragraph('<font size="7" color="#8A7A55">valutazione qualitativa, non un punteggio</font>', S["kv"])]
+    t = Table([[inner]], colWidths=[38 * mm])
+    t.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 1, tone), ("LINEABOVE", (0, 0), (-1, 0), 3, tone),
+                           ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                           ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                           ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    return t
+
+
+def _exec_summary(deliverable, S, ambito: str = "") -> list:
+    """Executive Summary visuale: gauge score (o banda di rischio, sui legali) + sintesi +
+    evidenze + azioni."""
     out = [_Heading("Executive Summary", S["h1"], "exec")]
     score = _find_score(deliverable)
     summary = (_find_text(deliverable, "sintesi", "executive", "summary", "esecutiv")
                or "Sintesi dei principali risultati dell'analisi, delle criticità rilevate e delle "
                   "priorità d'azione individuate per l'azienda.")
-    # riga: gauge + testo sintesi
-    left = ST.Gauge(score[1], "Score") if score else Paragraph("", S["body"])
+    # riga: gauge (o banda di rischio sui legali) + testo sintesi
+    if ambito == "legale-compliance" and score:
+        left = _risk_chip(score[1], S)
+    else:
+        left = ST.Gauge(score[1], "Score") if score else Paragraph("", S["body"])
     right = Paragraph(_rich(summary[:520]), S["lead"])
     row = Table([[left, right]], colWidths=[40 * mm, ST.CONTENT_W - 40 * mm])
     row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (1, 0), (1, 0), 10)]))
@@ -280,11 +303,13 @@ def _exec_summary(deliverable, S) -> list:
     return out
 
 
-def _kpi_dashboard(deliverable, S) -> list:
+def _kpi_dashboard(deliverable, S, ambito: str = "") -> list:
     """Dashboard sintetica: card per score, rischio, priorità (derivati)."""
     cards = []
     score = _find_score(deliverable)
-    if score:
+    # Sui report legali NON si mostra lo 'score X/100' (numero muto su un caso): la banda di
+    # rischio è già nell'executive summary. Le altre card (rischio/priorità testuali) restano.
+    if score and ambito != "legale-compliance":
         sc = score[1]
         tone = ST.GREEN if sc >= 70 else ST.AMBER if sc >= 45 else ST.RED
         cards.append({"value": f"{sc}/100", "label": "Score generale", "tone": tone,
@@ -319,7 +344,7 @@ def _kpi_dashboard(deliverable, S) -> list:
             ST.kpi_dashboard(cards, S), Spacer(1, 6)]
 
 
-def _decision_board(deliverable, S) -> list:
+def _decision_board(deliverable, S, ambito: str = "") -> list:
     """Board decisionale finale (Livello 2): derivata deterministicamente da
     score + segnali (urgenza/priorità/rischio/investimento/ROI) già nel deliverable.
     Chiude il report con 'cosa decidere'. Nessun dato inventato: solo estratti."""
@@ -340,7 +365,9 @@ def _decision_board(deliverable, S) -> list:
         return res[0]
 
     cells: list = []
-    if score:
+    # Sui legali niente 'Score generale X/100' (numero muto su un caso): resta la Decisione
+    # testuale e i segnali qualitativi.
+    if score and ambito != "legale-compliance":
         sc = score[1]
         tone = ST.GREEN if sc >= 70 else ST.AMBER if sc >= 45 else ST.RED
         cells.append({"label": "Score generale", "value": f"{sc}/100", "tone": tone})
@@ -455,8 +482,8 @@ def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, am
     story += [PageBreak(), _Heading("Indice del report", S["h1"], "indice"), Spacer(1, 4), toc, PageBreak()]
     story += [ST.layer_band("executive", "Livello 1 — Executive",
                             "lettura 30 secondi · per chi decide", S), Spacer(1, 6)]
-    story += _exec_summary(deliverable, S)
-    story += _kpi_dashboard(deliverable, S)
+    story += _exec_summary(deliverable, S, ambito)
+    story += _kpi_dashboard(deliverable, S, ambito)
     story += [Spacer(1, 8), ST.layer_band("analysis", "Livello 2 — Analisi",
                                           "5-10 minuti · per il management", S), Spacer(1, 6)]
     story += body_blocks
@@ -537,7 +564,7 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
         t = _piano_table()
         if t:
             body.append(t)
-    body += _decision_board(deliverable, S)
+    body += _decision_board(deliverable, S, "legale-compliance")
     body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance",
            has_citations=bool(citazioni), preliminare=preliminare)

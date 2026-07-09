@@ -161,6 +161,10 @@ SYSTEM = (
     "caso non le tocca: se un'area non c'entra, dillo in una riga e passa oltre.\n"
     "- Rispondi alle domande del cliente in modo diretto e motivato, con scenari A/B/C dove la "
     "condotta dipende da condizioni (es. soglie di rischio, termini).\n"
+    "- NON RIPETERE: gli scenari A/B/C vanno nella voce Risposta (sintesi) e, in forma operativa, "
+    "nella Raccomandazione — NON ricopiarli nell'Analisi normativa né altrove. Ogni norma si "
+    "spiega UNA volta (nell'Analisi), non in ogni voce. Le AZIONI di ciascuna voce sono nuove e "
+    "specifiche, non le stesse ripetute. Un documento denso e non ridondante.\n"
     "- MAI NUMERI DI SENTENZA: non citare 'Cass. 4873/2020', 'sentenza n. X/AAAA', numeri di "
     "Cassazione o estremi giurisprudenziali. NON hai una banca dati di giurisprudenza → un "
     "numero sarebbe inventato e non verificabile (il cliente lo citerebbe in un atto). Al "
@@ -234,11 +238,36 @@ def fallback_score(voci_out: list[dict] | None) -> int:
     return max(40, 100 - min(pen, 60))
 
 
+# Etichette di SEZIONE/scenario che l'LLM a volte infila tra le `azioni` (la voce Risposta
+# metteva 'SCENARIO A…', 'RISPOSTA DIRETTA…', 'LIVELLO RISCHIO…' come azioni): NON sono azioni
+# operative → la tabella Piano d'azione le stampava lunghe e TRONCATE ('PROVE: … vis'). Si
+# scartano; il piano resta una to-do di azioni crisp.
+_NON_AZIONE_RE = re.compile(
+    r"^\s*(scenario\b|risposta diretta|livello (di )?rischio|to-?do\b|priorit[àa]\b\s*\d)", re.I)
+
+
+def _crisp_azione(a: str) -> str:
+    """Azione breve e leggibile per la tabella: normalizza gli spazi, taglia su confine di
+    frase/parola (~130 char) invece che a metà parola."""
+    a = re.sub(r"\s+", " ", str(a or "")).strip()
+    if len(a) <= 130:
+        return a
+    cut = a[:130]
+    for sep in ("; ", ". ", " — ", " - "):
+        i = cut.rfind(sep)
+        if i >= 70:
+            return cut[:i].rstrip(" ,;:.-")
+    sp = cut.rfind(" ")
+    return (cut[:sp] if sp >= 70 else cut).rstrip(" ,;:.-") + "…"
+
+
 def piano_azione(voci_meta: dict | None, voci: list[dict], inputs: dict | None = None) -> list[dict]:
     """Deriva `piano_azione` dalle azioni realmente prodotte per le voci (meta strutturato),
     in ordine di rilevanza (ordine voci). Sostituisce l'azione HARD-CODED che LegalBoost
     metteva sempre ('Adeguare le condizioni generali artt. 1341-1342') anche su casi che
     non c'entravano nulla coi contratti (es. un data breach). Vale per ENTRAMBE le modalità.
+    Scarta le etichette-scenario finite tra le azioni e accorcia in modo leggibile (no
+    troncamenti a metà parola nella tabella).
 
     handoff_avvocato = True se la voce da cui viene l'azione ha un rischio `serve_avvocato`.
     """
@@ -253,12 +282,15 @@ def piano_azione(voci_meta: dict | None, voci: list[dict], inputs: dict | None =
         serve = any(bool(r.get("serve_avvocato")) for r in meta.get("rischi", [])
                     if isinstance(r, dict))
         for a in meta.get("azioni", []) or []:
-            azione = str(a).strip()
-            key = azione.lower()
+            raw = str(a).strip()
+            if not raw or _NON_AZIONE_RE.match(raw):   # etichetta-scenario, non un'azione
+                continue
+            azione = _crisp_azione(raw)
+            key = azione.lower()[:60]
             if not azione or key in seen:
                 continue
             seen.add(key)
-            items.append({"priorita": len(items) + 1, "azione": azione[:300],
+            items.append({"priorita": len(items) + 1, "azione": azione,
                           "handoff_avvocato": serve})
             if len(items) >= 8:
                 break

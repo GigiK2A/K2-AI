@@ -150,6 +150,20 @@ check("fallback ha ≥1 azione", len(piano_vuoto) >= 1)
 check("fallback non contrattuale",
       not any("1341" in p["azione"] for p in piano_vuoto))
 
+print("── piano_azione: scarta gli scenari-header e accorcia (fix tabella troncata) ──")
+_vm = {"sintesi_mappa_rischi": {"rischi": [], "azioni": [
+    "SCENARIO A (PRIORITARIO): raccolta prove immediata e diffida legale con richiesta rimozione",
+    "RISPOSTA DIRETTA: le recensioni superano il diritto di critica se prive di prove",
+    "Acquisire il testo integrale delle recensioni con timestamp di pubblicazione entro 48 ore, "
+    "salvando screenshot autenticati, URL e metadati visibili, per cristallizzare la prova prima "
+    "di ogni azione (questo testo è volutamente molto lungo per verificare l'accorciamento)"]}}
+_piano = legal_quesito.piano_azione(_vm, bpq["voci"], INPUTS_QUESITO)
+_az = [p["azione"] for p in _piano]
+check("scenari-header ('SCENARIO A', 'RISPOSTA DIRETTA') scartati",
+      not any(a.upper().startswith(("SCENARIO", "RISPOSTA DIRETTA")) for a in _az))
+check("azione operativa tenuta", any("Acquisire il testo" in a for a in _az))
+check("azioni accorciate (nessuna oltre ~135 char)", all(len(a) <= 135 for a in _az))
+
 
 print("── regressione AUDIT: assemble senza quesito → 9 voci, norme sulle aree audit ──")
 deliv_a = pipeline.assemble_legalboost(bp, {v["id"]: "x" * 80 for v in bp["voci"]}, [],
