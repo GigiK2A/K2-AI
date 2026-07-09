@@ -157,6 +157,12 @@ basso = {"voci": [{"contenuto": "revisione di una clausola contrattuale ordinari
 check("caso ad alta criticità → banner presente", len(_R._hard_stop_banner(alto, _S)) > 0)
 check("caso ordinario → nessun banner", _R._hard_stop_banner(basso, _S) == [])
 
+print("── matrice decisionale: mappa rischi → tabella Area|Livello|Urgenza|Avvocato ──")
+_mx = _R._decision_matrix([{"area": "Reputazione", "semaforo": "rosso"},
+                           {"area": "Marchio", "semaforo": "verde"}], _S)
+check("matrice generata da mappa non vuota", len(_mx) > 0)
+check("matrice vuota se nessun rischio", _R._decision_matrix([], _S) == [])
+
 
 print("── piano_azione: fallback offline è NEUTRO (mai l'azione contrattuale) ──")
 piano_vuoto = legal_quesito.piano_azione({}, bpq["voci"], INPUTS_QUESITO)
