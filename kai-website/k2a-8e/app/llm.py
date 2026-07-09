@@ -23,6 +23,7 @@ from typing import Optional
 
 from .settings import (ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ANTHROPIC_MODEL_LIGHT,
                        ALLOW_OFFLINE_FALLBACK)
+from . import legal_quesito
 
 log = logging.getLogger("8e.llm")
 
@@ -149,15 +150,20 @@ def generate_sezioni(
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         facts_block = _facts_block(facts)
         dati = json.dumps(inputs, ensure_ascii=False)
+        # Modalità QUESITO (parere su un caso specifico): il caso va IN TESTA e il system
+        # cambia → ogni voce risponde al caso del cliente invece di produrre l'audit generico
+        # a 9 aree (bug prod data-breach). Senza quesito: system e prompt invariati.
+        caso = legal_quesito.caso_block(inputs)
+        system_txt = legal_quesito.SYSTEM if caso else _SYSTEM
 
         def _call(target: list[dict]):
-            user = (f"{facts_block}\n\n{_voci_block(target)}\n\n"
+            user = (f"{caso}{facts_block}\n\n{_voci_block(target)}\n\n"
                     f"DATI CLIENTE (input form): {dati}\n\n"
                     "Genera ora il JSON con la prosa per ogni voce.")
             resp = client.messages.create(
                 model=ANTHROPIC_MODEL,
                 max_tokens=_SEZIONI_MAX_TOKENS,
-                system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
+                system=[{"type": "text", "text": system_txt, "cache_control": {"type": "ephemeral"}}],
                 messages=[{"role": "user", "content": user}],
             )
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
@@ -879,16 +885,21 @@ def generate_structured_meta(blueprint: dict, facts: dict[str, dict], inputs: di
         import anthropic
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         voci_spec = "\n".join(f"- {v['id']}: {v['titolo']} ({'; '.join(v.get('argomenti_obbligatori', [])[:3])})" for v in voci)
+        caso = legal_quesito.caso_block(inputs)
         sysmsg = (
             "Produci SOLO i metadati strutturati di una diagnosi legale-compliance PMI "
             "(NON la prosa). Conciso. Rispondi SOLO JSON: {\"score\": int 0-100, "
             "\"mappa_rischi\": [{\"area\": str, \"semaforo\": \"verde|giallo|rosso\"}], "
             "\"voci_meta\": {\"<id>\": {\"rischi\": [{\"descrizione\": str breve, "
             "\"gravita\": \"bassa|media|alta\", \"serve_avvocato\": bool}], \"azioni\": [str breve]}}}."
+            + (legal_quesito.META_HINT if caso else "")
         )
-        user = f"Voci:\n{voci_spec}\n\nDati: {json.dumps(inputs, ensure_ascii=False)}\nUna entry voci_meta per id."
+        user = f"{caso}Voci:\n{voci_spec}\n\nDati: {json.dumps(inputs, ensure_ascii=False)}\nUna entry voci_meta per id."
+        # 8000 (era 4096): con un quesito lungo + 8 voci il JSON meta (score+mappa+voci_meta)
+        # sforava 4096 → troncato → parse KO → None → score=-1 in assemble → validation_failed
+        # loop → timeout 600s. 8000 dà margine così lo score REALE dell'LLM arriva all'attempt-1.
         resp = client.messages.create(
-            model=ANTHROPIC_MODEL, max_tokens=4096,
+            model=ANTHROPIC_MODEL, max_tokens=_cap_tok(8000),
             system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
         )

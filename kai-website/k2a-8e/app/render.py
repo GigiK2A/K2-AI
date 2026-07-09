@@ -493,7 +493,10 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
     voce_sintesi = next((v for v in voci if v.get("id") == "sintesi_mappa_rischi"), None)
     piano_ids = {"piano_azione_handoff"}
 
-    body = [_Heading("01 · Sintesi e mappa rischi", S["h1"], "legal-1")]
+    # Titolo sezione 01 dalla voce sintesi: in modalità quesito è "Risposta al tuo quesito",
+    # in audit resta "Sintesi e mappa rischi" (default se la voce manca il titolo).
+    sez01 = str((voce_sintesi or {}).get("titolo") or "Sintesi e mappa rischi").strip()
+    body = [_Heading(f"01 · {sez01}", S["h1"], "legal-1")]
     if voce_sintesi and voce_sintesi.get("contenuto"):
         body.append(Paragraph(_rich(str(voce_sintesi["contenuto"])), S["body"]))
     if sint.get("mappa_rischi"):

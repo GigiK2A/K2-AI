@@ -13,8 +13,8 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from . import (advisor, agevolazioni, assets, budget, build, calc, control, elettrico, finance,
-               freshness, grounding, host, jobs, llm, mep, norme, normattiva, quality, quant,
-               safety, tax, validate, web)
+               freshness, grounding, host, jobs, legal_quesito, llm, mep, norme, normattiva,
+               quality, quant, safety, tax, validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -163,6 +163,10 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
         for c in citazioni
     ]
     voci_meta = (meta_struct or {}).get("voci_meta", {})
+    # In modalità QUESITO i riferimenti normativi si agganciano alle voci di analisi
+    # (non a 'contrattualistica'/'societario_231', che non esistono nel case-first).
+    norme_voci = (legal_quesito.NORME_VOCI_QUESITO if legal_quesito.is_quesito(inputs)
+                  else ("contrattualistica", "societario_231"))
 
     def _grav(g: str) -> str:
         return g if g in ("bassa", "media", "alta") else "media"
@@ -188,7 +192,7 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
             "contenuto": str(sezioni.get(vid, "")),
             "rischi": rischi,
             "azioni": azioni,
-            "norme_citate": norme if vid in ("contrattualistica", "societario_231") else [],
+            "norme_citate": norme if vid in norme_voci else [],
         })
 
     mappa = (meta_struct or {}).get("mappa_rischi")
@@ -197,10 +201,12 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
         mappa = []
     score = (meta_struct or {}).get("score")
     if not isinstance(score, int) or not (0 <= score <= 100):
-        # ONLINE senza score valido dall'LLM → -1 forza il refuse (mai score cosmetico
-        # in un report reale/pagato). OFFLINE è un placeholder/demo (nessun LLM, sezioni
-        # segnaposto): usa uno score-segnaposto valido per far girare la pipeline end-to-end.
-        score = 50 if offline else -1
+        # NIENTE score=-1: viola l'output-schema (min 0) → validation_failed → 3
+        # rigenerazioni legali complete → TIMEOUT 600s = vicolo cieco su un PAGATO (bug
+        # prod quesito data-breach: structured_meta troncava → nessuno score → -1 → loop).
+        # OFFLINE = placeholder 50 (demo). ONLINE = score DETERMINISTICO dai rischi reali
+        # (mai cosmetico) → il report esce all'attempt-1, niente loop né timeout.
+        score = 50 if offline else legal_quesito.fallback_score(voci_out)
     return {
         "meta": {
             "servizio": "LegalBoost", "versione": "1.0.0", "data": quality.today_iso(),
@@ -208,10 +214,10 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
         },
         "sintesi": {"score_compliance": score, "mappa_rischi": mappa},
         "voci": voci_out,
-        "piano_azione": [
-            {"priorita": 1, "azione": "Adeguare le condizioni generali (artt. 1341-1342 c.c.)",
-             "handoff_avvocato": True}
-        ],
+        # piano_azione DERIVATO dalle azioni reali delle voci (non più l'azione contrattuale
+        # hard-coded, che compariva anche su casi che coi contratti non c'entravano — es. un
+        # data breach). Deriva per ENTRAMBE le modalità (audit e quesito).
+        "piano_azione": legal_quesito.piano_azione(voci_meta, blueprint.get("voci", []), inputs),
         "disclaimer": blueprint.get(
             "disclaimer",
             "Orientamento legale-compliance, NON consulenza legale (D-034); "
@@ -639,6 +645,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
         form_schema = assets.load_form(skill) or {}   # FEED contract: campi richiesti dal boost
         if not blueprint or not out_schema:
             raise Refuse("unresolvable_placeholder", f"asset mancanti per skill '{skill}'")
+
+        # QUESITO MODE: se l'input porta un caso/incidente specifico (campo `quesito`),
+        # LegalBoost adotta lo scheletro CASE-FIRST (fatti→questioni→analisi→rischio→
+        # raccomandazione) invece dell'audit generico a 9 aree — bug prod data-breach: un
+        # quesito puntuale usciva come compliance-audit fuori tema. Deepcopy (non muta
+        # l'asset lru_cached); senza quesito il blueprint resta invariato.
+        blueprint = legal_quesito.maybe_quesito(skill, blueprint, inputs)
 
         # Gate 0. L'IDENTITÀ (nome cliente) blocca SEMPRE: serve a intestare il documento.
         # La COMPLETEZZA/quadratura blocca solo in FULL; in PARTIAL (report preliminare)
