@@ -126,6 +126,56 @@ def manage_workflow(op: str, *, workflow_id: str | None = None,
     return {"ok": False, "errore": f"operazione '{op}' non permessa (mai delete)"}
 
 
+def _n8n_base() -> str:
+    """Base host di n8n (senza /api/v1), per costruire gli URL /webhook/<path>."""
+    base = os.environ.get("N8N_API_URL", "").strip().rstrip("/")
+    for suf in ("/api/v1", "/api"):
+        if base.endswith(suf):
+            return base[: -len(suf)]
+    return base
+
+
+def workflow_webhook_url(workflow_id: str) -> str | None:
+    """Trova il nodo webhook-trigger del workflow e ricostruisce l'URL di produzione
+    (<base>/webhook/<path>). Così si può RI-ESEGUIRE quel workflow specifico."""
+    wf = get_workflow(workflow_id)
+    if not isinstance(wf, dict):
+        return None
+    for n in (wf.get("nodes") or []):
+        t = str(n.get("type", "")).lower()
+        if "webhook" in t and "respond" not in t:      # trigger, non 'Respond to Webhook'
+            p = (n.get("parameters") or {}).get("path")
+            base = _n8n_base()
+            if p and base:
+                return f"{base}/webhook/{p}"
+    return None
+
+
+def restart_workflow(workflow_id: str, name: str | None = None,
+                     payload: dict | None = None, timeout: int = 25) -> dict[str, Any]:
+    """Ri-esegue un workflow: preferisce il SUO webhook trigger (ri-esegue davvero quello
+    specifico); fallback all'esecutore per nome. Usata dal watchdog per i fallimenti
+    transitori (con tetto ai retry a monte)."""
+    url = None
+    try:
+        url = workflow_webhook_url(workflow_id)
+    except Exception:
+        url = None
+    if url:
+        body = json.dumps({"source": "watchdog", "reason": "retry_transitorio",
+                           "payload": payload or {}}).encode("utf-8")
+        req = urllib.request.Request(url, data=body,
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
+                r.read()
+            return {"ok": True, "via": "webhook", "workflow_id": workflow_id}
+        except Exception as exc:
+            return {"ok": False, "via": "webhook", "errore": str(exc)[:200]}
+    out = trigger_n8n(name or workflow_id, payload or {})   # fallback: esecutore per nome
+    return {"ok": bool(out.get("ok")), "via": "executor", "errore": out.get("errore")}
+
+
 def n8n_workflows_tool() -> Tool:
     """Sensore readonly: elenco workflow n8n (degrada a [] senza API)."""
     return Tool(name="leggi_n8n_workflows", action_type=None, readonly=True,

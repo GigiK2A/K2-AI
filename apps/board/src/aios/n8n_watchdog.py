@@ -16,7 +16,7 @@ import time
 from typing import Any, Callable
 
 from aios.sources.n8n import (list_executions, get_execution, list_workflows,
-                              trigger_n8n, n8n_api_enabled)
+                              restart_workflow, n8n_api_enabled)
 
 # Errori su cui il riavvio ha senso (transitori). Default = strutturale (serve l'owner):
 # meglio non riavviare in loop qualcosa che rifallirà comunque.
@@ -54,8 +54,35 @@ def _fix_hint(msg: str) -> str:
     return "Guarda il nodo che fallisce nell'esecuzione n8n per capire la causa."
 
 
+def _deep_signal(err: dict) -> str:
+    """Segnali PROFONDI dell'errore n8n oltre a 'message': description + messages[] spesso
+    contengono il vero errore dell'API (es. il JSON Meta col error_subcode 2207032), che
+    serve a classificare bene transient vs structural."""
+    bits: list[str] = []
+    if err.get("description"):
+        bits.append(str(err["description"]))
+    for m in (err.get("messages") or []):
+        bits.append(str(m))
+        # se dentro c'è un JSON tipo Graph API, estrai i campi utili
+        s = str(m)
+        i, j = s.find("{"), s.rfind("}")
+        if 0 <= i < j:
+            try:
+                blob = json.loads(s[i:j + 1])
+                e = blob.get("error", blob) if isinstance(blob, dict) else {}
+                for k in ("error_subcode", "error_user_title", "error_user_msg",
+                          "is_transient", "code"):
+                    if e.get(k) not in (None, ""):
+                        bits.append(f"{k}={e[k]}")
+            except Exception:
+                pass
+    return " ".join(bits)[:600]
+
+
 def _extract_error(execdata: Any) -> tuple[str, str]:
-    """Trova (messaggio, nodo) nell'oggetto esecuzione n8n, in modo difensivo."""
+    """Trova (messaggio, nodo) nell'oggetto esecuzione n8n, in modo difensivo.
+    Il messaggio include anche i segnali profondi (subcode Meta, ecc.) così la classify
+    non si ferma alla stringa generica 'Bad request'."""
     msg, node = "", ""
 
     def walk(o: Any, depth: int = 0):
@@ -64,8 +91,10 @@ def _extract_error(execdata: Any) -> tuple[str, str]:
             return
         if isinstance(o, dict):
             err = o.get("error")
-            if isinstance(err, dict) and err.get("message"):
-                msg = str(err.get("message"))[:300]
+            if isinstance(err, dict) and (err.get("message") or err.get("messages")):
+                base = str(err.get("message") or "")[:200]
+                deep = _deep_signal(err)
+                msg = (base + (" | " + deep if deep else "")).strip()[:600]
                 n = err.get("node")
                 node = str((n or {}).get("name") if isinstance(n, dict) else n or "")[:120]
                 return
@@ -128,7 +157,7 @@ def _log(log_client: Any, row: dict) -> None:
 def check_and_heal(*, log_client: Any = None, retry_cap: int = 2, retrigger: bool = True,
                    limit: int = DEFAULT_LIMIT,
                    list_exec: Callable = list_executions, get_exec: Callable = get_execution,
-                   list_wf: Callable = list_workflows, trigger: Callable = trigger_n8n,
+                   list_wf: Callable = list_workflows, restart: Callable = restart_workflow,
                    now: float | None = None) -> dict[str, Any]:
     """Giro del watchdog: legge le esecuzioni recenti, riavvia i transitori (con tetto),
     propone i fix per gli strutturali/bloccati. Ritorna un report strutturato."""
@@ -182,11 +211,12 @@ def check_and_heal(*, log_client: Any = None, retry_cap: int = 2, retrigger: boo
                                      "suggerimento": (f"Già riavviato {already} volte oggi senza "
                                                       "successo: serve un intervento manuale.")})
                     continue
-                out = trigger(wname, {"source": "watchdog", "reason": "retry_transitorio"})
+                out = restart(wid, wname)
                 riavviato = bool(out.get("ok"))
                 riavviati.append({"workflow": wname, "workflow_id": wid, "nodo": node,
                                   "errore": msg, "riavviato": riavviato,
-                                  "esito": out.get("errore") if not riavviato else "inviato"})
+                                  "via": out.get("via"),
+                                  "esito": out.get("errore") if not riavviato else "ri-eseguito"})
                 _log(log_client, {"giorno": day, "workflow_id": wid, "workflow": wname,
                                   "azione": "riavvio", "esito": "ok" if riavviato else "ko",
                                   "errore": msg[:300]})
