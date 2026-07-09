@@ -128,3 +128,41 @@ def test_stuck_running_is_proposed(monkeypatch):
         get_exec=lambda i: {}, list_wf=lambda: [{"id": "A", "name": "Newsletter"}],
         restart=lambda *a, **k: {"ok": True, "via": "webhook"}, now=now)
     assert r["proposte"] and r["proposte"][0]["tipo"] == "bloccato"
+
+
+def test_ig_publisher_already_published_skips_restart(monkeypatch):
+    # Workflow che pubblica su IG + post GIÀ uscito → niente riavvio (no doppione)
+    _enable(monkeypatch)
+    fired = []
+    r = wd.check_and_heal(
+        list_exec=lambda **k: {"ok": True, "esecuzioni": [
+            {"id": "9", "workflowId": "S", "status": "error", "startedAt": "2026-07-09T10:00:00Z"}]},
+        get_exec=lambda i: _err_exec("timeout"),
+        list_wf=lambda: [{"id": "S", "name": "07 — Spotlight"}],
+        restart=lambda *a, **k: fired.append(a) or {"ok": True, "via": "webhook"},
+        published_check=lambda wid, since: True,      # il post è già uscito
+        now=1_000_000)
+    assert fired == []                                # NON riavviato
+    assert r["gia_pubblicati"] and r["gia_pubblicati"][0]["workflow"] == "07 — Spotlight"
+    assert not r["riavviati"]
+
+
+def test_ig_publisher_not_yet_published_restarts(monkeypatch):
+    _enable(monkeypatch)
+    fired = []
+    r = wd.check_and_heal(
+        list_exec=lambda **k: {"ok": True, "esecuzioni": [
+            {"id": "9", "workflowId": "S", "status": "error", "startedAt": "2026-07-09T10:00:00Z"}]},
+        get_exec=lambda i: _err_exec("timeout"),
+        list_wf=lambda: [{"id": "S", "name": "07 — Spotlight"}],
+        restart=lambda wid, name=None, **k: fired.append((wid, name)) or {"ok": True, "via": "webhook"},
+        published_check=lambda wid, since: False,     # NON ancora pubblicato
+        now=1_000_000)
+    assert fired == [("S", "07 — Spotlight")] and len(r["riavviati"]) == 1
+    assert not r["gia_pubblicati"]
+
+
+def test_publishes_to_ig_detects_media_publish():
+    wf = {"nodes": [{"parameters": {"url": "=https://graph.facebook.com/v21.0/123/media_publish"}}]}
+    assert wd._publishes_to_ig(wf) is True
+    assert wd._publishes_to_ig({"nodes": [{"parameters": {"url": "https://x/other"}}]}) is False

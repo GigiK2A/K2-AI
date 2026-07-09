@@ -135,43 +135,49 @@ def _n8n_base() -> str:
     return base
 
 
-def workflow_webhook_url(workflow_id: str) -> str | None:
-    """Trova il nodo webhook-trigger del workflow e ricostruisce l'URL di produzione
-    (<base>/webhook/<path>). Così si può RI-ESEGUIRE quel workflow specifico."""
+def workflow_webhook(workflow_id: str) -> tuple[str | None, str]:
+    """(url, metodo) del webhook-trigger di produzione del workflow, dalla definizione.
+    Il metodo di default di un webhook n8n è GET (httpMethod assente); usare quello sbagliato
+    dà 404. Ritorna (None, 'GET') se non c'è un webhook trigger."""
     wf = get_workflow(workflow_id)
     if not isinstance(wf, dict):
-        return None
+        return None, "GET"
     for n in (wf.get("nodes") or []):
         t = str(n.get("type", "")).lower()
         if "webhook" in t and "respond" not in t:      # trigger, non 'Respond to Webhook'
-            p = (n.get("parameters") or {}).get("path")
+            p = n.get("parameters") or {}
+            path = p.get("path")
+            method = str(p.get("httpMethod") or "GET").upper()
             base = _n8n_base()
-            if p and base:
-                return f"{base}/webhook/{p}"
-    return None
+            if path and base:
+                return f"{base}/webhook/{path}", method
+    return None, "GET"
 
 
 def restart_workflow(workflow_id: str, name: str | None = None,
                      payload: dict | None = None, timeout: int = 25) -> dict[str, Any]:
-    """Ri-esegue un workflow: preferisce il SUO webhook trigger (ri-esegue davvero quello
-    specifico); fallback all'esecutore per nome. Usata dal watchdog per i fallimenti
-    transitori (con tetto ai retry a monte)."""
-    url = None
+    """Ri-esegue un workflow: preferisce il SUO webhook trigger, col METODO giusto (di solito
+    GET), così ri-esegue davvero quello specifico; fallback all'esecutore per nome. Usata dal
+    watchdog per i fallimenti transitori (con tetto ai retry a monte)."""
+    url, method = None, "GET"
     try:
-        url = workflow_webhook_url(workflow_id)
+        url, method = workflow_webhook(workflow_id)
     except Exception:
         url = None
     if url:
-        body = json.dumps({"source": "watchdog", "reason": "retry_transitorio",
-                           "payload": payload or {}}).encode("utf-8")
-        req = urllib.request.Request(url, data=body,
-                                     headers={"Content-Type": "application/json"}, method="POST")
+        if method == "GET":
+            req = urllib.request.Request(url, method="GET")
+        else:
+            body = json.dumps({"source": "watchdog", "reason": "retry_transitorio",
+                               "payload": payload or {}}).encode("utf-8")
+            req = urllib.request.Request(url, data=body, method=method,
+                                         headers={"Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
                 r.read()
-            return {"ok": True, "via": "webhook", "workflow_id": workflow_id}
+            return {"ok": True, "via": "webhook", "metodo": method, "workflow_id": workflow_id}
         except Exception as exc:
-            return {"ok": False, "via": "webhook", "errore": str(exc)[:200]}
+            return {"ok": False, "via": "webhook", "metodo": method, "errore": str(exc)[:200]}
     out = trigger_n8n(name or workflow_id, payload or {})   # fallback: esecutore per nome
     return {"ok": bool(out.get("ok")), "via": "executor", "errore": out.get("errore")}
 
