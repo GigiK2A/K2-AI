@@ -782,7 +782,7 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             # verificabile (rischio: il cliente lo cita in un atto). Diventa 'orientamento
             # consolidato della Cassazione' (corretto). Non tocca i numeri di legge.
             if skill in _NORMATIVE_SKILLS:
-                deliverable = legal_quesito.scrub_giurisprudenza(deliverable)
+                deliverable = legal_quesito.scrub_legal(deliverable)
             # OFFLINE = deliverable segnaposto/demo (no LLM): gira su input minimi → i block del
             # gate sono attesi e non vanno applicati (rigenerare non aiuta: niente retry).
             offline_mode = (filiera_meta or {}).get("mode") == "offline"
