@@ -555,6 +555,17 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
             return {"ok": False, "errore": "non disponibile"}
         return platform.commands.confirm(body.id, actor="cockpit")
 
+    @app.post("/api/n8n/watchdog")
+    def n8n_watchdog(_=Depends(_require_auth)) -> dict[str, Any]:
+        """Giro del watchdog n8n: riavvia i fallimenti transitori (con tetto), propone i fix
+        per gli strutturali/bloccati. Chiamato dallo scheduler (lun/mer/ven 21) o a mano."""
+        from aios.n8n_watchdog import check_and_heal
+        client = kernel._supabase if kernel is not None else None
+        try:
+            return check_and_heal(log_client=client)
+        except Exception as exc:
+            return {"ok": False, "errore": str(exc)[:200]}
+
     @app.post("/api/marketing/prospect")
     def marketing_prospect(body: ProspectBody, _=Depends(_require_auth)) -> dict[str, Any]:
         """Cerca PMI in target (web), le qualifica, salva i qualificati con BOZZA.
