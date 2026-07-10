@@ -712,6 +712,232 @@ def severity_matrix(items: list, S=None) -> Table:
     return t
 
 
+# ===================== OPS UNIVERSALI (report_ops) ======================
+# Elementi operativi trasversali a TUTTI i boost, derivati post-generazione dal
+# deliverable: semaforo rischi 4 livelli, matrice Impatto/Probabilità, timeline a
+# 4 orizzonti, checklist operativa, template compilabili. Palette 8e (oro/carbon).
+
+CRITICAL = colors.HexColor("#111111")  # ⚫ critico — nero (4° livello, oltre RED)
+# Livello testuale → tono. Copre le varianti (verde/basso/bassa, critico/critica).
+_LIV_TONE = {
+    "basso": GREEN, "bassa": GREEN, "verde": GREEN, "low": GREEN,
+    "medio": AMBER, "media": AMBER, "giallo": AMBER, "medium": AMBER,
+    "alto": RED, "alta": RED, "rosso": RED, "high": RED,
+    "critico": CRITICAL, "critica": CRITICAL, "critical": CRITICAL,
+}
+_LIV_LABEL = {  # etichetta canonica + pallino colorato
+    GREEN: "Basso", AMBER: "Medio", RED: "Alto", CRITICAL: "Critico", NEUTRAL: "—",
+}
+
+
+def _liv_tone(v) -> "colors.Color":
+    return _LIV_TONE.get(str(v or "").strip().lower(), NEUTRAL)
+
+
+def _liv_chip(v, S) -> Paragraph:
+    """Pallino colorato + etichetta livello (per celle tabella)."""
+    col = _liv_tone(v)
+    label = str(v or "").strip().capitalize() or _LIV_LABEL.get(col, "—")
+    return Paragraph(f'<font color="{hx(col)}" size="11">•</font> '
+                     f'<font name="{F_BOLD}" color="{hx(col)}">{html_escape(label)}</font>', S["body"])
+
+
+def semaforo_board(items: list, S=None) -> Table:
+    """Dashboard semaforo rischi a 4 livelli: Area | Livello | Conseguenza | Urgenza.
+    items = [{area, livello(basso/medio/alto/critico), conseguenza, urgenza}]."""
+    S = S or styles()
+    rows_in = [it for it in items if isinstance(it, dict) and str(it.get("area") or "").strip()]
+    if not rows_in:
+        return Spacer(0, 0)
+    head = [Paragraph(f'<font name="{F_BOLD}" size="8.5" color="{hx(CARBON)}">{h}</font>', S["kv"])
+            for h in ("Area", "Livello", "Conseguenza", "Urgenza")]
+    data = [head]
+    for it in rows_in[:12]:
+        data.append([
+            Paragraph(f'<b>{html_escape(it.get("area", ""))}</b>', S["body"]),
+            _liv_chip(it.get("livello"), S),
+            Paragraph(html_escape(it.get("conseguenza", "")), S["body"]),
+            Paragraph(html_escape(str(it.get("urgenza", "")).capitalize()), S["body"]),
+        ])
+    widths = [CONTENT_W * w for w in (0.24, 0.16, 0.42, 0.18)]
+    t = Table(data, colWidths=widths, hAlign="LEFT", repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), CREAM),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.0, GOLD),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.4, LINE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, CARD]),
+        ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return t
+
+
+def impact_matrix(items: list, S=None) -> Table:
+    """Matrice Impatto/Probabilità: Rischio | Probabilità | Impatto | Priorità.
+    items = [{rischio, probabilita, impatto, priorita}] (bassa/media/alta/critica)."""
+    S = S or styles()
+    rows_in = [it for it in items if isinstance(it, dict) and str(it.get("rischio") or "").strip()]
+    if not rows_in:
+        return Spacer(0, 0)
+    head = [Paragraph(f'<font name="{F_BOLD}" size="8.5" color="{hx(CARBON)}">{h}</font>', S["kv"])
+            for h in ("Rischio", "Probabilità", "Impatto", "Priorità")]
+    data = [head]
+    # ordina per priorità decrescente (critica → bassa): il decisore legge il top in cima.
+    _rank = {CRITICAL: 3, RED: 2, AMBER: 1, GREEN: 0, NEUTRAL: -1}
+    rows_in = sorted(rows_in, key=lambda it: _rank.get(_liv_tone(it.get("priorita")), -1), reverse=True)
+    for it in rows_in[:12]:
+        data.append([
+            Paragraph(f'<b>{html_escape(it.get("rischio", ""))}</b>', S["body"]),
+            _liv_chip(it.get("probabilita"), S),
+            _liv_chip(it.get("impatto"), S),
+            _liv_chip(it.get("priorita"), S),
+        ])
+    widths = [CONTENT_W * w for w in (0.46, 0.18, 0.18, 0.18)]
+    t = Table(data, colWidths=widths, hAlign="LEFT", repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), CREAM),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.0, GOLD),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.4, LINE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, CARD]),
+        ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return t
+
+
+_ORIZZONTI = [  # (chiavi-match, etichetta, finestra)
+    (("immediato", "0-7", "0_7", "subito"), "Immediato", "0-7 giorni"),
+    (("breve", "30"), "Breve termine", "30 giorni"),
+    (("medio", "90"), "Medio termine", "90 giorni"),
+    (("lungo", "6-12", "6_12", "annuale"), "Lungo termine", "6-12 mesi"),
+]
+
+
+def timeline_ops(items: list, S=None) -> list:
+    """Timeline operativa a 4 orizzonti. Ritorna una LISTA di flowable (una banda per
+    orizzonte + le sue attività), così si spezza correttamente tra pagine.
+    items = [{orizzonte, azione, priorita, responsabile, impatto_atteso}]."""
+    S = S or styles()
+    rows_in = [it for it in items if isinstance(it, dict) and str(it.get("azione") or "").strip()]
+    if not rows_in:
+        return []
+
+    def _match(oriz: str):
+        o = str(oriz or "").strip().lower()
+        for keys, label, _win in _ORIZZONTI:
+            if any(k in o for k in keys):
+                return label
+        return "Immediato"
+
+    buckets: dict = {label: [] for _k, label, _w in _ORIZZONTI}
+    for it in rows_in:
+        buckets[_match(it.get("orizzonte"))].append(it)
+
+    out: list = []
+    for keys, label, win in _ORIZZONTI:
+        acts = buckets.get(label) or []
+        if not acts:
+            continue
+        band = Table([["", Paragraph(
+            f'<font name="{F_MONO}" size="8.5" color="{hx(GOLD_DK)}">{html_escape(label).upper()}</font>'
+            f'&nbsp;&nbsp;<font name="{F_BODY}" size="8.5" color="{hx(NEUTRAL)}">{win}</font>', S["kv"])]],
+            colWidths=[3, CONTENT_W - 3], hAlign="LEFT")
+        band.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (0, -1), GOLD), ("BACKGROUND", (1, 0), (1, -1), CREAM),
+            ("LEFTPADDING", (1, 0), (1, -1), 12), ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+        out.append(band)
+        head = [Paragraph(f'<font name="{F_BOLD}" size="8" color="{hx(CARBON)}">{h}</font>', S["kv"])
+                for h in ("Azione", "Priorità", "Responsabile", "Impatto atteso")]
+        data = [head]
+        for it in acts[:8]:
+            data.append([
+                Paragraph(html_escape(it.get("azione", "")), S["body"]),
+                _liv_chip(it.get("priorita"), S),
+                Paragraph(html_escape(it.get("responsabile", "")), S["body"]),
+                Paragraph(html_escape(it.get("impatto_atteso") or it.get("impatto", "")), S["body"]),
+            ])
+        widths = [CONTENT_W * w for w in (0.40, 0.14, 0.20, 0.26)]
+        tb = Table(data, colWidths=widths, hAlign="LEFT", repeatRows=1)
+        tb.setStyle(TableStyle([
+            ("LINEBELOW", (0, 0), (-1, 0), 0.8, GOLD),
+            ("LINEBELOW", (0, 1), (-1, -1), 0.4, LINE),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, CARD]),
+            ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        out.append(tb)
+        out.append(Spacer(1, 5))
+    return out
+
+
+def checklist_table(items: list, S=None) -> Table:
+    """Checklist operativa: ☐ | Azione | Responsabile | Scadenza | Stato."""
+    S = S or styles()
+    rows_in = [it for it in items if isinstance(it, dict) and str(it.get("azione") or "").strip()]
+    if not rows_in:
+        return Spacer(0, 0)
+    head = [Paragraph(f'<font name="{F_BOLD}" size="8.5" color="{hx(CARBON)}">{h}</font>', S["kv"])
+            for h in ("", "Azione", "Responsabile", "Scadenza", "Stato")]
+    data = [head]
+    def _checkbox() -> Table:
+        # Quadratino vuoto DISEGNATO (no glifo '☐' U+2610: assente nei font imbarcati →
+        # tofu, come '●' in semaforo_dot). Bordo oro, riempimento bianco.
+        b = Table([[""]], colWidths=[9], rowHeights=[9])
+        b.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.9, GOLD_DK),
+                               ("BACKGROUND", (0, 0), (-1, -1), colors.white)]))
+        return b
+
+    for it in rows_in[:20]:
+        stato = str(it.get("stato") or "Da fare").strip()
+        stone = {"fatto": GREEN, "in corso": AMBER, "bloccato": RED}.get(stato.lower(), NEUTRAL)
+        data.append([
+            _checkbox(),
+            Paragraph(html_escape(it.get("azione", "")), S["body"]),
+            Paragraph(html_escape(it.get("responsabile", "")), S["body"]),
+            Paragraph(html_escape(it.get("scadenza", "")), S["body"]),
+            Paragraph(f'<font name="{F_BOLD}" color="{hx(stone)}">{html_escape(stato.capitalize())}</font>', S["body"]),
+        ])
+    widths = [CONTENT_W * w for w in (0.05, 0.44, 0.20, 0.16, 0.15)]
+    t = Table(data, colWidths=widths, hAlign="LEFT", repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), CREAM),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.0, GOLD),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.4, LINE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, CARD]),
+        ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    return t
+
+
+def template_box(tpl: dict, S=None) -> Table:
+    """Fac-simile compilabile: titolo + corpo monospace con segnaposto [DA COMPILARE].
+    tpl = {titolo, tipo?, corpo}. Il corpo si spezza tra pagine (multi-riga)."""
+    S = S or styles()
+    titolo = str(tpl.get("titolo") or tpl.get("tipo") or "Template")
+    corpo = str(tpl.get("corpo") or "").strip()
+    if not corpo:
+        return Spacer(0, 0)
+    mono = ParagraphStyle("tplmono", parent=S["body"], fontName=F_MONO, fontSize=8.5, leading=13,
+                          textColor=TEXT)
+    rows = [[Paragraph(f'<font name="{F_BOLD}" size="9.5" color="{hx(CARBON)}">'
+                       f'{html_escape(titolo)}</font>', S["kv"])]]
+    for para in corpo.split("\n"):
+        rows.append([Paragraph(html_escape(para) if para.strip() else "&nbsp;", mono)])
+    t = Table(rows, colWidths=[CONTENT_W], hAlign="LEFT")
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), CREAM),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+        ("BOX", (0, 0), (-1, -1), 0.7, LINE),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.0, GOLD),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (0, 0), 8), ("BOTTOMPADDING", (0, 0), (0, 0), 8),
+        ("TOPPADDING", (0, 1), (-1, -1), 2), ("BOTTOMPADDING", (0, 1), (-1, -1), 2),
+    ]))
+    return t
+
+
 # ===================== COPERTINA + PAGINE FISSE ==========================
 def _kicker(canvas, x, y, text, size=7.5, color=GOLD_DK, spacing=1.4, right=None):
     """Etichetta uppercase con letter-spacing (look editoriale del riferimento).

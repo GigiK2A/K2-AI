@@ -896,6 +896,18 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             except Exception as exc:
                 log.warning("allegati saltati (job %s): %s", job_id, exc)
 
+        # Ops UNIVERSALI (tutti i boost): dashboard semaforo + matrice Impatto/Probabilità +
+        # timeline a 4 orizzonti + checklist + template compilabili, derivati dal deliverable
+        # GIÀ generato. UNA chiamata leggera FUORI dal retry (dopo il gate), no-op se offline.
+        # Il fallimento non blocca il report: il render salta le sezioni ops.
+        if not offline_mode:
+            try:
+                report_ops = llm.generate_report_ops(deliverable, inputs)
+                if report_ops:
+                    deliverable["report_ops"] = report_ops
+            except Exception as exc:
+                log.warning("report_ops saltati (job %s): %s", job_id, exc)
+
         # Render HTML + PDF.
         out_dir = OUT_DIR / job_id
         out_dir.mkdir(parents=True, exist_ok=True)

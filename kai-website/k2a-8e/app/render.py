@@ -25,7 +25,7 @@ _FONTE_LABEL = {"override_locale": "Normattiva", "akn_bulk_xml": "Normattiva", "
                 "eur_lex": "EUR-Lex (norma UE — riferimento, testo non nel corpus)",
                 "codice_noto": "codice/testo unico noto (riferimento — verificare il testo vigente)"}
 _SKIP_KEYS = {"meta", "metadata", "disclaimer", "files", "file_generati", "input", "allegati",
-              "executive_summary", "sintesi"}
+              "executive_summary", "sintesi", "report_ops"}
 
 
 def _fonte(f) -> str:
@@ -593,6 +593,48 @@ def _allegati_block(allegati, S) -> list:
     return out
 
 
+def _ops_blocks(deliverable: dict, S) -> list:
+    """Blocchi operativi UNIVERSALI (tutti i boost), da `deliverable['report_ops']`:
+    dashboard semaforo rischi (4 livelli), matrice Impatto/Probabilità, timeline a 4
+    orizzonti, checklist operativa, template compilabili. Ogni blocco è opzionale: si
+    rende solo se ci sono dati. Vuoto se la pass ops non ha girato (offline/errore)."""
+    ops = deliverable.get("report_ops")
+    if not isinstance(ops, dict):
+        return []
+    out: list = []
+
+    sem = [x for x in (ops.get("semaforo_rischi") or []) if isinstance(x, dict) and str(x.get("area") or "").strip()]
+    if sem:
+        out += [_Heading("Dashboard rischi", S["h1"], "ops-semaforo"),
+                Paragraph("Semaforo per area: livello, conseguenza attesa e urgenza d'intervento.", S["body"]),
+                Spacer(1, 3), ST.semaforo_board(sem, S), Spacer(1, 6)]
+
+    mat = [x for x in (ops.get("matrice_rischi") or []) if isinstance(x, dict) and str(x.get("rischio") or "").strip()]
+    if mat:
+        out += [_Heading("Matrice Impatto / Probabilità", S["h1"], "ops-matrice"),
+                ST.impact_matrix(mat, S), Spacer(1, 6)]
+
+    tl = [x for x in (ops.get("timeline_operativa") or []) if isinstance(x, dict) and str(x.get("azione") or "").strip()]
+    tl_flow = ST.timeline_ops(tl, S) if tl else []
+    if tl_flow:
+        out += [_Heading("Timeline operativa", S["h1"], "ops-timeline")] + tl_flow + [Spacer(1, 4)]
+
+    chk = [x for x in (ops.get("checklist") or []) if isinstance(x, dict) and str(x.get("azione") or "").strip()]
+    if chk:
+        out += [_Heading("Checklist operativa", S["h1"], "ops-checklist"),
+                ST.checklist_table(chk, S), Spacer(1, 6)]
+
+    tpl = [x for x in (ops.get("template") or []) if isinstance(x, dict) and str(x.get("corpo") or "").strip()]
+    if tpl:
+        out.append(_Heading("Template pronti all'uso", S["h1"], "ops-template"))
+        out.append(Paragraph("Fac-simili compilabili: sostituisci i segnaposto tra parentesi "
+                             "quadre. Orientativi, da verificare prima dell'invio.", S["body"]))
+        out.append(Spacer(1, 4))
+        for t in tpl[:3]:
+            out += [ST.template_box(t, S), Spacer(1, 6)]
+    return out
+
+
 # ========================= LegalBoost (dedicato) =========================
 def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Path,
                preliminare: bool = False, allegati: dict | None = None) -> None:
@@ -655,6 +697,7 @@ def render_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Pa
         if t:
             body.append(t)
     body += _allegati_block(allegati, S)
+    body += _ops_blocks(deliverable, S)
     body += _decision_board(deliverable, S, "legale-compliance")
     body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "legale-compliance",
@@ -841,6 +884,7 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
         render_value(val, 1)
         body.append(Spacer(1, 4))
 
+    body += _ops_blocks(deliverable, S)
     body += _decision_board(deliverable, S)
     body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "professionale",
