@@ -435,6 +435,10 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         "direttamente {...} o [...], MAI {\"<nome_sezione>\": {...}}.\n"
         "- Prosa approfondita ma DENSA: ragionamento + implicazioni operative + numeri "
         "dove servono. Ogni voce di lista/analisi: max ~90 parole, niente riempitivo.\n"
+        "- NIENTE RIDONDANZE: ogni concetto compare UNA volta sola. Se un rischio è già "
+        "stato inquadrato in una sezione precedente, nelle successive NON ripeterlo — "
+        "approfondisci solo cause, impatti e azioni nuove. Preferisci elenchi puntati a "
+        "paragrafi ridondanti.\n"
         "- Usa i DATI CLIENTE (settore, dimensione, regime). NON inventare numeri o "
         "citazioni di legge: usa i FATTI verbatim; dato mancante → dichiaralo.\n"
         "- GROUNDING (vincolante, vale ANCHE per il qualitativo):\n"
@@ -945,6 +949,96 @@ def generate_allegati(facts: dict[str, dict], inputs: dict) -> Optional[dict]:
             return data
     except Exception as exc:
         log.warning("generate_allegati fallita: %s", exc)
+    return None
+
+
+def _deliverable_digest(deliverable: dict, cap: int = 7000) -> str:
+    """Estratto testuale compatto del deliverable GIÀ generato (prosa + rischi + azioni +
+    piano), per alimentare la pass ops SENZA rimandare l'intero JSON. Deterministico."""
+    parts: list[str] = []
+
+    def walk(x, depth=0):
+        if len("".join(parts)) > cap or depth > 6:
+            return
+        if isinstance(x, dict):
+            for k in ("titolo", "nome", "area"):
+                if isinstance(x.get(k), str) and x[k].strip():
+                    parts.append(f"\n## {x[k].strip()}")
+                    break
+            for k, v in x.items():
+                if k in ("titolo", "nome", "area", "id", "tipo", "fonte", "status",
+                         "coordinata_x", "coordinata_y", "x", "y"):
+                    continue
+                if isinstance(v, str) and v.strip():
+                    parts.append(f"{k}: {v.strip()}")
+                elif isinstance(v, (dict, list)):
+                    walk(v, depth + 1)
+        elif isinstance(x, list):
+            for it in x[:40]:
+                walk(it, depth + 1)
+        elif isinstance(x, (int, float)) and not isinstance(x, bool):
+            parts.append(str(x))
+
+    walk(deliverable)
+    return _trunc("\n".join(p for p in parts if p.strip()), cap)
+
+
+def generate_report_ops(deliverable: dict, inputs: dict) -> Optional[dict]:
+    """Pass ops UNIVERSALE (tutti i boost): dal deliverable GIÀ generato deriva gli
+    elementi operativi trasversali — semaforo rischi (4 livelli), matrice
+    Impatto/Probabilità, timeline a 4 orizzonti, checklist e template compilabili.
+    NON inventa fatti: sintetizza SOLO ciò che è già nel report. None se offline / vuoto
+    (il render salta le sezioni)."""
+    digest = _deliverable_digest(deliverable)
+    if not ANTHROPIC_API_KEY or len(digest.strip()) < 80:
+        return None
+    azienda = str((inputs or {}).get("azienda") or (inputs or {}).get("nome_azienda") or "").strip()
+    settore = str((inputs or {}).get("settore") or "").strip()
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        sysmsg = (
+            "Sei un consulente senior (stile McKinsey/Deloitte). Ti do la SINTESI di un report "
+            "già prodotto per una PMI italiana. Estrai SOLO elementi operativi, sintetici e "
+            "azionabili, in JSON. NON inventare fatti, numeri o norme: usa SOLO ciò che è nel "
+            "report; se un blocco non è ricavabile, restituiscilo come lista vuota.\n"
+            "Schema:\n"
+            '{\n'
+            '  "semaforo_rischi":[{"area":str,"livello":"basso|medio|alto|critico",'
+            '"conseguenza":str,"urgenza":"bassa|media|alta"}],\n'
+            '  "matrice_rischi":[{"rischio":str,"probabilita":"bassa|media|alta|critica",'
+            '"impatto":"bassa|media|alta|critica","priorita":"bassa|media|alta|critica"}],\n'
+            '  "timeline_operativa":[{"orizzonte":"immediato|breve|medio|lungo","azione":str,'
+            '"priorita":"bassa|media|alta|critica","responsabile":str,"impatto_atteso":str}],\n'
+            '  "checklist":[{"azione":str,"responsabile":str,"scadenza":str,"stato":"Da fare"}],\n'
+            '  "template":[{"titolo":str,"tipo":str,"corpo":str}]\n'
+            '}\n'
+            "REGOLE:\n"
+            "- orizzonte: immediato=0-7 giorni, breve=30 giorni, medio=90 giorni, lungo=6-12 mesi. "
+            "Distribuisci le azioni sui 4 orizzonti in modo realistico.\n"
+            "- responsabile: ruolo interno o esterno (es. 'Titolare', 'Amministrazione', "
+            "'Commercialista', 'Avvocato', 'IT'), MAI nomi di persona inventati.\n"
+            "- scadenza: relativa (es. 'entro 7 giorni', 'entro 30 giorni'), mai date assolute inventate.\n"
+            "- template: SOLO fac-simili applicabili al caso (es. email alla banca, comunicazione "
+            "ai dipendenti, richiesta documenti al cliente, verbale, cronoprogramma, registro rischi). "
+            "Linguaggio professionale, pronti all'uso, con segnaposto tra parentesi quadre es. "
+            "[NOME AZIENDA], [DATA], [IMPORTO]. corpo su più righe separate da \\n. Max 3 template.\n"
+            "- Ogni lista max 8 voci (checklist max 12). Priorità critica solo per rischi realmente gravi.\n"
+            "- Rispondi SOLO col JSON, niente testo attorno."
+        )
+        ctx = f"AZIENDA: {azienda or 'non specificata'} · SETTORE: {settore or 'non specificato'}\n\n"
+        resp = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=_cap_tok(3000),
+            system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": f"{ctx}SINTESI REPORT:\n{digest}\n\nGenera gli elementi operativi (JSON)."}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        data = _parse_json_object(text)
+        keys = ("semaforo_rischi", "matrice_rischi", "timeline_operativa", "checklist", "template")
+        if isinstance(data, dict) and any(data.get(k) for k in keys):
+            return {k: data.get(k) or [] for k in keys}
+    except Exception as exc:
+        log.warning("generate_report_ops fallita: %s", exc)
     return None
 
 
