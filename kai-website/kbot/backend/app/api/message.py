@@ -116,6 +116,38 @@ def _new_user_messages(body: MessageBody) -> List[dict]:
     return []
 
 
+# ---- Gate intervista: nessun modello può saltare le domande generando in anticipo ----
+_MIN_INTERVIEW_TURNS = 4
+_PROCEDI_RE = _re.compile(
+    r"\b(vai|proced\w*|fai il report|fammi il report|voglio il report( subito)?|"
+    r"basta domande|salta le domande|fai senza domande|ok proced\w*|dai proced\w*)\b", _re.I)
+
+
+def _interview_gate_active(merged_messages: list) -> bool:
+    """True se siamo ancora in fase intervista: < _MIN_INTERVIEW_TURNS turni utente e
+    l'utente NON ha chiesto esplicitamente di procedere."""
+    turns = sum(1 for m in (merged_messages or []) if isinstance(m, dict) and m.get("role") == "user")
+    if turns >= _MIN_INTERVIEW_TURNS:
+        return False
+    last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
+                      if isinstance(m, dict) and m.get("role") == "user"), "")
+    return not bool(_PROCEDI_RE.search(last_user))
+
+
+def _extract_gated_summary(raw_text: str, merged_messages: list):
+    """Estrae il summary MA lo SOPPRIME se siamo ancora in fase intervista. Enforcement
+    server-side: anche se il modello emette CONSULENZA_SUMMARY troppo presto, la
+    generazione NON parte finché non ci sono abbastanza turni (o un 'procedi')."""
+    summary = extract_summary(raw_text)
+    visible = normalize_assistant_reply(strip_summary_block(raw_text))
+    if summary and _interview_gate_active(merged_messages):
+        summary = None
+        if len((visible or "").strip()) < 5:
+            visible = ("Prima di preparare il report mi servono ancora un paio di dettagli. "
+                       "Qual è l'obiettivo concreto che vuoi ottenere con questa analisi?")
+    return visible, summary
+
+
 def _recompute_boost(collected: dict, merged_messages: list, summary: Optional[dict]) -> None:
     """Ricalcola boost_suggerito a OGNI turno (>=3 turni utente), sull'intento CORRENTE.
 
@@ -240,8 +272,10 @@ async def post_message(
             client,
             model=ANTHROPIC_MODEL,
             # max_tokens generoso: serve per i report finali. 1200 era ok per
-            # chat brevi ma segava i report a metà.
-            max_tokens=8000,
+            # chat brevi ma segava i report a metà. Alzato a 16000 per lasciare
+            # spazio ai modelli reasoning (es. gpt-oss locale) che spendono token
+            # nel thinking prima della risposta.
+            max_tokens=16000,
             system=system_prompt,
             messages=history,
             timeout=120.0,
@@ -267,8 +301,7 @@ async def post_message(
             "model": ANTHROPIC_MODEL,
         },
     )
-    summary = extract_summary(raw_text)
-    user_visible = normalize_assistant_reply(strip_summary_block(raw_text))
+    user_visible, summary = _extract_gated_summary(raw_text, merged_messages)
 
     # Persist updated state.
     updated_messages = sessions.append_messages(
@@ -360,8 +393,7 @@ def _persist_assistant_turn(
     skills: Optional[List[str]] = None,
 ) -> tuple[str, Optional[dict], dict]:
     """Apply summary extraction + persist assistant message. Returns (user_visible, summary, updated_session)."""
-    summary = extract_summary(raw_text)
-    user_visible = normalize_assistant_reply(strip_summary_block(raw_text))
+    user_visible, summary = _extract_gated_summary(raw_text, merged_messages)
 
     updated_messages = sessions.append_messages(
         {**session, "messages": merged_messages},
@@ -424,7 +456,7 @@ async def post_message_stream(
             while True:
                 stream_kwargs: dict = dict(
                     model=ANTHROPIC_MODEL,
-                    max_tokens=8000,
+                    max_tokens=16000,
                     system=system_prompt,
                     messages=messages,
                     timeout=120.0,
