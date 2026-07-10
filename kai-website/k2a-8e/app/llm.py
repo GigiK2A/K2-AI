@@ -209,7 +209,7 @@ def generate_sezioni(
         return out, {"mode": "anthropic", "model": ANTHROPIC_MODEL,
                      "output_tokens": tot_out, "degraded_voci": degraded}
     except Exception as exc:
-        log.warning("filiera anthropic fallita: %s", exc)
+        log.warning("filiera anthropic fallita: %s", exc, exc_info=True)
         if ALLOW_OFFLINE_FALLBACK:
             return _offline(voci, facts, inputs), {"mode": "offline", "reason": f"anthropic_error: {exc}"}
         raise  # PROD: non consegnare un deliverable degradato in silenzio
@@ -912,7 +912,7 @@ def generate_structured_meta(blueprint: dict, facts: dict[str, dict], inputs: di
         if data.get("score") is not None and data.get("voci_meta"):
             return data
     except Exception as exc:
-        log.warning("structured_meta fallita: %s", exc)
+        log.warning("structured_meta fallita: %s", exc, exc_info=True)
     return None
 
 
@@ -1028,7 +1028,10 @@ def generate_report_ops(deliverable: dict, inputs: dict) -> Optional[dict]:
         )
         ctx = f"AZIENDA: {azienda or 'non specificata'} · SETTORE: {settore or 'non specificato'}\n\n"
         resp = client.messages.create(
-            model=ANTHROPIC_MODEL, max_tokens=_cap_tok(3000),
+            # 8000 (non 3000): i modelli reasoning (es. gpt-oss locale) spendono molti
+            # token in thinking prima del JSON — a 3000 il JSON usciva troncato → parse
+            # fallito → ops silenziosamente assenti dal report.
+            model=ANTHROPIC_MODEL, max_tokens=_cap_tok(8000),
             system=[{"type": "text", "text": sysmsg, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": f"{ctx}SINTESI REPORT:\n{digest}\n\nGenera gli elementi operativi (JSON)."}],
         )
@@ -1037,6 +1040,8 @@ def generate_report_ops(deliverable: dict, inputs: dict) -> Optional[dict]:
         keys = ("semaforo_rischi", "matrice_rischi", "timeline_operativa", "checklist", "template")
         if isinstance(data, dict) and any(data.get(k) for k in keys):
             return {k: data.get(k) or [] for k in keys}
+        log.warning("generate_report_ops: JSON non parsabile o vuoto (len testo=%d, stop=%s)",
+                    len(text), getattr(resp, "stop_reason", "?"))
     except Exception as exc:
         log.warning("generate_report_ops fallita: %s", exc)
     return None
