@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
+import urllib.error
+import urllib.request
 from typing import Any, Protocol
 
 
@@ -166,3 +169,96 @@ class AnthropicLLM:
                                                       default=str)[:6000]})
             messages.append({"role": "user", "content": results})
         yield {"phase": "done", "text": "(troppi passaggi, mi fermo qui)"}
+
+
+# --- Backend LOCALE (Ollama) -------------------------------------------------
+# Stessa Protocol di AnthropicLLM, ma parla all'API nativa di Ollama (/api/chat).
+# Pensato per girare su un Ollama REMOTO (il GB10 sempre acceso, esposto via
+# Cloudflare Tunnel) o locale: per l'adapter è solo un URL HTTP.
+#   - JSON garantito a schema col parametro `format` di Ollama (structured output).
+#   - Nessuna dipendenza nuova: usa urllib della stdlib → niente da installare su Railway.
+#   - Reasoning models (gpt-oss): il "think" NON va messo a false (svuota l'output);
+#     si tiene a low/medium e si dà budget token largo, o il reasoning affama il JSON.
+_OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+_LOCAL_MODEL = os.environ.get("AIOS_LOCAL_MODEL", "gpt-oss:120b")
+_LOCAL_THINK = os.environ.get("AIOS_LOCAL_THINK", "medium")      # low|medium|high (mai false su gpt-oss)
+_LOCAL_NUM_PREDICT = int(os.environ.get("AIOS_LOCAL_NUM_PREDICT", "8192"))  # budget out largo: headroom per il reasoning
+_LOCAL_NUM_CTX = int(os.environ.get("AIOS_LOCAL_NUM_CTX", "16384"))         # ctx ampio: i prompt del board portano dati reali
+_LOCAL_TIMEOUT = int(os.environ.get("AIOS_LOCAL_TIMEOUT", "600"))
+_LOCAL_RETRIES = int(os.environ.get("AIOS_LOCAL_RETRIES", "2"))  # blip del tunnel → ritenta (opzione A: degrada e ritenta)
+# Proxy SOLO per raggiungere Ollama (es. Tailscale userspace su Railway: http://localhost:1055).
+# Scoped a LocalLLM: le altre uscite del board (Supabase, Anthropic) restano dirette.
+_LOCAL_PROXY = os.environ.get("AIOS_LOCAL_PROXY", "").strip()
+
+
+def _local_opener() -> urllib.request.OpenerDirector:
+    if _LOCAL_PROXY:
+        return urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": _LOCAL_PROXY, "https": _LOCAL_PROXY}))
+    return urllib.request.build_opener()
+
+
+def _local_headers() -> dict:
+    """Header per /api/chat. Se presenti, aggiunge il service-token Cloudflare Access
+    così solo il board può usare l'Ollama esposto dal tunnel."""
+    h = {"Content-Type": "application/json"}
+    cid = os.environ.get("OLLAMA_CF_ACCESS_CLIENT_ID")
+    sec = os.environ.get("OLLAMA_CF_ACCESS_CLIENT_SECRET")
+    if cid and sec:
+        h["CF-Access-Client-Id"] = cid
+        h["CF-Access-Client-Secret"] = sec
+    return h
+
+
+class LocalLLM:
+    """LLM locale via Ollama. Drop-in di AnthropicLLM per `complete`/`complete_json`."""
+
+    def __init__(self, model: str | None = None, max_tokens: int | None = None,
+                 base_url: str | None = None, think: str | None = None) -> None:
+        self._model = model or _LOCAL_MODEL
+        # num_predict = il più largo tra quanto chiede il chiamante e il default generoso
+        self._num_predict = max(int(max_tokens or 0), _LOCAL_NUM_PREDICT)
+        self._base = (base_url or _OLLAMA_BASE).rstrip("/")
+        self._think = think if think is not None else _LOCAL_THINK
+
+    def _think_value(self):
+        t = str(self._think).lower()
+        if t in ("false", "off", "no", "0"):
+            return False        # sconsigliato su gpt-oss: svuota l'output
+        if t in ("true", "on", "yes", "1"):
+            return True
+        return t                 # "low" | "medium" | "high" (livelli gpt-oss)
+
+    def _chat(self, *, system: str, user: str, fmt: Any = None) -> str:
+        body: dict[str, Any] = {
+            "model": self._model, "stream": False, "think": self._think_value(),
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": user}],
+            "options": {"num_predict": self._num_predict, "num_ctx": _LOCAL_NUM_CTX},
+        }
+        if fmt is not None:
+            body["format"] = fmt
+        data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        last: Exception | None = None
+        for attempt in range(_LOCAL_RETRIES + 1):
+            try:
+                req = urllib.request.Request(self._base + "/api/chat", data=data,
+                                             headers=_local_headers(), method="POST")
+                with _local_opener().open(req, timeout=_LOCAL_TIMEOUT) as resp:
+                    payload = json.loads(resp.read().decode("utf-8"))
+                return payload.get("message", {}).get("content", "")
+            except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+                last = exc
+                if attempt < _LOCAL_RETRIES:
+                    time.sleep(1.5 * (attempt + 1))
+        raise RuntimeError(
+            f"LocalLLM: Ollama non raggiungibile su {self._base} "
+            f"(modello {self._model}): {last}")
+
+    def complete(self, *, system: str, user: str) -> str:
+        return self._chat(system=system, user=user)
+
+    def complete_json(self, *, system: str, user: str, schema: dict | None = None) -> dict:
+        # `format`=schema → output vincolato allo schema; senza schema, "json" forza JSON valido
+        text = self._chat(system=system, user=user, fmt=schema or "json")
+        return _robust_json(text)

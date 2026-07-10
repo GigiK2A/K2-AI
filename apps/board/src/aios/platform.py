@@ -5,7 +5,7 @@ from typing import Any
 
 from aios.kernel import Kernel
 from aios.founder import default_founder_model
-from aios.llm import AnthropicLLM
+from aios.llm import AnthropicLLM, LocalLLM
 from aios.skills import SkillLibrary
 from aios.layers.knowledge import KnowledgeStore
 from aios.sources.instagram import InstagramClient
@@ -29,6 +29,16 @@ from aios.agents.finance_config import FINANCE_CONFIG
 from aios.agents.operations_config import OPERATIONS_CONFIG
 from aios.agents.legal_config import LEGAL_CONFIG
 from aios.agents.hr_config import HR_CONFIG
+
+
+def _make_llm(*, max_tokens: int, strong: bool = False):
+    """Fabbrica dell'LLM workhorse/strong. Sceglie il backend da AIOS_LLM_BACKEND
+    (default 'anthropic' = comportamento invariato; 'local' = Ollama sul GB10)."""
+    backend = os.environ.get("AIOS_LLM_BACKEND", "anthropic").strip().lower()
+    if backend == "local":
+        return LocalLLM(max_tokens=max_tokens)
+    model = "claude-sonnet-4-6" if strong else "claude-haiku-4-5-20251001"
+    return AnthropicLLM(model=model, max_tokens=max_tokens)
 
 
 class Platform:
@@ -189,9 +199,15 @@ def build_platform() -> Platform:
     founder = default_founder_model()
     skills = SkillLibrary()
     knowledge = KnowledgeStore(client)
-    llm = AnthropicLLM(max_tokens=4096)
-    # Sonnet per i casi delicati (schema DB / codice / workflow) via CommandRouter
-    llm_strong = AnthropicLLM(model="claude-sonnet-4-6", max_tokens=8192)
+    # Backend LLM selezionabile via env AIOS_LLM_BACKEND:
+    #   "local"    → LocalLLM (Ollama sul GB10, raggiunto via Tailscale) — "tutto in locale"
+    #   "anthropic"→ API Claude (default sicuro: nessun cambio di comportamento al deploy).
+    # Si accende il locale impostando AIOS_LLM_BACKEND=local nell'env Railway (persistente
+    # = "sempre attivo"), una volta che la tailnet verso l'Ollama è su.
+    # NB: la web search (llm_web, sotto) resta SEMPRE su Anthropic, per scelta.
+    llm = _make_llm(max_tokens=4096)
+    # modello "strong" per i casi delicati (schema DB / codice / workflow) via CommandRouter
+    llm_strong = _make_llm(max_tokens=8192, strong=True)
 
     def _domain(cfg):
         return DomainAgent(kernel=k, llm=llm, founder=founder, config=cfg,
