@@ -26,11 +26,11 @@ import re
 from ..lib import sessions
 from ..lib.analysis import generate_analysis_json
 from ..lib.analytics import track_server
-from ..lib.auth import AuthUser, optional_user
+from ..lib.auth import AuthUser, optional_user, verify_internal_key
 from ..lib.email import send_report_ready_email
 from ..lib.pdf_renderer import render_pdf
 from ..lib.storage import upload_pdf
-from ..settings import INTERNAL_API_KEY, STORAGE_REPORTS_BUCKET
+from ..settings import STORAGE_REPORTS_BUCKET
 
 
 def _make_friendly_filename(analysis: dict, session: dict) -> str:
@@ -79,7 +79,7 @@ def generate_pdf(
         raise HTTPException(status_code=404, detail="session not found")
 
     # Authorization rules.
-    is_internal = bool(INTERNAL_API_KEY and x_internal_key == INTERNAL_API_KEY)
+    is_internal = verify_internal_key(x_internal_key)
     is_owner = bool(session.get("user_id") and user and user.id == session["user_id"])
     has_paid_status = session.get("status") == "paid"
 
@@ -180,7 +180,7 @@ async def generate_pdf_stream(
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
 
-    is_internal = bool(INTERNAL_API_KEY and x_internal_key == INTERNAL_API_KEY)
+    is_internal = verify_internal_key(x_internal_key)
     is_owner = bool(session.get("user_id") and user and user.id == session["user_id"])
     has_paid_status = session.get("status") == "paid"
     if not is_internal:

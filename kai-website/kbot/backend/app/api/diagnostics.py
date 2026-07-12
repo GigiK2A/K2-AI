@@ -23,6 +23,7 @@ from typing import Any, Dict
 import anthropic as _anthropic
 from fastapi import APIRouter, Header, HTTPException, Request
 
+from ..lib.auth import verify_internal_key
 from ..lib.limiter import limiter
 from ..settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL, INTERNAL_API_KEY
 
@@ -110,9 +111,12 @@ def diagnostics(
     authorization: str | None = Header(default=None),
 ):
     # Optional bearer auth — only enforced if INTERNAL_API_KEY is configured.
+    # Constant-time compare of the token (secrets.compare_digest via
+    # verify_internal_key) to avoid leaking the key through response timing.
     if INTERNAL_API_KEY:
-        expected = f"Bearer {INTERNAL_API_KEY}"
-        if authorization != expected:
+        parts = (authorization or "").split(" ", 1)
+        provided = parts[1].strip() if len(parts) == 2 and parts[0].lower() == "bearer" else None
+        if not verify_internal_key(provided):
             raise HTTPException(status_code=401, detail="unauthorized")
 
     checks = {

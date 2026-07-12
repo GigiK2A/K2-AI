@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import html
 import logging
 from typing import Optional
 
@@ -34,15 +35,20 @@ def send_report_ready_email(
         log.info("No recipient email — skipping notification")
         return False
 
-    html = f"""
+    # Il titolo può derivare da output LLM: va escapato prima di finire nell'HTML
+    # dell'email (difesa contro iniezione di markup nel corpo del messaggio).
+    safe_title = html.escape(report_title)
+    safe_url = html.escape(report_url, quote=True)
+
+    html_body = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; color:#0F172A; max-width:540px;">
       <h2 style="color:#0F2544; font-size:20px; margin:0 0 16px;">Il tuo report K2-AI è pronto</h2>
       <p style="font-size:14px; line-height:1.6; margin:0 0 12px;">
-        Ciao, abbiamo generato il documento <strong>{report_title}</strong> con priorità,
+        Ciao, abbiamo generato il documento <strong>{safe_title}</strong> con priorità,
         azioni operative e roadmap a partire dalla conversazione con K-BOT.
       </p>
       <p style="margin:18px 0;">
-        <a href="{report_url}" style="background:#C2410C; color:#fff; padding:10px 18px; border-radius:4px; text-decoration:none; font-weight:600; font-size:14px;">Apri il report (PDF)</a>
+        <a href="{safe_url}" style="background:#C2410C; color:#fff; padding:10px 18px; border-radius:4px; text-decoration:none; font-weight:600; font-size:14px;">Apri il report (PDF)</a>
       </p>
       <p style="font-size:12px; color:#64748B; line-height:1.5; margin:24px 0 0;">
         Il link punta al PDF salvato su Supabase Storage. Conservalo: il report è tuo.<br>
@@ -56,7 +62,7 @@ def send_report_ready_email(
         "from": REPORT_FROM_EMAIL,
         "to": [to_email],
         "subject": f"Report K2-AI pronto — {report_title}",
-        "html": html.strip(),
+        "html": html_body.strip(),
     }
     if KBOT_NOTIFY_EMAIL:
         payload["bcc"] = [KBOT_NOTIFY_EMAIL]

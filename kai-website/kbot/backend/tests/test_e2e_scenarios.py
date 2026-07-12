@@ -768,7 +768,10 @@ def test_diagnostics_endpoint_shape(client, monkeypatch):
 
 
 def test_diagnostics_requires_internal_key_when_set(client, monkeypatch):
+    # Il gate legge diagnostics.INTERNAL_API_KEY; il confronto constant-time del token
+    # avviene in app.lib.auth.verify_internal_key (legge il proprio INTERNAL_API_KEY).
     monkeypatch.setattr("app.api.diagnostics.INTERNAL_API_KEY", "secret-123")
+    monkeypatch.setattr("app.lib.auth.INTERNAL_API_KEY", "secret-123")
     r = client.get("/api/kbot/diagnostics")
     assert r.status_code == 401
     r2 = client.get("/api/kbot/diagnostics",

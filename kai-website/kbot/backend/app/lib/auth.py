@@ -10,6 +10,7 @@ still use the symmetric flow.
 from __future__ import annotations
 
 import logging
+import secrets
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -18,7 +19,7 @@ import jwt
 from jwt import PyJWKClient
 from fastapi import Header, HTTPException, status
 
-from ..settings import SUPABASE_JWT_JWKS_URL, SUPABASE_JWT_SECRET
+from ..settings import INTERNAL_API_KEY, SUPABASE_JWT_JWKS_URL, SUPABASE_JWT_SECRET
 
 log = logging.getLogger(__name__)
 
@@ -131,3 +132,15 @@ def optional_user(authorization: Optional[str] = Header(default=None)) -> Option
         return _payload_to_user(_decode(token))
     except Exception:
         return None
+
+
+def verify_internal_key(provided: Optional[str]) -> bool:
+    """Constant-time check of a server-to-server internal key against INTERNAL_API_KEY.
+
+    Returns False if the key is not configured or the caller provided nothing.
+    Uses secrets.compare_digest so the comparison time does not leak how many
+    leading bytes matched (avoids the timing side-channel of a plain ``==``).
+    """
+    if not INTERNAL_API_KEY or not provided:
+        return False
+    return secrets.compare_digest(str(provided), str(INTERNAL_API_KEY))

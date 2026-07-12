@@ -20,10 +20,9 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ..lib import sessions
-from ..lib.auth import AuthUser, optional_user
+from ..lib.auth import AuthUser, optional_user, verify_internal_key
 from ..lib.pdf_renderer import _html_to_pdf_bytes  # reuse Playwright path
 from ..lib.xlsx_renderer import render_xlsx
-from ..settings import INTERNAL_API_KEY
 import asyncio
 import concurrent.futures
 
@@ -314,7 +313,7 @@ def _gate_deliverable(
     x_internal_key: Optional[str],
     test_mode: bool,
 ) -> None:
-    if INTERNAL_API_KEY and x_internal_key == INTERNAL_API_KEY:
+    if verify_internal_key(x_internal_key):
         return
     owner = session.get("user_id")
     if owner and (not user or user.id != owner):

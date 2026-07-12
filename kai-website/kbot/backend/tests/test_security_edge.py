@@ -742,7 +742,9 @@ def test_generate_pdf_other_users_session_403(client, fake_db):
 
 def test_generate_pdf_internal_key_bypasses_auth(client, fake_db, monkeypatch):
     """Internal key route should work even when session has owner."""
-    monkeypatch.setattr("app.api.generate_pdf.INTERNAL_API_KEY", "internal-test-key")
+    # L'internal key è verificata in modo constant-time da app.lib.auth.verify_internal_key,
+    # che legge INTERNAL_API_KEY dal proprio namespace: è lì che va applicato il patch.
+    monkeypatch.setattr("app.lib.auth.INTERNAL_API_KEY", "internal-test-key")
     sid = str(uuid.uuid4())
     fake_db._tables["kbot_sessions"][sid] = {
         "id": sid,
