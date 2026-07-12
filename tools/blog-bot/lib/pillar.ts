@@ -68,6 +68,8 @@ export function toPath(url: string): string {
 export function resolvePillarFromUrl(url: string): ResolvedPillar {
   const path = toPath(url);
   const map = URL_TO_PILLAR[path];
-  if (map) return { code: map.code, label: map.label, url: path };
-  return { code: "P00", label: "Suite AI", url: "/suite-ai.html" };
+  // href SENZA estensione .html: è l'URL canonico servito in prod; la
+  // variante .html risponde con un 301 che negli internal link va evitato.
+  if (map) return { code: map.code, label: map.label, url: path.replace(/\.html$/, "") };
+  return { code: "P00", label: "Suite AI", url: "/suite-ai" };
 }

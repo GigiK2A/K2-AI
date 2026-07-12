@@ -17,7 +17,7 @@ export interface TemplateInput {
   meta: ArticlePieces["meta"];
   bodyHtml: string;            // le 5 sezioni 01-05 + FAQ generate da Claude
   pillarPadre: string;         // es. "P01"
-  pillarUrl: string;           // es. "/suite-ai/agenti-email-crm.html"
+  pillarUrl: string;           // es. "/suite-ai/agenti-email-crm" (canonico, senza .html)
   pillarLabel: string;         // es. "Agenti email & CRM"
   coverUrl?: string;           // path immagine cover (es. "slug-cover.png")
   inline1Url?: string;         // path immagine inline tra sezione 02 e 03

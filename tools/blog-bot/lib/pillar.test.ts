@@ -28,7 +28,8 @@ test("resolvePillarFromUrl: URL assoluto suite-ai matcha il pillar corretto", ()
   );
   assert.equal(r.code, "P02");
   assert.equal(r.label, "Automazioni amministrative");
-  assert.equal(r.url, "/suite-ai/automazioni-amministrative.html");
+  // url è l'href canonico per gli internal link: senza estensione .html
+  assert.equal(r.url, "/suite-ai/automazioni-amministrative");
 });
 
 test("resolvePillarFromUrl: agenti email & CRM → P01", () => {
@@ -54,5 +55,5 @@ test("resolvePillarFromUrl: path relativo matcha (retro-compat)", () => {
 test("resolvePillarFromUrl: URL sconosciuto → fallback P00", () => {
   const r = resolvePillarFromUrl("https://www.k2-ai.it/pagina-inesistente.html");
   assert.equal(r.code, "P00");
-  assert.equal(r.url, "/suite-ai.html");
+  assert.equal(r.url, "/suite-ai");
 });
