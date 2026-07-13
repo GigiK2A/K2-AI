@@ -30,6 +30,8 @@ type AppContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, profile: SignUpProfile) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   /* kbot session */
   kbotSessionId: string | null;
   kbotSession: KbotSession | null;
@@ -129,6 +131,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  /* Invia l'email con il link di recupero. redirectTo DEVE essere nell'allowlist
+     Supabase (Auth → URL Configuration → Redirect URLs). */
+  const resetPassword = useCallback(async (email: string) => {
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/app/reset-password`
+        : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+  }, []);
+
+  /* Imposta la nuova password. Richiede una sessione di recupero attiva (creata da
+     detectSessionInUrl quando l'utente arriva dal link email → evento PASSWORD_RECOVERY). */
+  const updatePassword = useCallback(async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  }, []);
+
   /* ---------- Kbot session lifecycle ---------- */
   const persistSessionId = useCallback((id: string | null) => {
     if (typeof window === "undefined") return;
@@ -220,6 +240,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
+      resetPassword,
+      updatePassword,
       kbotSessionId: kbotSession?.id ?? null,
       kbotSession,
       ensureSession,
@@ -231,6 +253,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     kbotSession,
     loading,
     resetSession,
+    resetPassword,
+    updatePassword,
     session,
     signIn,
     signOut,
