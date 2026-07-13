@@ -103,6 +103,22 @@ def is_external_action(action: Any) -> bool:
     return c in _EXTERNAL_CANALI or c in _META_CANALI
 
 
+def is_autonomous_internal(action: Any) -> bool:
+    """True se l'azione è INTERNA e sicura da eseguire in piena autonomia: scrittura
+    insert/update/upsert su una tabella del board. Restano SEMPRE a conferma umana:
+    - azioni ESTERNE (n8n/social/email/ads) → mandano roba fuori;
+    - DELETE → distruttive;
+    - DDL / SQL grezzo → modifiche di schema.
+    Regola: 'tutto interno = autonomo, tocca l'esterno = approva', ma senza
+    auto-cancellazioni né auto-modifiche di schema."""
+    if not isinstance(action, dict) or is_external_action(action):
+        return False
+    if action.get("tipo") == "ddl" or action.get("sql"):
+        return False
+    op = str(action.get("op") or "insert").lower()
+    return op in ("insert", "update", "upsert")
+
+
 class ActuatorError(RuntimeError):
     pass
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -204,10 +205,15 @@ class DomainAgent:
                 proposte = _as_dict_list(parsed.get("proposte"))
             except Exception:
                 proposte = []
+        from aios.actuator import is_autonomous_internal
+        auto = os.environ.get("AIOS_INTERNAL_AUTONOMY") == "1"
         ids = []
         for p in proposte:
             p["azione"] = _ensure_action(p)   # affidabilità: ogni proposta ha un'azione valida
-            r = self.k.execute(self.cfg.tool_name, actor=self.actor, args=p)
-            if r.approval_id is not None:
-                ids.append(r.approval_id)
+            if auto and is_autonomous_internal(p["azione"]):
+                self.k.execute_now(self.cfg.tool_name, actor=self.actor, args=p)  # interno → esegue
+            else:
+                r = self.k.execute(self.cfg.tool_name, actor=self.actor, args=p)  # esterno/delete/DDL → coda
+                if r.approval_id is not None:
+                    ids.append(r.approval_id)
         return DomainResult(approval_ids=ids, proposals=proposte)

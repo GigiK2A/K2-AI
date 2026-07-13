@@ -248,17 +248,28 @@ class MarketingAgent:
         parsed = self.llm.complete_json(system=_SYSTEM, user=user, schema=schema)
         proposte = _as_dict_list(parsed.get("proposte"))
         voci = _as_dict_list(parsed.get("voci_calendario"))
-        ids, cal_ids = [], []
+        import os
         from aios.agents.domain import _ensure_action
+        from aios.actuator import is_autonomous_internal
+        auto = os.environ.get("AIOS_INTERNAL_AUTONOMY") == "1"
+        ids, cal_ids = [], []
         for p in proposte:
             p["azione"] = _ensure_action(p)   # attuatore: ogni proposta ha azione valida
-            r = self.k.execute("proponi_marketing", actor=self.actor, args=p)
-            if r.approval_id is not None:
-                ids.append(r.approval_id)
+            if auto and is_autonomous_internal(p["azione"]):
+                self.k.execute_now("proponi_marketing", actor=self.actor, args=p)  # interno → esegue
+            else:
+                r = self.k.execute("proponi_marketing", actor=self.actor, args=p)  # esterno → coda
+                if r.approval_id is not None:
+                    ids.append(r.approval_id)
         if "programma_contenuto" in self.k.tools.names():
             for v in voci:
-                r = self.k.execute("programma_contenuto", actor=self.actor, args=v)
-                if r.approval_id is not None:
-                    cal_ids.append(r.approval_id)
+                # calendario = scrittura INTERNA (aios_content_calendar), NON pubblica → in
+                # autonomia lo pianifica da solo; la pubblicazione vera è un'azione esterna a parte.
+                if auto:
+                    self.k.execute_now("programma_contenuto", actor=self.actor, args=v)
+                else:
+                    r = self.k.execute("programma_contenuto", actor=self.actor, args=v)
+                    if r.approval_id is not None:
+                        cal_ids.append(r.approval_id)
         return MarketingResult(approval_ids=ids, proposals=proposte,
                                calendar_ids=cal_ids, calendar=voci)

@@ -12,7 +12,7 @@ def calendar_tools(client: Any) -> list[Tool]:
     def _schedule(canale: str, titolo: str, bozza: str = "",
                   data_programmata: str | None = None,
                   fonte_tipo: str | None = None, fonte_id: int | None = None,
-                  note: str | None = None, **_) -> Any:
+                  note: str | None = None, categoria: str | None = None, **_) -> Any:
         row = {"canale": canale, "titolo": titolo, "bozza": bozza, "stato": "approvato"}
         if data_programmata:
             row["data_programmata"] = data_programmata
@@ -20,8 +20,12 @@ def calendar_tools(client: Any) -> list[Tool]:
             row["fonte_tipo"] = fonte_tipo
         if fonte_id is not None:
             row["fonte_id"] = fonte_id
-        if note:
-            row["note"] = note
+        # categoria IG (formazione|suite|news): nel note, così non serve una colonna nuova
+        nota = note or ""
+        if categoria:
+            nota = (f"[{categoria}] " + nota).strip()
+        if nota:
+            row["note"] = nota
         return client.insert("aios_content_calendar", row)
 
     return [
