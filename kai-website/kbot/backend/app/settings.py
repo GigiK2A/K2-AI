@@ -160,9 +160,12 @@ def paywall_bypass_active() -> bool:
 def assert_paywall_safe() -> None:
     """Guard anti-misconfig: in produzione un flag di bypass del paywall
     (KBOT_FREE_MODE / KBOT_FAKE_PAYMENT) è quasi certamente un errore e
-    aprirebbe la generazione dei deliverable senza pagamento. Logga un ERROR
-    ben visibile all'avvio. NON solleva (per non far crashare il deploy se
-    fosse volontario), ma il messaggio è impossibile da ignorare nei log.
+    aprirebbe la generazione dei deliverable senza pagamento.
+
+    Fail-closed: in produzione con un bypass attivo l'avvio viene INTERROTTO
+    (RuntimeError). Se il bypass è davvero voluto (es. promo temporanea), va
+    dichiarato esplicitamente con KBOT_ALLOW_PAYWALL_BYPASS=1 — così resta una
+    scelta cosciente e non una misconfig silenziosa.
     """
     if _is_production() and paywall_bypass_active():
         import logging
@@ -173,9 +176,18 @@ def assert_paywall_safe() -> None:
                 ("KBOT_FAKE_PAYMENT", KBOT_FAKE_PAYMENT),
             ) if on
         ]
-        logging.getLogger(__name__).error(
+        _allow_override = (_env("KBOT_ALLOW_PAYWALL_BYPASS", default="") or "").strip().lower() in ("1", "true", "yes")
+        msg = (
             "SECURITY: paywall BYPASS attivo in PRODUCTION (%s). I deliverable 8e "
             "verrebbero generati SENZA pagamento. Disattiva questi flag o correggi "
-            "ENVIRONMENT se non è davvero produzione.",
-            ", ".join(_active),
+            "ENVIRONMENT se non è davvero produzione." % ", ".join(_active)
         )
+        if _allow_override:
+            logging.getLogger(__name__).error(
+                "%s [consentito da KBOT_ALLOW_PAYWALL_BYPASS]", msg
+            )
+        else:
+            raise RuntimeError(
+                msg + " Avvio interrotto (fail-closed). Per consentirlo "
+                "intenzionalmente imposta KBOT_ALLOW_PAYWALL_BYPASS=1."
+            )
