@@ -309,6 +309,16 @@ class ChatAgent:
             return rec
         with self.orch.lock:
             kind = router._classify(az)
+            # Anti indirect prompt injection: se questo turno contiene allegati NON
+            # FIDATI (immagini/PDF nel media, o testo estratto marcato UNTRUSTED nel
+            # prompt), una scrittura interna che sarebbe stata eseguita in AUTOMATICO
+            # viene invece messa in CONFERMA umana. Così un PDF/DOCX con istruzioni
+            # nascoste non può alterare il DB da solo — l'owner vede e approva il diff.
+            if kind == "internal_auto" and (
+                bool(self.media)
+                or "<<<INIZIO_ALLEGATI_UNTRUSTED>>>" in self.request
+            ):
+                kind = "internal_confirm"
             if kind == "forbidden":
                 rec = {"stato": "rifiutato", "descrizione": descr, "motivo": _FORBIDDEN}
             elif kind == "internal_confirm":

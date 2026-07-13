@@ -18,8 +18,13 @@ from ..lib import extraction_cache
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.limiter import limiter
+from ..lib.storage import signed_url
 from ..lib.supabase_admin import get_admin_client
 from ..settings import STORAGE_UPLOADS_BUCKET
+
+# Documenti sorgente caricati dal cliente: usati solo transitoriamente (Vision /
+# estrazione) entro la richiesta. Signed URL a vita breve, non pubblici.
+UPLOAD_URL_TTL = 3600
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -65,6 +70,87 @@ def _validate_file_kind(name: str, content_type: str) -> None:
         return
     raise HTTPException(status_code=415, detail=f"{name}: tipo di file non supportato")
 
+
+# --- Validazione del CONTENUTO reale (non solo estensione/MIME dichiarati) -------
+# Un file può dichiarare .pdf ma contenere altro. Controlliamo i magic bytes e, per
+# gli OOXML (docx/xlsx = archivi zip), verifichiamo l'assenza di zip-bomb.
+_ZIP_MAGICS = (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
+_OLE_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"  # .xls legacy
+# Zip-bomb guard: un archivio piccolo può espandersi in GB (DoS memoria/CPU).
+_MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
+_MAX_COMPRESSION_RATIO = 200
+_MAX_ZIP_ENTRIES = 3000
+
+
+def _category(name: str, mime: str) -> Optional[str]:
+    lower = (name or "").lower()
+    mime = (mime or "").lower()
+    if lower.endswith(".pdf") or mime == "application/pdf":
+        return "pdf"
+    if lower.endswith(".png") or mime == "image/png":
+        return "png"
+    if lower.endswith((".jpg", ".jpeg")) or mime == "image/jpeg":
+        return "jpg"
+    if lower.endswith(".gif") or mime == "image/gif":
+        return "gif"
+    if lower.endswith(".webp") or mime == "image/webp":
+        return "webp"
+    if lower.endswith((".docx", ".xlsx", ".xlsm")) or "openxmlformats" in mime:
+        return "zip"
+    if lower.endswith(".xls") or mime == "application/vnd.ms-excel":
+        return "ole"  # può anche essere un .xlsx rinominato → gestito sotto
+    return None  # text/csv/json/xml/md: nessuna firma binaria da verificare
+
+
+def _check_zip_safety(name: str, data: bytes) -> None:
+    import zipfile
+    from io import BytesIO
+    try:
+        zf = zipfile.ZipFile(BytesIO(data))
+        infos = zf.infolist()
+    except Exception:
+        raise HTTPException(status_code=415, detail=f"{name}: archivio OOXML non valido")
+    if len(infos) > _MAX_ZIP_ENTRIES:
+        raise HTTPException(status_code=413, detail=f"{name}: troppe voci nell'archivio")
+    total = sum(zi.file_size for zi in infos)
+    if total > _MAX_UNCOMPRESSED_BYTES or (total / max(len(data), 1)) > _MAX_COMPRESSION_RATIO:
+        raise HTTPException(
+            status_code=413,
+            detail=f"{name}: espansione/rapporto di compressione sospetti (possibile zip-bomb)",
+        )
+
+
+def _sniff_content(name: str, mime: str, data: bytes) -> None:
+    """Valida i magic bytes reali e (per gli OOXML) verifica l'assenza di zip-bomb.
+    Da chiamare DOPO il decode base64 e la whitelist estensione/MIME (415/413)."""
+    cat = _category(name, mime)
+    if cat is None:
+        return
+    head = data[:16]
+    is_zip = head.startswith(_ZIP_MAGICS)
+    if cat == "pdf":
+        ok = b"%PDF" in data[:1024]  # tollerante: alcuni PDF hanno byte iniziali
+    elif cat == "png":
+        ok = head.startswith(b"\x89PNG\r\n\x1a\n")
+    elif cat == "jpg":
+        ok = head.startswith(b"\xff\xd8\xff")
+    elif cat == "gif":
+        ok = head.startswith((b"GIF87a", b"GIF89a"))
+    elif cat == "webp":
+        ok = len(data) >= 12 and head[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    elif cat == "zip":
+        ok = is_zip
+    elif cat == "ole":
+        ok = head.startswith(_OLE_MAGIC) or is_zip  # xls legacy o xlsx rinominato
+    else:
+        ok = True
+    if not ok:
+        raise HTTPException(
+            status_code=415, detail=f"{name}: il contenuto non corrisponde al tipo dichiarato"
+        )
+    if is_zip and cat in ("zip", "ole"):
+        _check_zip_safety(name, data)
+
 # OCR fallback caps. We rasterize each page and ship the PNG to Claude Vision;
 # at ~30-60k tokens/page this becomes expensive fast. We cap pages to keep the
 # cost predictable on a 200-page scanned report.
@@ -105,9 +191,9 @@ def _ensure_bucket(client) -> None:
         if STORAGE_UPLOADS_BUCKET not in names:
             client.storage.create_bucket(
                 STORAGE_UPLOADS_BUCKET,
-                options={"public": True},
+                options={"public": False},
             )
-            log.info("created supabase storage bucket %s", STORAGE_UPLOADS_BUCKET)
+            log.info("created private supabase storage bucket %s", STORAGE_UPLOADS_BUCKET)
         _BUCKET_READY = True
     except Exception as exc:
         msg = str(exc).lower()
@@ -381,6 +467,14 @@ def upload(
     if owner and (not user or user.id != owner):
         raise HTTPException(status_code=403, detail="not your session")
 
+    # Guard early: rifiuta payload assurdamente grandi PRIMA di lavorarli. Il body è
+    # JSON+base64 (~+37% overhead sui byte reali): 60 MB reali ≈ 82 MB base64. Diamo
+    # margine a 2×. NB: un limite duro va messo anche a monte sul reverse proxy
+    # (server.js / Vercel) perché qui il body è comunque già stato letto in memoria.
+    _clen = request.headers.get("content-length")
+    if _clen and _clen.isdigit() and int(_clen) > MAX_TOTAL_BYTES * 2:
+        raise HTTPException(status_code=413, detail="richiesta troppo grande")
+
     # M8 — cap sul numero di file per richiesta (anti-abuso: OCR/Vision è costoso).
     if len(body.files) > MAX_FILES_PER_REQUEST:
         raise HTTPException(status_code=400, detail=f"troppi file: max {MAX_FILES_PER_REQUEST} per richiesta")
@@ -397,6 +491,9 @@ def upload(
         data = _decode_b64(f.base64)
         if len(data) > MAX_BYTES:
             raise HTTPException(status_code=413, detail=f"{f.name}: exceeds 20 MB")
+        # Verifica che il contenuto reale corrisponda al tipo dichiarato (anti-spoof)
+        # e che gli OOXML non siano zip-bomb.
+        _sniff_content(f.name, f.type or "", data)
         total_bytes += len(data)
         if total_bytes > MAX_TOTAL_BYTES:
             raise HTTPException(status_code=413, detail="dimensione totale della richiesta eccessiva")
@@ -413,7 +510,9 @@ def upload(
             log.exception("storage upload failed")
             raise HTTPException(status_code=500, detail="Upload non riuscito. Riprova.")
 
-        public_url = storage.get_public_url(path)
+        public_url = signed_url(
+            bucket=STORAGE_UPLOADS_BUCKET, path=path, expires_in=UPLOAD_URL_TTL
+        )
 
         # Cache lookup by sha256 of bytes — same document across sessions
         # reuses extraction (saves 20-60s for big PDFs, or a Vision call
