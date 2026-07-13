@@ -133,7 +133,10 @@ def _voci_block(voci: list[dict]) -> str:
 # ("Streaming is required for operations that may take longer than 10 minutes"). Non si
 # alza per far stare più voci: si generano a BATCH (vedi sotto).
 _SEZIONI_MAX_TOKENS = _cap_tok(16000)
-_SEZIONI_BATCH = 3            # 3 voci ricche stanno comode in 16k → JSON completo e parsabile
+# Batch di voci per chiamata. Default 3 (3 voci ricche stanno comode in 16k → JSON completo
+# e parsabile). Override K2A_8E_SEZIONI_BATCH=1 per backend LLM LENTI (Ollama locale): meno
+# voci per chiamata → risposte più corte, minor rischio di timeout upstream.
+_SEZIONI_BATCH = max(1, int(os.environ.get("K2A_8E_SEZIONI_BATCH") or 3))
 
 
 def generate_sezioni(
@@ -160,12 +163,18 @@ def generate_sezioni(
             user = (f"{caso}{facts_block}\n\n{_voci_block(target)}\n\n"
                     f"DATI CLIENTE (input form): {dati}\n\n"
                     "Genera ora il JSON con la prosa per ogni voce.")
-            resp = client.messages.create(
+            # STREAMING (non .create): con backend LLM lenti dietro proxy/tunnel (Ollama
+            # locale via Cloudflare/Tailscale) una risposta unica > ~100s fa scattare il
+            # timeout upstream (Cloudflare 524). Lo streaming emette token in continuazione:
+            # il proxy vede byte fluire e non chiude la connessione. Su Anthropic reale è
+            # equivalente. Vedi _gen_section() più sotto (stesso pattern).
+            with client.messages.stream(
                 model=ANTHROPIC_MODEL,
                 max_tokens=_SEZIONI_MAX_TOKENS,
                 system=[{"type": "text", "text": system_txt, "cache_control": {"type": "ephemeral"}}],
                 messages=[{"role": "user", "content": user}],
-            )
+            ) as stream:
+                resp = stream.get_final_message()
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
             u = getattr(resp, "usage", None)
             return _parse_json_object(text), getattr(u, "output_tokens", 0) or 0
