@@ -154,8 +154,16 @@ class MarketingAgent:
     def _skill_context(self) -> str:
         if not self.skills:
             return ""
+        # Focus curati + skill del reparto marketing dalla libreria (auto-tag).
+        picked = list(_FOCUS)
+        try:
+            for n in self.skills.for_domain("marketing", k=6):
+                if n not in picked:
+                    picked.append(n)
+        except Exception:
+            pass
         out = []
-        for n in _FOCUS[:2]:
+        for n in picked[:4]:
             try:
                 out.append(f"## SKILL: {n}\n" + self.skills.load(n)[:500])
             except KeyError:

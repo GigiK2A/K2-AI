@@ -135,7 +135,17 @@ class DomainAgent:
             if hits:
                 out += "\n\n# CONOSCENZA K2-AI\n" + "\n".join(f"- {h[:300]}" for h in hits)
         if self.skills:
-            for n in self.cfg.skill_focus:
+            # Aggancio alla libreria: le skill fisse del config (se ci sono) PIÙ le skill
+            # del reparto instradate automaticamente (for_domain sul nome-reparto).
+            # Prima i focus curati, poi le top del reparto; cap per non gonfiare il prompt.
+            picked = list(self.cfg.skill_focus)
+            try:
+                for n in self.skills.for_domain(self.cfg.name, k=6):
+                    if n not in picked:
+                        picked.append(n)
+            except Exception:
+                pass
+            for n in picked[:5]:
                 try:
                     out += f"\n\n## SKILL: {n}\n" + self.skills.load(n)[:700]
                 except KeyError:
