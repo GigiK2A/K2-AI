@@ -35,7 +35,13 @@ _SYSTEM = (
     '{"proposte":[{"tipo":"brand|content|social|seo|email|product_mkt|analytics|research|'
     'competitor|paid|demand_gen|automation|pr|influencer|events|cro|creative|budget|strategy|fix",'
     '"titolo":"...","contenuto":"...","motivo":"..."}],'
-    '"voci_calendario":[{"canale":"instagram|blog","titolo":"...","bozza":"...","data_programmata":"YYYY-MM-DD"}]}\n'
+    '"voci_calendario":[{"canale":"instagram|blog","categoria":"formazione|suite|news","titolo":"...","bozza":"...","data_programmata":"YYYY-MM-DD"}]}\n'
+    "CONTENUTI INSTAGRAM — hai PIENO controllo, ma ogni voce 'instagram' DEVE avere una "
+    "'categoria' fra: 'formazione' (educare le PMI italiane sull'AI operativa), 'suite' "
+    "(i nostri prodotti/servizi della Suite AI) o 'news' (novità di settore o aziendali). "
+    "REGOLA FISSA: ogni post di categoria 'suite' va SEMPRE in combinazione col BLOG — "
+    "accompagnalo con una voce 'canale':'blog' collegata (il post IG rimanda all'articolo). "
+    "Bilancia le tre categorie nel calendario.\n"
     "Niente testo fuori dal JSON."
 )
 _FOCUS = ["brand-voice", "content-creation", "campaign-plan", "seo-italia",
@@ -220,6 +226,8 @@ class MarketingAgent:
         user += self._skill_context()
         user += ("\n\nValuta i post uno per uno rispetto a reach/like, confronta coi competitor, "
                  "e proponi miglioramenti concreti (proposte) e, dove utile, voci di calendario datate. "
+                 "Le voci Instagram devono coprire e bilanciare le 3 categorie (formazione, suite, news); "
+                 "ogni voce 'suite' porta con sé la voce blog collegata. "
                  "Copri il PIÙ possibile delle 19 sotto-funzioni (incluse paid, demand_gen, "
                  "automation, pr, influencer, events, cro, creative, budget, strategy), una proposta "
                  "per area dove ha senso. Massimo 10 proposte.")
@@ -232,7 +240,8 @@ class MarketingAgent:
                     "match": {"type": "object"}, "dati": {"type": "object"}}}},
                 "required": ["tipo", "titolo", "contenuto", "motivo"]}},
             "voci_calendario": {"type": "array", "items": {"type": "object", "properties": {
-                "canale": {"type": "string"}, "titolo": {"type": "string"},
+                "canale": {"type": "string"}, "categoria": {"type": "string"},
+                "titolo": {"type": "string"},
                 "bozza": {"type": "string"}, "data_programmata": {"type": "string"}},
                 "required": ["canale", "titolo"]}}},
             "required": ["proposte"]}

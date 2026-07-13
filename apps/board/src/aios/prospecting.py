@@ -21,9 +21,11 @@ _RESEARCH_SYS = (
     "email/CRM, automazioni amministrative, microapp documentali, RAG) ALLE PMI italiane. "
     "Devi trovare CLIENTI POTENZIALI = aziende che COMPREREBBERO questi servizi perché "
     "hanno processi manuali/ripetitivi da automatizzare. NON cerchi fornitori come noi.\n"
-    "TARGET (ICP) — cerca QUI: studi professionali (ingegneria, architettura, "
-    "commercialisti, consulenza), manifatturiero e PMI industriali, servizi B2B; "
-    "indicativamente 5-50 dipendenti, fatturato ~500k-10M €, in Italia.\n"
+    "TARGET (ICP) — cerca QUI: PMI e partite IVA italiane IN UMBRIA E LAZIO (province di "
+    "Perugia, Terni, Roma, Latina, Frosinone, Rieti, Viterbo): studi professionali "
+    "(ingegneria, architettura, commercialisti, consulenza), manifatturiero e PMI "
+    "industriali, servizi B2B; indicativamente 5-50 dipendenti, fatturato ~500k-10M €. "
+    "Il focus geografico UMBRIA + LAZIO è VINCOLANTE: scarta aziende fuori da queste regioni.\n"
     "ESCLUDI TASSATIVAMENTE (NON sono clienti, sono concorrenti o pari-categoria): "
     "agenzie digitali/marketing, software house, system integrator, società di "
     "consulenza IT/AI, chi già vende AI/automazione/RPA/chatbot/sviluppo software, "
@@ -45,7 +47,9 @@ _STRUCT_SYS = (
     "somiglianza a noi. Se non c'è una mail reale lascia contact_email vuoto. Prepara una "
     "BOZZA di primo contatto in italiano, brand voice K2-AI (pragmatica, del 'tu', numeri "
     "concreti, niente buzzword), 5-8 righe, specifica per quell'azienda e il suo problema. "
-    "La bozza NON verrà inviata. Non inventare numeri o dati non presenti nella ricerca."
+    "La bozza NON verrà inviata. Non inventare numeri o dati non presenti nella ricerca.\n"
+    "GEO: riporta 'region' (Umbria/Lazio + provincia). Se l'azienda è FUORI da Umbria e "
+    "Lazio → in_target=false e fit_score basso: cerchiamo solo lì."
 )
 
 _SCHEMA = {
@@ -54,7 +58,8 @@ _SCHEMA = {
         "type": "object",
         "properties": {
             "company": {"type": "string"}, "website": {"type": "string"},
-            "sector": {"type": "string"}, "in_target": {"type": "boolean"},
+            "sector": {"type": "string"}, "region": {"type": "string"},
+            "in_target": {"type": "boolean"},
             "fit_score": {"type": "integer"}, "fit_reason": {"type": "string"},
             "contact_email": {"type": "string"}, "contact_role": {"type": "string"},
             "email_source": {"type": "string"},
@@ -93,18 +98,20 @@ class Prospector:
         if names:
             out += ("\n\n# COSA OFFRIAMO AI CLIENTI (per abbinare il servizio al problema)\n"
                     + "\n".join(f"- {n}" for n in names))
-        out += ("\n\n# CHI CERCHIAMO\nClienti potenziali = PMI italiane (studi professionali, "
-                "manifatturiero, servizi B2B; 5-50 dip.) con processi manuali da automatizzare, "
-                "che COMPREREBBERO i nostri servizi.\n# CHI ESCLUDERE\nChi fa il nostro stesso "
+        out += ("\n\n# CHI CERCHIAMO\nClienti potenziali = PMI o partite IVA italiane IN UMBRIA "
+                "E LAZIO (studi professionali, manifatturiero, servizi B2B; 5-50 dip.) con "
+                "processi manuali da automatizzare, che COMPREREBBERO i nostri servizi. Il "
+                "vincolo geografico Umbria+Lazio è tassativo.\n# CHI ESCLUDERE\nChi fa il nostro stesso "
                 "mestiere o lo fornisce: agenzie, software house, system integrator, consulenza "
                 "IT/AI, chi vende AI/automazione/software. Quelli sono CONCORRENTI, non clienti.")
         return out
 
     def find(self, n: int = 5) -> list[dict]:
         ctx = self._context()
-        user_research = (ctx + f"\n\n# COMPITO\nTrova {n} CLIENTI POTENZIALI reali (PMI che "
-                         "comprerebbero i nostri servizi), NON concorrenti né fornitori del nostro "
-                         "spazio. Settori ICP, mail di contatto reale e fonte. No fuffa.")
+        user_research = (ctx + f"\n\n# COMPITO\nTrova {n} CLIENTI POTENZIALI reali — PMI o "
+                         "partite IVA italiane IN UMBRIA E LAZIO che comprerebbero i nostri "
+                         "servizi, NON concorrenti né fornitori del nostro spazio. Settori ICP, "
+                         "indica regione/provincia, mail di contatto reale e fonte. No fuffa.")
         research = self.llm_web.complete(system=_RESEARCH_SYS, user=user_research)
         parsed = self.llm_struct.complete_json(
             system=_STRUCT_SYS,
