@@ -44,7 +44,8 @@ def _anthropic_client():
         # connect corto per fallire in fretta se la tailnet non è ancora su.
         return anthropic.Anthropic(
             api_key=ANTHROPIC_API_KEY,
-            http_client=httpx.Client(proxy=proxy, timeout=httpx.Timeout(600.0, connect=15.0)),
+            http_client=httpx.Client(proxy=proxy, timeout=httpx.Timeout(
+                float(os.environ.get("K2A_8E_HTTP_TIMEOUT") or 600), connect=15.0)),
         )
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -624,7 +625,11 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         rows.append(_gen_section(analytical[0]))
         rest = analytical[1:]
         if rest:
-            with ThreadPoolExecutor(max_workers=min(6, len(rest))) as ex:
+            # Su GPU SINGOLA (modello locale) il parallelismo alto fa contendere la GPU:
+            # ogni chiamata rallenta e può sforare il read-timeout httpx → job error.
+            # K2A_8E_MAX_WORKERS=1-2 in locale (seriale ≈ stesso wall-clock, niente timeout).
+            _mw = int(os.environ.get("K2A_8E_MAX_WORKERS") or 6)
+            with ThreadPoolExecutor(max_workers=max(1, min(_mw, len(rest)))) as ex:
                 rows.extend(ex.map(_gen_section, rest))
 
     degraded: list[str] = []
