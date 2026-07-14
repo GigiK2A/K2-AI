@@ -299,7 +299,9 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
                 _agg["warnings"] = list(fb_reclass.get("warnings") or []) + list(_agg.get("warnings") or [])
                 fb_reclass = _agg
                 filiera_meta = {**filiera_meta, "financeboost_fallback_aggregati": True}
-                log.warning("financeboost: quadratura KO → indici dagli aggregati cliente job %s", job_id)
+                # NB: niente job_id — apply_deterministic_bindings non lo riceve (NameError
+                # in prod appena una run è arrivata ai bindings col ramo quadratura-KO).
+                log.warning("financeboost: quadratura KO → indici dagli aggregati cliente")
         if fb_reclass:
             # WACC: se l'utente ne fornisce uno (es. "WACC 9,5%") HA LA PRECEDENZA sul CAPM del
             # quant, così la sezione valutazione (EVA) non contraddice la prosa, che usa
