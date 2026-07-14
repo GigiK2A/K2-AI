@@ -59,6 +59,13 @@ def _cap_tok(n: int) -> int:
     return min(n, _MAXTOK_CAP) if _MAXTOK_CAP else n
 
 
+def _os_env_section_maxtok() -> int:
+    """Cap OUTPUT per sezione (K2A_8E_SECTION_MAXTOK), disaccoppiato da _MAXTOK_CAP:
+    limita i token generati per sezione SENZA attivare PROMPT_COMPACT (troncamento
+    input). Serve a contenere i tempi su modelli locali lenti scrivendo prosa densa."""
+    return int(os.environ.get("K2A_8E_SECTION_MAXTOK") or 0)
+
+
 # Modalità PROMPT COMPACT: attiva quando c'è un cap sui token (= modello locale a basso context,
 # es. Gemma@4096). Tronca fatti + dati cliente + schema per-sezione così ogni chiamata sta nei 4096
 # senza "Context size exceeded". Le REGOLE anti-allucinazione restano (contano anche su Gemma); i
@@ -178,7 +185,7 @@ def _voci_block(voci: list[dict]) -> str:
 # max_tokens 16000: SOTTO la soglia oltre cui l'SDK Anthropic IMPONE lo streaming
 # ("Streaming is required for operations that may take longer than 10 minutes"). Non si
 # alza per far stare più voci: si generano a BATCH (vedi sotto).
-_SEZIONI_MAX_TOKENS = _cap_tok(16000)
+_SEZIONI_MAX_TOKENS = min(_cap_tok(16000), _os_env_section_maxtok() or 16000)
 # Batch di voci per chiamata. Default 3 (3 voci ricche stanno comode in 16k → JSON completo
 # e parsabile). Override K2A_8E_SEZIONI_BATCH=1 per backend LLM LENTI (Ollama locale): meno
 # voci per chiamata → risposte più corte, minor rischio di timeout upstream.
@@ -552,6 +559,13 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
                  or sub_json.count('"type": "array"') >= 1
                  or len(sub.get("properties", {})) >= 4)
         maxtok = _cap_tok(32000 if heavy else 20000)
+        # Cap OUTPUT per sezione (denso), SENZA attivare PROMPT_COMPACT (che invece
+        # tronca l'INPUT — dannoso su gpt-oss che ha 131k di contesto). Serve a tenere
+        # i tempi di generazione locale sotto controllo scrivendo sezioni più DENSE.
+        # Default 0 = ceiling invariato (prod su Claude). Es. locale: K2A_8E_SECTION_MAXTOK=3500.
+        _sec_cap = int(_os_env_section_maxtok())
+        if _sec_cap:
+            maxtok = min(maxtok, _sec_cap)
         light = _is_light_section(sub)  # tiering: sezioni meccaniche → modello economico
         analytical.append((name, sub, sub_compact_json, sub_val, user, maxtok, light))
 
