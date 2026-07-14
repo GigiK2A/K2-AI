@@ -64,6 +64,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-venv ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
+# Tailscale (userspace, non-root): se TS_AUTHKEY è impostata a runtime, la chat/8e
+# raggiungono il modello LLM locale via tailnet invece del quick tunnel. Binari statici
+# dall'immagine ufficiale; INERTI senza TS_AUTHKEY (vedi entrypoint.sh) → deploy invariato.
+COPY --from=tailscale/tailscale:stable /usr/local/bin/tailscaled /usr/local/bin/tailscaled
+COPY --from=tailscale/tailscale:stable /usr/local/bin/tailscale  /usr/local/bin/tailscale
+
 # -------- §3c · Corpus Normattiva (normattiva.db, ~1.8GB FTS5) — fetch build-time --------
 # POSIZIONE: subito dopo apt-get (curl c'è) e PRIMA delle COPY del codice → il layer (1.8GB)
 # si CACHA e NON si ri-scarica a ogni commit (la COPY di app/, che cambia sempre,
@@ -124,6 +130,7 @@ COPY --from=node-build /app/kbot/.next/standalone ./kbot-standalone
 COPY --from=node-build /app/kbot/.next/static ./kbot-standalone/.next/static
 COPY --from=node-build /app/kbot/public ./kbot-standalone/public
 COPY server.js ./server.js
+COPY entrypoint.sh ./entrypoint.sh
 COPY lib ./lib
 
 # Skills directory: the Python backend reads from KBOT_SKILLS_DIR which defaults
@@ -158,4 +165,4 @@ USER node
 
 EXPOSE 4173
 
-CMD ["node", "server.js"]
+CMD ["sh", "/app/entrypoint.sh"]
