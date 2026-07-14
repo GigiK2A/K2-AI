@@ -85,12 +85,24 @@ def _anthropic_client():
     proxy = os.environ.get("K2A_8E_LLM_PROXY", "").strip()
     if proxy:
         import httpx
-        # timeout generoso: modello locale lento (lo streaming tiene viva la conn);
-        # connect corto per fallire in fretta se la tailnet non è ancora su.
+        # ROOT-CAUSE dei "report lenti" (misurato dai log Ollama, lug 2026): le connessioni
+        # HTTP RIUSATE attraverso il proxy userspace di Tailscale muoiono da stantie — la
+        # richiesta parte su una connessione morta, nessuna risposta arriva, e la chiamata
+        # resta appesa per l'INTERO read-timeout prima che l'SDK ritenti su una connessione
+        # fresca (che completa in secondi). Ogni stallo bruciava 10-30 min; la GPU era ferma.
+        # Fix: (a) keep-alive DISABILITATO → ogni chiamata apre una connessione nuova
+        # (overhead ~100ms, irrilevante vs la generazione); (b) read-timeout CORTO (300s
+        # default): con lo streaming i byte fluiscono appena la risposta parte, quindi un
+        # timeout serve solo a tagliare le connessioni morte — uno stallo residuo costa
+        # minuti, non mezz'ore.
         return anthropic.Anthropic(
             api_key=ANTHROPIC_API_KEY,
-            http_client=httpx.Client(proxy=proxy, timeout=httpx.Timeout(
-                float(os.environ.get("K2A_8E_HTTP_TIMEOUT") or 600), connect=15.0)),
+            http_client=httpx.Client(
+                proxy=proxy,
+                timeout=httpx.Timeout(
+                    float(os.environ.get("K2A_8E_HTTP_TIMEOUT") or 300), connect=15.0),
+                limits=httpx.Limits(max_keepalive_connections=0, max_connections=8),
+            ),
         )
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
