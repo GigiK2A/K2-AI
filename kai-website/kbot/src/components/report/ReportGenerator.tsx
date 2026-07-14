@@ -145,7 +145,7 @@ export function ReportGenerator({
     }
   }
 
-  async function generate() {
+  async function generate(attempt = 0) {
     setBusy(true);
     setErr(null);
     setPdfUrl(null);
@@ -168,17 +168,22 @@ export function ReportGenerator({
       const jobId = res.job_id;
       setJobId(jobId);
       const final = await pollDeliverable(jobId, (j) => setStatus(j.status));
+      const engineTimeout = /tempo massimo/i.test(final.error ?? "");
       if (final.status === "rendered") {
         const saved = await saveDeliverable(sessionId, jobId, token);
         setPdfUrl(saved ?? `${API_BASE}/api/kbot/deliverables/${encodeURIComponent(jobId)}/pdf`);
       } else if (final.status === "refused") {
         setErr(refusedMessage(final));
-      } else if (final.error === "timeout") {
-        // Il job NON è fallito: sul modello locale la generazione richiede più minuti
-        // e il polling ha raggiunto il tetto. Prosegue lato server e arriva via email.
+      } else if (engineTimeout && attempt < 2) {
+        // RIPRESA AUTOMATICA ("spezzetta e riunisci"): le sezioni già completate sono
+        // in checkpoint lato motore — un nuovo job con gli stessi input le ricarica in
+        // un istante e genera SOLO le mancanti. L'utente non deve fare nulla.
+        setStatus("running");
+        return await generate(attempt + 1);
+      } else if (final.error === "timeout" || engineTimeout) {
         setErr(
           "Il report sta richiedendo più tempo del previsto (documento completo su modello locale). " +
-          "Resta su questa pagina ancora un momento, oppure premi di nuovo Genera tra qualche minuto."
+          "Premi di nuovo Genera: la generazione riprende da dove era arrivata, senza ripartire da zero."
         );
       } else {
         setErr("Generazione non riuscita. Riprova.");

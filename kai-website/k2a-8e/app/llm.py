@@ -15,10 +15,13 @@ Ritorna ({voce_id: prosa}, meta) con meta = {mode, model?, usage?}.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import re
+import time
+from pathlib import Path
 from typing import Optional
 
 from .settings import (ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ANTHROPIC_MODEL_LIGHT,
@@ -26,6 +29,48 @@ from .settings import (ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ANTHROPIC_MODEL_LIGHT
 from . import legal_quesito
 
 log = logging.getLogger("8e.llm")
+
+# --- CHECKPOINT SEZIONI ("spezzetta e riunisci", idea Luca lug 2026) -----------------
+# Su modello LOCALE lento il report (8-15 chiamate sequenziali) può superare il
+# JOB_TIMEOUT: senza checkpoint il watchdog buttava via TUTTE le sezioni completate.
+# Ogni sezione VALIDATA viene salvata su disco, chiave = hash(model+system+user+maxtok)
+# → memoizzazione pura della chiamata: un retry con gli stessi input ricarica in un
+# istante le sezioni già fatte e genera solo le mancanti (il job si completa al 2°
+# tentativo). Se i fatti/input cambiano, la chiave cambia → niente riuso stantio.
+# Disattivabile con K2A_8E_SECTION_CACHE=0. TTL default 6h.
+_CKPT_ENABLED = (os.environ.get("K2A_8E_SECTION_CACHE", "1") or "1").lower() in ("1", "true", "yes")
+_CKPT_DIR = Path(os.environ.get("K2A_8E_OUT_DIR") or "/tmp/8e-out") / "section-cache"
+_CKPT_TTL_S = int(os.environ.get("K2A_8E_SECTION_CACHE_TTL") or 6 * 3600)
+
+
+def _ckpt_key(*parts: str) -> str:
+    h = hashlib.sha256()
+    for p in parts:
+        h.update(p.encode("utf-8", "ignore"))
+        h.update(b"\x00")
+    return h.hexdigest()
+
+
+def _ckpt_get(key: str) -> Optional[str]:
+    if not _CKPT_ENABLED:
+        return None
+    try:
+        f = _CKPT_DIR / f"{key}.txt"
+        if f.is_file() and (time.time() - f.stat().st_mtime) < _CKPT_TTL_S:
+            return f.read_text("utf-8")
+    except Exception:
+        pass
+    return None
+
+
+def _ckpt_put(key: str, text: str) -> None:
+    if not _CKPT_ENABLED or not (text or "").strip():
+        return
+    try:
+        _CKPT_DIR.mkdir(parents=True, exist_ok=True)
+        (_CKPT_DIR / f"{key}.txt").write_text(text, "utf-8")
+    except Exception:
+        pass  # best-effort: mai far fallire la generazione per la cache
 
 
 def _anthropic_client():
@@ -216,6 +261,15 @@ def generate_sezioni(
             user = (f"{caso}{facts_block}\n\n{_voci_block(target)}\n\n"
                     f"DATI CLIENTE (input form): {dati}\n\n"
                     "Genera ora il JSON con la prosa per ogni voce.")
+            # CHECKPOINT batch di voci: un retry con gli stessi input riusa i batch
+            # già generati da un tentativo precedente (vedi _ckpt_* in testa al modulo).
+            _key = _ckpt_key("voci", ANTHROPIC_MODEL, system_txt, user, str(_SEZIONI_MAX_TOKENS))
+            _cached = _ckpt_get(_key)
+            if _cached is not None:
+                data = _parse_json_object(_cached)
+                if data:
+                    log.info("batch voci da CHECKPOINT (0 chiamate)")
+                    return data, 0
             # STREAMING (non .create): con backend LLM lenti dietro proxy/tunnel (Ollama
             # locale via Cloudflare/Tailscale) una risposta unica > ~100s fa scattare il
             # timeout upstream (Cloudflare 524). Lo streaming emette token in continuazione:
@@ -230,7 +284,10 @@ def generate_sezioni(
                 resp = stream.get_final_message()
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
             u = getattr(resp, "usage", None)
-            return _parse_json_object(text), getattr(u, "output_tokens", 0) or 0
+            data = _parse_json_object(text)
+            if data:
+                _ckpt_put(_key, text)
+            return data, getattr(u, "output_tokens", 0) or 0
 
         # BUG-FIX: prima TUTTE le 9 voci in una risposta → > max_tokens → troncata → JSON
         # illeggibile → ogni voce su [BOZZA OFFLINE] pur con anthropic OK. Ora si generano
@@ -600,12 +657,23 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         name, sub, sub_compact_json, sub_val, user, maxtok, light = item
         model = ANTHROPIC_MODEL_LIGHT if light else ANTHROPIC_MODEL
         try:
+            # CHECKPOINT: sezione già generata (stesso prompt) da un tentativo precedente
+            # andato in timeout → riusala senza chiamare il modello ("spezzetta e riunisci").
+            _key = _ckpt_key("deep", model, facts_system, user, str(maxtok))
+            _cached = _ckpt_get(_key)
+            if _cached is not None:
+                cval = _coerce(_cached, sub, sub_val, name)
+                cerrs = list(Draft202012Validator(sub_val).iter_errors(cval)) if cval is not None else [1]
+                if not cerrs:
+                    log.info("sezione '%s' da CHECKPOINT (0 chiamate)", name)
+                    return name, cval, False, 0
             text, resp, tok = _call(model, facts_system, user, maxtok)
             if getattr(resp, "stop_reason", None) == "max_tokens":
                 log.warning("sezione '%s' troncata a max_tokens=%d", name, maxtok)
             val = _coerce(text, sub, sub_val, name)
             errs = list(Draft202012Validator(sub_val).iter_errors(val)) if val is not None else [1]
             if not errs:
+                _ckpt_put(_key, text)
                 return name, val, False, tok
             # FAIL-FAST REPAIR: correggi il JSON invalido con una mini-chiamata
             # (input = JSON rotto + errori) invece di rigenerare tutto/fallback monolitico.
@@ -623,6 +691,7 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
             rval = _coerce(rtext, sub, sub_val, name)
             rerrs = list(Draft202012Validator(sub_val).iter_errors(rval)) if rval is not None else [1]
             if not rerrs:
+                _ckpt_put(_key, rtext)  # anche la versione riparata è riusabile
                 return name, rval, False, tok + rtok
             log.warning("sezione '%s' non conforme anche dopo repair: %s", name, rerrs[:1])
             return name, None, True, tok + rtok
