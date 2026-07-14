@@ -1,5 +1,29 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from interfaces.telegram.presentation import visible_agent_label
+from interfaces.telegram.presentation import BOARD_MEMBERS, visible_agent_label
+
+
+def board_menu_keyboard() -> InlineKeyboardMarkup:
+    """Menu del board: un bottone per ogni membro + il roundtable.
+
+    Selezionare un membro apre una chat 1:1 con lui (callback board:<agent>).
+    Il roundtable (callback board:consiglio) fa convocare tutto il board da Giuseppina.
+    """
+    buttons: list[list[InlineKeyboardButton]] = []
+    row: list[InlineKeyboardButton] = []
+    for member in BOARD_MEMBERS:
+        row.append(
+            InlineKeyboardButton(
+                f"{member['emoji']} {member['name']}",
+                callback_data=f"board:{member['agent']}",
+            )
+        )
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("🧠 Convoca tutto il board", callback_data="board:consiglio")])
+    return InlineKeyboardMarkup(buttons)
 
 
 def approval_keyboard(approval_id: str) -> InlineKeyboardMarkup:

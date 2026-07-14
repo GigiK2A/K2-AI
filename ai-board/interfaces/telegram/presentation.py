@@ -46,6 +46,62 @@ _TECHNICAL_ERROR_PATTERNS = (
 )
 
 
+# ── Personas del board ────────────────────────────────────────────────────────
+# `visible_agent_label` maschera tutti gli agenti come "Giuseppina" perché verso
+# il fondatore il board ha una voce unica. Ma quando il fondatore sceglie
+# ESPLICITAMENTE con chi parlare (menu /board, roundtable) mostriamo i nomi veri.
+# Queste sono le 9 personas canoniche (allineate ad AGENT_REGISTRY).
+BOARD_MEMBERS: list[dict[str, str]] = [
+    {"agent": "orchestrator", "name": "Giuseppina", "emoji": "🎯", "area": "Regia del board"},
+    {"agent": "chief_of_staff", "name": "Gino", "emoji": "📋", "area": "Operazioni"},
+    {"agent": "content_engine", "name": "Genoveffa", "emoji": "✍️", "area": "Marketing & contenuti"},
+    {"agent": "market_intelligence", "name": "Market Intelligence", "emoji": "🔍", "area": "Analisi di mercato"},
+    {"agent": "sales_enablement", "name": "Peppe", "emoji": "🚀", "area": "Vendite & pipeline"},
+    {"agent": "solution_architect", "name": "Archimede", "emoji": "🏗️", "area": "Soluzioni & delivery"},
+    {"agent": "finance_kpi", "name": "Ragionier Ugo", "emoji": "💰", "area": "Conti & KPI"},
+    {"agent": "legal", "name": "Avvocata Pina", "emoji": "⚖️", "area": "Legale"},
+    {"agent": "geo_seo", "name": "Geografino", "emoji": "🌍", "area": "GEO & SEO"},
+]
+
+_BOARD_BY_AGENT: dict[str, dict[str, str]] = {member["agent"]: member for member in BOARD_MEMBERS}
+
+
+def _canonical_agent_key(agent_name: Any) -> str:
+    """Normalizza un nome agente (anche alias) alla persona canonica del board."""
+    raw = str(agent_name or "").strip().lower()
+    if raw.startswith("scheduler:"):
+        raw = raw.split(":", 1)[1]
+    if raw in _BOARD_BY_AGENT:
+        return raw
+    try:
+        from core.orchestrator import resolve_agent_name
+        from db.models import AgentName
+
+        return resolve_agent_name(AgentName(raw)).value
+    except Exception:
+        return raw
+
+
+def board_member(agent_name: Any) -> dict[str, str] | None:
+    return _BOARD_BY_AGENT.get(_canonical_agent_key(agent_name))
+
+
+def board_member_name(agent_name: Any) -> str:
+    member = board_member(agent_name)
+    return member["name"] if member else PRIMARY_BOT_NAME
+
+
+def board_member_label(agent_name: Any, with_area: bool = False) -> str:
+    """Etichetta col nome REALE dell'agente (per il menu /board e il roundtable)."""
+    member = board_member(agent_name)
+    if not member:
+        return PRIMARY_BOT_NAME
+    label = f"{member['emoji']} {member['name']}"
+    if with_area:
+        label += f" · {member['area']}"
+    return label
+
+
 def visible_agent_label(agent_name: Any, context: str | None = None) -> str:
     raw = str(agent_name or "").strip().lower()
     if raw.startswith("scheduler:"):

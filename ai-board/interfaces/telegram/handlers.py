@@ -18,6 +18,7 @@ from core.session_state import add_turn, build_context_for_agent
 from core.approval import approve, get_approval, get_pending_approvals, reject
 from core.business_audit import log_business_action
 from core.config import settings
+from core.conversation import build_agent_conversation_context
 from core.memory import set_memory
 from core.notion_tools import set_current_session
 from core.orchestrator import chat_agent, run_agent, run_objective
@@ -26,14 +27,17 @@ from core.undo import describe_undo, execute_undo, has_undo, load_session_from_s
 from db.client import get_service_client
 from db.models import AgentName
 from interfaces.telegram.assistant import cancel_word, confirm_word, execute_action, execute_pending_action, handle_text_message, operational_shortcut
-from interfaces.telegram.keyboards import approval_keyboard
+from interfaces.telegram.keyboards import approval_keyboard, board_menu_keyboard
 from interfaces.telegram.presentation import (
     approval_is_recent,
+    board_member_label,
+    board_member_name,
     clean_preview,
     sanitize_user_error_message,
     smart_truncate,
     visible_agent_label,
 )
+from interfaces.telegram.rich_sender import send_rich_reply
 
 PENDING_ATTACHMENTS_KEY = "pending_telegram_attachments"
 TELEGRAM_CHAT_UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads" / "chat" / "telegram"
@@ -61,7 +65,29 @@ CHAT_EXIT_PHRASES = {
     "stop chat",
     "termina chat",
     "fine chat",
+    "esci",
+    "torna a giuseppina",
 }
+
+# Frasi con cui il fondatore chiede esplicitamente il parere collegiale del board.
+BOARD_CONVENE_PHRASES = (
+    "cosa ne pensa il board",
+    "che ne pensa il board",
+    "chiedi al board",
+    "senti il board",
+    "parere del board",
+    "convoca il board",
+    "riunisci il board",
+    "consiglio del board",
+    "cosa dice il board",
+    "chiedi al consiglio",
+    "riunione del board",
+)
+
+
+def _is_board_convene_request(normalized_text: str) -> bool:
+    lowered = normalized_text.lower()
+    return any(phrase in lowered for phrase in BOARD_CONVENE_PHRASES)
 
 
 def _extract_attachment_excerpt(filename: str, content: bytes) -> str | None:
@@ -402,7 +428,8 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Puoi scrivermi qualsiasi obiettivo, caricare documenti o fare domande.\n"
         "Coinvolgerò i giusti agenti del board quando necessario.\n\n"
         "_Comandi rapidi:_\n"
-        "/agent — parla con un agente specifico\n"
+        "/board — parla 1:1 con un membro del board\n"
+        "/consiglio — convoca tutto il board su una domanda\n"
         "/approvals — draft in attesa\n"
         "/status — stato pipeline\n"
         "/help — tutti i comandi"
@@ -412,6 +439,103 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await start_handler(update, context)
+
+
+async def board_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/board — apre il menu del board: chatta 1:1 con un membro o convoca tutti."""
+    if not is_authorized(update) or not update.message:
+        return
+    text = (
+        "🧑‍💼 <b>Il board</b>\n\n"
+        "Scegli con chi parlare 1:1 — ognuno risponde dalla sua area, con le sue competenze. "
+        "Oppure convoca tutti insieme per un parere collegiale.\n\n"
+        "<i>Mentre sei in chat con un membro, scrivi \"esci\" per tornare a Giuseppina.</i>"
+    )
+    await update.message.reply_text(
+        text, parse_mode=ParseMode.HTML, reply_markup=board_menu_keyboard()
+    )
+
+
+async def consiglio_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/consiglio <domanda> — Giuseppina convoca il board e sintetizza i pareri."""
+    if not is_authorized(update) or not update.message:
+        return
+    question = " ".join(context.args) if context.args else ""
+    if not question.strip():
+        context.user_data["pending_consiglio"] = True
+        await update.message.reply_text(
+            "Cosa vuoi sottoporre al board? Scrivimelo nel prossimo messaggio e li convoco."
+        )
+        return
+    await _run_roundtable(update, context, question)
+
+
+async def _run_roundtable(update: Update, context: ContextTypes.DEFAULT_TYPE, question: str) -> None:
+    """Esegue il roundtable del board e presenta voci + sintesi di Giuseppina."""
+    from core.board_roundtable import convene
+
+    context.user_data.pop("pending_consiglio", None)
+    placeholder = await update.message.reply_text("🧠 Sto convocando il board...")
+    try:
+        result = await convene(question)
+    except Exception as exc:
+        logger.exception(f"Roundtable fallito: {exc}")
+        await placeholder.edit_text(sanitize_user_error_message(exc))
+        return
+
+    if not result.voices:
+        await placeholder.edit_text(
+            "Il board non ha prodotto pareri utili su questo. Prova a spiegarmi meglio cosa ti serve."
+        )
+        return
+
+    # 1) Sintesi di Giuseppina (può contenere grafici/documenti) al posto del placeholder.
+    header = f"🧠 <b>Il board si è riunito</b> — {len(result.voices)} pareri raccolti\n\n"
+    synthesis = f"{header}🎯 <b>{board_member_name(AgentName.ORCHESTRATOR.value)} — Sintesi</b>\n{result.synthesis}"
+    await send_rich_reply(update.message, synthesis, placeholder=placeholder)
+
+    # 2) Le singole voci del board, attribuite col nome reale.
+    voices_lines = ["👥 <b>Le voci del board</b>"]
+    for voice in result.voices:
+        voices_lines.append(f"\n{board_member_label(voice.agent.value)}")
+        voices_lines.append(voice.text)
+    await send_rich_reply(update.message, "\n".join(voices_lines))
+
+
+async def _chat_with_board_member(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, agent_value: str, text: str
+) -> None:
+    """Chat conversazionale 1:1 con uno specifico membro del board (no draft)."""
+    try:
+        agent_name = AgentName(agent_value)
+    except ValueError:
+        context.user_data.pop("active_agent_chat", None)
+        await update.message.reply_text("Quella chat non è più valida. Usa /board per riaprire il menu.")
+        return
+
+    chat_id = str(update.effective_chat.id) if update.effective_chat else "anon"
+    pending_attachments = _pop_pending_attachments(context)
+    task = _build_task_with_attachments(text, pending_attachments)
+    chat_ctx: dict[str, Any] = {
+        "chat_history": build_agent_conversation_context(agent_name, limit=12),
+        "interface": "telegram",
+        "channel": "telegram_board_chat",
+    }
+    if pending_attachments:
+        chat_ctx["attachments"] = [
+            {"name": a["name"], "excerpt": a.get("excerpt")} for a in pending_attachments
+        ]
+
+    placeholder = await update.message.reply_text("…")
+    try:
+        response_text = await chat_agent_async(agent_name, task, chat_ctx)
+    except Exception as exc:
+        logger.exception(f"Chat membro board {agent_value} fallita: {exc}")
+        await placeholder.edit_text("Si è verificato un errore. Riprova tra un momento.")
+        return
+
+    add_turn(chat_id, text, response_text)
+    await send_rich_reply(update.message, response_text, placeholder=placeholder)
 
 
 async def schedule_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -783,6 +907,35 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    if action == "board" and len(parts) >= 2:
+        target = parts[1]
+        if target == "consiglio":
+            context.user_data["pending_consiglio"] = True
+            context.user_data.pop("active_agent_chat", None)
+            await query.message.reply_text(
+                "Cosa vuoi sottoporre al board? Scrivimelo e li convoco tutti."
+            )
+            return
+        try:
+            agent_name = AgentName(target)
+        except ValueError:
+            await query.message.reply_text("Membro del board non riconosciuto.")
+            return
+        context.user_data["active_agent_chat"] = agent_name.value
+        context.user_data.pop("pending_consiglio", None)
+        _pop_pending_attachments(context)
+        if agent_name == AgentName.ORCHESTRATOR:
+            await query.message.reply_text(
+                "Sei tornato da Giuseppina, la regia del board. Dimmi pure."
+            )
+        else:
+            label = board_member_label(agent_name.value, with_area=True)
+            await query.message.reply_text(
+                f"Ora parli con {label}.\n"
+                "Scrivi pure — risponde dalla sua area. Per uscire scrivi \"esci\"."
+            )
+        return
+
     if action == "cancel":
         context.user_data.clear()
         await query.edit_message_reply_markup(reply_markup=None)
@@ -922,14 +1075,30 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Nota salvata.")
         return
 
-    if "active_agent_chat" in context.user_data:
+    # ── Roundtable in attesa della domanda (dopo /consiglio o bottone board) ──
+    if context.user_data.pop("pending_consiglio", None):
+        await _run_roundtable(update, context, text)
+        return
+
+    # ── Convocazione esplicita del board ("cosa ne pensa il board", ...) ──────
+    if _is_board_convene_request(normalized_text):
+        logger.info(f"[{req_id}] → roundtable board")
+        await _run_roundtable(update, context, text)
+        return
+
+    # ── Chat 1:1 con un membro del board selezionato dal menu /board ──────────
+    active_agent_name = context.user_data.get("active_agent_chat")
+    if active_agent_name:
         if normalized_text.lower() in CHAT_EXIT_PHRASES:
-            context.user_data.pop("active_agent_chat")
+            context.user_data.pop("active_agent_chat", None)
             _pop_pending_attachments(context)
-            await update.message.reply_text("Ok, sono qui se hai altro.")
+            await update.message.reply_text("Ok, torno a farti da regia. Scrivimi pure.")
             return
-        # Redirect: active_agent_chat non bypassa più Giuseppina
-        # Cade nel blocco Giuseppina sotto
+        # Un membro specifico (non Giuseppina) risponde direttamente dalla sua area.
+        if active_agent_name != AgentName.ORCHESTRATOR.value:
+            await _chat_with_board_member(update, context, active_agent_name, text)
+            return
+        # active_agent_chat == orchestrator: cade nel blocco Giuseppina sotto.
 
     # Shortcut operativi espliciti (approvals, logs, status, pipeline list)
     shortcut = operational_shortcut(normalized_text)
@@ -978,7 +1147,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     add_turn(chat_id, text, response_text)
 
     logger.info(f"[{req_id}] risposta generata: {len(response_text)} chars")
-    await msg.edit_text(truncate(response_text))
+    await send_rich_reply(update.message, response_text, placeholder=msg)
 
 
 async def attachment_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1014,13 +1183,13 @@ async def attachment_message_handler(update: Update, context: ContextTypes.DEFAU
             }
             msg = await update.message.reply_text("...")
             response_text = await chat_agent_async(agent_name, task, chat_ctx)
-            await msg.edit_text(truncate(response_text))
+            await send_rich_reply(update.message, response_text, placeholder=msg)
         else:
             # Nessun caption: accumula e aspetta il messaggio
             prev = _get_pending_attachments(context)
             _store_pending_attachments(context, [*prev, *attachments])
             total = len(_get_pending_attachments(context))
-            agent_display = visible_agent_label(active_agent_name)
+            agent_display = board_member_label(active_agent_name)
             await update.message.reply_text(
                 f"{total} allegat{'o' if total == 1 else 'i'} ricevut{'o' if total == 1 else 'i'}. "
                 f"Ora scrivi cosa vuoi fare — li invio a {agent_display}."

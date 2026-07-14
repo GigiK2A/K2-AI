@@ -16,7 +16,9 @@ from interfaces.telegram.handlers import (
     agent_handler,
     approvals_handler,
     attachment_message_handler,
+    board_handler,
     callback_handler,
+    consiglio_handler,
     help_handler,
     log_handler,
     memory_handler,
@@ -54,6 +56,8 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("help", help_handler))
     app.add_handler(CommandHandler("task", task_handler))
     app.add_handler(CommandHandler("agent", agent_handler))
+    app.add_handler(CommandHandler("board", board_handler))
+    app.add_handler(CommandHandler("consiglio", consiglio_handler))
     app.add_handler(CommandHandler("approvals", approvals_handler))
     app.add_handler(CommandHandler("schedule", schedule_handler))
     app.add_handler(CommandHandler("status", status_handler))
