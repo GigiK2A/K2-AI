@@ -24,6 +24,12 @@ dependencies = [
     "rich>=13.0.0",
     "markdown>=3.7",
     "bleach>=6.1.0",
+    # Rich output su Telegram: grafici (PNG) e documenti (PDF/DOCX/XLSX).
+    # Librerie locali, nessun SaaS esterno — coerenti col budget tech.
+    "matplotlib>=3.8.0",
+    "reportlab>=4.0.0",
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.0",
     # Optional — only used when SENTRY_DSN env var is set at runtime.
     "sentry-sdk>=2.0.0",
 ]
