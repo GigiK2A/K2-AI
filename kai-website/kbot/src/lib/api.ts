@@ -1052,10 +1052,12 @@ export async function pollDeliverable(
   onTick?: (job: DeliverableJob) => void,
   opts: { intervalMs?: number; timeoutMs?: number } = {},
 ): Promise<DeliverableJob> {
-  const interval = opts.intervalMs ?? 2500;
-  // La generazione 8e profonda (16 pagine, per-sezione) dura ~5 min; su prod
-  // può essere più lenta. Timeout generoso (10 min) per non fallire a metà.
-  const timeout = opts.timeoutMs ?? 600_000;
+  const interval = opts.intervalMs ?? 4000;
+  // La generazione 8e profonda (16 pagine, per-sezione) su modello LOCALE (gpt-oss)
+  // dura MOLTI minuti. Timeout allineato al JOB_TIMEOUT dell'8e (~45 min) così il
+  // polling NON "fallisce" mentre il job è ancora in corso lato server. Il chiamante
+  // distingue il timeout (error === "timeout") da un refuse/errore reale.
+  const timeout = opts.timeoutMs ?? 2_700_000;
   const start = Date.now();
   let lastJob: DeliverableJob | null = null;
   for (;;) {

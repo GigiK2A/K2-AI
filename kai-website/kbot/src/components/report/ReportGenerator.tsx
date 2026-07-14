@@ -156,6 +156,13 @@ export function ReportGenerator({
         setPdfUrl(saved ?? `${API_BASE}/api/kbot/deliverables/${encodeURIComponent(jobId)}/pdf`);
       } else if (final.status === "refused") {
         setErr(refusedMessage(final));
+      } else if (final.error === "timeout") {
+        // Il job NON è fallito: sul modello locale la generazione richiede più minuti
+        // e il polling ha raggiunto il tetto. Prosegue lato server e arriva via email.
+        setErr(
+          "Il report richiede qualche minuto in più (documento completo su modello locale). " +
+          "Resta su questa pagina o riaprila tra poco: appena pronto lo trovi qui, e ti arriva anche via email."
+        );
       } else {
         setErr("Generazione non riuscita. Riprova.");
       }
