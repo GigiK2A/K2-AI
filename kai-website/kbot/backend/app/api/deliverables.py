@@ -10,6 +10,8 @@ verificato dall'8e. Qui si verifica solo che il servizio sia pagato sulla sessio
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from typing import Optional
 
@@ -27,6 +29,24 @@ from ..settings import STORAGE_REPORTS_BUCKET
 
 router = APIRouter()
 log = logging.getLogger(__name__)
+
+
+def _conversation_fp(session: dict, servizio_id: str) -> str:
+    """Fingerprint della conversazione per il riuso degli input auto-compilati.
+
+    L'autofill è una chiamata LLM: a ogni /auto riformula gli input in modo
+    leggermente diverso → i prompt delle sezioni 8e cambiano → la cache
+    per-sezione ("spezzetta e riunisci") non fa mai hit e un retry dopo timeout
+    riparte da zero. Con conversazione INVARIATA riusiamo gli input persistiti:
+    prompt identici → sezioni riusate → il retry COMPLETA il report."""
+    coll = session.get("collected_data") or {}
+    basis = [
+        servizio_id,
+        [str(m.get("content") or "") for m in (session.get("messages") or []) if isinstance(m, dict)],
+        sorted(str(f.get("name") or "") for f in (coll.get("uploaded_files") or [])),
+        sorted(str(u.get("url") or "") for u in (coll.get("analyzed_urls") or [])),
+    ]
+    return hashlib.sha256(json.dumps(basis, ensure_ascii=False).encode("utf-8")).hexdigest()
 
 PREVIEW_LIMIT_MESE = 2  # gate W8, A/B 2 vs 3 post-live
 
@@ -358,7 +378,17 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
         form_schema = form.get("schema")
     except engine.EngineError:
         campi = []
-    inputs = autofill.extract_inputs(session, campi)
+    # INPUT STABILI TRA I TENTATIVI: se la conversazione è invariata dall'ultimo /auto
+    # per lo stesso boost, riusa gli input già estratti — (a) salta la chiamata LLM di
+    # autofill, (b) prompt 8e identici → i checkpoint per-sezione fanno hit e il retry
+    # dopo un timeout COMPLETA il report invece di ripartire da zero.
+    _fp = _conversation_fp(session, servizio_id)
+    if (collected.get("deliverable_inputs") and collected.get("deliverable_service") == servizio_id
+            and collected.get("deliverable_inputs_fp") == _fp):
+        inputs = dict(collected["deliverable_inputs"])
+        log.info("auto: input riusati (conversazione invariata) → checkpoint 8e riusabili")
+    else:
+        inputs = autofill.extract_inputs(session, campi)
     if not inputs.get("ragione_sociale"):
         _name = _session_company(session)
         if _name:
@@ -478,6 +508,7 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
         collected["deliverable_label"] = servizio.get("label")
         # C4 — input+auth_level per la rigenerazione gratuita post-restart (vedi /recover).
         collected["deliverable_inputs"] = inputs
+        collected["deliverable_inputs_fp"] = _fp  # riuso input su retry (checkpoint 8e)
         collected["deliverable_auth_level"] = auth_level
         collected.pop("deliverable_saved_job", None)  # nuovo job → copia durevole vecchia non valida
         collected.pop("deliverable_pdf_url", None)
