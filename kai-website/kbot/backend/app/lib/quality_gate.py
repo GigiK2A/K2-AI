@@ -51,7 +51,12 @@ _CRITIC_SYSTEM = (
     "lamentela/contestazione/richiesta infondata), i rischi sono valutabili e le prime azioni "
     "identificabili. Se la bozza dichiara 'informazioni sufficienti' o contiene il blocco "
     "CONSULENZA_SUMMARY ma le ipotesi sono ancora aperte → premature_summary=true e scrivi in "
-    "missing_question LA singola domanda che meglio discrimina le ipotesi.\n"
+    "missing_question LA singola domanda che meglio discrimina le ipotesi. ATTENZIONE — NON è "
+    "prematuro (premature_summary=false) quando le incertezze residue NON cambierebbero le "
+    "decisioni o le azioni raccomandate (es. il peso esatto di un fattore quando il piano resta "
+    "identico): la certezza assoluta NON è richiesta, il report preliminare dichiara le "
+    "assunzioni. Bloccare un report utile è un errore GRAVE quanto generarne uno prematuro. "
+    "Nel dubbio: lascia generare.\n"
     "2) DIAGNOSI: qualificazioni assertive (es. 'possibile insolvenza', 'responsabilità "
     "contrattuale') senza fatti verificati → assertive_diagnosis=true. Frame corretto: "
     "'possibile X da verificare', ipotesi elencate come aperte.\n"
@@ -118,6 +123,17 @@ def review(client, model: str, merged_messages: list, raw_text: str) -> str:
         if not v:
             log.warning("quality_gate: verdetto non parsabile → pass-through")
             return raw_text
+        # ANTI-OSCILLAZIONE (deterministico): dopo N turni utente di intake il critico
+        # NON può più rimandare in raccolta dati — altrimenti si crea il loop
+        # "annuncio il report → il critico lo blocca → altra domanda → …" (eval e-commerce:
+        # 'oscilla tra modalità diagnosi e raccolta dati'). Le altre 3 regole restano attive.
+        _user_turns = sum(1 for m in (merged_messages or [])
+                          if isinstance(m, dict) and m.get("role") == "user")
+        _max_intake = int(os.environ.get("KBOT_MAX_INTAKE_TURNS") or 5)
+        if v.get("premature_summary") is True and _user_turns >= _max_intake:
+            log.info("quality_gate: premature_summary IGNORATO (turni=%d ≥ %d — anti-oscillazione)",
+                     _user_turns, _max_intake)
+            v["premature_summary"] = False
         flags = [k for k in ("premature_summary", "assertive_diagnosis",
                              "drastic_actions", "depth_mismatch") if v.get(k) is True]
         if not flags:
