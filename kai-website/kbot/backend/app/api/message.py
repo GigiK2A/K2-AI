@@ -126,6 +126,15 @@ _PROCEDI_RE = _re.compile(
 # Segnale di READINESS nel testo visibile: il bot dichiara di avere abbastanza dati.
 # Serve al fallback che FORZA il blocco CONSULENZA_SUMMARY quando il modello (spesso
 # locale) lo dichiara ma non emette il blocco (Regola 3 eval: dev'essere un trigger).
+# GUARDIA NEGAZIONE: se il bot dichiara di NON avere abbastanza dati ("Non ho ancora
+# informazioni sufficienti…"), il fallback NON deve forzare il summary — quella frase
+# contiene "informazioni sufficienti" e matcherebbe _READY_RE (bug: report prematuro
+# forzato proprio quando il bot gestisce correttamente l'incertezza).
+_NOT_READY_RE = _re.compile(
+    r"non\s+(?:ho|ha|abbiamo|dispongo|disponiamo)\s+(?:ancora\s+)?(?:abbastanza\s+|sufficient\w+\s+)?"
+    r"(?:informazioni|dati|elementi)|informazioni\s+non\s+(?:ancora\s+)?sufficient\w+|"
+    r"non\s+(?:sono|bastano)\s+(?:ancora\s+)?sufficient\w+|mancano\s+(?:ancora\s+)?(?:informazioni|dati|elementi)|"
+    r"prima\s+devo\s+chiarire|troppo\s+presto\s+per", _re.I)
 _READY_RE = _re.compile(
     r"(informazion\w+ sufficient\w+|sufficient\w+ per (produrre|preparare|generare|una prima)|"
     r"procedo con il report|posso (gi[àa] )?prepar\w+ il report|genero il report|"
@@ -167,6 +176,8 @@ def _ensure_summary_block(client, system_prompt, messages: list, raw_text: str,
     segnale di readiness. Ritorna raw_text (eventualmente con il blocco appeso)."""
     if extract_summary(raw_text) or _interview_gate_active(merged_messages):
         return raw_text
+    if _NOT_READY_RE.search(raw_text or ""):
+        return raw_text  # il bot ha dichiarato insufficienza: NON forzare il report
     if not _READY_RE.search(raw_text or ""):
         return raw_text
     try:
