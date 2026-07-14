@@ -75,6 +75,29 @@ _RULES_COMPACT = (
     "esplicita)'. NIENTE segnaposto [campo]. Prosa densa, orientamento non vincolante.\n\n")
 
 
+# Regole di QUALITÀ TRASVERSALE del report (eval crisi/multidominio, lug 2026): ogni report
+# applica questi elementi alla sezione PERTINENTE, senza ripeterli altrove. Iniettate sia nella
+# filiera deep (generate_deliverable_deep) sia in quella a voci (generate_sezioni).
+_QUALITA_TRASVERSALE = (
+    "- QUALITÀ TRASVERSALE (applica alla sezione PERTINENTE, UNA volta sola, senza ripetere):\n"
+    "  • Sintesi/executive: apri col quadro decisionale — rischio complessivo (basso/medio/alto), "
+    "urgenza, esposizione economica se pertinente, AFFIDABILITÀ dell'analisi (in base ai dati avuti) "
+    "e le prime 3 decisioni da prendere.\n"
+    "  • Distingui problema DICHIARATO vs problema REALE, cause e conseguenze.\n"
+    "  • ASSUNZIONI esplicite: separa fatti confermati, dichiarazioni del cliente, assunzioni e dati "
+    "mancanti; non spacciare assunzioni per fatti.\n"
+    "  • Piano d'azione per ORIZZONTI temporali: 0-48h / 3-7 giorni / 8-30 giorni / 31-90 giorni.\n"
+    "  • Rischio economico rilevante → quantifica: esposizione (€ o % del fatturato), impatto sulla "
+    "cassa, orizzonte di liquidità, scenari base/stress/worst (marcati come ipotesi se non nei FATTI).\n"
+    "  • Ambito legale con dati incompleti: raccomandazioni PROPORZIONATE alla certezza ('riservarsi "
+    "ogni valutazione', 'preservare le prove', 'coinvolgere il legale'); MAI posizioni definitive senza "
+    "contratto/PEC/comunicazioni; strumento meno invasivo (delega prima di procura speciale); nessun "
+    "accesso ad account personali senza verifica di titolarità.\n"
+    "  • Report multidominio: copri TUTTI gli impatti rilevanti (legale, finanza, commerciale, "
+    "governance, continuità), non solo il dominio principale.\n"
+)
+
+
 def _trunc(s: str, cap: int) -> str:
     return s if not cap or len(s) <= cap else s[:cap] + " …[troncato per context ridotto]"
 
@@ -95,7 +118,8 @@ _SYSTEM = (
     "- LUNGHEZZA: ~180-240 parole per voce, su più paragrafi: inquadramento, rischio concreto "
     "per QUESTA azienda, implicazioni operative, cosa fare. Non riassunti generici.\n"
     "- È orientamento, NON consulenza legale (D-034).\n"
-    "- Restituisci SOLO un oggetto JSON {\"<voce_id>\": \"<testo>\", ...}, una chiave per voce richiesta."
+    "- Restituisci SOLO un oggetto JSON {\"<voce_id>\": \"<testo>\", ...}, una chiave per voce richiesta.\n"
+    + _QUALITA_TRASVERSALE
 )
 
 
@@ -490,8 +514,9 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         "  • NIENTE segnaposto template: se un campo non è nei DATI CLIENTE usa 'non specificato' "
         "o 'n/d', MAI il formato [campo] (es. '[città]', '[regione]', '[nome]'). Questi formati "
         "vengono bloccati automaticamente dal gate di qualità e impediscono la consegna.\n"
-        "- Orientamento professionale, non consulenza vincolante (D-034/D-036).\n\n"
-        f"{facts_blk}\n\nDATI CLIENTE: {cli}"
+        "- Orientamento professionale, non consulenza vincolante (D-034/D-036).\n"
+        + _QUALITA_TRASVERSALE +
+        f"\n{facts_blk}\n\nDATI CLIENTE: {cli}"
     )
 
     # Sezioni STRUTTURALI (non analitiche): compilate deterministicamente, mai
