@@ -826,6 +826,7 @@ export default function HomePage() {
                 sessionId={kbotSession.id}
                 getAuthToken={getToken}
                 boostLabel={suggestedBoost?.label ?? kbotSession.boostSuggeritoLabel ?? undefined}
+                autoStart={reportReady}
               />
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}

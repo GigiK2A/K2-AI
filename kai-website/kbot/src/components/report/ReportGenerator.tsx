@@ -75,6 +75,7 @@ export function ReportGenerator({
   sessionId,
   getAuthToken,
   boostLabel,
+  autoStart,
 }: {
   sessionId: string;
   getAuthToken?: () => Promise<string | null>;
@@ -82,6 +83,10 @@ export function ReportGenerator({
    *  vede COSA sta per generare e può accorgersi di un routing sbagliato PRIMA
    *  di spendere la generazione (es. "LegalBoost DD" su una chat di marketing). */
   boostLabel?: string;
+  /** Se true, avvia la generazione DA SOLO quando il report è pronto (readiness =
+   *  trigger interno, non un bottone che l'utente deve scoprire). Evita la
+   *  "False Completion": il bot dice "sto generando" e il report parte davvero. */
+  autoStart?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -106,6 +111,18 @@ export function ReportGenerator({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  // AUTO-START: appena il report è "pronto" (readiness raggiunta in chat), la
+  // generazione parte DA SOLA — l'utente non deve premere "Genera". Se deve pagare,
+  // mostra subito il checkout; se free/pagato, genera. Una sola volta per sessione.
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current || resumedRef.current) return;
+    if (busy || pdfUrl || checkout) return;
+    autoStartedRef.current = true;
+    void generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   async function unlock() {
     if (!checkout?.servizioId) return;
