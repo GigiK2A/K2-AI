@@ -27,6 +27,27 @@ from . import legal_quesito
 
 log = logging.getLogger("8e.llm")
 
+
+def _anthropic_client():
+    """Client dell'SDK Anthropic. Se K2A_8E_LLM_PROXY è impostata (es. proxy
+    userspace di Tailscale su Railway: http://localhost:1055) instrada SOLO le
+    chiamate al modello attraverso la tailnet — per raggiungere un endpoint
+    Anthropic-compatibile LOCALE su IP 100.x (Ollama + shim sul PC), senza il cap
+    ~100s del quick tunnel Cloudflare. Le altre uscite (web search, storage)
+    restano dirette. Senza proxy: costruzione invariata (prod su Claude uguale).
+    L'endpoint si imposta con ANTHROPIC_BASE_URL (letto dall'SDK)."""
+    import anthropic
+    proxy = os.environ.get("K2A_8E_LLM_PROXY", "").strip()
+    if proxy:
+        import httpx
+        # timeout generoso: modello locale lento (lo streaming tiene viva la conn);
+        # connect corto per fallire in fretta se la tailnet non è ancora su.
+        return anthropic.Anthropic(
+            api_key=ANTHROPIC_API_KEY,
+            http_client=httpx.Client(proxy=proxy, timeout=httpx.Timeout(600.0, connect=15.0)),
+        )
+    return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
 # Cap opzionale ai max_tokens (default 0 = nessun cap → comportamento invariato in prod). Serve per
 # far girare la filiera su modelli LOCALI a basso context (es. Gemma su LM Studio, ctx 4096) senza
 # toccare Claude: `K2A_8E_MAX_TOKENS_CAP=1500`. Solo per test; la prod resta senza cap su Claude.
@@ -133,7 +154,10 @@ def _voci_block(voci: list[dict]) -> str:
 # ("Streaming is required for operations that may take longer than 10 minutes"). Non si
 # alza per far stare più voci: si generano a BATCH (vedi sotto).
 _SEZIONI_MAX_TOKENS = _cap_tok(16000)
-_SEZIONI_BATCH = 3            # 3 voci ricche stanno comode in 16k → JSON completo e parsabile
+# Batch di voci per chiamata. Default 3 (3 voci ricche stanno comode in 16k → JSON completo
+# e parsabile). Override K2A_8E_SEZIONI_BATCH=1 per backend LLM LENTI (Ollama locale): meno
+# voci per chiamata → risposte più corte, minor rischio di timeout upstream.
+_SEZIONI_BATCH = max(1, int(os.environ.get("K2A_8E_SEZIONI_BATCH") or 3))
 
 
 def generate_sezioni(
@@ -147,7 +171,7 @@ def generate_sezioni(
     try:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _anthropic_client()
         facts_block = _facts_block(facts)
         dati = json.dumps(inputs, ensure_ascii=False)
         # Modalità QUESITO (parere su un caso specifico): il caso va IN TESTA e il system
@@ -160,12 +184,18 @@ def generate_sezioni(
             user = (f"{caso}{facts_block}\n\n{_voci_block(target)}\n\n"
                     f"DATI CLIENTE (input form): {dati}\n\n"
                     "Genera ora il JSON con la prosa per ogni voce.")
-            resp = client.messages.create(
+            # STREAMING (non .create): con backend LLM lenti dietro proxy/tunnel (Ollama
+            # locale via Cloudflare/Tailscale) una risposta unica > ~100s fa scattare il
+            # timeout upstream (Cloudflare 524). Lo streaming emette token in continuazione:
+            # il proxy vede byte fluire e non chiude la connessione. Su Anthropic reale è
+            # equivalente. Vedi _gen_section() più sotto (stesso pattern).
+            with client.messages.stream(
                 model=ANTHROPIC_MODEL,
                 max_tokens=_SEZIONI_MAX_TOKENS,
                 system=[{"type": "text", "text": system_txt, "cache_control": {"type": "ephemeral"}}],
                 messages=[{"role": "user", "content": user}],
-            )
+            ) as stream:
+                resp = stream.get_final_message()
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
             u = getattr(resp, "usage", None)
             return _parse_json_object(text), getattr(u, "output_tokens", 0) or 0
@@ -241,7 +271,7 @@ def generate_deliverable_legal(
         return None, {"mode": "offline"}
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _anthropic_client()
         voci_spec = "\n".join(
             f"- id={v['id']} titolo=«{v['titolo']}» argomenti: {'; '.join(v.get('argomenti_obbligatori', []))}"
             for v in voci
@@ -408,7 +438,7 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     tot_out = 0
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _anthropic_client()
     except Exception as exc:
         return None, {"mode": "offline", "reason": str(exc)}
 
@@ -827,7 +857,7 @@ def generate_conforming(output_schema: dict, blueprint: dict, facts: dict[str, d
     import json as _json
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _anthropic_client()
         # schema compatto (solo properties + required, niente $schema/title verbosi)
         compact = {"type": "object",
                    "required": output_schema.get("required", []),
@@ -887,7 +917,7 @@ def generate_structured_meta(blueprint: dict, facts: dict[str, dict], inputs: di
     voci = blueprint.get("voci", [])
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _anthropic_client()
         voci_spec = "\n".join(f"- {v['id']}: {v['titolo']} ({'; '.join(v.get('argomenti_obbligatori', [])[:3])})" for v in voci)
         caso = legal_quesito.caso_block(inputs)
         sysmsg = (
@@ -926,7 +956,7 @@ def generate_allegati(facts: dict[str, dict], inputs: dict) -> Optional[dict]:
         return None
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _anthropic_client()
         sysmsg = (
             "Dal CASO estrai SOLO allegati operativi per una PMI, in JSON:\n"
             '{"elenco_documenti":[str], "checklist_prove":[str], '
@@ -996,7 +1026,7 @@ def generate_report_ops(deliverable: dict, inputs: dict) -> Optional[dict]:
     settore = str((inputs or {}).get("settore") or "").strip()
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _anthropic_client()
         sysmsg = (
             "Sei un consulente senior (stile McKinsey/Deloitte). Ti do la SINTESI di un report "
             "già prodotto per una PMI italiana. Estrai SOLO elementi operativi, sintetici e "
@@ -1071,7 +1101,7 @@ def generate_preview(blueprint: dict, facts: dict[str, dict], inputs: dict) -> d
         }
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = _anthropic_client()
         sysmsg = (
             "Genera l'ASSAGGIO (preview) di una diagnosi PMI: un punteggio di sintesi "
             "0-100 e la criticità #1 reale e azionabile. NON scrivere il documento completo. "

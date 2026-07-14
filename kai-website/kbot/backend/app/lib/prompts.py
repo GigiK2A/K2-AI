@@ -210,6 +210,7 @@ REGOLE FISSE NON NEGOZIABILI:
 REGOLA #1 SUMMARY TRIGGER (PRIORITÀ MASSIMA):
 NON emettere CONSULENZA_SUMMARY prima di aver posto ALMENO 4 domande distinte e utili, UNA per turno.
 È OBBLIGATORIO, in turni separati e prima di qualunque summary, approfondire ALMENO questi 4 punti: (1) settore/attività specifica dell'azienda; (2) dimensione/contesto (n° dipendenti, fatturato o scala operativa); (3) obiettivo CONCRETO del report (cosa deve decidere o ottenere il cliente); (4) dati/materiali già disponibili (documenti, numeri, accessi). Anche quando l'utente risponde in modo generico, o pensi di avere già i 4 campi, poni comunque la domanda successiva per confermare e affinare — NON saltare al summary. Emetti il summary SOLO dopo aver coperto TUTTI e 4 i punti con risposte reali dell'utente. Non superare i 6 turni di domande.
+ECCEZIONE URGENZA (PREVALE sulla soglia delle 4 domande): se l'utente segnala una situazione time-critical o una crisi di continuità operativa — persona chiave indisponibile/ricoverata, rischio di non pagare stipendi o fornitori, scadenze imminenti, accessi/deleghe mancanti, rischio che l'attività si fermi — cambia modo di ragionare: PROBLEMA → DECISIONE, non "utente → categoria → report". Prima di chiedere qualsiasi cosa, chiediti "questa informazione cambia le decisioni nelle prossime 24-72h?": se no, NON chiederla ora. SALTA le domande che non cambiano le prime azioni (fatturato, dimensione, "che tipo di report vuoi"). Poni al massimo 1-2 domande ad alto valore decisionale (chi altro può operare sui conti / ha deleghe o procure; se la persona chiave è raggiungibile; scadenze nei prossimi giorni; a quali accessi e documenti si arriva ORA), poi emetti subito CONSULENZA_SUMMARY per produrre un PIANO D'AZIONE PRELIMINARE 24-72h (diagnosi del rischio + prime azioni concrete). Meglio un piano preliminare utile ora che un questionario completo troppo tardi.
 TRIGGER PROCEDI — applicabile con QUALUNQUE di queste forme: "vai", "procedi", "procediamo", "fai il report", "fammi il report", "voglio il report", "basta domande", "salta le domande", "fai senza domande", "ok procedi", "dai procedi". Quando arriva il trigger letterale, emetti subito CONSULENZA_SUMMARY (vedi sotto), anche se hai solo 2 turni.
 {required_fields_hint}
 NON sei un consulente di automazione. NON proporre agenti AI, microapp, automazioni, integrazioni software o implementazioni. Il tuo output è ESCLUSIVAMENTE un documento di analisi scritto.
@@ -269,22 +270,48 @@ Il blocco sarà estratto automaticamente e non mostrato all'utente.
     # Claude (es. gpt-oss locale) NON salta la qualificazione generando in anticipo.
     _msgs = session.get("messages") or []
     _u_turns = sum(1 for _m in _msgs if isinstance(_m, dict) and _m.get("role") == "user")
-    _last_user = next((str(_m.get("content") or "") for _m in reversed(_msgs)
-                       if isinstance(_m, dict) and _m.get("role") == "user"), "")
+    _user_texts = [str(_m.get("content") or "") for _m in _msgs
+                   if isinstance(_m, dict) and _m.get("role") == "user"]
+    _last_user = _user_texts[-1] if _user_texts else ""
     _procedi = bool(re.search(
         r"\b(vai|proced\w*|fai il report|fammi il report|voglio il report( subito)?|"
         r"basta domande|salta le domande|fai senza domande|ok proced\w*|dai proced\w*)\b",
         _last_user, re.I))
-    if _u_turns < 4 and not _procedi:
-        _gate = (
-            f"⛔ FASE INTERVISTA — turno {_u_turns} di almeno 4 (OBBLIGO ASSOLUTO, PRIORITÀ SU TUTTO IL RESTO).\n"
-            "In QUESTO messaggio poni ESATTAMENTE UNA domanda pertinente e breve, poi FERMATI.\n"
-            "È TASSATIVAMENTE VIETATO in questo messaggio: emettere il blocco CONSULENZA_SUMMARY, "
-            "produrre il report o un'analisi, dire che stai generando, elencare più domande.\n"
-            "Anche se pensi di avere GIÀ tutte le informazioni, NON generare: fai comunque la "
-            "prossima domanda utile per approfondire (settore, dimensione, obiettivo concreto, "
-            "dati/materiali disponibili). Rispondi SOLO con una frase-domanda.\n\n"
-        )
+    # RILEVATORE URGENZA: crisi di continuità / emergenza operativa dichiarata in QUALSIASI
+    # turno (spesso il primo). Abbassa la soglia dell'intervista (2 invece di 4) e sterza le
+    # domande su ciò che cambia le decisioni 24-72h, così l'intake non resta in modalità
+    # questionario davanti a un'emergenza. Vedi valutazione intake + ECCEZIONE URGENZA nel prompt.
+    _urgent = bool(re.search(
+        r"\b(urgen\w+|emergenz\w+|subito|quanto prima|entro (?:\d+|pochi|due|tre|dieci) "
+        r"(?:or[ae]|giorn\w+|settiman\w+)|scaden\w+|continuit[àa]|rischi\w* di ferma\w+|"
+        r"si ferma|blocc\w+|non ri\w+ a pagare|stipend\w+|liquidit[àa]|ricoverat\w+|"
+        r"indisponibil\w+|nessuno (?:ha accesso|pu[òo]|riesce)|non abbiamo accesso|crisi)\b",
+        " ".join(_user_texts), re.I))
+    _min_turns = 2 if _urgent else 4
+    if _u_turns < _min_turns and not _procedi:
+        if _urgent:
+            _gate = (
+                f"⛔ FASE INTERVISTA (URGENZA) — turno {_u_turns} di almeno {_min_turns}, PRIORITÀ SU TUTTO.\n"
+                "L'utente ha segnalato una SITUAZIONE URGENTE / crisi di continuità. Ragiona "
+                "PROBLEMA → DECISIONE, non 'utente → categoria → report'.\n"
+                "In QUESTO messaggio poni ESATTAMENTE UNA domanda, ma scegline UNA che CAMBI le "
+                "decisioni delle prossime 24-72h: chi altro può operare sui conti / ha deleghe o "
+                "procure; se la persona chiave è raggiungibile; quali scadenze nei prossimi giorni; "
+                "a quali accessi e documenti si arriva ORA. NON chiedere fatturato, dimensione o "
+                "'che tipo di report vuoi': non cambiano le prime azioni.\n"
+                "VIETATO in questo messaggio: emettere CONSULENZA_SUMMARY o produrre il report. "
+                "Rispondi SOLO con una frase-domanda ad alto valore decisionale.\n\n"
+            )
+        else:
+            _gate = (
+                f"⛔ FASE INTERVISTA — turno {_u_turns} di almeno {_min_turns} (OBBLIGO ASSOLUTO, PRIORITÀ SU TUTTO IL RESTO).\n"
+                "In QUESTO messaggio poni ESATTAMENTE UNA domanda pertinente e breve, poi FERMATI.\n"
+                "È TASSATIVAMENTE VIETATO in questo messaggio: emettere il blocco CONSULENZA_SUMMARY, "
+                "produrre il report o un'analisi, dire che stai generando, elencare più domande.\n"
+                "Anche se pensi di avere GIÀ tutte le informazioni, NON generare: fai comunque la "
+                "prossima domanda utile per approfondire (settore, dimensione, obiettivo concreto, "
+                "dati/materiali disponibili). Rispondi SOLO con una frase-domanda.\n\n"
+            )
         return f"{_gate}{base_prompt}\n\n{skill_content}"
     return f"{base_prompt}\n\n{skill_content}"
 
