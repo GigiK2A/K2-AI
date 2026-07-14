@@ -323,7 +323,12 @@ Il blocco sarà estratto automaticamente e non mostrato all'utente.
     return f"{base_prompt}\n\n{skill_content}"
 
 
-_SUMMARY_RE = re.compile(r"CONSULENZA_SUMMARY_START\s*\n([\s\S]*?)\nCONSULENZA_SUMMARY_END")
+# TOLLERANTE al formato: i modelli locali (gpt-oss) spesso emettono il blocco INLINE
+# — "CONSULENZA_SUMMARY_START {json} CONSULENZA_SUMMARY_END" sulla stessa riga — invece
+# del formato multi-riga. Il vecchio regex pretendeva "\n" dopo START → l'estrazione
+# falliva ANCHE col blocco presente → summary None → report mai generato (bug 0/10).
+# Ora accetta qualsiasi spaziatura tra i marker e il JSON.
+_SUMMARY_RE = re.compile(r"CONSULENZA_SUMMARY_START\s*([\s\S]*?)\s*CONSULENZA_SUMMARY_END")
 
 
 def extract_summary(text: str) -> Optional[dict]:
