@@ -160,8 +160,8 @@ export function ReportGenerator({
         // Il job NON è fallito: sul modello locale la generazione richiede più minuti
         // e il polling ha raggiunto il tetto. Prosegue lato server e arriva via email.
         setErr(
-          "Il report richiede qualche minuto in più (documento completo su modello locale). " +
-          "Resta su questa pagina o riaprila tra poco: appena pronto lo trovi qui, e ti arriva anche via email."
+          "Il report sta richiedendo più tempo del previsto (documento completo su modello locale). " +
+          "Resta su questa pagina ancora un momento, oppure premi di nuovo Genera tra qualche minuto."
         );
       } else {
         setErr("Generazione non riuscita. Riprova.");
