@@ -23,7 +23,7 @@
     { "ord": 0, "id": "copertina_incarico", "titolo": "Copertina e sintesi incarico", "pagine": { "min": 1, "max": 1 },
       "argomenti_obbligatori": ["dati azienda", "periodo analisi", "score globale"] },
     { "ord": 1, "id": "executive_summary", "titolo": "Executive summary", "pagine": { "min": 2, "max": 2 },
-      "argomenti_obbligatori": ["score", "semafori per area", "top azioni prioritarie"],
+      "argomenti_obbligatori": ["score", "semafori per area", "top azioni prioritarie", "livello di continuità aziendale (semaforo verde/giallo/arancio/rosso)", "liquidità disponibile e runway (giorni/mesi di sopravvivenza della cassa)"],
       "funzione_psico": "registro titolare + picco d'apertura (peak-end)" },
     { "ord": 2, "id": "riclassificazione_bilancio", "titolo": "Riclassificazione bilancio", "pagine": { "min": 2, "max": 3 },
       "argomenti_obbligatori": ["SP a liquidita/esigibilita", "CE a valore aggiunto/margini", "comparazione 2-3 anni"] },
@@ -35,11 +35,11 @@
     { "ord": 5, "id": "valutazione_performance", "titolo": "Valutazione performance", "pagine": { "min": 2, "max": 2 },
       "argomenti_obbligatori": ["BSC semplificata", "EVA", "ROI scomposto", "WACC"] },
     { "ord": 6, "id": "proiezioni_scenari", "titolo": "Proiezioni e scenari", "pagine": { "min": 3, "max": 3 },
-      "argomenti_obbligatori": ["budget 12 mesi", "3 scenari base/ottimistico/pessimistico", "break-even temporale", "cash flow", "sensitivity"] },
+      "argomenti_obbligatori": ["budget 12 mesi", "3 scenari base/ottimistico/pessimistico", "break-even temporale", "cash flow", "cash-flow a 30 e 60 giorni (cassa + incassi probabili − uscite imminenti = runway)", "scenari base/stress/worst-case sulla LIQUIDITÀ", "sensitivity"] },
     { "ord": 7, "id": "piano_azione", "titolo": "Piano d'azione", "pagine": { "min": 1, "max": 2 },
-      "argomenti_obbligatori": ["max 5 azioni prioritarie", "impatto in euro per azione", "tempi"] },
+      "argomenti_obbligatori": ["max 5 azioni prioritarie", "impatto in euro per azione", "tempi", "classificazione crediti (certi / probabili / incerti) con probabilità di incasso", "priorità pagamenti: critici (stipendi, contributi, fornitori essenziali) / importanti / differibili", "azioni ORDINATE per dominio principale: in crisi di liquidità prima cassa e continuità, poi negoziazione e recupero crediti, il legale per ultimo", "orizzonti 0-7 / 7-30 / 30-90 giorni"] },
     { "ord": 8, "id": "conclusioni_limitazioni", "titolo": "Conclusioni e limitazioni", "pagine": { "min": 1, "max": 1 },
-      "argomenti_obbligatori": ["sintesi", "limitazioni dati", "gancio servizio successivo"],
+      "argomenti_obbligatori": ["sintesi", "limitazioni dati", "collegamento rischio finanziario ↔ operativo (blocco lavori, sospensione forniture, ritardi consegne, impatto sui clienti)", "gancio servizio successivo"],
       "funzione_psico": "chiusura forte + gancio onesto al retainer" }
   ],
   "elementi_grafici_obbligatori": [
