@@ -117,10 +117,19 @@ def _new_user_messages(body: MessageBody) -> List[dict]:
 
 
 # ---- Gate intervista: nessun modello può saltare le domande generando in anticipo ----
-_MIN_INTERVIEW_TURNS = 4
+_MIN_INTERVIEW_TURNS = 2  # allineato al prompt (logica consulente): una domanda di
+# comprensione, poi la Stop Rule/readiness può far partire il report. Era 4 → sopprimeva
+# il summary anche quando il bot si fermava presto (bug "stop rapido → report non generato").
 _PROCEDI_RE = _re.compile(
     r"\b(vai|proced\w*|fai il report|fammi il report|voglio il report( subito)?|"
     r"basta domande|salta le domande|fai senza domande|ok proced\w*|dai proced\w*)\b", _re.I)
+# Segnale di READINESS nel testo visibile: il bot dichiara di avere abbastanza dati.
+# Serve al fallback che FORZA il blocco CONSULENZA_SUMMARY quando il modello (spesso
+# locale) lo dichiara ma non emette il blocco (Regola 3 eval: dev'essere un trigger).
+_READY_RE = _re.compile(
+    r"(informazion\w+ sufficient\w+|sufficient\w+ per (produrre|preparare|generare|una prima)|"
+    r"procedo con il report|posso (gi[àa] )?prepar\w+ il report|genero il report|"
+    r"ho abbastanza (informazioni|dati)|dati sufficient\w+)", _re.I)
 
 
 def _interview_gate_active(merged_messages: list) -> bool:
@@ -146,6 +155,40 @@ def _extract_gated_summary(raw_text: str, merged_messages: list):
             visible = ("Prima di preparare il report mi servono ancora un paio di dettagli. "
                        "Qual è l'obiettivo concreto che vuoi ottenere con questa analisi?")
     return visible, summary
+
+
+def _ensure_summary_block(client, system_prompt, messages: list, raw_text: str,
+                          merged_messages: list) -> str:
+    """Fallback deterministico (Regola 3 eval): se il bot SEGNALA di avere informazioni
+    sufficienti ma NON ha emesso il blocco CONSULENZA_SUMMARY (tipico dei modelli locali,
+    meno affidabili sui marker esatti), lo FORZA con una chiamata mirata mono-scopo — così
+    «ho abbastanza informazioni» diventa un vero trigger di generazione, non un messaggio
+    finale. No-op se il blocco c'è già, se siamo ancora in fase intervista, o se manca il
+    segnale di readiness. Ritorna raw_text (eventualmente con il blocco appeso)."""
+    if extract_summary(raw_text) or _interview_gate_active(merged_messages):
+        return raw_text
+    if not _READY_RE.search(raw_text or ""):
+        return raw_text
+    try:
+        focus = list(messages) + [
+            {"role": "assistant", "content": (strip_summary_block(raw_text) or "Ho informazioni sufficienti.")[:4000]},
+            {"role": "user", "content": (
+                "Hai dichiarato di avere informazioni sufficienti. Emetti ORA SOLO il blocco "
+                "CONSULENZA_SUMMARY_START ... CONSULENZA_SUMMARY_END (una riga JSON) con i campi "
+                "del caso discusso: reportType, businessType, objective, scope, dataAvailable, "
+                "deadline, notes (le assunzioni e i dati mancanti), summary. NIENTE altro testo.")},
+        ]
+        resp = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=1400, system=system_prompt,
+            messages=focus, timeout=60.0,
+        )
+        block = "".join(getattr(b, "text", "") for b in resp.content if getattr(b, "type", "") == "text")
+        if extract_summary(block):
+            log.info("kbot: blocco CONSULENZA_SUMMARY forzato dal fallback readiness")
+            return f"{raw_text}\n\n{block}"
+    except Exception:
+        log.exception("kbot: forced-summary fallback fallito (proseguo senza)")
+    return raw_text
 
 
 def _recompute_boost(collected: dict, merged_messages: list, summary: Optional[dict]) -> None:
@@ -501,6 +544,9 @@ async def post_message_stream(
             return
 
         raw_text = "".join(raw_buffer)
+        # FALLBACK readiness → generazione: se il bot ha detto di avere abbastanza dati
+        # ma non ha emesso il blocco, forzalo (una chiamata mirata). Vedi _ensure_summary_block.
+        raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text, merged_messages)
         track_server(
             distinct_id=body.sessionId,
             event="message_processed",
