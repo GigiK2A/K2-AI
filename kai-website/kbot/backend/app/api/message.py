@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ..lib import sessions, engine, readiness, web_search
+from ..lib import sessions, engine, readiness, web_search, quality_gate
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib.limiter import limiter
@@ -344,6 +344,8 @@ async def post_message(
     raw_text = "".join(
         block.text for block in result.content if getattr(block, "type", "") == "text"
     )
+    # QUALITY ENGINE anche sul path sincrono (stessa catena del path streaming).
+    raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text)
     usage = getattr(result, "usage", None)
     track_server(
         distinct_id=body.sessionId,
@@ -558,6 +560,9 @@ async def post_message_stream(
         # FALLBACK readiness → generazione: se il bot ha detto di avere abbastanza dati
         # ma non ha emesso il blocco, forzalo (una chiamata mirata). Vedi _ensure_summary_block.
         raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text, merged_messages)
+        # QUALITY ENGINE: critico sul turno (stop rule / diagnosi / prudenza / profondità).
+        # Gira solo sui turni a rischio (pre-filtro), fail-open. Vedi lib/quality_gate.py.
+        raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text)
         track_server(
             distinct_id=body.sessionId,
             event="message_processed",
