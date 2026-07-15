@@ -186,20 +186,42 @@ def drop_invalid_optional(form_schema: dict | None, inputs: dict | None) -> tupl
     return inputs, dropped
 
 
+# Campi che servono al TEMPLATE (intestazione/personalizzazione del PDF), non alla
+# diagnosi: mai trasformarli in barriera consulenziale (eval: "confusione tra dati di
+# template e dati di consulenza" — la richiesta di ragione sociale a diagnosi quasi
+# completa faceva percepire un questionario burocratico).
+_TEMPLATE_FIELD_IDS = frozenset({"ragione_sociale", "forma_giuridica", "descrizione_azienda"})
+
+
 def required_fields_hint(campi: list[dict] | None, boost_label: str | None = None) -> str:
-    """Istruzione per il system prompt della chat: i campi che il boost instradato esige,
-    così il bot li raccoglie PRIMA di emettere CONSULENZA_SUMMARY. Stringa vuota se il
-    boost non ha campi obbligatori (niente da forzare)."""
+    """Istruzione per il system prompt della chat sui campi che il boost instradato esige.
+
+    DATI DI CONSULENZA vs DATI DI TEMPLATE: i campi diagnostici si chiedono solo se
+    pertinenti al caso; quelli di template (intestazione) in UNA sola domanda leggera in
+    coda. Un campo mancante NON blocca il summary: il motore produce comunque un report
+    PRELIMINARE con stime dichiarate (auth_level PARTIAL in /deliverables/auto)."""
     obbligatori = [c for c in (campi or []) if isinstance(c, dict) and c.get("obbligatorio") and c.get("id")]
     if not obbligatori:
         return ""
-    voci = "; ".join(f"{c['id']} ({_label(c)})" if _label(c) and _label(c) != c["id"] else str(c["id"])
-                     for c in obbligatori)
+    diag = [c for c in obbligatori if c["id"] not in _TEMPLATE_FIELD_IDS]
+    tmpl = [c for c in obbligatori if c["id"] in _TEMPLATE_FIELD_IDS]
     quale = f" «{boost_label}»" if boost_label else ""
-    return (
-        f"\nCAMPI OBBLIGATORI DEL DOCUMENTO{quale} — questo tipo di documento richiede questi dati "
-        f"specifici, oltre ai campi generici: {voci}.\n"
-        "DEVI raccoglierli (chiedendoli in modo naturale, uno alla volta) PRIMA di emettere "
-        "CONSULENZA_SUMMARY. Se l'utente forza 'procedi' ma ne manca qualcuno, chiedi ESPLICITAMENTE "
-        "quelli mancanti in una frase breve invece di generare un documento incompleto.\n"
-    )
+    parts = [f"\nCAMPI DEL DOCUMENTO{quale}:"]
+    if diag:
+        voci = "; ".join(f"{c['id']} ({_label(c)})" if _label(c) and _label(c) != c["id"] else str(c["id"])
+                         for c in diag)
+        parts.append(
+            f"- DATI DI ANALISI: {voci}. Chiedili SOLO se pertinenti al caso concreto e se non già "
+            "deducibili dalla conversazione — mai come modulo. Se l'utente non li ha o non sono "
+            "pertinenti, NON insistere e NON bloccare: emetti comunque il summary (il documento "
+            "uscirà come PRELIMINARE con stime dichiarate, ed è il comportamento corretto)."
+        )
+    if tmpl:
+        voci_t = "; ".join(str(c["id"]) for c in tmpl)
+        parts.append(
+            f"- DATI DI INTESTAZIONE ({voci_t}): servono solo a intestare/personalizzare il PDF, "
+            "NON alla diagnosi. Chiedili in UNA sola domanda leggera poco prima del summary "
+            "(«per intestare il documento: nome dell'azienda e forma giuridica?») — MAI come "
+            "requisito che interrompe la consulenza."
+        )
+    return "\n".join(parts) + "\n"

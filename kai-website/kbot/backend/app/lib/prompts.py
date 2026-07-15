@@ -84,15 +84,23 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
             f"\nSERVIZIO SELEZIONATO DALL'UTENTE: {service_id} — orienta la conversazione su questo ambito.\n"
         )
     else:
-        # Cold start: no service picked. Don't assume the type of analysis.
-        # Ask the user FIRST what kind of report/analysis they need.
+        # Cold start: no service picked. Il TIPO di documento lo DEDUCE il sistema
+        # dal problema — mai chiedere all'utente di sceglierlo (eval: "il sistema
+        # chiede all'utente di fare il consulente", domanda da 2/10).
         service_context = (
-            "\nSERVIZIO NON ANCORA SELEZIONATO. NON assumere che l'utente voglia una specifica\n"
-            "diagnosi (strategica, di bilancio, SEO, marketing, fattibilità tecnica, ecc.).\n"
-            "PRIMA di applicare framework o porre domande dettagliate, scopri che TIPO di analisi\n"
-            "o report serve all'utente. Esempio prima domanda neutra: 'Che tipo di analisi o report\n"
-            "vuoi che produciamo insieme? Investimento, marketing, SEO, bilancio, fattibilità\n"
-            "tecnica, altro?' — poi adatta il resto della conversazione alla scelta.\n"
+            "\nSERVIZIO NON ANCORA SELEZIONATO. Se l'utente DESCRIVE UN PROBLEMA (anche vago),\n"
+            "NON chiedergli mai che tipo di report/analisi vuole — spesso non lo sa, ed è il\n"
+            "motivo per cui è qui: diagnostica il problema e DEDUCI TU il documento adatto.\n"
+            "Chiedere «che tipo di report desideri?» è ammesso SOLO se l'utente arriva senza\n"
+            "alcun problema (es. «voglio un report», «cosa sapete fare?»).\n"
+            "NON CHIEDERE ALL'UTENTE DI FARE IL CONSULENTE: mai domande come «qual è la causa\n"
+            "principale?», «è un problema di carico, ruoli o comunicazione?», «preferisci\n"
+            "un'analisi di clima o di performance?». La diagnosi è compito TUO: trasforma le\n"
+            "ipotesi in domande su FATTI OSSERVABILI («da quando la crescita è accelerata,\n"
+            "quante persone nuove sono entrate e i ruoli sono stati ridefiniti?»), e per i casi\n"
+            "che toccano più domini (persone + processi + governance + strategia) NON forzare\n"
+            "una singola etichetta: scegli il documento che meglio CONTIENE il caso e descrivi\n"
+            "l'intero perimetro multidominio in objective/notes del summary.\n"
         )
 
     uploaded_files = collected.get("uploaded_files") or []

@@ -33,18 +33,25 @@ log = logging.getLogger(__name__)
 
 
 _ALIGN_SYSTEM = (
-    "Sei l'OUTPUT ALIGNMENT CHECKER di K2-AI. Ricevi gli ultimi messaggi del CLIENTE e il "
-    "DOCUMENTO che il sistema sta per generare. PRIMA della generazione verifica:\n"
+    "Sei l'OUTPUT ALIGNMENT CHECKER di K2-AI. Ricevi gli ultimi messaggi del CLIENTE, il "
+    "DOCUMENTO che il sistema sta per generare e il CATALOGO dei documenti disponibili. "
+    "PRIMA della generazione verifica:\n"
     "1) Qual è la DECISIONE che il cliente deve prendere?\n"
-    "2) Il documento scelto risponde a QUELLA decisione (dominio corretto)?\n"
+    "2) Il documento scelto è quello MEGLIO ADATTO **TRA QUELLI IN CATALOGO** a rispondervi?\n"
     "3) Le azioni tipiche di quel documento sarebbero ESEGUIBILI DAL CLIENTE?\n"
-    "ATTENZIONE al caso in cui il cliente sta VALUTANDO UN'ALTRA azienda (acquisizione/M&A, "
-    "fornitore, partner): il soggetto ANALIZZATO non è il cliente. Un documento che dà azioni "
-    "gestionali per l'azienda analizzata (risanare la SUA liquidità, recuperare i SUOI crediti, "
-    "le SUE campagne commerciali) è DISALLINEATO: al cliente-acquirente serve una due diligence/"
-    "valutazione dell'operazione (red flag, prezzo, rischi), non un piano di risanamento altrui.\n"
-    "Rispondi SOLO con l'oggetto JSON: {\"aligned\":bool,\"decisione\":\"…\",\"dominio_atteso\":\"…\","
-    "\"motivo\":\"…\"}. Nel dubbio: aligned=true (bloccare un documento giusto è un errore)."
+    "REGOLE DI BLOCCO (aligned=false SOLO in questi due casi):\n"
+    "A) SOGGETTO SBAGLIATO: il cliente sta VALUTANDO un'altra azienda (acquisizione/M&A, "
+    "fornitore, partner) e il documento darebbe azioni gestionali per l'azienda ANALIZZATA "
+    "(risanare la SUA liquidità, recuperare i SUOI crediti) invece che per il cliente. In tal "
+    "caso indica in servizio_suggerito il documento giusto dal catalogo (es. la due diligence).\n"
+    "B) IN CATALOGO ESISTE un documento CHIARAMENTE più adatto di quello scelto: indicane "
+    "l'id ESATTO in servizio_suggerito.\n"
+    "SE NESSUN documento in catalogo copre meglio il caso: aligned=true ANCHE se quello scelto "
+    "è solo parzialmente adatto — un report utile che copre il caso (anche multidominio, al suo "
+    "interno) è MEGLIO di nessun report. Non bloccare mai senza un'alternativa reale.\n"
+    "Rispondi SOLO con l'oggetto JSON: {\"aligned\":bool,\"decisione\":\"…\","
+    "\"servizio_suggerito\":\"<id dal catalogo>\"|null,\"motivo\":\"…\"}. "
+    "Nel dubbio: aligned=true."
 )
 
 
@@ -55,9 +62,15 @@ def _alignment_check(session: dict, servizio: dict) -> Optional[dict]:
     soggetto sbagliato, zero risposte a «lo compro? il prezzo è giusto?». Un report
     sbagliato ma credibile è PEGGIO di nessun report.
 
-    Verdetto LLM mono-scopo. Ritorna il dict del disallineamento SOLO su aligned=false
-    esplicito con motivo; None in ogni altro caso (fail-open: il checker non deve mai
-    bloccare per un proprio errore). KBOT_ALIGNMENT_CHECK=0 per disattivare."""
+    CATALOG-AWARE (fix vicolo cieco 15 lug): il primo checker bloccava StrategyBoost su
+    un caso HR/organizzativo… ma il catalogo NON HA un boost HR → 409 ripetuti e nessun
+    deliverable per l'utente. Ora il checker vede il catalogo reale e blocca SOLO se
+    esiste un'alternativa concreta (che ritorna in servizio_suggerito, così il frontend
+    rigenera da solo con quella) o se il soggetto è sbagliato (M&A). Senza alternativa
+    reale → passa: un report parzialmente adatto che copre il caso è meglio di niente.
+
+    Ritorna il dict SOLO su aligned=false con servizio_suggerito VALIDO e diverso;
+    None in ogni altro caso (fail-open). KBOT_ALIGNMENT_CHECK=0 per disattivare."""
     if (os.environ.get("KBOT_ALIGNMENT_CHECK", "1") or "1").lower() not in ("1", "true", "yes"):
         return None
     try:
@@ -68,9 +81,14 @@ def _alignment_check(session: dict, servizio: dict) -> Optional[dict]:
             return None
         label = servizio.get("label") or servizio.get("nome") or servizio.get("id") or ""
         desc = str(servizio.get("descrizione") or servizio.get("description") or "")[:300]
+        # catalogo reale: solo documenti davvero generabili e vendibili
+        _cat = [s for s in catalog.lista_servizi()
+                if catalog.is_8e_generabile(s.get("id", "")) and catalog.is_vendibile(s.get("id", ""))]
+        cat_txt = "\n".join(f"- {s['id']}: {s.get('label') or s.get('nome') or s['id']}" for s in _cat)
         user = ("MESSAGGI DEL CLIENTE (ultimi turni):\n- " + "\n- ".join(msgs) +
-                f"\n\nDOCUMENTO CHE STA PER ESSERE GENERATO: {label}" +
-                (f" — {desc}" if desc else "") +
+                f"\n\nDOCUMENTO CHE STA PER ESSERE GENERATO: {servizio.get('id')} — {label}" +
+                (f" ({desc})" if desc else "") +
+                f"\n\nCATALOGO DEI DOCUMENTI DISPONIBILI:\n{cat_txt}" +
                 "\n\nVerifica l'allineamento e rispondi SOLO col JSON.")
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         resp = client.messages.create(
@@ -81,10 +99,19 @@ def _alignment_check(session: dict, servizio: dict) -> Optional[dict]:
         out = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
         s, e = out.find("{"), out.rfind("}")
         v = json.loads(out[s:e + 1]) if 0 <= s < e else None
-        if isinstance(v, dict) and v.get("aligned") is False and str(v.get("motivo") or "").strip():
-            log.warning("alignment: DISALLINEATO — servizio=%s decisione=%r dominio_atteso=%r",
-                        servizio.get("id"), v.get("decisione"), v.get("dominio_atteso"))
-            return v
+        if not (isinstance(v, dict) and v.get("aligned") is False):
+            return None
+        sug = str(v.get("servizio_suggerito") or "").strip()
+        # ANTI-VICOLO-CIECO deterministico: senza un'alternativa REALE (id valido,
+        # generabile, vendibile, diverso da quello scelto) NON si blocca mai.
+        if (not sug or sug == servizio.get("id")
+                or not catalog.is_8e_generabile(sug) or not catalog.is_vendibile(sug)):
+            log.info("alignment: dubbio senza alternativa reale (sugg=%r) → passa", sug or None)
+            return None
+        v["servizio_suggerito"] = sug
+        log.warning("alignment: DISALLINEATO — %s → suggerito %s (decisione=%r)",
+                    servizio.get("id"), sug, v.get("decisione"))
+        return v
     except Exception:
         log.warning("alignment check fallito (fail-open)", exc_info=True)
     return None
@@ -525,17 +552,23 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
 
     # OUTPUT ALIGNMENT CHECKER — PRIMA del paywall: mai chiedere un pagamento (né
     # generare) per un documento del dominio sbagliato. Vedi _alignment_check.
-    _mis = _alignment_check(session, servizio)
+    # Salta quando servizio_id è passato ESPLICITAMENTE nel body: è una scelta
+    # dell'utente o il retry del frontend sul servizio suggerito → rigiudicarla
+    # creerebbe un loop di suggerimenti (flip-flop).
+    _mis = None if body.servizioId else _alignment_check(session, servizio)
     if _mis:
+        _sug = _mis["servizio_suggerito"]
+        _sug_srv = catalog.get_servizio(_sug) or {}
         raise HTTPException(status_code=409, detail={
             "reason": "misaligned_deliverable",
             "servizio_id": servizio_id,
+            # il frontend rigenera DA SOLO con il servizio suggerito (niente vicolo cieco)
+            "servizio_suggerito": _sug,
+            "suggested_label": _sug_srv.get("label") or _sug,
             "message": (
                 f"Il documento instradato ({servizio.get('label') or servizio_id}) non risponde alla "
                 f"decisione che devi prendere ({str(_mis.get('decisione') or 'la tua richiesta')[:140]}). "
-                f"Il caso sembra richiedere: {str(_mis.get('dominio_atteso') or 'un documento diverso')[:100]}. "
-                "Scrivimi in chat che documento ti serve (es. «due diligence sull'azienda target») "
-                "e premi di nuovo Genera."
+                f"Preparo invece: {_sug_srv.get('label') or _sug}."
             ),
         })
 
