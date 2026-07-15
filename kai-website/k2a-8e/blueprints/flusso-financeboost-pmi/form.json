@@ -271,6 +271,18 @@
         "quota_debito_pct": {
           "type": "number",
           "description": "% del CAPEX finanziata a debito"
+        },
+        "durata_commessa_anni": {
+          "type": "number",
+          "description": "durata della commessa/piano in anni (orizzonte e ammortamento)"
+        },
+        "tasso_debito_pct": {
+          "type": "number",
+          "description": "tasso medio del debito % (per interessi e DSCR)"
+        },
+        "costi_variabili_pct": {
+          "type": "number",
+          "description": "costi variabili in % del fatturato (per il circolante netto)"
         }
       }
     }

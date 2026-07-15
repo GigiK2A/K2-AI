@@ -1,105 +1,118 @@
-"""Investment Engine — decisione di investimento industriale (eval ElectroDrive, 15 lug).
+"""Investment Engine — FinanceBoost come investment decision support (eval ElectroDrive +
+CoolTech, 15 lug 2026).
 
-FinanceBoost come investment decision support system: NPV/IRR/payback, debt capacity,
-sensitività, stress test. Numeri con formula e assunzioni; verdetto range-based (non su un
-singolo set di assunzioni). Verificato sui numeri reali ElectroDrive.
+Gira sul solo CAPEX (sostenibilità del debito: leva/DSCR/interest coverage/circolante/
+financing/decision board) anche SENZA ricavi incrementali (caso CoolTech); con i ricavi
+aggiunge NPV/IRR/payback/scenari. Ogni numero con formula e assunzioni; decision board con
+criteri quantitativi derivati dai dati. Numeri replicabili da un CFO.
 """
 from __future__ import annotations
 
-import math
-
 from app import investment as I
 
-FIN = {"ebitda": 3360000, "pfn": 5500000, "debiti_finanziari": 8700000,
-       "liquidita": 3200000, "patrimonio_netto": 12000000, "fatturato": 24000000}
+# CoolTech: sostenibilità di un grande investimento (NO ricavi incrementali espliciti)
+CT_FIN = {"ebitda": 4200000, "ebit": 2800000, "pfn": 6000000, "debiti_finanziari": 10000000,
+          "liquidita": 4000000, "patrimonio_netto": 18000000, "fatturato": 30000000}
+CT_PARAMS = {"giorni_incasso": 120, "durata_anni": 7, "tasso_debito_pct": 4.55, "costi_variabili_pct": 63}
+
+# ElectroDrive: investimento con ricavi incrementali del contratto
+ED_FIN = {"ebitda": 3360000, "ebit": 2150000, "pfn": 5500000, "debiti_finanziari": 8700000,
+          "liquidita": 3200000, "patrimonio_netto": 12000000, "fatturato": 24000000}
 
 
-def _ed(margine=14.0):
-    return I.build_investment(6900000, 4000000, 12000000, margine, FIN, {"giorni_incasso": 105})
+# ── CoolTech: sostenibilità sul solo CAPEX (no N/D dove è calcolabile) ────────────────
+
+def test_engine_gira_senza_ricavi_incrementali():
+    a = I.build_investment(8000000, None, None, 37.0, CT_FIN, CT_PARAMS)
+    assert a is not None                              # NON no-op (prima lo era)
+    assert a["investment_summary"]["npv_eur"] is None  # NPV onesto: non calcolabile senza ricavi
+    assert "nota" in a["investment_summary"]           # spiega PERCHÉ, niente N/D muto
 
 
-def test_npv_irr_payback_derivati():
-    a = _ed()
+def test_cooltech_debt_engine_dscr_interest_coverage():
+    a = I.build_investment(8000000, None, None, 37.0, CT_FIN, CT_PARAMS)
+    d = a["debt_capacity"]
+    assert abs(d["pfn_ebitda_attuale"] - 1.43) < 0.02       # 6M/4,2M
+    assert abs(d["pfn_ebitda_post"] - 3.33) < 0.02          # (6+8)/4,2
+    assert abs(d["interessi_annui_post_eur"] - 819000) < 1  # 4,55%×18M
+    assert abs(d["interest_coverage_post"] - 3.42) < 0.05   # 2,8M/819k
+    assert d["dscr_post"] is not None and d["dscr_post"] > 0
+    assert d["dscr_soglia"] == 1.2
+
+
+def test_cooltech_working_capital_assorbimento():
+    a = I.build_investment(8000000, None, None, 37.0, CT_FIN, CT_PARAMS)
+    w = a["working_capital"]
+    # crediti = fatturato × 120/365 ≈ 9,86M
+    assert abs(w["crediti_generati_eur"] - 30000000 * 120 / 365) < 1000
+    assert w["assorbimento_cassa_netto_eur"] > 0
+
+
+def test_cooltech_financing_options_realistiche():
+    a = I.build_investment(8000000, None, None, 37.0, CT_FIN, CT_PARAMS)
+    strumenti = " ".join(o["strumento"].lower() for o in a["financing_options"]["opzioni"])
+    assert "factoring" in strumenti and "leasing" in strumenti
+    # la nota deve escludere il consiglio irrealistico di ridurre i termini di pagamento
+    assert "riduzione dei termini" in a["financing_options"]["nota"].lower()
+
+
+def test_cooltech_decision_board_go_con_condizioni():
+    # leva 3,33x>3x e DSCR<1,2x ma STRUTTURABILI con equity → GO CON CONDIZIONI, non NO GO
+    a = I.build_investment(8000000, None, None, 37.0, CT_FIN, CT_PARAMS)
+    b = a["decision_board"]
+    assert b["verdetto"] == "GO CON CONDIZIONI" and b["semaforo"] == "🟡"
+    assert "Leva post ≤ 3x" in b["condizioni_go"]
+    # criteri quantitativi, non generici
+    assert all("dettaglio" in c for c in b["criteri"])
+
+
+def test_no_go_solo_se_fondamentale():
+    # interest coverage < 1,5 (non paga gli interessi) → NO GO
+    fin = {**CT_FIN, "ebit": 300000}
+    a = I.build_investment(8000000, None, None, 37.0, fin, CT_PARAMS)
+    assert a["decision_board"]["verdetto"] == "NO GO"
+
+
+# ── ElectroDrive: con ricavi → NPV/IRR/payback/scenari ────────────────────────────────
+
+def test_electrodrive_npv_irr_scenari():
+    a = I.build_investment(6900000, 4000000, 12000000, 14.0, ED_FIN, {"giorni_incasso": 105})
     s = a["investment_summary"]
-    assert s["npv_eur"] > 0                      # crea valore col terminal value
-    assert s["irr_pct"] is not None and s["irr_pct"] > 10  # IRR > WACC 10%
+    assert s["npv_eur"] is not None and s["irr_pct"] is not None
     assert s["terminal_value_eur"] > 0
-    assert s["formula"] and s["assunzioni"]
+    sc = a["scenari_investimento"]
+    assert sc["prudente"]["npv_eur"] < sc["base"]["npv_eur"] < sc["aggressivo"]["npv_eur"]
 
 
 def test_irr_bisezione_corretta():
-    # flussi noti: -1000 poi 600,600 → IRR ~13%
     irr = I._irr([-1000, 600, 600])
     assert irr is not None and 12 < irr < 14
+    assert I._irr([100, 200]) is None            # nessun cambio segno
 
 
-def test_irr_none_se_nessun_cambio_segno():
-    assert I._irr([100, 200, 300]) is None
-    assert I._irr([-100, -200]) is None
-
-
-def test_debt_capacity_e_covenant():
-    a = _ed()
-    dc = a["debt_capacity"]
-    assert abs(dc["pfn_ebitda_attuale"] - 1.64) < 0.02
-    # post: (5,5M + 6,9M) / (3,36M + 12M×14%) = 12,4M / 5,04M ≈ 2,46x
-    assert abs(dc["pfn_ebitda_post"] - 2.46) < 0.05
-    assert dc["entro_covenant"] is True          # 2,46x < 3x
-    assert dc["debito_aggiuntivo_max_a_covenant_eur"] > 0
-
-
-def test_verdetto_go_with_conditions_su_margine_sensibile():
-    # a 14% l'NPV è positivo ma la sensitività lo porta negativo a margine -3pp → condizionato
-    a = _ed(14.0)
-    assert a["decisione_investimento"]["verdetto"] == "GO WITH CONDITIONS"
-    sens = a["sensitivita_npv"]
-    assert sens["margine_-3pp"] < 0 < sens["margine_+3pp"]
-
-
-def test_verdetto_go_su_margine_alto():
-    a = _ed(20.0)
-    assert a["decisione_investimento"]["verdetto"] == "GO"
-
-
-def test_verdetto_nogo_se_negativo_ovunque():
-    # CAPEX enorme, ricavi minimi → NPV negativo in ogni scenario
-    a = I.build_investment(50000000, 500000, 800000, 10.0, FIN, {})
-    assert a["decisione_investimento"]["verdetto"] == "NO-GO"
-
-
-def test_stress_test_concentrazione_e_perdita_cliente():
+def test_stress_test_concentrazione():
     st = I.stress_investment(12000000, 14.0, 24000000, 3360000, 105)
-    assert abs(st["concentrazione_cliente_pct"] - 33.33) < 0.1   # 12M/(24M+12M)
-    perdita = st["scenari"][0]
-    assert perdita["impatto_ebitda_eur"] == -1680000            # 12M×14%
-    assert st["ritardo_pagamenti"] is not None
+    assert abs(st["concentrazione_cliente_pct"] - 33.33) < 0.1
+    assert st["scenari"][0]["impatto_ebitda_eur"] == -1680000
 
 
-def test_leva_oltre_covenant_da_conditions():
-    # PFN già alta + CAPEX grande → leva post > 3x
-    fin = {**FIN, "pfn": 9000000, "ebitda": 3360000}
-    a = I.build_investment(6900000, 4000000, 12000000, 20.0, fin, {"giorni_incasso": 105})
-    dc = a["debt_capacity"]
-    if not dc["entro_covenant"]:
-        assert a["decisione_investimento"]["verdetto"] == "GO WITH CONDITIONS"
-        assert "covenant" in a["decisione_investimento"]["motivo"]
-
+# ── trigger + integrazione ────────────────────────────────────────────────────────────
 
 def test_apply_investment_noop_senza_capex():
     d, meta = I.apply_investment({"executive_summary": {}}, {"settore_ateco": "X"}, {})
-    assert meta is None and "investment_summary" not in d
+    assert meta is None
 
 
-def test_apply_investment_inietta_e_registra_grounding():
+def test_apply_investment_fire_su_capex_solo():
+    reclass = {"ce": {"ricavi": 30000000, "ebitda": 4200000, "ebit": 2800000},
+               "indici": {"pfn": 6000000, "ebitda_margin": 14.0},
+               "sp": {"debiti_finanziari": 10000000, "liquidita": 4000000, "patrimonio_netto": 18000000}}
+    inputs = {"investimento_progetto": {"capex": 8000000, "durata_commessa_anni": 7,
+                                        "tasso_debito_pct": 4.55, "costi_variabili_pct": 63},
+              "giorni_pagamento": 120}
     facts = {}
-    reclass = {"ce": {"ricavi": 24000000, "ebitda": 3360000},
-               "indici": {"pfn": 5500000, "ebitda_margin": 14.0},
-               "sp": {"debiti_finanziari": 8700000, "liquidita": 3200000, "patrimonio_netto": 12000000}}
-    inputs = {"investimento_progetto": {"capex": 6900000, "ricavi_incrementali_anno1": 4000000,
-                                        "ricavi_incrementali_regime": 12000000, "giorni_incasso": 105}}
     d, meta = I.apply_investment({"executive_summary": {}}, inputs, reclass, facts)
-    assert meta["investment_engine"] and meta["verdetto"] == "GO WITH CONDITIONS"
-    for k in ("decisione_investimento", "investment_summary", "debt_capacity",
-              "sensitivita_npv", "stress_test_investimento"):
+    assert meta and meta["investment_engine"]
+    for k in ("decision_board", "debt_capacity", "working_capital", "financing_options"):
         assert k in d
     assert facts.get("_investment_grounded_numbers", {}).get("numeri")

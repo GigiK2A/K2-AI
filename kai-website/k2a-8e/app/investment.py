@@ -134,16 +134,192 @@ def _sensitivity(r1, reg, margine, orizzonte, giorni, wacc, capex):
     }
 
 
+_COVENANT_DSCR = 1.2
+_COVENANT_INT_COV = 3.0
+_TASSO_DEBITO_DEFAULT = 5.0
+
+
+def _r2(x):
+    return round(x, 2) if isinstance(x, (int, float)) else x
+
+
+def debt_engine(capex: float, financials: dict, params: dict,
+                ebitda_incr_regime: float = 0.0) -> dict:
+    """Debt Engine: leva, interest coverage, DSCR, covenant headroom PRIMA e DOPO
+    l'investimento. Sempre calcolabile dai dati di bilancio + tasso del debito + CAPEX;
+    non dipende dai ricavi incrementali del progetto (per questo gira anche su CoolTech,
+    dove il tema è la SOSTENIBILITÀ del debito, non l'NPV)."""
+    ebitda_now = _num(financials.get("ebitda")) or 0.0
+    ebit_now = _num(financials.get("ebit"))
+    pfn_now = _num(financials.get("pfn"))
+    df_now = _num(financials.get("debiti_finanziari")) or 0.0
+    tasso = (_num(params.get("tasso_debito_pct")) or _TASSO_DEBITO_DEFAULT) / 100.0
+    quota_debito = _num(params.get("quota_debito_pct"))
+    assunzioni = []
+    if _num(params.get("tasso_debito_pct")) is None:
+        assunzioni.append(f"tasso medio del debito assunto {tasso*100:g}% (non dichiarato)")
+    if quota_debito is None:
+        quota_debito = 100.0
+        assunzioni.append("CAPEX finanziato 100% a debito (conservativo per la sostenibilità)")
+    capex_debito = capex * quota_debito / 100.0
+    # ammortamento del nuovo debito sull'orizzonte della commessa/piano
+    anni_amm = int(_num(params.get("durata_anni")) or _num(params.get("orizzonte_anni")) or 7)
+    ebitda_post = ebitda_now + ebitda_incr_regime
+    df_post = df_now + capex_debito
+    pfn_post = (pfn_now + capex_debito) if pfn_now is not None else None
+    lev_now = pfn_now / ebitda_now if (pfn_now is not None and ebitda_now) else None
+    lev_post = pfn_post / ebitda_post if (pfn_post is not None and ebitda_post) else None
+    # interest coverage = EBIT / interessi
+    interessi_post = df_post * tasso
+    int_cov_post = ebit_now / interessi_post if (ebit_now is not None and interessi_post) else None
+    # DSCR = CFADS / servizio del debito. CFADS ≈ EBITDA − imposte correnti (su EBIT−interessi).
+    imposte = max(0.0, ((ebit_now or 0.0) - interessi_post)) * _TAX
+    cfads = ebitda_post - imposte
+    quota_capitale = df_post / anni_amm if anni_amm else 0.0
+    servizio_debito = interessi_post + quota_capitale
+    dscr = cfads / servizio_debito if servizio_debito else None
+    assunzioni.append(f"servizio del debito = interessi + quota capitale (debito totale post "
+                      f"€{df_post:,.0f} ammortizzato in {anni_amm} anni)".replace(",", "."))
+    headroom = (_COVENANT_PFN_EBITDA * ebitda_post - (pfn_now or 0)) if ebitda_post else None
+    return {
+        "pfn_ebitda_attuale": _r2(lev_now), "pfn_ebitda_post": _r2(lev_post),
+        "pfn_attuale_eur": _r2(pfn_now), "pfn_post_eur": _r2(pfn_post),
+        "debiti_finanziari_post_eur": _r2(df_post),
+        "covenant_pfn_ebitda": _COVENANT_PFN_EBITDA,
+        "entro_covenant_leva": (lev_post is not None and lev_post <= _COVENANT_PFN_EBITDA),
+        "interessi_annui_post_eur": _r2(interessi_post),
+        "interest_coverage_post": _r2(int_cov_post),
+        "interest_coverage_soglia": _COVENANT_INT_COV,
+        "dscr_post": _r2(dscr), "dscr_soglia": _COVENANT_DSCR,
+        "entro_covenant_dscr": (dscr is not None and dscr >= _COVENANT_DSCR),
+        "debito_aggiuntivo_max_a_covenant_eur": _r2(headroom),
+        "covenant_headroom_eur": _r2((_COVENANT_PFN_EBITDA * ebitda_post - (pfn_post or 0))) if ebitda_post else None,
+        "formula": ("PFN/EBITDA post = (PFN + CAPEX a debito)/(EBITDA + EBITDA incrementale); "
+                    "interest coverage = EBIT/interessi; DSCR = (EBITDA − imposte)/(interessi + "
+                    "quota capitale)"),
+        "assunzioni": assunzioni,
+    }
+
+
+def working_capital_engine(financials: dict, params: dict,
+                           ricavi_incr_regime: float = 0.0) -> dict:
+    """Working Capital Engine: assorbimento di cassa e fabbisogno finanziario dai termini di
+    pagamento. A 120gg su ricavi rilevanti l'assorbimento è ingente → è il vero vincolo."""
+    fatturato = _num(financials.get("fatturato")) or 0.0
+    giorni = _num(params.get("giorni_incasso")) or 0.0
+    costi_var_pct = _num(params.get("costi_variabili_pct"))
+    if not giorni:
+        return {"nota": "termini di pagamento non forniti: assorbimento di circolante non stimabile."}
+    # crediti generati dal nuovo business (o dall'intero fatturato se il progetto è dominante)
+    base_ricavi = ricavi_incr_regime or fatturato
+    crediti = base_ricavi * giorni / 365.0
+    # se noto il mix costi variabili, il fabbisogno NETTO tiene conto dei debiti v/fornitori
+    # (assunti a ~60gg come prassi): cassa assorbita ≈ crediti − debiti_fornitori
+    debiti_fornitori = (base_ricavi * (costi_var_pct / 100.0) * 60 / 365.0) if costi_var_pct else 0.0
+    fabbisogno = crediti - debiti_fornitori
+    return {
+        "giorni_incasso": giorni,
+        "crediti_generati_eur": _r2(crediti),
+        "debiti_fornitori_stimati_eur": _r2(debiti_fornitori) if debiti_fornitori else None,
+        "assorbimento_cassa_netto_eur": _r2(fabbisogno),
+        "base_ricavi_eur": _r2(base_ricavi),
+        "lettura": (f"A {giorni:g} giorni di incasso, il circolante assorbe ~€{fabbisogno:,.0f} di cassa: "
+                    "va finanziato oltre al CAPEX. È il vincolo tipico di una grande commessa.").replace(",", "."),
+        "formula": "crediti = ricavi × giorni/365; assorbimento netto = crediti − debiti fornitori (60gg)",
+    }
+
+
+def financing_options(lev_post: Optional[float], dscr: Optional[float],
+                      wc: dict, giorni: float) -> dict:
+    """Financing Optimizer: opzioni REALISTICHE per finanziare CAPEX + circolante. NON
+    'ridurre i pagamenti a 60gg' (impossibile con una multinazionale): factoring, reverse
+    factoring, supply chain finance, leasing, equity — selezionate dalla situazione."""
+    opzioni = []
+    # circolante a pagamenti lunghi → strumenti sul credito commerciale
+    if giorni and giorni >= 90:
+        opzioni.append({"strumento": "Factoring pro-soluto sui crediti del cliente",
+                        "quando": f"incassi a {giorni:g}gg: smobilizza i crediti e trasferisce il rischio, "
+                                  "libera cassa senza toccare la leva bancaria"})
+        opzioni.append({"strumento": "Supply chain finance / reverse factoring",
+                        "quando": "se il cliente (multinazionale) ha un programma SCF: anticipo a costo "
+                                  "basso sul suo rating, senza chiedere sconti sui termini"})
+        opzioni.append({"strumento": "Confirming / anticipo su contratto",
+                        "quando": "anticipo bancario garantito dai minimi contrattuali della commessa"})
+    # CAPEX su asset industriali → leasing invece di debito bancario
+    opzioni.append({"strumento": "Leasing/finanziamento asset per il CAPEX",
+                    "quando": "sposta l'investimento fuori dalla PFN bancaria e allinea il costo "
+                              "alla vita utile dell'impianto"})
+    # leva alta → serve equity/quasi-equity
+    if lev_post is not None and lev_post > _COVENANT_PFN_EBITDA:
+        opzioni.append({"strumento": "Quota equity / finanziamento soci / mezzanino",
+                        "quando": f"leva post {lev_post:.1f}x oltre il covenant {_COVENANT_PFN_EBITDA:g}x: "
+                                  "una quota a equity riporta la leva sotto soglia"})
+    return {"opzioni": opzioni,
+            "nota": "Alternative alla riduzione dei termini di pagamento (spesso non negoziabile con "
+                    "una multinazionale): finanziare il circolante, non combatterlo."}
+
+
+def _decision_board(npv, irr, wacc, debt: dict, wc: dict, ricavi_noti: bool) -> dict:
+    """DECISION BOARD: verdetto 🟢/🟡/🔴 con CRITERI QUANTITATIVI derivati dai dati (soglie
+    covenant reali, non inventate). GO SOLO SE elenca le condizioni oggettive da soddisfare."""
+    lev_post = debt.get("pfn_ebitda_post")
+    dscr = debt.get("dscr_post")
+    int_cov = debt.get("interest_coverage_post")
+    criteri = []
+    def check(nome, ok, dettaglio):
+        criteri.append({"criterio": nome, "soddisfatto": bool(ok), "dettaglio": dettaglio})
+    check(f"Leva post ≤ {_COVENANT_PFN_EBITDA:g}x", debt.get("entro_covenant_leva"),
+          f"PFN/EBITDA post = {lev_post}x")
+    check(f"DSCR ≥ {_COVENANT_DSCR:g}x", debt.get("entro_covenant_dscr"),
+          f"DSCR post = {dscr}x")
+    check(f"Interest coverage ≥ {_COVENANT_INT_COV:g}x",
+          (int_cov is not None and int_cov >= _COVENANT_INT_COV), f"EBIT/interessi = {int_cov}x")
+    if ricavi_noti and npv is not None:
+        check("NPV > 0 al WACC", npv > 0, f"NPV = €{npv:,.0f}".replace(",", "."))
+        check(f"IRR > WACC ({wacc:g}%)", (irr is not None and irr > wacc), f"IRR = {irr}%")
+    n_ok = sum(1 for c in criteri if c["soddisfatto"])
+    n_tot = len(criteri)
+    non_soddisfatti = [c for c in criteri if not c["soddisfatto"]]
+    # NO GO solo per problemi FONDAMENTALI (non finanziabili con una struttura diversa):
+    #   • rendimento negativo (quando i ricavi sono noti), oppure
+    #   • non si pagano nemmeno gli interessi (int.cov < 1,5), oppure
+    #   • leva così alta (>5x) che nemmeno una quota equity ragionevole la riporta sotto.
+    # Leva/DSCR sopra soglia con CAPEX 100% a debito sono STRUTTURABILI (equity/leasing/
+    # factoring) → GO CON CONDIZIONI, non NO GO. È la differenza tra "non farlo" e "falla bene".
+    npv_neg = ricavi_noti and npv is not None and npv <= 0
+    non_paga_interessi = int_cov is not None and int_cov < 1.5
+    leva_insanabile = lev_post is not None and lev_post > 5.0
+    if npv_neg or non_paga_interessi or leva_insanabile:
+        verdetto, semaforo = "NO GO", "🔴"
+        causa = ("rendimento negativo" if npv_neg else
+                 f"interest coverage {int_cov}x < 1,5 (non copre gli interessi)" if non_paga_interessi else
+                 f"leva post {lev_post}x oltre 5x (non sanabile con equity ragionevole)")
+        motivo = f"vincolo fondamentale violato: {causa}."
+    elif n_ok == n_tot:
+        verdetto, semaforo = "GO", "🟢"
+        motivo = "tutti i criteri di sostenibilità e rendimento sono rispettati."
+    else:
+        verdetto, semaforo = "GO CON CONDIZIONI", "🟡"
+        motivo = ("procedibile SE si soddisfano queste condizioni oggettive: "
+                  + "; ".join(f"{c['criterio']} (ora {c['dettaglio']})" for c in non_soddisfatti)
+                  + ". Leve: quota equity/leasing per la leva, allungamento piano o anticipo "
+                    "contrattuale per il DSCR.")
+    return {"verdetto": verdetto, "semaforo": semaforo, "motivo": motivo,
+            "criteri": criteri, "criteri_soddisfatti": f"{n_ok}/{n_tot}",
+            "condizioni_go": [c["criterio"] for c in non_soddisfatti] if semaforo == "🟡" else []}
+
+
 def build_investment(capex: float, ricavi_incr_anno1: Optional[float],
                      ricavi_incr_regime: Optional[float], margine_ebitda_pct: float,
                      financials: dict, params: Optional[dict] = None) -> Optional[dict]:
-    """Analisi di un investimento. financials = {ebitda, pfn, debiti_finanziari, liquidita,
-    patrimonio_netto, fatturato} (dal bilancio riconciliato). params opzionali:
-    {wacc_pct, giorni_incasso, orizzonte_anni, quota_debito_pct, oneri_finanziari}."""
+    """Analisi di un investimento. Gira sul solo CAPEX (sostenibilità del debito: leva, DSCR,
+    interest coverage, circolante, financing, decision board). Se ci sono anche i RICAVI
+    incrementali del progetto → aggiunge NPV/IRR/payback/scenari. financials = {ebitda, ebit,
+    pfn, debiti_finanziari, liquidita, patrimonio_netto, fatturato}."""
     if not capex or capex <= 0:
         return None
     p = params or {}
-    orizzonte = int(_num(p.get("orizzonte_anni")) or _ORIZZONTE_DEFAULT)
+    orizzonte = int(_num(p.get("orizzonte_anni")) or _num(p.get("durata_anni")) or _ORIZZONTE_DEFAULT)
     wacc = _num(p.get("wacc_pct")) or _WACC_DEFAULT
     giorni = _num(p.get("giorni_incasso")) or 0.0
     quota_debito = _num(p.get("quota_debito_pct"))
@@ -153,8 +329,36 @@ def build_investment(capex: float, ricavi_incr_anno1: Optional[float],
     reg = _num(ricavi_incr_regime) or r1
     if r1 is None:
         r1 = reg
-    if r1 is None or reg is None:
-        return None
+    ricavi_noti = r1 is not None and reg is not None
+    ebitda_incr_regime = (reg * margine_ebitda_pct / 100.0) if ricavi_noti else 0.0
+
+    # --- moduli SEMPRE calcolabili dal bilancio + CAPEX (indip. dai ricavi incrementali) ---
+    debt = debt_engine(capex, financials, p, ebitda_incr_regime)
+    wc = working_capital_engine(financials, p, reg or 0.0)
+    fin_opts = financing_options(debt.get("pfn_ebitda_post"), debt.get("dscr_post"), wc, giorni)
+
+    if not ricavi_noti:
+        # SOSTENIBILITÀ senza rendimento (caso CoolTech): NPV/IRR non calcolabili, ma NON
+        # inventati né lasciati come N/D muti — nota esplicita del perché.
+        board = _decision_board(None, None, wacc, debt, wc, ricavi_noti=False)
+        return {
+            "decisione_investimento": {"verdetto": board["verdetto"], "motivo": board["motivo"]},
+            "decision_board": board,
+            "debt_capacity": debt,
+            "working_capital": wc,
+            "financing_options": fin_opts,
+            "investment_summary": {
+                "capex_eur": _r2(capex),
+                "npv_eur": None, "irr_pct": None, "payback_anni": None,
+                "nota": "NPV/IRR/payback NON calcolati: i ricavi incrementali attesi dalla commessa "
+                        "non sono stati forniti. Fornire ricavi anno-1 e a regime per il rendimento. "
+                        "L'analisi di SOSTENIBILITÀ del debito è invece completa qui sopra.",
+            },
+            "metodo_investimento": ("Analisi di sostenibilità del debito (leva/DSCR/interest coverage/"
+                                    "circolante) sul CAPEX dichiarato; il rendimento (NPV/IRR) richiede "
+                                    "i ricavi del progetto."),
+        }
+
     if _num(p.get("wacc_pct")) is None:
         assunzioni.append(f"WACC assunto {wacc:g}% (non dichiarato)")
     assunzioni.append(f"EBITDA incrementale = ricavi incrementali × {margine_ebitda_pct:g}% "
@@ -176,83 +380,48 @@ def build_investment(capex: float, ricavi_incr_anno1: Optional[float],
     payback = _payback(capex, fcf_annui)  # payback sul FCF operativo (senza TV): prudente
     roi = (sum(fcf_annui) + tv) / capex * 100.0 if capex else None
 
-    ebitda_now = _num(financials.get("ebitda")) or 0.0
-    pfn_now = _num(financials.get("pfn"))
-    ebitda_regime_incr = reg * margine_ebitda_pct / 100.0  # EBITDA incrementale a regime
-    ebitda_post = ebitda_now + ebitda_regime_incr
-    # quota del CAPEX a debito: se non dichiarata, assume tutto a debito (conservativo per la
-    # capacità di indebitamento) → segnala l'assunzione.
-    if quota_debito is None:
-        quota_debito = 100.0
-        assunzioni.append("quota del CAPEX finanziata a debito assunta 100% (conservativo): "
-                          "con equity/cassa la leva post è più bassa")
-    capex_debito = capex * quota_debito / 100.0
-    pfn_post = (pfn_now + capex_debito) if pfn_now is not None else None
-    lev_now = (pfn_now / ebitda_now) if (pfn_now is not None and ebitda_now) else None
-    lev_post = (pfn_post / ebitda_post) if (pfn_post is not None and ebitda_post) else None
-
-    def _r(x):
-        return round(x, 2) if isinstance(x, (int, float)) else x
-
-    debt_capacity = {
-        "pfn_attuale_eur": _r(pfn_now), "pfn_ebitda_attuale": _r(lev_now),
-        "pfn_post_investimento_eur": _r(pfn_post), "pfn_ebitda_post": _r(lev_post),
-        "covenant_soglia": _COVENANT_PFN_EBITDA,
-        "entro_covenant": (lev_post is not None and lev_post <= _COVENANT_PFN_EBITDA),
-        # debito aggiuntivo massimo a covenant 3x, dato l'EBITDA post
-        "debito_aggiuntivo_max_a_covenant_eur": _r(
-            _COVENANT_PFN_EBITDA * ebitda_post - (pfn_now or 0)) if ebitda_post else None,
-        "formula": "PFN/EBITDA post = (PFN + CAPEX a debito) / (EBITDA + EBITDA incrementale a regime)",
-    }
-
+    lev_post = debt.get("pfn_ebitda_post")
     sens = _sensitivity(r1, reg, margine_ebitda_pct, orizzonte, giorni, wacc, capex)
-    verdetto, motivo = _decisione(npv, irr, wacc, payback, orizzonte, lev_post, sens)
+    scenari = _scenari_investimento(r1, reg, margine_ebitda_pct, orizzonte, giorni, wacc, capex)
+    board = _decision_board(npv, irr, wacc, debt, wc, ricavi_noti=True)
     return {
-        "decisione_investimento": {"verdetto": verdetto, "motivo": motivo},
+        "decisione_investimento": {"verdetto": board["verdetto"], "motivo": board["motivo"]},
+        "decision_board": board,
         "investment_summary": {
-            "capex_eur": _r(capex), "npv_eur": _r(npv), "irr_pct": irr, "wacc_pct": _r(wacc),
-            "payback_anni": payback, "roi_semplice_pct": _r(roi),
+            "capex_eur": _r2(capex), "npv_eur": _r2(npv), "irr_pct": irr, "wacc_pct": _r2(wacc),
+            "payback_anni": payback, "roi_semplice_pct": _r2(roi),
             "orizzonte_anni": orizzonte,
-            "fcf_per_anno_eur": [_r(x) for x in fcf_annui],
-            "ricavi_incrementali_per_anno_eur": [_r(x) for x in ricavi_series],
-            "terminal_value_eur": _r(tv),
+            "fcf_per_anno_eur": [_r2(x) for x in fcf_annui],
+            "ricavi_incrementali_per_anno_eur": [_r2(x) for x in ricavi_series],
+            "terminal_value_eur": _r2(tv),
             "formula": ("NPV = Σ FCF/(1+WACC)^t + TV/(1+WACC)^N − CAPEX; FCF = EBITDA incr.×"
                         "(1−aliquota) − ΔWC; IRR = tasso che annulla l'NPV; payback = anno di "
                         "recupero del CAPEX sul FCF operativo"),
             "assunzioni": assunzioni,
         },
+        "scenari_investimento": scenari,
         "sensitivita_npv": sens,
-        "debt_capacity": debt_capacity,
-        "metodo_investimento": ("Investment decision support: NPV/IRR/payback sul flusso di cassa "
-                                "incrementale, capacità di indebitamento (PFN/EBITDA post vs covenant) "
-                                "e stress test. Numeri derivati dai dati del cliente."),
+        "debt_capacity": debt,
+        "working_capital": wc,
+        "financing_options": fin_opts,
+        "metodo_investimento": ("Investment decision support: NPV/IRR/payback sul flusso incrementale, "
+                                "sostenibilità del debito (leva/DSCR/interest coverage), circolante, "
+                                "financing e decision board. Numeri derivati dai dati del cliente."),
     }
 
 
-def _decisione(npv, irr, wacc, payback, orizzonte, lev_post, sens=None) -> tuple[str, str]:
-    if npv is None:
-        return "NO-GO", "flussi non stimabili"
-    over_covenant = lev_post is not None and lev_post > _COVENANT_PFN_EBITDA
-    # RANGE della sensitività: la decisione non deve dipendere da un singolo set di assunzioni.
-    vals = [v for v in (sens or {}).values() if isinstance(v, (int, float))]
-    tutti_negativi = bool(vals) and all(v <= 0 for v in vals)
-    qualche_negativo = bool(vals) and any(v <= 0 for v in vals)
-    if npv <= 0 and (tutti_negativi or not vals):
-        return "NO-GO", (f"NPV negativo (€{npv:,.0f}) e tale in tutti gli scenari di sensitività "
-                         f"(margine/WACC/orizzonte): l'investimento non crea valore.".replace(",", "."))
-    if over_covenant:
-        return "GO WITH CONDITIONS", (f"l'investimento crea valore (NPV €{npv:,.0f}, IRR {irr}% > WACC), "
-                                      f"MA la leva post {lev_post:.1f}x supera il covenant "
-                                      f"{_COVENANT_PFN_EBITDA:g}x: strutturare parte con equity/cassa, "
-                                      "scaglionare il CAPEX o negoziare i covenant.".replace(",", "."))
-    if npv <= 0 or qualche_negativo or (payback is not None and payback > orizzonte * 0.7):
-        return "GO WITH CONDITIONS", (f"NPV base €{npv:,.0f} ma il risultato dipende dalle assunzioni "
-                                      f"(margine del nuovo contratto, orizzonte, ramp): validare il "
-                                      f"margine incrementale e il potenziale prima di impegnare il CAPEX; "
-                                      f"attenzione alla concentrazione cliente.".replace(",", "."))
-    return "GO", (f"NPV positivo (€{npv:,.0f}), IRR {irr}% > WACC {wacc:g}%, leva post entro il covenant "
-                  "e positivo negli scenari di sensitività: investimento sostenibile e creatore di "
-                  "valore.".replace(",", "."))
+def _scenari_investimento(r1, reg, margine, orizzonte, giorni, wacc, capex) -> dict:
+    """Scenari prudente/base/aggressivo su ricavi incrementali (−30%/base/+20%): NPV/IRR."""
+    def one(fatt):
+        fcf, _, tv = _fcf_series(r1 * fatt, reg * fatt, margine, orizzonte, giorni, wacc)
+        fl = [-capex] + list(fcf)
+        fl[-1] += tv
+        return {"npv_eur": round(_npv(wacc, fl), 2), "irr_pct": _irr(fl)}
+    return {
+        "prudente": {**one(0.70), "assunzione": "ricavi incrementali −30%"},
+        "base": {**one(1.0), "assunzione": "ricavi come stimati"},
+        "aggressivo": {**one(1.20), "assunzione": "ricavi incrementali +20%"},
+    }
 
 
 _STRESS_QUOTE = (15.0, 25.0, 35.0, 45.0)
@@ -325,14 +494,18 @@ def apply_investment(deliverable: dict, inputs: dict, reclass: Optional[dict],
     margine = _num(prog.get("margine_ebitda_pct") or inputs.get("margine_incrementale_pct"))
     if margine is None:
         margine = idx.get("ebitda_margin") or 14.0
-    financials = {"ebitda": ebitda, "pfn": idx.get("pfn"),
+    financials = {"ebitda": ebitda, "ebit": _num(ce.get("ebit")), "pfn": idx.get("pfn"),
                   "debiti_finanziari": sp.get("debiti_finanziari"),
                   "liquidita": sp.get("liquidita"), "patrimonio_netto": sp.get("patrimonio_netto"),
                   "fatturato": fatturato}
     params = {"wacc_pct": _num(prog.get("wacc_pct") or inputs.get("wacc_pct")),
               "giorni_incasso": _num(prog.get("giorni_incasso") or inputs.get("giorni_pagamento")),
               "orizzonte_anni": _num(prog.get("orizzonte_anni")),
-              "quota_debito_pct": _num(prog.get("quota_debito_pct"))}
+              "durata_anni": _num(prog.get("durata_anni") or prog.get("durata_commessa_anni")
+                                  or inputs.get("durata_commessa_anni")),
+              "quota_debito_pct": _num(prog.get("quota_debito_pct")),
+              "tasso_debito_pct": _num(prog.get("tasso_debito_pct") or inputs.get("tasso_debito_pct")),
+              "costi_variabili_pct": _num(prog.get("costi_variabili_pct") or inputs.get("costi_variabili_pct"))}
     analisi = build_investment(capex, r1, reg, margine, financials, params)
     if not analisi:
         return deliverable, None

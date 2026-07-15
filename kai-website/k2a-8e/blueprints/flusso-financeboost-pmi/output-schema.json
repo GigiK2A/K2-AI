@@ -609,6 +609,26 @@
     "metodo_investimento": {
       "type": "string",
       "description": "[Deterministico] Nota di metodo dell'analisi di investimento."
+    },
+    "decision_board": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico, Investment Engine] Verdetto 🟢GO/🟡GO CON CONDIZIONI/🔴NO GO con criteri quantitativi (leva/DSCR/interest coverage/NPV) e condizioni oggettive."
+    },
+    "working_capital": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] Assorbimento di cassa e fabbisogno finanziario dai termini di pagamento."
+    },
+    "financing_options": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] Opzioni realistiche: factoring/reverse factoring/SCF/leasing/equity (non 'ridurre i termini di pagamento')."
+    },
+    "scenari_investimento": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] NPV/IRR per scenario prudente/base/aggressivo."
     }
   },
   "additionalProperties": false
