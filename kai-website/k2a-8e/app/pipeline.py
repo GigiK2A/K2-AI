@@ -767,6 +767,20 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
         if isinstance(case_facts, dict) and case_facts:
             gen_inputs = {**inputs, "contesto_consulenza": case_facts}
 
+        # SSOT FINANZIARIA (audit CoolTech-2: 'debito €15M in una sezione, €8M in un'altra').
+        # I numeri deterministici (bilancio riconciliato + investment engine) vengono
+        # PRE-calcolati e iniettati nel prompt di OGNI generazione: la prosa deve USARLI
+        # identici, mai ricalcolarli localmente. Gli stessi numeri sono poi riscritti dai
+        # binder nelle sezioni strutturate (idempotente) e risultano grounded al gate
+        # (gen_inputs alimenta grounded_numbers) → niente N/D su valori ufficiali.
+        if skill == "flusso-financeboost-pmi":
+            try:
+                _ssot = investment.financial_ssot(inputs, finance.reclass_reconciled(inputs))
+                if _ssot:
+                    gen_inputs = {**gen_inputs, "dati_finanziari_calcolati": _ssot}
+            except Exception:
+                log.warning("financial_ssot fallita (fail-open)", exc_info=True)
+
         # Freshness-gate runtime (Fix #6-gate / P0-10): se il boost usa un fatto normativo
         # HARD-stale (snapshot regredito a legge pre-riforma) → non consegnare legge superata.
         stale = freshness.stale_findings(used_keys=set(facts.keys()))
@@ -861,6 +875,9 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             # Backstop tempi corrotti (audit 2): '048h' → 'entro 48 ore'. Narrow e non-distruttivo
             # (solo ore con zero iniziale); la causa-radice è già rimossa dal prompt hyphen-free.
             deliverable = quality.sanitize_corrupted_time_ranges(deliverable)
+            # Range numerici corrotti (audit CoolTech-2): '2,42,7×' → '2,4–2,7×',
+            # '20 00030 000' → '20 000–30 000'. Firme narrow, nessun falso positivo.
+            deliverable = quality.sanitize_corrupted_ranges(deliverable)
             # Boost legali: neutralizza i NUMERI di sentenza confabulati (Cass. N/AAAA) — il
             # corpus ha le leggi, non la giurisprudenza, quindi un numero è inventato e non
             # verificabile (rischio: il cliente lo cita in un atto). Diventa 'orientamento

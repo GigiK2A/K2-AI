@@ -630,6 +630,37 @@ def scrub_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
 _CORRUPTED_HOURS = re.compile(r"\b0(\d{2,3})\s*(h\b|ore\b)", re.I)
 
 
+# Range numerici corrotti (audit CoolTech-2: '2,42,7×', '€20 00030 000'): il modello locale
+# droppa il trattino tra le cifre di un intervallo. Ricostruiamo SOLO le firme inequivocabili:
+# - due decimali-virgola concatenati seguiti da ×/x/%: '2,42,7×' = '2,4' + '2,7' (un numero
+#   legittimo a 3 decimali '2,427×' è irrealistico per leve/percentuali in un report)
+# - due numeri space-thousands entrambi terminanti in '000' concatenati: '20 00030 000'
+#   (un numero legittimo non ha il gruppo interno '00030')
+_RANGE_COMMA_X = re.compile(r"(?<![\d,])(\d{1,2},\d)(\d{1,2},\d)(?=\s*[×x%])")
+_RANGE_THOUSANDS = re.compile(r"(?<![\d.])(\d{1,3}(?:[ .]000))(\d{1,3}(?:[ .]000))\b")
+
+
+def sanitize_corrupted_ranges(deliverable: dict) -> dict:
+    """Ricostruisce i range numerici corrotti dal modello ('2,42,7×' → '2,4–2,7×',
+    '€20 00030 000' → '€20 000–30 000'). Firme narrow: nessun falso positivo su numeri
+    legittimi. Complementare alla regola di prompt 'mai intervalli col trattino'."""
+    def fix(s: str) -> str:
+        s = _RANGE_COMMA_X.sub(r"\1–\2", s)
+        s = _RANGE_THOUSANDS.sub(r"\1–\2", s)
+        return s
+
+    def walk(v):
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        if isinstance(v, str):
+            return fix(v)
+        return v
+
+    return walk(deepcopy(deliverable))
+
+
 def sanitize_corrupted_time_ranges(deliverable: dict) -> dict:
     """Ripara la segnatura inequivocabile di orizzonte-temporale corrotto: '048h' → 'entro
     48 ore' (0-48h col trattino perso). Solo ore con zero iniziale; i giorni li previene il

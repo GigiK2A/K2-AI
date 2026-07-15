@@ -98,6 +98,63 @@ def test_stress_test_concentrazione():
 
 # ── trigger + integrazione ────────────────────────────────────────────────────────────
 
+# ── SSOT + CCC + break-even + sanitizer (audit CoolTech-2) ────────────────────────────
+
+def test_financial_ssot_debito_coerente():
+    # 'debito €15M in una sezione, €8M in un'altra' → la SSOT è UNA: attuale/nuovo/post
+    from app import finance
+    CT = {"bilanci": [{"anno": 2024, "ricavi": 30000000, "ebitda": 4200000,
+                       "reddito_operativo": 2800000, "utile_netto": 1700000,
+                       "patrimonio_netto": 18000000, "debiti_finanziari": 10000000,
+                       "liquidita": 4000000, "pfn": 6000000}],
+          "investimento_progetto": {"capex": 8000000, "durata_commessa_anni": 7,
+                                    "tasso_debito_pct": 4.55, "costi_variabili_pct": 63},
+          "giorni_pagamento": 120}
+    ssot = I.financial_ssot(CT, finance.reclass_reconciled(CT))
+    assert ssot["debiti_finanziari_attuali_eur"] == 10000000
+    assert ssot["nuovo_debito_eur"] == 8000000
+    assert ssot["debito_totale_post_investimento_eur"] == 18000000  # 10+8, UNA sola verità
+    assert ssot["interessi_annui_post_eur"] == 819000               # 4,55% × 18M, replicabile
+    assert ssot["verdetto"] == "GO CON CONDIZIONI"
+
+
+def test_ccc_con_assunzioni_esplicite():
+    a = I.build_investment(8000000, None, None, 14.0, CT_FIN, CT_PARAMS)
+    w = a["working_capital"]
+    # CCC = DSO 120 + magazzino 0 (assunto) − DPO 60 (assunto) = 60gg
+    assert w["cash_conversion_cycle_giorni"] == 60
+    assert len(w["ccc_assunzioni"]) == 2  # DPO e magazzino dichiarati come stime, non N/D
+
+
+def test_break_even_sul_solo_nuovo_debito():
+    a = I.build_investment(8000000, None, None, 14.0, CT_FIN, CT_PARAMS)
+    d = a["debt_capacity"]
+    # servizio nuovo debito = 8M×4,55% + 8M/7 = 364k + 1.142.857 ≈ 1.507k
+    assert abs(d["servizio_nuovo_debito_annuo_eur"] - (8000000 * 0.0455 + 8000000 / 7)) < 1
+    # break-even = servizio nuovo / (14% × 0,721) ≈ 14,9M — NON sull'intero debito post
+    be = d["break_even_ricavi_incrementali_eur"]
+    assert 14000000 < be < 16000000
+
+
+def test_kpi_non_calcolabili_spiegati():
+    a = I.build_investment(8000000, None, None, 14.0, CT_FIN, CT_PARAMS)
+    kpis = {k["kpi"] for k in a["kpi_non_calcolabili"]}
+    assert kpis == {"NPV", "IRR", "Payback"}
+    assert all(k["motivo"] for k in a["kpi_non_calcolabili"])
+
+
+def test_sanitizer_range_corrotti():
+    from app import quality
+    d = {"a": "leva 2,42,7× attesa", "b": "€20 00030 000 di costi",
+         "c": "valore 2,45× singolo", "d": "importo 20.00030.000 EUR", "e": "margine 12,5%"}
+    out = quality.sanitize_corrupted_ranges(d)
+    assert out["a"] == "leva 2,4–2,7× attesa"
+    assert out["b"] == "€20 000–30 000 di costi"
+    assert out["c"] == "valore 2,45× singolo"     # legittimo → intatto
+    assert out["d"] == "importo 20.000–30.000 EUR"
+    assert out["e"] == "margine 12,5%"            # legittimo → intatto
+
+
 def test_apply_investment_noop_senza_capex():
     d, meta = I.apply_investment({"executive_summary": {}}, {"settore_ateco": "X"}, {})
     assert meta is None

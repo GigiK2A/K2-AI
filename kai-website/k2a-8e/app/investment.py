@@ -178,6 +178,9 @@ def debt_engine(capex: float, financials: dict, params: dict,
     quota_capitale = df_post / anni_amm if anni_amm else 0.0
     servizio_debito = interessi_post + quota_capitale
     dscr = cfads / servizio_debito if servizio_debito else None
+    # servizio del SOLO nuovo debito (per il break-even dei ricavi incrementali: il debito
+    # preesistente è già servito dall'EBITDA attuale)
+    servizio_nuovo_debito = capex_debito * tasso + (capex_debito / anni_amm if anni_amm else 0.0)
     assunzioni.append(f"servizio del debito = interessi + quota capitale (debito totale post "
                       f"€{df_post:,.0f} ammortizzato in {anni_amm} anni)".replace(",", "."))
     headroom = (_COVENANT_PFN_EBITDA * ebitda_post - (pfn_now or 0)) if ebitda_post else None
@@ -192,6 +195,8 @@ def debt_engine(capex: float, financials: dict, params: dict,
         "interest_coverage_soglia": _COVENANT_INT_COV,
         "dscr_post": _r2(dscr), "dscr_soglia": _COVENANT_DSCR,
         "entro_covenant_dscr": (dscr is not None and dscr >= _COVENANT_DSCR),
+        "servizio_debito_annuo_eur": _r2(servizio_debito),
+        "servizio_nuovo_debito_annuo_eur": _r2(servizio_nuovo_debito),
         "debito_aggiuntivo_max_a_covenant_eur": _r2(headroom),
         "covenant_headroom_eur": _r2((_COVENANT_PFN_EBITDA * ebitda_post - (pfn_post or 0))) if ebitda_post else None,
         "formula": ("PFN/EBITDA post = (PFN + CAPEX a debito)/(EBITDA + EBITDA incrementale); "
@@ -217,15 +222,32 @@ def working_capital_engine(financials: dict, params: dict,
     # (assunti a ~60gg come prassi): cassa assorbita ≈ crediti − debiti_fornitori
     debiti_fornitori = (base_ricavi * (costi_var_pct / 100.0) * 60 / 365.0) if costi_var_pct else 0.0
     fabbisogno = crediti - debiti_fornitori
+    # Cash Conversion Cycle: DSO + giorni magazzino − DPO. I giorni non dichiarati sono
+    # STIME ESPLICITE (mai N/D muto): DPO 60gg prassi fornitori, magazzino 0 se non noto.
+    dso = _num(params.get("dso_giorni")) or giorni
+    dpo = _num(params.get("dpo_giorni"))
+    dio = _num(params.get("giorni_magazzino"))
+    ccc_assunzioni = []
+    if dpo is None:
+        dpo = 60.0
+        ccc_assunzioni.append("DPO assunto 60gg (prassi pagamento fornitori — stima ≈)")
+    if dio is None:
+        dio = 0.0
+        ccc_assunzioni.append("giorni magazzino non dichiarati → assunti 0 (CCC sottostimato se c'è scorta)")
+    ccc = dso + dio - dpo
     return {
         "giorni_incasso": giorni,
         "crediti_generati_eur": _r2(crediti),
         "debiti_fornitori_stimati_eur": _r2(debiti_fornitori) if debiti_fornitori else None,
         "assorbimento_cassa_netto_eur": _r2(fabbisogno),
         "base_ricavi_eur": _r2(base_ricavi),
+        "cash_conversion_cycle_giorni": _r2(ccc),
+        "ccc_componenti": {"dso": _r2(dso), "giorni_magazzino": _r2(dio), "dpo": _r2(dpo)},
+        "ccc_assunzioni": ccc_assunzioni,
         "lettura": (f"A {giorni:g} giorni di incasso, il circolante assorbe ~€{fabbisogno:,.0f} di cassa: "
                     "va finanziato oltre al CAPEX. È il vincolo tipico di una grande commessa.").replace(",", "."),
-        "formula": "crediti = ricavi × giorni/365; assorbimento netto = crediti − debiti fornitori (60gg)",
+        "formula": ("crediti = ricavi × giorni/365; assorbimento netto = crediti − debiti fornitori "
+                    "(60gg); CCC = DSO + giorni magazzino − DPO"),
     }
 
 
@@ -336,6 +358,15 @@ def build_investment(capex: float, ricavi_incr_anno1: Optional[float],
     debt = debt_engine(capex, financials, p, ebitda_incr_regime)
     wc = working_capital_engine(financials, p, reg or 0.0)
     fin_opts = financing_options(debt.get("pfn_ebitda_post"), debt.get("dscr_post"), wc, giorni)
+    # break-even dell'investimento: ricavi incrementali annui che coprono il servizio del
+    # SOLO NUOVO debito (il preesistente è già servito dall'EBITDA attuale) — sempre
+    # calcolabile, risponde a "quanto devo vendere perché l'investimento si paghi da solo".
+    serv = debt.get("servizio_nuovo_debito_annuo_eur")
+    if serv and margine_ebitda_pct > 0:
+        debt["break_even_ricavi_incrementali_eur"] = _r2(serv / (margine_ebitda_pct / 100.0 * (1 - _TAX)))
+        debt.setdefault("formula", "")
+        debt["formula"] += ("; break-even ricavi incrementali = servizio del NUOVO debito / "
+                            "(margine EBITDA × (1−aliquota))")
 
     if not ricavi_noti:
         # SOSTENIBILITÀ senza rendimento (caso CoolTech): NPV/IRR non calcolabili, ma NON
@@ -354,6 +385,11 @@ def build_investment(capex: float, ricavi_incr_anno1: Optional[float],
                         "non sono stati forniti. Fornire ricavi anno-1 e a regime per il rendimento. "
                         "L'analisi di SOSTENIBILITÀ del debito è invece completa qui sopra.",
             },
+            "kpi_non_calcolabili": [
+                {"kpi": "NPV", "motivo": "servono i ricavi incrementali attesi della commessa (anno 1 e a regime)"},
+                {"kpi": "IRR", "motivo": "come NPV: senza flussi di ricavo non esiste un tasso interno"},
+                {"kpi": "Payback", "motivo": "senza flussi incrementali non c'è un anno di recupero del CAPEX"},
+            ],
             "metodo_investimento": ("Analisi di sostenibilità del debito (leva/DSCR/interest coverage/"
                                     "circolante) sul CAPEX dichiarato; il rendimento (NPV/IRR) richiede "
                                     "i ricavi del progetto."),
@@ -472,17 +508,16 @@ def _collect_numbers(obj) -> list:
     return out
 
 
-def apply_investment(deliverable: dict, inputs: dict, reclass: Optional[dict],
-                     facts: Optional[dict] = None) -> tuple[dict, Optional[dict]]:
-    """Hook FinanceBoost: se gli input descrivono un investimento (`investimento_progetto`
-    o `capex` + ricavi incrementali), inietta l'analisi di investimento. No-op altrimenti."""
-    if not isinstance(deliverable, dict) or not isinstance(inputs, dict):
-        return deliverable, None
+def analysis_from_inputs(inputs: dict, reclass: Optional[dict]) -> Optional[dict]:
+    """Core dell'analisi di investimento dagli input del form (usata sia dal binder sia
+    dalla SSOT pre-generazione). None se il caso non descrive un investimento."""
+    if not isinstance(inputs, dict):
+        return None
     prog = inputs.get("investimento_progetto") if isinstance(inputs.get("investimento_progetto"), dict) else {}
     capex = _num(prog.get("capex") or inputs.get("investimento_eur") or inputs.get("capex")
                  or prog.get("investimento"))
     if not capex or capex <= 0:
-        return deliverable, None
+        return None
     r1 = (prog.get("ricavi_incrementali_anno1") or inputs.get("ricavi_incrementali_anno1")
           or prog.get("contratto_iniziale_eur"))
     reg = (prog.get("ricavi_incrementali_regime") or inputs.get("ricavi_incrementali_potenziale")
@@ -508,10 +543,22 @@ def apply_investment(deliverable: dict, inputs: dict, reclass: Optional[dict],
               "costi_variabili_pct": _num(prog.get("costi_variabili_pct") or inputs.get("costi_variabili_pct"))}
     analisi = build_investment(capex, r1, reg, margine, financials, params)
     if not analisi:
-        return deliverable, None
+        return None
     if fatturato and ebitda is not None and reg:
         analisi["stress_test_investimento"] = stress_investment(
             _num(reg) or 0.0, margine, fatturato, ebitda, params["giorni_incasso"] or 0.0)
+    return analisi
+
+
+def apply_investment(deliverable: dict, inputs: dict, reclass: Optional[dict],
+                     facts: Optional[dict] = None) -> tuple[dict, Optional[dict]]:
+    """Hook FinanceBoost: se gli input descrivono un investimento (`investimento_progetto`
+    o `capex` + ricavi incrementali), inietta l'analisi di investimento. No-op altrimenti."""
+    if not isinstance(deliverable, dict) or not isinstance(inputs, dict):
+        return deliverable, None
+    analisi = analysis_from_inputs(inputs, reclass)
+    if not analisi:
+        return deliverable, None
     out = dict(deliverable)
     for k, v in analisi.items():
         if v is not None:
@@ -520,3 +567,46 @@ def apply_investment(deliverable: dict, inputs: dict, reclass: Optional[dict],
         facts["_investment_grounded_numbers"] = {"numeri": _collect_numbers(analisi)}
     return out, {"investment_engine": True, "verdetto": analisi["decisione_investimento"]["verdetto"],
                  "npv_eur": analisi["investment_summary"]["npv_eur"]}
+
+
+def financial_ssot(inputs: dict, reclass: Optional[dict]) -> Optional[dict]:
+    """SINGLE SOURCE OF TRUTH finanziaria (audit CoolTech-2: 'debito totale €15M in una
+    sezione, €8M in un'altra'). Blocco COMPATTO dei numeri ufficiali già calcolati, da
+    iniettare nel prompt di generazione: la prosa deve USARE questi valori identici, mai
+    ricalcolarli localmente. Gli stessi numeri vengono poi riscritti dai binder nelle
+    sezioni strutturate (idempotente) e registrati come grounded al gate."""
+    rc = reclass or {}
+    ce, idx, sp = rc.get("ce") or {}, rc.get("indici") or {}, rc.get("sp") or {}
+    ssot: dict = {}
+    for label, v in (("ricavi_eur", ce.get("ricavi")), ("ebitda_eur", ce.get("ebitda")),
+                     ("ebit_eur", ce.get("ebit")), ("utile_netto_eur", ce.get("utile_netto")),
+                     ("liquidita_eur", sp.get("liquidita")),
+                     ("debiti_finanziari_attuali_eur", sp.get("debiti_finanziari")),
+                     ("pfn_attuale_eur", idx.get("pfn")),
+                     ("patrimonio_netto_eur", sp.get("patrimonio_netto")),
+                     ("ebitda_margin_pct", idx.get("ebitda_margin"))):
+        if v is not None:
+            ssot[label] = v
+    analisi = analysis_from_inputs(inputs, reclass)
+    if analisi:
+        d = analisi.get("debt_capacity") or {}
+        s = analisi.get("investment_summary") or {}
+        w = analisi.get("working_capital") or {}
+        for label, v in (("capex_eur", s.get("capex_eur")),
+                         ("nuovo_debito_eur", (d.get("debiti_finanziari_post_eur") or 0)
+                          - (ssot.get("debiti_finanziari_attuali_eur") or 0)
+                          if d.get("debiti_finanziari_post_eur") is not None else None),
+                         ("debito_totale_post_investimento_eur", d.get("debiti_finanziari_post_eur")),
+                         ("pfn_post_investimento_eur", d.get("pfn_post_eur")),
+                         ("leva_pfn_ebitda_attuale", d.get("pfn_ebitda_attuale")),
+                         ("leva_pfn_ebitda_post", d.get("pfn_ebitda_post")),
+                         ("dscr_post", d.get("dscr_post")),
+                         ("interest_coverage_post", d.get("interest_coverage_post")),
+                         ("interessi_annui_post_eur", d.get("interessi_annui_post_eur")),
+                         ("npv_eur", s.get("npv_eur")), ("irr_pct", s.get("irr_pct")),
+                         ("payback_anni", s.get("payback_anni")),
+                         ("circolante_assorbito_eur", w.get("assorbimento_cassa_netto_eur")),
+                         ("verdetto", (analisi.get("decision_board") or {}).get("verdetto"))):
+            if v is not None:
+                ssot[label] = v
+    return ssot or None
