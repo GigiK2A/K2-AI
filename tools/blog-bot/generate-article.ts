@@ -73,7 +73,7 @@ async function main() {
   console.log("[revise] calling Claude Haiku...");
   pieces = await reviseArticle(anthropic, pieces);
 
-  // Image gen via OpenAI gpt-image-1. Se OPENAI_API_KEY manca o le scene
+  // Image gen via OpenAI gpt-image-2. Se OPENAI_API_KEY manca o le scene
   // non sono nel META, l'articolo viene pubblicato senza immagini (warning).
   let images: GeneratedImages | null = null;
   if (process.env.OPENAI_API_KEY && pieces.meta.image_scenes) {

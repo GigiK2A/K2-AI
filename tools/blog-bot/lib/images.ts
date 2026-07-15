@@ -1,5 +1,5 @@
 /**
- * Image generation per articolo blog via OpenAI gpt-image-1.
+ * Image generation per articolo blog via OpenAI gpt-image-2 (model id: gpt-image-2, API da mag 2026).
  *
  * Stile foto realistica ufficio (scelto da Luca): luce naturale,
  * shallow depth of field, no testo visibile su schermi, no loghi.
@@ -8,7 +8,8 @@
  * - 1 cover orizzontale 1536x1024 (anche og:image)
  * - 2 inline quadrate 1024x1024 (tra sezione 02-03 e tra sezione 04-05)
  *
- * Costo medio: ~$0.15/articolo (medium quality).
+ * Costo per immagine variabile con gpt-image-2 (quality medium, stesse size
+ * 1536x1024 / 1024x1024, entrambe supportate; risposta b64_json di default).
  */
 import OpenAI from "openai";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -48,7 +49,7 @@ async function generateOne(
 ): Promise<Buffer> {
   const prompt = `${scene}\n\n${STYLE_SUFFIX}`;
   const resp = await client.images.generate({
-    model: "gpt-image-1",
+    model: "gpt-image-2",
     prompt,
     size,
     quality: "medium",
