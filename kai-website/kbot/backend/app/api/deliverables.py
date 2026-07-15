@@ -151,6 +151,30 @@ def _session_company(session: dict) -> Optional[str]:
     return None
 
 
+def _case_facts(session: dict) -> Optional[dict]:
+    """Sintesi + diagnosi della consulenza da passare all'8e (audit S1, lug 2026): il
+    report deve usare i fatti RACCONTATI dal cliente, non solo i campi del form — prima
+    tutto ciò che non entrava nel form andava perso e il report usciva scollegato dal
+    caso. Solo dati già strutturati e persistiti (summary/diagnosi), niente transcript:
+    input stabili tra retry → i checkpoint per-sezione dell'8e continuano a fare hit.
+    KBOT_CASE_FACTS=0 disattiva."""
+    if os.getenv("KBOT_CASE_FACTS", "1") == "0":
+        return None
+    coll = session.get("collected_data") or session.get("collected") or {}
+    facts: dict = {}
+    extracted = coll.get("extractedData")
+    if isinstance(extracted, dict) and extracted:
+        skip = {"reportType", "deliverableType", "boost_suggerito"}  # routing, non fatti
+        sintesi = {k: v for k, v in extracted.items()
+                   if k not in skip and v not in (None, "", [], {})}
+        if sintesi:
+            facts["sintesi_caso"] = sintesi
+    diag = coll.get("diagnosi")
+    if isinstance(diag, dict) and diag:
+        facts["diagnosi"] = diag
+    return facts or None
+
+
 class DeliverableBody(BaseModel):
     sessionId: str = Field(..., alias="session_id")
     servizioId: str = Field(..., alias="servizio_id")
@@ -380,6 +404,7 @@ async def create(body: DeliverableBody, bg: BackgroundTasks,
             entitlement_token=entitlement_token,
             tier=servizio.get("tipo"),
             auth_level="FULL",
+            case_facts=_case_facts(session),
         )
     except engine.EnginePaymentRequired:
         raise HTTPException(status_code=402, detail="entitlement rifiutato dall'8e")
@@ -599,6 +624,7 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
         res = await engine.create_deliverable(
             service_id=servizio_id, inputs=inputs,
             entitlement_token=entitlement_token, tier=servizio.get("tipo"), auth_level=auth_level,
+            case_facts=_case_facts(session),
         )
     except engine.EnginePaymentRequired:
         raise HTTPException(status_code=402, detail="entitlement rifiutato dall'8e")
@@ -978,6 +1004,7 @@ async def recover_deliverable(body: RecoverBody,
         res = await engine.create_deliverable(
             service_id=servizio_id, inputs=inputs,
             entitlement_token=entitlement_token, tier=servizio.get("tipo"), auth_level=auth_level,
+            case_facts=_case_facts(session),
         )
     except engine.EngineRefused as r:
         raise HTTPException(status_code=422, detail={"reason": r.reason, "message": r.message})

@@ -7,6 +7,7 @@ validate(L1 libreria + L2 linter + output-schema) → render(HTML+PDF). Refuse e
 from __future__ import annotations
 
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -65,6 +66,11 @@ _VALUE_BLOCK_CODES = frozenset({
     "numero_esterno_non_grounded",
     "fatto_cliente_ipotetico",
 })
+
+# Audit 1d (15 lug 2026): sui boost FINANZIARI il valore inventato non si etichetta —
+# si RIMUOVE (→ N/D) e il report esce preliminare. K2A_8E_ND_HARD_FINANCIAL=0 ripristina
+# la sola etichetta anche lì.
+_ND_HARD_FINANCIAL = (os.environ.get("K2A_8E_ND_HARD_FINANCIAL", "1") or "1").lower() not in ("0", "false", "no")
 
 
 class Refuse(Exception):
@@ -673,7 +679,8 @@ def render_external(service_id: str, deliverable: dict, citazioni: list | None =
     return jobs.get(job_id)
 
 
-def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") -> None:
+def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
+        case_facts: dict | None = None) -> None:
     try:
         jobs.update(job_id, status="running")
         inputs = _normalize_inputs(inputs)      # FEED: regge competitor string[] o object[]
@@ -708,6 +715,14 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
 
         facts, citazioni = resolve(skill, inputs)
 
+        # CONTESTO CONSULENZA (audit S1, lug 2026): la sintesi+diagnosi della chat viaggia
+        # nel prompt di OGNI generazione LLM come chiave riservata dei DATI CLIENTE — il
+        # report deve usare ciò che il cliente ha DETTO, non solo i campi del form. Form,
+        # gate, bindings e validazione continuano a vedere solo gli input veri.
+        gen_inputs = inputs
+        if isinstance(case_facts, dict) and case_facts:
+            gen_inputs = {**inputs, "contesto_consulenza": case_facts}
+
         # Freshness-gate runtime (Fix #6-gate / P0-10): se il boost usa un fatto normativo
         # HARD-stale (snapshot regredito a legge pre-riforma) → non consegnare legge superata.
         stale = freshness.stale_findings(used_keys=set(facts.keys()))
@@ -717,7 +732,7 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
 
         # PREVIEW (gate W8): compone SOLO l'assaggio, niente documento/file/leak.
         if auth_level == "PREVIEW":
-            prev = llm.generate_preview(blueprint, facts, inputs)
+            prev = llm.generate_preview(blueprint, facts, gen_inputs)
             # voci[0]=sintesi, voci[1]=criticità#1 mostrata → altre = voci[2:] (solo titoli)
             altre = [v.get("titolo") for v in blueprint.get("voci", [])][2:]
             jobs.update(
@@ -752,8 +767,8 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             citazioni = list(base_citazioni)
             if not generic:
                 # Voci-shape (LegalBoost/FiscoBoost): HYBRID prosa + meta strutturato.
-                sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, inputs)
-                meta_struct = llm.generate_structured_meta(blueprint, facts, inputs)
+                sezioni, filiera_meta = llm.generate_sezioni(blueprint, facts, gen_inputs)
+                meta_struct = llm.generate_structured_meta(blueprint, facts, gen_inputs)
                 offline = filiera_meta.get("mode") == "offline"
                 deliverable = assemble_legalboost(blueprint, sezioni, citazioni, inputs, meta_struct, offline=offline)
                 filiera_meta = {**filiera_meta, "assembly": "hybrid" if meta_struct else "prose+deterministic",
@@ -761,9 +776,9 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             else:
                 # Altri boost: generazione PROFONDA per-sezione (profondità tipo report
                 # consulenziale). Fallback alla singola chiamata, poi refuse se invalido.
-                deliverable, filiera_meta = llm.generate_deliverable_deep(out_schema, blueprint, facts, inputs)
+                deliverable, filiera_meta = llm.generate_deliverable_deep(out_schema, blueprint, facts, gen_inputs)
                 if not deliverable:
-                    deliverable, fm2 = llm.generate_conforming(out_schema, blueprint, facts, inputs)
+                    deliverable, fm2 = llm.generate_conforming(out_schema, blueprint, facts, gen_inputs)
                     filiera_meta = {**filiera_meta, **fm2, "assembly": "generic-fallback"}
                 if not deliverable:
                     raise Refuse("validation_failed",
@@ -779,7 +794,7 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
             # PRIMA dei binding (i numeri deterministici restano autoritativi) e dei
             # gate (le sezioni migliorate ripassano i controlli). Fail-open.
             deliverable, filiera_meta = llm.consulting_pass(
-                deliverable, out_schema, facts, inputs, filiera_meta)
+                deliverable, out_schema, facts, gen_inputs, filiera_meta)
 
             # Binding deterministici per-skill (estratto in apply_deterministic_bindings,
             # coperto da test_pipeline_bindings.py): sovrascrive gli slot col valore dei tool
@@ -884,10 +899,21 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                 # blocchi NON-valore (placeholder trapelato, cover anonima, norma confabulata,
                 # analisi-archetipo): non sono "valori", sono difetti duri di forma/liability.
                 if all(b.get("code") in _VALUE_BLOCK_CODES for b in g_blocks):
-                    deliverable = quality.scrub_ungrounded_numbers(
-                        deliverable, inputs, facts, citazioni, strict=False)
-                    log.info("grounding: %d valori non-grounded etichettati illustrativi (no refuse, "
-                             "policy owner) job %s", len(g_blocks), job_id)
+                    if skill in FINANCIAL_SKILLS and _ND_HARD_FINANCIAL:
+                        # Audit 1d (15 lug 2026): sui boost FINANZIARI l'etichetta non
+                        # basta — il numero fabbricato si RIMUOVE (→ N/D) e il report
+                        # esce PRELIMINARE. Consegna garantita (policy no-vicolo-cieco),
+                        # ma MAI una cifra inventata su cui si decidono i soldi.
+                        deliverable = quality.neutralize_ungrounded_numbers(
+                            deliverable, inputs, facts, citazioni)
+                        partial_mode = True
+                        log.info("grounding: %d valori non-grounded RIMOSSI (N/D) su boost "
+                                 "finanziario, report preliminare — job %s", len(g_blocks), job_id)
+                    else:
+                        deliverable = quality.scrub_ungrounded_numbers(
+                            deliverable, inputs, facts, citazioni, strict=False)
+                        log.info("grounding: %d valori non-grounded etichettati illustrativi (no refuse, "
+                                 "policy owner) job %s", len(g_blocks), job_id)
                     _ok = True
                     break
                 _refusal = ("grounding_failed",

@@ -29,7 +29,7 @@ def _setup(monkeypatch, *, status="paid", collected=None):
 
     created = {}
 
-    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level):
+    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level, case_facts=None):
         created["service_id"] = service_id
         created["entitlement_present"] = bool(entitlement_token)
         return {"job_id": "job-int-1", "status": "routed"}
@@ -94,7 +94,7 @@ def test_missing_non_identity_field_generates_preliminary(monkeypatch):
 
     created = {}
 
-    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level):
+    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level, case_facts=None):
         created["service_id"] = service_id
         created["auth_level"] = auth_level
         return {"job_id": "job-partial-1", "status": "routed"}
@@ -121,7 +121,7 @@ def test_all_required_present_proceeds_to_generation(monkeypatch):
 
     created = {}
 
-    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level):
+    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level, case_facts=None):
         created["service_id"] = service_id
         return {"job_id": "job-int-2", "status": "routed"}
 

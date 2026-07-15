@@ -109,7 +109,7 @@ def get(job_id: str) -> Optional[dict]:
 
 
 def run_with_timeout(job_id: str, service_id: str, inputs: dict,
-                     auth_level: str = "FULL") -> None:
+                     auth_level: str = "FULL", case_facts: dict | None = None) -> None:
     """C5 — watchdog sul tempo totale di generazione. `pipeline.run` non aveva alcun
     timeout complessivo: una filiera LLM appesa (upstream lento, context enorme) lasciava
     il job 'running' all'infinito. Qui si esegue run() in un thread e si aspetta al più
@@ -123,7 +123,7 @@ def run_with_timeout(job_id: str, service_id: str, inputs: dict,
     # NB: niente `with ThreadPoolExecutor(...)` — il suo __exit__ fa shutdown(wait=True) e
     # bloccherebbe sul thread appeso, annullando il timeout. Si chiude con wait=False.
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"8e-run-{job_id}")
-    future = pool.submit(pipeline.run, job_id, service_id, inputs, auth_level)
+    future = pool.submit(pipeline.run, job_id, service_id, inputs, auth_level, case_facts)
     try:
         future.result(timeout=JOB_TIMEOUT_S)
         pool.shutdown(wait=False)

@@ -26,6 +26,9 @@ class DeliverableBody(BaseModel):
     # di conseguenza. PREVIEW = assaggio (score + criticità #1 + resto nascosto);
     # FULL = documento completo + file. Default FULL (retrocompat).
     auth_level: str = "FULL"
+    # Sintesi + diagnosi della consulenza in chat (opzionale): il K-BOT la passa perché
+    # il report usi i FATTI raccontati dal cliente, non solo i campi del form (audit S1).
+    case_facts: Optional[dict] = None
 
 
 @app.get("/health")
@@ -151,7 +154,8 @@ def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Res
     job_id = jobs.create(body.service_id, blueprint_id, confidence)
     # C5 — watchdog: run_with_timeout esegue pipeline.run con un tetto JOB_TIMEOUT_S e
     # marca il job 'error' se la filiera si appende, invece di lasciarlo 'running' per sempre.
-    bg.add_task(jobs.run_with_timeout, job_id, body.service_id, body.inputs, auth_level)
+    bg.add_task(jobs.run_with_timeout, job_id, body.service_id, body.inputs, auth_level,
+                body.case_facts)
     return {"job_id": job_id, "status": "routed", "auth_level": auth_level,
             "routed_blueprint": blueprint_id, "confidence": confidence}
 

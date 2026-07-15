@@ -600,6 +600,66 @@ def scrub_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
     return walk(out)
 
 
+# Audit 1d (15 lug 2026): sui boost FINANZIARI l'etichetta non basta — il lettore prende
+# decisioni di cassa su quelle righe. MEGLIO NESSUN NUMERO CHE UN NUMERO SBAGLIATO.
+_ND_MARK = " [valore non verificato rimosso: N/D — da confermare col cliente]"
+
+
+def _neutralize_value(value: str, known: set) -> str:
+    """Sostituisce con 'N/D' i numeri economici non-grounded di `value` (stessa logica di
+    rilevazione di _value_has_blocking_number, applicata numero per numero: quelli
+    grounded restano)."""
+    if not _QUANT_CONTEXT.search(value) or _ASSUMPTION.search(value):
+        return value
+    spans = []
+    for m in _NUMBER.finditer(value):
+        suffix = (m.group(2) or "").lower()
+        pre_window = value[max(0, m.start() - 5):m.start()]
+        pre_currency = bool(re.search(r"(?:€|eur)\s*$", pre_window, re.I))
+        if not suffix and not pre_currency and not re.search(
+                r"(?:ricav|ebitda|utile|debito|fatturat|nfp|pfn).{0,20}" + re.escape(m.group(1)), value, re.I):
+            continue
+        n = _num(m.group(1))
+        if n is None:
+            continue
+        cand = {round(n, 4)}
+        tok = m.group(1)
+        if re.fullmatch(r"-?\d{1,3}(?:\.\d{3})+", tok):
+            cand.add(round(float(tok.replace(".", "")), 4))
+        if cand & known:
+            continue
+        spans.append((m.start(), m.end()))
+    if not spans:
+        return value
+    out = value
+    for s, e in reversed(spans):
+        out = out[:s] + "N/D" + out[e:]
+    return out + _ND_MARK
+
+
+def neutralize_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
+                                  citations: list | None = None) -> dict:
+    """Boost FINANZIARI, numeri hard non-grounded: NON etichetta — RIMUOVE (→ N/D).
+
+    Complementare a scrub_ungrounded_numbers (che sui financial è NO-OP): quando il gate
+    trova valori inventati e la policy no-vicolo-cieco impone comunque la consegna, qui
+    il numero sparisce e resta il buco ONESTO. Il report esce preliminare, mai una cifra
+    fabbricata presentata come scenario."""
+    known = grounded_numbers(inputs, facts, citations)
+    out = deepcopy(deliverable)
+
+    def walk(v):
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        if isinstance(v, str):
+            return _neutralize_value(v, known)
+        return v
+
+    return walk(out)
+
+
 # ── Sanitizer valori implausibili (bug prod 8 lug 2026: 'Impatto: 2024.0') ─────────
 # L'LLM a volte fa trapelare un ANNO in un campo numerico percent-like (impatto,
 # probabilità, scostamento). Regola precisa (zero falsi positivi su 'impatto 2000€'):

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 from typing import Any, Optional
 
 from ..settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
@@ -142,6 +144,82 @@ def _bilancio_ha_attivo(b: Any) -> bool:
     return tot > 0
 
 
+# --- Cross-check numerico (bug "EBITDA 720k → 230k"): l'estrazione passa per un LLM,
+# che può trascrivere male una cifra. Ogni numero estratto deve ESISTERE nel corpus che
+# l'LLM ha visto (contesto + conversazione + documenti); se non c'è, il campo si scarta:
+# meglio un report PRELIMINARE con un dato in meno che un report con un numero sbagliato.
+# KBOT_AUTOFILL_NUMCHECK=0 disattiva.
+
+_NUM_TOKEN_RE = re.compile(
+    r"(\d+(?:[.,]\d+)*)\s*(k\b|mila\b|mln\b|M\b|milion[ei]\b|miliard[oi]\b)?"
+)
+_SUFFIX_FACTOR = {"k": 1e3, "mila": 1e3, "mln": 1e6, "M": 1e6,
+                  "milione": 1e6, "milioni": 1e6, "miliardo": 1e9, "miliardi": 1e9}
+
+
+def _numcheck_enabled() -> bool:
+    return os.getenv("KBOT_AUTOFILL_NUMCHECK", "1") != "0"
+
+
+def _corpus_numbers(text: str) -> set[float]:
+    """Tutti i numeri presenti nel testo, in ogni formato (IT '1.234,56', EN '1234.56',
+    abbreviati '720k', '4,5 mln', '2 milioni')."""
+    nums: set[float] = set()
+    for m in _NUM_TOKEN_RE.finditer(text or ""):
+        base = _as_num(m.group(1))
+        if base is None:
+            continue
+        nums.add(base)
+        suf = m.group(2)
+        if suf:
+            factor = _SUFFIX_FACTOR.get(suf) or _SUFFIX_FACTOR.get(suf.lower())
+            if factor:
+                nums.add(base * factor)
+        # '1.234' è ambiguo (migliaia IT vs decimale EN): accetta entrambe le letture
+        raw = m.group(1)
+        if raw.count(".") == 1 and "," not in raw:
+            try:
+                nums.add(float(raw))
+            except ValueError:
+                pass
+    return nums
+
+
+def _number_in_corpus(v: float, nums: set[float]) -> bool:
+    tol = max(0.011, abs(v) * 1e-9)  # 0.011 assorbe arrotondamenti al centesimo
+    return any(abs(n - v) <= tol for n in nums)
+
+
+def drop_unverified_numbers(out: dict, by_id: dict, corpus: str) -> tuple[dict, list[str]]:
+    """Rimuove i campi numerici il cui valore non compare nel corpus visto dall'LLM.
+    Ritorna (out filtrato, lista campi scartati). I campi enum e non numerici non si
+    toccano; gli importi dei 'bilanci' si verificano ma NON si scartano (la trascrizione
+    da OCR può variare nel formato): un mismatch lì produce solo un log."""
+    nums = _corpus_numbers(corpus)
+    dropped: list[str] = []
+    for k in list(out.keys()):
+        c = by_id.get(k) or {}
+        if c.get("enum") or c.get("tipo") not in ("integer", "number"):
+            continue
+        v = out[k]
+        if isinstance(v, (int, float)) and not isinstance(v, bool) \
+                and not _number_in_corpus(float(v), nums):
+            dropped.append(f"{k}={v}")
+            out.pop(k)
+    bilanci = out.get("bilanci")
+    if isinstance(bilanci, list):
+        unmatched = 0
+        for b in bilanci:
+            for voce in (b.get("voci") or []) if isinstance(b, dict) else []:
+                imp = _as_num(voce.get("importo")) if isinstance(voce, dict) else None
+                if imp is not None and not _number_in_corpus(imp, nums):
+                    unmatched += 1
+        if unmatched:
+            log.warning("autofill: %d importi di bilancio non riscontrati nel corpus "
+                        "(possibile errore di trascrizione LLM)", unmatched)
+    return out, dropped
+
+
 def extract_inputs(session: dict, campi: list[dict]) -> dict:
     """Conversazione + file caricati → dict di input conformi ai campi del boost.
 
@@ -224,6 +302,12 @@ def extract_inputs(session: dict, campi: list[dict]) -> dict:
             out[k] = _coerce(v, c.get("tipo"))
         except Exception:
             continue  # tipo non coercibile → salta il campo
+    if _numcheck_enabled():
+        out, dropped = drop_unverified_numbers(out, by_id, f"{context}\n{convo}{docs}")
+        if dropped:
+            log.warning("autofill: numeri non presenti in conversazione/documenti, "
+                        "campi scartati: %s", ", ".join(dropped))
+
     # Bug-F: scarta bilanci fabbricati senza attivo (frammenti di chat, non un SP reale).
     # Se nessun bilancio è valido, ometti il campo → il gate lo vede mancante → report
     # preliminare (dati parziali) invece di alimentare il motore con numeri incoerenti.

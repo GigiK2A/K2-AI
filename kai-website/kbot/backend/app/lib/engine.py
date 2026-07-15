@@ -50,6 +50,7 @@ class EnginePaymentRequired(Exception):
 async def create_deliverable(
     service_id: str, inputs: dict, entitlement_token: Optional[str] = None,
     tier: Optional[str] = None, auth_level: str = "FULL",
+    case_facts: Optional[dict] = None,
 ) -> dict:
     """POST /v1/deliverables. Ritorna {job_id, status, auth_level, confidence}.
 
@@ -66,6 +67,10 @@ async def create_deliverable(
         payload["entitlement_token"] = entitlement_token
     if tier:
         payload["tier"] = tier
+    if case_facts:
+        # sintesi+diagnosi della chat: il report deve usare i FATTI del cliente,
+        # non solo i campi del form (audit S1, lug 2026)
+        payload["case_facts"] = case_facts
 
     async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
         r = await c.post(f"{ENGINE_8E_BASE_URL}/v1/deliverables",

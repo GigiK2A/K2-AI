@@ -133,7 +133,10 @@ def resolve_quant_fact(key: str, form: dict) -> Optional[dict]:
     ricavi = _num(b.get("ricavi")) or _num(form.get("fatturato"))
     ebitda = _num(b.get("ebitda"))
     pn = _num(b.get("patrimonio_netto"))
-    df = _num(b.get("debiti_finanziari")) or 0.0
+    # mancante ≠ zero (audit 1e): se i debiti finanziari non sono nel form, il calcolo
+    # procede con 0 ma l'assunzione va DICHIARATA nel risultato (mai nascosta).
+    df_dichiarato = _num(b.get("debiti_finanziari"))
+    df = df_dichiarato if df_dichiarato is not None else 0.0
 
     if key == "multipli_ev":
         if ricavi is None and (ebitda is None or ebitda <= 0):
@@ -171,6 +174,9 @@ def resolve_quant_fact(key: str, form: dict) -> Optional[dict]:
         out.update({
             "wacc_pct": wacc_pct, "weight_equity": round(we, 4), "weight_debt": round(wd, 4),
             "kd_pretax_pct": round(kd_pretax * 100, 2), "tax_rate_pct": round(tax * 100, 1),
+            **({"df_assunzione": "debiti_finanziari non forniti: assunti 0 (pesi WACC solo "
+                                 "equity) — ipotesi da confermare"}
+               if df_dichiarato is None else {}),
             "kd_assunzione": f"Kd pre-tax = rf {round(rf*100,2)}% + spread {round(_KD_SPREAD*100,1)}% (default, non dal form)",
         })
         return _ok(wacc_pct, formula, out, env)

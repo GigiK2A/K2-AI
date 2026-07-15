@@ -145,6 +145,10 @@ _RULES_COMPACT = (
 # filiera deep (generate_deliverable_deep) sia in quella a voci (generate_sezioni).
 _QUALITA_TRASVERSALE = (
     "- QUALITÀ TRASVERSALE (applica alla sezione PERTINENTE, UNA volta sola, senza ripetere):\n"
+    "  • Se i DATI CLIENTE includono 'contesto_consulenza' (sintesi e diagnosi della consulenza "
+    "in chat col cliente): è la FONTE PRIMARIA dei fatti — àncora problema, cause, priorità e "
+    "numeri a QUEL contesto, non contraddirlo e non inventare numeri assenti da lì o dagli "
+    "altri dati. Se un dato non c'è, scrivi che manca (N/D) invece di stimarlo.\n"
     "  • Sintesi/executive: apri col quadro decisionale — rischio complessivo (basso/medio/alto), "
     "urgenza, esposizione economica se pertinente, AFFIDABILITÀ dell'analisi (in base ai dati avuti) "
     "e le prime 3 decisioni da prendere.\n"
@@ -602,18 +606,27 @@ def _det_string(key: str, schema: dict, inputs: dict, servizio: str) -> str:
         return "2026-06-08"
     if any(w in kl for w in ("codice", "code", "id")):
         return "K2AI-2026"
-    s = servizio
+    # Fallback CONTENUTO (audit S4, lug 2026): un campo testuale che non sappiamo
+    # riempire dice ONESTAMENTE che il dato manca — prima usciva il nome-servizio nel
+    # PDF come se fosse contenuto. Il min/maxLength di schema resta rispettato.
+    s = "N/D — dato non disponibile (non fornito in consulenza)"
+    if "minLength" in schema:
+        while len(s) < schema["minLength"]:
+            s += " Il dato va richiesto al cliente prima della versione definitiva."
     if "maxLength" in schema:
         s = s[: schema["maxLength"]]
-    if "minLength" in schema and len(s) < schema["minLength"]:
-        s = s + "x" * (schema["minLength"] - len(s))
+        if len(s) < schema.get("minLength", 0):  # vincoli incompatibili col messaggio
+            s = ("N/D" + " -" * schema["maxLength"])[: schema["maxLength"]]
     return s
 
 
-def _det_sample(schema: dict, root: dict, inputs: dict, servizio: str, key: str = "") -> object:
+def _det_sample(schema: dict, root: dict, inputs: dict, servizio: str, key: str = "",
+                required_only: bool = False) -> object:
     """Campione deterministico schema-valido (no LLM): risolve $ref, rispetta
     const/enum/required/type. Override semantici sui campi stringa (azienda,
     servizio, data…). Usato per compilare meta/metadata in modo SEMPRE conforme.
+    required_only=True (sezioni CONTENUTO degradate, audit S4): compila solo i campi
+    required — ogni campo opzionale in più è un valore inventato in un PDF venduto.
     """
     if "$ref" in schema:
         ref = schema["$ref"]
@@ -628,13 +641,17 @@ def _det_sample(schema: dict, root: dict, inputs: dict, servizio: str, key: str 
         t = t[0]
     if t == "object":
         props = schema.get("properties", {})
-        return {k: _det_sample(v, root, inputs, servizio, k) for k, v in props.items()}
+        if required_only:
+            req = set(schema.get("required", []))
+            props = {k: v for k, v in props.items() if k in req}
+        return {k: _det_sample(v, root, inputs, servizio, k, required_only)
+                for k, v in props.items()}
     if t == "array":
         it = schema.get("items", {"type": "string"})
         n = max(1, schema.get("minItems", 1))
         if "maxItems" in schema:
             n = min(n, schema["maxItems"])
-        return [_det_sample(it, root, inputs, servizio, key) for _ in range(n)]
+        return [_det_sample(it, root, inputs, servizio, key, required_only) for _ in range(n)]
     if t in ("integer", "number"):
         kl = (key or "").lower()
         if isinstance(inputs.get(key), (int, float)) and not isinstance(inputs.get(key), bool):
@@ -880,7 +897,8 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
                 # NO-DEAD-END: una sezione required non valida NON fa più refuse. Ci mettiamo un
                 # placeholder schema-valido (poi il report esce PARZIALE, sezione marcata a valle):
                 # meglio un preliminare con un buco etichettato che un vicolo cieco su un pagato.
-                result[name] = _det_sample(props[name], output_schema, inputs, servizio, name)
+                result[name] = _det_sample(props[name], output_schema, inputs, servizio, name,
+                                           required_only=True)
                 degraded.append(name)
             continue  # sezione opzionale non conforme → skip
         result[name] = val
@@ -889,7 +907,8 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
     # required MAI generati (nessun roll valido) → placeholder valido, sezione degradata
     for name in required:
         if name not in result:
-            result[name] = _det_sample(props[name], output_schema, inputs, servizio, name)
+            result[name] = _det_sample(props[name], output_schema, inputs, servizio, name,
+                                       required_only=True)
             degraded.append(name)
 
     # validazione finale dell'intero deliverable
@@ -1016,8 +1035,14 @@ def _clamp_to_schema(val, schema: dict, root: dict):
             num = float(m.group(0).replace(",", "."))
             val = int(round(num)) if t == "integer" else num
         else:
-            val = {"bassa": 1, "basso": 1, "media": 2, "medio": 2, "alta": 3, "alto": 3,
-                   "critica": 4, "critico": 4}.get(val.strip().lower(), 0)
+            # etichetta non mappabile → 2 (media), MAI 0: su scale impatto/priorità lo 0
+            # si legge "nessun impatto" — peggio di un valore centrale (audit 1e)
+            val = {"bassa": 1, "basso": 1, "minima": 1, "minimo": 1,
+                   "media": 2, "medio": 2, "moderata": 2, "moderato": 2,
+                   "alta": 3, "alto": 3, "elevata": 3, "elevato": 3, "grave": 3,
+                   "severa": 3, "severo": 3,
+                   "critica": 4, "critico": 4, "massima": 4, "massimo": 4,
+                   }.get(val.strip().lower(), 2)
     # numeri: rientra nel range minimum/maximum
     if isinstance(val, (int, float)) and not isinstance(val, bool):
         if isinstance(schema.get("maximum"), (int, float)) and val > schema["maximum"]:
@@ -1064,7 +1089,8 @@ def _clamp_to_schema(val, schema: dict, root: dict):
         mi = schema.get("minItems")
         if isinstance(mi, int) and len(out) < mi:
             while len(out) < mi:
-                out.append(_clamp_to_schema(_det_sample(items, root, {}, "K2-AI", ""), items, root))
+                out.append(_clamp_to_schema(
+                    _det_sample(items, root, {}, "N/D", "", required_only=True), items, root))
         if isinstance(schema.get("maxItems"), int):
             out = out[: schema["maxItems"]]
         return out
