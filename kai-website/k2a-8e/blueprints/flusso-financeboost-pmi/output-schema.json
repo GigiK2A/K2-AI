@@ -12,57 +12,132 @@
     "valutazione_performance",
     "scenari",
     "piano_azione",
-    "limitazioni"
+    "limitazioni",
+    "cosa_non_vedi",
+    "supporto_decisionale",
+    "albero_decisionale",
+    "early_warning",
+    "executive_questions"
   ],
   "properties": {
     "meta": {
       "type": "object",
       "description": "slot voce ord0 (copertina_incarico). FLAG-LUIGI: la copertina deve bindare 'cliente' (o 'azienda') e 'periodo'; oggi il renderer mostra 'Cliente'/'—' perche' periodo non aveva slot e l'etichetta 'Cliente' non e' legata ad 'azienda'.",
-      "required": ["servizio", "versione", "data", "azienda", "cliente", "periodo"],
+      "required": [
+        "servizio",
+        "versione",
+        "data",
+        "azienda",
+        "cliente",
+        "periodo"
+      ],
       "properties": {
-        "servizio": { "const": "FinanceBoost" },
-        "versione": { "type": "string" },
-        "data": { "type": "string", "description": "data emissione del deliverable" },
-        "azienda": { "type": "string", "description": "ragione sociale (mantenuto per back-compat con il renderer attuale)" },
-        "cliente": { "type": "string", "description": "nome cliente per la copertina. FLAG-LUIGI: decidere se la copertina bynda 'cliente' o 'azienda' — devono coincidere." },
-        "periodo": { "type": "string", "description": "periodo di analisi, es. 'FY2024' o '2022-2024'. FLAG-LUIGI: nuovo slot — risolve la copertina che mostrava '—'." }
+        "servizio": {
+          "const": "FinanceBoost"
+        },
+        "versione": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "description": "data emissione del deliverable"
+        },
+        "azienda": {
+          "type": "string",
+          "description": "ragione sociale (mantenuto per back-compat con il renderer attuale)"
+        },
+        "cliente": {
+          "type": "string",
+          "description": "nome cliente per la copertina. FLAG-LUIGI: decidere se la copertina bynda 'cliente' o 'azienda' — devono coincidere."
+        },
+        "periodo": {
+          "type": "string",
+          "description": "periodo di analisi, es. 'FY2024' o '2022-2024'. FLAG-LUIGI: nuovo slot — risolve la copertina che mostrava '—'."
+        }
       }
     },
     "executive_summary": {
       "type": "object",
       "description": "slot voce ord1 (executive_summary). Una SOLA materializzazione: il renderer non deve duplicarlo (hero + capitolo numerato).",
-      "required": ["score_globale", "semafori_aree"],
+      "required": [
+        "score_globale",
+        "semafori_aree"
+      ],
       "properties": {
-        "score_globale": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "score_globale": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
         "semafori_aree": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["area", "semaforo"],
+            "required": [
+              "area",
+              "semaforo"
+            ],
             "properties": {
-              "area": { "type": "string" },
-              "semaforo": { "enum": ["verde", "giallo", "rosso"] }
+              "area": {
+                "type": "string"
+              },
+              "semaforo": {
+                "enum": [
+                  "verde",
+                  "giallo",
+                  "rosso"
+                ]
+              }
             }
           }
         },
-        "top_azioni": { "type": "array", "items": { "type": "string" } }
+        "top_azioni": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "riclassificazione": {
       "type": "object",
       "description": "slot voce ord2 (riclassificazione_bilancio). Dati, non prosa: SP a liquidita/esigibilita e CE a valore aggiunto su 2-3 anni.",
-      "required": ["anni", "stato_patrimoniale", "conto_economico"],
+      "required": [
+        "anni",
+        "stato_patrimoniale",
+        "conto_economico"
+      ],
       "properties": {
-        "anni": { "type": "array", "items": { "type": "integer" }, "description": "esercizi comparati, es. [2022,2023,2024]" },
+        "anni": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "esercizi comparati, es. [2022,2023,2024]"
+        },
         "stato_patrimoniale": {
           "type": "array",
           "description": "righe SP riclassificato; valori[] allineati ad anni[]",
           "items": {
             "type": "object",
-            "required": ["voce", "valori"],
+            "required": [
+              "voce",
+              "valori"
+            ],
             "properties": {
-              "voce": { "type": "string", "description": "es. 'Attivo fisso netto', 'Passivita correnti'" },
-              "valori": { "type": "array", "items": { "type": ["number", "null"] } }
+              "voce": {
+                "type": "string",
+                "description": "es. 'Attivo fisso netto', 'Passivita correnti'"
+              },
+              "valori": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              }
             }
           }
         },
@@ -71,10 +146,24 @@
           "description": "righe CE a valore aggiunto/margini; valori[] allineati ad anni[]",
           "items": {
             "type": "object",
-            "required": ["voce", "valori"],
+            "required": [
+              "voce",
+              "valori"
+            ],
             "properties": {
-              "voce": { "type": "string", "description": "es. 'Valore Aggiunto', 'MOL', 'EBIT', 'Utile netto'" },
-              "valori": { "type": "array", "items": { "type": ["number", "null"] } }
+              "voce": {
+                "type": "string",
+                "description": "es. 'Valore Aggiunto', 'MOL', 'EBIT', 'Utile netto'"
+              },
+              "valori": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              }
             }
           }
         }
@@ -85,13 +174,38 @@
       "description": "slot voce ord3 (analisi_indici_trend). FLAG-LUIGI: la card indice deve bindare 'valore' (oggi esce solo label+semaforo, senza numero). 'valore' e' obbligatorio.",
       "items": {
         "type": "object",
-        "required": ["nome", "valore", "benchmark", "semaforo"],
+        "required": [
+          "nome",
+          "valore",
+          "benchmark",
+          "semaforo"
+        ],
         "properties": {
-          "nome": { "type": "string" },
-          "valore": { "type": ["number", "string"] },
-          "benchmark": { "type": ["number", "string"] },
-          "semaforo": { "enum": ["verde", "giallo", "rosso"] },
-          "trend": { "type": "string" }
+          "nome": {
+            "type": "string"
+          },
+          "valore": {
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "benchmark": {
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "semaforo": {
+            "enum": [
+              "verde",
+              "giallo",
+              "rosso"
+            ]
+          },
+          "trend": {
+            "type": "string"
+          }
         }
       }
     },
@@ -99,27 +213,91 @@
       "type": "object",
       "description": "slot voce ord4 (analisi_marginalita): margine di contribuzione, BEP, leva operativa, margine di sicurezza.",
       "properties": {
-        "margine_contribuzione": { "type": ["number", "null"] },
-        "costi_fissi": { "type": ["number", "null"] },
-        "costi_variabili": { "type": ["number", "null"] },
-        "bep_valore": { "type": ["number", "null"], "description": "break-even point in valore (fatturato)" },
-        "bep_quantita": { "type": ["number", "null"] },
-        "leva_operativa": { "type": ["number", "null"], "description": "grado di leva operativa = MC/RO" },
-        "margine_sicurezza": { "type": ["number", "null"] },
-        "stima_da_aggregati": { "type": ["boolean", "null"], "description": "true se costi fissi/variabili sono stimati (manca contabilita analitica)" }
+        "margine_contribuzione": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "costi_fissi": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "costi_variabili": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bep_valore": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "break-even point in valore (fatturato)"
+        },
+        "bep_quantita": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "leva_operativa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "grado di leva operativa = MC/RO"
+        },
+        "margine_sicurezza": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "stima_da_aggregati": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "true se costi fissi/variabili sono stimati (manca contabilita analitica)"
+        }
       }
     },
     "valutazione_performance": {
       "type": "object",
       "description": "slot voce ord5 (valutazione_performance): EVA, WACC, ROI scomposto, BSC semplificata.",
       "properties": {
-        "eva": { "type": ["number", "null"], "description": "Economic Value Added = NOPAT - (CI x WACC)" },
-        "wacc": { "type": ["number", "null"] },
+        "eva": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Economic Value Added = NOPAT - (CI x WACC)"
+        },
+        "wacc": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
         "roi_scomposto": {
           "type": "object",
           "properties": {
-            "margine_operativo": { "type": ["number", "null"] },
-            "rotazione_ci": { "type": ["number", "null"] }
+            "margine_operativo": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rotazione_ci": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
           }
         },
         "bsc": {
@@ -127,11 +305,28 @@
           "description": "Balanced Scorecard semplificata",
           "items": {
             "type": "object",
-            "required": ["prospettiva"],
+            "required": [
+              "prospettiva"
+            ],
             "properties": {
-              "prospettiva": { "enum": ["finanziaria", "clienti", "processi", "apprendimento"] },
-              "indicatore": { "type": "string" },
-              "valore": { "type": ["number", "string", "null"] }
+              "prospettiva": {
+                "enum": [
+                  "finanziaria",
+                  "clienti",
+                  "processi",
+                  "apprendimento"
+                ]
+              },
+              "indicatore": {
+                "type": "string"
+              },
+              "valore": {
+                "type": [
+                  "number",
+                  "string",
+                  "null"
+                ]
+              }
             }
           }
         }
@@ -142,22 +337,63 @@
       "description": "slot voce ord6 (proiezioni_scenari): 3 scenari proiezione 12 mesi con cash flow, BEP temporale e sensitivity.",
       "items": {
         "type": "object",
-        "required": ["nome"],
+        "required": [
+          "nome"
+        ],
         "properties": {
-          "nome": { "enum": ["base", "ottimistico", "pessimistico"] },
-          "ricavi_proiettati": { "type": ["number", "null"] },
-          "ebitda_proiettato": { "type": ["number", "null"] },
-          "cash_flow_proiettato": { "type": ["number", "null"], "description": "flusso di cassa previsionale 12m dello scenario" },
-          "break_even_mese": { "type": ["integer", "string", "null"], "description": "mese (1-12) di raggiungimento del BEP nello scenario, o null" },
+          "nome": {
+            "enum": [
+              "base",
+              "ottimistico",
+              "pessimistico"
+            ]
+          },
+          "ricavi_proiettati": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ebitda_proiettato": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "cash_flow_proiettato": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "flusso di cassa previsionale 12m dello scenario"
+          },
+          "break_even_mese": {
+            "type": [
+              "integer",
+              "string",
+              "null"
+            ],
+            "description": "mese (1-12) di raggiungimento del BEP nello scenario, o null"
+          },
           "sensitivity": {
             "type": "array",
             "description": "variabili a maggior impatto sul risultato dello scenario",
             "items": {
               "type": "object",
-              "required": ["variabile", "impatto"],
+              "required": [
+                "variabile",
+                "impatto"
+              ],
               "properties": {
-                "variabile": { "type": "string" },
-                "impatto": { "type": ["number", "string"] }
+                "variabile": {
+                  "type": "string"
+                },
+                "impatto": {
+                  "type": [
+                    "number",
+                    "string"
+                  ]
+                }
               }
             }
           }
@@ -170,13 +406,175 @@
       "maxItems": 5,
       "items": {
         "type": "object",
-        "required": ["priorita", "azione"],
+        "required": [
+          "priorita",
+          "azione"
+        ],
         "properties": {
-          "priorita": { "type": "integer", "minimum": 1 },
-          "azione": { "type": "string" },
-          "impatto_stimato": { "type": "string" },
-          "tempi": { "type": "string" }
+          "priorita": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "azione": {
+            "type": "string"
+          },
+          "impatto_stimato": {
+            "type": "string"
+          },
+          "tempi": {
+            "type": "string"
+          }
         }
+      }
+    },
+    "cosa_non_vedi": {
+      "type": "array",
+      "description": "COSA PROBABILMENTE NON VEDI — 3-5 insight NON banali che riframano il problema, prudenti e ancorati ai dati (mai frasi fatte).",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "insight",
+          "perche"
+        ],
+        "properties": {
+          "insight": {
+            "type": "string",
+            "minLength": 40
+          },
+          "perche": {
+            "type": "string",
+            "description": "l'evidenza nei dati che lo suggerisce"
+          },
+          "implicazione": {
+            "type": "string",
+            "description": "cosa cambia per le decisioni"
+          }
+        }
+      }
+    },
+    "supporto_decisionale": {
+      "type": "object",
+      "description": "SUPPORTO DECISIONALE: cosa fare / cosa NON fare / cosa monitorare / rischio dell'inazione.",
+      "required": [
+        "cosa_fare",
+        "cosa_non_fare",
+        "cosa_monitorare",
+        "rischio_inazione"
+      ],
+      "properties": {
+        "cosa_fare": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "type": "string"
+          }
+        },
+        "cosa_non_fare": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "cosa_monitorare": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "type": "string"
+          }
+        },
+        "rischio_inazione": {
+          "type": "object",
+          "required": [
+            "descrizione",
+            "probabilita",
+            "impatto",
+            "orizzonte"
+          ],
+          "properties": {
+            "descrizione": {
+              "type": "string"
+            },
+            "probabilita": {
+              "type": "string",
+              "enum": [
+                "bassa",
+                "media",
+                "alta"
+              ]
+            },
+            "impatto": {
+              "type": "string"
+            },
+            "orizzonte": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "albero_decisionale": {
+      "type": "array",
+      "description": "ALBERO DECISIONALE: 2-4 bivi concreti — se accade A, fai X. Il lettore sa già oggi cosa farà domani.",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "se",
+          "allora"
+        ],
+        "properties": {
+          "se": {
+            "type": "string"
+          },
+          "allora": {
+            "type": "string"
+          },
+          "segnale_trigger": {
+            "type": "string",
+            "description": "come accorgersi che A sta accadendo"
+          }
+        }
+      }
+    },
+    "early_warning": {
+      "type": "array",
+      "description": "EARLY WARNING: 3-6 segnali misurabili da monitorare, con soglia indicativa (marcata come ipotesi).",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": [
+          "segnale",
+          "soglia_indicativa"
+        ],
+        "properties": {
+          "segnale": {
+            "type": "string"
+          },
+          "soglia_indicativa": {
+            "type": "string"
+          },
+          "frequenza": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "executive_questions": {
+      "type": "array",
+      "description": "EXECUTIVE QUESTIONS: le 5 domande che un CEO/CFO dovrebbe porsi dopo aver letto il report.",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 20
       }
     },
     "limitazioni": {

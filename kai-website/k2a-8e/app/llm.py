@@ -161,13 +161,16 @@ _QUALITA_TRASVERSALE = (
     "  • Report multidominio: copri TUTTI gli impatti rilevanti (legale, finanza, commerciale, "
     "governance, continuità), non solo il dominio principale.\n"
     "- STANDARD CONSULENTE SENIOR (obiettivo: il lettore deve pensare «mi ha fatto vedere qualcosa "
-    "che non avevo visto», non «mi ha riassunto ciò che sapevo». Ogni elemento va nella sezione "
-    "PERTINENTE, una volta sola):\n"
-    "  • COSA PROBABILMENTE NON VEDI — almeno 3 insight NON BANALI che riframano il problema: non "
-    "«i crediti sono alti» ma «la crescita sta probabilmente distruggendo cassa»; non «il turnover "
-    "è aumentato» ma «la crescita è diventata più veloce della maturità organizzativa»; non «i "
-    "margini sono bassi» ma «state probabilmente accettando clienti che distruggono valore». "
-    "Sempre col frame prudente («probabilmente», «i dati suggeriscono») e ancorati ai dati reali.\n"
+    "che non avevo visto», non «mi ha riassunto ciò che sapevo». Se lo schema ha SEZIONI DEDICATE "
+    "(cosa_non_vedi, supporto_decisionale, albero_decisionale, early_warning, executive_questions) "
+    "questi elementi vanno LÌ e non duplicati altrove; altrimenti nella sezione pertinente, una "
+    "volta sola):\n"
+    "  • COSA PROBABILMENTE NON VEDI — almeno 3 insight NON BANALI che riframano il problema. "
+    "Il taglio giusto è passare dal sintomo alla dinamica: da «i crediti sono alti» a «la crescita "
+    "sta consumando cassa più in fretta di quanto ne generi». Questo è un ESEMPIO DI TAGLIO, NON "
+    "una frase da riusare: gli insight vanno DERIVATI dai dati di QUESTO cliente — un insight che "
+    "potrebbe stare in qualunque report è per definizione banale e non va scritto. "
+    "Frame prudente («probabilmente», «i dati suggeriscono»), sempre ancorato ai numeri reali.\n"
     "  • SUPPORTO DECISIONALE: cosa fare, cosa NON fare, cosa monitorare, e COSA SUCCEDE SE NON "
     "FAI NULLA (rischio dell'inazione: probabilità qualitativa, impatto, orizzonte temporale).\n"
     "  • ALBERO DECISIONALE: 2-4 bivi concreti «se accade A → fai X; se B → fai Y» — il lettore "
@@ -189,6 +192,124 @@ _QUALITA_TRASVERSALE = (
 
 def _trunc(s: str, cap: int) -> str:
     return s if not cap or len(s) <= cap else s[:cap] + " …[troncato per context ridotto]"
+
+
+# --- SENIOR CRITIC post-generazione ("costruiscili tutti", 15 lug) --------------------
+# Le regole nel prompt alzano il pavimento ma non garantiscono nulla: questo passaggio
+# GIUDICA il documento generato sui criteri "da CFO" (insight banali? risponde alla
+# domanda? azioni realistiche? numeri difendibili?) e RIGENERA una volta le sezioni
+# deboli. Gira PRIMA dei binding deterministici (i numeri restano autoritativi) e dei
+# gate qualità (le sezioni migliorate ripassano i controlli). Fail-open sempre.
+_CRITIC_ENABLED = (os.environ.get("K2A_8E_SENIOR_CRITIC", "1") or "1").lower() in ("1", "true", "yes")
+_CRITIC_MAX_FIX = int(os.environ.get("K2A_8E_SENIOR_CRITIC_MAX_FIX") or 2)
+# sezioni mai toccate dal critico: strutturali, possedute dai binding deterministici,
+# o troppo grandi per una riscrittura mirata (voci-shape).
+_CRITIC_SKIP = frozenset({"meta", "metadata", "input", "files", "file", "allegati",
+                          "voci", "indici", "riclassificazione", "disclaimer"})
+
+_CRITIC_SYSTEM = (
+    "Sei il QUALITY REVIEWER senior di K2-AI: giudichi un report consulenziale PRIMA della "
+    "consegna, come farebbe il partner di una boutique di consulenza. Criteri:\n"
+    "1) Il report risponde alla domanda implicita del cliente e permette DECISIONI?\n"
+    "2) Gli insight sono NON banali (riframano il problema) o sono frasi che starebbero in "
+    "qualunque report?\n"
+    "3) Le azioni sono realistiche, specifiche per QUESTO cliente, con responsabile/tempi?\n"
+    "4) I numeri/score sono difendibili (metodo chiaro) o arbitrari?\n"
+    "5) C'è rischio di contenuto inventato o generico-riempitivo?\n"
+    "Indica le sezioni DEBOLI (al massimo 3) con il problema CONCRETO di ciascuna — solo "
+    "sezioni davvero sotto lo standard, non perfezionismo. Se il report è già solido: lista "
+    "vuota. Rispondi SOLO JSON: {\"cfo_would_pay\":bool,"
+    "\"weak_sections\":[{\"sezione\":\"<chiave top-level>\",\"problema\":\"…\"}],\"nota\":\"…\"}"
+)
+
+
+def _parse_any(text: str):
+    """Estrae il primo oggetto {} O array [] da una risposta LLM (per le sezioni array)."""
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.split("\n", 1)[1] if "\n" in t else t
+        if t.rstrip().endswith("```"):
+            t = t.rstrip()[:-3]
+    starts = [i for i in (t.find("{"), t.find("[")) if i >= 0]
+    if not starts:
+        return None
+    s = min(starts)
+    e = t.rfind("}" if t[s] == "{" else "]")
+    if e <= s:
+        return None
+    try:
+        return json.loads(t[s:e + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+def consulting_pass(deliverable: dict, output_schema: dict, facts: dict, inputs: dict,
+                    filiera_meta: dict) -> tuple[dict, dict]:
+    """Critico senior + una passata di miglioramento mirato. Ritorna (deliverable, meta)."""
+    if not _CRITIC_ENABLED or not ANTHROPIC_API_KEY or not isinstance(deliverable, dict):
+        return deliverable, filiera_meta
+    if (filiera_meta or {}).get("mode") == "offline":
+        return deliverable, filiera_meta
+    try:
+        from jsonschema import Draft202012Validator
+        client = _anthropic_client()
+        digest = json.dumps(deliverable, ensure_ascii=False)[:7000]
+        cli = json.dumps(inputs, ensure_ascii=False)[:1200]
+        resp = client.messages.create(
+            model=ANTHROPIC_MODEL, max_tokens=700, system=_CRITIC_SYSTEM,
+            messages=[{"role": "user", "content":
+                       f"DATI CLIENTE: {cli}\n\nREPORT GENERATO (JSON):\n{digest}\n\n"
+                       "Giudica e rispondi SOLO col JSON."}],
+        )
+        out = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        v = _parse_any(out)
+        if not isinstance(v, dict):
+            return deliverable, filiera_meta
+        weak = [w for w in (v.get("weak_sections") or [])
+                if isinstance(w, dict) and w.get("sezione") in (output_schema.get("properties") or {})
+                and w["sezione"] not in _CRITIC_SKIP and w["sezione"] in deliverable]
+        meta_crit = {"cfo_would_pay": bool(v.get("cfo_would_pay")),
+                     "deboli": [w["sezione"] for w in weak], "migliorate": []}
+        props = output_schema.get("properties") or {}
+        root_defs = output_schema.get("$defs")
+        for w in weak[:_CRITIC_MAX_FIX]:
+            name = w["sezione"]
+            sub = props[name]
+            sub_val = {**sub, "$defs": root_defs} if root_defs else sub
+            try:
+                cur = json.dumps(deliverable[name], ensure_ascii=False)[:6000]
+                fix_user = (
+                    f"SEZIONE «{name}» di un report consulenziale, BOCCIATA dal quality review.\n"
+                    f"PROBLEMA: {str(w.get('problema') or '')[:300]}\n"
+                    f"DATI CLIENTE: {cli}\n"
+                    f"SOTTO-SCHEMA JSON (conformati ESATTAMENTE):\n{json.dumps(sub, ensure_ascii=False)[:2500]}\n"
+                    f"VERSIONE ATTUALE:\n{cur}\n\n"
+                    "Riscrivi la sezione correggendo il problema: più specifica per QUESTO cliente, "
+                    "insight derivati dai suoi dati, azioni concrete. NIENTE contenuto inventato "
+                    "(numeri solo dai dati o marcati come ipotesi). Rispondi SOLO col JSON della "
+                    "sezione (contenuto diretto, non incartato nel suo nome)."
+                )
+                r = client.messages.create(
+                    model=ANTHROPIC_MODEL, max_tokens=min(_cap_tok(3500), 3500),
+                    system="Sei un partner senior di una boutique di consulenza. Rispondi SOLO con JSON valido.",
+                    messages=[{"role": "user", "content": fix_user}],
+                )
+                rtext = "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
+                new_val = _parse_any(rtext)
+                if new_val is None:
+                    continue
+                errs = list(Draft202012Validator(sub_val).iter_errors(new_val))
+                if not errs:
+                    deliverable[name] = new_val
+                    meta_crit["migliorate"].append(name)
+                    log.info("senior_critic: sezione '%s' migliorata", name)
+            except Exception:
+                log.warning("senior_critic: miglioramento '%s' fallito (si tiene l'originale)",
+                            name, exc_info=True)
+        return deliverable, {**(filiera_meta or {}), "senior_critic": meta_crit}
+    except Exception:
+        log.warning("senior_critic fallito (fail-open)", exc_info=True)
+        return deliverable, filiera_meta
 
 _SYSTEM = (
     "Sei il generatore di un deliverable legale-compliance per PMI italiane (LegalBoost).\n"

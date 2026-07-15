@@ -2,29 +2,68 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "StrategyBoost — output deliverable",
   "type": "object",
-  "required": ["meta", "discovery", "analisi_settore", "posizionamento", "opzioni_strategiche", "piano_strategico"],
+  "required": [
+    "meta",
+    "discovery",
+    "analisi_settore",
+    "posizionamento",
+    "opzioni_strategiche",
+    "piano_strategico",
+    "cosa_non_vedi",
+    "supporto_decisionale",
+    "albero_decisionale",
+    "early_warning",
+    "executive_questions"
+  ],
   "properties": {
     "meta": {
       "type": "object",
-      "required": ["servizio", "versione", "data", "azienda"],
+      "required": [
+        "servizio",
+        "versione",
+        "data",
+        "azienda"
+      ],
       "properties": {
-        "servizio": { "const": "StrategyBoost" },
-        "versione": { "type": "string" },
-        "data": { "type": "string" },
-        "azienda": { "type": "string" }
+        "servizio": {
+          "const": "StrategyBoost"
+        },
+        "versione": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string"
+        },
+        "azienda": {
+          "type": "string"
+        }
       }
     },
     "discovery": {
       "type": "object",
       "properties": {
-        "profilo": { "type": "string" },
-        "catena_valore": { "type": "array", "items": { "type": "string" } },
-        "risorse": { "type": "array", "items": { "type": "string" } }
+        "profilo": {
+          "type": "string"
+        },
+        "catena_valore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "risorse": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "analisi_settore": {
       "type": "object",
-      "required": ["porter"],
+      "required": [
+        "porter"
+      ],
       "properties": {
         "porter": {
           "type": "array",
@@ -32,11 +71,22 @@
           "maxItems": 5,
           "items": {
             "type": "object",
-            "required": ["forza", "scoring"],
+            "required": [
+              "forza",
+              "scoring"
+            ],
             "properties": {
-              "forza": { "type": "string" },
-              "scoring": { "type": "integer", "minimum": 1, "maximum": 5 },
-              "motivazione": { "type": "string" }
+              "forza": {
+                "type": "string"
+              },
+              "scoring": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "motivazione": {
+                "type": "string"
+              }
             }
           }
         }
@@ -45,45 +95,250 @@
     "posizionamento": {
       "type": "object",
       "properties": {
-        "vrio": { "type": "array", "items": { "type": "object" } },
-        "tipo_vantaggio": { "enum": ["costo", "differenziazione", "focalizzazione"] },
-        "mappa": { "type": "object" }
+        "vrio": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "tipo_vantaggio": {
+          "enum": [
+            "costo",
+            "differenziazione",
+            "focalizzazione"
+          ]
+        },
+        "mappa": {
+          "type": "object"
+        }
       }
     },
     "opzioni_strategiche": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["opzione", "attrattivita", "fattibilita", "rischio"],
+        "required": [
+          "opzione",
+          "attrattivita",
+          "fattibilita",
+          "rischio"
+        ],
         "properties": {
-          "opzione": { "type": "string" },
-          "attrattivita": { "type": "integer", "minimum": 1, "maximum": 5 },
-          "fattibilita": { "type": "integer", "minimum": 1, "maximum": 5 },
-          "rischio": { "type": "integer", "minimum": 1, "maximum": 5 }
+          "opzione": {
+            "type": "string"
+          },
+          "attrattivita": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "fattibilita": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "rischio": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
         }
       }
     },
     "piano_strategico": {
       "type": "object",
-      "required": ["direzione_scelta", "iniziative"],
+      "required": [
+        "direzione_scelta",
+        "iniziative"
+      ],
       "properties": {
-        "direzione_scelta": { "type": "string" },
-        "obiettivi": { "type": "array", "items": { "type": "string" } },
+        "direzione_scelta": {
+          "type": "string"
+        },
+        "obiettivi": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "iniziative": {
           "type": "array",
           "minItems": 5,
           "maxItems": 8,
           "items": {
             "type": "object",
-            "required": ["descrizione"],
+            "required": [
+              "descrizione"
+            ],
             "properties": {
-              "descrizione": { "type": "string" },
-              "kpi": { "type": "string" },
-              "timeline": { "type": "string" }
+              "descrizione": {
+                "type": "string"
+              },
+              "kpi": {
+                "type": "string"
+              },
+              "timeline": {
+                "type": "string"
+              }
             }
           }
         },
-        "rischi": { "type": "array", "items": { "type": "string" } }
+        "rischi": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "cosa_non_vedi": {
+      "type": "array",
+      "description": "COSA PROBABILMENTE NON VEDI — 3-5 insight NON banali che riframano il problema, prudenti e ancorati ai dati (mai frasi fatte).",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "insight",
+          "perche"
+        ],
+        "properties": {
+          "insight": {
+            "type": "string",
+            "minLength": 40
+          },
+          "perche": {
+            "type": "string",
+            "description": "l'evidenza nei dati che lo suggerisce"
+          },
+          "implicazione": {
+            "type": "string",
+            "description": "cosa cambia per le decisioni"
+          }
+        }
+      }
+    },
+    "supporto_decisionale": {
+      "type": "object",
+      "description": "SUPPORTO DECISIONALE: cosa fare / cosa NON fare / cosa monitorare / rischio dell'inazione.",
+      "required": [
+        "cosa_fare",
+        "cosa_non_fare",
+        "cosa_monitorare",
+        "rischio_inazione"
+      ],
+      "properties": {
+        "cosa_fare": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "type": "string"
+          }
+        },
+        "cosa_non_fare": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "cosa_monitorare": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "type": "string"
+          }
+        },
+        "rischio_inazione": {
+          "type": "object",
+          "required": [
+            "descrizione",
+            "probabilita",
+            "impatto",
+            "orizzonte"
+          ],
+          "properties": {
+            "descrizione": {
+              "type": "string"
+            },
+            "probabilita": {
+              "type": "string",
+              "enum": [
+                "bassa",
+                "media",
+                "alta"
+              ]
+            },
+            "impatto": {
+              "type": "string"
+            },
+            "orizzonte": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "albero_decisionale": {
+      "type": "array",
+      "description": "ALBERO DECISIONALE: 2-4 bivi concreti — se accade A, fai X. Il lettore sa già oggi cosa farà domani.",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "se",
+          "allora"
+        ],
+        "properties": {
+          "se": {
+            "type": "string"
+          },
+          "allora": {
+            "type": "string"
+          },
+          "segnale_trigger": {
+            "type": "string",
+            "description": "come accorgersi che A sta accadendo"
+          }
+        }
+      }
+    },
+    "early_warning": {
+      "type": "array",
+      "description": "EARLY WARNING: 3-6 segnali misurabili da monitorare, con soglia indicativa (marcata come ipotesi).",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": [
+          "segnale",
+          "soglia_indicativa"
+        ],
+        "properties": {
+          "segnale": {
+            "type": "string"
+          },
+          "soglia_indicativa": {
+            "type": "string"
+          },
+          "frequenza": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "executive_questions": {
+      "type": "array",
+      "description": "EXECUTIVE QUESTIONS: le 5 domande che un CEO/CFO dovrebbe porsi dopo aver letto il report.",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 20
       }
     }
   },

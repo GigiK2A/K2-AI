@@ -761,6 +761,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL") ->
                 blueprint.get("pacchetto", {}).get("nome_commerciale", service_id),
             )
 
+            # SENIOR CRITIC (quality review consulenziale post-generazione): giudica il
+            # documento sui criteri "da CFO" e rigenera UNA volta le sezioni deboli.
+            # PRIMA dei binding (i numeri deterministici restano autoritativi) e dei
+            # gate (le sezioni migliorate ripassano i controlli). Fail-open.
+            deliverable, filiera_meta = llm.consulting_pass(
+                deliverable, out_schema, facts, inputs, filiera_meta)
+
             # Binding deterministici per-skill (estratto in apply_deterministic_bindings,
             # coperto da test_pipeline_bindings.py): sovrascrive gli slot col valore dei tool
             # deterministici (quant/finance/tax/mep/elettrico/web/safety/build/norme).
