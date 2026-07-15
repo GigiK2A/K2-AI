@@ -340,6 +340,44 @@
         "type": "string",
         "minLength": 20
       }
+    },
+    "conto_economico_mercati": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "[Deterministico, Expansion Engine] Conto economico per mercato: ricavi, margine di contribuzione, break-even, ROI, con formula e assunzioni. Iniettato dal binder quando il caso porta mercati esteri; NON generato dall'LLM."
+    },
+    "ranking_mercati": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "[Deterministico] Classifica dei mercati per margine di contribuzione con decisione ENTER/PILOT/WAIT/NO-GO e complessità."
+    },
+    "scenari_espansione": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] Scenari prudente/base/aggressivo sulla contribuzione aggregata."
+    },
+    "confronto_canali": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] Distributore vs ecommerce: margini di canale e dati mancanti per l'ecommerce."
+    },
+    "sintesi_budget": {
+      "type": "string",
+      "description": "[Deterministico] Investimento anno-1 vs budget dichiarato."
+    },
+    "raccomandazione": {
+      "type": "string",
+      "description": "[Deterministico] Sequenza di ingresso per fasi (FASE 1/2/3)."
+    },
+    "metodo_espansione": {
+      "type": "string",
+      "description": "[Deterministico] Nota di metodo dell'analisi di espansione."
     }
   },
   "additionalProperties": false

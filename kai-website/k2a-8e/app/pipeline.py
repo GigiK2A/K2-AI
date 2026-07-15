@@ -13,8 +13,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from . import (advisor, agevolazioni, assets, budget, build, calc, control, elettrico, finance,
-               freshness, grounding, host, jobs, legal_quesito, llm, mep, norme, normattiva,
+from . import (advisor, agevolazioni, assets, budget, build, calc, control, elettrico, expansion,
+               finance, freshness, grounding, host, jobs, legal_quesito, llm, mep, norme, normattiva,
                quality, quant, safety, tax, validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
@@ -71,6 +71,10 @@ _VALUE_BLOCK_CODES = frozenset({
 # si RIMUOVE (→ N/D) e il report esce preliminare. K2A_8E_ND_HARD_FINANCIAL=0 ripristina
 # la sola etichetta anche lì.
 _ND_HARD_FINANCIAL = (os.environ.get("K2A_8E_ND_HARD_FINANCIAL", "1") or "1").lower() not in ("0", "false", "no")
+
+# Expansion Engine (audit 2): economia deterministica per-mercato su StrategyBoost quando
+# il caso porta mercati esteri strutturati. K2A_8E_EXPANSION=0 spegne.
+_EXPANSION_ENGINE = (os.environ.get("K2A_8E_EXPANSION", "1") or "1").lower() not in ("0", "false", "no")
 
 
 class Refuse(Exception):
@@ -300,6 +304,17 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
         deliverable, budget_meta = budget.apply_budget(deliverable, inputs)
         if budget_meta:
             filiera_meta = {**filiera_meta, "budget_pef": budget_meta}
+
+    # StrategyBoost: se il caso porta mercati esteri strutturati (mercati_esteri), inietta
+    # l'economia DETERMINISTICA per-mercato (conto economico, break-even, ROI, ranking,
+    # scenari, decisione ENTER/PILOT/WAIT/NO-GO) — mai numeri inventati dall'LLM (audit
+    # eval espansione NaturaViva). No-op se non è un caso di espansione. K2A_8E_EXPANSION=0 spegne.
+    if skill == "flusso-strategyboost-pmi" and _EXPANSION_ENGINE:
+        # passa facts: l'engine vi registra i numeri calcolati → il gate di grounding li
+        # riconosce come ancorati (deterministici, non inventati) e non li cancella.
+        deliverable, exp_meta = expansion.apply_expansion(deliverable, inputs, facts)
+        if exp_meta:
+            filiera_meta = {**filiera_meta, "expansion": exp_meta}
 
     # FinanceBoost: le 3 sezioni data-payload (riclassificazione/marginalità/
     # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate

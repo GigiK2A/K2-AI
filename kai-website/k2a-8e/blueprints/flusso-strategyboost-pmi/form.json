@@ -22,7 +22,33 @@
     "obiettivo_strategico": { "type": "string", "description": "cosa vuole ottenere nei prossimi 1-3 anni" },
     "risorse_distintive": { "type": "array", "items": { "type": "string" }, "description": "brevetti, know-how, relazioni, brand, localizzazione, velocita" },
     "area_geografica": { "type": "string", "enum": ["locale", "regionale", "nazionale", "export"] },
-    "problemi_percepiti": { "type": "string" }
+    "problemi_percepiti": { "type": "string" },
+    "mercati_esteri": {
+      "type": "array",
+      "description": "SOLO per casi di espansione internazionale / export: un oggetto per ogni mercato/paese di cui il cliente ha dato dati. Compila SOLO i campi che il cliente ha DETTO, non inventare: se un dato non c'è, ometti la chiave. I numeri devono essere quelli esatti forniti in chat.",
+      "items": {
+        "type": "object",
+        "required": ["paese"],
+        "properties": {
+          "paese": { "type": "string", "description": "nome del mercato/paese" },
+          "canale": { "type": "string", "description": "canale di ingresso se detto: distributore | ecommerce | negozi" },
+          "target_ricavi_min": { "type": "number", "description": "estremo basso del target ricavi in EUR (es. 150000 per '150-200k')" },
+          "target_ricavi_max": { "type": "number", "description": "estremo alto del target ricavi in EUR (es. 200000 per '150-200k'); se il cliente dà un valore singolo, mettilo qui e in min" },
+          "margine_canale_pct": { "type": "number", "description": "margine % del canale per questo mercato, se detto" },
+          "sconto_pct": { "type": "number", "description": "sconto % richiesto dal distributore" },
+          "marketing_eur": { "type": "number", "description": "contributo/budget marketing in EUR" },
+          "resi_pct": { "type": "number", "description": "percentuale resi" },
+          "pagamento_giorni": { "type": "number", "description": "termini di pagamento in giorni" },
+          "esclusiva_anni": { "type": "number", "description": "anni di esclusiva richiesti" },
+          "logistica_pct_min": { "type": "number", "description": "estremo basso del costo logistico % (es. 8 per '8-9%')" },
+          "logistica_pct_max": { "type": "number", "description": "estremo alto del costo logistico %" }
+        }
+      }
+    },
+    "margine_ecommerce_pct": { "type": "number", "description": "SOLO espansione: margine % del canale ecommerce, se dichiarato" },
+    "margine_distributore_pct": { "type": "number", "description": "SOLO espansione: margine % del canale distributore, se dichiarato" },
+    "budget_espansione_eur": { "type": "number", "description": "SOLO espansione: budget disponibile in EUR per l'espansione" },
+    "mol_medio_pct": { "type": "number", "description": "SOLO espansione: MOL/margine operativo medio % dell'azienda, se dichiarato" }
   },
   "additionalProperties": false
 }
