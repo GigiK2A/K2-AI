@@ -14,8 +14,8 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from . import (advisor, agevolazioni, assets, budget, build, calc, control, elettrico, expansion,
-               finance, freshness, grounding, host, jobs, legal_quesito, llm, mep, norme, normattiva,
-               quality, quant, safety, tax, validate, web)
+               finance, freshness, grounding, host, investment, jobs, legal_quesito, llm, mep, norme,
+               normattiva, quality, quant, safety, tax, validate, web)
 from .render import render_html, render_pdf
 from .settings import CATALOGO_CHIUSO, OUT_DIR
 
@@ -75,6 +75,10 @@ _ND_HARD_FINANCIAL = (os.environ.get("K2A_8E_ND_HARD_FINANCIAL", "1") or "1").lo
 # Expansion Engine (audit 2): economia deterministica per-mercato su StrategyBoost quando
 # il caso porta mercati esteri strutturati. K2A_8E_EXPANSION=0 spegne.
 _EXPANSION_ENGINE = (os.environ.get("K2A_8E_EXPANSION", "1") or "1").lower() not in ("0", "false", "no")
+
+# Investment Engine (audit ElectroDrive): NPV/IRR/payback/debt-capacity/stress su FinanceBoost
+# quando il caso descrive un investimento. K2A_8E_INVESTMENT=0 spegne.
+_INVESTMENT_ENGINE = (os.environ.get("K2A_8E_INVESTMENT", "1") or "1").lower() not in ("0", "false", "no")
 
 
 class Refuse(Exception):
@@ -379,6 +383,16 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
             deliverable, _part_meta = finance.neutralize_financeboost_partial(deliverable, inputs)
             if _part_meta:
                 filiera_meta = {**filiera_meta, **_part_meta}
+
+        # INVESTMENT ENGINE (eval ElectroDrive): se il caso descrive un INVESTIMENTO
+        # (`investimento_progetto`/capex + ricavi incrementali), FinanceBoost diventa un
+        # investment decision support system: NPV/IRR/payback, debt capacity (PFN/EBITDA post
+        # vs covenant), sensitività e stress test. No-op se non è un caso di investimento.
+        # Registra i numeri nei facts → il gate di grounding non li cancella. K2A_8E_INVESTMENT=0 spegne.
+        if _INVESTMENT_ENGINE:
+            deliverable, inv_meta = investment.apply_investment(deliverable, inputs, fb_reclass, facts)
+            if inv_meta:
+                filiera_meta = {**filiera_meta, "investment": inv_meta}
 
     # AgevolazioniBoost: i benefici (Sabatini/T5.0/de minimis) vengono dai tool
     # deterministici di k2a_agevolazioni, non dall'LLM (Fix #3). Cumulabilità segnalata.

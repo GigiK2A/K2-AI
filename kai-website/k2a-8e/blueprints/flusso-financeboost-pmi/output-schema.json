@@ -580,6 +580,35 @@
     "limitazioni": {
       "type": "string",
       "description": "slot voce ord8 (conclusioni_limitazioni): limitazioni dell'analisi dovute a dati mancanti."
+    },
+    "decisione_investimento": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico, Investment Engine] GO/GO WITH CONDITIONS/NO-GO sull'investimento con motivo."
+    },
+    "investment_summary": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] NPV, IRR, payback, ROI, FCF per anno, terminal value, con formula e assunzioni."
+    },
+    "debt_capacity": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] PFN/EBITDA attuale e post-investimento vs covenant; debito aggiuntivo max sostenibile."
+    },
+    "sensitivita_npv": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] NPV al variare di margine/WACC/orizzonte."
+    },
+    "stress_test_investimento": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] Perdita cliente / riduzione volumi / ritardo pagamenti; concentrazione."
+    },
+    "metodo_investimento": {
+      "type": "string",
+      "description": "[Deterministico] Nota di metodo dell'analisi di investimento."
     }
   },
   "additionalProperties": false

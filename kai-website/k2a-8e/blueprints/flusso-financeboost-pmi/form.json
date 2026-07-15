@@ -2,61 +2,278 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FinanceBoost — form input PMI",
   "type": "object",
-  "required": ["settore_ateco", "n_dipendenti", "bilanci"],
+  "required": [
+    "settore_ateco",
+    "n_dipendenti",
+    "bilanci"
+  ],
   "properties": {
-    "settore_ateco": { "type": "string", "description": "codice ATECO o descrizione settore" },
-    "n_dipendenti": { "type": "integer", "minimum": 0 },
-    "fatturato_ultimo_anno": { "type": ["number", "null"], "description": "EUR" },
-    "anni_bilancio_disponibili": { "type": "integer", "minimum": 1, "maximum": 5, "description": "numero di esercizi disponibili (1-3 consigliati)" },
+    "settore_ateco": {
+      "type": "string",
+      "description": "codice ATECO o descrizione settore"
+    },
+    "n_dipendenti": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fatturato_ultimo_anno": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "EUR"
+    },
+    "anni_bilancio_disponibili": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "numero di esercizi disponibili (1-3 consigliati)"
+    },
     "bilanci": {
       "type": "array",
       "description": "voci principali di SP e CE per anno",
       "items": {
         "type": "object",
-        "required": ["anno", "ricavi", "utile_netto", "totale_attivo"],
+        "required": [
+          "anno",
+          "ricavi",
+          "utile_netto",
+          "totale_attivo"
+        ],
         "properties": {
-          "anno": { "type": "integer" },
+          "anno": {
+            "type": "integer"
+          },
           "voci": {
             "type": "array",
             "description": "TRASCRIZIONE FEDELE delle righe del bilancio (preferita: PN, EBITDA, debiti, indici e aggregati vengono DERIVATI deterministicamente dalle voci — non vanno calcolati a mano). Una voce per riga etichettata di Stato Patrimoniale e Conto Economico.",
             "items": {
               "type": "object",
-              "required": ["sezione", "descrizione", "importo"],
+              "required": [
+                "sezione",
+                "descrizione",
+                "importo"
+              ],
               "properties": {
-                "sezione": { "enum": ["attivo", "passivo", "costi", "ricavi", "risultato"], "description": "attivo/passivo = Stato Patrimoniale; costi/ricavi = Conto Economico; risultato = utile/perdita del periodo" },
-                "descrizione": { "type": "string", "description": "descrizione della riga COSI COM'E nel bilancio" },
-                "importo": { "type": "number", "description": "importo in EUR, numero puro (1234.56), niente separatori migliaia ne simboli" }
+                "sezione": {
+                  "enum": [
+                    "attivo",
+                    "passivo",
+                    "costi",
+                    "ricavi",
+                    "risultato"
+                  ],
+                  "description": "attivo/passivo = Stato Patrimoniale; costi/ricavi = Conto Economico; risultato = utile/perdita del periodo"
+                },
+                "descrizione": {
+                  "type": "string",
+                  "description": "descrizione della riga COSI COM'E nel bilancio"
+                },
+                "importo": {
+                  "type": "number",
+                  "description": "importo in EUR, numero puro (1234.56), niente separatori migliaia ne simboli"
+                }
               }
             }
           },
-          "ricavi": { "type": ["number", "null"] },
-          "ebitda": { "type": ["number", "null"] },
-          "reddito_operativo": { "type": ["number", "null"], "description": "EBIT — serve per ROS/ROI deterministici" },
-          "utile_netto": { "type": ["number", "null"] },
-          "totale_attivo": { "type": ["number", "null"] },
-          "attivo_corrente": { "type": ["number", "null"], "description": "per current/quick ratio, CCN" },
-          "passivo_corrente": { "type": ["number", "null"], "description": "per current/quick ratio, CCN" },
-          "rimanenze": { "type": ["number", "null"], "description": "magazzino — per quick ratio" },
-          "patrimonio_netto": { "type": ["number", "null"] },
-          "capitale_sociale": { "type": ["number", "null"] },
-          "riserve": { "type": ["number", "null"] },
-          "utili_portati_nuovo": { "type": ["number", "null"] },
-          "risultato_esercizio": { "type": ["number", "null"] },
-          "passivita_verso_terzi": { "type": ["number", "null"], "description": "debiti e fondi escluso il patrimonio netto" },
-          "totale_passivita_prima_risultato": { "type": ["number", "null"], "description": "solo per bilanci a 4 sezioni: totale passività stampato prima della riga utile/perdita del periodo" },
-          "liquidita": { "type": ["number", "null"], "description": "disponibilità liquide / cassa e banche attive (serve per la PFN corretta = debiti finanziari − liquidità)" },
-          "pfn": { "type": ["number", "null"], "description": "Posizione Finanziaria Netta se dichiarata dal cliente (ha la precedenza: è un dato, non un derivato)" },
-          "debiti_finanziari": { "type": ["number", "null"], "description": "solo banche, mutui e altri finanziamenti onerosi" },
-          "debiti_bancari": { "type": ["number", "null"] },
-          "mutui_finanziamenti": { "type": ["number", "null"] },
-          "imposte": { "type": ["number", "null"] },
-          "oneri_finanziari": { "type": ["number", "null"] },
-          "ammortamenti_svalutazioni": { "type": ["number", "null"] },
-          "costo_personale": { "type": ["number", "null"] }
+          "ricavi": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ebitda": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reddito_operativo": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "EBIT — serve per ROS/ROI deterministici"
+          },
+          "utile_netto": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "totale_attivo": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "attivo_corrente": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "per current/quick ratio, CCN"
+          },
+          "passivo_corrente": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "per current/quick ratio, CCN"
+          },
+          "rimanenze": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "magazzino — per quick ratio"
+          },
+          "patrimonio_netto": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "capitale_sociale": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "riserve": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "utili_portati_nuovo": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "risultato_esercizio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "passivita_verso_terzi": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "debiti e fondi escluso il patrimonio netto"
+          },
+          "totale_passivita_prima_risultato": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "solo per bilanci a 4 sezioni: totale passività stampato prima della riga utile/perdita del periodo"
+          },
+          "liquidita": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "disponibilità liquide / cassa e banche attive (serve per la PFN corretta = debiti finanziari − liquidità)"
+          },
+          "pfn": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Posizione Finanziaria Netta se dichiarata dal cliente (ha la precedenza: è un dato, non un derivato)"
+          },
+          "debiti_finanziari": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "solo banche, mutui e altri finanziamenti onerosi"
+          },
+          "debiti_bancari": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mutui_finanziamenti": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "imposte": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "oneri_finanziari": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ammortamenti_svalutazioni": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "costo_personale": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
         }
       }
     },
-    "note": { "type": "string", "description": "problemi percepiti, investimenti in programma, settore in crisi/crescita" }
+    "note": {
+      "type": "string",
+      "description": "problemi percepiti, investimenti in programma, settore in crisi/crescita"
+    },
+    "investimento_progetto": {
+      "type": "object",
+      "description": "SOLO se il caso è una DECISIONE DI INVESTIMENTO (CAPEX per nuovo cliente/impianto): compila coi numeri esatti del cliente, ometti i campi non forniti.",
+      "properties": {
+        "capex": {
+          "type": "number",
+          "description": "investimento richiesto in EUR (es. 6900000)"
+        },
+        "ricavi_incrementali_anno1": {
+          "type": "number",
+          "description": "ricavi aggiuntivi anno 1 / contratto iniziale in EUR"
+        },
+        "ricavi_incrementali_regime": {
+          "type": "number",
+          "description": "ricavi aggiuntivi a regime / potenziale in EUR"
+        },
+        "margine_ebitda_pct": {
+          "type": "number",
+          "description": "margine EBITDA % del business incrementale, se dichiarato"
+        },
+        "giorni_incasso": {
+          "type": "number",
+          "description": "termini di pagamento del nuovo cliente in giorni"
+        },
+        "wacc_pct": {
+          "type": "number",
+          "description": "costo del capitale % se dichiarato"
+        },
+        "orizzonte_anni": {
+          "type": "number",
+          "description": "orizzonte di valutazione in anni"
+        },
+        "quota_debito_pct": {
+          "type": "number",
+          "description": "% del CAPEX finanziata a debito"
+        }
+      }
+    }
   },
   "additionalProperties": false
 }
