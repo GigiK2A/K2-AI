@@ -176,10 +176,21 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
         vid = v["id"]
         argomenti = v.get("argomenti_obbligatori", [])
         vm = voci_meta.get(vid) or {}
-        # rischi/azioni: dal meta strutturato (LLM) se presente, altrimenti dalle argomenti
-        rischi = [{"descrizione": str(r.get("descrizione", "")), "gravita": _grav(r.get("gravita", "media")),
-                   "serve_avvocato": bool(r.get("serve_avvocato", False))}
-                  for r in vm.get("rischi", []) if r.get("descrizione")]
+        # rischi/azioni: dal meta strutturato (LLM) se presente, altrimenti dalle argomenti.
+        # TOLLERANTE alla forma: gpt-oss a volte emette `rischi` come lista di STRINGHE invece
+        # di oggetti {descrizione,gravita,serve_avvocato} → `r.get(...)` andava in AttributeError
+        # e faceva fallire l'intero LegalBoost (crash prod M&A DD, 15 lug). Una stringa diventa
+        # la descrizione con gravità/serve_avvocato di default.
+        rischi = []
+        for r in vm.get("rischi", []):
+            if isinstance(r, dict):
+                desc = str(r.get("descrizione", "")).strip()
+                if not desc:
+                    continue
+                rischi.append({"descrizione": desc, "gravita": _grav(r.get("gravita", "media")),
+                               "serve_avvocato": bool(r.get("serve_avvocato", False))})
+            elif isinstance(r, str) and r.strip():
+                rischi.append({"descrizione": r.strip(), "gravita": "media", "serve_avvocato": False})
         if not rischi:
             rischi = [{"descrizione": f"Verificare: {a}.", "gravita": "media", "serve_avvocato": False}
                       for a in argomenti[:2]] or [{"descrizione": f"Analisi area «{v['titolo']}».",
@@ -195,9 +206,11 @@ def assemble_legalboost(blueprint: dict, sezioni: dict, citazioni: list[dict],
             "norme_citate": norme if vid in norme_voci else [],
         })
 
+    # STESSO rischio di forma (gpt-oss può emettere item non-dict): guardia isinstance
+    # prima di .get(), altrimenti un elemento stringa fa AttributeError qui.
     mappa = (meta_struct or {}).get("mappa_rischi")
     if not (isinstance(mappa, list) and mappa and all(
-            m.get("semaforo") in ("verde", "giallo", "rosso") for m in mappa)):
+            isinstance(m, dict) and m.get("semaforo") in ("verde", "giallo", "rosso") for m in mappa)):
         mappa = []
     score = (meta_struct or {}).get("score")
     if not isinstance(score, int) or not (0 <= score <= 100):
