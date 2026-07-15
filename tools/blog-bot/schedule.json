@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-07-08",
+  "updated_at": "2026-07-15",
   "description": "Scaletta blog + IG K2-AI. Source of truth unica per blog autopilot e n8n IG.",
   "rows": [
     {
@@ -111,9 +111,9 @@
       "url": "https://www.k2-ai.it/suite-ai/rag-knowledge-base.html",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "",
-      "blog_pubblicato": "",
-      "blog_url": ""
+      "blog_slug": "rag-knowledge-base-pmi",
+      "blog_pubblicato": "2026-07-15",
+      "blog_url": "/blog/rag-knowledge-base-pmi"
     },
     {
       "row": 10,
