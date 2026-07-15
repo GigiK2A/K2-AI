@@ -44,6 +44,8 @@
           "risultato_esercizio": { "type": ["number", "null"] },
           "passivita_verso_terzi": { "type": ["number", "null"], "description": "debiti e fondi escluso il patrimonio netto" },
           "totale_passivita_prima_risultato": { "type": ["number", "null"], "description": "solo per bilanci a 4 sezioni: totale passività stampato prima della riga utile/perdita del periodo" },
+          "liquidita": { "type": ["number", "null"], "description": "disponibilità liquide / cassa e banche attive (serve per la PFN corretta = debiti finanziari − liquidità)" },
+          "pfn": { "type": ["number", "null"], "description": "Posizione Finanziaria Netta se dichiarata dal cliente (ha la precedenza: è un dato, non un derivato)" },
           "debiti_finanziari": { "type": ["number", "null"], "description": "solo banche, mutui e altri finanziamenti onerosi" },
           "debiti_bancari": { "type": ["number", "null"] },
           "mutui_finanziamenti": { "type": ["number", "null"] },

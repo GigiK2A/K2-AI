@@ -325,22 +325,32 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
     # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate
     # (finance.py) + WACC dal quant — non scritte dall'LLM (chiude P0-2/P0-6).
     if skill == "flusso-financeboost-pmi":
-        fb_reclass = finance.latest_reclass_from_inputs(inputs)
-        # QUADRATURA KO = voci estratte/classificate male (autofill) → i derivati sono
-        # GARBAGE (bug prod 8 lug: PN cliente 500k → PN derivato -165k, 'ricapitalizzare').
-        # Fallback: reclass dagli AGGREGATI forniti dall'utente (D/E, ROE, EBITDA margin
-        # veri), portandosi dietro quadratura+warnings del reclass fallito per la nota
-        # 'dati estratti da verificare' nelle limitazioni.
-        if fb_reclass and (fb_reclass.get("quadratura") or {}).get("ok") is False:
-            _agg = finance.latest_aggregates_from_inputs(inputs)
-            if _agg:
-                _agg["quadratura"] = fb_reclass.get("quadratura")
-                _agg["warnings"] = list(fb_reclass.get("warnings") or []) + list(_agg.get("warnings") or [])
-                fb_reclass = _agg
-                filiera_meta = {**filiera_meta, "financeboost_fallback_aggregati": True}
-                # NB: niente job_id — apply_deterministic_bindings non lo riceve (NameError
-                # in prod appena una run è arrivata ai bindings col ramo quadratura-KO).
-                log.warning("financeboost: quadratura KO → indici dagli aggregati cliente")
+        # FONTE DI VERITÀ (fix eval ElectroDrive: EBITDA 3,36M → 20,64M, liquidità→0, PFN→df):
+        # gli AGGREGATI dichiarati dal cliente battono i valori ricalcolati dalle voci (che
+        # l'autofill fabbrica dagli aggregati stessi → EBITDA mislabellato come costo). Le voci
+        # riempiono solo il dettaglio mancante e solo se quadrano. Sostituisce il fallback
+        # fragile (che scattava solo su quadratura esplicitamente False + aggregati top-level).
+        fb_reclass = finance.reclass_reconciled(inputs)
+        if fb_reclass and (fb_reclass.get("fonte") == "aggregati_cliente"):
+            filiera_meta = {**filiera_meta, "financeboost_aggregati_autoritativi": True}
+        # VALIDAZIONE NUMERICA (spec ElectroDrive): KPI implausibili (EBITDA margin >50%,
+        # ROE >±100%, ROI >50%, liquidità azzerata con input, PFN=debiti) → NON stampati come
+        # certi. Registrati in meta e iniettati come nota nelle limitazioni.
+        if fb_reclass:
+            _anomalie = finance.validate_kpis(fb_reclass, inputs)
+            if _anomalie:
+                filiera_meta = {**filiera_meta, "financeboost_anomalie_kpi": _anomalie}
+                _err = [a for a in _anomalie if a.get("gravita") == "errore"]
+                log.warning("financeboost: %d anomalie KPI (%d errori) — %s",
+                            len(_anomalie), len(_err), [a["codice"] for a in _anomalie])
+                nota = ("⚠ CONTROLLO NUMERICO: " + " ".join(a["messaggio"] for a in _anomalie))
+                lim = deliverable.get("limitazioni")
+                if isinstance(lim, list):
+                    lim.insert(0, nota)
+                elif isinstance(lim, str):
+                    deliverable["limitazioni"] = nota + "\n" + lim
+                else:
+                    deliverable["limitazioni"] = [nota]
         if fb_reclass:
             # WACC: se l'utente ne fornisce uno (es. "WACC 9,5%") HA LA PRECEDENZA sul CAPM del
             # quant, così la sezione valutazione (EVA) non contraddice la prosa, che usa

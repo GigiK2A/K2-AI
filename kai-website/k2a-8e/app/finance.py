@@ -575,11 +575,24 @@ def reclass_from_aggregates(b: dict) -> Optional[dict]:
     utile, ta = n("utile_netto"), n("totale_attivo")
     ac, pc = n("attivo_corrente"), n("passivo_corrente")
     pn, df = n("patrimonio_netto"), n("debiti_finanziari")
+    # liquidità e PFN: il cliente li fornisce come aggregati (eval ElectroDrive: liquidità
+    # 3,2M, PFN 5,5M). Prima erano hardcoded None → liquidità=0 e PFN=df-0=8,7M (sbagliata).
+    liquidita = n("liquidita") if n("liquidita") is not None else \
+        (n("disponibilita_liquide") if n("disponibilita_liquide") is not None else n("cassa"))
+    pfn_user = n("pfn") if n("pfn") is not None else n("posizione_finanziaria_netta")
     if not any(v is not None for v in (ricavi, ebitda, utile, pn, df)):
         return None
+    # PFN: il valore dell'UTENTE ha la precedenza (è un dato di bilancio, non un derivato);
+    # altrimenti PFN = debiti finanziari − liquidità (solo se ho entrambi, mai df−0).
+    if pfn_user is not None:
+        pfn = pfn_user
+    elif df is not None and liquidita is not None:
+        pfn = round(df - liquidita, 2)
+    else:
+        pfn = None
     sp = {"totale_attivo": ta, "attivo_corrente": ac, "passivo_corrente": pc,
           "patrimonio_netto": pn, "debiti_finanziari": df, "debiti_terzi": None,
-          "immobilizzazioni_nette": None, "liquidita": None}
+          "immobilizzazioni_nette": None, "liquidita": _m(liquidita) if liquidita is not None else None}
     ce = {"ricavi": ricavi, "ebitda": ebitda, "ebit": ebit, "utile_netto": utile}
     indici = {
         "de": _r(_div(df, pn)),
@@ -591,14 +604,16 @@ def reclass_from_aggregates(b: dict) -> Optional[dict]:
         "current_ratio": _r(_div(ac, pc)),
         "quick_ratio": None,        # rimanenze non note dagli aggregati
         "ccn": _m(round(ac - pc, 2)) if (ac is not None and pc) else None,
-        "pfn": None, "interest_coverage": None,
+        "pfn": _m(pfn) if pfn is not None else None,
+        "pfn_ebitda": _r(_div(pfn, ebitda)) if (pfn is not None and ebitda) else None,
+        "interest_coverage": None,
         "autonomia_finanziaria": _p(_div(pn, ta)) if ta else None,
         "dso": None,
     }
     return {"anno": b.get("anno"), "sp": sp, "ce": ce, "indici": indici,
             "quadratura": {"ok": None}, "classificazione": [],
-            "warnings": ["indici da AGGREGATI forniti dal cliente (voci grezze scartate: "
-                         "quadratura non rispettata)"],
+            "warnings": ["indici da AGGREGATI forniti dal cliente (i numeri dell'utente hanno "
+                         "la precedenza sui derivati dalle voci)"],
             "fonte": "aggregati_cliente"}
 
 
@@ -632,6 +647,125 @@ def latest_reclass_from_inputs(inputs: dict) -> Optional[dict]:
     with_year = [b for b in cand if _num(b.get("anno")) is not None]
     b = max(with_year, key=lambda x: _num(x.get("anno"))) if with_year else cand[-1]
     return reclassify_bilancio(b["voci"], b.get("anno"))
+
+
+# Campi-AGGREGATO che, se il cliente li fornisce, sono DATO (non derivato) e battono
+# qualunque valore ricalcolato dalle voci — la loro presenza rende gli aggregati autoritativi.
+_AGG_HEADLINE = ("ebitda", "reddito_operativo", "utile_netto", "patrimonio_netto",
+                 "debiti_finanziari", "liquidita", "pfn")
+
+
+def _has_usable_aggregates(b: dict) -> bool:
+    return isinstance(b, dict) and any(_num(b.get(k)) is not None for k in _AGG_HEADLINE)
+
+
+def _latest_bilancio_dict(inputs: dict) -> Optional[dict]:
+    if not isinstance(inputs, dict):
+        return None
+    bilanci = inputs.get("bilanci")
+    if not isinstance(bilanci, list) or not bilanci:
+        return None
+    cand = [b for b in bilanci if isinstance(b, dict)]
+    if not cand:
+        return None
+    with_year = [b for b in cand if _num(b.get("anno")) is not None]
+    return max(with_year, key=lambda x: _num(x.get("anno"))) if with_year else cand[-1]
+
+
+def reclass_reconciled(inputs: dict) -> Optional[dict]:
+    """FONTE DI VERITÀ dei numeri FinanceBoost (fix eval ElectroDrive: EBITDA 3,36M → 20,64M).
+
+    Gli AGGREGATI dichiarati dal cliente (EBITDA/EBIT/utile/PN/debiti/liquidità/PFN) sono un
+    DATO, non un derivato: hanno SEMPRE la precedenza sui valori ricalcolati dalle `voci`
+    (che l'autofill fabbrica quando il cliente dà solo aggregati → mislabella l'EBITDA come
+    costo → EBITDA = ricavi − costi). Regola:
+      • aggregati presenti → base = reclass DAGLI AGGREGATI (corretto e coerente);
+        le voci riempiono SOLO il dettaglio che gli aggregati non danno (current/quick ratio,
+        CCN, DSO, immobilizzazioni) e SOLO se quadrano (altrimenti sono garbage → ignorate);
+        se un derivato dalle voci contraddice l'aggregato dichiarato → warning esplicito.
+      • nessun aggregato → path voci storico (bilancio vero trascritto).
+    Ritorna None se non c'è né l'uno né l'altro (la pipeline degrada a PARTIAL)."""
+    b = _latest_bilancio_dict(inputs)
+    if b is None:
+        return None
+    voci_rc = reclassify_bilancio(b["voci"], b.get("anno")) if isinstance(b.get("voci"), list) and b["voci"] else None
+
+    if not _has_usable_aggregates(b):
+        return voci_rc  # nessun aggregato dichiarato → path voci storico (None se manco quelle)
+
+    agg_rc = reclass_from_aggregates(b)
+    if agg_rc is None:
+        return voci_rc
+
+    warnings = list(agg_rc.get("warnings") or [])
+    voci_ok = bool(voci_rc and (voci_rc.get("quadratura") or {}).get("ok") is True)
+    if voci_rc and not voci_ok:
+        # consistency check: se le voci NON quadrano ma qualcuno le userebbe, segnala che
+        # sono state scartate a favore degli aggregati (trasparenza per il CFO).
+        vd = (voci_rc.get("ce") or {}).get("ebitda")
+        ad = (agg_rc.get("ce") or {}).get("ebitda")
+        if vd is not None and ad and abs(vd - ad) / abs(ad) > 0.05:
+            warnings.append(f"voci di bilancio incoerenti con gli aggregati dichiarati "
+                            f"(EBITDA da voci {vd:.0f} vs dichiarato {ad:.0f}): usati i valori "
+                            f"dichiarati dal cliente, voci scartate")
+    # riempi SOLO il dettaglio mancante dagli aggregati, e SOLO da voci che quadrano
+    if voci_ok:
+        for sec in ("sp", "ce"):
+            for k, v in (voci_rc.get(sec) or {}).items():
+                if agg_rc[sec].get(k) is None and v is not None:
+                    agg_rc[sec][k] = v
+        for k, v in (voci_rc.get("indici") or {}).items():
+            if agg_rc["indici"].get(k) is None and v is not None:
+                agg_rc["indici"][k] = v
+        warnings.append("dettaglio (ratio/CCN/DSO) integrato dalle voci quadrate; headline dai valori dichiarati")
+    agg_rc["warnings"] = warnings
+    return agg_rc
+
+
+def validate_kpis(reclass: dict, inputs: Optional[dict] = None) -> list[dict]:
+    """VALIDAZIONE NUMERICA (spec ElectroDrive): intercetta KPI implausibili PRIMA
+    dell'export invece di stamparli come dati certi. Ogni anomalia = {codice, gravita,
+    messaggio}. gravita 'errore' = numeri corrotti (non stampare come certi); 'warning' =
+    da verificare. Deterministico, nessun blocco duro (policy no-vicolo-cieco): il chiamante
+    etichetta/degrada, ma il report NON deve MAI mostrare un 86% di EBITDA margin come vero."""
+    out: list[dict] = []
+    idx = (reclass or {}).get("indici") or {}
+    ce = (reclass or {}).get("ce") or {}
+    sp = (reclass or {}).get("sp") or {}
+    em = _num(idx.get("ebitda_margin"))
+    if em is not None and em > 50:
+        out.append({"codice": "ebitda_margin_implausibile", "gravita": "errore",
+                    "messaggio": f"EBITDA margin {em:.0f}% > 50%: quasi certamente un errore di calcolo "
+                                 "(EBITDA o ricavi corrotti). Verificare i dati sorgente."})
+    roe = _num(idx.get("roe"))
+    if roe is not None and abs(roe) > 100:
+        out.append({"codice": "roe_implausibile", "gravita": "errore",
+                    "messaggio": f"ROE {roe:.0f}% oltre ±100%: probabile utile o patrimonio netto corrotto."})
+    roi = _num(idx.get("roi"))
+    if roi is not None and roi > 50:
+        out.append({"codice": "roi_implausibile", "gravita": "warning",
+                    "messaggio": f"ROI {roi:.0f}% > 50%: verificare EBIT e totale attivo."})
+    ros = _num(idx.get("ros"))
+    if ros is not None and ros > 50:
+        out.append({"codice": "ros_implausibile", "gravita": "warning",
+                    "messaggio": f"ROS {ros:.0f}% > 50%: verificare EBIT e ricavi."})
+    # liquidità azzerata ma dichiarata negli input → dato perso nella pipeline
+    liq = _num(sp.get("liquidita"))
+    liq_input = None
+    if isinstance(inputs, dict):
+        b = _latest_bilancio_dict(inputs) or {}
+        liq_input = _num(b.get("liquidita")) or _num(b.get("disponibilita_liquide")) or _num(b.get("cassa"))
+    if (liq is None or liq == 0) and liq_input:
+        out.append({"codice": "liquidita_azzerata", "gravita": "errore",
+                    "messaggio": f"liquidità a 0 ma il cliente ha dichiarato €{liq_input:,.0f}: dato perso "
+                                 "nella pipeline (PFN e ratio di liquidità ne risultano falsati).".replace(",", ".")})
+    # PFN == debiti finanziari → liquidità non sottratta (o azzerata)
+    pfn, df = _num(idx.get("pfn")), _num(sp.get("debiti_finanziari"))
+    if pfn is not None and df is not None and abs(pfn - df) < 1 and (liq is None or liq == 0) and liq_input:
+        out.append({"codice": "pfn_uguale_debiti", "gravita": "warning",
+                    "messaggio": "PFN = debiti finanziari: la liquidità non è stata sottratta "
+                                 "(PFN corretta = debiti − liquidità)."})
+    return out
 
 
 def periodo_from_inputs(inputs: dict) -> Optional[str]:
