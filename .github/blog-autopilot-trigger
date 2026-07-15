@@ -1,0 +1,2 @@
+one-shot 2026-07-15: recupero articolo RAG (run del mattino fallito su npm ci senza lockfile).
+Questo file e il trigger push nel workflow vengono rimossi dopo la pubblicazione.
