@@ -229,6 +229,18 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
       "acquisire una azienda", "acquistare una società", "acquisire una società",
       "comprare un'azienda", "comprare una azienda", "acquistare un competitor",
       "acquisire un competitor", "azienda target", "società target", "acquisizione del target",
+      # ITALIANO VERO (eval M&A 15 lug): "acquistare un CONCORRENTE locale" non matchava
+      # nulla — c'era solo l'inglese "competitor" — e le keyword finance del TARGET
+      # (liquidità/clienti persi) instradavano su FinanceBoost = piano di risanamento
+      # rivolto al soggetto SBAGLIATO invece della due diligence per l'acquirente.
+      "acquistare un concorrente", "acquistare il concorrente", "acquisire un concorrente",
+      "acquisire il concorrente", "comprare un concorrente", "comprare il concorrente",
+      "acquisto di un concorrente", "acquisto del concorrente", "acquisizione di un concorrente",
+      "acquisizione del concorrente", "rilevare un'azienda", "rilevare una azienda",
+      "rilevare una società", "rilevare un concorrente", "rilevare il concorrente",
+      "rilevare un'attività", "rilevare una attività", "proposta di acquisto",
+      "proposta di acquisizione", "valutare l'acquisto", "valutare l'acquisizione",
+      "lettera di intenti", "earn-out", "earn out",
       "post-fusione", "post fusione"), "checkup_legale_dd"),
     (("contratt", "nda", "clausol", "contract review", "review legale"), "checkup_legale_review"),
     (("legale", "avvocat", "causa", "contenzioso", "parere legale", "diffida"), "primo_parere_legale"),

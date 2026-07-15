@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from typing import Optional
 
 from datetime import datetime, timezone
@@ -29,6 +30,64 @@ from ..settings import STORAGE_REPORTS_BUCKET
 
 router = APIRouter()
 log = logging.getLogger(__name__)
+
+
+_ALIGN_SYSTEM = (
+    "Sei l'OUTPUT ALIGNMENT CHECKER di K2-AI. Ricevi gli ultimi messaggi del CLIENTE e il "
+    "DOCUMENTO che il sistema sta per generare. PRIMA della generazione verifica:\n"
+    "1) Qual è la DECISIONE che il cliente deve prendere?\n"
+    "2) Il documento scelto risponde a QUELLA decisione (dominio corretto)?\n"
+    "3) Le azioni tipiche di quel documento sarebbero ESEGUIBILI DAL CLIENTE?\n"
+    "ATTENZIONE al caso in cui il cliente sta VALUTANDO UN'ALTRA azienda (acquisizione/M&A, "
+    "fornitore, partner): il soggetto ANALIZZATO non è il cliente. Un documento che dà azioni "
+    "gestionali per l'azienda analizzata (risanare la SUA liquidità, recuperare i SUOI crediti, "
+    "le SUE campagne commerciali) è DISALLINEATO: al cliente-acquirente serve una due diligence/"
+    "valutazione dell'operazione (red flag, prezzo, rischi), non un piano di risanamento altrui.\n"
+    "Rispondi SOLO con l'oggetto JSON: {\"aligned\":bool,\"decisione\":\"…\",\"dominio_atteso\":\"…\","
+    "\"motivo\":\"…\"}. Nel dubbio: aligned=true (bloccare un documento giusto è un errore)."
+)
+
+
+def _alignment_check(session: dict, servizio: dict) -> Optional[dict]:
+    """OUTPUT ALIGNMENT CHECKER (eval M&A 15 lug): mai generare un documento del dominio
+    sbagliato. Il caso che l'ha reso necessario: conversazione "acquistare un concorrente"
+    instradata su FinanceBoost → piano di risanamento del TARGET, azioni rivolte al
+    soggetto sbagliato, zero risposte a «lo compro? il prezzo è giusto?». Un report
+    sbagliato ma credibile è PEGGIO di nessun report.
+
+    Verdetto LLM mono-scopo. Ritorna il dict del disallineamento SOLO su aligned=false
+    esplicito con motivo; None in ogni altro caso (fail-open: il checker non deve mai
+    bloccare per un proprio errore). KBOT_ALIGNMENT_CHECK=0 per disattivare."""
+    if (os.environ.get("KBOT_ALIGNMENT_CHECK", "1") or "1").lower() not in ("1", "true", "yes"):
+        return None
+    try:
+        import anthropic
+        msgs = [str(m.get("content") or "")[:400] for m in (session.get("messages") or [])
+                if isinstance(m, dict) and m.get("role") == "user"][-6:]
+        if not msgs:
+            return None
+        label = servizio.get("label") or servizio.get("nome") or servizio.get("id") or ""
+        desc = str(servizio.get("descrizione") or servizio.get("description") or "")[:300]
+        user = ("MESSAGGI DEL CLIENTE (ultimi turni):\n- " + "\n- ".join(msgs) +
+                f"\n\nDOCUMENTO CHE STA PER ESSERE GENERATO: {label}" +
+                (f" — {desc}" if desc else "") +
+                "\n\nVerifica l'allineamento e rispondi SOLO col JSON.")
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        resp = client.messages.create(
+            model=settings.ANTHROPIC_MODEL, max_tokens=400,
+            system=_ALIGN_SYSTEM,
+            messages=[{"role": "user", "content": user}], timeout=60.0,
+        )
+        out = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        s, e = out.find("{"), out.rfind("}")
+        v = json.loads(out[s:e + 1]) if 0 <= s < e else None
+        if isinstance(v, dict) and v.get("aligned") is False and str(v.get("motivo") or "").strip():
+            log.warning("alignment: DISALLINEATO — servizio=%s decisione=%r dominio_atteso=%r",
+                        servizio.get("id"), v.get("decisione"), v.get("dominio_atteso"))
+            return v
+    except Exception:
+        log.warning("alignment check fallito (fail-open)", exc_info=True)
+    return None
 
 
 def _conversation_fp(session: dict, servizio_id: str) -> str:
@@ -463,6 +522,22 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
         collected["deliverable_preliminare"] = [c.get("id") for c in missing_non_identity]
         log.info("auto: report PRELIMINARE per %s, campi stimati=%s",
                  servizio_id, [c.get("id") for c in missing_non_identity])
+
+    # OUTPUT ALIGNMENT CHECKER — PRIMA del paywall: mai chiedere un pagamento (né
+    # generare) per un documento del dominio sbagliato. Vedi _alignment_check.
+    _mis = _alignment_check(session, servizio)
+    if _mis:
+        raise HTTPException(status_code=409, detail={
+            "reason": "misaligned_deliverable",
+            "servizio_id": servizio_id,
+            "message": (
+                f"Il documento instradato ({servizio.get('label') or servizio_id}) non risponde alla "
+                f"decisione che devi prendere ({str(_mis.get('decisione') or 'la tua richiesta')[:140]}). "
+                f"Il caso sembra richiedere: {str(_mis.get('dominio_atteso') or 'un documento diverso')[:100]}. "
+                "Scrivimi in chat che documento ti serve (es. «due diligence sull'azienda target») "
+                "e premi di nuovo Genera."
+            ),
+        })
 
     # Paywall reale (KBOT_FREE_MODE off): se non pagato → 402 con i dati per il
     # checkout del boost (il frontend apre Stripe e al ritorno genera).
