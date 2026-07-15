@@ -73,6 +73,13 @@ async function main() {
   console.log("[revise] calling Claude Haiku...");
   pieces = await reviseArticle(anthropic, pieces);
 
+  // Slug pinning: se la riga schedule ha già blog_slug (es. ri-pubblicazione
+  // sullo stesso URL), vince su quello proposto dal modello.
+  if (row.blog_slug.trim()) {
+    pieces.meta.slug = row.blog_slug.trim();
+    console.log(`[slug] pinned from schedule.json: ${pieces.meta.slug}`);
+  }
+
   // Image gen via OpenAI gpt-image-2. Se OPENAI_API_KEY manca o le scene
   // non sono nel META, l'articolo viene pubblicato senza immagini (warning).
   let images: GeneratedImages | null = null;
