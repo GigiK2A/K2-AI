@@ -805,11 +805,13 @@ def impact_matrix(items: list, S=None) -> Table:
     return t
 
 
-_ORIZZONTI = [  # (chiavi-match, etichetta, finestra)
-    (("immediato", "0-7", "0_7", "subito"), "Immediato", "0-7 giorni"),
-    (("breve", "30"), "Breve termine", "30 giorni"),
-    (("medio", "90"), "Medio termine", "90 giorni"),
-    (("lungo", "6-12", "6_12", "annuale"), "Lungo termine", "6-12 mesi"),
+_ORIZZONTI = [  # (chiavi-match, etichetta, finestra) — finestre hyphen-free (i trattini tra
+    # cifre venivano riecheggiati corrotti dal modello locale: 0-7→07). Chiavi ampie così
+    # bucketizza anche le etichette in prosa ('prima settimana', 'entro 48 ore').
+    (("immediato", "48 ore", "48h", "subito", "settimana", "0-7", "0_7"), "Immediato", "entro 7 giorni"),
+    (("breve", "primo mese", "30 giorni", "30"), "Breve termine", "entro 30 giorni"),
+    (("medio", "90 giorni", "90"), "Medio termine", "entro 90 giorni"),
+    (("lungo", "12 mesi", "6-12", "6_12", "annuale", "trimestr"), "Lungo termine", "entro 12 mesi"),
 ]
 
 

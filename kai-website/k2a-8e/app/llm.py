@@ -155,7 +155,9 @@ _QUALITA_TRASVERSALE = (
     "  • Distingui problema DICHIARATO vs problema REALE, cause e conseguenze.\n"
     "  • ASSUNZIONI esplicite: separa fatti confermati, dichiarazioni del cliente, assunzioni e dati "
     "mancanti; non spacciare assunzioni per fatti.\n"
-    "  • Piano d'azione per ORIZZONTI temporali: 0-48h / 3-7 giorni / 8-30 giorni / 31-90 giorni.\n"
+    "  • Piano d'azione per ORIZZONTI temporali, usando queste ETICHETTE ESATTE (parole, non "
+    "intervalli numerici col trattino — il trattino tra cifre si corrompe): «entro 48 ore», "
+    "«prima settimana», «primo mese», «entro 90 giorni».\n"
     "  • Rischio economico rilevante → quantifica: esposizione (€ o % del fatturato), impatto sulla "
     "cassa, orizzonte di liquidità, scenari base/stress/worst (marcati come ipotesi se non nei FATTI).\n"
     "  • Ambito legale con dati incompleti: raccomandazioni PROPORZIONATE alla certezza ('riservarsi "
@@ -1340,8 +1342,9 @@ def generate_report_ops(deliverable: dict, inputs: dict) -> Optional[dict]:
             '  "template":[{"titolo":str,"tipo":str,"corpo":str}]\n'
             '}\n'
             "REGOLE:\n"
-            "- orizzonte: immediato=0-7 giorni, breve=30 giorni, medio=90 giorni, lungo=6-12 mesi. "
-            "Distribuisci le azioni sui 4 orizzonti in modo realistico.\n"
+            "- orizzonte: usa la PAROLA (immediato / breve / medio / lungo), mai un intervallo "
+            "numerico col trattino. Riferimento: immediato=entro 7 giorni, breve=entro 30 giorni, "
+            "medio=entro 90 giorni, lungo=entro 12 mesi. Distribuisci le azioni sui 4 orizzonti.\n"
             "- responsabile: ruolo interno o esterno (es. 'Titolare', 'Amministrazione', "
             "'Commercialista', 'Avvocato', 'IT'), MAI nomi di persona inventati.\n"
             "- scadenza: relativa (es. 'entro 7 giorni', 'entro 30 giorni'), mai date assolute inventate.\n"

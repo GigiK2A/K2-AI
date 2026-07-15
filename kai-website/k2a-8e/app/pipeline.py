@@ -814,6 +814,9 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             # il gate li blocca (placeholder_leak). Neutralizzazione deterministica → il report si
             # consegna pulito invece di fallire. Il gate resta come backstop su ciò che sfugge.
             deliverable = quality.scrub_template_placeholders(deliverable, inputs)
+            # Backstop tempi corrotti (audit 2): '048h' → 'entro 48 ore'. Narrow e non-distruttivo
+            # (solo ore con zero iniziale); la causa-radice è già rimossa dal prompt hyphen-free.
+            deliverable = quality.sanitize_corrupted_time_ranges(deliverable)
             # Boost legali: neutralizza i NUMERI di sentenza confabulati (Cass. N/AAAA) — il
             # corpus ha le leggi, non la giurisprudenza, quindi un numero è inventato e non
             # verificabile (rischio: il cliente lo cita in un atto). Diventa 'orientamento
@@ -882,9 +885,13 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             # numeri legittimi restano deterministici via i binder finance/tax; se un binder
             # non copre un derivato in PARTIAL, meglio il refuse onesto della cifra inventata.
             scrub_strict = strict_grounding or (skill in FINANCIAL_SKILLS)
-            deliverable = quality.scrub_ungrounded_numbers(deliverable, inputs, facts, citazioni, strict=scrub_strict)
+            # GROUNDING vede gen_inputs (= inputs + contesto_consulenza della chat): i numeri
+            # che il cliente ha DETTO in chat (target export, sconti, resi…) sono così
+            # riconosciuti come ancorati e NON vengono cancellati/etichettati; solo quelli
+            # inventati dall'LLM restano scoperti (audit S2, chiude l'anello dei case_facts).
+            deliverable = quality.scrub_ungrounded_numbers(deliverable, gen_inputs, facts, citazioni, strict=scrub_strict)
             g_findings = (grounding.required_inputs_findings(form_schema, inputs, strict=strict_grounding)
-                          + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=inputs,
+                          + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=gen_inputs,
                                                           facts=facts, strict=strict_grounding,
                                                           strict_norme=strict_norme))
             g_blocks = grounding.blocks(g_findings)
@@ -899,21 +906,24 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
                 # blocchi NON-valore (placeholder trapelato, cover anonima, norma confabulata,
                 # analisi-archetipo): non sono "valori", sono difetti duri di forma/liability.
                 if all(b.get("code") in _VALUE_BLOCK_CODES for b in g_blocks):
-                    if skill in FINANCIAL_SKILLS and _ND_HARD_FINANCIAL:
-                        # Audit 1d (15 lug 2026): sui boost FINANZIARI l'etichetta non
-                        # basta — il numero fabbricato si RIMUOVE (→ N/D) e il report
-                        # esce PRELIMINARE. Consegna garantita (policy no-vicolo-cieco),
-                        # ma MAI una cifra inventata su cui si decidono i soldi.
+                    if _ND_HARD_FINANCIAL:
+                        # Audit 1d+2 (15 lug 2026): i numeri HARD-financial fabbricati (€/
+                        # EBITDA/ROI/target export…) si RIMUOVONO (→ N/D), MAI etichettati-e-
+                        # consegnati — su OGNI boost, non solo i finanziari (bug espansione:
+                        # target Paesi Bassi 150-200k → 500k su StrategyBoost, qualitativo).
+                        # financial → si toglie tutto; qualitativo → solo gli hard (i soft
+                        # restano allo scrub-etichetta qui sotto).
                         deliverable = quality.neutralize_ungrounded_numbers(
-                            deliverable, inputs, facts, citazioni)
+                            deliverable, gen_inputs, facts, citazioni,
+                            hard_only=(skill not in FINANCIAL_SKILLS))
                         partial_mode = True
-                        log.info("grounding: %d valori non-grounded RIMOSSI (N/D) su boost "
-                                 "finanziario, report preliminare — job %s", len(g_blocks), job_id)
-                    else:
-                        deliverable = quality.scrub_ungrounded_numbers(
-                            deliverable, inputs, facts, citazioni, strict=False)
-                        log.info("grounding: %d valori non-grounded etichettati illustrativi (no refuse, "
-                                 "policy owner) job %s", len(g_blocks), job_id)
+                    # Etichetta ciò che resta non-grounded (soft; o TUTTO se il flag N/D è off →
+                    # comportamento policy-owner storico). Dopo il neutralize i numeri già a N/D
+                    # portano 'da confermare' → _ASSUMPTION li esenta, niente doppio marchio.
+                    deliverable = quality.scrub_ungrounded_numbers(
+                        deliverable, gen_inputs, facts, citazioni, strict=False)
+                    log.info("grounding: %d valori non-grounded gestiti (hard→N/D%s, soft→etichetta) "
+                             "job %s", len(g_blocks), "" if _ND_HARD_FINANCIAL else " OFF", job_id)
                     _ok = True
                     break
                 _refusal = ("grounding_failed",

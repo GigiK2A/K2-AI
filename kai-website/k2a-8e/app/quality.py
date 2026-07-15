@@ -417,6 +417,19 @@ def scrub_template_placeholders(deliverable: dict, inputs: dict) -> dict:
     return _compact_empties(walk(deliverable))
 
 
+# Suffissi di scala: il cliente in chat scrive abbreviato ('150k', '4,5 mln', '2 milioni')
+# e il report può riportare il valore ESTESO ('€150.000'). Senza espansione, grounded_numbers
+# vedrebbe solo 150 e il gate cancellerebbe il 150.000 REALE del cliente (audit 2). Aggiunge
+# ENTRAMBE le letture (base ed estesa) → più permissivo = niente falsi strip.
+_SCALE_SUFFIX = re.compile(r"(?<![\w])(-?\d+(?:[.,]\d+)?)\s*(k|mila|mln|milion[ei]|mld|miliard[oi])\b", re.I)
+# Range abbreviato '150-200k' / '€500-600k' = '150k-200k': il suffisso vale per ENTRAMBI gli
+# estremi ma la regex sopra prende solo il secondo → qui si recupera il primo.
+_SCALE_RANGE = re.compile(
+    r"(?<![\w])(\d+(?:[.,]\d+)?)\s*[-–—]\s*\d+(?:[.,]\d+)?\s*(k|mila|mln|milion[ei]|mld|miliard[oi])\b", re.I)
+_SCALE_FACTOR = {"k": 1e3, "mila": 1e3, "mln": 1e6, "milione": 1e6, "milioni": 1e6,
+                 "mld": 1e9, "miliardo": 1e9, "miliardi": 1e9}
+
+
 def grounded_numbers(inputs: dict, facts: dict, citations: list | None = None) -> set[float]:
     nums: set[float] = set()
     for value in list(_walk(inputs)) + list(_walk(facts)) + list(_walk(citations or [])):
@@ -428,6 +441,14 @@ def grounded_numbers(inputs: dict, facts: dict, citations: list | None = None) -
                 embedded = _num(raw)
                 if embedded is not None:
                     nums.add(round(embedded, 4))
+            for rx in (_SCALE_SUFFIX, _SCALE_RANGE):
+                for m in rx.finditer(value):
+                    base = _num(m.group(1))
+                    if base is None:
+                        continue
+                    factor = _SCALE_FACTOR.get(m.group(2).lower()) or _SCALE_FACTOR.get(m.group(2)[:3].lower())
+                    if factor:
+                        nums.add(round(base * factor, 4))
     return nums
 
 
@@ -600,15 +621,46 @@ def scrub_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
     return walk(out)
 
 
+# Backstop tempi corrotti (audit 2, eval espansione): la causa-radice è nel prompt (gli
+# orizzonti '0-48h / 3-7 giorni' venivano riecheggiati dal modello locale senza trattino →
+# '048h', '37 giorni'). Fix primario = etichette hyphen-free nel prompt. Qui una rete
+# NARROW e non-distruttiva solo sulla segnatura inequivocabile: ORE con zero iniziale
+# ('0' + 2-3 cifre + h/ore) — nessun piano scrive '048 ore', quindi è sempre corruzione.
+# NON tocca i giorni (180/365 giorni sono legittimi): quelli li previene solo il prompt.
+_CORRUPTED_HOURS = re.compile(r"\b0(\d{2,3})\s*(h\b|ore\b)", re.I)
+
+
+def sanitize_corrupted_time_ranges(deliverable: dict) -> dict:
+    """Ripara la segnatura inequivocabile di orizzonte-temporale corrotto: '048h' → 'entro
+    48 ore' (0-48h col trattino perso). Solo ore con zero iniziale; i giorni li previene il
+    prompt hyphen-free. Non-distruttivo: se non matcha, ritorna il deliverable invariato."""
+    def fix(s: str) -> str:
+        return _CORRUPTED_HOURS.sub(lambda m: f"entro {int(m.group(1))} {m.group(2)}", s)
+
+    def walk(v):
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        if isinstance(v, str):
+            return fix(v)
+        return v
+
+    return walk(deepcopy(deliverable))
+
+
 # Audit 1d (15 lug 2026): sui boost FINANZIARI l'etichetta non basta — il lettore prende
 # decisioni di cassa su quelle righe. MEGLIO NESSUN NUMERO CHE UN NUMERO SBAGLIATO.
 _ND_MARK = " [valore non verificato rimosso: N/D — da confermare col cliente]"
 
 
-def _neutralize_value(value: str, known: set) -> str:
+def _neutralize_value(value: str, known: set, hard_only: bool = False) -> str:
     """Sostituisce con 'N/D' i numeri economici non-grounded di `value` (stessa logica di
     rilevazione di _value_has_blocking_number, applicata numero per numero: quelli
-    grounded restano)."""
+    grounded restano). hard_only=True: rimuove SOLO i numeri hard-financial (€/EBITDA/ROI…)
+    e lascia i benchmark morbidi (conversion/traffico) allo scrub-etichetta — usato sui
+    boost QUALITATIVI, dove un KPI soft inventato può restare come ipotesi dichiarata ma
+    un importo € fabbricato no."""
     if not _QUANT_CONTEXT.search(value) or _ASSUMPTION.search(value):
         return value
     spans = []
@@ -628,6 +680,11 @@ def _neutralize_value(value: str, known: set) -> str:
             cand.add(round(float(tok.replace(".", "")), 4))
         if cand & known:
             continue
+        if hard_only:
+            near = value[max(0, m.start() - 80):min(len(value), m.end() + 80)]
+            if not (suffix in ("€", "eur") or pre_currency or _HARD_FINANCIAL.search(near)
+                    or _PROMISE.search(near)):
+                continue  # numero soft (benchmark %) → lascialo allo scrub-etichetta
         spans.append((m.start(), m.end()))
     if not spans:
         return value
@@ -638,13 +695,14 @@ def _neutralize_value(value: str, known: set) -> str:
 
 
 def neutralize_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
-                                  citations: list | None = None) -> dict:
-    """Boost FINANZIARI, numeri hard non-grounded: NON etichetta — RIMUOVE (→ N/D).
+                                  citations: list | None = None, *, hard_only: bool = False) -> dict:
+    """Numeri non-grounded: NON etichetta — RIMUOVE (→ N/D). Boost FINANZIARI: tutti
+    (hard_only=False). Boost QUALITATIVI (hard_only=True): solo gli hard-financial (€/
+    EBITDA/ROI…), i soft restano allo scrub-etichetta.
 
-    Complementare a scrub_ungrounded_numbers (che sui financial è NO-OP): quando il gate
-    trova valori inventati e la policy no-vicolo-cieco impone comunque la consegna, qui
-    il numero sparisce e resta il buco ONESTO. Il report esce preliminare, mai una cifra
-    fabbricata presentata come scenario."""
+    Complementare a scrub_ungrounded_numbers: quando il gate trova valori inventati e la
+    policy no-vicolo-cieco impone la consegna, qui il numero sparisce e resta il buco
+    ONESTO. Il report esce preliminare, mai una cifra fabbricata presentata come scenario."""
     known = grounded_numbers(inputs, facts, citations)
     out = deepcopy(deliverable)
 
@@ -654,7 +712,7 @@ def neutralize_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
         if isinstance(v, list):
             return [walk(x) for x in v]
         if isinstance(v, str):
-            return _neutralize_value(v, known)
+            return _neutralize_value(v, known, hard_only=hard_only)
         return v
 
     return walk(out)
