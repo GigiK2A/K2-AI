@@ -255,7 +255,7 @@ export function ReportGenerator({
     <div className="mt-4 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={generate}
+          onClick={() => void generate()}
           disabled={busy}
           className="inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-60"
         >
