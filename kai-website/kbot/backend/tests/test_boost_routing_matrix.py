@@ -43,6 +43,13 @@ CASI = [
     ("controllo + 'social' (kpi, non marketing)", {"reportType": "controllo di gestione", "objective": "cruscotto KPI e monitoraggio, anche dei costi social"}, "checkup_controllo"),
     ("hospitality KPI (performance hotel, non marketing)", {"reportType": "performance struttura ricettiva", "objective": "migliorare RevPAR e occupazione dell'hotel"}, "checkup_hospitality"),
     ("agevolazioni per impianto fotovoltaico (bando, non energia)", {"reportType": "agevolazioni e bandi", "objective": "credito d'imposta e bando per impianto fotovoltaico"}, "checkup_agevolazioni"),
+
+    # --- ESPANSIONE / MARKET-ENTRY: la DECISIONE è strategica, NON legale/finanziaria anche
+    #     se il caso è pieno di termini di contratto (deal col distributore) o di investimento
+    #     (eval espansione USA 15 lug: generava LegalBoost = report sbagliato) ---
+    ("espansione USA integratori (era LegalBoost)", {"reportType": "valutazione ingresso mercato USA", "objective": "un grande distributore USA ci propone un contratto con esclusiva e clausole; conviene entrare nel mercato USA, quanto investire, rischio concentrazione cliente"}, "checkup_marketing"),
+    ("distributore estero + contratto (strategy, non legale)", {"reportType": "espansione internazionale", "objective": "distributore estero, contratto di distribuzione, minimi garantiti, entrare nel mercato estero"}, "checkup_marketing"),
+    ("internazionalizzazione + investimento (strategy, non finance)", {"reportType": "internazionalizzazione", "objective": "espansione all'estero, quanto investire, ROI, payback, break-even"}, "checkup_marketing"),
 ]
 
 

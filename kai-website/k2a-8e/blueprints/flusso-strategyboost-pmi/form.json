@@ -48,7 +48,34 @@
     "margine_ecommerce_pct": { "type": "number", "description": "SOLO espansione: margine % del canale ecommerce, se dichiarato" },
     "margine_distributore_pct": { "type": "number", "description": "SOLO espansione: margine % del canale distributore, se dichiarato" },
     "budget_espansione_eur": { "type": "number", "description": "SOLO espansione: budget disponibile in EUR per l'espansione" },
-    "mol_medio_pct": { "type": "number", "description": "SOLO espansione: MOL/margine operativo medio % dell'azienda, se dichiarato" }
+    "mol_medio_pct": { "type": "number", "description": "SOLO espansione: MOL/margine operativo medio % dell'azienda, se dichiarato" },
+    "espansione_scenari": {
+      "type": "array",
+      "description": "SOLO decisione di ingresso/investimento in UN mercato con più scenari (es. prudente/base/aggressivo): un oggetto per scenario, coi numeri ESATTI detti dal cliente. Compila solo i campi presenti in chat.",
+      "items": {
+        "type": "object",
+        "required": ["nome"],
+        "properties": {
+          "nome": { "type": "string", "description": "prudente | base | aggressivo (o il nome dato dal cliente)" },
+          "ricavi_anno1": { "type": "number", "description": "ricavi/primo ordine dell'anno 1 in EUR" },
+          "ricavi_anno3": { "type": "number", "description": "ricavi a regime / anno 3 in EUR" },
+          "investimento": { "type": "number", "description": "investimento richiesto dallo scenario in EUR" }
+        }
+      }
+    },
+    "concentrazione": {
+      "type": "object",
+      "description": "SOLO espansione: soglie di concentrazione cliente dette dal cliente",
+      "properties": {
+        "cliente_top_attuale_pct": { "type": "number", "description": "quota % del cliente più grande oggi" },
+        "soglia_rischio_pct": { "type": "number", "description": "quota % oltre cui è rischio" },
+        "soglia_eccessiva_pct": { "type": "number", "description": "quota % oltre cui è concentrazione eccessiva" }
+      }
+    },
+    "preferenze_contratto": { "type": "array", "items": { "type": "string" }, "description": "SOLO espansione: preferenze del cliente sull'accordo (es. minimi garantiti, diritto di revoca, durata, no dipendenza da un singolo cliente)" },
+    "mercato_target": { "type": "string", "description": "SOLO espansione: mercato/paese di ingresso (es. USA)" },
+    "fatturato": { "type": "number", "description": "SOLO espansione: fatturato annuo dell'azienda in EUR (per la quota di concentrazione)" },
+    "ebitda_pct": { "type": "number", "description": "SOLO espansione: margine EBITDA % dell'azienda" }
   },
   "additionalProperties": false
 }

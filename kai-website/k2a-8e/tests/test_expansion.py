@@ -155,6 +155,100 @@ def test_render_non_crasha_con_sezioni_expansion(tmp_path):
     assert (tmp_path / "exp.pdf").exists() and (tmp_path / "exp.pdf").stat().st_size > 1000
 
 
+# --- market-entry scenario-based (eval espansione USA integratori) --------------------
+USA_SCENARI = [
+    {"nome": "prudente", "ricavi_anno1": 1200000, "ricavi_anno3": 3000000, "investimento": 500000},
+    {"nome": "base", "ricavi_anno1": 2000000, "ricavi_anno3": 6000000, "investimento": 1800000},
+    {"nome": "aggressivo", "ricavi_anno1": 3000000, "ricavi_anno3": 10000000, "investimento": 5500000},
+]
+USA_AZIENDA = {"fatturato": 18000000, "ebitda_pct": 16}
+USA_CONC = {"cliente_top_attuale_pct": 12, "soglia_rischio_pct": 25, "soglia_eccessiva_pct": 30}
+USA_PREF = ["minimi garantiti", "diritto di revoca", "durata 1-2 anni",
+            "no dipendenza da un singolo cliente", "sviluppare altri canali"]
+
+
+def _me():
+    return X.build_market_entry(USA_SCENARI, USA_AZIENDA, USA_CONC, USA_PREF, "USA")
+
+
+def test_market_entry_decisione_go_with_conditions():
+    # aggressivo profittevole in scala ma concentrazione 36% > soglia 30% → condizionato
+    a = _me()
+    assert a["decisione_investimento"]["verdetto"] == "GO WITH CONDITIONS"
+
+
+def test_market_entry_roi_e_payback_derivati():
+    a = _me()
+    sc = {s["nome"]: s for s in a["simulazione_scenari"]}
+    # base: ricavi_3y=2+4+6=12M, ebitda 16%=1.92M, ROI=(1.92-1.8)/1.8=6.67%
+    assert abs(sc["base"]["roi_3y_pct"] - 6.67) < 0.1
+    # aggressivo: EBITDA cumulato 3y < investimento 5.5M → ROI negativo (over-invest)
+    assert sc["aggressivo"]["roi_3y_pct"] < 0
+    # ogni scenario ha formula + assunzioni (trasparenza)
+    assert all(s.get("formula") and s.get("assunzioni") for s in a["simulazione_scenari"])
+
+
+def test_market_entry_quota_concentrazione():
+    a = _me()
+    sc = {s["nome"]: s for s in a["simulazione_scenari"]}
+    # aggressivo: 10M / (18M+10M) = 35.7%
+    assert abs(sc["aggressivo"]["quota_concentrazione_anno3_pct"] - 35.71) < 0.1
+
+
+def test_market_entry_stress_test_quote_e_ebitda_a_rischio():
+    a = _me()
+    quote = [r["quota_pct"] for r in a["stress_test_concentrazione"]["tabella"]]
+    assert quote == [15, 25, 35, 45]
+    r35 = next(r for r in a["stress_test_concentrazione"]["tabella"] if r["quota_pct"] == 35)
+    assert r35["livello"] == "critico" and r35["ebitda_a_rischio_se_perso_eur"] > 0
+
+
+def test_market_entry_clausole_dalle_preferenze():
+    a = _me()
+    cl = a["struttura_contrattuale"]["clausole_raccomandate"]
+    assert len(cl) >= 4  # minimi, revoca, durata, anti-concentrazione
+    testo = " ".join(cl).lower()
+    assert "minim" in testo and "recesso" in testo and "concentrazione" in testo
+
+
+def test_market_entry_readiness_quattro_aree():
+    a = _me()
+    aree = {r["area"] for r in a["readiness"]}
+    assert aree == {"produttiva", "finanziaria", "organizzativa", "normativa"}
+    # normativa: flag FDA come workstream, non inventato
+    norm = next(r for r in a["readiness"] if r["area"] == "normativa")
+    assert "FDA" in norm["nota"]
+
+
+def test_market_entry_roadmap_quattro_orizzonti():
+    a = _me()
+    orizzonti = [r["orizzonte"] for r in a["roadmap_ingresso"]]
+    assert orizzonti == ["0-3 mesi", "3-6 mesi", "6-12 mesi", "12-24 mesi"]
+
+
+def test_market_entry_no_go_se_tutti_roi_negativi():
+    scen = [{"nome": "unico", "ricavi_anno1": 500000, "ricavi_anno3": 800000, "investimento": 5000000}]
+    a = X.build_market_entry(scen, USA_AZIENDA, USA_CONC, [], "USA")
+    assert a["decisione_investimento"]["verdetto"] == "NO-GO"
+
+
+def test_apply_market_entry_noop_senza_scenari():
+    d, meta = X.apply_market_entry({"discovery": {}}, {"descrizione_azienda": "x"})
+    assert meta is None and d == {"discovery": {}}
+
+
+def test_apply_market_entry_inietta_e_registra_grounding():
+    facts = {}
+    inputs = {"espansione_scenari": USA_SCENARI, "fatturato": 18000000, "ebitda_pct": 16,
+              "concentrazione": USA_CONC, "preferenze_contratto": USA_PREF, "mercato_target": "USA"}
+    d, meta = X.apply_market_entry({"discovery": {}}, inputs, facts)
+    assert meta["verdetto"] == "GO WITH CONDITIONS" and meta["scenari_calcolati"] == 3
+    for k in ("decisione_investimento", "simulazione_scenari", "stress_test_concentrazione",
+              "readiness", "struttura_contrattuale", "roadmap_ingresso"):
+        assert k in d
+    assert facts.get("_expansion_grounded_numbers", {}).get("numeri")
+
+
 def test_break_even_e_roi_coerenti():
     m = [{"paese": "Austria", "target_ricavi": 500000, "margine_canale_pct": 20,
           "marketing_eur": 30000, "logistica_pct": 6, "pagamento_giorni": 60}]

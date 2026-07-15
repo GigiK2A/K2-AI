@@ -362,6 +362,255 @@ def _collect_numbers(obj) -> list:
     return out
 
 
+# ═══════════════════════════════════════════════════════════════════════════════════
+# MARKET-ENTRY scenario-based (eval espansione USA integratori, 15 lug): decisione di
+# INVESTIMENTO su UN mercato con 3 traiettorie (prudente/base/aggressivo). Diverso dal
+# per-country sopra: qui l'input è ricavi-per-scenario + investimento + concentrazione.
+# Risponde a "devo investire milioni per entrare negli USA, sì o no?": ROI/payback/EBITDA
+# incrementale per scenario, stress test concentrazione cliente, GO/NO-GO, struttura
+# contrattuale (dalle preferenze del cliente), readiness, roadmap. Numeri con formula+
+# assunzioni; il legale/normativo è SECONDARIO (flag di workstream, non inventato).
+# ═══════════════════════════════════════════════════════════════════════════════════
+
+_STRESS_QUOTE = (15.0, 25.0, 35.0, 45.0)  # il report deve simulare il cliente a queste quote
+
+
+def _scenario_econ(sc: dict, ebitda_pct: float, fatturato: float) -> dict:
+    """Simulazione di UNO scenario di ingresso. EBITDA incrementale = ricavi × margine EBITDA
+    aziendale (ASSUNZIONE dichiarata: il nuovo mercato rende come il core — spesso ottimistico
+    all'inizio). Payback, ROI 3 anni, quota di concentrazione."""
+    nome = str(sc.get("nome") or sc.get("scenario") or "scenario").strip()
+    r1 = _num(sc.get("ricavi_anno1") or sc.get("ricavi_iniziali") or sc.get("primo_ordine"))
+    r3 = _num(sc.get("ricavi_anno3") or sc.get("ricavi_target") or sc.get("ricavi_finali"))
+    inv = _num(sc.get("investimento") or sc.get("investimento_eur") or sc.get("capex"))
+    if r3 is None and r1 is not None:
+        r3 = r1
+    if r1 is None and r3 is not None:
+        r1 = r3
+    if r1 is None or inv is None:
+        return {"nome": nome, "stato": "dati_insufficienti",
+                "nota": "N/D — servono almeno ricavi e investimento dello scenario."}
+    # EBITDA 3 anni: interpola anno1→anno3 (media dei 3 anni ≈ (r1 + (r1+r3)/2 + r3))
+    ricavi_3y = r1 + (r1 + r3) / 2.0 + r3
+    ebitda_annuo_regime = r3 * ebitda_pct / 100.0
+    ebitda_3y = ricavi_3y * ebitda_pct / 100.0
+    payback_anni = inv / ebitda_annuo_regime if ebitda_annuo_regime > 0 else None
+    roi_3y_pct = (ebitda_3y - inv) / inv * 100.0 if inv > 0 else None
+    quota_conc = r3 / (fatturato + r3) * 100.0 if fatturato and (fatturato + r3) > 0 else None
+    def _r(x):
+        return round(x, 2) if isinstance(x, (int, float)) else x
+    return {
+        "nome": nome, "stato": "calcolato",
+        "ricavi_anno1_eur": _r(r1), "ricavi_anno3_eur": _r(r3), "investimento_eur": _r(inv),
+        "ebitda_incrementale_anno3_eur": _r(ebitda_annuo_regime),
+        "ebitda_cumulato_3y_eur": _r(ebitda_3y),
+        "payback_anni": _r(payback_anni),
+        "roi_3y_pct": _r(roi_3y_pct),
+        "quota_concentrazione_anno3_pct": _r(quota_conc),
+        "formula": ("EBITDA incrementale = ricavi × margine_EBITDA_aziendale; ROI 3y = "
+                    "(EBITDA cumulato 3 anni − investimento)/investimento; payback = "
+                    "investimento / EBITDA a regime; quota = ricavi_mercato/(fatturato+ricavi_mercato)"),
+        "assunzioni": [f"margine EBITDA del nuovo mercato assunto = {ebitda_pct:g}% (come il core: "
+                       "spesso ottimistico nei primi anni, verificare)",
+                       "EBITDA a regime = quello dell'anno 3"],
+    }
+
+
+def _stress_concentrazione(fatturato: float, ebitda_pct: float, conc: dict) -> dict:
+    """Stress test: il distributore USA a quota 15/25/35/45% del fatturato totale — se lo si
+    perde, quanto EBITDA salta. Il rischio-chiave dell'eval (cliente al 35-40%)."""
+    soglia_rischio = _num((conc or {}).get("soglia_rischio_pct")) or 25.0
+    soglia_eccessiva = _num((conc or {}).get("soglia_eccessiva_pct")) or 30.0
+    top_attuale = _num((conc or {}).get("cliente_top_attuale_pct"))
+    righe = []
+    for q in _STRESS_QUOTE:
+        # a quota q, il fatturato totale è fatturato_core / (1 - q/100) e il cliente vale q%
+        tot = fatturato / (1 - q / 100.0) if fatturato and q < 100 else None
+        ricavi_cliente = tot * q / 100.0 if tot else None
+        ebitda_a_rischio = ricavi_cliente * ebitda_pct / 100.0 if ricavi_cliente else None
+        livello = ("critico" if q >= soglia_eccessiva else
+                   "attenzione" if q >= soglia_rischio else "sostenibile")
+        righe.append({
+            "quota_pct": q, "livello": livello,
+            "ricavi_cliente_eur": round(ricavi_cliente, 2) if ricavi_cliente else None,
+            "ebitda_a_rischio_se_perso_eur": round(ebitda_a_rischio, 2) if ebitda_a_rischio else None,
+        })
+    return {
+        "soglia_rischio_pct": soglia_rischio, "soglia_eccessiva_pct": soglia_eccessiva,
+        "cliente_top_attuale_pct": top_attuale,
+        "tabella": righe,
+        "lettura": (f"Oltre il {soglia_eccessiva:g}% da un solo cliente la concentrazione è eccessiva: "
+                    f"perdere il distributore azzererebbe la quota corrispondente di EBITDA. "
+                    f"Vincolare per contratto la crescita entro la soglia e sviluppare in parallelo "
+                    f"altri canali/clienti."),
+        "formula": "ricavi_cliente = fatturato_core/(1−quota) × quota; EBITDA a rischio = ricavi_cliente × margine_EBITDA",
+    }
+
+
+_CLAUSOLE_MAP = [
+    (("minim", "garantit"), "Minimi d'acquisto garantiti crescenti per anno (con penale se non raggiunti)"),
+    (("revoca", "recess"), "Diritto di recesso/revoca con preavviso definito e senza penale oltre soglia"),
+    (("durat", "1-2", "biennal", "annual"), "Durata breve (12-24 mesi) rinnovabile, non pluriennale"),
+    (("esclusiv",), "Esclusiva LIMITATA (per canale/territorio) o assente, per non dipendere dal singolo distributore"),
+    (("dipenden", "singolo cliente", "concentr", "altri canali", "diversific"),
+     "Clausola anti-concentrazione: tetto % sul fatturato e libertà di sviluppare altri canali/clienti"),
+]
+
+
+def _struttura_contrattuale(preferenze: list) -> dict:
+    """Traduce le PREFERENZE dichiarate dal cliente in clausole raccomandate (deterministico:
+    non inventa, mappa ciò che il cliente ha chiesto). È il modulo legale SECONDARIO nel report
+    di strategia, non un LegalBoost a sé."""
+    testo = " ".join(str(p) for p in (preferenze or [])).lower()
+    clausole = []
+    for chiavi, clausola in _CLAUSOLE_MAP:
+        if any(k in testo for k in chiavi):
+            clausole.append(clausola)
+    if not clausole:
+        return {"clausole_raccomandate": [], "nota": "Nessuna preferenza contrattuale esplicita: "
+                "definire minimi, durata, esclusiva e tetto di concentrazione in negoziazione."}
+    return {
+        "clausole_raccomandate": clausole,
+        "nota": "Clausole derivate dalle preferenze dichiarate dal cliente. Il dettaglio giuridico "
+                "(legge applicabile, foro, FDA/etichettatura) è un workstream legale dedicato, "
+                "secondario alla decisione strategica di ingresso.",
+    }
+
+
+def _readiness_assessment(fatturato: float, ebitda_pct: float, scenari_econ: list,
+                          mercato: str) -> list:
+    """Prontezza produttiva/finanziaria/organizzativa/normativa: semafori da rapporti
+    deterministici + flag di workstream. Il normativo (FDA per integratori USA) è un FLAG,
+    non un approfondimento inventato."""
+    calc = [s for s in scenari_econ if s.get("stato") == "calcolato"]
+    r3_max = max((s.get("ricavi_anno3_eur", 0) or 0) for s in calc) if calc else 0.0
+    inv_max = max((s.get("investimento_eur", 0) or 0) for s in calc) if calc else 0.0
+    ebitda_annuo_az = fatturato * ebitda_pct / 100.0 if fatturato else 0.0
+    incr_capacita = r3_max / fatturato * 100.0 if fatturato else None
+    inv_su_ebitda = inv_max / ebitda_annuo_az * 100.0 if ebitda_annuo_az else None
+    out = []
+    if incr_capacita is not None:
+        sem = "rosso" if incr_capacita >= 50 else "giallo" if incr_capacita >= 25 else "verde"
+        out.append({"area": "produttiva", "semaforo": sem,
+                    "metrica": f"+{incr_capacita:.0f}% di volumi al picco (scenario più alto) sul fatturato attuale",
+                    "nota": "Verificare capacità impianti/fornitura prima di impegnarsi sui minimi garantiti."})
+    if inv_su_ebitda is not None:
+        sem = "rosso" if inv_su_ebitda >= 150 else "giallo" if inv_su_ebitda >= 60 else "verde"
+        out.append({"area": "finanziaria", "semaforo": sem,
+                    "metrica": f"investimento max = {inv_su_ebitda:.0f}% dell'EBITDA annuo attuale (€{ebitda_annuo_az:,.0f})".replace(",", "."),
+                    "nota": "Valutare fonte (cassa/debito) e impatto su DSCR e leva."})
+    out.append({"area": "organizzativa", "semaforo": "giallo",
+                "metrica": "presenza estera già avviata (più mercati)",
+                "nota": "Definire owner dedicato al mercato, supply chain e customer service locali."})
+    out.append({"area": "normativa", "semaforo": "giallo",
+                "metrica": f"ingresso in {mercato or 'nuovo mercato'}: requisiti regolatori da verificare",
+                "nota": "Integratori negli USA: registrazione FDA (facility + FSVP), conformità GMP, "
+                        "claims ammessi ed etichettatura — WORKSTREAM LEGALE/REGOLATORIO dedicato, "
+                        "vincolante per la partenza ma secondario alla decisione di investire."})
+    return out
+
+
+def _decisione_investimento(scenari_econ: list, stress: dict) -> dict:
+    """GO / GO WITH CONDITIONS / PILOT / NO-GO dai ROI degli scenari e dalla concentrazione."""
+    calc = [s for s in scenari_econ if s.get("stato") == "calcolato"]
+    if not calc:
+        return {"verdetto": "NO-GO", "motivo": "dati insufficienti per una decisione di investimento"}
+    roi_positivi = [s for s in calc if (s.get("roi_3y_pct") or -1) > 0]
+    conc_max = max((s.get("quota_concentrazione_anno3_pct") or 0) for s in calc)
+    soglia_ecc = stress.get("soglia_eccessiva_pct", 30.0)
+    if not roi_positivi:
+        return {"verdetto": "NO-GO",
+                "motivo": "nessuno scenario ha ROI positivo a 3 anni: l'investimento non si ripaga"}
+    if conc_max >= soglia_ecc:
+        return {"verdetto": "GO WITH CONDITIONS",
+                "motivo": (f"gli scenari sono profittevoli, ma il più aggressivo porta la concentrazione al "
+                           f"{conc_max:.0f}% (> soglia {soglia_ecc:g}%): entrare partendo dallo scenario "
+                           f"prudente/base, con tetto contrattuale di concentrazione e sviluppo di altri "
+                           f"canali; scalare all'aggressivo solo dopo aver diversificato.")}
+    return {"verdetto": "GO",
+            "motivo": "scenari profittevoli e concentrazione entro le soglie: procedere con l'ingresso strutturato"}
+
+
+_ROADMAP = [
+    ("0-3 mesi", "Due diligence sul distributore, negoziazione contratto (minimi, durata, tetto "
+                 "concentrazione, non-esclusiva), avvio registrazione regolatoria (FDA)."),
+    ("3-6 mesi", "Primo ordine pilota, piano capacità produttiva e supply chain, set-up customer "
+                 "service e logistica per il mercato."),
+    ("6-12 mesi", "Scale allo scenario base se i minimi vengono rispettati; monitorare la quota di "
+                  "concentrazione e i segnali di early warning."),
+    ("12-24 mesi", "Valutare lo scenario aggressivo SOLO se sono attivi altri canali/clienti che "
+                   "tengono la concentrazione sotto soglia; rinegoziare o diversificare altrimenti."),
+]
+
+
+def build_market_entry(scenari: list, azienda: dict, concentrazione: Optional[dict],
+                       preferenze: Optional[list], mercato: str = "") -> Optional[dict]:
+    """Decisione di INGRESSO in un mercato con scenari di investimento. Ritorna None se non
+    ci sono scenari validi (no-op)."""
+    if not isinstance(scenari, list) or not scenari:
+        return None
+    fatturato = _num((azienda or {}).get("fatturato") or (azienda or {}).get("fatturato_eur")) or 0.0
+    ebitda_pct = _num((azienda or {}).get("ebitda_pct") or (azienda or {}).get("mol_pct"))
+    ebitda_assunto = ebitda_pct is None
+    if ebitda_pct is None:
+        ebitda_pct = 15.0  # margine EBITDA di riferimento se non dichiarato (assunto)
+    econ = [_scenario_econ(s, ebitda_pct, fatturato) for s in scenari if isinstance(s, dict)]
+    if not any(e.get("stato") == "calcolato" for e in econ):
+        return None
+    stress = _stress_concentrazione(fatturato, ebitda_pct, concentrazione or {})
+    decisione = _decisione_investimento(econ, stress)
+    note_glob = []
+    if ebitda_assunto:
+        note_glob.append(f"margine EBITDA aziendale non dichiarato → assunto {ebitda_pct:g}%")
+    if not fatturato:
+        note_glob.append("fatturato aziendale non dichiarato → quota di concentrazione non calcolabile")
+    return {
+        "decisione_investimento": decisione,
+        "simulazione_scenari": econ,
+        "stress_test_concentrazione": stress,
+        "readiness": _readiness_assessment(fatturato, ebitda_pct, econ, mercato),
+        "struttura_contrattuale": _struttura_contrattuale(preferenze or []),
+        "roadmap_ingresso": [{"orizzonte": o, "attivita": a} for o, a in _ROADMAP],
+        "assunzioni_globali": note_glob,
+        "metodo_market_entry": ("Simulazione di investimento per scenario (ROI/payback/EBITDA "
+                                "incrementale), stress test di concentrazione cliente e decisione "
+                                "GO/NO-GO da regola dichiarata. Numeri derivati dagli input; il "
+                                "workstream legale/regolatorio è secondario alla decisione."),
+    }
+
+
+def apply_market_entry(deliverable: dict, inputs: dict,
+                       facts: Optional[dict] = None) -> tuple[dict, Optional[dict]]:
+    """Hook: se gli input portano scenari di investimento (`espansione_scenari`), inietta la
+    decisione di ingresso mercato. No-op altrimenti. Registra i numeri nei facts (grounding)."""
+    if not isinstance(deliverable, dict) or not isinstance(inputs, dict):
+        return deliverable, None
+    scenari = (inputs.get("espansione_scenari") or inputs.get("scenari_investimento")
+               or inputs.get("scenari_espansione_input"))
+    if not isinstance(scenari, list) or not scenari:
+        return deliverable, None
+    azienda = {"fatturato": inputs.get("fatturato") or inputs.get("fatturato_eur")
+               or (inputs.get("azienda") or {}).get("fatturato"),
+               "ebitda_pct": inputs.get("ebitda_pct") or inputs.get("mol_medio_pct")
+               or (inputs.get("azienda") or {}).get("ebitda_pct")}
+    analisi = build_market_entry(
+        scenari, azienda, inputs.get("concentrazione"),
+        inputs.get("preferenze_contratto") or inputs.get("preferenze_accordo"),
+        str(inputs.get("mercato_target") or inputs.get("mercato") or ""))
+    if not analisi:
+        return deliverable, None
+    out = dict(deliverable)
+    for k, v in analisi.items():
+        if v is not None:
+            out[k] = v
+    if isinstance(facts, dict):
+        prev = (facts.get("_expansion_grounded_numbers") or {}).get("numeri", [])
+        facts["_expansion_grounded_numbers"] = {"numeri": prev + _collect_numbers(analisi)}
+    n_calc = sum(1 for e in analisi.get("simulazione_scenari", []) if e.get("stato") == "calcolato")
+    return out, {"market_entry_engine": True, "scenari": len(scenari), "scenari_calcolati": n_calc,
+                 "verdetto": analisi["decisione_investimento"]["verdetto"]}
+
+
 def apply_expansion(deliverable: dict, inputs: dict,
                     facts: Optional[dict] = None) -> tuple[dict, Optional[dict]]:
     """Hook per apply_deterministic_bindings: se gli input portano `mercati_esteri`,

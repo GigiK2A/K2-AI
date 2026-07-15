@@ -312,9 +312,14 @@ def apply_deterministic_bindings(skill: str, deliverable: dict, facts: dict,
     if skill == "flusso-strategyboost-pmi" and _EXPANSION_ENGINE:
         # passa facts: l'engine vi registra i numeri calcolati → il gate di grounding li
         # riconosce come ancorati (deterministici, non inventati) e non li cancella.
+        # Due modelli, ciascuno no-op senza il proprio input: per-mercato (mercati_esteri)
+        # e market-entry scenario-based (espansione_scenari, decisione di investimento USA).
         deliverable, exp_meta = expansion.apply_expansion(deliverable, inputs, facts)
         if exp_meta:
             filiera_meta = {**filiera_meta, "expansion": exp_meta}
+        deliverable, me_meta = expansion.apply_market_entry(deliverable, inputs, facts)
+        if me_meta:
+            filiera_meta = {**filiera_meta, "market_entry": me_meta}
 
     # FinanceBoost: le 3 sezioni data-payload (riclassificazione/marginalità/
     # valutazione_performance) sono DETERMINISTICHE — dalle voci riclassificate

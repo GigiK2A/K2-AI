@@ -242,6 +242,24 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
       "proposta di acquisizione", "valutare l'acquisto", "valutare l'acquisizione",
       "lettera di intenti", "earn-out", "earn out",
       "post-fusione", "post fusione"), "checkup_legale_dd"),
+    # ESPANSIONE / INGRESSO IN NUOVI MERCATI → StrategyBoost, PESO 4 (eval espansione USA
+    # 15 lug). La DECISIONE ("entrare in un mercato estero, investire nell'espansione") è un
+    # marcatore di dominio forte quanto l'M&A, ma era quasi SCOPERTA dalle keyword (solo
+    # "espansione"/"strateg") → vinceva il dominio INCIDENTALE più denso: i termini del deal
+    # col distributore ("contratto/clausole/esclusiva") dirottavano su LegalBoost, "investimento"
+    # su FinanceBoost. Il report segue la DECISIONE da prendere, non le parole incidentali.
+    # Prima dei gruppi legali → a parità di score vince l'espansione (l'ingresso mercato è il
+    # PRIMARIO; il contratto è secondario, portato NEL report di strategia). Peso per-gruppo
+    # così non gonfia gli altri gruppi che mappano a checkup_marketing (marketing/strategia).
+    (("entrare nel mercato", "entrare in un mercato", "entrare in un nuovo mercato",
+      "ingresso nel mercato", "ingresso in un mercato", "entrare negli usa", "entrare in usa",
+      "entrare nel mercato usa", "entrare nel mercato americano", "market entry",
+      "espansione", "espanderci", "espandersi", "espandere", "espansione internazionale",
+      "espansione estera", "espansione all'estero", "mercato estero", "mercati esteri",
+      "nuovo mercato estero", "internazionalizzazione", "internazionalizzare",
+      "internazionalizzarci", "aprire un mercato", "vendere all'estero", "sbocco estero",
+      "distributore estero", "distributore americano", "distributore usa", "mercato usa"),
+     "checkup_marketing", 4),
     (("contratt", "nda", "clausol", "contract review", "review legale"), "checkup_legale_review"),
     (("legale", "avvocat", "causa", "contenzioso", "parere legale", "diffida"), "primo_parere_legale"),
     (("fiscal", "iva", "tribut", "tasse", "imposte", "f24", "dichiarazione dei redditi"), "checkup_fiscale"),
@@ -310,13 +328,18 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False,
         # è intento — 'non ho bilancio né fatturato' NON deve instradare a FinanceBoost (l'utente
         # dice che quei dati NON ce li ha). Senza questo, un «senza dati» finiva su FinanceBoost.
         best_sid, best_score = None, 0
-        for keys, sid in _BOOST_KEYWORDS:
+        for entry in _BOOST_KEYWORDS:
+            keys, sid = entry[0], entry[1]
+            # peso: opzionale per-GRUPPO (3° elemento della tupla) per pesare UNA lista di
+            # keyword senza toccare tutti i gruppi che mappano allo stesso servizio; fallback
+            # al peso per-servizio storico (_GROUP_WEIGHT).
+            gw = entry[2] if len(entry) > 2 else _GROUP_WEIGHT.get(sid, 1)
             score = 0
             for k in keys:
                 for mt in re.finditer(r"\b" + re.escape(k), text):
                     if not _negated_before(text, mt.start()):
                         score += 1
-            score *= _GROUP_WEIGHT.get(sid, 1)
+            score *= gw
             if score > best_score:
                 best_sid, best_score = sid, score
         return best_sid

@@ -378,6 +378,56 @@
     "metodo_espansione": {
       "type": "string",
       "description": "[Deterministico] Nota di metodo dell'analisi di espansione."
+    },
+    "decisione_investimento": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico, Market-Entry Engine] Verdetto GO/GO WITH CONDITIONS/PILOT/NO-GO con motivo."
+    },
+    "simulazione_scenari": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "[Deterministico] Simulazione per scenario: ROI 3 anni, payback, EBITDA incrementale, quota di concentrazione, con formula e assunzioni."
+    },
+    "stress_test_concentrazione": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] Stress test cliente al 15/25/35/45%: EBITDA a rischio se perso."
+    },
+    "readiness": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "[Deterministico] Prontezza produttiva/finanziaria/organizzativa/normativa con semaforo."
+    },
+    "struttura_contrattuale": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[Deterministico] Clausole raccomandate dalle preferenze del cliente (modulo legale secondario)."
+    },
+    "roadmap_ingresso": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "[Deterministico] Roadmap 0-3/3-6/6-12/12-24 mesi."
+    },
+    "assunzioni_globali": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "[Deterministico] Assunzioni globali dell'analisi di ingresso."
+    },
+    "metodo_market_entry": {
+      "type": "string",
+      "description": "[Deterministico] Nota di metodo della decisione di ingresso."
     }
   },
   "additionalProperties": false
