@@ -153,6 +153,11 @@ def review(client, model: str, merged_messages: list, raw_text: str) -> str:
             m = re.search(r"CONSULENZA_SUMMARY_START[\s\S]*?CONSULENZA_SUMMARY_END", raw_text)
             if m:
                 text = f"{text}\n\n{m.group(0)}"
+        # STATO DIAGNOSTICO: se il rewrite ha perso il blocco DIAGNOSI_STATO, ri-appendilo
+        # dall'originale — è la memoria di lavoro del bot tra i turni, non va azzerata.
+        dm = re.search(r"DIAGNOSI_STATO_START[\s\S]*?DIAGNOSI_STATO_END", raw_text)
+        if dm and "DIAGNOSI_STATO_START" not in (text or ""):
+            text = f"{text}\n\n{dm.group(0)}" if text else dm.group(0)
         return text or raw_text
     except Exception:
         log.exception("quality_gate: errore critico → pass-through (fail-open)")

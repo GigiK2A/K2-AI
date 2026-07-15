@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from ..settings import CHAT_SYSTEM_MAX_CHARS
 from .skills import load_skill_bundle
-from . import rag
+from . import rag, signals
 
 REPORT_TYPES_OVERVIEW = """TIPI DI ANALISI / REPORT che puoi produrre (K-BOT PREMIUM = SOLO analisi e report, NON proporre automazioni o implementazioni software):
 - Analisi di bilancio / salute finanziaria e bancabilità (flussi di cassa, margini, indici, solvibilità)
@@ -205,6 +205,25 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
 
     next_step_hint = "Scarica il deliverable: il report in PDF + il modello Excel editabile (tabelle/opzioni/piano)"
 
+    # STATO DIAGNOSTICO ESPLICITO: le ipotesi del bot vivono FUORI dalla sua "testa" —
+    # emesse ogni turno nel blocco DIAGNOSI_STATO, persistite dal server, re-iniettate
+    # qui. Senza, ogni turno riparte da zero: oscillazioni, domande ripetute, stop rule
+    # "a sensazione". Con: la prossima domanda discrimina le ipotesi APERTE, e la stop
+    # rule diventa quasi meccanica (nessuna ipotesi decisiva aperta → genera).
+    _diag = collected.get("diagnosi") or {}
+    _ips = [i for i in (_diag.get("ipotesi") or []) if isinstance(i, dict) and i.get("t")]
+    if _ips:
+        _ips_txt = "; ".join(f"[{i.get('s', 'aperta')}] {str(i['t'])[:90]}" for i in _ips[:4])
+        diagnosi_context = (
+            "\nSTATO DIAGNOSTICO (le TUE ipotesi dai turni precedenti — AGGIORNALE, non ripartire da zero):\n"
+            f"- Ipotesi: {_ips_txt}\n"
+            f"- Dato critico mancante: {str(_diag.get('manca') or '—')[:120]}\n"
+            "La prossima domanda deve DISCRIMINARE tra le ipotesi ancora [aperta]. Quando nessuna "
+            "ipotesi che cambierebbe le decisioni resta aperta, la STOP RULE è soddisfatta: genera.\n"
+        )
+    else:
+        diagnosi_context = ""
+
     base_prompt = f"""Sei K-BOT PREMIUM, l'analista AI di K2-AI per PMI italiane.
 Il tuo SOLO ruolo: capire che tipo di ANALISI o REPORT serve all'utente, raccogliere il contesto necessario, poi produrre il report finale richiesto.
 
@@ -229,7 +248,7 @@ URGENZA > COMPLETEZZA (ma NON > CORRETTEZZA): se l'utente segnala una situazione
 TRIGGER PROCEDI — applicabile con QUALUNQUE di queste forme: "vai", "procedi", "procediamo", "fai il report", "fammi il report", "voglio il report", "basta domande", "salta le domande", "fai senza domande", "ok procedi", "dai procedi". Quando arriva il trigger letterale, emetti subito CONSULENZA_SUMMARY (vedi sotto), anche se hai solo 2 turni.
 {required_fields_hint}
 NON sei un consulente di automazione. NON proporre agenti AI, microapp, automazioni, integrazioni software o implementazioni. Il tuo output è ESCLUSIVAMENTE un documento di analisi scritto.
-{service_context}{url_context}{attachments_section}
+{service_context}{diagnosi_context}{url_context}{attachments_section}
 COMPORTAMENTO:
 - Fai UNA sola domanda per volta, specifica e contestuale a ciò che l'utente ha già detto
 - Se l'utente ha già risposto a qualcosa, non richiederlo
@@ -280,6 +299,12 @@ CONSULENZA_SUMMARY_END
 
 Il blocco sarà estratto automaticamente e non mostrato all'utente.
 
+MEMORIA DI LAVORO (obbligatoria, invisibile all'utente): chiudi OGNI tua risposta col blocco
+DIAGNOSI_STATO_START {{"ipotesi":[{{"t":"<ipotesi breve>","s":"aperta|probabile|esclusa"}}],"manca":"<il singolo dato che meglio discrimina le ipotesi aperte, o null>"}} DIAGNOSI_STATO_END
+Massimo 4 ipotesi, frasi corte. Il blocco viene estratto dal sistema e ri-iniettato nel tuo
+prossimo turno: è la tua memoria diagnostica — tienila aggiornata (nuove evidenze → ipotesi
+da aperta a probabile/esclusa), non ricrearla da zero.
+
 {REPORT_TYPES_OVERVIEW}
 """
     # GATE INTERVISTA DETERMINISTICO (per-turno): nei primi turni imponi UNA domanda e
@@ -290,20 +315,12 @@ Il blocco sarà estratto automaticamente e non mostrato all'utente.
     _user_texts = [str(_m.get("content") or "") for _m in _msgs
                    if isinstance(_m, dict) and _m.get("role") == "user"]
     _last_user = _user_texts[-1] if _user_texts else ""
-    _procedi = bool(re.search(
-        r"\b(vai|proced\w*|fai il report|fammi il report|voglio il report( subito)?|"
-        r"basta domande|salta le domande|fai senza domande|ok proced\w*|dai proced\w*)\b",
-        _last_user, re.I))
+    _procedi = bool(signals.PROCEDI_RE.search(_last_user))
     # RILEVATORE URGENZA: crisi di continuità / emergenza operativa dichiarata in QUALSIASI
     # turno (spesso il primo). La soglia di comprensione resta bassa (2 = una sola domanda
     # forzata prima del summary); in urgenza cambia il TIPO di domanda (ad alto valore
     # decisionale 24-72h) e la Stop Rule fa generare subito. Vedi URGENZA > COMPLETEZZA nel prompt.
-    _urgent = bool(re.search(
-        r"\b(urgen\w+|emergenz\w+|subito|quanto prima|entro (?:\d+|pochi|due|tre|dieci) "
-        r"(?:or[ae]|giorn\w+|settiman\w+)|scaden\w+|continuit[àa]|rischi\w* di ferma\w+|"
-        r"si ferma|blocc\w+|non ri\w+ a pagare|stipend\w+|liquidit[àa]|ricoverat\w+|"
-        r"indisponibil\w+|nessuno (?:ha accesso|pu[òo]|riesce)|non abbiamo accesso|crisi)\b",
-        " ".join(_user_texts), re.I))
+    _urgent = bool(signals.URGENT_RE.search(" ".join(_user_texts)))
     _min_turns = 2  # una sola domanda di comprensione forzata; poi governa la STOP RULE
     if _u_turns < _min_turns and not _procedi:
         if _urgent:
@@ -334,26 +351,23 @@ Il blocco sarà estratto automaticamente e non mostrato all'utente.
     return f"{base_prompt}\n\n{skill_content}"
 
 
-# TOLLERANTE al formato: i modelli locali (gpt-oss) spesso emettono il blocco INLINE
-# — "CONSULENZA_SUMMARY_START {json} CONSULENZA_SUMMARY_END" sulla stessa riga — invece
-# del formato multi-riga. Il vecchio regex pretendeva "\n" dopo START → l'estrazione
-# falliva ANCHE col blocco presente → summary None → report mai generato (bug 0/10).
-# Ora accetta qualsiasi spaziatura tra i marker e il JSON.
-_SUMMARY_RE = re.compile(r"CONSULENZA_SUMMARY_START\s*([\s\S]*?)\s*CONSULENZA_SUMMARY_END")
-
-
+# Le regex di governo vivono in signals.py (SSOT testata) — qui restano solo le
+# facade usate dai molti call site esistenti.
 def extract_summary(text: str) -> Optional[dict]:
-    match = _SUMMARY_RE.search(text or "")
-    if not match:
-        return None
-    try:
-        return json.loads(match.group(1).strip())
-    except json.JSONDecodeError:
-        return None
+    return signals.extract_json_block(signals.SUMMARY_RE, text)
 
 
 def strip_summary_block(text: str) -> str:
-    return _SUMMARY_RE.sub("", text or "").strip()
+    return signals.strip_block(signals.SUMMARY_RE, text)
+
+
+def extract_diagnosi(text: str) -> Optional[dict]:
+    """Stato diagnostico emesso dal bot nel blocco DIAGNOSI_STATO (ipotesi + dato mancante)."""
+    return signals.extract_json_block(signals.DIAGNOSI_RE, text)
+
+
+def strip_diagnosi_block(text: str) -> str:
+    return signals.strip_block(signals.DIAGNOSI_RE, text)
 
 
 def normalize_assistant_reply(raw: str) -> str:

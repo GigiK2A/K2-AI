@@ -117,28 +117,14 @@ def _new_user_messages(body: MessageBody) -> List[dict]:
 
 
 # ---- Gate intervista: nessun modello può saltare le domande generando in anticipo ----
+# Le regex di governo (procedi/ready/not-ready/urgenza/summary/diagnosi) vivono in
+# lib/signals.py (SSOT testata): erano sparse in 3 file e le divergenze hanno già
+# prodotto bug reali (negazione matchata come readiness; soglie gate divergite).
+from ..lib import signals
+
 _MIN_INTERVIEW_TURNS = 2  # allineato al prompt (logica consulente): una domanda di
 # comprensione, poi la Stop Rule/readiness può far partire il report. Era 4 → sopprimeva
 # il summary anche quando il bot si fermava presto (bug "stop rapido → report non generato").
-_PROCEDI_RE = _re.compile(
-    r"\b(vai|proced\w*|fai il report|fammi il report|voglio il report( subito)?|"
-    r"basta domande|salta le domande|fai senza domande|ok proced\w*|dai proced\w*)\b", _re.I)
-# Segnale di READINESS nel testo visibile: il bot dichiara di avere abbastanza dati.
-# Serve al fallback che FORZA il blocco CONSULENZA_SUMMARY quando il modello (spesso
-# locale) lo dichiara ma non emette il blocco (Regola 3 eval: dev'essere un trigger).
-# GUARDIA NEGAZIONE: se il bot dichiara di NON avere abbastanza dati ("Non ho ancora
-# informazioni sufficienti…"), il fallback NON deve forzare il summary — quella frase
-# contiene "informazioni sufficienti" e matcherebbe _READY_RE (bug: report prematuro
-# forzato proprio quando il bot gestisce correttamente l'incertezza).
-_NOT_READY_RE = _re.compile(
-    r"non\s+(?:ho|ha|abbiamo|dispongo|disponiamo)\s+(?:ancora\s+)?(?:abbastanza\s+|sufficient\w+\s+)?"
-    r"(?:informazioni|dati|elementi)|informazioni\s+non\s+(?:ancora\s+)?sufficient\w+|"
-    r"non\s+(?:sono|bastano)\s+(?:ancora\s+)?sufficient\w+|mancano\s+(?:ancora\s+)?(?:informazioni|dati|elementi)|"
-    r"prima\s+devo\s+chiarire|troppo\s+presto\s+per", _re.I)
-_READY_RE = _re.compile(
-    r"(informazion\w+ sufficient\w+|sufficient\w+ per (produrre|preparare|generare|una prima)|"
-    r"procedo con il report|posso (gi[àa] )?prepar\w+ il report|genero il report|"
-    r"ho abbastanza (informazioni|dati)|dati sufficient\w+)", _re.I)
 
 
 def _interview_gate_active(merged_messages: list) -> bool:
@@ -149,21 +135,42 @@ def _interview_gate_active(merged_messages: list) -> bool:
         return False
     last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
                       if isinstance(m, dict) and m.get("role") == "user"), "")
-    return not bool(_PROCEDI_RE.search(last_user))
+    return not bool(signals.PROCEDI_RE.search(last_user))
 
 
 def _extract_gated_summary(raw_text: str, merged_messages: list):
-    """Estrae il summary MA lo SOPPRIME se siamo ancora in fase intervista. Enforcement
-    server-side: anche se il modello emette CONSULENZA_SUMMARY troppo presto, la
-    generazione NON parte finché non ci sono abbastanza turni (o un 'procedi')."""
+    """Estrae summary + stato diagnostico; SOPPRIME il summary se in fase intervista.
+    Il visibile è ripulito da ENTRAMBI i blocchi macchina (summary + diagnosi)."""
+    from ..lib.prompts import extract_diagnosi, strip_diagnosi_block
     summary = extract_summary(raw_text)
-    visible = normalize_assistant_reply(strip_summary_block(raw_text))
+    diagnosi = extract_diagnosi(raw_text)
+    visible = normalize_assistant_reply(strip_summary_block(strip_diagnosi_block(raw_text)))
     if summary and _interview_gate_active(merged_messages):
         summary = None
         if len((visible or "").strip()) < 5:
             visible = ("Prima di preparare il report mi servono ancora un paio di dettagli. "
                        "Qual è l'obiettivo concreto che vuoi ottenere con questa analisi?")
-    return visible, summary
+    return visible, summary, diagnosi
+
+
+def _postprocess_turn(client, system_prompt, messages: list, merged_messages: list,
+                      raw_text: str) -> str:
+    """Finalize CONDIVISA del turno (path sync E streaming — la duplicazione dei due
+    path aveva già prodotto divergenze: il fallback readiness esisteva solo sullo
+    streaming). Ordine: forced-summary → quality gate."""
+    raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text, merged_messages)
+    raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text)
+    return raw_text
+
+
+def _persist_diagnosi(collected: dict, diagnosi: Optional[dict]) -> None:
+    """Persiste lo stato diagnostico del bot (memoria di lavoro tra i turni)."""
+    if isinstance(diagnosi, dict) and diagnosi.get("ipotesi"):
+        collected["diagnosi"] = {
+            "ipotesi": [i for i in diagnosi.get("ipotesi") or []
+                        if isinstance(i, dict) and i.get("t")][:4],
+            "manca": diagnosi.get("manca"),
+        }
 
 
 def _ensure_summary_block(client, system_prompt, messages: list, raw_text: str,
@@ -173,12 +180,10 @@ def _ensure_summary_block(client, system_prompt, messages: list, raw_text: str,
     meno affidabili sui marker esatti), lo FORZA con una chiamata mirata mono-scopo — così
     «ho abbastanza informazioni» diventa un vero trigger di generazione, non un messaggio
     finale. No-op se il blocco c'è già, se siamo ancora in fase intervista, o se manca il
-    segnale di readiness. Ritorna raw_text (eventualmente con il blocco appeso)."""
+    segnale di readiness (con guardia negazione — vedi signals). Ritorna raw_text."""
     if extract_summary(raw_text) or _interview_gate_active(merged_messages):
         return raw_text
-    if _NOT_READY_RE.search(raw_text or ""):
-        return raw_text  # il bot ha dichiarato insufficienza: NON forzare il report
-    if not _READY_RE.search(raw_text or ""):
+    if not signals.is_ready_declared(raw_text or ""):
         return raw_text
     try:
         focus = list(messages) + [
@@ -344,9 +349,12 @@ async def post_message(
     raw_text = "".join(
         block.text for block in result.content if getattr(block, "type", "") == "text"
     )
-    # QUALITY ENGINE anche sul path sincrono (stessa catena del path streaming).
-    raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text)
+    # Finalize CONDIVISA (stessa catena del path streaming): forced-summary + quality gate.
+    raw_text = _postprocess_turn(client, system_prompt, history, merged_messages, raw_text)
     usage = getattr(result, "usage", None)
+    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages)
+    _persist_diagnosi(collected, diagnosi)
+    _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
     track_server(
         distinct_id=body.sessionId,
         event="message_processed",
@@ -355,9 +363,13 @@ async def post_message(
             "tokens_in": getattr(usage, "input_tokens", None) if usage else None,
             "tokens_out": getattr(usage, "output_tokens", None) if usage else None,
             "model": ANTHROPIC_MODEL,
+            # telemetria qualità chat: quanti turni serve l'intake, quando esce il summary,
+            # se il bot mantiene lo stato diagnostico — per vedere i trend senza stress test.
+            "user_turns": _user_turns,
+            "summary_emitted": bool(summary),
+            "diagnosi_tracked": bool(diagnosi),
         },
     )
-    user_visible, summary = _extract_gated_summary(raw_text, merged_messages)
 
     # Persist updated state.
     updated_messages = sessions.append_messages(
@@ -449,7 +461,8 @@ def _persist_assistant_turn(
     skills: Optional[List[str]] = None,
 ) -> tuple[str, Optional[dict], dict]:
     """Apply summary extraction + persist assistant message. Returns (user_visible, summary, updated_session)."""
-    user_visible, summary = _extract_gated_summary(raw_text, merged_messages)
+    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages)
+    _persist_diagnosi(collected, diagnosi)
 
     updated_messages = sessions.append_messages(
         {**session, "messages": merged_messages},
@@ -557,12 +570,9 @@ async def post_message_stream(
             return
 
         raw_text = "".join(raw_buffer)
-        # FALLBACK readiness → generazione: se il bot ha detto di avere abbastanza dati
-        # ma non ha emesso il blocco, forzalo (una chiamata mirata). Vedi _ensure_summary_block.
-        raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text, merged_messages)
-        # QUALITY ENGINE: critico sul turno (stop rule / diagnosi / prudenza / profondità).
-        # Gira solo sui turni a rischio (pre-filtro), fail-open. Vedi lib/quality_gate.py.
-        raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text)
+        # Finalize CONDIVISA coi due path: forced-summary + quality gate (vedi _postprocess_turn).
+        raw_text = _postprocess_turn(client, system_prompt, messages, merged_messages, raw_text)
+        _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
         track_server(
             distinct_id=body.sessionId,
             event="message_processed",
@@ -572,6 +582,9 @@ async def post_message_stream(
                 "tokens_out": getattr(usage, "output_tokens", None) if usage else None,
                 "model": ANTHROPIC_MODEL,
                 "stream": True,
+                "user_turns": _user_turns,
+                "summary_emitted": bool(extract_summary(raw_text)),
+                "diagnosi_tracked": bool(signals.DIAGNOSI_RE.search(raw_text)),
             },
         )
         try:
