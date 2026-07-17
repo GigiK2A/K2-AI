@@ -842,6 +842,12 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
                     raise Refuse("validation_failed",
                                  "generazione non disponibile (offline o incompleta) per questo boost")
 
+            # NORMALIZZAZIONE TIPOGRAFICA (causa-radice dei 'numeri corrotti', 17 lug):
+            # gpt-oss emette trattini esotici (U+2011) che i font del PDF non hanno →
+            # '€10-12 M' stampato come '€1012 M'. Normalizza SUBITO dopo la generazione,
+            # così gate/sanitizer/render vedono trattini veri.
+            deliverable = quality.normalize_typography(deliverable)
+
             deliverable = quality.ensure_metadata(
                 deliverable, out_schema, inputs,
                 blueprint.get("pacchetto", {}).get("nome_commerciale", service_id),
@@ -951,6 +957,21 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             # riconosciuti come ancorati e NON vengono cancellati/etichettati; solo quelli
             # inventati dall'LLM restano scoperti (audit S2, chiude l'anello dei case_facts).
             deliverable = quality.scrub_ungrounded_numbers(deliverable, gen_inputs, facts, citazioni, strict=scrub_strict)
+            # SANITY BOUND (eval batterie: 'beneficio €34 M' su €42M di fatturato): sui boost
+            # finanziari un importo €…M NON grounded sopra il fatturato annuo è un errore di
+            # formula/conteggio → N/D. Becca anche i numeri esenti dal gate perché etichettati
+            # come ipotesi (l'esenzione _ASSUMPTION non copre gli importi implausibili).
+            if skill in FINANCIAL_SKILLS:
+                _fatt = ((finance.reclass_reconciled(inputs) or {}).get("ce") or {}).get("ricavi")
+                deliverable, _n_bound = quality.bound_check_amounts(
+                    deliverable, _fatt, quality.grounded_numbers(gen_inputs, facts, citazioni))
+                if _n_bound:
+                    log.warning("sanity bound: %d importi implausibili → N/D (job %s)", _n_bound, job_id)
+            # ROLE ASSIGNMENT (eval batterie: 'IT → ottimizzazione scorte'): responsabili
+            # palesemente incoerenti col dominio dell'azione → ruolo corretto. Conservativo.
+            deliverable, _n_roles = quality.fix_owner_assignments(deliverable)
+            if _n_roles:
+                log.info("role assignment: %d responsabili corretti (job %s)", _n_roles, job_id)
             g_findings = (grounding.required_inputs_findings(form_schema, inputs, strict=strict_grounding)
                           + grounding.integrity_findings(deliverable, citazioni=citazioni, inputs=gen_inputs,
                                                           facts=facts, strict=strict_grounding,

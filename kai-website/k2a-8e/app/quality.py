@@ -630,6 +630,151 @@ def scrub_ungrounded_numbers(deliverable: dict, inputs: dict, facts: dict,
 _CORRUPTED_HOURS = re.compile(r"\b0(\d{2,3})\s*(h\b|ore\b)", re.I)
 
 
+# ── Normalizzazione tipografica (CAUSA-RADICE dei numeri corrotti, trovata 17 lug) ─────
+# gpt-oss emette trattini ESOTICI nei range numerici: U+2011 NON-BREAKING HYPHEN
+# ('€10‑12 M'), talvolta U+2010/U+2012. I font del PDF (DMSans/DMMono) NON hanno quei
+# glifi → ReportLab li scarta → in stampa esce '€1012 M', '048h', '23 anni'. Tutti i bug
+# storici di 'range corrotti' erano QUESTO. Fix: normalizza ogni trattino esotico a '-'
+# PRIMA di gate/sanitizer/render (così anche i regex vedono trattini veri). NBSP inclusi.
+_EXOTIC_TRANS = str.maketrans({
+    "\u2010": "-",  # hyphen
+    "\u2011": "-",  # NON-BREAKING HYPHEN — quello emesso da gpt-oss nei range
+    "\u2012": "-",  # figure dash
+    "\u2212": "-",  # minus sign
+    "\ufe63": "-",  # small hyphen-minus
+    "\uff0d": "-",  # fullwidth hyphen-minus
+    "\u00a0": " ",  # no-break space
+    "\u202f": " ",  # narrow no-break space
+    "\u2009": " ",  # thin space
+})
+
+
+def normalize_typography(deliverable: dict) -> dict:
+    """Sostituisce i caratteri tipografici che i font del PDF non hanno (trattini esotici,
+    spazi speciali) con equivalenti ASCII. Deterministico, senza perdita semantica."""
+    def walk(v):
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        if isinstance(v, str):
+            return v.translate(_EXOTIC_TRANS)
+        return v
+
+    return walk(deepcopy(deliverable))
+
+
+# ── Financial sanity bounds (eval batterie: 'beneficio €34 M' su fatturato €42M) ───────
+# Un importo € in prosa NON grounded e sopra il fatturato annuo è quasi certamente un
+# errore (formula esplosa, doppio conteggio, range corrotto residuo): si sostituisce con
+# N/D. I numeri grounded (CAPEX, EV, contratti dichiarati) restano anche se grandi.
+_AMOUNT_M = re.compile(r"€\s?(\d{1,4}(?:[.,]\d{1,2})?)\s?(M\b|mln\b|milion[ei]\b)", re.I)
+# in contesto BENEFICIO (miglioramento/risparmio/beneficio/liberare cassa) la soglia di
+# plausibilità è il 50% del fatturato (regola eval: un 'beneficio di liquidità' da 80%
+# del fatturato annuo è una formula esplosa); altrove 100%.
+_BENEFIT_CTX = re.compile(r"(benefic|migliorament|risparmi|liber\w+ (?:cassa|liquidit)|recuper\w+ (?:cassa|liquidit))", re.I)
+
+
+def bound_check_amounts(deliverable: dict, fatturato_eur: float | None,
+                        known: set) -> tuple[dict, int]:
+    """Sostituisce con 'N/D' gli importi €…M non-grounded implausibili: > fatturato annuo
+    in generale, > 50% del fatturato in contesto beneficio/risparmio. Ritorna
+    (deliverable, n_sostituzioni). No-op senza fatturato."""
+    if not fatturato_eur or fatturato_eur <= 0:
+        return deliverable, 0
+    count = [0]
+
+    def fix(s: str) -> str:
+        def repl(m):
+            v = _num(m.group(1))
+            if v is None:
+                return m.group(0)
+            eur = v * 1e6
+            cands = {round(v, 4), round(eur, 4)}
+            if cands & known:
+                return m.group(0)
+            ctx = s[max(0, m.start() - 60):m.start()]
+            soglia = 0.5 * fatturato_eur if _BENEFIT_CTX.search(ctx) else fatturato_eur
+            if eur <= soglia:
+                return m.group(0)
+            count[0] += 1
+            return "N/D [importo implausibile rimosso: fuori scala rispetto al fatturato annuo]"
+        return _AMOUNT_M.sub(repl, s)
+
+    def walk(v):
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        if isinstance(v, str):
+            return fix(v)
+        return v
+
+    out = walk(deepcopy(deliverable))
+    return out, count[0]
+
+
+# ── Role Assignment Engine (eval batterie: 'IT → ottimizzazione scorte') ───────────────
+# Il responsabile di un'azione deve essere coerente col DOMINIO dell'azione. Mappa
+# deterministica keyword-azione → ruolo atteso; si corregge SOLO quando il responsabile
+# attuale appartiene chiaramente a una famiglia sbagliata (mai toccare se plausibile).
+_ROLE_DOMAINS: list[tuple[tuple[str, ...], str, tuple[str, ...]]] = [
+    # (keyword dell'AZIONE, ruolo corretto, responsabili-famiglie CHIARAMENTE sbagliate)
+    (("scort", "magazzin", "inventari", "rimanenz"), "Operations / Supply Chain",
+     ("it", "commercialista", "avvocat", "marketing")),
+    (("tesorer", "liquidit", "cassa", "finanziament", "banc", "factoring", "leasing",
+      "covenant", "linea di credito", "cash flow"), "CFO / Amministrazione Finanza",
+     ("it", "avvocat", "commerciale", "marketing", "operations")),
+    (("assicurazione credit", "rischio credit", "insolvenz"), "CFO / Risk Manager",
+     ("it", "avvocat", "commerciale", "marketing")),
+    (("negozia", "cliente", "clienti", "vendit", "commercial", "ordini", "listino"),
+     "Direzione Commerciale", ("it", "commercialista", "avvocat")),
+    (("fornitor", "acquist", "approvvigion"), "Ufficio Acquisti / Operations",
+     ("it", "avvocat", "marketing")),
+    (("fiscal", "imposte", "iva", "dichiarazion"), "Commercialista",
+     ("it", "commerciale", "marketing", "operations")),
+    (("sistem", "software", "gestional", "erp", "cybersecur", "backup", "dati"),
+     "IT", ("commercialista", "avvocat")),
+]
+
+
+def fix_owner_assignments(deliverable: dict) -> tuple[dict, int]:
+    """Corregge i responsabili palesemente incoerenti col dominio dell'azione
+    (es. 'IT' su ottimizzazione scorte → 'Operations / Supply Chain'). Conservativo:
+    se il responsabile attuale non è in una famiglia chiaramente sbagliata, resta."""
+    count = [0]
+
+    def fix_item(it: dict) -> dict:
+        azione = " ".join(str(it.get(k) or "") for k in
+                          ("azione", "attivita", "descrizione", "titolo")).lower()
+        resp_key = next((k for k in ("responsabile", "owner", "recommended_owner_role")
+                         if isinstance(it.get(k), str) and it[k].strip()), None)
+        if not azione.strip() or not resp_key:
+            return it
+        resp = it[resp_key].lower()
+        for keys, ruolo, sbagliati in _ROLE_DOMAINS:
+            if any(k in azione for k in keys):
+                if any(s in resp for s in sbagliati) and ruolo.lower() not in resp:
+                    out = dict(it)
+                    out[resp_key] = ruolo
+                    count[0] += 1
+                    return out
+                break  # primo dominio che matcha decide; responsabile plausibile → stop
+        return it
+
+    def walk(v):
+        if isinstance(v, dict):
+            if any(k in v for k in ("responsabile", "owner", "recommended_owner_role")):
+                v = fix_item(v)
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        return v
+
+    out = walk(deepcopy(deliverable))
+    return out, count[0]
+
+
 # Range numerici corrotti (audit CoolTech-2: '2,42,7×', '€20 00030 000'): il modello locale
 # droppa il trattino tra le cifre di un intervallo. Ricostruiamo SOLO le firme inequivocabili:
 # - due decimali-virgola concatenati seguiti da ×/x/%: '2,42,7×' = '2,4' + '2,7' (un numero

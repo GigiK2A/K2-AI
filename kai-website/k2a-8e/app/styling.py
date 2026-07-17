@@ -86,6 +86,17 @@ def hx(c) -> str:
     return "#" + c.hexval()[2:]
 
 
+# Trattini/spazi esotici → ASCII (cintura del render: la normalizzazione principale è in
+# quality.normalize_typography sul deliverable; qui si coprono i testi che arrivano al PDF
+# da altre vie, es. meta/inputs). U+2011 (non-breaking hyphen, emesso da gpt-oss nei range)
+# NON ha glifo in DMSans/DMMono → senza questo sparisce in stampa ('€10-12 M' → '€1012 M').
+_EXOTIC_TRANS = str.maketrans({
+    "‐": "-", "‑": "-", "‒": "-", "−": "-",
+    "﹣": "-", "－": "-",
+    " ": " ", " ": " ", " ": " ",
+})
+
+
 def fix_spacing(s: str) -> str:
     """Ripristina lo spazio dopo la punteggiatura quando il modello lo omette
     ('CCN:current' → 'CCN: current', 'liquidità;senza' → 'liquidità; senza',
@@ -94,6 +105,7 @@ def fix_spacing(s: str) -> str:
     usato da action_box/kpi_table/risk_card/heatmap e dal render generico).
     Guardie: numeri (1,16 · 3.6 · 9:30 · art.90), sigle (S.R.L.), URL (://) restano
     intatti — le regole scattano SOLO quando alla punteggiatura segue una LETTERA."""
+    s = s.translate(_EXOTIC_TRANS)
     s = re.sub(r"([;:])(?=[A-Za-zÀ-ÿ])", r"\1 ", s)                 # ; : + lettera
     s = re.sub(r",(?=[A-Za-zÀ-ÿ])", ", ", s)                        # , + lettera (non 1,16)
     s = re.sub(r"([a-zà-ÿ]{2})\.(?=[A-ZÀ-Ÿ][a-zà-ÿ])", r"\1. ", s)  # fine-frase minuscola.Maiuscola
