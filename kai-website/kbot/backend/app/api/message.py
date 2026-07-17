@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from ..lib import sessions, engine, readiness, web_search, quality_gate
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
+from ..lib import profile as profile_lib
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -305,7 +306,8 @@ async def post_message(
         forced = [s for s in (body.forcedSkills or []) if isinstance(s, str) and s.strip()]
         collected["forced_skills"] = forced
 
-    session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages}
+    session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages,
+                          "_profilo": profile_lib.load(session.get("user_id"))}
     skills = resolve_skills_for_session(session_for_prompt)
     # Merge user-forced skills on top (deduped, order-preserving).
     forced_skills: list[str] = list(collected.get("forced_skills") or [])
@@ -404,6 +406,7 @@ async def post_message(
             "step": new_step,
         },
     )
+    profile_lib.update_after_turn(updated)  # memoria cross-sessione (fail-open)
 
     return {
         "message": user_visible,
@@ -438,7 +441,8 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     last_user_text = new_msgs[-1]["content"] if new_msgs else ""
     collected = await _auto_fetch_urls(last_user_text, collected)
 
-    session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages}
+    session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages,
+                          "_profilo": profile_lib.load(session.get("user_id"))}
     skills = resolve_skills_for_session(session_for_prompt)
     req_hint = await _required_fields_hint(collected)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
@@ -494,6 +498,7 @@ def _persist_assistant_turn(
             "step": new_step,
         },
     )
+    profile_lib.update_after_turn(updated)  # memoria cross-sessione (fail-open)
     return user_visible, summary, updated
 
 
