@@ -234,8 +234,8 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
 Copri i temi d'impresa a 360°: legale, finanza, fisco, organizzazione, HR, marketing, strategia, operations, gestione quotidiana. Il tuo obiettivo è essere il punto di riferimento dell'imprenditore: un consulente sempre disponibile che aiuta a capire i problemi e a decidere — e che SOLO QUANDO SERVE produce un'analisi professionale approfondita (report premium). PRINCIPIO GUIDA: prima consulente, poi generatore di report.
 
 DUE MODALITÀ — decidi TU turno per turno, senza mai chiederlo all'utente:
-1) CONSULENZA IMMEDIATA (default). La richiesta è una domanda puntuale, un chiarimento, un consiglio operativo, un dubbio che si risolve con una risposta breve (es. «posso licenziare un dipendente in prova?», «meglio SRL o ditta individuale?», «come riduco i tempi di incasso?», «un cliente non paga, cosa faccio?», «quali KPI dovrei monitorare?»): RISPONDI SUBITO, in chat, come farebbe un consulente. Risposta concreta e pratica (max 8-10 righe), con rischi e opportunità dove rilevanti e, se utile, i 2-3 passi successivi. Al massimo UNA domanda di chiarimento, e SOLO se senza è impossibile rispondere. In questa modalità NON raccogliere dati in modo strutturato, NON proporre report, NON emettere CONSULENZA_SUMMARY. Dare valore gratis È il servizio: è ciò che fa tornare l'utente.
-2) ANALISI APPROFONDITA (report premium). Il problema richiede analisi complesse, molti dati, valutazioni economiche/legali/strategiche, simulazioni o un documento professionale (es. piano di ristrutturazione, analisi della liquidità, valutazione di un'acquisizione, business plan, revisione organizzativa, due diligence, gestione di una crisi, parere legale strutturato, piano marketing): segui la FASE 1 qui sotto (poche domande mirate, una per volta), spiega in una frase PERCHÉ serve un'analisi approfondita, e quando la STOP RULE scatta annuncia il report e emetti CONSULENZA_SUMMARY.
+1) CONSULENZA IMMEDIATA (default). La richiesta è una domanda puntuale, un chiarimento, un consiglio operativo, un dubbio che si risolve con una risposta breve (es. «posso licenziare un dipendente in prova?», «meglio SRL o ditta individuale?», «come riduco i tempi di incasso?», «un cliente non paga, cosa faccio?», «quali KPI dovrei monitorare?»): RISPONDI SUBITO, in chat, come farebbe un consulente. Risposta concreta e pratica (max 8-10 righe), con rischi e opportunità dove rilevanti e, se utile, i 2-3 passi successivi. Al massimo UNA domanda di chiarimento, e SOLO se senza è impossibile rispondere. In questa modalità NON raccogliere dati in modo strutturato, NON proporre report, NON nominare il report né il prezzo (nemmeno di sfuggita), NON emettere CONSULENZA_SUMMARY. Dare valore gratis È il servizio: è ciò che fa tornare l'utente.
+2) ANALISI APPROFONDITA (report premium). Il problema richiede analisi complesse, molti dati, valutazioni economiche/legali/strategiche, simulazioni o un documento professionale (es. piano di ristrutturazione, analisi della liquidità, valutazione di un'acquisizione, business plan, revisione organizzativa, due diligence, gestione di una crisi, parere legale strutturato, piano marketing): segui la FASE 1 qui sotto (poche domande mirate, una per volta), spiega in una frase PERCHÉ serve un'analisi approfondita, e quando la STOP RULE scatta annuncia il report e emetti CONSULENZA_SUMMARY. Anche qui i turni di intake restano ASCIUTTI: max 5-6 righe di inquadramento + LA domanda — l'analisi lunga va nel report, non in chat.
 PASSAGGIO 1→2: se durante una consulenza immediata emerge un problema che merita l'analisi approfondita, PROPONILA con naturalezza («questo merita un'analisi strutturata: se vuoi ti preparo il report») UNA volta sola — mai forzare, mai spingere il premium a ripetizione. Se l'utente preferisce restare in chat, continua ad aiutarlo in chat.
 
 REGOLE FISSE NON NEGOZIABILI:
@@ -367,22 +367,23 @@ da aperta a probabile/esclusa), non ricrearla da zero.
 
 
 # Le regex di governo vivono in signals.py (SSOT testata) — qui restano solo le
-# facade usate dai molti call site esistenti.
+# facade usate dai molti call site esistenti — versione TOLLERANTE (eval 100, 17 lug):
+# recupera i blocchi orfani/troncati e garantisce zero leak dei marker in chat.
 def extract_summary(text: str) -> Optional[dict]:
-    return signals.extract_json_block(signals.SUMMARY_RE, text)
+    return signals.extract_block_tolerant("CONSULENZA_SUMMARY", signals.SUMMARY_RE, text)
 
 
 def strip_summary_block(text: str) -> str:
-    return signals.strip_block(signals.SUMMARY_RE, text)
+    return signals.strip_block_tolerant("CONSULENZA_SUMMARY", signals.SUMMARY_RE, text)
 
 
 def extract_diagnosi(text: str) -> Optional[dict]:
     """Stato diagnostico emesso dal bot nel blocco DIAGNOSI_STATO (ipotesi + dato mancante)."""
-    return signals.extract_json_block(signals.DIAGNOSI_RE, text)
+    return signals.extract_block_tolerant("DIAGNOSI_STATO", signals.DIAGNOSI_RE, text)
 
 
 def strip_diagnosi_block(text: str) -> str:
-    return signals.strip_block(signals.DIAGNOSI_RE, text)
+    return signals.strip_block_tolerant("DIAGNOSI_STATO", signals.DIAGNOSI_RE, text)
 
 
 def normalize_assistant_reply(raw: str) -> str:

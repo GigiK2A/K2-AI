@@ -182,15 +182,27 @@ def _ensure_summary_block(client, system_prompt, messages: list, raw_text: str,
     «ho abbastanza informazioni» diventa un vero trigger di generazione, non un messaggio
     finale. No-op se il blocco c'è già, se siamo ancora in fase intervista, o se manca il
     segnale di readiness (con guardia negazione — vedi signals). Ritorna raw_text."""
-    if extract_summary(raw_text) or _interview_gate_active(merged_messages):
+    if extract_summary(raw_text):
         return raw_text
-    if not signals.is_ready_declared(raw_text or ""):
-        return raw_text
+    # ENFORCEMENT PROCEDI (eval 100, 17 lug: 7× 'ecco i dati… procedi' ignorati da
+    # gpt-oss, che continuava a fare domande): se l'ULTIMO messaggio utente è un
+    # trigger esplicito (variante STRETTA: mai 'procedura'/'come procediamo?'), il
+    # summary si forza SEMPRE — bypassa gate intervista e readiness del bot.
+    _last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
+                       if isinstance(m, dict) and m.get("role") == "user"), "")
+    user_procedi = bool(signals.PROCEDI_HARD_RE.search(_last_user))
+    if not user_procedi:
+        if _interview_gate_active(merged_messages):
+            return raw_text
+        if not signals.is_ready_declared(raw_text or ""):
+            return raw_text
     try:
+        _motivo = ("L'utente ha chiesto ESPLICITAMENTE di procedere col report."
+                   if user_procedi else "Hai dichiarato di avere informazioni sufficienti.")
         focus = list(messages) + [
             {"role": "assistant", "content": (strip_summary_block(raw_text) or "Ho informazioni sufficienti.")[:4000]},
             {"role": "user", "content": (
-                "Hai dichiarato di avere informazioni sufficienti. Emetti ORA SOLO il blocco "
+                f"{_motivo} Emetti ORA SOLO il blocco "
                 "CONSULENZA_SUMMARY_START ... CONSULENZA_SUMMARY_END (una riga JSON) con i campi "
                 "del caso discusso: reportType, businessType, objective, scope, dataAvailable, "
                 "deadline, notes (le assunzioni e i dati mancanti), summary. NIENTE altro testo.")},

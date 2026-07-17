@@ -15,9 +15,22 @@ import re
 from typing import Optional
 
 # --- Trigger "procedi": l'utente chiede esplicitamente di generare ------------------
+# PROCEDI_RE è VOLUTAMENTE largo (bypass soft del gate primo-turno: un falso positivo
+# costa poco). Per l'ENFORCEMENT DURO (summary forzato dal server) serve la variante
+# STRETTA sotto: qui "la procedura di licenziamento" o "come procediamo?" matcherebbero.
 PROCEDI_RE = re.compile(
     r"\b(vai|proced\w*|fai il report|fammi il report|voglio il report( subito)?|"
     r"basta domande|salta le domande|fai senza domande|ok proced\w*|dai proced\w*)\b", re.I)
+
+# Trigger STRETTO (eval 100, 17 lug: 7× 'dati… procedi' ignorati da gpt-oss → il summary
+# va FORZATO dal server): richiesta esplicita di report, oppure imperativo procedi/vai
+# come frase a sé (inizio/fine messaggio o dopo punteggiatura), MAI dentro sostantivi
+# ('procedura') né in domande ('come procediamo?').
+PROCEDI_HARD_RE = re.compile(
+    r"(fai (?:il|un) report|fammi (?:il|un) report|voglio il report|genera(?:mi)? il report|"
+    r"basta domande|salta le domande|fai senza domande|"
+    r"(?:^|[.!;\n]\s*)(?:ok[, ]+|dai[, ]+|allora[, ]+)?(?:procedi(?:amo)?(?: pure)?|vai(?: pure)?)\s*[.!]?\s*$)",
+    re.I)
 
 # --- Readiness dichiarata dal bot ("ho abbastanza informazioni") ---------------------
 READY_RE = re.compile(
@@ -71,6 +84,70 @@ def extract_json_block(regex: re.Pattern, text: str) -> Optional[dict]:
 
 def strip_block(regex: re.Pattern, text: str) -> str:
     return regex.sub("", text or "").strip()
+
+
+# --- Gestione TOLLERANTE dei blocchi malformati (eval 100, 17 lug) --------------------
+# gpt-oss a volte emette: (a) START senza END (troncamento max_tokens) → il regex a
+# coppia non matcha e il blocco LEAKA in chat; (b) JSON + END senza START (orfano) →
+# leak E summary perso. Qui: estrazione che recupera l'orfano e strip che rimuove
+# entrambe le forme + qualunque riga residua col nome del marker (zero leak garantito).
+
+def _try_parse_before(text: str, end_idx: int) -> Optional[tuple[int, dict]]:
+    """Prova a parsare un oggetto JSON che TERMINA subito prima di end_idx: cammina
+    all'indietro sulle '{' candidate (max 25 tentativi). Ritorna (start_idx, dict)."""
+    prefix = text[:end_idx].rstrip()
+    for _ in range(25):
+        i = prefix.rfind("{")
+        if i < 0:
+            return None
+        try:
+            v = json.loads(prefix[i:])
+            return (i, v) if isinstance(v, dict) else None
+        except json.JSONDecodeError:
+            prefix = prefix[:i]
+    return None
+
+
+def extract_block_tolerant(marker: str, regex: re.Pattern, text: str) -> Optional[dict]:
+    """Come extract_json_block, ma recupera anche il blocco ORFANO (END senza START)
+    e quello troncato con JSON comunque completo (START senza END)."""
+    t = text or ""
+    v = extract_json_block(regex, t)
+    if v is not None:
+        return v
+    end = t.find(f"{marker}_END")
+    if end >= 0:
+        hit = _try_parse_before(t, end)
+        if hit:
+            return hit[1]
+    start = t.find(f"{marker}_START")
+    if start >= 0:
+        raw = t[start + len(marker) + 6:]
+        s, e = raw.find("{"), raw.rfind("}")
+        if 0 <= s < e:
+            try:
+                v = json.loads(raw[s:e + 1])
+                return v if isinstance(v, dict) else None
+            except json.JSONDecodeError:
+                return None
+    return None
+
+
+def strip_block_tolerant(marker: str, regex: re.Pattern, text: str) -> str:
+    """Strip a prova di leak: blocco ben formato, START troncato (fino a fine testo),
+    JSON+END orfano, e infine OGNI riga residua che contenga il nome del marker."""
+    t = regex.sub("", text or "")
+    start = t.find(f"{marker}_START")
+    if start >= 0:
+        t = t[:start]  # troncato: dal marker in poi è tutto macchina
+    end = t.find(f"{marker}_END")
+    if end >= 0:
+        hit = _try_parse_before(t, end)
+        cut_from = hit[0] if hit else max(t.rfind("\n", 0, end), 0)
+        t = t[:cut_from] + t[end + len(marker) + 4:]
+    if marker in t:  # backstop assoluto: via le righe residue col marker
+        t = "\n".join(l for l in t.split("\n") if marker not in l)
+    return t.strip()
 
 
 def is_ready_declared(text: str) -> bool:

@@ -113,3 +113,58 @@ def test_render_vuoto_senza_profilo():
 
 def test_update_after_turn_skip_anonimo():
     profile.update_after_turn({"collected_data": {}})  # nessun user_id → no-op, no crash
+
+
+# ── hardening eval-100 (17 lug): procedi enforcement + blocchi malformati ─────────────
+
+def test_procedi_hard_matcha_solo_intenti_espliciti():
+    from app.lib import signals
+    si = ("EBITDA 880mila. Liquidità 700mila. Tasso previsto 4,2%. procedi",
+          "Obiettivo: trattenere i tecnici under 40. procedi",
+          "procedi", "ok procedi", "vai", "fammi il report", "basta domande",
+          "La ditta fattura solo alla mia SRL per il 70%. procedi")
+    no = ("qual è la procedura di licenziamento?", "come procediamo?",
+          "il procedimento è lungo", "vorrei capire come si procede in questi casi",
+          "mi spieghi la procedura per la CIGS")
+    for t in si:
+        assert signals.PROCEDI_HARD_RE.search(t), f"doveva matchare: {t}"
+    for t in no:
+        assert not signals.PROCEDI_HARD_RE.search(t), f"NON doveva matchare: {t}"
+
+
+def test_strip_tolerante_blocco_troncato():
+    # leak reale (eval 100): DIAGNOSI_STATO_START troncato da max_tokens, niente END
+    from app.lib.prompts import strip_diagnosi_block
+    t = ('Analisi del caso e prossimi passi.\n\n'
+         'DIAGNOSI_STATO_START {"ipotesi":[{"t":"Redditività insufficiente","s":"aperta"}],"manca":"E')
+    out = strip_diagnosi_block(t)
+    assert "DIAGNOSI" not in out and out.startswith("Analisi del caso")
+
+
+def test_extract_e_strip_blocco_orfano_senza_start():
+    # leak reale (eval 100): JSON + CONSULENZA_SUMMARY_END senza START → il summary
+    # va RECUPERATO (report non perso) e il testo ripulito
+    from app.lib.prompts import extract_summary, strip_summary_block
+    t = ('Perfetto, procedo con il report.\n'
+         '{"reportType":"Piano marketing","objective":"lead B2B","summary":"caso ok"}\n'
+         'CONSULENZA_SUMMARY_END')
+    s = extract_summary(t)
+    assert s and s["reportType"] == "Piano marketing"
+    out = strip_summary_block(t)
+    assert "CONSULENZA_SUMMARY" not in out and "{" not in out
+    assert out.startswith("Perfetto")
+
+
+def test_strip_backstop_marker_nudo():
+    from app.lib.prompts import strip_summary_block
+    t = "Riepilogo:\nCONSULENZA_SUMMARY: vedi sopra\nGrazie."
+    out = strip_summary_block(t)
+    assert "CONSULENZA_SUMMARY" not in out and "Grazie." in out
+
+
+def test_blocchi_ben_formati_invariati():
+    from app.lib.prompts import extract_summary, strip_summary_block
+    t = ('Ok, genero il report.\nCONSULENZA_SUMMARY_START '
+         '{"reportType":"X","summary":"y"} CONSULENZA_SUMMARY_END')
+    assert extract_summary(t)["reportType"] == "X"
+    assert strip_summary_block(t) == "Ok, genero il report."
