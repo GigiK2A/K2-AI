@@ -59,7 +59,14 @@ SYSTEM_HINT = (
     "un'azienda o un settore), USA davvero `web_search` e cita le fonti nel testo.\n"
     "- NON dire MAI 'cercherò' / 'sto cercando' / 'lo farò' senza eseguire la ricerca: o "
     "cerchi subito con il tool, oppure dici onestamente che quel dato non ce l'hai. Niente "
-    "promesse di ricerche che non fai."
+    "promesse di ricerche che non fai.\n"
+    "- OBBLIGO SU NUMERI DI ARTICOLO: prima di scrivere il numero di un articolo di legge, "
+    "di un CCNL o di un decreto (es. 'art. 2096 c.c.', 'art. 34 del CCNL commercio'), "
+    "USA `web_search` per verificarlo — MAI scriverlo a memoria. Se non verifichi (o la "
+    "ricerca non conferma con certezza), NON scrivere il numero: parla in modo descrittivo "
+    "('il codice civile disciplina il periodo di prova', 'il tuo CCNL specifica la durata "
+    "del preavviso') senza inventare la numerazione esatta. Un numero di articolo sbagliato "
+    "è un danno per l'utente maggiore che non citarlo affatto."
 )
 
 _MAX_QUERY_CHARS = 600

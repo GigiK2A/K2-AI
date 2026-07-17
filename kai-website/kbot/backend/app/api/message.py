@@ -25,6 +25,7 @@ from ..lib.prompts import (
     compact_messages,
     extract_summary,
     normalize_assistant_reply,
+    sanitize_unverified_legal_citations,
     strip_summary_block,
 )
 from ..lib.services import normalize_service_id, resolve_skills_for_session
@@ -145,7 +146,8 @@ def _extract_gated_summary(raw_text: str, merged_messages: list):
     from ..lib.prompts import extract_diagnosi, strip_diagnosi_block
     summary = extract_summary(raw_text)
     diagnosi = extract_diagnosi(raw_text)
-    visible = normalize_assistant_reply(strip_summary_block(strip_diagnosi_block(raw_text)))
+    visible = sanitize_unverified_legal_citations(
+        normalize_assistant_reply(strip_summary_block(strip_diagnosi_block(raw_text))))
     if summary and _interview_gate_active(merged_messages):
         summary = None
         if len((visible or "").strip()) < 5:

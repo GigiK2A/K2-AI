@@ -266,3 +266,42 @@ def test_prompt_vieta_numeri_ammorbiditi_con_qualificatori():
     p = _prompt([{"role": "user", "content": "ciao"}])
     assert "ammorbidito" in p.lower() or "non lo rende meno inventato" in p.lower()
     assert "5-15 giorni" in p  # l'esempio concreto dell'errore reale, per pattern-match diretto
+
+
+# ── backstop citazioni normative non verificate (17 lug: 'la normativa è rotta') ──────
+
+def test_backstop_rimuove_numero_articolo_ccnl_inventato():
+    from app.lib.prompts import sanitize_unverified_legal_citations as san
+    t = ("La disciplina è contenuta dagli artt. 62‑e 63 del CCNL (o dal contratto "
+         "collettivo applicabile) e prevede il recesso durante la prova.")
+    out = san(t)
+    assert "62" not in out and "63" not in out
+    assert "il CCNL applicato" in out
+
+
+def test_backstop_rimuove_articolo_codice_civile_inventato():
+    from app.lib.prompts import sanitize_unverified_legal_citations as san
+    t = "dall'art. 2099‑c al Codice Civile, che prevede la possibilità di recesso."
+    out = san(t)
+    assert "2099" not in out
+    assert "il codice civile" in out
+
+
+def test_backstop_gestisce_trattino_esotico_gpt_oss():
+    # stesso U+2011 già visto nel bug dei PDF: 'artt. 62‑63' con trattino non-breaking
+    from app.lib.prompts import sanitize_unverified_legal_citations as san
+    t = "vedi artt. 62‑63 del CCNL"
+    out = san(t)
+    assert "62" not in out and "63" not in out
+
+
+def test_backstop_non_tocca_testo_senza_citazioni():
+    from app.lib.prompts import sanitize_unverified_legal_citations as san
+    t = "Sì, puoi farlo. Verifica il tuo CCNL per il periodo di preavviso esatto."
+    assert san(t) == t
+
+
+def test_web_search_hint_obbliga_verifica_numeri_articolo():
+    from app.lib.web_search import SYSTEM_HINT
+    assert "OBBLIGO SU NUMERI DI ARTICOLO" in SYSTEM_HINT
+    assert "MAI scriverlo a memoria" in SYSTEM_HINT

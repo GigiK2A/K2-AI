@@ -242,6 +242,7 @@ LINGUAGGIO CALIBRATO SULLA CERTEZZA (vale SEMPRE, soprattutto in CONSULENZA IMME
 Prima di rispondere valuta il livello di certezza: (A) alto — regola chiara e priva di eccezioni rilevanti; (B) regola generale CON eccezioni note; (C) dipende fortemente dal caso concreto (CCNL applicato, clausole contrattuali, normativa di settore, dati che non hai). Ai livelli B e C il linguaggio deve essere prudente: «in generale», «di norma», «salvo diverse previsioni [del CCNL/contratto]», «dipende dal caso concreto», «occorre verificare», «potrebbe essere opportuno». Evita assolutismi non giustificati: mai «sempre», «mai», «è sicuramente», «di solito è» seguito da un numero, «se fai così sei in regola», «la procedura è legittima» — sono conclusioni categoriche che un consulente vero non dà senza aver visto le carte.
 DIVIETO ASSOLUTO DI INVENTARE NUMERI: percentuali, termini, durate, importi, scadenze — MAI, a meno che siano stati forniti dall'utente, calcolati da te in modo esplicito, o siano una regola normativa che conosci con certezza (es. termini di legge specifici, quando li sai per certo). Se la cifra dipende dal CCNL, dal contratto o da un regolamento che non hai visto, DILLO invece di stimarla: «il preavviso dipende dal CCNL applicato — quale contratto collettivo usi?» oppure, se la domanda non richiede necessariamente saperlo, «verifica il CCNL applicabile: la durata varia da settore a settore» — mai una cifra a caso plausibile.
 ATTENZIONE — il divieto vale ANCHE se il numero è "ammorbidito" con «di solito», «in genere», «circa», «tipicamente»: qualificare un numero inventato non lo rende meno inventato. ESEMPIO CONCRETO DELL'ERRORE DA NON RIPETERE (successo davvero): alla domanda sul preavviso in prova, NON scrivere «di solito il CCNL prevede un preavviso di 5-15 giorni, verifica il tuo contratto» — quel range non lo sai, l'hai stimato. Scrivi invece: «il periodo di preavviso in prova dipende dal CCNL applicato: quale contratto usi? Se non lo sai, controlla la sezione "periodo di prova" del tuo CCNL — la durata cambia molto da settore a settore». La frase deve INFORMARE che la variabile esiste, MAI proporne un intervallo di valori indovinato.
+STESSO DIVIETO sui NUMERI DI ARTICOLO di legge/CCNL/decreto (es. «art. 2096 c.c.», «art. 34 del CCNL»): NON citarli a memoria — un numero di articolo sbagliato è peggio di una cifra sbagliata, perché suona come una fonte verificata mentre è inventata. Se hai `web_search`, USALO per verificare il numero PRIMA di scriverlo; se non è disponibile o non conferma, parla in modo descrittivo SENZA numero: «il codice civile disciplina il periodo di prova» invece di «l'art. 2099-c c.c. disciplina…» (quest'ultimo, realmente successo, era un articolo inventato).
 FORMATO della risposta in CONSULENZA IMMEDIATA (quando la domanda ha più di un aspetto): (1) risposta breve e diretta; (2) attenzioni/eccezioni/rischi rilevanti; (3) cosa verificare per essere sicuri nel caso concreto; (4) disponibilità ad approfondire se servono altri dati. Non è un modulo rigido da compilare sempre: su una domanda semplice e di livello A basta la risposta diretta. Una risposta è riuscita quando aiuta concretamente SENZA dare una falsa certezza.
 
 REGOLE FISSE NON NEGOZIABILI:
@@ -390,6 +391,36 @@ def extract_diagnosi(text: str) -> Optional[dict]:
 
 def strip_diagnosi_block(text: str) -> str:
     return signals.strip_block_tolerant("DIAGNOSI_STATO", signals.DIAGNOSI_RE, text)
+
+
+def _delegalize(match: "re.Match") -> str:
+    """Sostituisce 'art. NNN del CCNL/c.c./...' con la sola fonte, SENZA il numero
+    (backstop deterministico, indipendente dal comportamento del modello: vedi
+    sanitize_unverified_legal_citations)."""
+    fonte = (match.group(2) or "").strip().lower()
+    if "ccnl" in fonte or "contratto collettivo" in fonte:
+        return "il CCNL applicato"
+    if "civile" in fonte or fonte.startswith("c.c") or fonte.startswith("c c") or "cod" in fonte:
+        return "il codice civile"
+    return "la normativa di riferimento"
+
+
+def sanitize_unverified_legal_citations(text: str) -> str:
+    """Backstop DETERMINISTICO (17 lug — segnalato da Luca: 'la normativa o l'mcp dietro
+    è completamente rotto'): in chat NON esiste un motore di grounding normativo come
+    nell'8e (normattiva.py). Il modello locale, quando cita un numero di articolo
+    specifico, lo fa A MEMORIA senza verificarlo — e sbaglia (visti in produzione:
+    'art. 2099-c c.c.' inesistente, 'artt. 62-63 del CCNL' quando il CCNL non è mai
+    stato indicato dall'utente — nessun CCNL ha quella numerazione universale). Questo
+    NON è un problema dell'MCP/ricerca web (che esiste ed è configurato correttamente):
+    è che nessuna istruzione di prompt, da sola, impedisce in modo affidabile a un
+    modello locale di inventare un numero quando 'crede' di saperlo.
+    Rimuove il NUMERO dell'articolo lasciando solo la fonte in modo generico e onesto —
+    non falso (mai un articolo sbagliato), solo meno specifico. Indipendente dal prompt:
+    vale anche se l'istruzione viene ignorata."""
+    if not text:
+        return text
+    return signals.LEGAL_ARTICLE_RE.sub(_delegalize, text)
 
 
 def normalize_assistant_reply(raw: str) -> str:

@@ -55,6 +55,21 @@ URGENT_RE = re.compile(
     r"si ferma|blocc\w+|non ri\w+ a pagare|stipend\w+|liquidit[àa]|ricoverat\w+|"
     r"indisponibil\w+|nessuno (?:ha accesso|pu[òo]|riesce)|non abbiamo accesso|crisi)\b", re.I)
 
+# --- Citazioni normative con NUMERO specifico non verificato (17 lug) ----------------
+# In chat (K-BOT lite) NON esiste grounding normativo come nell'8e (normattiva.py):
+# se il modello cita 'art. 2099-c c.c.' o 'artt. 62-63 del CCNL' lo fa A MEMORIA, senza
+# verifica — e un numero di articolo sbagliato è un danno concreto per l'utente (bug
+# reale osservato: entrambi gli esempi erano inventati). Il pattern individua QUALSIASI
+# articolo con numero seguito da una fonte normativa (CCNL/codice civile/decreto/legge);
+# il trattino tra numeri può essere quello esotico che gpt-oss usa nei range (U+2011 ecc,
+# stesso bug visto nei PDF) quindi il character class lo copre.
+LEGAL_ARTICLE_RE = re.compile(
+    r"art(?:t)?\.?\s*\d+[\w\-‑–]*(?:\s*(?:,|e|[\-‑–])\s*\d+[\w\-‑–]*)?\s*"
+    r"((?:del|dello|della|al|allo|alla|nel|nello|nella)\s+)?"
+    r"(CCNL|contratto collettivo|c\.\s?c\.|codice civile|cod\.\s*civ\.?|"
+    r"D\.\s?Lgs\.?\s*\d+[/.]\d+|L\.\s?\d+[/.]\d+)",
+    re.IGNORECASE)
+
 # --- Blocco CONSULENZA_SUMMARY (trigger di generazione) ------------------------------
 # TOLLERANTE al formato: i modelli locali emettono spesso il blocco INLINE
 # ("START {json} END" su una riga) — il vecchio regex pretendeva \n e l'estrazione
