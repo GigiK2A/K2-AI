@@ -240,3 +240,20 @@ def test_radice_licenzi_non_matcha_licenza():
     sid = infer_service_id_from_session({"messages": [
         {"role": "user", "content": "mi serve una licenza software per il gestionale"}]})
     assert sid != "P03"
+
+
+# ── linguaggio calibrato sulla certezza (spec Luca 17 lug, round 2) ───────────────────
+
+def test_prompt_contiene_livelli_certezza_e_divieto_numeri():
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "LINGUAGGIO CALIBRATO SULLA CERTEZZA" in p
+    assert "DIVIETO ASSOLUTO DI INVENTARE NUMERI" in p
+    for frase in ("in generale", "di norma", "dipende dal caso concreto", "occorre verificare"):
+        assert frase in p
+    for vietata in ("sempre", "mai", "è sicuramente"):
+        assert vietata in p.lower()  # citate come ESEMPI da evitare, non usate come regola
+
+
+def test_prompt_menziona_ccnl_come_fonte_di_incertezza():
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "CCNL" in p and "quale contratto collettivo" in p
