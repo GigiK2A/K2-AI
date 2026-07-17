@@ -257,3 +257,12 @@ def test_prompt_contiene_livelli_certezza_e_divieto_numeri():
 def test_prompt_menziona_ccnl_come_fonte_di_incertezza():
     p = _prompt([{"role": "user", "content": "ciao"}])
     assert "CCNL" in p and "quale contratto collettivo" in p
+
+
+def test_prompt_vieta_numeri_ammorbiditi_con_qualificatori():
+    """Round 2 (retest live): il modello ha scritto 'di solito 5-15 giorni' — un numero
+    stimato solo ammorbidito con 'di solito'. Il divieto deve coprire ESPLICITAMENTE
+    questo caso, non solo il numero nudo."""
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "ammorbidito" in p.lower() or "non lo rende meno inventato" in p.lower()
+    assert "5-15 giorni" in p  # l'esempio concreto dell'errore reale, per pattern-match diretto
