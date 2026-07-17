@@ -400,24 +400,28 @@ def test_norme_guard_default_strippa_articolo_esteso():
 
 # ── grounding forzato + principio di conoscenza (filosofia Luca 17 lug) ────────────────
 
-def test_fact_grounding_trigger_su_domande_fattuali():
+def test_fact_grounding_trigger_cross_dominio():
+    # DOMAIN-AGNOSTICO (filosofia: la conoscenza va presa dalle fonti SEMPRE, non solo legale)
     from app.lib import fact_grounding as fg
-    # domande di NUMERO fattuale legale/fiscale → serve grounding
-    for q in ("Entro quanti giorni devo comunicare un'assunzione?",
-              "Qual è l'aliquota IVA sui prodotti alimentari?",
-              "Qual è la soglia di ricavi per il regime forfettario?",
-              "Quanti giorni di preavviso per licenziare in prova?",
-              "Entro quando devo versare il saldo IVA?"):
+    for q in ("Entro quanti giorni devo comunicare un'assunzione?",   # HR/legale
+              "Qual è l'aliquota IVA sui prodotti alimentari?",        # fisco
+              "Quanto costa aprire una SRL?",                          # societario
+              "Qual è il prezzo medio di una campagna Google Ads?",    # marketing
+              "Quali sono i principali competitor nel packaging in Italia?",  # mercato
+              "Quanto è grande il mercato del food delivery in Italia?",       # dati
+              "Cos'è il codice ATECO 62.01?"):                          # definizione
         assert fg.needs_grounding(q), f"doveva attivare grounding: {q}"
 
 
-def test_fact_grounding_no_trigger_su_giudizi_e_offtopic():
+def test_fact_grounding_no_trigger_su_giudizi_e_chitchat():
     from app.lib import fact_grounding as fg
-    # giudizi soggettivi / niente dominio normativo → nessun grounding (no latenza)
-    for q in ("Quanto dovrei spendere in marketing?",   # soggettivo, no dominio
-              "Una SRL è meglio di una ditta individuale?",  # giudizio
+    # giudizi/strategia (metodo dalle skill, non un fatto esterno) + conversazionale
+    for q in ("Quanto dovrei spendere in marketing?",
+              "Conviene assumere ora o aspettare?",
+              "È meglio una SRL o una ditta individuale?",
               "Come miglioro il clima aziendale?",
-              "Mi dici la ricetta della carbonara?"):
+              "come faccio a ridurre i costi?",
+              "ciao", "grazie mille"):
         assert not fg.needs_grounding(q), f"NON doveva attivare grounding: {q}"
 
 

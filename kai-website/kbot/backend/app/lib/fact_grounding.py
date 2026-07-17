@@ -23,29 +23,36 @@ from . import web_search
 
 log = logging.getLogger(__name__)
 
-# Interrogativi che chiedono un NUMERO/TERMINE con una risposta di fatto (legale/fiscale/HR):
-# scadenze, durate, aliquote, soglie, termini. NON i giudizi soggettivi ('quanto dovrei
-# spendere in marketing') — quelli non hanno un numero 'giusto' da verificare.
-_TRIGGER = re.compile(
+# Filosofia (Luca): la conoscenza va SEMPRE presa dalle fonti, non dalla memoria — in OGNI
+# ambito, non solo il legale. Il grounding scatta quando la domanda chiede un FATTO
+# SPECIFICO (un valore, un dato, un termine, un'entità con una risposta verificabile):
+# numeri/quantità/date/scadenze/soglie/aliquote/prezzi/statistiche/quote di mercato, oppure
+# 'cos'è / come funziona X', o dati su un'azienda/prodotto/settore. Domain-AGNOSTICO.
+_FACTUAL = re.compile(
     r"\b("
-    r"entro\s+quant\w+|entro\s+quando|"
-    r"quant[ie]\s+(?:giorni|ore|mesi|settimane|anni)|"
-    r"quanto\s+(?:dura|tempo|deve durare)|"
-    r"qual[e']?\s+è\s+(?:l'|la\s+|il\s+)?(?:aliquota|soglia|limite|termine|scadenza|durata|percentuale|imposta|tasso)|"
-    r"che\s+(?:aliquota|soglia|percentuale|termine)|"
-    r"quando\s+(?:scade|devo\s+(?:versare|pagare|comunicare|presentare|inviare))|"
-    r"(?:soglia|limite|tetto)\s+(?:di\s+)?(?:ricavi|fatturato|reddito)|"
-    r"aliquota\s+iva|scadenz\w+\s+(?:iva|f24|imu|tari|inps|contribut)"
-    r")\b", re.I)
+    # quantità/numeri/tempi/importi
+    r"quant[oiae]\b|"
+    r"qual[e']?\s+è\s+(?:l['\s]|la\s+|il\s+|lo\s+)?(?:aliquota|soglia|limite|tetto|termine|scadenza|"
+    r"durata|percentuale|imposta|tasso|prezzo|costo|importo|valore|quota|numero|massimale|minimo|massimo)|"
+    r"che\s+(?:aliquota|soglia|percentuale|termine|tasso|prezzo|costo)\b|"
+    r"entro\s+(?:quando|quant\w+)|"
+    r"quando\s+(?:scade|devo|bisogna|va)\b|"
+    # dati esterni / mercato / entità
+    r"(?:qual[ei]|chi)\s+sono\s+(?:i|le|gli)\b|"
+    r"prezzo\s+(?:di|del|della|medio)|costo\s+(?:di|del|della|medio)|"
+    r"(?:dati|statistic\w+|numeri|trend|andamento)\s+(?:su|del|di|sul)|"
+    r"quota\s+di\s+mercato|dimension\w+\s+del\s+mercato|"
+    # definizione di una cosa specifica
+    r"(?:cos'?\s?è|che\s+cos'?\s?è|cosa\s+significa|come\s+funziona)\s+(?:il|lo|la|l'|un|una|i|le|gli)\b"
+    r")", re.I)
 
-# Il tema deve essere NORMATIVO/FISCALE/CONTRATTUALE (dove un numero sbagliato fa danno):
-# se la domanda non tocca questi ambiti la ricerca non serve (es. 'quanti clienti ho perso').
-_DOMAIN = re.compile(
-    r"\b(iva|imposta|tass\w+|fiscal\w+|f24|imu|tari|inps|contribut\w+|forfettari\w+|"
-    r"ccnl|preavviso|licenzi\w+|assunzion\w+|dimission\w+|ferie|malattia|prova|apprendist\w+|"
-    r"contratto|scadenz\w+|dichiarazion\w+|versament\w+|bilancio|deposit\w+|"
-    r"registrazion\w+|termin\w+|sanzion\w+|multa|verbal\w+|adempiment\w+|comunicazion\w+)\b",
-    re.I)
+# Esclusioni: GIUDIZI soggettivi e strategici (lì serve il METODO delle skill, non un fatto
+# esterno da cercare) e il conversazionale. Su questi NON si cerca (niente latenza inutile).
+_JUDGMENT = re.compile(
+    r"\b(dovrei|conviene|converrebbe|è\s+meglio|meglio\s+\w+\s+o|consigli\w*|"
+    r"cosa\s+ne\s+pensi|secondo\s+te|che\s+ne\s+dici|come\s+(?:faccio|posso|miglioro|"
+    r"gestisco|motivo|imposto|organizzo|riduco|aumento|struttur\w+)|"
+    r"cosa\s+(?:faccio|mi\s+consigli|devo\s+fare)|ha\s+senso|vale\s+la\s+pena)\b", re.I)
 
 
 def _enabled() -> bool:
@@ -53,13 +60,18 @@ def _enabled() -> bool:
 
 
 def needs_grounding(user_text: str) -> bool:
-    t = user_text or ""
-    return bool(_TRIGGER.search(t)) and bool(_DOMAIN.search(t))
+    t = (user_text or "").strip()
+    if len(t) < 12:                       # saluti / 'ok' / 'grazie' → niente ricerca
+        return False
+    if _JUDGMENT.search(t):               # giudizio/strategia → metodo dalle skill, non fatto
+        return False
+    return bool(_FACTUAL.search(t))
 
 
 def _query(user_text: str) -> str:
-    # ancora la ricerca all'ordinamento italiano e all'anno corrente (le scadenze cambiano)
-    return f"{user_text.strip()[:220]} normativa italiana aggiornata"
+    # query neutra e domain-agnostica: la sola domanda dell'utente (+ ancoraggio Italia/
+    # attualità che aiuta su dati e norme senza distorcere gli altri temi).
+    return f"{user_text.strip()[:220]} (contesto: Italia, dato aggiornato)"
 
 
 def ground_block(user_text: str) -> str | None:
