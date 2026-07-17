@@ -23,7 +23,7 @@ import httpx
 
 from ..settings import ENGINE_8E_BASE_URL, ENGINE_8E_API_KEY
 from . import signals
-from .prompts import sanitize_unverified_legal_citations
+from .prompts import sanitize_unverified_legal_citations  # noqa: F401 (facade retro-compat)
 
 log = logging.getLogger(__name__)
 

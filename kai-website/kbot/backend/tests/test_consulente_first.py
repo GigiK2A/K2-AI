@@ -396,3 +396,49 @@ def test_norme_guard_default_strippa_articolo_esteso():
     t = "Il periodo di prova è disciplinato dall'articolo 2096 del codice civile."
     out = norme_guard.sanitize(t)  # default descriptive-only
     assert "2096" not in out and "il codice civile" in out
+
+
+# ── grounding forzato + principio di conoscenza (filosofia Luca 17 lug) ────────────────
+
+def test_fact_grounding_trigger_su_domande_fattuali():
+    from app.lib import fact_grounding as fg
+    # domande di NUMERO fattuale legale/fiscale → serve grounding
+    for q in ("Entro quanti giorni devo comunicare un'assunzione?",
+              "Qual è l'aliquota IVA sui prodotti alimentari?",
+              "Qual è la soglia di ricavi per il regime forfettario?",
+              "Quanti giorni di preavviso per licenziare in prova?",
+              "Entro quando devo versare il saldo IVA?"):
+        assert fg.needs_grounding(q), f"doveva attivare grounding: {q}"
+
+
+def test_fact_grounding_no_trigger_su_giudizi_e_offtopic():
+    from app.lib import fact_grounding as fg
+    # giudizi soggettivi / niente dominio normativo → nessun grounding (no latenza)
+    for q in ("Quanto dovrei spendere in marketing?",   # soggettivo, no dominio
+              "Una SRL è meglio di una ditta individuale?",  # giudizio
+              "Come miglioro il clima aziendale?",
+              "Mi dici la ricetta della carbonara?"):
+        assert not fg.needs_grounding(q), f"NON doveva attivare grounding: {q}"
+
+
+def test_ground_block_none_senza_risultati(monkeypatch):
+    from app.lib import fact_grounding as fg
+    monkeypatch.setattr(fg, "_enabled", lambda: True)
+    monkeypatch.setattr(fg.web_search, "run_openai_search", lambda q: "[ricerca web: nessun risultato]")
+    assert fg.ground_block("Qual è l'aliquota IVA sugli alimentari?") is None  # fail-open
+
+
+def test_ground_block_inietta_i_risultati(monkeypatch):
+    from app.lib import fact_grounding as fg
+    monkeypatch.setattr(fg, "_enabled", lambda: True)
+    monkeypatch.setattr(fg.web_search, "run_openai_search",
+                        lambda q: "L'aliquota IVA sui beni di prima necessità è il 4%. Fonti: ...")
+    b = fg.ground_block("Qual è l'aliquota IVA sugli alimentari?")
+    assert b and "DATI VERIFICATI DA RICERCA WEB" in b and "4%" in b
+
+
+def test_prompt_contiene_principio_di_conoscenza():
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "PRINCIPIO DI CONOSCENZA" in p
+    assert "NON è la conoscenza del modello" in p
+    assert "ANDARE A PRENDERE" in p

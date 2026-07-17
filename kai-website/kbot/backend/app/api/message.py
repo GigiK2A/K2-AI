@@ -4,6 +4,7 @@ Mirror of api/kbot/message.ts in the site.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re as _re
@@ -18,6 +19,7 @@ from ..lib import sessions, engine, readiness, web_search, quality_gate
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib import profile as profile_lib
+from ..lib import fact_grounding
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -341,6 +343,13 @@ async def post_message(
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
     if web_search.enabled():
         system_prompt += web_search.SYSTEM_HINT
+    # GROUNDING FORZATO (filosofia: la risposta si costruisce dalla CONOSCENZA, non dalla
+    # memoria del modello): se l'ultimo messaggio chiede un fatto specifico (scadenza/
+    # aliquota/soglia/termine legale-fiscale), il server recupera la fonte PRIMA del turno
+    # e la inietta → il modello risponde ancorato. best-effort in thread (non blocca il loop).
+    _gb = await asyncio.to_thread(fact_grounding.ground_block, last_user_text)
+    if _gb:
+        system_prompt += _gb
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
     if not ANTHROPIC_API_KEY:
@@ -468,6 +477,13 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
     if web_search.enabled():
         system_prompt += web_search.SYSTEM_HINT
+    # GROUNDING FORZATO (filosofia: la risposta si costruisce dalla CONOSCENZA, non dalla
+    # memoria del modello): se l'ultimo messaggio chiede un fatto specifico (scadenza/
+    # aliquota/soglia/termine legale-fiscale), il server recupera la fonte PRIMA del turno
+    # e la inietta → il modello risponde ancorato. best-effort in thread (non blocca il loop).
+    _gb = await asyncio.to_thread(fact_grounding.ground_block, last_user_text)
+    if _gb:
+        system_prompt += _gb
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
     if not ANTHROPIC_API_KEY:
