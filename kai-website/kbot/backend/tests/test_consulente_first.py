@@ -316,23 +316,35 @@ def _con_verify(monkey_result):
     return mock.patch.object(norme_guard, "_verify_remote", lambda testo: monkey_result), norme_guard
 
 
-def test_norme_guard_tiene_la_citazione_verificata():
-    patch, ng = _con_verify([{"label": "art. 2096 c.c.", "verificata": True}])
+def test_norme_guard_default_strippa_anche_articolo_esistente():
+    # POLICY DEFAULT (17 lug): esistenza != rilevanza (art. 2099 esiste ma è l'articolo
+    # sbagliato per la prova) → in chat NESSUN numero di articolo, sempre descrittivo.
+    from app.lib import norme_guard
     t = "Il periodo di prova è disciplinato dall'art. 2096 c.c. e va rispettato."
-    with patch:
-        out = ng.sanitize(t)
-    assert "art. 2096 c.c." in out          # verificata dal corpus → resta col numero
+    out = norme_guard.sanitize(t)
+    assert "2096" not in out and "il codice civile" in out
 
 
-def test_norme_guard_strippa_la_non_verificata_anche_con_corpus_ok():
-    patch, ng = _con_verify([{"label": "art. 2096 c.c.", "verificata": True}])
+def test_norme_guard_keep_verified_opt_in():
+    import os
+    from unittest import mock
+    from app.lib import norme_guard
+    t = "Il periodo di prova è disciplinato dall'art. 2096 c.c. e va rispettato."
+    with mock.patch.dict(os.environ, {"KBOT_NORME_KEEP_VERIFIED": "1"}), \
+         mock.patch.object(norme_guard, "_verify_remote", lambda testo: [{"label": "art. 2096 c.c.", "verificata": True}]):
+        out = norme_guard.sanitize(t)
+    assert "art. 2096 c.c." in out          # col flag opt-in torna a tenere l'esistente
+
+
+def test_norme_guard_default_strippa_tutti_i_numeri_articolo():
+    # DEFAULT descriptive-only: TUTTI i numeri di articolo via, verificati o no (esistenza
+    # != rilevanza — vedi test_norme_guard_default_strippa_anche_articolo_esistente)
+    from app.lib import norme_guard
     t = ("Il periodo di prova è disciplinato dall'art. 2096 c.c.; "
          "vedi anche artt. 62-63 del CCNL per il preavviso.")
-    with patch:
-        out = ng.sanitize(t)
-    assert "art. 2096 c.c." in out          # la vera resta
-    assert "62" not in out and "63" not in out  # la CCNL inventata sparisce
-    assert "il CCNL applicato" in out
+    out = norme_guard.sanitize(t)
+    assert "2096" not in out and "62" not in out and "63" not in out
+    assert "il codice civile" in out and "il CCNL applicato" in out
 
 
 def test_norme_guard_fail_closed_su_errore_remoto():
@@ -379,11 +391,8 @@ def test_norme_guard_strippa_articolo_esteso_non_verificato():
     assert "2099" not in out and "il codice civile" in out
 
 
-def test_norme_guard_tiene_articolo_esteso_verificato():
-    from unittest import mock
+def test_norme_guard_default_strippa_articolo_esteso():
     from app.lib import norme_guard
     t = "Il periodo di prova è disciplinato dall'articolo 2096 del codice civile."
-    verified = [{"label": "articolo 2096 del codice civile", "verificata": True}]
-    with mock.patch.object(norme_guard, "_verify_remote", lambda testo: verified):
-        out = norme_guard.sanitize(t)
-    assert "2096" in out  # verificato dal corpus → resta
+    out = norme_guard.sanitize(t)  # default descriptive-only
+    assert "2096" not in out and "il codice civile" in out

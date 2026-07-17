@@ -59,10 +59,29 @@ def _norm(s: str) -> str:
     return re.sub(r"[.\s]", "", s)
 
 
+def _keep_verified_enabled() -> bool:
+    # DEFAULT OFF (eval consulente 17 lug): la verifica di ESISTENZA non basta. Il modello
+    # locale cita art. 2099 c.c. per il patto di prova (che è il 2096): entrambi ESISTONO,
+    # entrambi passerebbero la verifica, ma 2099 è l'articolo SBAGLIATO per l'argomento —
+    # un errore grave quanto un articolo inventato. In chat NESSUN numero di articolo:
+    # descrittivo e sempre corretto. I report (8e) mantengono le citazioni, lì il grounding
+    # verifica il CONTENUTO, non solo l'esistenza. KBOT_NORME_KEEP_VERIFIED=1 riattiva il
+    # keep dei soli esistenti (sconsigliato: non protegge dall'articolo giusto-ma-sbagliato).
+    return os.getenv("KBOT_NORME_KEEP_VERIFIED", "0") == "1"
+
+
 def sanitize(text: str) -> str:
-    """Testo visibile della chat → citazioni verificate INTATTE, il resto de-specificato."""
+    """Testo visibile della chat → i numeri di articolo di legge/CCNL vengono rimossi e
+    sostituiti dalla fonte generica ('il codice civile', 'il CCNL applicato'). Descrittivo
+    e sempre corretto: mai un numero sbagliato (né inventato né giusto-per-l'argomento-
+    sbagliato) all'utente."""
     if not text or not signals.LEGAL_ARTICLE_RE.search(text):
         return text  # nessuna citazione con numero → nessuna latenza extra
+
+    if not _keep_verified_enabled():
+        return sanitize_unverified_legal_citations(text)  # policy default: descrittivo
+
+    # Path opt-in (KBOT_NORME_KEEP_VERIFIED=1): tiene i soli articoli esistenti nel corpus.
     verified: list[dict] = []
     if _verify_enabled():
         try:
@@ -78,7 +97,7 @@ def sanitize(text: str) -> str:
 
     def repl(m: "re.Match") -> str:
         if _norm(m.group(0)) in keep or any(k and k in _norm(m.group(0)) for k in keep):
-            return m.group(0)          # verificata dal corpus → resta col numero
+            return m.group(0)          # verificato ESISTENTE → resta col numero
         return _delegalize_span(m)
 
     return signals.LEGAL_ARTICLE_RE.sub(repl, text)
