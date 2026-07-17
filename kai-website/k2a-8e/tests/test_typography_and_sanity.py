@@ -104,3 +104,28 @@ def test_role_plausibile_non_toccato():
                {"azione": "Rivedere il DVR", "responsabile": "RSPP"}]}
     out, n = quality.fix_owner_assignments(d)
     assert n == 0 and out == d
+
+
+# ── gusci LLM delle sezioni deterministiche (eval batterie: investment_summary tutto None) ──
+
+def test_strip_deterministic_shells():
+    from app import pipeline, assets
+    sch = assets.load_output_schema("flusso-financeboost-pmi")
+    shell = {"executive_summary": {"testo": "ok"},
+             "investment_summary": {"npv": None, "chiavi": "sbagliate"},
+             "decision_board": {"verdetto": None}}
+    out = pipeline._strip_deterministic_shells(shell, sch)
+    assert "investment_summary" not in out and "decision_board" not in out
+    assert out["executive_summary"] == {"testo": "ok"}
+
+
+def test_sezioni_deterministiche_sono_tutte_opzionali():
+    # invariante: una sezione [Deterministico] non deve MAI essere required (lo strip
+    # e lo skip del deep-gen la rimuovono: se fosse required la validazione fallirebbe)
+    from app import assets
+    for skill in ("flusso-financeboost-pmi", "flusso-strategyboost-pmi"):
+        sch = assets.load_output_schema(skill)
+        req = set(sch.get("required", []))
+        det = {k for k, v in (sch.get("properties") or {}).items()
+               if str((v or {}).get("description", "")).startswith("[Deterministico")}
+        assert not (det & req), f"{skill}: sezioni deterministiche required: {det & req}"

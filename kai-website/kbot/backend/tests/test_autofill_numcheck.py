@@ -84,3 +84,38 @@ def test_bilanci_verificati_ma_mai_scartati():
         {"sezione": "attivo", "descrizione": "crediti", "importo": 999999.0}]}]}
     filtered, dropped = drop_unverified_numbers(out, {"bilanci": {"id": "bilanci", "tipo": "array"}}, CHAT)
     assert filtered["bilanci"] and not dropped
+
+
+def test_bilancio_modalita_aggregati_non_scartato():
+    """Eval batterie 17 lug: EBITDA/PFN/liquidità dichiarati SENZA totale attivo venivano
+    scartati da _bilancio_ha_attivo → niente SSOT/engine → report pieno di N/D. Un
+    bilancio in modalità-aggregati (senza voci) è legittimo."""
+    import json
+    from unittest import mock
+    from app.lib import autofill
+
+    class _FakeResp:
+        content = [type("B", (), {"type": "text", "text": json.dumps({
+            "bilanci": [{"anno": 2025, "ricavi": 42000000, "ebitda": 5040000,
+                         "pfn": 8000000, "liquidita": 6000000}],
+            "settore_ateco": "27.20", "n_dipendenti": 120})})()]
+
+    campi = [{"id": "bilanci", "tipo": "array", "obbligatorio": True},
+             {"id": "settore_ateco", "tipo": "string"}, {"id": "n_dipendenti", "tipo": "integer"}]
+    session = {"messages": [{"role": "user", "content":
+               "fatturato 42 milioni, EBITDA 5,04M, PFN 8M, liquidità 6M, 120 dipendenti, ateco 27.20"}],
+               "collected_data": {}}
+    fake_client = mock.MagicMock()
+    fake_client.messages.create.return_value = _FakeResp()
+    with mock.patch("anthropic.Anthropic", return_value=fake_client), \
+         mock.patch.object(autofill, "ANTHROPIC_API_KEY", "sk-test"):
+        out = autofill.extract_inputs(session, campi)
+    assert out.get("bilanci"), "bilancio aggregati NON deve essere scartato"
+    assert out["bilanci"][0]["ebitda"] == 5040000
+
+
+def test_bilancio_voci_senza_attivo_ancora_scartato():
+    from app.lib.autofill import _bilancio_ha_attivo
+    # il caso ORIGINALE del bug-F resta coperto: voci fabbricate senza attivo → scarto
+    fabbricato = {"anno": 2025, "voci": [{"sezione": "costi", "descrizione": "EBITDA", "importo": 100}]}
+    assert not _bilancio_ha_attivo(fabbricato)

@@ -778,6 +778,13 @@ def generate_deliverable_deep(output_schema: dict, blueprint: dict, facts: dict[
         if name in structural:
             result[name] = _det_sample(sub, output_schema, inputs, servizio, name)
             continue
+        # Sezioni DETERMINISTICHE (description che inizia con '[Deterministico'): le
+        # scrive SOLO il binder (investment/expansion engine) quando il caso le richiede.
+        # Se le genera l'LLM escono GUSCI con chiavi sbagliate → il render stampa N/D
+        # ovunque (eval batterie 17 lug: investment_summary con npv_eur=None). Sono tutte
+        # OPZIONALI nello schema: saltarle è sicuro, il binder le inietta se pertinenti.
+        if str(sub.get("description", "")).startswith("[Deterministico"):
+            continue
         sub_compact = {"type": sub.get("type", "object")}
         for kk in ("properties", "required", "items", "enum"):
             if kk in sub:

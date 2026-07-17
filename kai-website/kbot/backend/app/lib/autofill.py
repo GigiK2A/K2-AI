@@ -314,16 +314,30 @@ def extract_inputs(session: dict, campi: list[dict]) -> dict:
             log.warning("autofill: numeri non presenti in conversazione/documenti, "
                         "campi scartati: %s", ", ".join(dropped))
 
-    # Bug-F: scarta bilanci fabbricati senza attivo (frammenti di chat, non un SP reale).
-    # Se nessun bilancio è valido, ometti il campo → il gate lo vede mancante → report
-    # preliminare (dati parziali) invece di alimentare il motore con numeri incoerenti.
+    # Bug-F, aggiornato (eval batterie 17 lug): scarta i bilanci fabbricati SOLO quando
+    # sono voci senza attivo (frammenti spacciati per SP). Un bilancio in MODALITÀ
+    # AGGREGATI (EBITDA/PFN/liquidità/PN dichiarati dal cliente, senza attivo né voci) è
+    # LEGITTIMO: l'8e lo riconcilia con reclass_from_aggregates. La vecchia guardia lo
+    # buttava via → niente SSOT, niente engine, report pieno di N/D.
+    _AGG_KEYS = ("ebitda", "reddito_operativo", "utile_netto", "patrimonio_netto",
+                 "debiti_finanziari", "liquidita", "pfn", "ricavi")
+
+    def _bilancio_valido(b: Any) -> bool:
+        if not isinstance(b, dict):
+            return False
+        if _bilancio_ha_attivo(b):
+            return True
+        has_agg = any(_as_num(b.get(k)) is not None for k in _AGG_KEYS)
+        has_voci = isinstance(b.get("voci"), list) and b["voci"]
+        return has_agg and not has_voci   # aggregati puri ok; voci senza attivo = fabbricate
+
     if isinstance(out.get("bilanci"), list):
-        good = [b for b in out["bilanci"] if _bilancio_ha_attivo(b)]
+        good = [b for b in out["bilanci"] if _bilancio_valido(b)]
         if good:
             out["bilanci"] = good
         else:
             out.pop("bilanci", None)
-            log.info("autofill: scartato bilancio senza attivo (fabbricato da frammenti) → preliminare")
+            log.info("autofill: scartato bilancio senza attivo né aggregati (fabbricato) → preliminare")
 
     # ragione_sociale è un metadato trasversale (non un campo del form): il motore lo
     # richiede per personalizzare e identificare il report → tienilo se estratto.

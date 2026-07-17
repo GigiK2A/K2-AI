@@ -723,6 +723,21 @@ def render_external(service_id: str, deliverable: dict, citazioni: list | None =
     return jobs.get(job_id)
 
 
+def _strip_deterministic_shells(deliverable: dict, out_schema: dict) -> dict:
+    """Rimuove le sezioni il cui schema è marcato '[Deterministico': appartengono ai
+    binder (investment/expansion engine), mai all'LLM. Tutte opzionali → rimuoverle è
+    sempre schema-safe; il binder le re-inietta quando il caso le richiede. Un guscio
+    LLM con chiavi sbagliate = capitolo di N/D nel PDF (eval batterie 17 lug)."""
+    if not isinstance(deliverable, dict):
+        return deliverable
+    props = (out_schema or {}).get("properties") or {}
+    det = {k for k, v in props.items()
+           if isinstance(v, dict) and str(v.get("description", "")).startswith("[Deterministico")}
+    if not det:
+        return deliverable
+    return {k: v for k, v in deliverable.items() if k not in det}
+
+
 def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
         case_facts: dict | None = None) -> None:
     try:
@@ -847,6 +862,9 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             # '€10-12 M' stampato come '€1012 M'. Normalizza SUBITO dopo la generazione,
             # così gate/sanitizer/render vedono trattini veri.
             deliverable = quality.normalize_typography(deliverable)
+            # Sezioni [Deterministico]: solo dai binder, mai gusci LLM (il deep-gen ora le
+            # salta; questo copre il fallback monolitico generate_conforming).
+            deliverable = _strip_deterministic_shells(deliverable, out_schema)
 
             deliverable = quality.ensure_metadata(
                 deliverable, out_schema, inputs,
