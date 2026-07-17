@@ -187,10 +187,15 @@ _CODICE_ESTREMI: dict[str, tuple[str, str, int]] = {
 # L'articolo (primo, se lista/range) sta PRIMA dell'abbreviazione. Le alternative lunghe (cpc/
 # cpp) precedono quelle corte (cp/cc); il lookahead (?![a-z]) evita i falsi positivi che
 # proseguono con lettere (c.p.i. = Cod. Prop. Industriale, c.c.n.l., c.p.a.).
+# suffisso articolo = SOLO ordinale latino reale (2096-bis, 25-septies) o hyphen-lettera;
+# NON un [a-z]+ qualunque, altrimenti 'articolo 2096 del c.c.' cattura 'del' → '2096del'
+# e la verifica fallisce su un articolo VERO (bug esposto estendendo il match ad 'articolo').
+_SUFF = r"(?:\s*-\s*[a-z]+|\s+(?:bis|ter|quater|quinquies|sexies|septies|octies|novies|decies))?"
 _CODICE_REF_RE = re.compile(
-    r"artt?\.?\s*(\d+(?:[-\s]?[a-z]+)?)"
-    r"(?:\s*(?:[-,]|\be\b)\s*\d+(?:[-\s]?[a-z]+)?)*"
-    r"\s*(c\.?\s?p\.?\s?c|c\.?\s?p\.?\s?p|cod(?:ice)?\.?\s*di\s*procedura\s*civile|"
+    r"art(?:icol[oi]|t)?\.?\s*(\d+" + _SUFF + r")"
+    r"(?:\s*(?:[-,]|\be\b)\s*\d+" + _SUFF + r")*"
+    r"\s*(?:d(?:el|ello|ella|i)\s+)?"  # connettore opzionale: 'art. N DEL codice civile'
+    r"(c\.?\s?p\.?\s?c|c\.?\s?p\.?\s?p|cod(?:ice)?\.?\s*di\s*procedura\s*civile|"
     r"cod(?:ice)?\.?\s*di\s*procedura\s*penale|c\.?\s?p|cod(?:ice)?\.?\s*penale|"
     r"c\.?\s?c|cod(?:ice)?\.?\s*civile)\.?(?![a-z])",
     re.I)
@@ -220,12 +225,12 @@ _NORM_REF_RE = re.compile(
     # senza catturarlo, l'enrich agganciava il PRIMO chunk della legge nel corpus (es.
     # art. 1 dello Statuto al posto dell'art. 4 sulla videosorveglianza) → citazione
     # verbatim con articolo SBAGLIATO in un parere legale.
-    r"(?:\s*,?\s*artt?\.?\s*(\d+(?:\s*-\s*[a-z]+)?))?",
+    r"(?:\s*,?\s*art(?:icol[oi]|t)?\.?\s*(\d+(?:\s*-\s*[a-z]+)?))?",
     re.I)
 
 # articolo PRIMA degli estremi ("art. 4 della L. 300/1970", "ex art. 13 del D.Lgs 81/2008"):
 # cercato in una finestra corta subito a monte del riferimento.
-_ART_BEFORE_RE = re.compile(r"artt?\.?\s*(\d+(?:\s*-\s*[a-z]+)?)\s*(?:,\s*)?(?:del(?:la|lo)?\s+|di\s+)?$", re.I)
+_ART_BEFORE_RE = re.compile(r"art(?:icol[oi]|t)?\.?\s*(\d+(?:\s*-\s*[a-z]+)?)\s*(?:,\s*)?(?:del(?:la|lo)?\s+|di\s+)?$", re.I)
 
 
 def _norm_art(a) -> str:

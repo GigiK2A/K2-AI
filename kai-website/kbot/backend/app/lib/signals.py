@@ -63,8 +63,12 @@ URGENT_RE = re.compile(
 # articolo con numero seguito da una fonte normativa (CCNL/codice civile/decreto/legge);
 # il trattino tra numeri può essere quello esotico che gpt-oss usa nei range (U+2011 ecc,
 # stesso bug visto nei PDF) quindi il character class lo copre.
+# 'art(?:icol[oi]|t)?' copre TUTTE le forme: art / art. / artt / artt. / articolo /
+# articoli — bug reale 17 lug: 'articolo 2099-c del Codice Civile' (inventato) sfuggiva
+# perché la regex catturava solo 'art.'/'artt.' e non la parola estesa → bypass totale
+# del sistema di verifica.
 LEGAL_ARTICLE_RE = re.compile(
-    r"art(?:t)?\.?\s*\d+[\w\-‑–]*(?:\s*(?:,|e|[\-‑–])\s*\d+[\w\-‑–]*)?\s*"
+    r"\bart(?:icol[oi]|t)?\.?\s*\d+[\w\-‑–]*(?:\s*(?:,|e|[\-‑–])\s*\d+[\w\-‑–]*)?\s*"
     r"((?:del|dello|della|al|allo|alla|nel|nello|nella)\s+)?"
     r"(CCNL|contratto collettivo|c\.\s?c\.|codice civile|cod\.\s*civ\.?|"
     r"D\.\s?Lgs\.?\s*\d+[/.]\d+|L\.\s?\d+[/.]\d+)",

@@ -358,3 +358,32 @@ def test_norme_guard_nessuna_citazione_nessuna_latenza():
     t = "Sì, puoi farlo: verifica il tuo CCNL per i dettagli."
     with mock.patch.object(norme_guard, "_verify_remote", side_effect=AssertionError("non deve chiamare")):
         assert norme_guard.sanitize(t) == t
+
+
+# ── regex 'articolo' esteso (eval consulente 17 lug: 'articolo 2099-c' sfuggiva) ──────
+
+def test_legal_article_re_cattura_forma_estesa():
+    from app.lib import signals
+    for t in ("articolo 2099-c del Codice Civile", "articolo 2096 del codice civile",
+              "articoli 62 e 63 del CCNL", "art. 2096 c.c.", "artt. 1341 c.c."):
+        assert signals.LEGAL_ARTICLE_RE.search(t), f"deve matchare: {t}"
+
+
+def test_norme_guard_strippa_articolo_esteso_non_verificato():
+    from unittest import mock
+    from app.lib import norme_guard
+    # '2099-c' inventato → verify ritorna nessuna verificata → strip
+    t = "Puoi inserire un periodo di prova (articolo 2099-c del Codice Civile) che ti consente…"
+    with mock.patch.object(norme_guard, "_verify_remote", lambda testo: []):
+        out = norme_guard.sanitize(t)
+    assert "2099" not in out and "il codice civile" in out
+
+
+def test_norme_guard_tiene_articolo_esteso_verificato():
+    from unittest import mock
+    from app.lib import norme_guard
+    t = "Il periodo di prova è disciplinato dall'articolo 2096 del codice civile."
+    verified = [{"label": "articolo 2096 del codice civile", "verificata": True}]
+    with mock.patch.object(norme_guard, "_verify_remote", lambda testo: verified):
+        out = norme_guard.sanitize(t)
+    assert "2096" in out  # verificato dal corpus → resta
