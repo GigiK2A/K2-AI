@@ -268,6 +268,26 @@ def test_prompt_vieta_numeri_ammorbiditi_con_qualificatori():
     assert "5-15 giorni" in p  # l'esempio concreto dell'errore reale, per pattern-match diretto
 
 
+def test_divieto_numeri_vale_anche_su_giudizi_e_chitchat():
+    """Richiesta Luca: «giudizi soggettivi e chit-chat anche in questo caso». Il divieto di
+    cifre inventate non deve valere solo su scadenze/articoli ma anche quando il bot orienta
+    o consiglia (loophole visto live: 'marketing 2-5%, 15-25k€' sparati a memoria)."""
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "VALE ANCHE NEI GIUDIZI" in p
+    assert "chit-chat" in p.lower()
+    assert "offri" in p.lower() and "verificarla" in p.lower()  # offre di verificare, non inventa
+
+
+def test_prompt_diffida_da_scadenze_da_web_generico():
+    """Caso #6 live: il grounding web ha fatto ripetere «assunzione entro 5 giorni» (errore
+    diffuso sul web). Il prompt deve dire esplicitamente di non fidarsi di un termine di legge
+    preso da ricerca web generica e di rimandare alla fonte ufficiale."""
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "RICERCA WEB GENERICA" in p
+    assert "entro 5 giorni" in p  # l'errore reale citato come pattern da NON ripetere
+    assert "prima dell'inizio del rapporto" in p.lower()
+
+
 # ── backstop citazioni normative non verificate (17 lug: 'la normativa è rotta') ──────
 
 def test_backstop_rimuove_numero_articolo_ccnl_inventato():
@@ -438,7 +458,9 @@ def test_ground_block_inietta_i_risultati(monkeypatch):
     monkeypatch.setattr(fg.web_search, "run_openai_search",
                         lambda q: "L'aliquota IVA sui beni di prima necessità è il 4%. Fonti: ...")
     b = fg.ground_block("Qual è l'aliquota IVA sugli alimentari?")
-    assert b and "DATI VERIFICATI DA RICERCA WEB" in b and "4%" in b
+    assert b and "RICERCA WEB" in b and "4%" in b
+    # il blocco NON deve spacciare il web come fonte già validata (causa del bug #6)
+    assert "NON pre-validati" in b and "fonte ufficiale" in b
 
 
 def test_prompt_contiene_principio_di_conoscenza():

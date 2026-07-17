@@ -87,9 +87,11 @@ def ground_block(user_text: str) -> str | None:
     if not res or res.startswith("[ricerca web"):
         return None  # nessun risultato utile → il prompt prudente gestisce da solo
     return (
-        "\nDATI VERIFICATI DA RICERCA WEB (aggiornati) — la domanda dell'utente chiede un "
-        "numero/termine specifico: basa la risposta su QUESTI risultati, NON sulla tua "
-        "memoria. Cita il valore solo se è QUI; se questi risultati non contengono il dato "
-        "preciso, dillo e rimanda alla fonte ufficiale, senza indovinare un numero.\n"
+        "\nRISULTATI DI RICERCA WEB (aggiornati, NON pre-validati) — la domanda chiede un "
+        "numero/termine specifico. Usa QUESTI risultati come base, NON la tua memoria, e "
+        "cita un valore solo se compare QUI. ATTENZIONE: sono pagine web generiche, non una "
+        "fonte ufficiale — su scadenze e termini di legge il web ripete spesso errori. Se i "
+        "risultati non danno il dato preciso in modo CHIARO e COERENTE (o si contraddicono), "
+        "NON asserire un numero: dillo e rimanda alla fonte ufficiale, senza indovinare.\n"
         "<<<RISULTATI RICERCA>>>\n" + res[:2500] + "\n<<<FINE RISULTATI>>>\n"
     )
