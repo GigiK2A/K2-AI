@@ -1,0 +1,107 @@
+"""Guardia SCADENZE / TERMINI / SOGLIE di legge della CHAT — presidio 'solo alto rischio'
+(scelta di Luca, 17 lug).
+
+Il problema (dimostrato live, caso #6): il modello locale — anche COL grounding — asserisce
+scadenze legali/fiscali/amministrative SBAGLIATE. Es.: «la comunicazione di assunzione va
+fatta entro 5 giorni» — è un errore diffuso sul web (va fatta PRIMA dell'inizio del rapporto),
+che il modello ripete con sicurezza. Il prompt da solo non lo ferma: serve un presidio
+DETERMINISTICO, come norme_guard fa con i numeri di articolo.
+
+Regola (stessa filosofia della chat descriptive-only): in un CONTESTO NORMATIVO
+(adempimenti, fisco, lavoro, obblighi di comunicazione…), una scadenza/termine espresso con
+un NUMERO preciso o una soglia di legge in euro viene reso DESCRITTIVO — resta la sostanza
+(«c'è un termine preciso», «c'è una soglia»), sparisce la cifra non verificata, e si rimanda
+alla fonte ufficiale / al report (che ha il grounding sul testo di legge).
+
+NON tocca i numeri di BUSINESS: benchmark di marketing, prezzi, quote di mercato, importi
+forniti dall'utente, scadenze commerciali («pagamento a 30 giorni», «consegna in 3 giorni»).
+Il gate di contesto (serve un marcatore legale/fiscale/amministrativo vicino) li protegge.
+
+KBOT_DEADLINE_GUARD=0 disattiva.
+"""
+from __future__ import annotations
+
+import os
+import re
+
+# ── Contesto NORMATIVO: senza uno di questi marcatori vicino, non si tocca nulla ──────────
+# (protegge i numeri di business: marketing %, prezzi, fatturato dato dall'utente, ecc.)
+_LEGAL_CTX = re.compile(
+    r"\b(comunicaz\w+|assunzion\w+|unilav|collocament\w+|centro per l'impiego|"
+    r"inps|inail|agenzia delle entrate|adempiment\w+|versament\w+|dichiarazion\w+|"
+    r"ravvediment\w+|denunc\w+|deposit\w+ del bilancio|bilancio d'esercizio|"
+    r"scadenz\w+ fiscal\w+|contribut\w+|f24|imposta|imposte|iva|irpef|ires|irap|"
+    r"ritenut\w+|licenziament\w+|dimission\w+|recess\w+|preavviso|diffid\w+|"
+    r"prescrizion\w+|decadenz\w+|ricorso|impugnazion\w+|termine di legge|per legge|"
+    r"normativ\w+|decreto|obblig\w+|sanzion\w+|multa|ammenda|forfettari\w+|"
+    r"registrazion\w+|protocoll\w+|raccomandat\w+|\bpec\b|camera di commercio|"
+    r"registro imprese|\bdurc\b|libro unico|cedolino|buste? paga|\btfr\b|"
+    r"ferie|permessi rol|apprendistat\w+|cassa integrazione|naspi|congedo)\b",
+    re.I,
+)
+
+# ── Espressioni di SCADENZA/TERMINE con numero preciso ────────────────────────────────────
+# Tre forme: 'entro [le/il] N [unità] [coda]'; 'termine di N unità'; 'N unità dalla/prima/
+# successivi…'. La coda (lavorativi, dalla data, del giorno antecedente…) è catturata PER
+# INTERO fino alla punteggiatura, così la sostituzione resta grammaticale.
+_UNIT = r"(?:giorni?|giornate|ore|mes[ei]|settiman[ae]|ann[oi])"
+_TAILKW = (r"(?:lavorativ\w+|solari?|di calendario|antecedent\w+|precedent\w+|success\w+|"
+           r"effettiv\w+|dall['a]|dal|del|dello|della|dei|degli|delle|nel|nella|prima|"
+           r"a partire)")
+_TAIL = r"(?:\s+" + _TAILKW + r"\b[^.,;:!?\n]{0,45})?"
+_DEADLINE = re.compile(
+    r"\bentro\s+(?:le\s+)?(?:ore\s+)?(?:il\s+)?\d+(?:\s*°)?(?:\s*" + _UNIT + r")?" + _TAIL
+    + r"|\btermine\s+(?:massimo\s+)?(?:di|è\s+di)\s+\d+\s*" + _UNIT + r"\b"
+    + r"|\b\d+\s*" + _UNIT + r"\s+" + _TAILKW + r"\b[^.,;:!?\n]{0,45}",
+    re.I,
+)
+
+# ── Soglie / limiti / sanzioni di legge in euro (numero preciso) ───────────────────────────
+# Solo quando il numero è introdotto da una parola-soglia: evita di toccare il fatturato che
+# l'utente ha dichiarato ('fatturo 500k') o un prezzo di business. Si sostituisce SOLO la
+# cifra (gruppo 'pre' conservato) per non perdere il contesto ('del regime forfettario').
+_THRESHOLD = re.compile(
+    r"(?P<pre>\b(?:soglia|limite|tetto|plafond|massimale|franchigia|sanzion\w+|multa|ammenda)\b"
+    r"[^.,;:!?\n]{0,40}?(?:di|da|fino a|pari a|è(?: di)?|:)\s*)"
+    r"€?\s*\d[\d.\s]*(?:,\d+)?\s*(?:mila|mln|milion\w+|k)?\s*(?:€|euro|eur\b)?",
+    re.I,
+)
+
+_VERIFY = " (verifica la scadenza/soglia esatta sulla fonte ufficiale o nel report)"
+
+
+def _enabled() -> bool:
+    return os.getenv("KBOT_DEADLINE_GUARD", "1") != "0"
+
+
+def _soften_deadline(m: "re.Match") -> str:
+    low = m.group(0).lower()
+    if low.startswith("entro"):
+        return "entro il termine previsto dalla normativa"
+    if low.startswith("termine"):
+        return "termine preciso previsto dalla normativa"  # NB: senza articolo (lo precede già)
+    return "nel termine previsto dalla normativa"
+
+
+def _soften_threshold(m: "re.Match") -> str:
+    # conserva 'pre' (parola-soglia + eventuale contesto), sostituisce solo la cifra
+    return m.group("pre") + "un importo previsto dalla normativa"
+
+
+def sanitize(text: str) -> str:
+    """Rende descrittive scadenze/termini/soglie di legge quando il testo è in contesto
+    normativo. Fuori da quel contesto (business), non tocca nulla. Idempotente e senza
+    latenza di rete: è tutto locale e deterministico."""
+    if not text or not _enabled():
+        return text
+    if not _LEGAL_CTX.search(text):
+        return text  # niente contesto normativo → numeri di business intatti
+    if not (_DEADLINE.search(text) or _THRESHOLD.search(text)):
+        return text
+
+    out = _DEADLINE.sub(_soften_deadline, text)
+    out = _THRESHOLD.sub(_soften_threshold, out)
+    if out != text and "verific" not in out.lower():
+        out = out.rstrip()
+        out = (out[:-1] if out.endswith(".") else out) + _VERIFY + "."
+    return out
