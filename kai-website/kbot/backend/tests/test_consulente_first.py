@@ -168,3 +168,36 @@ def test_blocchi_ben_formati_invariati():
          '{"reportType":"X","summary":"y"} CONSULENZA_SUMMARY_END')
     assert extract_summary(t)["reportType"] == "X"
     assert strip_summary_block(t) == "Ok, genero il report."
+
+
+def test_urgenza_non_scatta_su_subito_in_domanda_semplice():
+    from app.lib import signals
+    assert not signals.URGENT_RE.search("mi è arrivata una PEC, devo rispondere subito?")
+    # le crisi vere restano riconosciute
+    assert signals.URGENT_RE.search("il responsabile è ricoverato e domani ci sono gli stipendi")
+    assert signals.URGENT_RE.search("URGENTE: rischiamo di non pagare i fornitori")
+
+
+def test_quality_gate_non_strippa_summary_su_procedi_esplicito():
+    """Eval-100: l'enforcement procedi forzava il summary e il critico lo strippava
+    come 'prematuro' → net effect nulla. Con user_procedi=True il flag è disattivato."""
+    import app.lib.quality_gate as qg
+
+    class _FakeClient:
+        class messages:
+            @staticmethod
+            def create(**kw):
+                class R:
+                    content = [type("B", (), {"type": "text", "text":
+                        '{"premature_summary":true,"assertive_diagnosis":false,'
+                        '"drastic_actions":false,"depth_mismatch":false,'
+                        '"missing_question":"che margini hai?","rewrite":"riscritto senza blocco"}'})()]
+                return R()
+
+    txt = ('Procedo. CONSULENZA_SUMMARY_START {"reportType":"X","summary":"y"} '
+           'CONSULENZA_SUMMARY_END')
+    msgs = [{"role": "user", "content": "dati. procedi"}]
+    out = qg.review(_FakeClient, "m", msgs, txt, user_procedi=True)
+    assert "CONSULENZA_SUMMARY_START" in out   # il summary sopravvive al critico
+    out2 = qg.review(_FakeClient, "m", msgs, txt, user_procedi=False)
+    assert "CONSULENZA_SUMMARY_START" not in out2  # senza procedi il critico governa

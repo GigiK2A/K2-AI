@@ -108,8 +108,12 @@ def _compact_history(merged_messages: list, max_turns: int = 6, max_chars: int =
     return "\n".join(lines)
 
 
-def review(client, model: str, merged_messages: list, raw_text: str) -> str:
-    """Ritorna il testo del turno, eventualmente corretto dal critico. FAIL-OPEN."""
+def review(client, model: str, merged_messages: list, raw_text: str,
+           user_procedi: bool = False) -> str:
+    """Ritorna il testo del turno, eventualmente corretto dal critico. FAIL-OPEN.
+    user_procedi=True: l'utente ha ORDINATO il report (trigger esplicito) → il flag
+    premature_summary è disattivato (criticare la prematurità contraddirebbe l'ordine;
+    eval-100: il gate strippava il summary appena forzato dall'enforcement procedi)."""
     if not ENABLED or not (raw_text or "").strip():
         return raw_text
     if not _TRIGGER_RE.search(raw_text):
@@ -140,6 +144,9 @@ def review(client, model: str, merged_messages: list, raw_text: str) -> str:
         if v.get("premature_summary") is True and _user_turns >= _max_intake:
             log.info("quality_gate: premature_summary IGNORATO (turni=%d ≥ %d — anti-oscillazione)",
                      _user_turns, _max_intake)
+            v["premature_summary"] = False
+        if v.get("premature_summary") is True and user_procedi:
+            log.info("quality_gate: premature_summary IGNORATO (trigger procedi esplicito dell'utente)")
             v["premature_summary"] = False
         flags = [k for k in ("premature_summary", "assertive_diagnosis",
                              "drastic_actions", "depth_mismatch") if v.get(k) is True]

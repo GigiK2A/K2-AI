@@ -46,8 +46,11 @@ NOT_READY_RE = re.compile(
     r"prima\s+devo\s+chiarire|troppo\s+presto\s+per", re.I)
 
 # --- Urgenza / crisi di continuità dichiarata dall'utente ----------------------------
+# NB: niente marker DEBOLI tipo 'subito'/'quanto prima' da soli (eval-100 #92: «devo
+# rispondere subito?» in una domanda semplice attivava il gate urgenza → contro-domanda
+# invece della risposta). Le crisi vere portano segnali forti (sotto).
 URGENT_RE = re.compile(
-    r"\b(urgen\w+|emergenz\w+|subito|quanto prima|entro (?:\d+|pochi|due|tre|dieci) "
+    r"\b(urgen\w+|emergenz\w+|entro (?:\d+|pochi|due|tre|dieci) "
     r"(?:or[ae]|giorn\w+|settiman\w+)|scaden\w+|continuit[àa]|rischi\w* di ferma\w+|"
     r"si ferma|blocc\w+|non ri\w+ a pagare|stipend\w+|liquidit[àa]|ricoverat\w+|"
     r"indisponibil\w+|nessuno (?:ha accesso|pu[òo]|riesce)|non abbiamo accesso|crisi)\b", re.I)

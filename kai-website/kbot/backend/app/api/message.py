@@ -160,7 +160,10 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
     path aveva già prodotto divergenze: il fallback readiness esisteva solo sullo
     streaming). Ordine: forced-summary → quality gate."""
     raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text, merged_messages)
-    raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text)
+    _last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
+                       if isinstance(m, dict) and m.get("role") == "user"), "")
+    raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text,
+                                   user_procedi=bool(signals.PROCEDI_HARD_RE.search(_last_user)))
     return raw_text
 
 
