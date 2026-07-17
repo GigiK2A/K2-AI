@@ -201,3 +201,42 @@ def test_quality_gate_non_strippa_summary_su_procedi_esplicito():
     assert "CONSULENZA_SUMMARY_START" in out   # il summary sopravvive al critico
     out2 = qg.review(_FakeClient, "m", msgs, txt, user_procedi=False)
     assert "CONSULENZA_SUMMARY_START" not in out2  # senza procedi il critico governa
+
+
+# ── skill anche in consulenza: matcher radici + coperture italiane (17 lug) ───────────
+
+def test_intent_licenziare_accende_skill_legali():
+    """'posso licenziare?' non accendeva NESSUNA skill: c'era solo 'licenziamento'
+    (parola intera) e P15 aveva solo keyword inglesi. Ora licenzi* matcha le flessioni."""
+    from app.lib.services import infer_service_id_from_session, get_service_skills
+    sid = infer_service_id_from_session({"messages": [
+        {"role": "user", "content": "Posso licenziare un dipendente durante il periodo di prova senza motivazione?"}]})
+    assert sid in ("P03", "P15")
+    assert get_service_skills(sid)          # skill reali caricate, non BASE
+
+
+def test_intent_hr_italiano():
+    from app.lib.services import infer_service_id_from_session
+    assert infer_service_id_from_session({"messages": [
+        {"role": "user", "content": "le ferie non godute scadono? e la malattia come funziona?"}]}) == "P15"
+
+
+def test_intent_fisco_italiano():
+    from app.lib.services import infer_service_id_from_session
+    assert infer_service_id_from_session({"messages": [
+        {"role": "user", "content": "acconto IVA: come si calcola? e le imposte anticipate?"}]}) == "P02"
+
+
+def test_radici_morte_riparate():
+    # 'amministr' con \b finale non matchava MAI 'amministrazione' (keyword morta)
+    from app.lib.services import infer_service_id_from_session
+    assert infer_service_id_from_session({"messages": [
+        {"role": "user", "content": "vorrei sistemare l'amministrazione e le scadenze delle fatture"}]}) == "P02"
+
+
+def test_radice_licenzi_non_matcha_licenza():
+    # 'licenzi*' NON deve matchare 'licenza' (software/commercio)
+    from app.lib.services import infer_service_id_from_session
+    sid = infer_service_id_from_session({"messages": [
+        {"role": "user", "content": "mi serve una licenza software per il gestionale"}]})
+    assert sid != "P03"

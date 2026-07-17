@@ -74,12 +74,18 @@ def get_service_skills(service_id: Optional[str]) -> List[str]:
 _INTENT_KEYWORDS: Dict[str, List[str]] = {
     "P01": ["email marketing", "sequenza email", "automazione email", "gestione email", "crm",
             "lead generation", "outreach", "campagna email", "sales pipeline", "agenti email"],
-    "P02": ["amministr", "fatture", "fatturazione elettronica", "contabilità", "riconciliazion", "scadenz", "bilancio", "bilanci", "analisi bilancio", "budget", "forecast"],
+    "P02": ["amministr*", "fatture", "fattur*", "fatturazione elettronica", "contabilità", "riconciliazion*", "scadenz*", "bilancio", "bilanci", "analisi bilancio", "budget", "forecast",
+            # FISCO in italiano vero (17 lug: 'acconto IVA come si calcola?' non accendeva nulla)
+            "iva", "f24", "forfettario", "imposte", "tasse", "fiscal*", "detrazion*", "deduzion*",
+            "deducibil*", "avviso bonario", "agenzia delle entrate", "irpef", "ires", "irap",
+            "dichiarazione dei redditi", "commercialista"],
     "P03": ["contratto", "contratti", "legale", "gdpr", "privacy policy", "nda", "diritto societario", "antitrust",
             # incidenti/quesiti legali specifici → devono caricare le skill legali, non finire su BASE_SKILL
             "whistleblowing", "segnalazione", "data breach", "violazione dei dati", "furto di dati",
             "furto di documenti", "segreto commerciale", "concorrenza sleale", "diffida", "pec",
-            "licenziamento", "contenzioso", "garante", "ex dipendente", "parere legale"],
+            "licenzi*", "contenzioso", "garante", "ex dipendente", "parere legale",
+            "recesso", "clausol*", "decreto ingiuntivo", "recupero credit*", "non paga", "insolut*",
+            "condizioni generali", "patto di non concorrenza"],
     "P04": ["ingegneria", "progettazione", "cantiere", "strutturale", "psc", "direzione lavori", "capitolato"],
     "P05": ["microapp", "documento tecnico", "template generation", "runbook", "documentation"],
     "P06": ["customer service", "ticket", "supporto cliente", "knowledge base helpdesk", "sentiment"],
@@ -98,7 +104,11 @@ _INTENT_KEYWORDS: Dict[str, List[str]] = {
     "P12": ["consulenza strategica", "piano crescita", "analisi settore", "strategia pmi", "go-to-market"],
     "P13": ["bandi", "agevolazioni", "sabatini", "simest", "credito r&d", "de minimis"],
     "P14": ["edilizia", "costruzioni", "buildboost"],
-    "P15": ["hr", "recruiting", "selezione personale", "onboarding", "performance review", "compensation"],
+    "P15": ["hr", "recruiting", "selezione personale", "onboarding", "performance review", "compensation",
+            # HR in italiano vero (17 lug: 'ferie non godute' / 'periodo di prova' non accendevano nulla)
+            "ferie", "malattia", "periodo di prova", "apprendistato", "dimission*", "assunzion*",
+            "assumere", "ccnl", "tfr", "welfare aziendale", "busta paga", "buste paga",
+            "straordinari", "turnover", "contratto di lavoro", "colloqui*", "organico"],
     "P16": ["real estate", "tokenizzazione", "tgc"],
     "P17": ["data analytics", "machine learning", "dashboard analytics", "statistica"],
     "P18": ["design", "ux", "design system", "accessibility", "user research"],
@@ -153,7 +163,15 @@ def infer_service_id_from_session(session: dict) -> Optional[str]:
     for sid, kws in _INTENT_KEYWORDS.items():
         score = 0
         for kw in kws:
-            pat = rf"\b{re.escape(kw)}\b"  # word-boundary: niente match parziali rumorosi
+            # Convenzione: keyword con '*' finale = RADICE (prefisso + flessioni:
+            # 'licenzi*' → licenziare/licenziamento/licenziarlo, NON 'licenza').
+            # Prima le radici tipo 'amministr' erano MORTE: \b dopo la radice non
+            # matcha mai la parola flessa ('amministrazione') — scoperto quando
+            # «posso licenziare?» non accendeva nessuna skill (17 lug).
+            if kw.endswith("*"):
+                pat = rf"\b{re.escape(kw[:-1])}\w*"
+            else:
+                pat = rf"\b{re.escape(kw)}\b"  # parola intera: niente match parziali rumorosi
             score += USER_WEIGHT * len(re.findall(pat, user_hay))
             score += AUX_WEIGHT * len(re.findall(pat, aux_hay))
         if score > 0:
