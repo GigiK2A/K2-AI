@@ -44,15 +44,27 @@ _LEGAL_CTX = re.compile(
 # Tre forme: 'entro [le/il] N [unità] [coda]'; 'termine di N unità'; 'N unità dalla/prima/
 # successivi…'. La coda (lavorativi, dalla data, del giorno antecedente…) è catturata PER
 # INTERO fino alla punteggiatura, così la sostituzione resta grammaticale.
-_UNIT = r"(?:giorni?|giornate|ore|mes[ei]|settiman[ae]|ann[oi])"
-_TAILKW = (r"(?:lavorativ\w+|solari?|di calendario|antecedent\w+|precedent\w+|success\w+|"
-           r"effettiv\w+|dall['a]|dal|del|dello|della|dei|degli|delle|nel|nella|prima|"
-           r"a partire)")
-_TAIL = r"(?:\s+" + _TAILKW + r"\b[^.,;:!?\n]{0,45})?"
+_UNIT = r"(?:giorn[oi]|giornat[ae]|ore|mes[ei]|settiman[ae]|ann[oi])"
+# Numeri anche A LETTERE (il modello scrive 'entro otto giorni', non solo '8'): li copriamo.
+_NUMWORD = (r"(?:uno|una|un|due|tre|quattro|cinque|sei|sette|otto|nove|dieci|undici|dodici|"
+            r"tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove|venti|"
+            r"trenta|quaranta|cinquanta|sessanta|settanta|ottanta|novanta|cento)")
+_NUM = r"(?:\d+|" + _NUMWORD + r")"
+_TAILKW = (r"(?:lavorativ\w+|solari?|calendari\w+|di calendario|antecedent\w+|precedent\w+|"
+           r"success\w+|effettiv\w+|dall['’a]|dal|del|dello|della|dei|degli|delle|nel|nella|"
+           r"prima|a partire)")
+# coda catturata fino a punteggiatura O parentesi (così non scavalca '(in pratica…')
+_CODA = r"[^.,;:!?\n()]{0,45}"
+_TAIL = r"(?:\s+" + _TAILKW + r"\b" + _CODA + r")?"
 _DEADLINE = re.compile(
-    r"\bentro\s+(?:le\s+)?(?:ore\s+)?(?:il\s+)?\d+(?:\s*°)?(?:\s*" + _UNIT + r")?" + _TAIL
-    + r"|\btermine\s+(?:massimo\s+)?(?:di|è\s+di)\s+\d+\s*" + _UNIT + r"\b"
-    + r"|\b\d+\s*" + _UNIT + r"\s+" + _TAILKW + r"\b[^.,;:!?\n]{0,45}",
+    # ── 'entro [le/l'/il/il giorno] N [°] …' : dopo N serve un'unità OPPURE una coda ──
+    r"\bentro\s+(?:le\s+|l['’]\s*|(?:ore|il|lo|la)\s+)?(?:giorno\s+)?" + _NUM + r"(?:\s*°)?"
+    + r"(?:\s*" + _UNIT + _TAIL
+    + r"|\s+" + _TAILKW + r"\b" + _CODA + r")"
+    # ── 'termine (di/dei/del/è di) N unità' ──
+    + r"|\btermine\s+(?:massimo\s+)?(?:di|dei|del|è\s+di)\s+" + _NUM + r"\s*" + _UNIT + r"\b"
+    # ── 'N unità dalla/prima/successivi…' ──
+    + r"|\b" + _NUM + r"\s*" + _UNIT + r"\s+" + _TAILKW + r"\b" + _CODA,
     re.I,
 )
 
@@ -60,10 +72,11 @@ _DEADLINE = re.compile(
 # Solo quando il numero è introdotto da una parola-soglia: evita di toccare il fatturato che
 # l'utente ha dichiarato ('fatturo 500k') o un prezzo di business. Si sostituisce SOLO la
 # cifra (gruppo 'pre' conservato) per non perdere il contesto ('del regime forfettario').
+# L'importo NON assorbe lo spazio finale (finisce su cifra) → niente 'normatival'anno'.
 _THRESHOLD = re.compile(
     r"(?P<pre>\b(?:soglia|limite|tetto|plafond|massimale|franchigia|sanzion\w+|multa|ammenda)\b"
     r"[^.,;:!?\n]{0,40}?(?:di|da|fino a|pari a|è(?: di)?|:)\s*)"
-    r"€?\s*\d[\d.\s]*(?:,\d+)?\s*(?:mila|mln|milion\w+|k)?\s*(?:€|euro|eur\b)?",
+    r"€?\s*\d[\d.]*(?:[.\s]\d{3})*(?:,\d+)?(?:\s*(?:mila|mln|milion\w+|k))?(?:\s*(?:€|euro|eur\b))?",
     re.I,
 )
 
@@ -101,6 +114,9 @@ def sanitize(text: str) -> str:
 
     out = _DEADLINE.sub(_soften_deadline, text)
     out = _THRESHOLD.sub(_soften_threshold, out)
+    # pulizia leggera: la sostituzione può incollare la frase a una '(' o lasciare doppi spazi
+    out = out.replace("normativa(", "normativa (")
+    out = re.sub(r"[ \t]{2,}", " ", out).replace(" )", ")").replace("( ", "(")
     if out != text and "verific" not in out.lower():
         out = out.rstrip()
         out = (out[:-1] if out.endswith(".") else out) + _VERIFY + "."

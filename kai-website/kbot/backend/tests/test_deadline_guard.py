@@ -40,6 +40,22 @@ def test_softening_scadenze_e_soglie_di_legge():
         assert "normativa" in out.lower()
 
 
+def test_numeri_a_lettere_e_articolo_eliso():
+    """Casi LIVE che sfuggivano: numero a lettere ('otto giorni'), articolo eliso ('l'8°'),
+    'termine dei N', 'giorno N'. La regex \\d+ da sola non bastava."""
+    reply = ("Devi trasmettere la comunicazione di assunzione al Centro per l'Impiego entro "
+             "otto giorni dal primo giorno di lavoro (in pratica, entro l'8° giorno calendario "
+             "successivo alla data di inizio rapporto). Se avviene dopo il termine dei 8 giorni "
+             "ci sono sanzioni.")
+    out = dg.sanitize(reply)
+    assert "otto giorni" not in out and "8°" not in out and "8 giorni" not in out
+    assert "normativa(" not in out            # spaziatura pulita attorno alla parentesi
+    assert "normativao" not in out and "normativaa" not in out  # niente parola tagliata
+    for t in ("Il versamento IVA va fatto entro il giorno 16 del mese successivo.",
+              "Va comunicato entro quindici giorni lavorativi dalla registrazione."):
+        assert not __import__("re").search(r"\b(?:otto|quindici|\d+)\s*giorn", dg.sanitize(t).lower())
+
+
 def test_zero_falsi_positivi_su_numeri_di_business():
     for testo in NON_TOCCARE:
         assert dg.sanitize(testo) == testo, f"NON doveva toccare: {testo!r}"
