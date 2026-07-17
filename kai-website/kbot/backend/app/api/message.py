@@ -146,7 +146,10 @@ def _extract_gated_summary(raw_text: str, merged_messages: list):
     from ..lib.prompts import extract_diagnosi, strip_diagnosi_block
     summary = extract_summary(raw_text)
     diagnosi = extract_diagnosi(raw_text)
-    visible = sanitize_unverified_legal_citations(
+    # Guardia normativa: citazioni con numero verificate contro il corpus 8e restano,
+    # le altre vengono de-specificate. Fail-closed → strip puro (mai fail-open).
+    from ..lib import norme_guard
+    visible = norme_guard.sanitize(
         normalize_assistant_reply(strip_summary_block(strip_diagnosi_block(raw_text))))
     if summary and _interview_gate_active(merged_messages):
         summary = None

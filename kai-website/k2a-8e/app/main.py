@@ -9,7 +9,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Re
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from . import assets, jobs, pipeline, entitlement, ratelimit
+from . import assets, jobs, normattiva, pipeline, entitlement, ratelimit
 from .auth import require_bearer
 from .settings import CATALOGO_CHIUSO, ENGINE_VERSION, OUT_DIR
 
@@ -158,6 +158,41 @@ def create_deliverable(body: DeliverableBody, bg: BackgroundTasks, response: Res
                 body.case_facts)
     return {"job_id": job_id, "status": "routed", "auth_level": auth_level,
             "routed_blueprint": blueprint_id, "confidence": confidence}
+
+
+class VerificaNormeBody(BaseModel):
+    testo: str
+
+
+@app.post("/v1/norme/verify", dependencies=[Depends(require_bearer)])
+def verify_norme(body: VerificaNormeBody):
+    """Verifica le citazioni normative di un testo contro il corpus (62k articoli).
+
+    Usato dalla CHAT K-BOT (norme_guard): il modello locale cita articoli A MEMORIA e
+    li sbaglia ('art. 2099-c c.c.' inesistente — bug reale 17 lug); qui ogni riferimento
+    estratto viene cercato per estremi nel corpus. La chat TIENE solo le citazioni
+    verificate e de-specifica le altre. `corpus_disponibile:false` (volume assente) →
+    il chiamante fa fail-closed (de-specifica tutto)."""
+    testo = (body.testo or "")[:20000]
+    disponibile = normattiva.available()
+    citazioni = []
+    if disponibile:
+        for ref in normattiva.extract_norm_refs(testo):
+            hits = normattiva.find_by_estremi(
+                ref["anno"], ref["numero"], ref.get("tipo"), ref.get("articolo"), limit=1)
+            # con l'ARTICOLO indicato, la verifica vale solo se il chunk dell'articolo
+            # esiste; senza articolo basta la norma (ma la chat de-specifica comunque
+            # i numeri di articolo non verificati, quindi il caso pericoloso è coperto)
+            citazioni.append({
+                "label": ref["label"],
+                "tipo": ref["tipo"], "numero": ref["numero"], "anno": ref["anno"],
+                "articolo": ref.get("articolo"),
+                "verificata": bool(hits),
+                "citazione_canonica": normattiva.citazione(
+                    {"tipo": ref["tipo"], "numero": ref["numero"], "anno": ref["anno"],
+                     "articolo": ref.get("articolo")}) if hits else None,
+            })
+    return {"corpus_disponibile": disponibile, "citazioni": citazioni}
 
 
 class RenderBody(BaseModel):

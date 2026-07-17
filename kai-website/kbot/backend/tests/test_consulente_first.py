@@ -305,3 +305,56 @@ def test_web_search_hint_obbliga_verifica_numeri_articolo():
     from app.lib.web_search import SYSTEM_HINT
     assert "OBBLIGO SU NUMERI DI ARTICOLO" in SYSTEM_HINT
     assert "MAI scriverlo a memoria" in SYSTEM_HINT
+
+
+# ── norme_guard: verifica sul corpus 8e, fail-closed (17 lug) ─────────────────────────
+
+def _con_verify(monkey_result):
+    """Patcha la verifica remota di norme_guard e ritorna il modulo."""
+    from unittest import mock
+    from app.lib import norme_guard
+    return mock.patch.object(norme_guard, "_verify_remote", lambda testo: monkey_result), norme_guard
+
+
+def test_norme_guard_tiene_la_citazione_verificata():
+    patch, ng = _con_verify([{"label": "art. 2096 c.c.", "verificata": True}])
+    t = "Il periodo di prova è disciplinato dall'art. 2096 c.c. e va rispettato."
+    with patch:
+        out = ng.sanitize(t)
+    assert "art. 2096 c.c." in out          # verificata dal corpus → resta col numero
+
+
+def test_norme_guard_strippa_la_non_verificata_anche_con_corpus_ok():
+    patch, ng = _con_verify([{"label": "art. 2096 c.c.", "verificata": True}])
+    t = ("Il periodo di prova è disciplinato dall'art. 2096 c.c.; "
+         "vedi anche artt. 62-63 del CCNL per il preavviso.")
+    with patch:
+        out = ng.sanitize(t)
+    assert "art. 2096 c.c." in out          # la vera resta
+    assert "62" not in out and "63" not in out  # la CCNL inventata sparisce
+    assert "il CCNL applicato" in out
+
+
+def test_norme_guard_fail_closed_su_errore_remoto():
+    from unittest import mock
+    from app.lib import norme_guard
+    t = "dall'art. 2099-c al Codice Civile deriva che…"
+    with mock.patch.object(norme_guard, "_verify_remote", side_effect=RuntimeError("giù")):
+        out = norme_guard.sanitize(t)
+    assert "2099" not in out                # errore → strip totale, mai fail-open
+
+
+def test_norme_guard_fail_closed_su_corpus_assente():
+    patch, ng = _con_verify(None)           # None = corpus non disponibile
+    t = "come da art. 1341 c.c. sulle clausole vessatorie"
+    with patch:
+        out = ng.sanitize(t)
+    assert "1341" not in out
+
+
+def test_norme_guard_nessuna_citazione_nessuna_latenza():
+    from unittest import mock
+    from app.lib import norme_guard
+    t = "Sì, puoi farlo: verifica il tuo CCNL per i dettagli."
+    with mock.patch.object(norme_guard, "_verify_remote", side_effect=AssertionError("non deve chiamare")):
+        assert norme_guard.sanitize(t) == t
