@@ -242,6 +242,18 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
       "proposta di acquisizione", "valutare l'acquisto", "valutare l'acquisizione",
       "lettera di intenti", "earn-out", "earn out",
       "post-fusione", "post fusione"), "checkup_legale_dd"),
+    # HR / ORGANIZZATIVO (bug routing 18 lug): una crisi organizzativa (turnover, leadership,
+    # ruoli, processi, riorganizzazione) finiva su StrategyBoost perché "crescita"/"strategia"
+    # sono immancabili in "l'azienda è cresciuta troppo in fretta" → il report chiedeva
+    # competitor/anno fondazione. Non esiste un boost HR generabile via 8e: si instrada al
+    # report GENERICO (ControlBoost) e la consulenza guida i contenuti (case_facts). PESO 2:
+    # qualche parola org batte le parole di crescita incidentali, ma una vera espansione
+    # (gruppo ×4) resta su StrategyBoost. Prima dei gruppi marketing/strategia.
+    (("turnover", "dimission", "ricambio del personale", "leadership", "organizzativ",
+      "riorganizz", "organigramma", "ruoli e mansioni", "ruoli e responsabilità", "mansionari",
+      "processi interni", "clima aziendal", "carico di lavoro", "responsabile tecnico",
+      "risorse umane", "gestione del personale", "organico", "assenteismo", "conflitti interni",
+      "passaggio generazionale", "retention"), "checkup_controllo", 2),
     # ESPANSIONE / INGRESSO IN NUOVI MERCATI → StrategyBoost, PESO 4 (eval espansione USA
     # 15 lug). La DECISIONE ("entrare in un mercato estero, investire nell'espansione") è un
     # marcatore di dominio forte quanto l'M&A, ma era quasi SCOPERTA dalle keyword (solo

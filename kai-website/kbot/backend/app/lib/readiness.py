@@ -193,20 +193,45 @@ def drop_invalid_optional(form_schema: dict | None, inputs: dict | None) -> tupl
 _TEMPLATE_FIELD_IDS = frozenset({"ragione_sociale", "forma_giuridica", "descrizione_azienda"})
 
 
-def required_fields_hint(campi: list[dict] | None, boost_label: str | None = None) -> str:
+def required_fields_hint(campi: list[dict] | None, boost_label: str | None = None,
+                         consulenza_ricca: bool = False) -> str:
     """Istruzione per il system prompt della chat sui campi che il boost instradato esige.
 
     DATI DI CONSULENZA vs DATI DI TEMPLATE: i campi diagnostici si chiedono solo se
     pertinenti al caso; quelli di template (intestazione) in UNA sola domanda leggera in
     coda. Un campo mancante NON blocca il summary: il motore produce comunque un report
-    PRELIMINARE con stime dichiarate (auth_level PARTIAL in /deliverables/auto)."""
+    PRELIMINARE con stime dichiarate (auth_level PARTIAL in /deliverables/auto).
+
+    `consulenza_ricca` (bug routing 18 lug): quando la consulenza ha già prodotto una
+    diagnosi/analisi, ESSA è la fonte del report — NON si chiedono i campi di analisi del
+    template solo perché il form li prevede (era: crisi organizzativa → StrategyBoost →
+    «mi servono competitor, anno fondazione…»). Ciò che manca si ricava dalla conversazione
+    o si dichiara come assunzione. `boost_label` NON viene mai mostrato all'utente (i nomi
+    interni dei boost non devono trapelare in chat)."""
     obbligatori = [c for c in (campi or []) if isinstance(c, dict) and c.get("obbligatorio") and c.get("id")]
     if not obbligatori:
         return ""
     diag = [c for c in obbligatori if c["id"] not in _TEMPLATE_FIELD_IDS]
     tmpl = [c for c in obbligatori if c["id"] in _TEMPLATE_FIELD_IDS]
-    quale = f" «{boost_label}»" if boost_label else ""
-    parts = [f"\nCAMPI DEL DOCUMENTO{quale}:"]
+    # NB: mai «boost_label» nel testo — il nome interno del report non va all'utente.
+    parts = ["\nCAMPI DEL DOCUMENTO:"]
+    intestazione = (
+        "- Per INTESTARE il PDF serve solo il nome dell'azienda (e la forma giuridica se "
+        "emerge): chiedilo in UNA domanda leggera poco prima del summary, MAI come requisito "
+        "che interrompe la consulenza."
+    )
+    if consulenza_ricca:
+        # la consulenza È la fonte: nessuna richiesta di campi di analisi del template.
+        parts.append(
+            "- La consulenza svolta è la FONTE del report: NON chiedere all'utente campi di "
+            "analisi solo perché il template li prevede (competitor, obiettivi, dati di "
+            "settore, anno fondazione, clienti target…). Ciò che manca si ricava dalla "
+            "conversazione o si dichiara come assunzione nel report (che esce PRELIMINARE): è "
+            "il comportamento corretto. Il report è la naturale prosecuzione della consulenza."
+        )
+        if tmpl:
+            parts.append(intestazione)
+        return "\n".join(parts) + "\n"
     if diag:
         voci = "; ".join(f"{c['id']} ({_label(c)})" if _label(c) and _label(c) != c["id"] else str(c["id"])
                          for c in diag)
@@ -217,11 +242,5 @@ def required_fields_hint(campi: list[dict] | None, boost_label: str | None = Non
             "uscirà come PRELIMINARE con stime dichiarate, ed è il comportamento corretto)."
         )
     if tmpl:
-        voci_t = "; ".join(str(c["id"]) for c in tmpl)
-        parts.append(
-            f"- DATI DI INTESTAZIONE ({voci_t}): servono solo a intestare/personalizzare il PDF, "
-            "NON alla diagnosi. Chiedili in UNA sola domanda leggera poco prima del summary "
-            "(«per intestare il documento: nome dell'azienda e forma giuridica?») — MAI come "
-            "requisito che interrompe la consulenza."
-        )
+        parts.append(intestazione)
     return "\n".join(parts) + "\n"

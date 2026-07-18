@@ -553,16 +553,17 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
     auth_level = "FULL"
     if needs_identity:
         # UNICO blocco vero: senza il nome dell'azienda non possiamo intestare il documento.
-        labels = readiness.format_missing_labels(missing_non_identity)
-        msg = "la ragione sociale (nome dell'azienda)" + (f"; {labels}" if labels else "")
+        # NON elenchiamo i campi di analisi (vanno in PRELIMINARE, sotto) e NON nominiamo il
+        # boost interno (es. "StrategyBoost") all'utente: la consulenza è la fonte, il template
+        # è solo il formato (bug routing 18 lug). Si chiede SOLO il nome.
         miss_ids = ["ragione_sociale"] + [c.get("id") for c in missing_non_identity]
         raise HTTPException(status_code=409, detail={
             "reason": "needs_input",
             "servizio_id": servizio_id,
             "missing": miss_ids,
             "message": (
-                f"Per generare «{servizio.get('label') or servizio_id}» mi serve almeno: "
-                f"{msg}. Scrivimelo in chat e premi di nuovo Genera."
+                "Per completare il report mi serve solo il nome dell'azienda (serve a "
+                "intestare il documento). Scrivimelo in chat e premi di nuovo Genera."
             ),
         })
     if missing_non_identity:

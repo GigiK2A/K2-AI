@@ -50,6 +50,11 @@ CASI = [
     ("espansione USA integratori (era LegalBoost)", {"reportType": "valutazione ingresso mercato USA", "objective": "un grande distributore USA ci propone un contratto con esclusiva e clausole; conviene entrare nel mercato USA, quanto investire, rischio concentrazione cliente"}, "checkup_marketing"),
     ("distributore estero + contratto (strategy, non legale)", {"reportType": "espansione internazionale", "objective": "distributore estero, contratto di distribuzione, minimi garantiti, entrare nel mercato estero"}, "checkup_marketing"),
     ("internazionalizzazione + investimento (strategy, non finance)", {"reportType": "internazionalizzazione", "objective": "espansione all'estero, quanto investire, ROI, payback, break-even"}, "checkup_marketing"),
+
+    # --- HR / ORGANIZZATIVO: una crisi organizzativa NON deve finire su StrategyBoost solo
+    #     perché "crescita" è presente (bug routing 18 lug) → report generico (ControlBoost) ---
+    ("crisi organizzativa post-crescita (era StrategyBoost)", {"reportType": "diagnosi", "objective": "l'azienda è cresciuta in fretta e ora c'è una crisi organizzativa", "scope": "turnover alto, perso il responsabile tecnico, leadership in crisi, ruoli e mansioni poco chiari, processi interni inefficaci, carico di lavoro insostenibile"}, "checkup_controllo"),
+    ("turnover + riorganizzazione (org, non marketing)", {"reportType": "analisi", "objective": "turnover elevato e riorganizzazione dei ruoli, clima aziendale peggiorato, conflitti interni"}, "checkup_controllo"),
 ]
 
 

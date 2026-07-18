@@ -318,8 +318,14 @@ async def _required_fields_hint(collected: dict) -> str:
         form = await engine.get_form(boost)
     except Exception:
         return ""
+    # consulenza ricca = il bot ha già prodotto diagnosi/analisi → la consulenza è la fonte
+    # del report, NON si chiedono i campi di analisi del template (bug routing 18 lug).
+    _ed = collected.get("extractedData") or {}
+    consulenza_ricca = bool(collected.get("diagnosi")) or len(str(_ed.get("notes") or "")) > 40 or (
+        bool(str(_ed.get("objective") or "").strip()) and bool(str(_ed.get("scope") or "").strip()))
     return readiness.required_fields_hint(
-        form.get("campi") or [], boost_label=collected.get("boost_suggerito_label"))
+        form.get("campi") or [], boost_label=collected.get("boost_suggerito_label"),
+        consulenza_ricca=consulenza_ricca)
 
 
 @router.post("/message")

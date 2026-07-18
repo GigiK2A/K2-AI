@@ -152,10 +152,24 @@ def test_gate_urgenza_e_comprensione():
 def test_required_fields_hint_template_vs_analisi():
     campi = [{"id": "ragione_sociale", "label": "Ragione sociale", "obbligatorio": True},
              {"id": "competitor", "label": "Competitor", "obbligatorio": True}]
-    h = required_fields_hint(campi, "StrategyBoost")
-    assert "DATI DI INTESTAZIONE" in h and "DATI DI ANALISI" in h
+    h = required_fields_hint(campi, "StrategyBoost — Strategia e crescita")
+    assert "DATI DI ANALISI" in h and "INTESTARE" in h
     assert "PRELIMINARE" in h                 # campo mancante NON blocca il summary
     assert "DEVI raccoglierli" not in h       # il vecchio obbligo bloccante
+    assert "StrategyBoost" not in h           # bug 18 lug: mai il nome interno del boost
+
+
+def test_required_fields_hint_consulenza_ricca_sopprime_analisi():
+    """Bug routing 18 lug: dopo una consulenza reale, il template NON deve far chiedere i
+    campi di analisi (competitor, obiettivi…) — la consulenza è la fonte del report."""
+    campi = [{"id": "ragione_sociale", "label": "Ragione sociale", "obbligatorio": True},
+             {"id": "competitor", "label": "Competitor", "obbligatorio": True},
+             {"id": "obiettivo_strategico", "label": "Obiettivo", "obbligatorio": True}]
+    h = required_fields_hint(campi, "StrategyBoost — Strategia e crescita", consulenza_ricca=True)
+    assert "StrategyBoost" not in h                       # niente nome interno
+    assert "DATI DI ANALISI:" not in h                    # niente richiesta campi analisi
+    assert "consulenza svolta è la FONTE" in h            # la consulenza è la fonte
+    assert "nome dell'azienda" in h.lower()               # resta solo il nome per intestare
 
 
 # ---------------------------------------------------------------------------
