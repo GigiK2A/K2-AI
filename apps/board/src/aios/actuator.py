@@ -72,7 +72,9 @@ ALLOWLIST: dict[str, set[str]] = {
 BLOCKED = {"aios_audit", "aios_policy_state", "board_users", "board_sessions",
            "kbot_sessions", "suite_services",
            # Piano di controllo billing: solo il meter di sistema li scrive, mai gli agenti.
-           "aios_cost_ledger", "aios_budget_state", "aios_agent_budgets"}
+           "aios_cost_ledger", "aios_budget_state", "aios_agent_budgets",
+           # Heartbeat: lo scrive solo il loop di autonomia, non gli agenti.
+           "aios_heartbeats"}
 
 # Registri immutabili / contabili: insert e update sì, ma MAI delete (servono per
 # audit, contabilità, GDPR art.30). Cancellarli falserebbe lo storico.

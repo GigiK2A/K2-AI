@@ -92,7 +92,16 @@ def _start_telegram(platform) -> None:
     threading.Thread(target=_bot, daemon=True, name="telegram-poll").start()
 
 
+def _run_one_agent(platform, domain: str) -> dict:
+    try:
+        return platform.run(domain)
+    except Exception as exc:
+        return {"error": str(exc)[:120]}
+
+
 def main() -> None:
+    from aios.heartbeat import HeartbeatScheduler
+
     platform = build_platform()
     k = platform.kernel
     tick = int(os.environ.get("AIOS_TICK_SECONDS", "1800"))
@@ -100,12 +109,18 @@ def main() -> None:
     seen: set = set()
     last_agents_day = None
 
+    # Heartbeat per-agente (Paperclip #4), opt-in: se AIOS_HEARTBEATS è impostato
+    # ogni dominio si sveglia col suo intervallo; altrimenti resta il batch giornaliero.
+    hb = (HeartbeatScheduler.from_env(client=getattr(k, "_supabase", None))
+          if HeartbeatScheduler.enabled() else None)
+
     _start_telegram(platform)
     if telegram.enabled():
         telegram.send_text("🟢 *K2-AI* è attivo. Preparo bozze e proposte, ti avviso qui. "
                            "Scrivimi un'istruzione quando vuoi.")
 
-    print(f"AIOS autonomy loop avviato (tick {tick}s, agenti alle {agents_hour:02d}:00 UTC).")
+    mode = "heartbeat per-agente" if hb else f"batch alle {agents_hour:02d}:00 UTC"
+    print(f"AIOS autonomy loop avviato (tick {tick}s, agenti: {mode}).")
     while True:
         now = time.gmtime()
         # bozze email ad ogni tick (economiche: scrivono solo se c'è mail nuova senza bozza)
@@ -113,8 +128,16 @@ def main() -> None:
         if em.get("bozze_create"):
             print(f"[{time.strftime('%H:%M', now)}] bozze email: {em['bozze_create']}")
 
-        # agenti di dominio + follow-up lead 1 volta al giorno, all'ora prevista
-        if now.tm_hour == agents_hour and last_agents_day != now.tm_yday:
+        if hb is not None:
+            # ── Ritmo per-agente: fa partire solo i domini "dovuti" a questo tick. ──
+            now_epoch = time.time()
+            due = hb.due(platform.domains(), now_epoch)
+            for d in due:
+                res = _run_one_agent(platform, d)
+                hb.mark_ran(d, now_epoch)
+                print(f"[{time.strftime('%H:%M', now)}] heartbeat {d}: {res}")
+        elif now.tm_hour == agents_hour and last_agents_day != now.tm_yday:
+            # ── Batch storico: tutti gli agenti una volta al giorno all'ora prevista. ──
             last_agents_day = now.tm_yday
             res = _run_agents(platform)
             print(f"[{time.strftime('%H:%M', now)}] agenti: {res}")
