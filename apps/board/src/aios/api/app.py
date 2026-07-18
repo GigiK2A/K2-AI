@@ -307,6 +307,14 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                 "totale_speso_eur": round(sum(r["spent_eur"] for r in rows), 4),
                 "agenti": rows}
 
+    @app.get("/api/org")
+    def org_chart(_=Depends(_require_auth)) -> dict[str, Any]:
+        """Organigramma del board: ruoli, titoli, linee di riporto."""
+        from aios import org as _org
+        chart = getattr(platform, "org", None) if platform else None
+        chart = chart or _org.get_chart()
+        return {"ruoli": chart.as_dict()}
+
     @app.get("/api/domain/{domain}")
     def domain_view(domain: str, _=Depends(_require_auth)) -> dict[str, Any]:
         """Vista per-dominio: dati reali letti dai sensori dell'agente +

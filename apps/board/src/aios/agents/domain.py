@@ -130,6 +130,11 @@ class DomainAgent:
 
     def _context(self) -> str:
         out = self.founder.to_prompt()
+        # Organigramma: l'agente sa chi è, a chi riporta, chi sono i pari (Paperclip #2).
+        from aios import org
+        role_ctx = org.get_chart().context_for(self.actor)
+        if role_ctx:
+            out += "\n\n" + role_ctx
         if self.knowledge and self.cfg.knowledge_query:
             hits = self.knowledge.search(self.cfg.knowledge_query, k=3)
             if hits:

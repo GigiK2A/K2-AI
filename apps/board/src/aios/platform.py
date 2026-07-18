@@ -49,6 +49,7 @@ class Platform:
         self.agents = agents
         self.commands = commands   # CommandRouter (chat a istruzioni), impostato dopo
         self.chat = None           # ChatOrchestrator (chat multi-agente streaming)
+        self.org = None            # OrgChart (organigramma del board), impostato dopo
 
     def domains(self) -> list[str]:
         return list(self.agents)
@@ -84,6 +85,10 @@ def build_platform() -> Platform:
     from aios import billing
     _budgets, _default_cap = billing.budgets_from_env()
     billing.set_meter(billing.CostMeter(client, budgets=_budgets, default_cap=_default_cap))
+
+    # Organigramma del board: ruoli/riporti iniettati nel contesto agenti (Paperclip #2).
+    from aios import org as _org
+    _org.set_chart(_org.OrgChart.default())
     ig = InstagramClient(token=os.environ["AIOS_IG_TOKEN"],
                          ig_user_id=os.environ.get("AIOS_IG_USER_ID", "17841429842127461"))
     k.register_tool(output_tool(client))
@@ -236,6 +241,7 @@ def build_platform() -> Platform:
         "hr": _domain(HR_CONFIG),
     }
     platform = Platform(k, agents)
+    platform.org = _org.get_chart()                                # organigramma navigabile
     platform.commands = CommandRouter(platform, llm, llm_strong)   # chat a istruzioni
     # Chat multi-agente in streaming: parli con uno/alcuni/tutti gli agenti in parallelo,
     # con stato reale (pensa/usa tool/scrive). Riusa attuatore+coda del CommandRouter.

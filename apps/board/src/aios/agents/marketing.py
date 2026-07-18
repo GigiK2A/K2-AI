@@ -188,7 +188,10 @@ class MarketingAgent:
         # Prompt LEAN: Haiku con forced-JSON degrada oltre ~12k token → tenere ~9k.
         def sec(k, cap=1200):
             return json.dumps(data.get(k), ensure_ascii=False)[:cap]
+        from aios import org
+        role_ctx = org.get_chart().context_for(self.actor)
         user = (self.founder.to_prompt()[:900]
+                + (("\n\n" + role_ctx) if role_ctx else "")
                 + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi", 900)
                 + "\n## Temi blog\n" + sec("topics", 800)
                 + "\n## Profilo IG\n" + sec("profilo_ig", 400)
