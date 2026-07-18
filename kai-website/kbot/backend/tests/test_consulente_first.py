@@ -478,6 +478,16 @@ def test_prompt_spiega_il_perche_di_ogni_consiglio():
     assert "far percepire il RAGIONAMENTO" in p or "far sentire il ragionamento" in p.lower()
 
 
+def test_prompt_ancora_ai_fatti_del_caso():
+    """Spec Luca (18 lug): su un caso concreto, collega OGNI raccomandazione ai fatti dati
+    dall'utente (niente consulenza generica) e non introdurre obblighi/scadenze non ancorati
+    alla normativa o ai dati disponibili."""
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "ANCORA SEMPRE AI FATTI DEL CASO" in p
+    assert "andrebbe bene per chiunque" in p.lower()
+    assert "obblighi" in p.lower() and "non inventarlo" in p.lower()
+
+
 def test_prompt_struttura_risposte_giuridiche():
     """Spec Luca: struttura giuridica = normativa principale (in parole) → spiegazione
     semplice → dipendenze CCNL/contratto/caso → niente assoluti/invenzioni. E 'cita la
