@@ -65,11 +65,25 @@ class Platform:
         return self.kernel._supabase.select(
             "aios_deliverables", {"select": "*", "order": "id.desc"})
 
+    def budget_report(self) -> list[dict[str, Any]]:
+        """Stato budget/spesa del mese per ogni agente (per cockpit e Telegram)."""
+        from aios import billing
+        actors = [getattr(a, "actor", None) for a in self.agents.values()]
+        return billing.get_meter().report([a for a in actors if a])
+
 
 def build_platform() -> Platform:
     k = Kernel.with_supabase_rest(os.environ["AIOS_SUPABASE_URL"],
                                   os.environ["AIOS_SUPABASE_SERVICE_KEY"])
     client = k._supabase
+
+    # Metering costi + budget con hard-stop per agente (Paperclip primitive #1).
+    # Tetti da env (AIOS_AGENT_BUDGETS / AIOS_DEFAULT_AGENT_BUDGET_EUR); persistenza
+    # su Supabase (aios_cost_ledger + aios_budget_state). Senza env → nessun tetto
+    # (comportamento invariato), ma i consumi vengono comunque tracciati.
+    from aios import billing
+    _budgets, _default_cap = billing.budgets_from_env()
+    billing.set_meter(billing.CostMeter(client, budgets=_budgets, default_cap=_default_cap))
     ig = InstagramClient(token=os.environ["AIOS_IG_TOKEN"],
                          ig_user_id=os.environ.get("AIOS_IG_USER_ID", "17841429842127461"))
     k.register_tool(output_tool(client))

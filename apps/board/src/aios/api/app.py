@@ -299,6 +299,14 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
     def domini(_=Depends(_require_auth)):
         return {"domini": platform.domains() if platform else []}
 
+    @app.get("/api/budget")
+    def budget(_=Depends(_require_auth)) -> dict[str, Any]:
+        """Spesa LLM e budget del mese per agente (metering + hard-stop)."""
+        rows = platform.budget_report() if platform else []
+        return {"periodo": rows[0]["period"] if rows else None,
+                "totale_speso_eur": round(sum(r["spent_eur"] for r in rows), 4),
+                "agenti": rows}
+
     @app.get("/api/domain/{domain}")
     def domain_view(domain: str, _=Depends(_require_auth)) -> dict[str, Any]:
         """Vista per-dominio: dati reali letti dai sensori dell'agente +

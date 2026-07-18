@@ -163,6 +163,22 @@ class MarketingAgent:
         return ("\n\n# FRAMEWORK (estratti)\n" + "\n\n".join(out)) if out else ""
 
     def run(self) -> MarketingResult:
+        from aios import billing
+        # Hard-stop di budget: agente oltre il tetto mensile → non parte.
+        status = billing.get_meter().check(self.actor)
+        if status.over:
+            try:
+                self.k.audit.append(action_key=PROPOSE_ACTION.key, event="budget_block",
+                                    actor=self.actor, detail={
+                                        "spent_eur": status.spent_eur, "cap_eur": status.cap_eur,
+                                        "period": status.period})
+            except Exception:
+                pass
+            return MarketingResult(approval_ids=[], proposals=[])
+        with billing.attribute(self.actor):
+            return self._run_inner()
+
+    def _run_inner(self) -> MarketingResult:
         data = self._gather()
         # re-check policy for programma_contenuto in case tools were registered after __init__
         if "programma_contenuto" in self.k.tools.names():

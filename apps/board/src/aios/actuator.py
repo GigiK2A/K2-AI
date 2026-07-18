@@ -69,7 +69,9 @@ ALLOWLIST: dict[str, set[str]] = {
 # (rischio takeover) e il catalogo pubblico (suite_services, letto dal sito = quasi-esterno).
 # Mai delete su NESSUNA tabella. Questi non sono "dati operativi interni": sono il meccanismo.
 BLOCKED = {"aios_audit", "aios_policy_state", "board_users", "board_sessions",
-           "kbot_sessions", "suite_services"}
+           "kbot_sessions", "suite_services",
+           # Piano di controllo billing: solo il meter di sistema li scrive, mai gli agenti.
+           "aios_cost_ledger", "aios_budget_state", "aios_agent_budgets"}
 
 # Registri immutabili / contabili: insert e update sì, ma MAI delete (servono per
 # audit, contabilità, GDPR art.30). Cancellarli falserebbe lo storico.

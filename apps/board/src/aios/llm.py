@@ -8,6 +8,22 @@ import urllib.error
 import urllib.request
 from typing import Any, Protocol
 
+from aios import billing
+
+
+def _meter_anthropic(model: str, msg: Any) -> None:
+    """Registra i token/costo di una risposta Anthropic sull'attore corrente.
+    Best-effort: non deve mai rompere una completion."""
+    try:
+        usage = getattr(msg, "usage", None)
+        if usage is not None:
+            billing.record_usage(
+                model,
+                int(getattr(usage, "input_tokens", 0) or 0),
+                int(getattr(usage, "output_tokens", 0) or 0))
+    except Exception:
+        pass
+
 
 def _robust_json(text: str) -> dict:
     """Best-effort parse of a JSON object out of model text (raw/fenced/prose)."""
@@ -79,6 +95,7 @@ class AnthropicLLM:
             kwargs["tools"] = [{"type": "web_search_20250305",
                                 "name": "web_search", "max_uses": 5}]
         msg = self._client.messages.create(**kwargs)
+        _meter_anthropic(self._model, msg)
         return "".join(b.text for b in msg.content
                        if getattr(b, "type", None) == "text")
 
@@ -91,6 +108,7 @@ class AnthropicLLM:
             model=self._model, max_tokens=self._max_tokens, system=system,
             messages=[{"role": "user", "content": user}],
             tools=[tool], tool_choice={"type": "tool", "name": "rispondi"})
+        _meter_anthropic(self._model, msg)
         for b in msg.content:
             if getattr(b, "type", None) == "tool_use":
                 return dict(b.input)
@@ -146,6 +164,7 @@ class AnthropicLLM:
                                 text_started = True
                             yield {"phase": "delta", "text": getattr(d, "text", "")}
                 final = stream.get_final_message()
+            _meter_anthropic(self._model, final)
             # solo i tool CUSTOM richiedono un risultato da noi; i server-tool (web_search)
             # li ha già eseguiti Anthropic dentro il turno.
             tool_uses = [b for b in final.content if getattr(b, "type", "") == "tool_use"]
@@ -246,6 +265,12 @@ class LocalLLM:
                                              headers=_local_headers(), method="POST")
                 with _local_opener().open(req, timeout=_LOCAL_TIMEOUT) as resp:
                     payload = json.loads(resp.read().decode("utf-8"))
+                try:  # metering: token locali (costo 0, ma visibilità dei consumi)
+                    billing.record_usage(self._model,
+                                         int(payload.get("prompt_eval_count", 0) or 0),
+                                         int(payload.get("eval_count", 0) or 0))
+                except Exception:
+                    pass
                 return payload.get("message", {}).get("content", "")
             except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
                 last = exc

@@ -163,6 +163,23 @@ class DomainAgent:
                 "(diventa un task). Niente numeri inventati.")
 
     def run(self) -> DomainResult:
+        from aios import billing
+        # Hard-stop di budget: se l'agente ha superato il tetto mensile, non parte
+        # nemmeno (Paperclip: "when they hit the limit, they stop, automatically").
+        status = billing.get_meter().check(self.actor)
+        if status.over:
+            try:
+                self.k.audit.append(action_key=self.cfg.action.key, event="budget_block",
+                                    actor=self.actor, detail={
+                                        "spent_eur": status.spent_eur, "cap_eur": status.cap_eur,
+                                        "period": status.period})
+            except Exception:
+                pass
+            return DomainResult(approval_ids=[], proposals=[])
+        with billing.attribute(self.actor):
+            return self._run_inner()
+
+    def _run_inner(self) -> DomainResult:
         data = {}
         names = self.k.tools.names()
         for tool, args in self.cfg.sensors:
