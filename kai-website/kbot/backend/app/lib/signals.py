@@ -176,3 +176,32 @@ def is_ready_declared(text: str) -> bool:
     """Readiness dichiarata E non negata — la coppia va SEMPRE usata insieme."""
     t = text or ""
     return bool(READY_RE.search(t)) and not NOT_READY_RE.search(t)
+
+
+# --- Il turno FORNISCE analisi/raccomandazioni/conclusioni? (regola hard "2 iterazioni") --
+# Indicatore OGGETTIVO (richiesta di Luca): se il bot ha già dato analisi/consigli/sintesi,
+# la soglia per il report è superata. Due turni assistant consecutivi così → si genera
+# (backstop deterministico: il modello locale continua a rimandare anche quando potrebbe già).
+_ANALYSIS_RE = re.compile(
+    r"\b(ti\s+consigli\w+|consigli\w+\s+di|ti\s+suggeris\w+|suggeris\w+\s+di|ti\s+convien\w+|"
+    r"conviene\b|dovresti\b|in\s+sintesi|in\s+conclusione|riassumendo|le\s+opzioni\s+(?:sono|"
+    r"principali|possibili)|i\s+passi\s+(?:da\s+)?(?:seguire|fare|sono)|"
+    r"ecco\s+(?:cosa\s+fare|come\s+muovert\w+|i\s+passaggi|i\s+passi)|come\s+muovert\w+|"
+    r"raccomand\w+|la\s+prima\s+cosa\s+(?:da\s+fare|è)|il\s+rischio\s+principale|"
+    r"il\s+mio\s+consiglio|puoi\s+procedere\s+così)\b", re.I)
+
+
+def _looks_like_action_list(text: str) -> bool:
+    items = re.findall(r"(?m)^\s*(?:\d+[.)]\s|[-–•]\s)\S", text or "")
+    return len(items) >= 2
+
+
+def provides_analysis(text: str) -> bool:
+    """True se il turno del bot contiene analisi/raccomandazioni/conclusioni sostanziali
+    (non una semplice domanda di chiarimento)."""
+    t = (text or "").strip()
+    if len(t) < 60:                       # troppo corto per essere un'analisi
+        return False
+    if NOT_READY_RE.search(t):            # dichiara un gap bloccante → non è "pronto"
+        return False
+    return bool(_ANALYSIS_RE.search(t)) or (_looks_like_action_list(t) and len(t) > 200)

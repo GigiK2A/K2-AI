@@ -142,6 +142,26 @@ def _interview_gate_active(merged_messages: list) -> bool:
     return not bool(signals.PROCEDI_RE.search(last_user))
 
 
+def _analysis_streak_reached(merged_messages: list, raw_text: str, need: int = 2) -> bool:
+    """Regola hard (Luca): se il bot fornisce analisi/raccomandazioni/conclusioni per >= `need`
+    turni assistant CONSECUTIVI (incluso quello corrente), la soglia per il report è superata —
+    è un indicatore OGGETTIVO che i dati bastano. Backstop deterministico: il modello locale
+    continua a rimandare la generazione anche quando potrebbe già produrla."""
+    if not signals.provides_analysis(strip_summary_block(raw_text or "")):
+        return False
+    streak = 1
+    for m in reversed(merged_messages or []):
+        if not isinstance(m, dict) or m.get("role") != "assistant":
+            continue  # i turni user interlacciano: si ignorano
+        if signals.provides_analysis(str(m.get("content") or "")):
+            streak += 1
+            if streak >= need:
+                return True
+        else:
+            break  # sequenza consecutiva interrotta
+    return streak >= need
+
+
 def _extract_gated_summary(raw_text: str, merged_messages: list):
     """Estrae summary + stato diagnostico; SOPPRIME il summary se in fase intervista.
     Il visibile è ripulito da ENTRAMBI i blocchi macchina (summary + diagnosi)."""
@@ -201,14 +221,21 @@ def _ensure_summary_block(client, system_prompt, messages: list, raw_text: str,
     _last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
                        if isinstance(m, dict) and m.get("role") == "user"), "")
     user_procedi = bool(signals.PROCEDI_HARD_RE.search(_last_user))
+    streak_reached = _analysis_streak_reached(merged_messages, raw_text)
     if not user_procedi:
         if _interview_gate_active(merged_messages):
             return raw_text
-        if not signals.is_ready_declared(raw_text or ""):
+        # readiness = dichiarata dal bot OPPURE indicatore oggettivo (2 turni di analisi)
+        if not signals.is_ready_declared(raw_text or "") and not streak_reached:
             return raw_text
     try:
-        _motivo = ("L'utente ha chiesto ESPLICITAMENTE di procedere col report."
-                   if user_procedi else "Hai dichiarato di avere informazioni sufficienti.")
+        if user_procedi:
+            _motivo = "L'utente ha chiesto ESPLICITAMENTE di procedere col report."
+        elif signals.is_ready_declared(raw_text or ""):
+            _motivo = "Hai dichiarato di avere informazioni sufficienti."
+        else:
+            _motivo = ("Hai già fornito analisi e raccomandazioni per più turni consecutivi: "
+                       "la soglia per il report è superata, i dati sono sufficienti.")
         focus = list(messages) + [
             {"role": "assistant", "content": (strip_summary_block(raw_text) or "Ho informazioni sufficienti.")[:4000]},
             {"role": "user", "content": (
