@@ -90,3 +90,36 @@ def test_idempotente():
     t = "Il versamento IVA va fatto entro il 16 del mese successivo."
     once = dg.sanitize(t)
     assert dg.sanitize(once) == once  # già ripulito → non ri-modifica
+
+
+def test_tassi_interessi_penali_di_legge():
+    """Leak visto live: 'interessi di mora (tasso legale + 8 punti)'. Le misure di
+    interesse/mora/penale di legge citate a memoria vanno rese descrittive."""
+    for testo, cifra in [
+        ("Gli interessi di mora sono pari al tasso legale + 8 punti.", "8 punti"),
+        ("Applica interessi di mora del 10% annuo sulla fattura non pagata.", "10%"),
+        ("La penale è del 5% per ogni giorno di ritardo.", "5%"),
+    ]:
+        out = dg.sanitize(testo)
+        assert cifra not in out and "normativa" in out.lower(), out
+
+
+def test_aliquote_e_tassi_bancari_non_toccati():
+    """Le aliquote fiscali (IVA) e i tassi bancari/di business NON sono figure 'di legge'
+    da softare: restano intatti (zero falsi positivi)."""
+    for testo in ["L'IVA sugli alimentari è del 4%.",
+                  "L'aliquota ordinaria IVA è il 22%.",
+                  "La banca applica interessi del 3% sul conto.",
+                  "Il mutuo ha un tasso del 4,5%.",
+                  "In marketing si spende il 2-5% del fatturato."]:
+        assert dg.sanitize(testo) == testo, testo
+
+
+def test_dedup_ripetizione_frase_softata():
+    """Se la stessa frase soft-ata compare più volte, dalla 2ª in poi diventa una variante
+    leggera (niente 'entro il termine previsto dalla normativa' ripetuto 3 volte)."""
+    t = ("Invia la comunicazione al Centro per l'Impiego entro 5 giorni; poi il versamento "
+         "entro 10 giorni; infine la dichiarazione entro 30 giorni.")
+    out = dg.sanitize(t)
+    assert out.lower().count("entro il termine previsto dalla normativa") == 1
+    assert "nei termini di legge" in out.lower()
