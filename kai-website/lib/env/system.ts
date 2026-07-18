@@ -39,7 +39,7 @@ function envCandidateFiles(): string[] {
     path.join(cwd, '.env.local'),
     path.join(cwd, '.env'),
     path.join(cwd, '..', '.env'),
-    path.join(cwd, '..', 'ai-board', '.env'),
+    path.join(cwd, '..', 'apps', 'board', '.env'),
   ]
 }
 
