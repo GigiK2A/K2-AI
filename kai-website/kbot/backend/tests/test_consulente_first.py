@@ -468,3 +468,24 @@ def test_prompt_contiene_principio_di_conoscenza():
     assert "PRINCIPIO DI CONOSCENZA" in p
     assert "NON è la conoscenza del modello" in p
     assert "ANDARE A PRENDERE" in p
+
+
+def test_prompt_spiega_il_perche_di_ogni_consiglio():
+    """Spec Luca (18 lug): ogni consiglio operativo deve dire anche il PERCHÉ, per far
+    percepire il ragionamento del consulente, non un elenco di istruzioni."""
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "IL PERCHÉ, NON SOLO IL COSA" in p
+    assert "far percepire il RAGIONAMENTO" in p or "far sentire il ragionamento" in p.lower()
+
+
+def test_prompt_struttura_risposte_giuridiche():
+    """Spec Luca: struttura giuridica = normativa principale (in parole) → spiegazione
+    semplice → dipendenze CCNL/contratto/caso → niente assoluti/invenzioni. E 'cita la
+    normativa' NON riapre il buco dei numeri di articolo (quelli restano al report)."""
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "RISPOSTE GIURIDICHE" in p
+    assert "LINGUAGGIO SEMPLICE" in p.upper() or "linguaggio semplice" in p.lower()
+    assert "CCNL applicato" in p
+    # citare la normativa in parole è incoraggiato, ma il NUMERO dell'articolo resta al report
+    assert "CITA la normativa principale" in p
+    assert "solo il numero dell'articolo" in p.lower() or "è SOLO il numero dell'articolo" in p
