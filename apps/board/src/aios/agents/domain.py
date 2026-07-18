@@ -135,6 +135,11 @@ class DomainAgent:
         role_ctx = org.get_chart().context_for(self.actor)
         if role_ctx:
             out += "\n\n" + role_ctx
+        # Goal ancestry: l'agente vede gli obiettivi attivi dell'azienda (Paperclip #3).
+        from aios import goals
+        goals_ctx = goals.ancestry_context(self._dclient or getattr(self.k, "_supabase", None))
+        if goals_ctx:
+            out += "\n\n" + goals_ctx
         if self.knowledge and self.cfg.knowledge_query:
             hits = self.knowledge.search(self.cfg.knowledge_query, k=3)
             if hits:

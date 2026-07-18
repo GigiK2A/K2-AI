@@ -27,6 +27,7 @@ ALLOWLIST: dict[str, set[str]] = {
     "finance_journal": {"insert"},
     "board_cost_items": {"insert", "update"},
     "board_tasks": {"insert", "update"},
+    "aios_goals": {"insert", "update"},   # obiettivi (goal ancestry): proposti via approva
     "aios_content_calendar": {"insert", "update"},
     "marketing_prospects": {"insert", "update"},
     "marketing_competitors": {"insert", "update"},
@@ -181,7 +182,8 @@ def apply_ddl(sql: str) -> dict[str, Any]:
 # Mappiamo i sinonimi alle colonne reali, scartiamo le colonne inesistenti (ripiegate
 # in un campo note se c'è) e normalizziamo i valori enum. Schema reale per tabella:
 _SCHEMA: dict[str, set[str]] = {
-    "board_tasks": {"lead_id", "title", "notes", "priority", "status", "due_at", "position"},
+    "board_tasks": {"lead_id", "title", "notes", "priority", "status", "due_at", "position", "goal_id"},
+    "aios_goals": {"title", "description", "parent_goal_id", "status", "priority"},
     "board_cost_items": {"name", "amount_eur", "frequency", "category", "active"},
     "pipeline_leads": {"name", "company", "sector", "channel", "pain_point", "offer_fit",
                        "status", "score", "next_action", "next_action_date", "notes",

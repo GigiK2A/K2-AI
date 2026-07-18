@@ -89,6 +89,18 @@ def build_platform() -> Platform:
     # Organigramma del board: ruoli/riporti iniettati nel contesto agenti (Paperclip #2).
     from aios import org as _org
     _org.set_chart(_org.OrgChart.default())
+
+    # Obiettivi dell'azienda (goal ancestry, Paperclip #3): sensore readonly.
+    def _leggi_obiettivi(stato: str | None = None, **_):
+        params = {"select": "*", "order": "priority.asc", "limit": "50"}
+        if stato:
+            params["status"] = f"eq.{stato}"
+        try:
+            return client.select("aios_goals", params)
+        except Exception:
+            return []
+    k.register_tool(Tool(name="leggi_obiettivi", action_type=None, readonly=True,
+                         run=_leggi_obiettivi))
     ig = InstagramClient(token=os.environ["AIOS_IG_TOKEN"],
                          ig_user_id=os.environ.get("AIOS_IG_USER_ID", "17841429842127461"))
     k.register_tool(output_tool(client))
