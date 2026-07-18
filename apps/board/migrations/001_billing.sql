@@ -41,3 +41,8 @@ create table if not exists public.aios_agent_budgets (
     active           boolean not null default true,
     updated_at       timestamptz not null default now()
 );
+
+-- RLS on (nessuna policy → accesso solo service_role, come le tabelle di controllo).
+alter table public.aios_cost_ledger  enable row level security;
+alter table public.aios_budget_state  enable row level security;
+alter table public.aios_agent_budgets enable row level security;

@@ -11,3 +11,5 @@ create table if not exists public.aios_heartbeats (
     last_run_at      timestamptz,
     updated_at       timestamptz not null default now()
 );
+
+alter table public.aios_heartbeats enable row level security;

@@ -25,3 +25,6 @@ create index if not exists aios_goals_parent_idx
 -- Link ascendente opzionale: un task interno può tracciare l'obiettivo che serve.
 alter table public.board_tasks
     add column if not exists goal_id bigint references public.aios_goals(id) on delete set null;
+
+-- RLS on (accesso service_role; gli agenti scrivono via attuatore con service key).
+alter table public.aios_goals enable row level security;
