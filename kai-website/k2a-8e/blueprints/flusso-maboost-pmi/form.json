@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MABoost — valutazione acquisizione (M&A)",
+  "type": "object",
+  "required": ["azienda", "prezzo_richiesto", "ebitda"],
+  "properties": {
+    "azienda": { "type": "string", "description": "Nome dell'acquirente o del target valutato" },
+    "settore": { "type": "string", "description": "Settore del target (per i benchmark di multiplo)" },
+    "fatturato": { "type": ["number", "null"], "description": "Fatturato annuo del target, EUR" },
+    "ebitda": { "type": "number", "description": "EBITDA del target, EUR" },
+    "utile_netto": { "type": ["number", "null"], "description": "Utile netto del target, EUR" },
+    "patrimonio_netto": { "type": ["number", "null"], "description": "Patrimonio netto del target, EUR" },
+    "prezzo_richiesto": { "type": "number", "description": "Prezzo richiesto per l'equity, EUR" },
+    "debiti_finanziari": { "type": ["number", "null"], "description": "Debiti finanziari del target, EUR" },
+    "liquidita": { "type": ["number", "null"], "description": "Liquidità/cassa del target, EUR" },
+    "concentrazione_top5_pct": { "type": ["number", "null"], "description": "Quota fatturato dai primi 5 clienti del target, %" },
+    "obiettivo": { "type": ["string", "null"], "description": "La decisione da prendere (es. acquisire il concorrente o crescere internamente)" }
+  },
+  "additionalProperties": true
+}

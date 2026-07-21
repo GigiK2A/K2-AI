@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-maboost-pmi.output-schema.json",
+  "title": "MABoost — output (valutazione acquisizione)",
+  "type": "object",
+  "description": "Schema minimale: meta + sintesi decisionale. L'analisi quantitativa (multipli, catene, confronto comprare-vs-crescere, decisione) è prodotta dal motore consulenziale deterministico (consulenza_operativa) e non dall'LLM.",
+  "required": ["meta", "executive_summary", "files"],
+  "additionalProperties": true,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadati dell'analisi",
+      "required": ["azienda", "data_generazione"],
+      "additionalProperties": true,
+      "properties": {
+        "azienda": { "type": "string" },
+        "tipo_analisi": { "type": "string", "description": "es. 'Valutazione acquisizione (M&A)'" },
+        "data_generazione": { "type": "string", "description": "Data di generazione (ISO)" }
+      }
+    },
+    "executive_summary": {
+      "type": "string",
+      "maxLength": 2500,
+      "description": "Sintesi DECISIONALE: parte dalla domanda 'conviene acquisire il target o crescere internamente?' e dà una risposta condizionata ai multipli e ai rischi. NB: se il motore produce una sintesi decisionale, questa la sostituisce nel render."
+    },
+    "sintesi_valutazione": {
+      "type": "string",
+      "maxLength": 1500,
+      "description": "Breve inquadramento del target e del razionale strategico dell'operazione (senza numeri inventati: i multipli li calcola il motore)."
+    },
+    "files": {
+      "type": "object",
+      "description": "Riferimenti ai file generati",
+      "required": ["pdf", "json"],
+      "additionalProperties": true,
+      "properties": {
+        "pdf": { "type": "string" },
+        "json": { "type": "string" }
+      }
+    }
+  }
+}

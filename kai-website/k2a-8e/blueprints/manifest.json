@@ -149,6 +149,13 @@
       "skill": "check-sicurezza-express",
       "blueprint": "check-sicurezza-express/blueprint.json",
       "output_schema": "check-sicurezza-express/output-schema.json"
+    },
+    "checkup_ma": {
+      "blueprint_id": "flusso-maboost-pmi.boost",
+      "skill": "flusso-maboost-pmi",
+      "blueprint": "flusso-maboost-pmi/blueprint.json",
+      "output_schema": "flusso-maboost-pmi/output-schema.json",
+      "form": "flusso-maboost-pmi/form.json"
     }
   }
 }

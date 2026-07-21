@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "generated_from": "catalog.json",
   "fonte": "k2a-catalogo (catalogo_documenti.json)",
-  "n_services": 81,
-  "n_generabili_8e": 15,
+  "n_services": 82,
+  "n_generabili_8e": 16,
   "tipi_listino": {
     "consumo": {
       "label": "Check Express",
@@ -637,6 +637,19 @@
       "genera_via": "8e",
       "blueprint_id": "flusso-legalboost-pmi.boost",
       "output_schema_ref": "flusso-legalboost-pmi/schemas/output-schema.json",
+      "tag_pillar_sito": []
+    },
+    {
+      "id": "checkup_ma",
+      "tipo": "servizio",
+      "label": "MABoost — Valutazione acquisizione (M&A)",
+      "prodotto_commerciale": "MABoost — Valutazione acquisizione (M&A)",
+      "ambito": "trasversale",
+      "livello": "composito",
+      "prezzo_eur": 1499,
+      "genera_via": "8e",
+      "blueprint_id": "flusso-maboost-pmi.boost",
+      "output_schema_ref": "flusso-maboost-pmi/output-schema.json",
       "tag_pillar_sito": []
     },
     {

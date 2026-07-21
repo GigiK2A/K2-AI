@@ -3,8 +3,8 @@
   "generated_at": "2026-06-07T14:04:22Z",
   "fonte": "k2a-catalogo (catalogo_documenti.json)",
   "prezzo_minimo_eur": 19,
-  "n_services": 81,
-  "n_generabili_8e": 15,
+  "n_services": 82,
+  "n_generabili_8e": 16,
   "services": [
     {
       "service_id": "de_minimis",
@@ -603,6 +603,19 @@
       "genera_via": "8e",
       "blueprint_id": "flusso-legalboost-pmi.boost",
       "output_schema_ref": "flusso-legalboost-pmi/schemas/output-schema.json"
+    },
+    {
+      "service_id": "checkup_ma",
+      "label": "MABoost — Valutazione acquisizione (M&A)",
+      "prodotto_commerciale": "MABoost — Valutazione acquisizione (M&A)",
+      "livello": "composito",
+      "strato": "servizio",
+      "ambito": "trasversale",
+      "livello_documentale": "D4",
+      "prezzo_eur": 1499,
+      "genera_via": "8e",
+      "blueprint_id": "flusso-maboost-pmi.boost",
+      "output_schema_ref": "flusso-maboost-pmi/output-schema.json"
     },
     {
       "service_id": "checkup_hr",

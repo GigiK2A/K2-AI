@@ -241,7 +241,22 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
       "rilevare un'attività", "rilevare una attività", "proposta di acquisto",
       "proposta di acquisizione", "valutare l'acquisto", "valutare l'acquisizione",
       "lettera di intenti", "earn-out", "earn out",
-      "post-fusione", "post fusione"), "checkup_legale_dd"),
+      "post-fusione", "post fusione",
+      # ITALIANO VERO (test M&A lug): l'ask decisionale ("conviene acquistarla o
+      # crescere internamente", "acquistare una piccola azienda") non matchava.
+      "acquistare un'azienda", "acquistare una piccola azienda", "acquistarla",
+      "conviene acquistarla", "conviene acquistare", "conviene comprarla",
+      "crescere internamente", "crescere per vie interne", "acquisizione o crescita",
+      # forme VERBALI non-negate (il check-negazione salta "acquistarla" dopo "non so se
+      # convenga", ma "sto valutando l'acquisizione" apre la frase senza negazione):
+      "valutando l'acquisizione", "valutando di acquistare", "valutando di acquisire",
+      "valutando di comprare", "valutando di rilevare", "valuto l'acquisizione",
+      "sto valutando l'acquisto", "acquisizione di una piccola azienda"),
+     # M&A → MABoost (analisi DECISIONALE comprare-vs-crescere), NON più LegalBoost DD:
+     # il caso è una decisione di valutazione (EV/EBITDA, ROI), non un report di
+     # compliance. La due diligence LEGALE resta un servizio a sé (checkup_legale_dd),
+     # scegliibile a parte. Fix routing "M&A→LegalBoost" (test acquisizione lug).
+     "checkup_ma"),
     # HR / ORGANIZZATIVO (bug routing 18 lug): una crisi organizzativa (turnover, leadership,
     # ruoli, processi, riorganizzazione) finiva su StrategyBoost perché "crescita"/"strategia"
     # sono immancabili in "l'azienda è cresciuta troppo in fretta" → il report chiedeva
@@ -304,7 +319,7 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
 # INCIDENTALI in ogni conversazione M&A — senza peso vincevano per accumulo e l'ask M&A
 # finiva su FinanceBoost (gate fail-closed sulle proiezioni → vicolo cieco). ×4: regge fino
 # a 3 keyword finance incidentali per ogni frase M&A esplicita.
-_GROUP_WEIGHT: dict[str, int] = {"checkup_legale_dd": 4}
+_GROUP_WEIGHT: dict[str, int] = {"checkup_ma": 4}
 
 # Default quando nessuna keyword combacia: ControlBoost (cruscotto direzionale),
 # generico e robusto. NB: ex checkup_advisor, ma AdvisorBoost ha lo schema più

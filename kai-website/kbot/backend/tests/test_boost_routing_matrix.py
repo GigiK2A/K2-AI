@@ -20,7 +20,7 @@ CASI = [
     ("marketing dritto", {"reportType": "analisi marketing", "objective": "brand awareness e lead generation"}, "checkup_marketing"),
     ("seo dritto", {"reportType": "audit SEO", "objective": "posizionamento organico, keyword, traffico"}, "checkup_seo"),
     ("finanziario dritto", {"reportType": "analisi finanziaria", "objective": "bancabilità, margini, cash flow, rating"}, "checkup_finanziario"),
-    ("legale_dd dritto", {"reportType": "due diligence M&A", "objective": "acquisizione di azienda target"}, "checkup_legale_dd"),
+    ("M&A dritto (valutazione acquisizione)", {"reportType": "due diligence M&A", "objective": "acquisizione di azienda target"}, "checkup_ma"),
     ("legale_review dritto", {"reportType": "contract review", "objective": "revisione NDA e clausole del contratto"}, "checkup_legale_review"),
     ("parere legale dritto", {"reportType": "parere legale", "objective": "contenzioso, diffida, causa"}, "primo_parere_legale"),
     ("fiscale dritto", {"reportType": "diagnosi fiscale", "objective": "IVA, imposte, F24, dichiarazione dei redditi"}, "checkup_fiscale"),
@@ -134,21 +134,25 @@ def test_user_intent_marketing_seo_beats_sector_edilizia():
     assert out["id"] in ("checkup_seo", "checkup_marketing"), out
 
 
-def test_mna_conversation_routes_to_dd_not_finance():
-    """BUG prod 8 lug 2026: «sto valutando di acquistare un'azienda di telecomunicazioni» +
-    conversazione piena di parole finance INCIDENTALI (bilancio/payback/utile) instradava a
-    FinanceBoost, il cui gate fail-closed blocca le proiezioni post-fusione → grounding_failed
-    dopo il pagamento (vicolo cieco). Le frasi M&A ora hanno le forme verbali + peso di
-    dominio: una frase M&A esplicita batte le parole finance di contorno."""
+def test_mna_conversation_routes_to_maboost_not_finance():
+    """L'M&A instrada su MABoost (analisi DECISIONALE comprare-vs-crescere: EV/EBITDA,
+    ROI, confronto alternative), NON su FinanceBoost (che fail-close sulle proiezioni)
+    né su LegalBoost DD (compliance, non decisione — bug del test acquisizione lug 2026).
+    Una frase M&A esplicita batte le parole finance INCIDENTALI (bilancio/payback/utile)."""
     out = catalog.suggest_boost({}, user_text=(
         "Sto valutando di acquistare una azienda di telecomunicazioni. Fattibilità economica, "
         "utile post-fusione, sinergie, payback, prezzo di acquisizione, bilancio del target. Procediamo"))
-    assert out is not None and out["id"] == "checkup_legale_dd", out
+    assert out is not None and out["id"] == "checkup_ma", out
     # variante con apostrofo tipografico
     out2 = catalog.suggest_boost({}, user_text=(
         "sto valutando di acquistare un’azienda concorrente, ho il suo bilancio, "
         "voglio capire margini e payback"))
-    assert out2 is not None and out2["id"] == "checkup_legale_dd", out2
+    assert out2 is not None and out2["id"] == "checkup_ma", out2
+    # il caso esatto del test K2-AI: la DECISIONE comprare-vs-crescere
+    out3 = catalog.suggest_boost({}, user_text=(
+        "Sto valutando l'acquisizione di una piccola azienda concorrente della mia zona. "
+        "Non so se convenga acquistarla oppure crescere internamente."))
+    assert out3 is not None and out3["id"] == "checkup_ma", out3
 
 
 def test_mna_weight_does_not_hijack_marketing_or_finance():

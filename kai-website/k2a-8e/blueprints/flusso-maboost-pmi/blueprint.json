@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k2-ai.it/blueprints/flusso-maboost-pmi.boost.blueprint.json",
+  "blueprint_version": "1.0.0",
+  "tipo": "deliverable-blueprint",
+  "descrizione": "Contratto di FORMA di MABoost: valutazione di un'acquisizione (M&A) orientata alla DECISIONE comprare-vs-crescere. L'analisi quantitativa (multipli EV/EBITDA, PFN, leva, ROI), le catene causali, il confronto delle alternative e la decisione sono prodotti dal motore consulenziale deterministico (app/consulting.py, dominio ma_acquisizione). L'LLM scrive solo la cornice narrativa.",
+  "pacchetto": {
+    "skill": "flusso-maboost-pmi",
+    "nome_commerciale": "MABoost",
+    "tier": "boost",
+    "posizione_funnel": "destinazione checkup_ma; analisi decisionale una-tantum"
+  },
+  "contratto_dati": "flusso-maboost-pmi/output-schema.json",
+  "formato_primario": "pdf",
+  "paginato": true,
+  "artefatti_bundle": [
+    { "id": "pdf", "ruolo": "principale", "formato": "pdf", "obbligatorio": true, "nota": "report decisionale" },
+    { "id": "json_output", "ruolo": "dati", "formato": "json", "obbligatorio": true, "nota": "valida contro contratto_dati" }
+  ],
+  "voci": [
+    { "ord": 0, "id": "meta", "titolo": "Intestazione", "argomenti_obbligatori": ["azienda", "data generazione"] },
+    { "ord": 1, "id": "executive_summary", "titolo": "Executive summary",
+      "argomenti_obbligatori": ["la decisione: conviene acquisire o crescere internamente", "risposta condizionata ai multipli e ai rischi"],
+      "funzione_psico": "il decisore trova subito la risposta alla sua domanda" },
+    { "ord": 2, "id": "sintesi_valutazione", "titolo": "Inquadramento dell'operazione",
+      "argomenti_obbligatori": ["chi è il target e perché", "razionale strategico (senza numeri inventati)"] }
+  ],
+  "note_generazione": "Non inventare multipli o valori: i numeri della valutazione (EV/EBITDA, PFN, Debiti/EBITDA, P/E, ROI) sono calcolati dal motore e iniettati come sezione consulenziale. L'LLM produce solo cornice e razionale qualitativo."
+}
