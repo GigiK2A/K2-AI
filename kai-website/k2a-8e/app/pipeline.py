@@ -1076,6 +1076,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             if pack:
                 deliverable["consulenza_operativa"] = pack
                 log.info("planner: pacchetto '%s' aggiunto (job %s)", pack.get("_tipo"), job_id)
+                # Problema 1 (review efficienza): per i casi qualitativi il pacchetto può
+                # chiedere di sopprimere sezioni KPI che l'LLM avrebbe riempito con numeri
+                # assoluti INVENTATI (non forniti). Il ragionamento del motore le sostituisce.
+                for _sec in (pack.get("_suppress_sections") or []):
+                    deliverable.pop(_sec, None)
         except Exception as exc:
             log.warning("pacchetto consulenziale saltato (job %s): %s", job_id, exc)
 

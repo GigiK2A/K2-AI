@@ -882,6 +882,62 @@ def _causal_chain_block(c: dict, S) -> list:
     return out
 
 
+def _diagnosis_block(diag: dict, S) -> list:
+    """IPOTESI DIAGNOSTICA (Problemi 3,7,8): ipotesi pesate + ipotesi ESCLUSE.
+    Il ragionamento PRIMA delle azioni."""
+    out = [Paragraph("Ipotesi diagnostica", S["h2"])]
+    if diag.get("domanda"):
+        out.append(Paragraph(f"<b>{html.escape(str(diag['domanda']))}</b>", S["body"]))
+    if diag.get("sintesi"):
+        out.append(Paragraph(_rich(diag["sintesi"]) + _conf_chip(diag.get("confidence")),
+                             S["body"]))
+        out.append(Spacer(1, 4))
+    # barre di probabilità per ipotesi
+    ipo = [h for h in (diag.get("ipotesi") or []) if h.get("probabilita")]
+    if ipo:
+        out.append(Paragraph("Ipotesi principali (stima dal peso delle evidenze)", S["h3"]))
+        maxp = max(h["probabilita"] for h in ipo) or 100
+        for h in ipo:
+            p = int(h["probabilita"])
+            filled = max(1, round(p / maxp * 22))
+            bar = "█" * filled
+            out.append(Paragraph(
+                f'<font name="{ST.F_BOLD}" color="{ST.hx(ST.GOLD_DK)}">{p:>3}%</font> '
+                f'<font color="{ST.hx(ST.GOLD)}">{bar}</font> {_rich(h.get("causa", ""))}'
+                + _conf_chip(h.get("confidence")), S["bullet"]))
+            for e in (h.get("evidenze") or [])[:3]:
+                out.append(Paragraph(f'<font size="7.5" color="#8A7A55">— {html.escape(NORM.to_text(e))}'
+                                     "</font>", S["bullet"]))
+        out.append(Spacer(1, 4))
+    # ipotesi escluse (perché NON è quello) — la firma del ragionamento consulenziale
+    escl = diag.get("ipotesi_escluse") or []
+    if escl:
+        out.append(Paragraph("Ipotesi escluse (e perché)", S["h3"]))
+        for e in escl:
+            out.append(Paragraph(
+                f'<font color="{ST.hx(ST.RED)}">✗</font> <b>{html.escape(str(e.get("causa","")))}:</b> '
+                f'{_rich(e.get("perche_esclusa", ""))}', S["bullet"]))
+        out.append(Spacer(1, 6))
+    return out
+
+
+def _kpi_to_measure_block(kpis: list, S) -> list:
+    """KPI SPECIFICI del problema da iniziare a misurare (Problema 5)."""
+    if not kpis:
+        return []
+    out = [Paragraph("KPI da iniziare a misurare (specifici di questo problema)", S["h3"])]
+    for k in kpis:
+        out.append(Paragraph(
+            f'<font color="{ST.hx(ST.GOLD_DK)}">•</font> <b>{html.escape(str(k.get("kpi","")))}</b> '
+            f'<font size="8" color="#8A7A55">— {html.escape(str(k.get("perche","")))}</font>',
+            S["bullet"]))
+    out.append(Paragraph('<font size="8" color="#8A7A55">Nessuno di questi è oggi disponibile: '
+                         'sono i numeri da rilevare per trasformare la diagnosi in misura.</font>',
+                         S["bullet"]))
+    out.append(Spacer(1, 6))
+    return out
+
+
 def _finance_reasoning_blocks(pack: dict, S) -> list:
     """Sezioni del pacchetto finanza: insight, catene, forecast, simulazioni,
     confronto soluzioni, raccomandazioni 4-perché, sezioni di valore §13."""
@@ -905,8 +961,15 @@ def _finance_reasoning_blocks(pack: dict, S) -> list:
             out.append(Spacer(1, 3))
         out.append(Spacer(1, 4))
 
+    # Ordine di ragionamento (Problema 7): dopo le evidenze, le IPOTESI (con escluse),
+    # poi le catene causali, poi i KPI da misurare, e SOLO alla fine le azioni.
+    if isinstance(pack.get("ipotesi_diagnostica"), dict):
+        out += _diagnosis_block(pack["ipotesi_diagnostica"], S)
+
     for c in (pack.get("analisi_sistemica") or []):
         out += _causal_chain_block(c, S)
+
+    out += _kpi_to_measure_block(pack.get("kpi_da_misurare") or [], S)
 
     fc = pack.get("forecast_13_settimane")
     if isinstance(fc, dict) and fc.get("scenari"):
@@ -1047,7 +1110,8 @@ def _consulting_blocks(deliverable, S) -> list:
                "hr_persone": "Persone e organizzazione — diagnosi e leve",
                "legale_compliance": "Presidio legale — gap, priorità e percorso",
                "strategia_crescita": "Strategia di crescita — canali, margini e scenari",
-               "ma_acquisizione": "Valutazione dell'acquisizione — multipli, rischi e decisione"}
+               "ma_acquisizione": "Valutazione dell'acquisizione — multipli, rischi e decisione",
+               "diagnosi_efficienza": "Diagnosi — ragionamento, ipotesi e cause"}
     titolo_sezione = _TITOLI.get(str(pack.get("_tipo")),
                                  "Analisi consulenziale — diagnosi e decisioni")
     out: list = [PageBreak(),

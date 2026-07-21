@@ -133,6 +133,12 @@ def classify_problem(inputs: dict, skill: str = "") -> Optional[str]:
     def hits(hints) -> int:
         return sum(1 for h in hints if h in text) if text else 0
 
+    # Diagnosi di efficienza organizzativa: riconosciuta dai SEGNALI (fatturato tiene +
+    # costi su + inefficienza), non da keyword — è il caso "gli utili calano ma non so perché".
+    from . import diagnosis as _diag
+    if _diag.is_efficiency_case(inputs):
+        return "diagnosi_efficienza"
+
     scores = {
         "ma_acquisizione": hits(_MA_HINTS) * 2,   # l'M&A è un marcatore di dominio forte
         "finanza_liquidita": hits(_FINANCE_HINTS),
@@ -504,6 +510,9 @@ def build_pack(skill: str, inputs: dict, deliverable: dict) -> Optional[dict]:
     from . import decision, insight, reasoning, scenario
 
     problem = classify_problem(inputs, skill)
+    if problem == "diagnosi_efficienza":
+        from . import diagnosis
+        return diagnosis.build_diagnosis_pack(inputs)
     if problem == "ma_acquisizione":
         return build_ma_pack(inputs, deliverable)
     if problem == "operations_commesse":
