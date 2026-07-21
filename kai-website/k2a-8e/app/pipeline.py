@@ -1072,7 +1072,7 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
         # Deterministico e non-bloccante: un errore qui non ferma il report.
         try:
             from . import consulting
-            pack = consulting.build_pack(skill, inputs, deliverable)
+            pack = consulting.build_pack(skill, inputs, deliverable, case_facts=case_facts)
             if pack:
                 deliverable["consulenza_operativa"] = pack
                 log.info("planner: pacchetto '%s' aggiunto (job %s)", pack.get("_tipo"), job_id)

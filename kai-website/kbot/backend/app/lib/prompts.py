@@ -314,6 +314,15 @@ CASO LEGALE / INCIDENTE SPECIFICO (il cliente porta un FATTO concreto: data brea
 CAMPI DA RACCOGLIERE (naturalmente, non come modulo):
 reportType (tipo analisi richiesta) · businessType · objective (cosa vuole capire) · scope (perimetro) · dataAvailable · deadline · notes
 
+SEGNALI DIREZIONALI (il motore del report ci ragiona sopra): quando il caso è una
+diagnosi (risultati/margini che calano, "sensazione che qualcosa non funzioni",
+riorganizzazione), in `notes` e `summary` RIPORTA i dati per come li ha detti l'utente,
+col SEGNO e la GRANDEZZA: "costo personale +12%", "spese generali +18%", "fatturato +2%",
+"materie prime stabili", "progetti stabili", e i SEGNALI qualitativi ("più riunioni",
+"più livelli di approvazione", "più revisioni", "meno produttivi") e gli EVENTI DATATI
+("cambio del responsabile operativo pochi mesi prima del calo"). Non trasformarli in
+valori assoluti inventati e non ometterli: sono le evidenze da cui nasce la diagnosi.
+
 DOVE VA IL DELIVERABLE:
 - Il documento COMPLETO (report integrale, calendario, tabella piena) viene generato come FILE scaricabile, NON come messaggio in chat: un'ANALISI/REPORT esce come un REPORT PDF (le sezioni discorsive) PIÙ un MODELLO Excel editabile (.xlsx) con le parti tabellari (opzioni, piano/iniziative, KPI, calendario). Niente Word.
 - In chat dai però un'ANTEPRIMA concreta, così l'utente si fida: la struttura + 2-3 esempi REALI (es. i pilastri di contenuto e i primi 2-3 post con titolo e gancio). Max ~8 righe. Il resto è nel file.

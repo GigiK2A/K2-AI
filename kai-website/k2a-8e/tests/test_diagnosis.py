@@ -186,3 +186,35 @@ def test_dynamic_sections_removed_in_pdf():
             assert "Ipotesi diagnostica" in t                 # il ragionamento resta
         except ImportError:
             pass
+
+
+# ── Refinement: i segnali arrivano da case_facts (racconto), non solo dal form ──
+def test_case_facts_merge_activates_diagnosis():
+    # inputs = SOLI campi form del boost (nessun segnale); i fatti sono in case_facts
+    inputs = {"mese": 6, "anno": 2026, "azienda": "Test Srl"}
+    assert consulting.classify_problem(inputs) is None      # dal form nulla
+    case_facts = {
+        "sintesi_caso": {
+            "situazione": "Gli utili calano ma il fatturato tiene. Aumento di riunioni, "
+                          "livelli di approvazione e revisioni interne. Meno produttivi. "
+                          "Nessuna nuova assunzione, nessun aumento salariale. Materie "
+                          "prime stabili. Progetti stabili.",
+            "costo_personale_delta_pct": 12, "delta_fatturato_pct": 2},
+        "diagnosi": {"nota": "Cambio del responsabile operativo pochi mesi prima del calo."},
+    }
+    merged = consulting._merge_case_facts(inputs, case_facts)
+    assert consulting.classify_problem(merged) == "diagnosi_efficienza"
+    # il form ha priorità: non viene sovrascritto
+    assert merged["azienda"] == "Test Srl" and merged["mese"] == 6
+    pack = consulting.build_pack("cruscotto-direzionale", inputs, {}, case_facts=case_facts)
+    assert pack and pack["_tipo"] == "diagnosi_efficienza"
+    # il cambio responsabile (dalla diagnosi narrativa) alza l'ipotesi leadership
+    leadership = next((h for h in pack["ipotesi_diagnostica"]["ipotesi"]
+                       if "leadership" in h["causa"].lower()), None)
+    assert leadership and leadership["probabilita"] >= 15
+
+
+def test_case_facts_none_is_backward_compatible():
+    # senza case_facts il comportamento è identico a prima
+    assert consulting._merge_case_facts({"a": 1}, None) == {"a": 1}
+    assert consulting._merge_case_facts({"a": 1}, {}) == {"a": 1}

@@ -92,16 +92,17 @@ def test_readiness_negata_non_forza():
 
 
 # ---------------------------------------------------------------------------
-# 3. ROUTING M&A (eval M&A: "acquistare un CONCORRENTE" finiva su FinanceBoost
-#    = piano di risanamento del target, soggetto sbagliato)
+# 3. ROUTING M&A → MABoost (analisi DECISIONALE della valutazione, non LegalBoost né
+#    FinanceBoost): la domanda è "il prezzo è corretto / procedo / come la valuto",
+#    cioè una decisione di acquisizione. Fix del test acquisizione (lug 2026).
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("testo,atteso", [
     ("Mi hanno proposto di acquistare un concorrente locale. Chiedono 500.000 euro, ha perso "
-     "clienti e ha problemi di liquidità. Il prezzo è corretto?", "checkup_legale_dd"),
-    ("Vorrei rilevare un'azienda, l'EBITDA è crollato. Procedo?", "checkup_legale_dd"),
-    ("Ho ricevuto una proposta di acquisizione del concorrente, come la valuto?", "checkup_legale_dd"),
-    # non-regressione: il caso finance PURO resta finance
+     "clienti e ha problemi di liquidità. Il prezzo è corretto?", "checkup_ma"),
+    ("Vorrei rilevare un'azienda, l'EBITDA è crollato. Procedo?", "checkup_ma"),
+    ("Ho ricevuto una proposta di acquisizione del concorrente, come la valuto?", "checkup_ma"),
+    # non-regressione: il caso finance PURO (nessun deal) resta finance
     ("La mia azienda ha problemi di liquidità e margini in calo, analisi di bilancio.", "checkup_finanziario"),
 ])
 def test_routing_ma_vs_finance(testo, atteso):

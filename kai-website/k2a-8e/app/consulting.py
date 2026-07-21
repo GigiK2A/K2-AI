@@ -505,10 +505,55 @@ def build_ma_pack(inputs: dict, deliverable: dict) -> dict:
     return pack
 
 
-def build_pack(skill: str, inputs: dict, deliverable: dict) -> Optional[dict]:
-    """Entry point del planner: pacchetto consulenziale se il caso lo richiede."""
+def _merge_case_facts(inputs: dict, case_facts: Optional[dict]) -> dict:
+    """Fonde i FATTI della conversazione (case_facts) negli input che i motori leggono.
+
+    Sul K-BOT gli `inputs` all'8e sono i soli campi del FORM del boost; i dati
+    raccontati (delta %, segnali qualitativi, diagnosi) viaggiano in `case_facts`
+    ({sintesi_caso: {...estratti...}, diagnosi: {...}}). Senza questo merge il motore
+    consulenziale vedeva solo il form → i segnali direzionali andavano persi. Qui:
+    - i campi strutturati di sintesi_caso entrano come input (senza sovrascrivere il form);
+    - tutto il racconto (sintesi_caso + diagnosi) confluisce in un campo di testo che
+      gli estrattori a frase (diagnosis.Signals, consulting._free_text) scansionano.
+    """
+    if not isinstance(case_facts, dict) or not case_facts:
+        return inputs
+    merged = dict(inputs or {})
+    narrative_parts: list[str] = []
+
+    def _absorb(obj: Any) -> None:
+        obj = NORM.unwrap_value(obj)
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                vv = NORM.unwrap_value(v)
+                if isinstance(vv, (int, float, str)) and not isinstance(vv, bool):
+                    merged.setdefault(str(k), vv)           # il form ha priorità
+                    if isinstance(vv, str) and len(vv.strip()) >= 8:
+                        narrative_parts.append(vv.strip())
+                elif isinstance(vv, (dict, list)):
+                    _absorb(vv)
+        elif isinstance(obj, list):
+            for x in obj:
+                _absorb(x)
+        elif isinstance(obj, str) and obj.strip():
+            narrative_parts.append(obj.strip())
+
+    _absorb(case_facts.get("sintesi_caso"))
+    _absorb(case_facts.get("diagnosi"))
+    if narrative_parts:
+        existing = str(merged.get("contesto") or "")
+        merged["contesto"] = (existing + "\n" + " \n".join(narrative_parts)).strip()
+    return merged
+
+
+def build_pack(skill: str, inputs: dict, deliverable: dict,
+               case_facts: Optional[dict] = None) -> Optional[dict]:
+    """Entry point del planner: pacchetto consulenziale se il caso lo richiede.
+    `case_facts` (i fatti raccontati in conversazione) vengono fusi negli input così
+    i motori vedono il racconto, non solo i campi del form del boost."""
     from . import decision, insight, reasoning, scenario
 
+    inputs = _merge_case_facts(inputs, case_facts)
     problem = classify_problem(inputs, skill)
     if problem == "diagnosi_efficienza":
         from . import diagnosis
