@@ -20,6 +20,7 @@ from reportlab.platypus import (
 from reportlab.platypus.tableofcontents import TableOfContents
 
 from . import styling as ST
+from . import normalize as NORM
 
 _FONTE_LABEL = {"override_locale": "Normattiva", "akn_bulk_xml": "Normattiva", "normattiva": "Normattiva",
                 "eur_lex": "EUR-Lex (norma UE — riferimento, testo non nel corpus)",
@@ -39,6 +40,9 @@ def _humanize(key: str) -> str:
 def _scalar_str(v) -> str:
     """Scalare → testo da stampare: bool in Sì/No (mai 'True' raw in un report pagato),
     numeri in formato italiano (migliaia col punto, decimali con virgola)."""
+    v = NORM.unwrap_value(v)   # sballa {type,$value}/{value}/JSON-stringato prima di stampare
+    if isinstance(v, (dict, list)):
+        return NORM.to_text(v)   # mai stampare un dict/list grezzo come str(v)
     if isinstance(v, bool):
         return "Sì" if v else "No"
     if isinstance(v, float) and v.is_integer():
@@ -61,6 +65,9 @@ _fix_spacing = ST.fix_spacing  # normalizzatore punteggiatura condiviso (def in 
 def _rich(s) -> str:
     """Prosa → markup reportlab: escape, **grassetto** reale, via le emoji non
     renderizzabili. I modelli a volte scrivono markdown/emoji: qui si normalizza."""
+    s = NORM.unwrap_value(s)                 # sballa involucri {type,$value}/{value}/JSON
+    if isinstance(s, (dict, list)):
+        s = NORM.to_text(s)                  # mai far arrivare un dict a str()
     s = _fix_spacing(str(s if s is not None else ""))
     s = html.escape(s)
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s, flags=re.S)
@@ -262,23 +269,49 @@ def _risk_chip(score: int, S) -> Table:
     return t
 
 
+def _split_lead(text: str, target: int = 560) -> tuple[str, str]:
+    """Divide la sintesi in (lead accanto al gauge, resto a piena larghezza) SENZA
+    troncare: taglia sul confine di frase più vicino a `target`, fallback su spazio.
+    Se il testo sta sotto la soglia, il resto è vuoto."""
+    text = (text or "").strip()
+    if len(text) <= target:
+        return text, ""
+    window = text[:target]
+    cut = max(window.rfind(". "), window.rfind("! "), window.rfind("? "), window.rfind("\n"))
+    if cut < target * 0.5:                # nessun confine di frase utile → spezza su parola
+        cut = window.rfind(" ")
+    if cut <= 0:
+        cut = target - 1
+    return text[:cut + 1].strip(), text[cut + 1:].strip()
+
+
 def _exec_summary(deliverable, S, ambito: str = "") -> list:
     """Executive Summary visuale: gauge score (o banda di rischio, sui legali) + sintesi +
-    evidenze + azioni."""
+    evidenze + azioni. La sintesi NON viene mai troncata: il lead sta accanto al gauge,
+    l'eventuale eccedenza continua a piena larghezza sotto."""
     out = [_Heading("Executive Summary", S["h1"], "exec")]
     score = _find_score(deliverable)
-    summary = (_find_text(deliverable, "sintesi", "executive", "summary", "esecutiv")
-               or "Sintesi dei principali risultati dell'analisi, delle criticità rilevate e delle "
-                  "priorità d'azione individuate per l'azienda.")
-    # riga: gauge (o banda di rischio sui legali) + testo sintesi
+    # to_text: sballa eventuali wrapper {type,$value} e rende slice-safe la sintesi.
+    summary = NORM.to_text(_find_text(deliverable, "sintesi", "executive", "summary", "esecutiv")) \
+        or ("Sintesi dei principali risultati dell'analisi, delle criticità rilevate e delle "
+            "priorità d'azione individuate per l'azienda.")
+    lead, rest = _split_lead(summary, 560)
+    # riga: gauge (o banda di rischio sui legali) + lead della sintesi
     if ambito == "legale-compliance" and score:
         left = _risk_chip(score[1], S)
     else:
         left = ST.Gauge(score[1], "Score") if score else Paragraph("", S["body"])
-    right = Paragraph(_rich(summary[:520]), S["lead"])
+    right = Paragraph(_rich(lead), S["lead"])
     row = Table([[left, right]], colWidths=[40 * mm, ST.CONTENT_W - 40 * mm])
     row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (1, 0), (1, 0), 10)]))
     out += [row, Spacer(1, 6)]
+    # eccedenza della sintesi → paragrafi a piena larghezza (continua, non tronca)
+    for para in re.split(r"\n{2,}", rest):
+        para = para.strip()
+        if para:
+            out.append(Paragraph(_rich(para), S["lead"]))
+    if rest:
+        out.append(Spacer(1, 6))
     # evidenze + azioni
     evid = _collect_list(deliverable, "critic", "evidenz", "rischi", "finding", "problem")
     azioni = _collect_list(deliverable, "azion", "raccomand", "quick", "intervent", "piano")

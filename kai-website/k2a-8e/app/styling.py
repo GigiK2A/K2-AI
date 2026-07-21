@@ -114,6 +114,11 @@ def fix_spacing(s: str) -> str:
 
 def html_escape(s) -> str:
     import html as _h
+    from . import normalize as _NORM
+    # Sballa involucri {type,$value}/{value}/JSON PRIMA di stringere: è l'hot-path di
+    # kpi_table/risk_card/kpi_card/heatmap/decision_board — senza questo un valore-wrapper
+    # finirebbe come str(dict) nella cella (bug oggetti JSON nel PDF).
+    s = _NORM.to_text(s) if isinstance(s, (dict, list)) else _NORM.unwrap_value(s)
     # fix_spacing PRIMA dell'escape: sul testo grezzo (nessuna entità ancora) — dopo
     # l'escape un '&amp;' finirebbe con ';' e la regola ';+lettera' romperebbe l'entità.
     return _h.escape(fix_spacing(str(s if s is not None else "")))

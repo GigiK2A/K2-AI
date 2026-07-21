@@ -1066,6 +1066,21 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             except Exception as exc:
                 log.warning("report_ops saltati (job %s): %s", job_id, exc)
 
+        # Quality gate pre-consegna (spec §12): difetti bloccanti sul deliverable finale
+        # (involucri JSON non sballati, [object Object]/undefined, N/D con semaforo verde,
+        # KPI placeholder 1/1/verde). Gira SEMPRE e logga il report tecnico; il BLOCCO
+        # della consegna è opt-in via env per non fermare report legittimi prima della
+        # validazione sui dati reali (dopo il normalizzatore i bloccanti non dovrebbero comparire).
+        from .quality_gate import run_report_quality_gate
+        qgate = run_report_quality_gate(deliverable)
+        if qgate["findings"]:
+            log.warning("quality gate (job %s):\n%s", job_id, qgate["report"])
+        _gate_block = os.environ.get("K2A_8E_QUALITY_GATE_BLOCK", "").strip().lower() in (
+            "1", "true", "on", "yes")
+        if not qgate["ok"] and _gate_block:
+            raise RuntimeError("quality gate bloccante: "
+                               + "; ".join(f["code"] for f in qgate["blocking"]))
+
         # Render HTML + PDF.
         out_dir = OUT_DIR / job_id
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -1104,7 +1119,9 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             outputs={"html_path": str(html_path), "pdf_path": str(pdf_path),
                      "json_path": str(json_path), "bundle": bundle, **extra_outputs},
             validation={"L1": "PASS", "L2": "PASS", "output_schema": "PASS",
-                        "grounding": g_findings or "PASS"},
+                        "grounding": g_findings or "PASS",
+                        "quality_gate": "PASS" if qgate["ok"]
+                        else [f["code"] for f in qgate["blocking"]]},
             citazioni=citazioni,
             meta={"skill": skill, "blueprint_id": bp_id,
                   "auth_level": "PARTIAL" if partial_mode else "FULL",
