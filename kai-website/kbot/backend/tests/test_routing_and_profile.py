@@ -77,6 +77,44 @@ def test_empty_session_returns_none():
     assert svc.infer_service_id_from_session({"collected_data": {}, "messages": []}) is None
 
 
+# --- Bug: le skill non venivano chiamate per i Boost (service_id "checkup_*") ---
+# I Boost non sono pillar (P01-P20): get_service(checkup_*) → None → si caricava
+# solo la BASE_SKILL. Ora un boost id risolve le sue skill specialistiche in modo
+# DETERMINISTICO (senza dipendere dal testo della conversazione).
+def test_boost_id_resolves_specialist_skills_deterministically():
+    # nessun messaggio: la risoluzione NON deve dipendere dalla conversazione
+    sess = {"collected_data": {"service_id": "checkup_controllo"}, "messages": []}
+    skills = svc.resolve_skills_for_session(sess)
+    assert skills != [svc.BASE_SKILL], "un boost non deve ricadere sulla sola BASE_SKILL"
+    assert "cruscotto-direzionale" in skills  # skill del pillar P09 (Controllo di Gestione)
+    assert svc.BASE_SKILL in skills           # la base resta sempre in testa
+
+
+def test_boost_ma_gets_dedicated_ma_skills():
+    # M&A non è un pillar: deve avere skill dedicate (DD + societario + finance)
+    sess = {"collected_data": {"service_id": "checkup_ma"}, "messages": []}
+    skills = svc.resolve_skills_for_session(sess)
+    assert "flusso-due-diligence-mna" in skills
+    assert "diritto-societario-italiano" in skills
+    assert "corporate-finance" in skills
+
+
+def test_boost_id_is_case_insensitive():
+    # message.py normalizza il service_id in MAIUSCOLO: il fix deve reggerlo
+    sess = {"collected_data": {"service_id": "CHECKUP_FINANZIARIO"}, "messages": []}
+    skills = svc.resolve_skills_for_session(sess)
+    assert "analisi-bilancio-pmi" in skills
+    assert skills != [svc.BASE_SKILL]
+
+
+def test_pillar_and_free_chat_resolution_unchanged():
+    # regressione: P-id e chat libera restano invariati
+    p09 = svc.resolve_skills_for_session({"collected_data": {"service_id": "P09"}})
+    assert "cruscotto-direzionale" in p09
+    empty = svc.resolve_skills_for_session({"collected_data": {}, "messages": []})
+    assert empty == [svc.BASE_SKILL]
+
+
 # --- Classifier / profile tests (need the analysis module → heavy deps in CI) ---
 # These skip gracefully where anthropic/supabase aren't installed; the routing
 # tests above run everywhere (services.py is stdlib-only).

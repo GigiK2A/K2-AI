@@ -46,6 +46,65 @@ DEFAULT_SERVICE_ID = "P12"  # AI Consulenza Strategica PMI
 # Fallback skill always loaded as base (mirrors site).
 BASE_SKILL = "diagnosi-ai-operativa-pmi"
 
+# I Boost (service_id "checkup_*") NON sono pillar: quando una sessione porta un
+# boost id, va risolto sulle skill giuste. La maggior parte mappa 1:1 su un
+# pillar; M&A e legale-DD hanno skill cross-pillar dedicate.  Senza questa
+# mappa, un report da boost caricava solo la BASE_SKILL (nessuna specialistica).
+_BOOST_SKILLS_OVERRIDE: Dict[str, List[str]] = {
+    "checkup_ma": ["flusso-due-diligence-mna", "diritto-societario-italiano",
+                   "corporate-finance", "bilancio-consolidato-analisi", "analisi-bilancio-pmi"],
+    "checkup_legale_dd": ["flusso-due-diligence-mna", "diritto-societario-italiano",
+                          "review-contract", "triage-nda"],
+    "checkup_legale_review": ["review-contract", "diritto-societario-italiano", "it-law-privacy-ai"],
+    "checkup_legale_triage": ["triage-nda", "review-contract", "diritto-italiano"],
+}
+
+_BOOST_TO_PILLAR: Dict[str, str] = {
+    "checkup_agevolazioni": "P13",
+    "checkup_fiscale": "P02",
+    "checkup_finanziario": "P02",
+    "checkup_controllo": "P09",
+    "checkup_advisor": "P12",
+    "checkup_seo": "P11",
+    "checkup_marketing": "P11",
+    "checkup_retail": "P11",
+    "checkup_ecommerce": "P11",
+    "checkup_hospitality": "P20",
+    "checkup_ristorazione": "P20",
+    "checkup_benessere": "P20",
+    "checkup_edilizia": "P14",
+    "checkup_energia": "P19",
+    "checkup_compliance": "P08",
+    "checkup_hr": "P15",
+    "checkup_data": "P17",
+    "checkup_ux": "P18",
+    # Sicurezza sul lavoro (SafetyBoost e varianti) → Compliance & Audit.
+    "checkup_sicurezza_safetyboost": "P08",
+    "checkup_sicurezza_audit_base": "P08",
+    "checkup_sicurezza_audit_completo": "P08",
+    "checkup_sicurezza_dvr_base": "P08",
+    "checkup_sicurezza_dvr_completo": "P08",
+    "checkup_sicurezza_sanzioni_base": "P08",
+    "checkup_sicurezza_sanzioni_completo": "P08",
+    "checkup_sicurezza_responsabilita_base": "P08",
+    "checkup_sicurezza_responsabilita_completo": "P08",
+    "checkup_sicurezza_completo": "P08",
+}
+
+
+def boost_skills(service_id: Optional[str]) -> List[str]:
+    """Skill specialistiche per un boost id (checkup_*); [] se non è un boost noto."""
+    key = str(service_id or "").strip().lower()
+    if not key:
+        return []
+    override = _BOOST_SKILLS_OVERRIDE.get(key)
+    if override:
+        return [s for s in override if s]
+    pillar = _BOOST_TO_PILLAR.get(key)
+    if pillar:
+        return get_service_skills(pillar)
+    return []
+
 
 def normalize_service_id(value: Optional[str]) -> Optional[str]:
     if not value:
@@ -193,10 +252,19 @@ def resolve_skills_for_session(session: dict) -> List[str]:
     (`diagnosi-ai-operativa-pmi`) indipendentemente dall'intent reale.
     """
     collected = session.get("collected_data") or {}
-    service_id = normalize_service_id(collected.get("service_id"))
-    if not service_id:
-        service_id = infer_service_id_from_session(session)
+    raw_service = collected.get("service_id")
+    service_id = normalize_service_id(raw_service)
     skills = get_service_skills(service_id)
+    if not skills and raw_service:
+        # service_id valorizzato ma non è un pillar: è un boost id
+        # (es. "checkup_controllo"/"checkup_ma") → risolvi le sue skill
+        # specialistiche, altrimenti caricherebbe solo la BASE_SKILL.
+        skills = boost_skills(raw_service)
+    if not skills:
+        # service_id assente o boost non mappato: deduci il pillar dalla
+        # conversazione, così le skill vengono comunque caricate.
+        inferred = infer_service_id_from_session(session)
+        skills = get_service_skills(inferred)
     if not skills:
         return [BASE_SKILL]
     if BASE_SKILL not in skills:
