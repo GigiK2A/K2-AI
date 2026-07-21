@@ -334,6 +334,23 @@ _GROUP_WEIGHT: dict[str, int] = {"checkup_ma": 4}
 # più spesso → non adatto come fallback finché non viene irrobustito.
 _BOOST_DEFAULT = "checkup_controllo"
 
+# Boost PURAMENTE SPECIALISTICI (esecuzione tecnica di dominio): una DECISIONE strategica
+# non deve finirci solo perché il testo cita una keyword di dominio (review consulente-first:
+# «licenziamento» ≠ risposta legale). Le domande TECNICHE ("come licenzio", "rivedi il
+# contratto") restano correttamente instradate qui.
+_SPECIALIST_BOOSTS = {"primo_parere_legale", "checkup_legale_dd", "checkup_legale_review",
+                      "checkup_legale_triage", "checkup_fiscale"}
+
+
+def _is_strategic_decision(user_text: Optional[str]) -> bool:
+    if not user_text:
+        return False
+    try:
+        from . import signals
+        return signals.is_strategic_decision(str(user_text))
+    except Exception:
+        return False
+
 # Soglia minima di score perché un dominio sia considerato INSTRADABILE con confidenza.
 # Sotto soglia il routing NON è affidabile: il chiamante resta in consulenza (nessun
 # report proposto), invece di forzare un default che può essere il dominio sbagliato.
@@ -437,6 +454,11 @@ def suggest_boost(summary: Optional[dict], explicit_only: bool = False,
         if user_text:
             full = _normalize_text(str(user_text)) + " " + full
         chosen = _match(full)
+    # DAMPENER consulente-first: se è una DECISIONE strategica, non instradare su un boost
+    # puramente specialistico (legale/fiscale) — la decisione la fa il consulente, lo
+    # specialista supporta l'esecuzione dopo. Il deliverable diventa un'analisi strategica.
+    if chosen in _SPECIALIST_BOOSTS and _is_strategic_decision(user_text):
+        chosen = _BOOST_DEFAULT
     if not chosen and explicit_only:
         return None          # nessun match esplicito → il chiamante tiene il boost corrente
     chosen = chosen or _BOOST_DEFAULT

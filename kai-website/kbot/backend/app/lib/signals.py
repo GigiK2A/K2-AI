@@ -53,6 +53,35 @@ HOLD_RE = re.compile(
     re.I)
 
 
+# --- Decisione STRATEGICA vs domanda TECNICA (review consulente-first) ----------------
+# Il consulente NON deve entrare in modalità specialista solo perché compare una keyword di
+# dominio (licenziamento, contratto, privacy, fiscale…). Distingue «DEVO decidere se fare X»
+# (strategico → resta consulente di direzione) da «COME faccio X / cosa dice la norma»
+# (tecnico → lo specialista è pertinente).
+_DECISION_RE = re.compile(
+    r"\b(vorrei|voglio|dovrei|dobbiamo\s+decidere|devo\s+decidere|sto\s+(?:pensando|valutando)|"
+    r"stavo\s+pensando|valut\w+\s+se|mi\s+chiedo\s+se|non\s+so\s+se|convien\w+|mi\s+convien\w+|"
+    r"ha\s+senso|vale\s+la\s+pena|è\s+meglio|sarebbe\s+meglio|meglio\b[^.?!]{0,40}\bo\b|"
+    r"pensavo\s+di|ho\s+intenzione\s+di|intendo\b|progetto\s+di)\b", re.I)
+_TECHNICAL_RE = re.compile(
+    r"\b(come\s+(?:si\s+|posso\s+|faccio\s+|devo\s+)?(?:fa|faccio|procedo|licenzio|redig\w+|"
+    r"compilo|present\w+|calcolo|scriv\w+|imposto)|qual['’\s]*è\s+la\s+procedura|"
+    r"quali\s+documenti|che\s+documenti|cosa\s+serve\s+per|quali\s+sono\s+i\s+(?:passi|passaggi|"
+    r"requisiti|termini|adempimenti)|entro\s+quando|quanto\s+tempo\s+ho|che\s+iter|"
+    r"è\s+(?:legale|obbligatorio|possibile)\b|posso\s+legalmente|cosa\s+dice\s+(?:la\s+legge|"
+    r"il\s+ccnl|la\s+norma|il\s+codice))\b", re.I)
+
+
+def is_strategic_decision(text: str) -> bool:
+    """True se il messaggio è una DECISIONE strategica («conviene / dovrei / voglio fare X?»)
+    e NON una domanda tecnica di procedura («come faccio X / cosa dice la norma»). In tal
+    caso il bot resta consulente e la keyword di dominio NON determina la risposta."""
+    t = (text or "").strip()
+    if not t:
+        return False
+    return bool(_DECISION_RE.search(t)) and not bool(_TECHNICAL_RE.search(t))
+
+
 def wants_to_continue(text: str) -> bool:
     """True se l'utente chiede ESPLICITAMENTE di continuare la consulenza / non generare
     ancora il report. Un PROCEDI esplicito nello stesso messaggio ha la precedenza (gestito

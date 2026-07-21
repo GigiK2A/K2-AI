@@ -211,6 +211,61 @@ def test_finance_guard_keeps_legit_numbers():
         assert finance_guard.sanitize(t) == t, t
 
 
+# ── Consulente-first: la keyword di dominio non determina la risposta ────────────────────
+def test_is_strategic_decision():
+    strategiche = [
+        "Il mio miglior venditore fa il 35% del fatturato ma crea problemi. Vorrei licenziarlo.",
+        "Voglio licenziare un dipendente che non rende.",
+        "Sto pensando di cambiare fornitore principale, conviene?",
+        "Non so se mi conviene aprire una nuova sede.",
+        "Meglio assumere o esternalizzare?",
+    ]
+    tecniche = [
+        "Come licenzio per giusta causa? quali documenti servono e qual è la procedura CCNL?",
+        "Cosa dice la legge sul licenziamento in prova?",
+        "Quali sono i termini per il preavviso?",
+        "Rivedi le clausole del mio contratto di fornitura.",
+        "Come compilo il modello F24?",
+    ]
+    for t in strategiche:
+        assert signals.is_strategic_decision(t), t
+    for t in tecniche:
+        assert not signals.is_strategic_decision(t), t
+
+
+def test_routing_dampener_decisione_non_va_su_specialista():
+    # DECISIONE strategica con keyword di dominio → NON un boost legale/fiscale
+    r = catalog.suggest_boost(
+        {"objective": "cambiare fornitore"},
+        user_text="Sto pensando di cambiare fornitore principale, ho un contratto in essere. Conviene?")
+    assert r is not None and r["id"] not in catalog._SPECIALIST_BOOSTS
+
+
+def test_routing_domanda_tecnica_resta_specialista():
+    # DOMANDA tecnica → lo specialista è pertinente (non dampenata)
+    r = catalog.suggest_boost(
+        {"objective": "revisione contratto"},
+        user_text="Rivedi le clausole del mio contratto di fornitura e i rischi legali.")
+    assert r is not None and r["id"] == "checkup_legale_review"
+
+
+def test_routing_legale_vero_non_dampenato():
+    # contenzioso reale (non una decisione) → resta legale
+    r = catalog.suggest_boost(
+        {"reportType": "parere legale"},
+        user_text="un cliente non paga e minaccia di farmi causa; valuto una diffida e un contenzioso, mi serve un parere legale")
+    assert r is not None and r["id"] == "primo_parere_legale"
+
+
+def test_prompt_consulente_prima_specialista_dopo():
+    p = _prompt()
+    assert "CONSULENTE PRIMA, SPECIALISTA DOPO" in p
+    assert "DECISIONE strategica" in p and "domanda TECNICA" in p
+    assert "«licenziamento» ≠ risposta legale" in p
+    assert "Lo specialista supporta l'esecuzione" in p
+    assert "35% del fatturato" in p  # l'esempio del venditore
+
+
 # ── Prompt consolidato (review consolidamento) ───────────────────────────────────────────
 def test_prompt_consolidamento_ragionamento():
     p = _prompt()
