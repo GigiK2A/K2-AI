@@ -106,44 +106,11 @@ _HDR_FILL = "0C7A6F"
 _INPUT_FILL = "FFF2CC"
 DA_RILEVARE = "Da rilevare"
 
-_STATI_STANDARD = [
-    ("Aperta", "Commessa registrata, in attesa di pianificazione",
-     "Ordine/contratto ricevuto", "Piano e owner assegnati"),
-    ("In pianificazione", "Scope, tempi e risorse in definizione",
-     "Owner assegnato", "Piano approvato dalla direzione"),
-    ("In corso", "Lavorazione attiva",
-     "Piano approvato", "Attività tecniche completate"),
-    ("In verifica", "Controllo tecnico/qualità della consegna",
-     "Attività completate", "Verifica superata"),
-    ("Bloccata", "Avanzamento fermo: motivazione e sblocco OBBLIGATORI",
-     "Motivazione registrata nel Registro blocchi", "Blocco risolto → torna In corso"),
-    ("In consegna", "Consegna/installazione presso il cliente",
-     "Verifica superata", "Accettazione del cliente"),
-    ("Chiusa", "Consegnata e accettata; pronta per fatturazione",
-     "Accettazione cliente", "Fattura emessa"),
-    ("Annullata", "Interrotta definitivamente (motivazione obbligatoria)",
-     "Decisione della direzione", "—"),
-]
-
-_RACI_ATTIVITA = [
-    "Apertura commessa", "Pianificazione", "Assegnazione task",
-    "Aggiornamento stato", "Verifica tecnica", "Gestione blocchi",
-    "Comunicazione cliente", "Approvazione consegna", "Chiusura", "Fatturazione",
-]
-_RACI_RUOLI = ["Direzione", "Resp. operativo", "Project Manager",
-               "Resp. tecnico", "Amministrazione", "Operatore assegnato"]
-
-_CHECKLIST_FASI = [
-    ("Apertura", ["Anagrafica commessa completa", "Contratto/ordine archiviato",
-                  "Owner unico assegnato", "Priorità assegnata"]),
-    ("Pianificazione", ["Scope e deliverable definiti", "Milestone con date",
-                        "Risorse e carichi verificati", "Rischi principali annotati"]),
-    ("Esecuzione", ["Stato aggiornato (cadenza definita)", "Blocchi registrati con motivazione",
-                    "Data prossima azione sempre presente"]),
-    ("Verifica", ["Checklist tecnica superata", "Non conformità registrate"]),
-    ("Chiusura", ["Accettazione cliente archiviata", "Consuntivo ore/costi compilato",
-                  "Fattura emessa", "Lesson learned annotate"]),
-]
+# Costanti condivise con il pacchetto consulenziale (fonte unica → PDF/Excel coerenti).
+from .consulting import (CHECKLIST_FASI as _CHECKLIST_FASI,
+                         RACI_ATTIVITA as _RACI_ATTIVITA,
+                         RACI_RUOLI as _RACI_RUOLI,
+                         STATI_STANDARD as _STATI_STANDARD)
 
 
 def _hdr(ws, row_idx: int = 1):

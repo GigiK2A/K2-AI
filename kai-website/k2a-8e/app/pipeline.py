@@ -1066,6 +1066,19 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             except Exception as exc:
                 log.warning("report_ops saltati (job %s): %s", job_id, exc)
 
+        # Report planner (spec §6-§10): se il caso è di tipo operations/commesse, il
+        # report si arricchisce del pacchetto consulenziale (AS-IS dai dati forniti,
+        # criticità dai KPI reali, TO-BE/RACI/SLA/opzioni come PROPOSTE marcate).
+        # Deterministico e non-bloccante: un errore qui non ferma il report.
+        try:
+            from . import consulting
+            pack = consulting.build_pack(skill, inputs, deliverable)
+            if pack:
+                deliverable["consulenza_operativa"] = pack
+                log.info("planner: pacchetto '%s' aggiunto (job %s)", pack.get("_tipo"), job_id)
+        except Exception as exc:
+            log.warning("pacchetto consulenziale saltato (job %s): %s", job_id, exc)
+
         # Quality gate pre-consegna (spec §12): difetti bloccanti sul deliverable finale
         # (involucri JSON non sballati, [object Object]/undefined, N/D con semaforo verde,
         # KPI placeholder 1/1/verde). Gira SEMPRE e logga il report tecnico; il BLOCCO

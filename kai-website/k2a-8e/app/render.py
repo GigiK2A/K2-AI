@@ -26,7 +26,8 @@ _FONTE_LABEL = {"override_locale": "Normattiva", "akn_bulk_xml": "Normattiva", "
                 "eur_lex": "EUR-Lex (norma UE — riferimento, testo non nel corpus)",
                 "codice_noto": "codice/testo unico noto (riferimento — verificare il testo vigente)"}
 _SKIP_KEYS = {"meta", "metadata", "disclaimer", "files", "file_generati", "input", "allegati",
-              "executive_summary", "sintesi", "report_ops"}
+              "executive_summary", "sintesi", "report_ops",
+              "consulenza_operativa"}   # resa da _consulting_blocks, non dal loop generico
 
 
 def _fonte(f) -> str:
@@ -774,6 +775,224 @@ def _has(items, *keys):
     return items and all(any(k in it for k in keys) for it in items[:2])
 
 
+# ── Sezioni consulenziali (pacchetto operations, spec §6-§10, §14) ────────────
+_CONF_META = {"A": (ST.GREEN, "dato verificato"),
+              "B": (ST.AMBER, "inferenza supportata"),
+              "C": (ST.NEUTRAL, "ipotesi da validare")}
+
+
+def _conf_chip(level) -> str:
+    """Badge inline del livello di certezza (§14): [A]/[B]/[C] colorato + legenda."""
+    lv = str(level or "").strip().upper()
+    if lv not in _CONF_META:
+        return ""
+    color, label = _CONF_META[lv]
+    return (f' <font name="{ST.F_BOLD}" size="8" color="{ST.hx(color)}">[{lv}]</font>'
+            f'<font size="8" color="#8A7A55"> {label}</font>')
+
+
+def _evidence_lines(node, S) -> list:
+    out = []
+    for ev in (node.get("evidenze") or [])[:4]:
+        out.append(Paragraph(f'<font size="8" color="#8A7A55">Evidenza: '
+                             f'{html.escape(NORM.to_text(ev))}</font>', S["bullet"]))
+    return out
+
+
+def _neutral_box(lines: list[str], title: str, S, border=None):
+    inner = [Paragraph(f'<font name="{ST.F_BOLD}" size="9" color="{ST.hx(ST.GOLD_DK)}">'
+                       f'{html.escape(title)}</font>', S["body"])]
+    for line in lines:
+        inner.append(Paragraph(_rich(line), S["small"]))
+    box = Table([[inner]], colWidths=[ST.CONTENT_W])
+    box.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), ST.WARM),
+                             ("BOX", (0, 0), (-1, -1), 0.8, border or ST.LINE),
+                             ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                             ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]))
+    return box
+
+
+_RACI_TONE = {"A": ST.GOLD_DK, "R": ST.GREEN, "C": ST.AMBER, "I": ST.NEUTRAL}
+
+
+def _raci_table(raci: dict, S):
+    """Matrice RACI come tabella colorata: attività x ruoli proposti."""
+    ruoli = [str(r) for r in (raci.get("ruoli") or [])]
+    rows = [[Paragraph("<b>Attività</b>", S["small"])]
+            + [Paragraph(f"<b>{html.escape(r.replace(' (proposto)', ''))}</b>", S["kv"])
+               for r in ruoli]]
+    for item in (raci.get("attivita") or []):
+        marks = item.get("assegnazioni") or {}
+        row = [Paragraph(html.escape(str(item.get("attivita", ""))), S["small"])]
+        for r in ruoli:
+            m = str(marks.get(r.replace(" (proposto)", ""), "") or "")
+            color = _RACI_TONE.get(m, ST.CARBON)
+            row.append(Paragraph(f'<font name="{ST.F_BOLD}" color="{ST.hx(color)}">'
+                                 f'{html.escape(m)}</font>', S["kv"]))
+        rows.append(row)
+    first_w = 44 * mm
+    col_w = (ST.CONTENT_W - first_w) / max(len(ruoli), 1)
+    t = Table(rows, colWidths=[first_w] + [col_w] * len(ruoli), repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), ST.WARM),
+        ("GRID", (0, 0), (-1, -1), 0.4, ST.LINE),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    return t
+
+
+def _consulting_blocks(deliverable, S) -> list:
+    """Renderizza il pacchetto consulenziale (consulenza_operativa) come sezioni
+    dedicate: AS-IS, criticità, TO-BE, stati, RACI, governance, SLA, requisiti,
+    opzioni tecnologiche comparate, piano 30-60-90, dati da raccogliere."""
+    pack = deliverable.get("consulenza_operativa")
+    if not isinstance(pack, dict):
+        return []
+    out: list = [PageBreak(),
+                 _Heading("Modello operativo — diagnosi e riorganizzazione", S["h1"], "consulenza"),
+                 Spacer(1, 4),
+                 Paragraph("Sezione consulenziale costruita sui dati forniti: le proposte "
+                           "sono marcate come tali e ogni affermazione porta il suo livello "
+                           "di certezza [A] verificato · [B] inferenza · [C] ipotesi.", S["small"]),
+                 Spacer(1, 6)]
+
+    asis = pack.get("processo_as_is") or {}
+    if asis:
+        out.append(Paragraph("Processo AS-IS — come lavora oggi l'azienda"
+                             + _conf_chip(asis.get("confidence")), S["h2"]))
+        if asis.get("sintesi_dal_racconto"):
+            out.append(Paragraph(_rich(asis["sintesi_dal_racconto"]), S["body"]))
+        if asis.get("strumenti_in_uso"):
+            out.append(Paragraph("<b>Strumenti in uso dichiarati:</b> "
+                                 + html.escape(", ".join(map(str, asis["strumenti_in_uso"]))),
+                                 S["bullet"]))
+        for k, v in (asis.get("dati_dichiarati") or {}).items():
+            out.append(Paragraph(f"<b>{html.escape(_humanize(str(k)))}:</b> {_rich(_scalar_str(v))}",
+                                 S["bullet"]))
+        out += _evidence_lines(asis, S)
+        if asis.get("nota"):
+            out.append(_neutral_box([asis["nota"]], "Nota", S))
+        out.append(Spacer(1, 6))
+
+    crit = pack.get("criticita_rilevate") or []
+    if crit:
+        out.append(Paragraph("Criticità e colli di bottiglia", S["h2"]))
+        for c in crit[:10]:
+            extra = ("certezza " + str(c.get("confidence", ""))
+                     + " · " + "; ".join(map(str, (c.get("evidenze") or [])[:2])))
+            out.append(ST.risk_card(str(c.get("criticita", "")), c.get("gravita", "media"), S, extra))
+            out.append(Spacer(1, 2))
+        out.append(Spacer(1, 4))
+
+    tobe = pack.get("processo_to_be") or {}
+    if tobe.get("principi"):
+        out.append(Paragraph("Processo TO-BE — modello proposto"
+                             + _conf_chip(tobe.get("confidence")), S["h2"]))
+        out.append(ST.action_box(list(tobe["principi"]), "Principi del nuovo modello", S))
+        out.append(Spacer(1, 6))
+
+    stati = pack.get("stati_commessa") or []
+    if stati:
+        out.append(Paragraph("Stati standard della commessa (proposta)", S["h2"]))
+        rows = [[Paragraph(f"<b>{h}</b>", S["kv"]) for h in ("Stato", "Definizione",
+                                                             "Ingresso", "Uscita")]]
+        for s in stati:
+            rows.append([Paragraph(html.escape(str(s.get(k, ""))), S["kv"])
+                         for k in ("stato", "definizione", "ingresso", "uscita")])
+        t = Table(rows, colWidths=[26 * mm, ST.CONTENT_W - 26 * mm - 84 * mm, 42 * mm, 42 * mm],
+                  repeatRows=1)
+        t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), ST.WARM),
+                               ("GRID", (0, 0), (-1, -1), 0.4, ST.LINE),
+                               ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                               ("TOPPADDING", (0, 0), (-1, -1), 4),
+                               ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
+        out += [t, Spacer(1, 6)]
+
+    raci = pack.get("matrice_raci") or {}
+    if raci.get("attivita"):
+        out.append(Paragraph("Matrice RACI (ruoli proposti)", S["h2"]))
+        out.append(_raci_table(raci, S))
+        if raci.get("nota"):
+            out.append(Paragraph(f'<font size="8" color="#8A7A55">{html.escape(str(raci["nota"]))}'
+                                 "</font>", S["bullet"]))
+        out.append(Spacer(1, 6))
+
+    gov = pack.get("governance") or {}
+    if gov:
+        out.append(Paragraph("Governance" + _conf_chip(gov.get("confidence")), S["h2"]))
+        for k, v in gov.items():
+            if k in ("confidence", "evidenze") or not isinstance(v, str):
+                continue
+            out.append(Paragraph(f"<b>{html.escape(_humanize(k))}:</b> {_rich(v)}", S["bullet"]))
+        out.append(Spacer(1, 6))
+
+    sla = pack.get("sla_interni") or {}
+    if sla.get("soglie"):
+        out.append(Paragraph("SLA interni e regole di escalation", S["h2"]))
+        rows = [[Paragraph("<b>Attività</b>", S["kv"]), Paragraph("<b>Soglia proposta</b>", S["kv"])]]
+        for s in sla["soglie"]:
+            rows.append([Paragraph(html.escape(str(s.get("attivita", ""))), S["kv"]),
+                         Paragraph(html.escape(str(s.get("soglia_proposta", ""))), S["kv"])])
+        t = Table(rows, colWidths=[ST.CONTENT_W - 52 * mm, 52 * mm], repeatRows=1)
+        t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), ST.WARM),
+                               ("GRID", (0, 0), (-1, -1), 0.4, ST.LINE),
+                               ("TOPPADDING", (0, 0), (-1, -1), 4),
+                               ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
+        out += [t, Paragraph(f'<font size="8" color="#8A7A55"><b>NOTA:</b> '
+                             f'{html.escape(str(sla.get("nota", "")))}</font>', S["bullet"]),
+                Spacer(1, 6)]
+
+    req = pack.get("requisiti_funzionali") or []
+    if req:
+        out.append(Paragraph("Requisiti funzionali dello strumento", S["h2"]))
+        out.append(ST.action_box(list(req), "Cosa deve saper fare", S))
+        out.append(Spacer(1, 6))
+
+    opz = pack.get("opzioni_tecnologiche") or {}
+    if opz.get("opzioni"):
+        out.append(Paragraph("Alternative tecnologiche — confronto", S["h2"]))
+        if opz.get("nota"):
+            out.append(Paragraph(f'<font size="8" color="#8A7A55">{html.escape(str(opz["nota"]))}'
+                                 "</font>", S["bullet"]))
+            out.append(Spacer(1, 3))
+        for o in opz["opzioni"]:
+            out.append(Paragraph(f"<b>{html.escape(str(o.get('opzione', '')))}</b>", S["h3"]))
+            for label, key in (("Vantaggi", "vantaggi"), ("Svantaggi", "svantaggi")):
+                for v in (o.get(key) or []):
+                    tone = ST.GREEN if key == "vantaggi" else ST.RED
+                    out.append(Paragraph(f'<font color="{ST.hx(tone)}">•</font> {_rich(v)}',
+                                         S["bullet"]))
+            detail = " · ".join(f"{_humanize(k)}: {o[k]}" for k in
+                                ("complessita", "rischio_migrazione", "scalabilita") if o.get(k))
+            if detail:
+                out.append(Paragraph(f'<font size="8" color="#8A7A55">{html.escape(detail)}</font>',
+                                     S["bullet"]))
+            out.append(Spacer(1, 3))
+        if opz.get("raccomandazione_condizionata"):
+            out.append(_neutral_box([str(opz["raccomandazione_condizionata"])],
+                                    "Raccomandazione condizionata", S, border=ST.GOLD_DK))
+        out.append(Spacer(1, 6))
+
+    piano = pack.get("piano_30_60_90") or []
+    if piano:
+        out.append(Paragraph("Piano 30-60-90 giorni", S["h2"]))
+        for fase in piano:
+            out.append(Paragraph(f"<b>{html.escape(str(fase.get('orizzonte', '')))}</b>", S["h3"]))
+            for a in (fase.get("azioni") or []):
+                out.append(Paragraph(f'<font color="{ST.hx(ST.GOLD_DK)}">•</font> {_rich(a)}',
+                                     S["bullet"]))
+        out.append(Spacer(1, 6))
+
+    dati = pack.get("dati_da_raccogliere") or []
+    if dati:
+        out.append(_neutral_box([f"• {d}" for d in dati], "Dati da raccogliere "
+                                "(per completare la misurazione)", S))
+        out.append(Spacer(1, 4))
+    return out
+
+
 def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_path: Path,
                        preliminare: bool = False) -> None:
     S = ST.styles()
@@ -787,14 +1006,44 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
     _COORD_KEYS = {"coordinata_x", "coordinata_y", "x", "y", "ampiezza", "segmentazione",
                    "posizione_azienda", "posizione_competitor"}
 
+    # Dedup KPI (#5): un KPI (nome+valore) si descrive integralmente UNA volta;
+    # nelle sezioni successive diventa un richiamo sintetico, non un'altra tabella.
+    seen_kpi: set = set()
+
+    def _dedup_kpi_items(items):
+        fresh, dupes = [], []
+        for it in items:
+            key = (str(it.get("nome", "")).strip().lower(), str(it.get("valore", "")))
+            if key[0] and key in seen_kpi:
+                dupes.append(str(it.get("nome", "")))
+            else:
+                if key[0]:
+                    seen_kpi.add(key)
+                fresh.append(it)
+        return fresh, dupes
+
+    def _dupes_note(dupes):
+        if dupes:
+            body.append(Paragraph(
+                f'<font size="8" color="#8A7A55">Già riportati sopra (non ripetuti): '
+                f'{html.escape(", ".join(dupes))}.</font>', S["bullet"]))
+
     def render_value(v, level=0, skip_keys=()):
         # kpi_table PRIMA della heatmap: gli indici hanno {nome, valore, benchmark, semaforo}
         # e la heatmap stampa SOLO nome+colore → card colorate senza numero in un report
         # pagato (bug prod 8 lug). La heatmap resta per le liste solo-semaforo (mappa_aree).
         if _is_list_of_dicts(v) and _has(v, "valore", "benchmark"):
-            body.append(ST.kpi_table(v, S)); body.append(Spacer(1, 4)); return
+            fresh, dupes = _dedup_kpi_items(v)
+            if fresh:
+                body.append(ST.kpi_table(fresh, S)); body.append(Spacer(1, 4))
+            _dupes_note(dupes)
+            return
         if _is_list_of_dicts(v) and _has(v, "semaforo"):
-            body.append(ST.heatmap(v, S)); body.append(Spacer(1, 4)); return
+            fresh, dupes = _dedup_kpi_items(v)
+            if fresh:
+                body.append(ST.heatmap(fresh, S)); body.append(Spacer(1, 4))
+            _dupes_note(dupes)
+            return
         # matrice priorità: criticità con severity/gravità + effort + ROI → tabella colorata
         if (_is_list_of_dicts(v) and _has(v, "severity", "gravita", "livello")
                 and _has(v, "effort", "sforzo", "roi", "ritorno")):
@@ -917,6 +1166,7 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
         render_value(val, 1)
         body.append(Spacer(1, 4))
 
+    body += _consulting_blocks(deliverable, S)   # pacchetto operations (AS-IS/TO-BE/RACI…)
     body += _ops_blocks(deliverable, S)
     body += _decision_board(deliverable, S)
     body += _appendix(citazioni, deliverable, blueprint, S)
