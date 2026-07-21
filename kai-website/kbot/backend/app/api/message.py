@@ -228,8 +228,18 @@ def _persist_diagnosi(collected: dict, diagnosi: Optional[dict]) -> None:
     if isinstance(diagnosi, dict) and diagnosi.get("ipotesi"):
         _conf = str(diagnosi.get("confidenza") or "").strip().lower() or None
         _fase = str(diagnosi.get("fase") or "").strip().lower() or None
+
+        def _norm_ip(i: dict) -> dict:
+            out = {"t": i["t"], "s": i.get("s") or "aperta"}
+            try:
+                p = int(round(float(i.get("p"))))
+                out["p"] = max(0, min(100, p))
+            except (TypeError, ValueError):
+                pass  # p opzionale: se il modello non la emette, non inventarla
+            return out
+
         collected["diagnosi"] = {
-            "ipotesi": [i for i in diagnosi.get("ipotesi") or []
+            "ipotesi": [_norm_ip(i) for i in diagnosi.get("ipotesi") or []
                         if isinstance(i, dict) and i.get("t")][:4],
             "manca": diagnosi.get("manca"),
             "confidenza": _conf if _conf in ("bassa", "media", "alta") else None,
@@ -354,9 +364,18 @@ async def _required_fields_hint(collected: dict) -> str:
     _ed = collected.get("extractedData") or {}
     consulenza_ricca = bool(collected.get("diagnosi")) or len(str(_ed.get("notes") or "")) > 40 or (
         bool(str(_ed.get("objective") or "").strip()) and bool(str(_ed.get("scope") or "").strip()))
+    # DIAGNOSI IN CORSO (review HR): finché la diagnosi non è solida, NON spingere i campi-form
+    # del boost (es. ControlBoost → costi/personale) — è ciò che faceva chiedere "il dettaglio
+    # dei costi salariali" mentre il caso era organizzativo. Durante la diagnosi si discriminano
+    # le ipotesi, non si compila un form. I campi restano gestiti dal pre-flight alla generazione.
+    _diag = collected.get("diagnosi") or {}
+    still_diagnosing = (
+        str(_diag.get("fase") or "").lower() in ("esplorazione", "diagnosi", "validazione")
+        or (str(_diag.get("confidenza") or "").lower() in ("bassa", "media"))
+    )
     return readiness.required_fields_hint(
         form.get("campi") or [], boost_label=collected.get("boost_suggerito_label"),
-        consulenza_ricca=consulenza_ricca)
+        consulenza_ricca=consulenza_ricca or still_diagnosing)
 
 
 @router.post("/message")

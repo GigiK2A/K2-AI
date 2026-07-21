@@ -141,3 +141,46 @@ def test_prompt_stato_diagnostico_ha_confidenza_e_fase():
     # il blocco DIAGNOSI_STATO chiede confidenza + fase (pre-flight le legge)
     p = _prompt()
     assert '"confidenza"' in p and '"fase"' in p
+
+
+# ── Review HR: ragionamento trasparente (prompt) ─────────────────────────────────────────
+def test_prompt_ragionamento_trasparente():
+    p = _prompt()
+    assert "RAGIONAMENTO TRASPARENTE" in p
+    # domande motivate + struttura di aggiornamento diagnosi + diagnosi provvisoria
+    assert "DOMANDE MOTIVATE" in p
+    assert "AGGIORNAMENTO ESPLICITO DELLA DIAGNOSI" in p
+    assert "DIAGNOSI PROVVISORIA" in p
+    # PRIMO ERRORE: testare l'ipotesi dubitata, non operazionalizzarla
+    assert "NON OPERAZIONALIZZARLA" in p
+    # probabilità per ipotesi (70/20/5/5) nel blocco di stato
+    assert '"p"' in p
+
+
+def test_prompt_ipotesi_pesate_reiniettate():
+    # se lo stato diagnostico persistito ha probabilità, vengono ri-iniettate nel prompt
+    from app.lib.prompts import build_system_prompt_v2
+    sess = {"messages": [{"role": "user", "content": "ok"}],
+            "collected_data": {"diagnosi": {
+                "fase": "diagnosi", "confidenza": "media",
+                "ipotesi": [{"t": "problema organizzativo", "s": "probabile", "p": 70},
+                            {"t": "leadership", "s": "aperta", "p": 20},
+                            {"t": "retribuzione", "s": "esclusa", "p": 5}],
+                "manca": "esiti stay interview"}}}
+    p = build_system_prompt_v2([], sess, required_fields_hint="")
+    assert "70%" in p and "problema organizzativo" in p
+    assert "RIDISTRIBUISCI le probabilità" in p
+
+
+# ── PRIMO ERRORE (belt deterministico): niente campi-form durante la diagnosi ────────────
+def test_required_fields_hint_soppresso_durante_diagnosi():
+    from app.lib import readiness
+    # campi diagnostici del boost (es. costi/personale di ControlBoost)
+    campi = [{"id": "costo_personale", "label": "Costo del personale", "obbligatorio": True},
+             {"id": "mese", "label": "Mese", "obbligatorio": True}]
+    # consulenza_ricca/diagnosi in corso = True → NON elenca i campi di analisi del template
+    hint_diag = readiness.required_fields_hint(campi, consulenza_ricca=True)
+    assert "costo_personale" not in hint_diag
+    # senza gate (baseline) i campi verrebbero elencati → è ciò che si evita in diagnosi
+    hint_base = readiness.required_fields_hint(campi, consulenza_ricca=False)
+    assert "costo_personale" in hint_base
