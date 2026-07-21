@@ -345,6 +345,16 @@ def _exec_summary(deliverable, S, ambito: str = "") -> list:
     return out
 
 
+def _suppress_render(deliverable) -> set:
+    """Sezioni-render che il pacchetto consulenziale chiede di NON mostrare (Problema 6:
+    sezioni dinamiche — se il ragionamento le rende ridondanti, non compaiono).
+    Vuoto per i report senza pacchetto → comportamento invariato."""
+    pack = deliverable.get("consulenza_operativa")
+    if isinstance(pack, dict):
+        return set(pack.get("_suppress_render") or [])
+    return set()
+
+
 def _kpi_dashboard(deliverable, S, ambito: str = "") -> list:
     """Dashboard sintetica: card per score, rischio, priorità (derivati)."""
     cards = []
@@ -559,7 +569,8 @@ def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, am
     story += [ST.layer_band("executive", "Livello 1 — Executive",
                             "lettura 30 secondi · per chi decide", S), Spacer(1, 6)]
     story += _exec_summary(deliverable, S, ambito)
-    story += _kpi_dashboard(deliverable, S, ambito)
+    if "kpi_dashboard" not in _suppress_render(deliverable):
+        story += _kpi_dashboard(deliverable, S, ambito)
     story += [Spacer(1, 8), ST.layer_band("analysis", "Livello 2 — Analisi",
                                           "5-10 minuti · per il management", S), Spacer(1, 6)]
     story += body_blocks
@@ -1432,8 +1443,11 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
         body.append(Spacer(1, 4))
 
     body += _consulting_blocks(deliverable, S)   # pacchetto operations (AS-IS/TO-BE/RACI…)
-    body += _ops_blocks(deliverable, S)
-    body += _decision_board(deliverable, S)
+    _supp = _suppress_render(deliverable)         # Problema 6: sezioni dinamiche
+    if "ops_blocks" not in _supp:
+        body += _ops_blocks(deliverable, S)
+    if "decision_board" not in _supp:
+        body += _decision_board(deliverable, S)
     body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "professionale",
            has_citations=bool(citazioni), preliminare=preliminare)

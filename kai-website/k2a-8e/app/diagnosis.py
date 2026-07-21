@@ -343,9 +343,13 @@ def build_diagnosis_pack(inputs: dict) -> dict:
     pack: dict[str, Any] = {
         "_tipo": "diagnosi_efficienza",
         # Problema 1: il caso è qualitativo (nessun valore assoluto) → sopprimi i KPI
-        # finanziari che l'LLM avrebbe inventato. La pipeline rimuove queste sezioni.
+        # finanziari che l'LLM avrebbe inventato + il report_ops generico. La pipeline
+        # rimuove queste chiavi dal deliverable.
         "_suppress_sections": ["kpi_finanziaria", "kpi_cliente", "kpi_processi",
-                               "kpi_crescita", "trend_12_mesi"],
+                               "kpi_crescita", "trend_12_mesi", "report_ops"],
+        # Problema 6: sezioni-template DERIVATE (dashboard KPI, board decisionale generica)
+        # ridondanti col ragionamento → non compaiono. È il ragionamento a fare il report.
+        "_suppress_render": ["kpi_dashboard", "ops_blocks", "decision_board"],
         "decisione_sintesi": {
             "domanda_decisionale": diagnosi["domanda"],
             "sintesi": diagnosi["sintesi"], "confidence": "B", "fattori": []},

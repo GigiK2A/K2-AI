@@ -144,3 +144,45 @@ def test_pack_passes_quality_gate():
     deliverable = {"executive_summary": "x", "consulenza_operativa": _pack()}
     res = run_report_quality_gate(deliverable, evidence=PROV.build_evidence(_CASE))
     assert res["ok"] is True, res["report"]
+
+
+# ── Problema 6: sezioni dinamiche (se non servono, non compaiono) ──────────────
+def test_pack_declares_dynamic_suppression():
+    pack = _pack()
+    assert "report_ops" in pack["_suppress_sections"]       # ops generico soppresso
+    assert set(pack["_suppress_render"]) >= {"kpi_dashboard", "ops_blocks", "decision_board"}
+
+
+def test_report_without_pack_is_unaffected():
+    # un report SENZA pacchetto consulenziale non subisce soppressioni (invariato)
+    from app.render import _suppress_render
+    assert _suppress_render({"executive_summary": "x"}) == set()
+    assert _suppress_render({"consulenza_operativa": {"_tipo": "operations_commesse"}}) == set()
+
+
+def test_dynamic_sections_removed_in_pdf():
+    from app.render import render_generic_pdf, _suppress_render
+    pack = _pack()
+    deliverable = {
+        "executive_summary": "x",
+        "kpi_finanziaria": [{"nome": "Fatturato", "valore": 250000, "semaforo": "verde"}],
+        "report_ops": {"semaforo_rischi": [{"area": "A", "semaforo": "rosso"}]},
+        "consulenza_operativa": pack,
+    }
+    for s in pack.get("_suppress_sections", []):
+        deliverable.pop(s, None)
+    assert "report_ops" not in deliverable and "kpi_finanziaria" not in deliverable
+    assert _suppress_render(deliverable) == {"kpi_dashboard", "ops_blocks", "decision_board"}
+    with tempfile.TemporaryDirectory() as td:
+        pdf = Path(td) / "o.pdf"
+        render_generic_pdf(deliverable, {"nome": "ControlBoost"}, [], pdf)
+        assert pdf.read_bytes()[:5] == b"%PDF-"
+        try:
+            import pdfplumber
+            with pdfplumber.open(str(pdf)) as d:
+                t = "\n".join(p.extract_text() or "" for p in d.pages)
+            assert "Dashboard rischi" not in t and "Score generale" not in t
+            assert "250000" not in t and "250.000" not in t   # niente KPI inventato
+            assert "Ipotesi diagnostica" in t                 # il ragionamento resta
+        except ImportError:
+            pass
