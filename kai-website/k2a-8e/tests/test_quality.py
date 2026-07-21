@@ -301,3 +301,16 @@ def test_compact_does_not_drop_numeric_series():
     d = {"meta": {"servizio": "WebBoost"}, "serie_mensile": [{"mese": 1, "valore": 100}, {"mese": 2, "valore": 0}]}
     out = quality.scrub_template_placeholders(d, {})
     assert out["serie_mensile"] == [{"mese": 1, "valore": 100}, {"mese": 2, "valore": 0}]
+
+
+# ── Identità non bloccante (handoff K-BOT): placeholder DICHIARATO accettato dal Gate 0 ──
+def test_display_name_accepts_flagged_placeholder():
+    # nome reale → usato
+    assert quality.display_name({"ragione_sociale": "ACME Srl"}) == "ACME Srl"
+    # generico SENZA flag → None (blocca, come prima)
+    assert quality.display_name({"ragione_sociale": "La tua azienda"}) is None
+    # generico CON flag di assunzione → accettato come placeholder editabile (report PARTIAL)
+    assert quality.display_name({"ragione_sociale": "La tua azienda",
+                                 "_intestazione_assunta": True}) == "La tua azienda"
+    # flag senza nome → default neutro
+    assert quality.display_name({"_intestazione_assunta": True}) == "La tua azienda"

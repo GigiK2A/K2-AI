@@ -67,6 +67,13 @@ def display_name(inputs: dict) -> str | None:
     desc = str(inputs.get("descrizione_azienda") or "").strip()
     if desc and len(desc) <= 100:
         return desc
+    # PLACEHOLDER DICHIARATO (handoff K-BOT): l'identità è personalizzazione, non un dato
+    # diagnostico. Se il K-BOT segnala un'intestazione ASSUNTA, accetta il placeholder
+    # (anche generico) come editabile → il Gate 0 non blocca un report PARTIAL, che
+    # dichiarerà l'assunzione. Non è un fallback cosmetico silenzioso: è flaggato a monte.
+    if inputs.get("_intestazione_assunta"):
+        ph = str(inputs.get("ragione_sociale") or "").strip()
+        return ph or "La tua azienda"
     return None
 
 
