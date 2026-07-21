@@ -162,9 +162,10 @@ def _analysis_streak_reached(merged_messages: list, raw_text: str, need: int = 2
     return streak >= need
 
 
-def _extract_gated_summary(raw_text: str, merged_messages: list):
-    """Estrae summary + stato diagnostico; SOPPRIME il summary se in fase intervista.
-    Il visibile è ripulito da ENTRAMBI i blocchi macchina (summary + diagnosi)."""
+def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Optional[dict] = None):
+    """Estrae summary + stato diagnostico; SOPPRIME il summary se in fase intervista o se
+    l'utente ha chiesto di continuare la consulenza (report_hold). Il visibile è ripulito
+    da ENTRAMBI i blocchi macchina (summary + diagnosi)."""
     from ..lib.prompts import extract_diagnosi, strip_diagnosi_block
     summary = extract_summary(raw_text)
     diagnosi = extract_diagnosi(raw_text)
@@ -178,15 +179,41 @@ def _extract_gated_summary(raw_text: str, merged_messages: list):
         if len((visible or "").strip()) < 5:
             visible = ("Prima di preparare il report mi servono ancora un paio di dettagli. "
                        "Qual è l'obiettivo concreto che vuoi ottenere con questa analisi?")
+    # HOLD: l'utente vuole continuare a ragionare → il report NON si propone, anche se il
+    # modello ha emesso il blocco (rispetto della volontà utente, vincolante a codice).
+    if summary and collected and collected.get("report_hold"):
+        summary = None
+        if len((visible or "").strip()) < 5:
+            visible = ("Restiamo sulla diagnosi, come hai chiesto. Qual è l'aspetto che vuoi "
+                       "approfondire per primo?")
     return visible, summary, diagnosi
 
 
+def _update_report_hold(collected: dict, last_user_text: str) -> bool:
+    """Consenso alla generazione (sticky tra i turni). Comanda l'UTENTE:
+    - un PROCEDI esplicito → sblocca (l'utente CHIEDE il report);
+    - una richiesta di continuare la consulenza / non generare → blocca;
+    - altrimenti resta com'era (il blocco NON si auto-rimuove col passare dei turni).
+    Ritorna il valore corrente. È la traduzione a CODICE di 'rispetta la volontà utente'
+    (review calo ordini): nessun trigger automatico può scavalcarlo."""
+    txt = last_user_text or ""
+    if signals.PROCEDI_HARD_RE.search(txt):
+        hold = False
+    elif signals.wants_to_continue(txt):
+        hold = True
+    else:
+        hold = bool(collected.get("report_hold"))
+    collected["report_hold"] = hold
+    return hold
+
+
 def _postprocess_turn(client, system_prompt, messages: list, merged_messages: list,
-                      raw_text: str) -> str:
+                      raw_text: str, collected: Optional[dict] = None) -> str:
     """Finalize CONDIVISA del turno (path sync E streaming — la duplicazione dei due
     path aveva già prodotto divergenze: il fallback readiness esisteva solo sullo
     streaming). Ordine: forced-summary → quality gate."""
-    raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text, merged_messages)
+    raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text,
+                                     merged_messages, collected)
     _last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
                        if isinstance(m, dict) and m.get("role") == "user"), "")
     raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text,
@@ -195,47 +222,45 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
 
 
 def _persist_diagnosi(collected: dict, diagnosi: Optional[dict]) -> None:
-    """Persiste lo stato diagnostico del bot (memoria di lavoro tra i turni)."""
+    """Persiste lo stato diagnostico del bot (memoria di lavoro tra i turni): ipotesi,
+    dato mancante, FASE e CONFIDENZA. Confidenza/fase alimentano il pre-flight di
+    generazione (una diagnosi non solida non deve produrre report)."""
     if isinstance(diagnosi, dict) and diagnosi.get("ipotesi"):
+        _conf = str(diagnosi.get("confidenza") or "").strip().lower() or None
+        _fase = str(diagnosi.get("fase") or "").strip().lower() or None
         collected["diagnosi"] = {
             "ipotesi": [i for i in diagnosi.get("ipotesi") or []
                         if isinstance(i, dict) and i.get("t")][:4],
             "manca": diagnosi.get("manca"),
+            "confidenza": _conf if _conf in ("bassa", "media", "alta") else None,
+            "fase": _fase if _fase in ("esplorazione", "diagnosi", "validazione",
+                                       "piano", "pronto") else None,
         }
 
 
 def _ensure_summary_block(client, system_prompt, messages: list, raw_text: str,
-                          merged_messages: list) -> str:
-    """Fallback deterministico (Regola 3 eval): se il bot SEGNALA di avere informazioni
-    sufficienti ma NON ha emesso il blocco CONSULENZA_SUMMARY (tipico dei modelli locali,
-    meno affidabili sui marker esatti), lo FORZA con una chiamata mirata mono-scopo — così
-    «ho abbastanza informazioni» diventa un vero trigger di generazione, non un messaggio
-    finale. No-op se il blocco c'è già, se siamo ancora in fase intervista, o se manca il
-    segnale di readiness (con guardia negazione — vedi signals). Ritorna raw_text."""
+                          merged_messages: list, collected: Optional[dict] = None) -> str:
+    """Forza il blocco CONSULENZA_SUMMARY SOLO quando l'utente lo chiede ESPLICITAMENTE
+    (PROCEDI). Policy (review calo ordini): la generazione è una CONSEGUENZA della volontà
+    utente, non un automatismo. NON si forza più su 'streak di analisi' (la quantità di
+    dati non è mai criterio sufficiente) né sulla sola auto-dichiarazione di readiness del
+    bot: se il bot ha davvero concluso la diagnosi, emette il blocco da solo seguendo la
+    STOP RULE del prompt. No-op se il blocco c'è già o se l'utente ha chiesto di continuare
+    (report_hold). Ritorna raw_text."""
     if extract_summary(raw_text):
         return raw_text
+    # HOLD: l'utente ha chiesto di continuare la consulenza → nessuna forzatura possibile.
+    if collected and collected.get("report_hold"):
+        return raw_text
     # ENFORCEMENT PROCEDI (eval 100, 17 lug: 7× 'ecco i dati… procedi' ignorati da
-    # gpt-oss, che continuava a fare domande): se l'ULTIMO messaggio utente è un
-    # trigger esplicito (variante STRETTA: mai 'procedura'/'come procediamo?'), il
-    # summary si forza SEMPRE — bypassa gate intervista e readiness del bot.
+    # gpt-oss): l'UNICO trigger che forza il summary dal server è la richiesta ESPLICITA
+    # dell'utente (variante STRETTA: mai 'procedura'/'come procediamo?').
     _last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
                        if isinstance(m, dict) and m.get("role") == "user"), "")
-    user_procedi = bool(signals.PROCEDI_HARD_RE.search(_last_user))
-    streak_reached = _analysis_streak_reached(merged_messages, raw_text)
-    if not user_procedi:
-        if _interview_gate_active(merged_messages):
-            return raw_text
-        # readiness = dichiarata dal bot OPPURE indicatore oggettivo (2 turni di analisi)
-        if not signals.is_ready_declared(raw_text or "") and not streak_reached:
-            return raw_text
+    if not bool(signals.PROCEDI_HARD_RE.search(_last_user)):
+        return raw_text
     try:
-        if user_procedi:
-            _motivo = "L'utente ha chiesto ESPLICITAMENTE di procedere col report."
-        elif signals.is_ready_declared(raw_text or ""):
-            _motivo = "Hai dichiarato di avere informazioni sufficienti."
-        else:
-            _motivo = ("Hai già fornito analisi e raccomandazioni per più turni consecutivi: "
-                       "la soglia per il report è superata, i dati sono sufficienti.")
+        _motivo = "L'utente ha chiesto ESPLICITAMENTE di procedere col report."
         focus = list(messages) + [
             {"role": "assistant", "content": (strip_summary_block(raw_text) or "Ho informazioni sufficienti.")[:4000]},
             {"role": "user", "content": (
@@ -281,6 +306,12 @@ def _recompute_boost(collected: dict, merged_messages: list, summary: Optional[d
             if isinstance(_m, dict) and _m.get("role") == "user"
         )[-2000:]
         _base = summary or (collected.get("extractedData") or {})
+        # TELEMETRIA ROUTING (motivazione loggata): domini + score + confidenza. Persistita
+        # in collected così il pre-flight di generazione la può leggere senza ricalcolare.
+        _rb = _catalog.route_breakdown(_base, user_text=_utext)
+        collected["route_confidence"] = _rb
+        log.info("kbot routing: top=%s score=%s confident=%s scores=%s",
+                 _rb.get("top"), _rb.get("score"), _rb.get("confident"), _rb.get("scores"))
         _explicit = _catalog.suggest_boost(_base, explicit_only=True, user_text=_utext)
         _current = collected.get("boost_suggerito")
         if _explicit is not None:
@@ -355,6 +386,8 @@ async def post_message(
     # Auto-fetch any URLs the user just pasted
     last_user_text = new_msgs[-1]["content"] if new_msgs else ""
     collected = await _auto_fetch_urls(last_user_text, collected)
+    # Consenso/HOLD alla generazione (sticky): l'utente comanda.
+    _update_report_hold(collected, last_user_text)
 
     # Persist forced skills (UI may toggle them on/off) into collected_data.
     if body.forcedSkills is not None:
@@ -414,9 +447,9 @@ async def post_message(
         block.text for block in result.content if getattr(block, "type", "") == "text"
     )
     # Finalize CONDIVISA (stessa catena del path streaming): forced-summary + quality gate.
-    raw_text = _postprocess_turn(client, system_prompt, history, merged_messages, raw_text)
+    raw_text = _postprocess_turn(client, system_prompt, history, merged_messages, raw_text, collected)
     usage = getattr(result, "usage", None)
-    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages)
+    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected)
     _persist_diagnosi(collected, diagnosi)
     _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
     track_server(
@@ -502,6 +535,8 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     merged_messages = sessions.append_messages(session, new_msgs)
     last_user_text = new_msgs[-1]["content"] if new_msgs else ""
     collected = await _auto_fetch_urls(last_user_text, collected)
+    # Consenso/HOLD alla generazione (sticky): l'utente comanda.
+    _update_report_hold(collected, last_user_text)
 
     session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages,
                           "_profilo": profile_lib.load(session.get("user_id"))}
@@ -534,7 +569,7 @@ def _persist_assistant_turn(
     skills: Optional[List[str]] = None,
 ) -> tuple[str, Optional[dict], dict]:
     """Apply summary extraction + persist assistant message. Returns (user_visible, summary, updated_session)."""
-    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages)
+    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected)
     _persist_diagnosi(collected, diagnosi)
 
     updated_messages = sessions.append_messages(
@@ -645,7 +680,7 @@ async def post_message_stream(
 
         raw_text = "".join(raw_buffer)
         # Finalize CONDIVISA coi due path: forced-summary + quality gate (vedi _postprocess_turn).
-        raw_text = _postprocess_turn(client, system_prompt, messages, merged_messages, raw_text)
+        raw_text = _postprocess_turn(client, system_prompt, messages, merged_messages, raw_text, collected)
         _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
         track_server(
             distinct_id=body.sessionId,

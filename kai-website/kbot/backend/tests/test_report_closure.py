@@ -91,4 +91,6 @@ def test_prompt_regole_di_chiusura():
     assert "MAI PROMETTERE AL FUTURO" in p and "consegnalo" in p.lower()
     assert "non è un Executive Summary" in p or "NON è un Executive Summary" in p
     assert "INCREMENTALE" in p.upper()
-    assert "DUE tuoi turni consecutivi" in p or "due tuoi turni consecutivi" in p.lower()
+    # POLICY AGGIORNATA (review calo ordini): la quantità di dati/turni NON è più criterio
+    # sufficiente. Il prompt cita ancora i "due turni" ma per NEGARLI come readiness.
+    assert "DUE tuoi turni consecutivi" in p and "NON significa «pronto»" in p

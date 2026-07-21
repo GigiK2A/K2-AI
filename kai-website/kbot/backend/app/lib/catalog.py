@@ -288,7 +288,14 @@ _BOOST_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
       "distributore estero", "distributore americano", "distributore usa", "mercato usa"),
      "checkup_marketing", 4),
     (("contratt", "nda", "clausol", "contract review", "review legale"), "checkup_legale_review"),
-    (("legale", "avvocat", "causa", "contenzioso", "parere legale", "diffida"), "primo_parere_legale"),
+    # LEGALE — bug routing (test calo ordini, lug): la keyword bare "causa" collideva con
+    # "la CAUSA del problema" e il verbo "CAUSAre/CAUSAto", onnipresenti in QUALSIASI
+    # conversazione diagnostica (5+ match) → un caso marketing/vendite finiva su
+    # "Primo parere legale". Sostituita con forme legali DISAMBIGUATE: la lite/il
+    # contenzioso, non la causa-effetto. "legale"/"avvocat" restano marcatori di dominio.
+    (("legale", "avvocat", "fare causa", "citazione in giudizio", "in giudizio",
+      "querela", "contenzioso", "vertenza legale", "controversia legale", "parere legale",
+      "diffida", "inadempimento", "risoluzione del contratto"), "primo_parere_legale"),
     (("fiscal", "iva", "tribut", "tasse", "imposte", "f24", "dichiarazione dei redditi"), "checkup_fiscale"),
     (("agevolazion", "bando", "contribut", "incentiv", "sabatini", "credito d'imposta", "finanza agevolata"), "checkup_agevolazioni"),
     (("edilizi", "permesso di costruire", "scia", "cila", "urbanistic", "titolo edilizio"), "checkup_edilizia"),
@@ -326,6 +333,48 @@ _GROUP_WEIGHT: dict[str, int] = {"checkup_ma": 4}
 # stringente (12 sezioni, campi numerici obbligatori) e fallisce la validazione
 # più spesso → non adatto come fallback finché non viene irrobustito.
 _BOOST_DEFAULT = "checkup_controllo"
+
+# Soglia minima di score perché un dominio sia considerato INSTRADABILE con confidenza.
+# Sotto soglia il routing NON è affidabile: il chiamante resta in consulenza (nessun
+# report proposto), invece di forzare un default che può essere il dominio sbagliato.
+MIN_ROUTE_SCORE = 2
+
+
+def _score_domains(text: str) -> dict[str, int]:
+    """Punteggio per servizio (dominio) dal testo. Conta le occorrenze di keyword non
+    negate, pesate per gruppo. Esposto per telemetria/soglia (routeConfidence)."""
+    scores: dict[str, int] = {}
+    for entry in _BOOST_KEYWORDS:
+        keys, sid = entry[0], entry[1]
+        gw = entry[2] if len(entry) > 2 else _GROUP_WEIGHT.get(sid, 1)
+        score = 0
+        for k in keys:
+            for mt in re.finditer(r"\b" + re.escape(k), text):
+                if not _negated_before(text, mt.start()):
+                    score += 1
+        if score:
+            scores[sid] = max(scores.get(sid, 0), score * gw)
+    return scores
+
+
+def route_breakdown(summary: Optional[dict], user_text: Optional[str] = None) -> dict:
+    """Telemetria di routing: {top, score, scores{sid:score}, confident}.
+
+    `confident` = il top supera MIN_ROUTE_SCORE. Serve al pre-flight e al logging:
+    'legal 0.01, marketing 0.82' → se nessun dominio è confidente, NON generare.
+    Non solleva mai (routing best-effort)."""
+    try:
+        summary = summary or {}
+        text = _normalize_text(str(user_text or "") + " " + " ".join(
+            str(summary.get(k) or "") for k in
+            ("reportType", "deliverableType", "objective", "businessType", "scope", "notes")))
+        scores = _score_domains(text)
+        top = max(scores, key=scores.get) if scores else None
+        top_score = scores.get(top, 0) if top else 0
+        return {"top": top, "score": top_score, "scores": scores,
+                "confident": top_score >= MIN_ROUTE_SCORE}
+    except Exception:
+        return {"top": None, "score": 0, "scores": {}, "confident": False}
 
 
 def suggest_boost(summary: Optional[dict], explicit_only: bool = False,

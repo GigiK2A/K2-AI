@@ -22,7 +22,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import settings
-from ..lib import engine, sessions, catalog, entitlement, autofill, readiness, research
+from ..lib import engine, sessions, catalog, entitlement, autofill, readiness, research, report_gate
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..lib.storage import upload_pdf, upload_bytes, download_bytes
 from ..lib.supabase_admin import get_admin_client
@@ -458,6 +458,22 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
 
     collected = dict(session.get("collected_data") or {})
     servizio_id = body.servizioId or collected.get("boost_suggerito")
+
+    # PRE-FLIGHT CONSULENZIALE (review calo ordini): la generazione è una CONSEGUENZA della
+    # diagnosi e della volontà utente, non un automatismo. Il click su /auto è un'azione
+    # esplicita (user_requested=True): il gate blocca SOLO se l'utente ha chiesto di
+    # continuare la consulenza (report_hold) — il suo "no" esplicito vince anche qui.
+    _gate = report_gate.evaluate(collected, servizio_id, user_requested=True)
+    log.info("auto: pre-flight generazione allowed=%s reason=%s checks=%s",
+             _gate["allowed"], _gate["reason"], _gate["checks"])
+    if not _gate["allowed"]:
+        raise HTTPException(status_code=409, detail={
+            "reason": "consulenza_aperta",
+            "gate_reason": _gate["reason"],
+            "message": ("Restiamo in consulenza: mi hai chiesto di continuare a ragionare, "
+                        "quindi non genero ancora il report. Dimmi quando vuoi procedere."),
+        })
+
     if not servizio_id:
         # ridedotto dal riepilogo/estratto + TESTO UTENTE. L'intento esplicito vive nei
         # messaggi: se il summary è sparso (o la chat è < 3 turni, quindi _recompute_boost
@@ -562,8 +578,9 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
             "servizio_id": servizio_id,
             "missing": miss_ids,
             "message": (
-                "Per completare il report mi serve solo il nome dell'azienda (serve a "
-                "intestare il documento). Scrivimelo in chat e premi di nuovo Genera."
+                "La diagnosi è pronta: per intestare il documento mi serve la ragione "
+                "sociale dell'azienda (è solo personalizzazione, non cambia l'analisi). "
+                "Scrivimela in chat e premi di nuovo Genera."
             ),
         })
     if missing_non_identity:

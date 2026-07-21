@@ -32,6 +32,37 @@ PROCEDI_HARD_RE = re.compile(
     r"(?:^|[.!;\n]\s*)(?:ok[, ]+|dai[, ]+|allora[, ]+)?(?:procedi(?:amo)?(?: pure)?|vai(?: pure)?)\s*[.!]?\s*$)",
     re.I)
 
+# --- HOLD: l'utente vuole CONTINUARE la consulenza, NON generare (ancora) il report --
+# Volontà esplicita che DEVE bloccare qualunque trigger automatico di generazione (review
+# "calo ordini": il bot avviava la generazione subito dopo che l'utente aveva chiesto di
+# ragionare ancora). Preciso: ancorato a verbi di generazione NEGATI o a richieste esplicite
+# di approfondire, per non matchare la parola "report" incidentale.
+HOLD_RE = re.compile(
+    r"\bnon\s+(?:fare|generare|generi|crear\w*|produrre|prepar\w+|voglio|serve|mi\s+serve|"
+    r"partire\s+con|avviare)\b[^.!?\n]{0,30}?\b(?:report|documento|pdf|analisi|nulla|niente)\b|"
+    r"\b(?:niente|nessun|senza|no)\s+report\b|"
+    r"\bnon\s+(?:ancora|adesso|subito)\b[^.!?\n]{0,20}?\breport\b|"
+    r"\b(?:continuiamo|continua|proseguiamo|prosegui)\b[^.!?\n]{0,25}?"
+    r"\b(?:ragion\w+|analizz\w+|consulenza|a\s+capire|discutere|approfond\w+)\b|"
+    r"\bvoglio\s+approfondire\b|\bapprofondiamo\b|"
+    r"\bprima\s+(?:di\s+(?:fare|generare|prepar\w+|redigere)[^.!?\n]{0,20}?\breport\b|"
+    r"la\s+diagnosi|capiamo|capire|arriv\w+\s+alla\s+diagnosi|ragioniamo)|"
+    r"\baspett\w+\s+a\s+(?:fare|generare|prepar\w+)\b|"
+    r"\bsolo\s+un\s+(?:consiglio|parere|opinione)\b|"
+    r"\brest\w+\s+in\s+chat\b",
+    re.I)
+
+
+def wants_to_continue(text: str) -> bool:
+    """True se l'utente chiede ESPLICITAMENTE di continuare la consulenza / non generare
+    ancora il report. Un PROCEDI esplicito nello stesso messaggio ha la precedenza (gestito
+    dal chiamante)."""
+    t = (text or "").strip()
+    if not t:
+        return False
+    return bool(HOLD_RE.search(t))
+
+
 # --- Readiness dichiarata dal bot ("ho abbastanza informazioni") ---------------------
 READY_RE = re.compile(
     r"(informazion\w+ sufficient\w+|sufficient\w+ per (produrre|preparare|generare|una prima)|"
