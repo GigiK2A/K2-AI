@@ -1086,6 +1086,35 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
         # Render HTML + PDF.
         out_dir = OUT_DIR / job_id
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        # ControlBoost: cruscotto Excel operativo (spec §11) PRIMA del render, così la
+        # guida ai fogli entra nel PDF/JSON. Il foglio KPI usa la stessa estrazione del
+        # PDF (quality_gate.extract_kpis) → coerenza per costruzione, verificata sotto.
+        control_xlsx_path = None
+        if skill == "cruscotto-direzionale":
+            try:
+                from .xlsx import excel_guide_section, render_control_workbook
+                control_xlsx_path, xlsx_mapping = render_control_workbook(
+                    deliverable, inputs, out_dir / "cruscotto-commesse.xlsx")
+                deliverable["modello_excel"] = excel_guide_section(xlsx_mapping)
+                (out_dir / "xlsx-mapping.json").write_text(
+                    __import__("json").dumps(xlsx_mapping, ensure_ascii=False, indent=2),
+                    encoding="utf-8")
+                from .quality_gate import check_pdf_excel_coherence
+                coer = check_pdf_excel_coherence(deliverable, control_xlsx_path)
+                if coer:
+                    log.warning("coerenza PDF/Excel (job %s): %s", job_id,
+                                "; ".join(f["code"] for f in coer))
+                    if _gate_block and any(f["severity"] == "block" for f in coer):
+                        raise RuntimeError("quality gate: PDF ed Excel incoerenti")
+            except Exception as exc:
+                # Il workbook non deve mai far fallire il report principale (se non
+                # per incoerenza sotto gate bloccante, rilanciata sopra).
+                if _gate_block and "incoerenti" in str(exc):
+                    raise
+                control_xlsx_path = None
+                log.warning("cruscotto xlsx saltato (job %s): %s", job_id, exc)
+
         html_path = out_dir / "deliverable.html"
         pdf_path = out_dir / "deliverable.pdf"
         json_path = out_dir / "deliverable.json"
@@ -1102,6 +1131,11 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
 
         bundle = []
         extra_outputs = {}
+        if control_xlsx_path is not None:
+            extra_outputs["xlsx_path"] = str(control_xlsx_path)
+            bundle.append({"formato": "xlsx", "path": str(control_xlsx_path),
+                           "formule_vive": True,
+                           "mapping": str(out_dir / "xlsx-mapping.json")})
         if skill == "flusso-financeboost-pmi":
             # Il modello Excel richiede le voci di bilancio. In PARTIAL (report preliminare)
             # i bilanci possono mancare → NON far fallire l'intero job: si consegna il PDF

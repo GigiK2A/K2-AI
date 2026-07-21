@@ -86,6 +86,78 @@ def _kpi_value(kpi: dict) -> Any:
     return kpi.get("valore", kpi.get("value"))
 
 
+def extract_kpis(deliverable: Any) -> list[dict]:
+    """Estrae TUTTI i KPI del deliverable in forma normalizzata. È la fonte unica
+    usata sia dal PDF che dal workbook Excel → coerenza per costruzione (spec §11).
+
+    Ritorna: [{path, sezione, nome, valore, target, unita, semaforo, formula,
+               fonte, nota}] — i campi assenti sono None (mai 0)."""
+    out: list[dict] = []
+    for path, kpi in _iter_kpis(deliverable):
+        nome = NORM.to_text(kpi.get("nome") or kpi.get("label") or "").strip()
+        if not nome:
+            continue
+        out.append({
+            "path": path,
+            "sezione": path.split(".")[0].split("[")[0],
+            "nome": nome,
+            "valore": NORM.unwrap_value(_kpi_value(kpi)),
+            "target": NORM.unwrap_value(kpi.get("target")),
+            "unita": NORM.to_text(kpi.get("unita") or kpi.get("unit") or "").strip() or None,
+            "semaforo": NORM.to_text(kpi.get("semaforo")).strip().lower() or None,
+            "formula": NORM.to_text(kpi.get("formula")).strip() or None,
+            "fonte": NORM.to_text(kpi.get("fonte_dati") or kpi.get("fonte")
+                                  or kpi.get("source") or "").strip() or None,
+            "nota": NORM.to_text(kpi.get("nota")).strip() or None,
+        })
+    return out
+
+
+def check_pdf_excel_coherence(deliverable: Any, xlsx_path: Any) -> list[dict]:
+    """Test 7 (spec §11): gli stessi KPI devono avere valori/unità/fonti coerenti
+    nel PDF e nell'Excel. Legge il foglio 'KPI' del workbook e confronta col
+    deliverable. Ritorna findings (block su valore diverso, warn su KPI assente)."""
+    findings: list[dict] = []
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(str(xlsx_path), data_only=False)
+    except Exception as exc:
+        return [_finding("xlsx_illeggibile", SEVERITY_BLOCK, str(xlsx_path),
+                         f"workbook non apribile: {exc}",
+                         "Rigenerare il workbook.")]
+    if "KPI" not in wb.sheetnames:
+        return [_finding("xlsx_senza_kpi", SEVERITY_BLOCK, str(xlsx_path),
+                         "foglio 'KPI' assente dal workbook",
+                         "Il workbook deve contenere il foglio KPI mappato dal report.")]
+    ws = wb["KPI"]
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    by_name = {str(r[0]).strip().lower(): r for r in rows if r and r[0]}
+    for kpi in extract_kpis(deliverable):
+        row = by_name.get(kpi["nome"].lower())
+        if row is None:
+            findings.append(_finding(
+                "kpi_assente_da_excel", SEVERITY_WARN, kpi["path"],
+                f"KPI '{kpi['nome']}' presente nel PDF ma non nel foglio KPI",
+                "Rigenerare il workbook dalla stessa estrazione KPI del PDF."))
+            continue
+        xl_val = row[1] if len(row) > 1 else None
+        pdf_val = kpi["valore"]
+        if pdf_val is None:
+            continue          # nel PDF è 'dato mancante' → in Excel 'Da rilevare' (ok)
+        if isinstance(pdf_val, (int, float)) and isinstance(xl_val, (int, float)):
+            if abs(float(pdf_val) - float(xl_val)) > max(abs(float(pdf_val)) * 0.005, 0.01):
+                findings.append(_finding(
+                    "kpi_valore_incoerente", SEVERITY_BLOCK, kpi["path"],
+                    f"KPI '{kpi['nome']}': PDF={pdf_val} vs Excel={xl_val}",
+                    "PDF ed Excel devono derivare dalla stessa estrazione KPI."))
+        elif str(xl_val).strip() != NORM.to_text(pdf_val).strip():
+            findings.append(_finding(
+                "kpi_valore_incoerente", SEVERITY_BLOCK, kpi["path"],
+                f"KPI '{kpi['nome']}': PDF={NORM.to_text(pdf_val)!r} vs Excel={xl_val!r}",
+                "PDF ed Excel devono derivare dalla stessa estrazione KPI."))
+    return findings
+
+
 def run_report_quality_gate(deliverable: Any, workbook: Any = None,
                             evidence: Any = None) -> dict:
     """Esegue il gate. Ritorna {ok, blocking, warnings, findings, report}."""
