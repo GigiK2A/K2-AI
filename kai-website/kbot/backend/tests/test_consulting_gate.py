@@ -27,6 +27,7 @@ except Exception:  # pragma: no cover
     sys.modules["supabase"] = _m
 
 from app.lib import signals, catalog, report_gate, finance_guard  # noqa: E402
+from app.lib import strategy_alternatives  # noqa: E402
 
 
 # ── scenario del test: diagnosi marketing/vendite, piena di "causa" ──────────────────────
@@ -264,6 +265,58 @@ def test_prompt_consulente_prima_specialista_dopo():
     assert "«licenziamento» ≠ risposta legale" in p
     assert "Lo specialista supporta l'esecuzione" in p
     assert "35% del fatturato" in p  # l'esempio del venditore
+
+
+# ── La proposta del cliente è un'ipotesi, non il problema (review dedicata) ───────────────
+def test_proposes_strategy_vs_technical():
+    proposte = ["Voglio aprire una filiale in Germania.", "Apro una nuova sede a Milano.",
+                "Voglio comprare un concorrente.", "Voglio investire 500.000 euro in IA.",
+                "Voglio assumere cinque persone.", "Pensiamo di delocalizzare la produzione.",
+                "Vogliamo lanciare un nuovo prodotto.", "Sto valutando di vendere l'azienda."]
+    non_proposte = ["Come apro una filiale? quali documenti servono?",
+                    "Cosa dice la norma sulle assunzioni?", "Ho perso due clienti importanti.",
+                    "Il fatturato è calato del 30%.", "Mi serve un parere sul contratto."]
+    for t in proposte:
+        assert signals.proposes_strategy(t), t
+    for t in non_proposte:
+        assert not signals.proposes_strategy(t), t
+
+
+def test_alternatives_hint_per_tipo():
+    cases = {
+        "Voglio aprire una filiale in Germania.": ("espansione", "distributori"),
+        "Voglio investire 500.000 euro in IA e costruire una piattaforma.":
+            ("investimento tecnologico", "SaaS"),
+        "Voglio comprare un concorrente.": ("acquisizione", "crescita organica"),
+        "Voglio assumere cinque persone.": ("assunzioni", "esternalizzare"),
+    }
+    for text, (label_frag, alt_frag) in cases.items():
+        h = strategy_alternatives.alternatives_hint(text)
+        assert label_frag in h, text
+        assert alt_frag in h, text
+        assert "non fare nulla" in h                 # l'opzione zero c'è sempre
+
+
+def test_alternatives_hint_vuoto_su_tecnica_e_non_proposta():
+    assert strategy_alternatives.alternatives_hint("Come apro una filiale? che documenti servono?") == ""
+    assert strategy_alternatives.alternatives_hint("Ho perso due clienti, cosa faccio?") == ""
+
+
+def test_prompt_inietta_valutazione_strategica_su_proposta():
+    from app.lib.prompts import build_system_prompt_v2
+    sess = {"messages": [{"role": "user",
+                          "content": "Voglio aprire una filiale in Germania, ci penso da mesi."}],
+            "collected_data": {}}
+    p = build_system_prompt_v2([], sess, required_fields_hint="")
+    assert "VALUTAZIONE STRATEGICA (il cliente propone: espansione" in p
+    assert "distributori o agenti locali" in p
+
+
+def test_prompt_proposta_e_ipotesi_sezione():
+    p = _prompt()
+    assert "LA PROPOSTA DEL CLIENTE È UN'IPOTESI" in p
+    assert "modalità VALUTAZIONE" in p and "modalità implementazione" in p
+    assert "filiale in Germania" in p  # l'esempio
 
 
 # ── Prompt consolidato (review consolidamento) ───────────────────────────────────────────

@@ -82,6 +82,32 @@ def is_strategic_decision(text: str) -> bool:
     return bool(_DECISION_RE.search(t)) and not bool(_TECHNICAL_RE.search(t))
 
 
+# --- Il cliente PROPONE una strategia (review "proposta = ipotesi") --------------------
+# Verbi-proposta di azione strategica: la proposta NON va implementata al volo, va prima
+# VALIDATA (perché? il problema è reale? quali alternative?). Cattura anche le forme
+# dichiarative («apro una filiale») oltre alle decisionali (già in is_strategic_decision).
+_PROPOSAL_RE = re.compile(
+    r"\b(aprir\w+|apro\b|apriamo\b|acquist\w+|comprar\w+|rilevar\w+|assum\w+|assunzion\w+|"
+    r"investir\w+|investiment\w+|licenzi\w+|espander\w+|espansion\w+|delocalizz\w+|"
+    r"automatizz\w+|automazion\w+|fonder\w+|fusion\w+|internazionalizz\w+|"
+    r"lanciar\w+\s+(?:un|una|il|la|nuovo|nuova)\s+(?:prodotto|servizio|linea)|"
+    r"nuovo\s+prodotto|nuova\s+sede|nuova\s+filiale|entrare\s+(?:nel|in un)\s+mercato|"
+    r"vender\w+\s+(?:l['’ ]?azienda|la\s+(?:mia\s+)?azienda|l['’ ]?attività|la\s+società|"
+    r"il\s+ramo|la\s+quota))\b",
+    re.I)
+
+
+def proposes_strategy(text: str) -> bool:
+    """True se il cliente propone una STRATEGIA/azione concreta (aprire, acquistare,
+    investire, assumere, licenziare, espandersi, delocalizzare, automatizzare, lanciare,
+    vendere l'azienda…) e NON è una pura domanda tecnica di esecuzione. Attiva la modalità
+    VALUTAZIONE (valida l'ipotesi + alternative), non l'implementazione."""
+    t = (text or "").strip()
+    if not t:
+        return False
+    return bool(_PROPOSAL_RE.search(t)) and not bool(_TECHNICAL_RE.search(t))
+
+
 def wants_to_continue(text: str) -> bool:
     """True se l'utente chiede ESPLICITAMENTE di continuare la consulenza / non generare
     ancora il report. Un PROCEDI esplicito nello stesso messaggio ha la precedenza (gestito
