@@ -83,3 +83,32 @@ def test_report_is_human_readable():
     res = run_report_quality_gate(deliverable)
     assert "BLOCCANTE" in res["report"]
     assert "correzione" in res["report"]
+
+
+# ── Test 6 spec: nessuna serie storica inventata ────────────────────────────────
+def test_blocks_invented_time_series():
+    from app import provenance as PROV
+    # l'utente ha dato UN mese; il modello ha "inventato" 12 mesi di fatturato
+    deliverable = {"trend_12_mesi": {"fatturato": [98, 101, 97, 105, 110, 99,
+                                                   102, 104, 100, 103, 108, 100000]}}
+    evidence = PROV.build_evidence({"fatturato": 100000})
+    res = run_report_quality_gate(deliverable, evidence=evidence)
+    assert any(f["code"] == "serie_storica_inventata" for f in res["blocking"])
+
+
+def test_short_real_series_passes():
+    from app import provenance as PROV
+    # il binder deterministico emette il SOLO mese corrente → nessun blocco
+    deliverable = {"trend_12_mesi": {"fatturato": [100000]}}
+    evidence = PROV.build_evidence({"fatturato": 100000})
+    res = run_report_quality_gate(deliverable, evidence=evidence)
+    assert all(f["code"] != "serie_storica_inventata" for f in res["findings"])
+
+
+def test_grounded_long_series_passes():
+    from app import provenance as PROV
+    mesi = [100, 102, 98, 105, 103, 99]
+    deliverable = {"serie_mensile": {"ricavi": list(mesi)}}
+    evidence = PROV.build_evidence({"ricavi_mensili": mesi})
+    res = run_report_quality_gate(deliverable, evidence=evidence)
+    assert all(f["code"] != "serie_storica_inventata" for f in res["findings"])

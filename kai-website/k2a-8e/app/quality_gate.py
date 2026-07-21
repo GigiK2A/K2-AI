@@ -209,6 +209,29 @@ def run_report_quality_gate(deliverable: Any, workbook: Any = None,
             if isinstance(node, dict) and node.get("source"):
                 findings.extend(PROV.validate_metric(node, evidence, location=path))
 
+    # 2c) serie storiche inventate (Test 6): una serie tipo trend/mensile con molti
+    # valori numerici NON presenti nell'evidenza è una storia inventata dal modello.
+    # Evidence-gated (scatta solo se l'evidence store è fornito) → zero falsi positivi.
+    if evidence is not None:
+        from . import provenance as PROV
+        for path, node in _walk(deliverable):
+            if not isinstance(node, list) or len(node) < 6:
+                continue
+            # l'indizio (trend/serie/mensile) può stare nel padre: match sul path intero
+            if not any(h in path.lower() for h in ("trend", "serie", "storic", "mensil", "12_mesi")):
+                continue
+            nums = [v for v in (NORM.unwrap_value(x) for x in node)
+                    if isinstance(v, (int, float)) and not isinstance(v, bool)]
+            if len(nums) < 6:
+                continue
+            grounded = sum(1 for v in nums if PROV.value_in_evidence(v, evidence))
+            if grounded * 2 < len(nums):   # meno della metà ancorata → inventata
+                findings.append(_finding(
+                    "serie_storica_inventata", SEVERITY_BLOCK, path,
+                    f"serie di {len(nums)} valori di cui solo {grounded} presenti nei dati forniti",
+                    "Non generare serie storiche senza dati mensili reali: ometti il "
+                    "grafico o mostra solo i periodi effettivamente forniti."))
+
     # 3) dedup (warning): stesso (etichetta, valore) ripetuto in più punti
     by_label: dict[str, list[tuple[Any, str]]] = {}
     for lbl, val, path in seen_kpis:
