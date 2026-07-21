@@ -221,6 +221,23 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
     return raw_text
 
 
+def _apply_summary_contract(collected: dict, summary: dict) -> None:
+    """Valida il payload CONSULENZA_SUMMARY e imposta lo STATO deliverable persistente
+    (review flusso deliverable). Valido → READY_FOR_GENERATION + version + generation in
+    extractedData (trigger strutturato). Non valido → INVALID_SUMMARY, loggato, nessun crash."""
+    from ..lib import summary_contract, deliverable_state
+    model, err = summary_contract.validate_summary(summary)
+    if model is None:
+        log.warning("kbot: CONSULENZA_SUMMARY non valido (%s) — raw=%r", err, str(summary)[:400])
+        deliverable_state.set_state(collected, deliverable_state.INVALID_SUMMARY)
+        return
+    ed = dict(collected.get("extractedData") or {})
+    ed["generation"] = model.generation.model_dump()
+    ed["summary_version"] = summary_contract.summary_version(summary)
+    collected["extractedData"] = ed
+    deliverable_state.set_state(collected, deliverable_state.READY_FOR_GENERATION)
+
+
 def _persist_diagnosi(collected: dict, diagnosi: Optional[dict]) -> None:
     """Persiste lo stato diagnostico del bot (memoria di lavoro tra i turni): ipotesi,
     dato mancante, FASE e CONFIDENZA. Confidenza/fase alimentano il pre-flight di
@@ -502,6 +519,7 @@ async def post_message(
         )
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
+        _apply_summary_contract(collected, summary)
     # Boost ricalcolato FUORI da `if summary:`, a OGNI turno, sull'intento corrente
     # (come le skill): chiude l'asimmetria che lasciava un boost stantio sul bottone.
     _recompute_boost(collected, merged_messages, summary)
@@ -601,6 +619,7 @@ def _persist_assistant_turn(
         )
         collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
         collected["analysis_ready"] = True
+        _apply_summary_contract(collected, summary)
     # Boost ricalcolato FUORI da `if summary:`, a OGNI turno, sull'intento corrente
     # (come le skill): chiude l'asimmetria che lasciava un boost stantio sul bottone.
     _recompute_boost(collected, merged_messages, summary)

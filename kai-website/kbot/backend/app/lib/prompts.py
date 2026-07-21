@@ -390,9 +390,15 @@ dice di procedere. Non aspettare il 100% dei dati: dichiara le assunzioni in `no
 Prima del blocco scrivi 1-2 frasi di chiusura naturale. Poi aggiungi il blocco ESATTO:
 
 CONSULENZA_SUMMARY_START
-{{"reportType":"...","businessType":"...","objective":"...","scope":"...","dataAvailable":"...","deadline":"...","notes":"...","summary":"2-3 frasi specifiche e concrete che descrivono il caso e il report da produrre","nextStep":"{next_step_hint}"}}
+{{"reportType":"...","businessType":"...","objective":"...","scope":"...","dataAvailable":"...","deadline":"...","notes":"...","summary":"2-3 frasi specifiche e concrete che descrivono il caso e il report da produrre","nextStep":"{next_step_hint}","generation":{{"requested":true,"confirmedByUser":false,"requiredOutputs":["pdf","xlsx"]}}}}
 CONSULENZA_SUMMARY_END
 
+Il blocco è un PAYLOAD STRUTTURATO (non un messaggio): il sistema lo estrae, lo VALIDA e lo usa per attivare la generazione. Regole ferree sul blocco:
+- JSON VALIDO su UNA riga: virgolette doppie, nessun commento, nessuna virgola finale, nessun testo dentro il JSON.
+- NON dichiarare che i file sono già scaricabili/pronti: è il sistema a generarli, non tu.
+- `generation.requested`: true quando il caso è pronto per il documento. `generation.confirmedByUser`: true SOLO se l'utente ha già chiesto esplicitamente di generare (es. "procedi", "fai il report", "genera"); altrimenti false (il sistema mostrerà la CTA).
+- `generation.requiredOutputs`: gli output attesi, es. ["pdf","xlsx"] (o solo ["pdf"] se l'Excel non serve).
+- NON inventare valori numerici non supportati dai dati: quelli parametrici/stimati vanno in `notes` come assunzioni dichiarate (il report li mostrerà come editabili), MAI spacciati per dati certi.
 Il blocco sarà estratto automaticamente e non mostrato all'utente.
 
 MEMORIA DI LAVORO (obbligatoria, invisibile all'utente): chiudi OGNI tua risposta col blocco

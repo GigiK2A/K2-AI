@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 from .. import settings
 from ..lib import engine, sessions, catalog, entitlement, autofill, readiness, research, report_gate
+from ..lib import deliverable_state, summary_contract
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..lib.storage import upload_pdf, upload_bytes, download_bytes
 from ..lib.supabase_admin import get_admin_client
@@ -149,6 +150,18 @@ def _session_company(session: dict) -> Optional[str]:
             if isinstance(v, str) and v.strip():
                 return v.strip()
     return None
+
+
+def _intestazione_placeholder(inputs: dict) -> str:
+    """Intestazione di ripiego quando manca la ragione sociale (identità non bloccante):
+    un descrittore pulito dal settore/businessType, altrimenti un placeholder neutro.
+    Sempre dichiarato come assunzione editabile — non è un dato inventato spacciato per vero."""
+    for k in ("businessType", "settore", "business_type", "tipo_attivita"):
+        v = str((inputs or {}).get(k) or "").strip()
+        if v and len(v) <= 60 and v.lower() not in ("", "n/d", "-"):
+            cleaned = v.replace("_", " ").replace("-", " ").strip()
+            return (cleaned[:1].upper() + cleaned[1:])[:80]
+    return "La tua azienda"
 
 
 def _case_facts(session: dict) -> Optional[dict]:
@@ -474,6 +487,17 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
                         "quindi non genero ancora il report. Dimmi quando vuoi procedere."),
         })
 
+    # TRIGGER STRUTTURATO (review flusso deliverable): la generazione parte dal PAYLOAD
+    # (`generation.requested`), NON dal testo del modello. Un summary con requested=False non
+    # genera anche se il testo dice "scarica il deliverable". Assente/True → si procede
+    # (backward-compatible). L'endpoint /auto è già un'azione esplicita dell'utente.
+    _gen = (collected.get("extractedData") or {}).get("generation")
+    if isinstance(_gen, dict) and _gen.get("requested") is False:
+        raise HTTPException(status_code=409, detail={
+            "reason": "generation_not_requested",
+            "message": "Il report non è ancora richiesto: confermalo quando vuoi generarlo.",
+        })
+
     if not servizio_id:
         # ridedotto dal riepilogo/estratto + TESTO UTENTE. L'intento esplicito vive nei
         # messaggi: se il summary è sparso (o la chat è < 3 turni, quindi _recompute_boost
@@ -496,6 +520,21 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
                        "Per ora posso prepararti un altro report.",
         })
     servizio = catalog.get_servizio(servizio_id)
+
+    # IDEMPOTENZA (review flusso deliverable): stesso caso (consultationId + summaryVersion +
+    # output) = stesso job. Se ne esiste già uno GENERATING/COMPLETED con questa chiave lo
+    # RIUSA — niente doppioni da doppio-click, retry frontend, refresh, risposta duplicata o
+    # timeout. Prima dell'autofill costoso.
+    _ed0 = collected.get("extractedData") or {}
+    _idem = deliverable_state.idempotency_key(
+        body.sessionId, _ed0.get("summary_version"), summary_contract.required_outputs(_ed0))
+    _existing_job = deliverable_state.existing_job_for(collected, _idem)
+    if _existing_job:
+        log.info("auto: job idempotente riusato job=%s state=%s key=%s",
+                 _existing_job, deliverable_state.get_state(collected), _idem)
+        return {"job_id": _existing_job, "status": deliverable_state.get_state(collected),
+                "servizio_id": servizio_id, "label": (servizio or {}).get("label"),
+                "idempotent": True, "outputs": deliverable_state.outputs_status(collected)}
 
     # Campi richiesti dal boost → auto-compilazione dai dati della conversazione.
     form_schema = None
@@ -568,21 +607,19 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
 
     auth_level = "FULL"
     if needs_identity:
-        # UNICO blocco vero: senza il nome dell'azienda non possiamo intestare il documento.
-        # NON elenchiamo i campi di analisi (vanno in PRELIMINARE, sotto) e NON nominiamo il
-        # boost interno (es. "StrategyBoost") all'utente: la consulenza è la fonte, il template
-        # è solo il formato (bug routing 18 lug). Si chiede SOLO il nome.
-        miss_ids = ["ragione_sociale"] + [c.get("id") for c in missing_non_identity]
-        raise HTTPException(status_code=409, detail={
-            "reason": "needs_input",
-            "servizio_id": servizio_id,
-            "missing": miss_ids,
-            "message": (
-                "La diagnosi è pronta: per intestare il documento mi serve la ragione "
-                "sociale dell'azienda (è solo personalizzazione, non cambia l'analisi). "
-                "Scrivimela in chat e premi di nuovo Genera."
-            ),
-        })
+        # IDENTITÀ NON BLOCCANTE (review flusso deliverable): il nome azienda è
+        # PERSONALIZZAZIONE, non un dato diagnostico → non deve fermare la generazione.
+        # Invece del 409 intitoliamo con un PLACEHOLDER dichiarato come assunzione
+        # (editabile in chat/Excel) e generiamo PARTIAL. Così "utente ha confermato in chat"
+        # basta a produrre PDF+Excel senza una seconda domanda (caso di regressione).
+        placeholder = _intestazione_placeholder(inputs)
+        inputs["ragione_sociale"] = placeholder
+        inputs["_intestazione_assunta"] = True   # l'8e (Gate 0) accetta il placeholder flaggato
+        auth_level = "PARTIAL"
+        collected.setdefault("deliverable_assunzioni", [])
+        if "ragione_sociale" not in collected["deliverable_assunzioni"]:
+            collected["deliverable_assunzioni"].append("ragione_sociale")
+        log.info("auto: identità assunta (placeholder=%r) → report PARTIAL, niente blocco", placeholder)
     if missing_non_identity:
         # Mancano campi ma NON l'identità → REPORT PRELIMINARE: si genera comunque con i
         # dati disponibili + ipotesi etichettate, invece del vicolo cieco. A pagamento come
@@ -664,11 +701,16 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
         collected["deliverable_auth_level"] = auth_level
         collected.pop("deliverable_saved_job", None)  # nuovo job → copia durevole vecchia non valida
         collected.pop("deliverable_pdf_url", None)
+        # STATO PERSISTENTE + IDEMPOTENZA: GENERATING con la chiave del caso e gli output
+        # attesi 'pending' → refresh/retry ritrovano lo stato reale e non duplicano il job.
+        deliverable_state.mark_generating(
+            collected, _idem, summary_contract.required_outputs(collected.get("extractedData") or {}))
         sessions.update_session(body.sessionId, {"collected_data": collected})
     except Exception:
         log.warning("persist deliverable job (auto) fallita (non bloccante)", exc_info=True)
 
-    return {**res, "servizio_id": servizio_id, "label": servizio.get("label")}
+    return {**res, "servizio_id": servizio_id, "label": servizio.get("label"),
+            "state": deliverable_state.GENERATING, "idempotency_key": _idem}
 
 
 _AGENT_SEZIONI = {
@@ -832,6 +874,20 @@ async def status(job_id: str, user: Optional[AuthUser] = Depends(optional_user))
             await _persist_durable(session, job_id, job)
         except Exception:
             log.warning("persist durable (status) fallita job %s", job_id, exc_info=True)
+    # STATO PERSISTENTE per-output: il job 8e reso = bundle PDF+xlsx pronto. Riconcilia lo
+    # stato aggregato → COMPLETED (o GENERATION_FAILED). Persistente: refresh/retry ritrovano
+    # lo stato reale e l'idempotenza riusa il job invece di duplicarlo. Best-effort.
+    try:
+        _st = (job or {}).get("status") if isinstance(job, dict) else None
+        if _st in ("rendered", "failed"):
+            _c = dict(session.get("collected_data") or {})
+            if _c.get("deliverable_job_id") == job_id or not _c.get("deliverable_job_id"):
+                for _o in summary_contract.required_outputs(_c.get("extractedData") or {}):
+                    deliverable_state.set_output_status(_c, _o, "rendered" if _st == "rendered" else "failed")
+                deliverable_state.reconcile_state(_c)
+                sessions.update_session(session.get("id"), {"collected_data": _c})
+    except Exception:
+        log.warning("reconcile deliverable state (status) fallita job %s", job_id, exc_info=True)
     return job
 
 

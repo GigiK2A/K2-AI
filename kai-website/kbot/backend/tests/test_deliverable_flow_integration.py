@@ -137,17 +137,26 @@ def test_all_required_present_proceeds_to_generation(monkeypatch):
     assert created["service_id"] == "checkup_marketing"
 
 
-def test_missing_identity_named_in_needs_input(monkeypatch):
-    """Anche se i campi required del form ci sono, se manca l'IDENTITÀ (ragione sociale) il
-    pre-flight deve NOMINARLA (prima cadeva nel Gate 0 8e → 'Mancano dei dati' generico)."""
-    collected = {"boost_suggerito": "checkup_marketing"}
+def test_missing_identity_non_blocking_generates_partial(monkeypatch):
+    """NUOVO contratto (review flusso deliverable): l'identità è personalizzazione, non un
+    dato diagnostico → NON blocca più con 409. Si genera un PARTIAL con un placeholder
+    DICHIARATO come assunzione (editabile), così 'utente ha confermato in chat' basta a
+    produrre il deliverable senza una seconda domanda (caso di regressione)."""
+    collected = {"boost_suggerito": "checkup_marketing",
+                 "extractedData": {"businessType": "ecommerce_arredamento"}}
     session = {"id": "sess-int-1", "user_id": None, "status": "paid", "collected_data": collected}
 
     async def fake_get_form(servizio_id):
         return {"campi": [{"id": "obiettivo", "obbligatorio": True, "label": "obiettivo"}]}
 
-    async def fake_create(**kw):
-        raise AssertionError("create NON deve partire senza identità")
+    created = {}
+
+    async def fake_create(*, service_id, inputs, entitlement_token, tier, auth_level, case_facts=None):
+        created["service_id"] = service_id
+        created["auth_level"] = auth_level
+        created["ragione_sociale"] = inputs.get("ragione_sociale")
+        created["intestazione_assunta"] = inputs.get("_intestazione_assunta")
+        return {"job_id": "job-partial-id", "status": "routed"}
 
     monkeypatch.setattr(d.sessions, "get_session", lambda sid: session)
     monkeypatch.setattr(d.sessions, "update_session", lambda sid, patch: {**session, **patch})
@@ -157,12 +166,13 @@ def test_missing_identity_named_in_needs_input(monkeypatch):
     # required presente, ma NESSUNA ragione sociale / descrizione → identità mancante
     monkeypatch.setattr(d.autofill, "extract_inputs", lambda *a, **k: {"obiettivo": "crescere"})
 
-    with pytest.raises(HTTPException) as ei:
-        asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
-    assert ei.value.status_code == 409
-    assert ei.value.detail.get("reason") == "needs_input"
-    assert "ragione_sociale" in ei.value.detail.get("missing", [])
-    assert "ragione sociale" in ei.value.detail.get("message", "").lower()
+    res = asyncio.run(d.auto_deliverable(d.AutoBody(session_id="sess-int-1"), BackgroundTasks(), user=None))
+    # NON 409: la generazione parte
+    assert res["job_id"] == "job-partial-id"
+    assert created["auth_level"] == "PARTIAL"
+    assert created["intestazione_assunta"] is True
+    # placeholder derivato dal businessType (non un dato inventato: assunzione etichettata)
+    assert created["ragione_sociale"] and created["ragione_sociale"].lower() != "acme srl"
 
 
 def test_required_fields_hint_injected_into_chat_prompt():
