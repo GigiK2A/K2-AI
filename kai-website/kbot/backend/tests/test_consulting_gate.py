@@ -26,7 +26,7 @@ except Exception:  # pragma: no cover
     _m.Client, _m.create_client = object, (lambda *a, **k: None)
     sys.modules["supabase"] = _m
 
-from app.lib import signals, catalog, report_gate  # noqa: E402
+from app.lib import signals, catalog, report_gate, finance_guard  # noqa: E402
 
 
 # ── scenario del test: diagnosi marketing/vendite, piena di "causa" ──────────────────────
@@ -184,3 +184,40 @@ def test_required_fields_hint_soppresso_durante_diagnosi():
     # senza gate (baseline) i campi verrebbero elencati → è ciò che si evita in diagnosi
     hint_base = readiness.required_fields_hint(campi, consulenza_ricca=False)
     assert "costo_personale" in hint_base
+
+
+# ── #1 Guardia numeri finanziari inventati (ROI/payback/% del fatturato) ─────────────────
+def test_finance_guard_softens_invented_numbers():
+    cases = [
+        "Il ROI sarà del 25%.",
+        "Il payback sarà di 3 anni.",
+        "I 500.000 euro rappresentano il 10-12% del fatturato.",
+        "Il ritorno sull'investimento atteso è del 20%.",
+        "L'investimento si ripaga in 2 anni.",
+    ]
+    for t in cases:
+        out = finance_guard.sanitize(t)
+        assert out != t, t
+        # niente più cifra percentuale/anni inventata come proiezione
+        assert "non è stimabile" in out or "non determinabile" in out
+
+
+def test_finance_guard_keeps_legit_numbers():
+    for t in ["Il prezzo di listino è 500 euro.",
+              "Hai dichiarato un fatturato di 2 milioni.",
+              "Servono 3 mesi per completare il progetto.",
+              "L'IVA è al 22%.",
+              "Abbiamo perso 2 clienti."]:
+        assert finance_guard.sanitize(t) == t, t
+
+
+# ── Prompt consolidato (review consolidamento) ───────────────────────────────────────────
+def test_prompt_consolidamento_ragionamento():
+    p = _prompt()
+    assert "PRIORITÀ ASSOLUTA" in p and "Non è possibile stimare" in p     # #1
+    assert "FATTI ≠ IPOTESI ≠ ASSUNZIONI" in p                            # #2
+    assert "METTI IN DISCUSSIONE IL FRAMING" in p                         # #4
+    assert "INCLUSO «NON FARE NULLA»" in p                                # #5
+    assert "SPIEGAZIONI ALTERNATIVE" in p and "confirmation-bias" in p    # #6
+    assert "CONCLUSIONI DECISIVE" in p                                    # #9
+    assert "COSA POTREBBE FARMI CAMBIARE" in p                            # #10
