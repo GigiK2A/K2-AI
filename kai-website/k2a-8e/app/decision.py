@@ -198,3 +198,343 @@ def finance_recommendations(inputs: dict, insights: list[dict]) -> list[dict]:
                            "mancherebbe la base dati.")]))
 
     return out
+
+
+# ── Opzioni e raccomandazioni per gli altri domini ────────────────────────────
+def _opt(opzione, descrizione, vantaggi, svantaggi, costi, rischi, tempi,
+         complessita, dipendenze, quando, evitare) -> dict:
+    return {"opzione": opzione, "descrizione": descrizione, "vantaggi": vantaggi,
+            "svantaggi": svantaggi, "costi": costi, "rischi": rischi, "tempi": tempi,
+            "complessita": complessita, "dipendenze": dipendenze,
+            "quando_sceglierla": quando, "quando_evitarla": evitare}
+
+
+def marketing_options(inputs: dict, insights: list[dict]) -> dict:
+    dep = _ins(insights, "mkt.dipendenza_canale")
+    dep_txt = f" (oggi {dep['valore']:.0f}%)" if dep else ""
+    return {"nota": "Nessuna piattaforma è prescritta: i nomi sono esempi da validare "
+                    "su dati e costi reali.",
+            "opzioni": [
+        _opt("A — Potenziare il canale diretto",
+             "Base clienti proprietaria, incentivi alla prenotazione/acquisto diretto, "
+             "email marketing sul parco esistente.",
+             ["Margine pieno (zero commissioni)", "Dati e relazione restano tuoi",
+              f"Riduce la dipendenza dal canale dominante{dep_txt}"],
+             ["Rende nel medio periodo, non domani", "Richiede contenuti e costanza"],
+             "Budget già stanziato + ore interne", "Risultati lenti se il brand è debole",
+             "3-6 mesi per i primi effetti", "media", "Sito/CRM adeguati",
+             "Quando esiste già un parco clienti da attivare (il caso tipico)",
+             "Se la capacità è già satura: prima si sistema l'operatività"),
+        _opt("B — Diversificare i canali intermediati",
+             "Aggiungere 1-2 canali alternativi al dominante e negoziare condizioni.",
+             ["Riduce il potere del canale singolo", "Attivabile in settimane"],
+             ["Le commissioni restano", "Più canali = più gestione operativa"],
+             "Commissioni per canale (da confrontare)", "Diluizione dello sforzo",
+             "4-8 settimane", "bassa-media", "Gestione disponibilità multi-canale",
+             "Quando la dipendenza supera il 50-60% e serve un riequilibrio rapido",
+             "Se la gestione multi-canale non è sostenibile con l'organico attuale"),
+        _opt("C — Investire in visibilità organica (SEO/contenuti)",
+             "Posizionamento sui termini di ricerca del proprio mercato locale.",
+             ["Effetto cumulativo che resta", "Costo marginale decrescente"],
+             ["6-12 mesi per vedere i frutti", "Richiede competenza dedicata"],
+             "Budget contenuti/SEO (da quotare)", "Risultati non garantiti su nicchie competitive",
+             "6-12 mesi", "media", "Sito tecnico a posto",
+             "In parallelo ad A, mai da sola: è un moltiplicatore, non un canale",
+             "Se serve cassa/domanda nel trimestre: i tempi non sono compatibili"),
+    ],
+            "conclusione_motivata":
+        "Sequenza raccomandata: A subito (attiva ciò che già possiedi), B in parallelo "
+        "se la dipendenza è critica, C come investimento continuativo. Perché non "
+        "l'inverso: B senza A sposta la dipendenza invece di ridurla; C da sola ha "
+        "tempi incompatibili con un problema di mix già acuto.",
+            "source": "system_calculated"}
+
+
+def hr_options(inputs: dict, insights: list[dict]) -> dict:
+    prod = _ins(insights, "org.fatturato_addetto")
+    prod_txt = (f" (oggi {prod['valore']:,.0f} €/addetto)".replace(",", ".")
+                if prod else "")
+    return {"nota": "Le tre leve non si escludono: si sequenziano.",
+            "opzioni": [
+        _opt("A — Recuperare capacità dall'organizzazione",
+             "Togliere lavoro non fatturabile (riunioni, rilavorazioni, doppi "
+             "passaggi) prima di aggiungere persone.",
+             [f"Aumenta la produttività{prod_txt} senza costi fissi",
+              "Effetto immediato sul carico percepito"],
+             ["Richiede il coraggio di eliminare abitudini", "Beneficio difficile da "
+              "attribuire (nessuno 'inaugura' il tempo recuperato)"],
+             "Ore di analisi interna", "Resistenza al cambiamento", "4-8 settimane",
+             "bassa", "Misurazione del carico per persona",
+             "SEMPRE per prima: assumere sopra un processo inefficiente moltiplica "
+             "l'inefficienza", "Mai — al massimo insieme a B"),
+        _opt("B — Assumere in modo mirato",
+             "Nuovo organico sul collo di bottiglia specifico, non 'in generale'.",
+             ["Capacità vera e durevole", "Segnale di crescita al team"],
+             ["Costo fisso che resta", "3-6 mesi tra ricerca e piena produttività"],
+             "RAL + oneri (dimensionare sul fatturato per addetto)", 
+             "Assumere sul ruolo sbagliato: il collo di bottiglia va identificato prima",
+             "3-6 mesi", "media", "Chiarezza sul ruolo davvero mancante",
+             "Quando A è fatta e i numeri di produttività la sostengono",
+             "Sotto pressione di cassa o senza aver misurato dove serve"),
+        _opt("C — Esternalizzare il non-core",
+             "Portare fuori attività standardizzabili (amministrazione, IT, payroll).",
+             ["Trasforma costo fisso in variabile", "Libera ore interne subito"],
+             ["Dipendenza dal fornitore", "Know-how che esce"],
+             "Canone servizio (confrontare ≥2 preventivi)", "Qualità da presidiare",
+             "4-8 settimane", "bassa-media", "Contratto di servizio chiaro",
+             "Per attività ripetitive lontane dal valore distintivo",
+             "Per ciò che tocca il cliente o il know-how distintivo"),
+    ],
+            "conclusione_motivata":
+        "Ordine raccomandato: A → C → B. Perché: ogni assunzione fatta prima di "
+        "recuperare capacità organizzativa compra inefficienza; l'esternalizzazione "
+        "del non-core libera spazio e rende visibile il VERO collo di bottiglia, "
+        "che a quel punto giustifica (o no) l'assunzione coi numeri.",
+            "source": "system_calculated"}
+
+
+def legal_options(inputs: dict, insights: list[dict]) -> dict:
+    n_rischi = sum(1 for i in insights if i.get("tipo") == "rischio")
+    return {"nota": "Le opzioni riguardano il COME presidiare, non il se: i gap "
+                    f"rilevati ({n_rischi}) esistono comunque.",
+            "opzioni": [
+        _opt("A — Adeguamento una tantum con riuso",
+             "Un intervento legale concentrato: set contrattuale standard, informative, "
+             "registro trattamenti — poi si riusa su ogni rapporto.",
+             ["Costo definito e limitato nel tempo", "Copre i gap più esposti subito"],
+             ["Fotografia: invecchia se non aggiornata", "Non copre i casi nuovi"],
+             "Intervento professionale una tantum (da quotare)", 
+             "Falsa sicurezza se poi non si usa davvero", "4-8 settimane", "bassa",
+             "Un legale che conosca il settore",
+             "Quando i gap sono strutturali e ben identificati (questo caso)",
+             "Se l'attività cambia continuamente perimetro: serve presidio, non foto"),
+        _opt("B — Presidio continuativo leggero",
+             "Un riferimento legale a canone contenuto: revisioni periodiche, "
+             "aggiornamento normativo, supporto sui contratti nuovi.",
+             ["Copertura che segue l'evoluzione (AI Act, GDPR)", "Risposte rapide"],
+             ["Costo ricorrente", "Rischio di sovra-servizio se l'attività è stabile"],
+             "Canone mensile/trimestrale (da quotare)", "Scegliere il partner sbagliato",
+             "continuativo", "bassa", "Selezione accurata del professionista",
+             "Quando si usano dati/AI o si opera all'estero: il perimetro si muove",
+             "Se i gap base non sono ancora chiusi: prima A"),
+        _opt("C — Solo reazione (status quo consapevole)",
+             "Nessun investimento preventivo: si interviene quando serve.",
+             ["Zero costi oggi"],
+             ["Il primo contenzioso costa multipli della prevenzione",
+              "Potere negoziale sempre in mano alla controparte"],
+             "Zero oggi, imprevedibile domani", "Concentra il rischio sugli eventi peggiori",
+             "—", "nulla", "Nessuna",
+             "Mai come scelta: solo come constatazione temporanea",
+             "Sempre, appena c'è un rapporto economico rilevante in piedi"),
+    ],
+            "conclusione_motivata":
+        "Raccomandata A subito, con passaggio a B se l'azienda tratta dati con AI o "
+        "opera all'estero (il perimetro normativo lì si muove ogni anno). C non è "
+        "un'opzione: è la descrizione del rischio attuale.",
+            "source": "system_calculated"}
+
+
+def strategy_options(inputs: dict, insights: list[dict]) -> dict:
+    delta = _ins(insights, "strat.delta_margine_canali")
+    delta_txt = (f" (delta margine {delta['valore']:.0f}pp misurato sui tuoi dati)"
+                 if delta else "")
+    return {"nota": "Le opzioni sono modelli di ingresso: la scelta finale richiede "
+                    "la verifica dei vincoli contrattuali e fiscali del mercato target.",
+            "opzioni": [
+        _opt("A — Canale diretto (e-commerce/vendita diretta)",
+             "Espansione a controllo pieno: brand, prezzi e clienti restano tuoi.",
+             [f"Margine più alto{delta_txt}", "Dati clienti proprietari",
+              "Apprendimento diretto del mercato"],
+             ["Investimento iniziale maggiore", "Curva lenta: logistica, marketing, "
+              "assistenza da costruire"],
+             "Budget marketing+logistica dedicato", "Sottostimare i costi di acquisizione",
+             "6-18 mesi", "alta", "Capacità logistica e di marketing locale",
+             "Quando il margine differenziale ripaga l'investimento e c'è pazienza "
+             "finanziaria", "Con budget sottile o urgenza di volumi: i tempi non perdonano"),
+        _opt("B — Distributore/partner locale",
+             "Il partner compra e rivende: volumi rapidi, margine condiviso.",
+             ["Ingresso rapido con rischio contenuto", "Il partner conosce il mercato"],
+             ["Margine ceduto strutturalmente", "Il cliente finale è del partner",
+              "Dipendenza dalle sue priorità"],
+             "Sconto canale (il 'costo' è il margine ceduto)", 
+             "Scegliere il partner sbagliato: uscirne costa anni",
+             "2-4 mesi", "media", "Contratto di distribuzione ben scritto (esclusive!)",
+             "Per testare un mercato nuovo minimizzando l'investimento",
+             "Quando l'obiettivo è costruire il brand: il distributore costruisce il suo"),
+        _opt("C — Modello misto per fasi",
+             "Partire col partner per validare la domanda, costruire il diretto sul "
+             "segmento a margine alto.",
+             ["Rischio scaglionato", "Ogni fase informa la successiva",
+              "Evita il tutto-o-niente"],
+             ["Richiede una governance chiara del confine tra canali",
+              "Possibile conflitto col partner sul lungo periodo"],
+             "Combinazione di A e B, scaglionata", "Conflitto di canale se i confini "
+             "non sono contrattualizzati", "6-12 mesi", "media-alta",
+             "Clausole chiare su segmenti/territori di ciascun canale",
+             "Quando i dati per scegliere tra A e B non bastano ancora (caso frequente)",
+             "Se il mercato è piccolo: due canali si cannibalizzano"),
+    ],
+            "conclusione_motivata":
+        "Con un delta margine significativo tra canali la C è tipicamente la scelta "
+        "robusta: valida la domanda col partner (B) senza rinunciare a costruire il "
+        "canale ricco (A) dove il margine lo giustifica. Perché non A o B secche: "
+        "A scommette tutto sui tempi lunghi, B regala strutturalmente il margine — "
+        "il misto compra informazione con la prima fase e la usa nella seconda.",
+            "source": "system_calculated"}
+
+
+def ops_recommendations(inputs: dict, insights: list[dict]) -> list[dict]:
+    rit = _ins(insights, "ops.pct_ritardo")
+    util = _ins(insights, "ops.utilizzo")
+    out = []
+    if rit:
+        out.append(recommend(
+            "rec.stati_owner", "Stati standard e owner unico su ogni commessa",
+            perche=f"Il {rit['valore']:.0f}% delle commesse è in ritardo e nessuno "
+                   "stato condiviso rende visibile il problema prima dell'urgenza.",
+            perche_ora="Ogni settimana senza stati standard è una settimana di "
+                       "diagnosi impossibile: non si gestisce ciò che non si vede.",
+            perche_questa="È la base di ogni altro intervento: dashboard, SLA e "
+                          "riunioni a eccezioni presuppongono stati affidabili.",
+            perche_non_altre="Un nuovo gestionale sopra processi non standard "
+                             "digitalizza il caos; assumere PM aggiunge braccia al "
+                             "problema, non metodo.",
+            chi="Responsabile operativo (definisce), tutti i PM (applicano)",
+            quando="Definizione entro 2 settimane, adozione entro 4",
+            con_quali_dati="Elenco commesse attive con stato attuale (export gestionale)",
+            cadenza="Aggiornamento stati: settimanale obbligatorio",
+            validazione="Audit a campione dopo 30 giorni: stati reali vs dichiarati",
+            kpi_generati=["% commesse in ritardo", "% bloccate", "età media per stato"],
+            decisore="Direzione",
+            soglie=[soglia("aggiornamento settimanale", "best_practice"),
+                    soglia("obiettivo % ritardi", "ipotesi",
+                           "Da fissare dopo 30 giorni di misurazione affidabile.")]))
+    if util:
+        out.append(recommend(
+            "rec.utilizzo", "Misurare l'utilizzo fatturabile per persona",
+            perche=f"Solo il {util['valore']:.0f}% delle ore lavorate fattura: il "
+                   "resto è invisibile finché non lo si misura.",
+            perche_ora="È la leva economica più rapida: recuperare 5 punti di utilizzo "
+                       "vale più di un nuovo cliente, e non costa acquisizione.",
+            perche_questa="Rende oggettiva la conversazione su carichi e priorità.",
+            perche_non_altre="Tagliare i costi riduce la capacità; aumentare i prezzi "
+                             "senza efficienza sposta il problema sul commerciale.",
+            chi="Ogni PM per il suo team; consolidamento del responsabile operativo",
+            quando="Prima misurazione entro 2 settimane",
+            con_quali_dati="Ore per commessa dal gestionale/timesheet",
+            cadenza="Mensile",
+            validazione="Confronto trimestrale utilizzo vs marginalità reale",
+            kpi_generati=["Utilizzo % per persona", "Ore non fatturabili per causale"],
+            decisore="Responsabile operativo",
+            soglie=[soglia("utilizzo obiettivo", "ipotesi",
+                           "Dipende dal modello di business: fissarlo sui dati dei "
+                           "primi 60 giorni, non su benchmark astratti.")]))
+    return out
+
+
+def marketing_recommendations(inputs: dict, insights: list[dict]) -> list[dict]:
+    dep = _ins(insights, "mkt.dipendenza_canale")
+    out = []
+    if dep:
+        out.append(recommend(
+            "rec.mix_canali", "Misurare e riequilibrare il mix di canali",
+            perche=f"Il {dep['valore']:.0f}% della domanda dipende da un canale che "
+                   "detta commissioni e regole.",
+            perche_ora="La dipendenza si riduce solo per gradi: ogni mese di rinvio "
+                       "allunga i tempi di un mese.",
+            perche_questa="Il mix è misurabile e attaccabile subito coi clienti già "
+                          "acquisiti (costo minimo).",
+            perche_non_altre="Negoziare col canale dominante senza alternative è "
+                             "chiedere per favore; abbandonarlo di colpo è un salto "
+                             "nel vuoto sui volumi.",
+            chi="Titolare/marketing con supporto operativo",
+            quando="Baseline del mix entro 2 settimane",
+            con_quali_dati="Origine di ogni prenotazione/ordine degli ultimi 12 mesi",
+            cadenza="Revisione mensile del mix",
+            validazione="Quota canale diretto: trend su 3 mesi",
+            kpi_generati=["% per canale", "Costo di acquisizione per canale",
+                          "Tasso di ritorno diretto dei clienti"],
+            decisore="Titolare",
+            soglie=[soglia("obiettivo −10 punti di dipendenza in 12 mesi",
+                           "proposta_iniziale",
+                           "Proposta da validare sulla capacità operativa reale.")]))
+    return out
+
+
+def hr_recommendations(inputs: dict, insights: list[dict]) -> list[dict]:
+    prod = _ins(insights, "org.fatturato_addetto")
+    out = []
+    if prod:
+        out.append(recommend(
+            "rec.produttivita", "Decidere l'organico sui numeri di produttività",
+            perche=f"La produttività attuale ({prod['valore']:,.0f} €/addetto) è il "
+                   .replace(",", ".") + "tetto della crescita a organico invariato.",
+            perche_ora="Le decisioni di organico prese 'a sensazione' si scoprono "
+                       "sbagliate dopo 6 mesi, quando costano il doppio.",
+            perche_questa="Un numero condiviso trasforma le discussioni su assunzioni "
+                          "e carichi da opinioni a decisioni.",
+            perche_non_altre="Benchmark di settore senza i propri numeri portano a "
+                             "copiare aziende diverse dalla propria.",
+            chi="Titolare con amministrazione",
+            quando="Baseline entro 1 settimana (i dati ci sono già)",
+            con_quali_dati="Fatturato, organico FTE, costi per persona",
+            cadenza="Trimestrale",
+            validazione="Ogni assunzione motivata da collo di bottiglia misurato",
+            kpi_generati=["Fatturato/addetto", "Costo struttura/addetto",
+                          "Carico ore per persona"],
+            decisore="Titolare",
+            soglie=[soglia("produttività obiettivo", "ipotesi",
+                           "Da fissare sul trend interno, non su medie di settore.")]))
+    return out
+
+
+def legal_recommendations(inputs: dict, insights: list[dict]) -> list[dict]:
+    rischi = [i for i in insights if i.get("tipo") == "rischio"]
+    if not rischi:
+        return []
+    alta = [r for r in rischi if r.get("gravita") == "alta"]
+    primo = (alta or rischi)[0]
+    return [recommend(
+        "rec.gap_legali", "Chiudere i gap legali in ordine di esposizione",
+        perche=f"I gap dichiarati sono {len(rischi)}; il più esposto: "
+               f"{primo['titolo']}.",
+        perche_ora="Il costo della prevenzione è certo e piccolo; quello del primo "
+                   "incidente è incerto e grande — l'asimmetria peggiora col tempo.",
+        perche_questa="Ordina gli interventi per esposizione reale (dichiarata dal "
+                      "cliente), non per catalogo.",
+        perche_non_altre="Un adeguamento 'completo' generico costa di più e rimanda "
+                         "ciò che è davvero urgente.",
+        chi="Titolare + legale di fiducia (selezione se assente)",
+        quando="Priorità alta entro 30 giorni, resto entro 90",
+        con_quali_dati="L'elenco dei gap di questo report + contratti esistenti",
+        cadenza="Revisione annuale del perimetro",
+        validazione="Checklist di chiusura per ogni gap, con data",
+        kpi_generati=["Gap aperti/chiusi", "Rapporti coperti da contratto standard"],
+        decisore="Titolare",
+        soglie=[soglia("priorità alta entro 30 giorni", "proposta_iniziale",
+                       "Cadenza proposta: adattarla alla disponibilità del legale.")])]
+
+
+def strategy_recommendations(inputs: dict, insights: list[dict]) -> list[dict]:
+    delta = _ins(insights, "strat.delta_margine_canali")
+    out = []
+    if delta:
+        out.append(recommend(
+            "rec.mix_margine", "Governare il mix di canali col margine, non coi volumi",
+            perche=f"Tra i canali ballano {delta['valore']:.0f} punti di margine "
+                   "misurati sui tuoi dati: il mix È la decisione economica.",
+            perche_ora="Ogni contratto di canale firmato ora vincola il mix per anni: "
+                       "meglio deciderlo prima di firmare che dopo.",
+            perche_questa="Porta la strategia su una metrica misurabile ogni mese.",
+            perche_non_altre="Decidere sui volumi premia il canale sbagliato: il "
+                             "fatturato cresce e l'utile no.",
+            chi="Titolare; amministrazione per la misura del margine per canale",
+            quando="Mix obiettivo definito PRIMA del prossimo contratto di canale",
+            con_quali_dati="Margine per canale (già dichiarato), volumi per canale",
+            cadenza="Mensile",
+            validazione="Scostamento mix reale vs obiettivo, trimestrale",
+            kpi_generati=["Mix % per canale", "Margine medio ponderato"],
+            decisore="Titolare",
+            soglie=[soglia("mix obiettivo", "proposta_iniziale",
+                           "Da fissare col vincolo dei contratti esistenti.")]))
+    return out

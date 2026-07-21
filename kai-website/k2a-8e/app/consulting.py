@@ -106,22 +106,54 @@ def _free_text(inputs: dict) -> str:
     return " \n".join(parts)
 
 
+_MARKETING_HINTS = ("ota", "booking", "canali", "canale", "marketing", "visibilit",
+                    "prenotazion", "seo", "social", "sito web", "acquisizione clienti")
+_HR_HINTS = ("personale", "turnover", "dimission", "assunzion", "formazione",
+             "collaborator", "persone", "team ", "risorse umane", "carico di lavoro")
+_LEGAL_HINTS = ("contratt", "gdpr", "privacy", "marchio", "contenzios", "legale",
+                "231", "compliance", "clausol", "responsabilit")
+_STRATEGY_HINTS = ("espansione", "estero", "export", "crescita", "strategi",
+                   "competitor", "distributore", "marketplace", "nuovo mercato",
+                   "posizionamento")
+
+
 def classify_problem(inputs: dict, skill: str = "") -> Optional[str]:
-    """Tipo di problema dal testo/dati forniti. Riconosce 'operations_commesse' e
-    'finanza_liquidita'; None = nessun pacchetto extra (il report resta com'è)."""
+    """Tipo di problema dal testo/dati forniti. Domini: finanza_liquidita,
+    operations_commesse, legale_compliance, strategia_crescita, marketing_canali,
+    hr_persone. None = nessun pacchetto extra (il report resta com'è)."""
+    from .insight import LEGAL_FLAGS, Facts
     text = _free_text(inputs).lower()
-    ops_hits = sum(1 for h in _OPERATIONS_HINTS if h in text) if text else 0
-    fin_hits = sum(1 for h in _FINANCE_HINTS if h in text) if text else 0
-    # segnali strutturati contano quanto il testo: dati di tesoreria forniti = caso finance
-    from .insight import Facts
     facts = Facts(inputs)
+
+    def hits(hints) -> int:
+        return sum(1 for h in hints if h in text) if text else 0
+
+    scores = {
+        "finanza_liquidita": hits(_FINANCE_HINTS),
+        "operations_commesse": hits(_OPERATIONS_HINTS),
+        "legale_compliance": hits(_LEGAL_HINTS),
+        "strategia_crescita": hits(_STRATEGY_HINTS),
+        "marketing_canali": hits(_MARKETING_HINTS),
+        "hr_persone": hits(_HR_HINTS),
+    }
+    # Segnali strutturati: i dati forniti pesano quanto il racconto.
     if facts.has("incassi_mese", "uscite_mese") or facts.has("scoperto"):
-        fin_hits += 2
-    if fin_hits >= 2 and fin_hits >= ops_hits:
-        return "finanza_liquidita"
-    if ops_hits >= 2:
-        return "operations_commesse"
-    return None
+        scores["finanza_liquidita"] += 2
+    if facts.has("progetti_in_corso", "progetti_in_ritardo"):
+        scores["operations_commesse"] += 2
+    if any(k in (inputs or {}) for k in LEGAL_FLAGS):
+        scores["legale_compliance"] += 2
+    if facts.has("margine_canale_diretto", "margine_distributore") or \
+            facts.has("budget_espansione"):
+        scores["strategia_crescita"] += 2
+    if facts.has("dipendenza_canale"):
+        scores["marketing_canali"] += 2
+
+    # priorità stabile a parità di punteggio
+    ordine = ("finanza_liquidita", "operations_commesse", "legale_compliance",
+              "strategia_crescita", "marketing_canali", "hr_persone")
+    best = max(ordine, key=lambda k: (scores[k], -ordine.index(k)))
+    return best if scores[best] >= 2 else None
 
 
 # ── Estrazione AS-IS dai soli dati forniti ────────────────────────────────────
@@ -386,11 +418,103 @@ def build_finance_pack(inputs: dict, deliverable: dict) -> dict:
     return pack
 
 
+def _value_sections_generic(insights: list[dict]) -> dict:
+    """Sezioni §13 minime dedotte dagli insight-rischio (per i domini senza
+    regole di valore dedicate). Niente dati → sezioni vuote, mai testo riempitivo."""
+    errori, decisioni, domande = [], [], []
+    for i in insights:
+        if i.get("tipo") != "rischio":
+            continue
+        errori.append(f"Convivere con: {i['titolo'].lower()} "
+                      f"({NORM.to_text(i.get('valore'))}{i.get('unita') or ''}) — "
+                      "il costo è silenzioso ma composto.")
+        if i.get("gravita") == "alta":
+            decisioni.append(f"Decidere l'owner e la prima azione su: {i['titolo'].lower()}.")
+        domande.append(f"Da quanto tempo {i['titolo'].lower()} è a questo livello, "
+                       "e chi lo sta guardando?")
+    return {"errori_probabili": errori[:5], "decisioni_entro_7_giorni": decisioni[:5],
+            "domande_per_il_management": domande[:5]}
+
+
+def _engine_pack(tipo: str, inputs: dict, derive_fn, chains_fn, whatif_fn,
+                 options_fn, recs_fn, dati_da_raccogliere: list[str]) -> dict:
+    """Assemblaggio standard di un pacchetto dominio dai 4 motori (chiavi comuni
+    → il renderer funziona invariato per ogni dominio)."""
+    from . import insight as _insight
+
+    insights, facts = derive_fn(inputs)
+    pack: dict[str, Any] = {
+        "_tipo": tipo,
+        "insight_derivati": insights,
+        "analisi_sistemica": chains_fn(insights, inputs),
+        "confronto_soluzioni": options_fn(inputs, insights),
+        "raccomandazioni_operative": recs_fn(inputs, insights),
+        "copertura_dati": _insight.coverage_report(facts),
+        **_value_sections_generic(insights),
+        "dati_da_raccogliere": dati_da_raccogliere,
+    }
+    sims = whatif_fn(inputs)
+    if sims:
+        pack["simulazioni"] = sims
+    return pack
+
+
 def build_pack(skill: str, inputs: dict, deliverable: dict) -> Optional[dict]:
     """Entry point del planner: pacchetto consulenziale se il caso lo richiede."""
+    from . import decision, insight, reasoning, scenario
+
     problem = classify_problem(inputs, skill)
     if problem == "operations_commesse":
-        return build_operations_pack(inputs, deliverable)
+        pack = build_operations_pack(inputs, deliverable)
+        # Upgrade coi motori: insight quantitativi, catene, simulazioni, 4-perché.
+        engine = _engine_pack(
+            "operations_commesse", inputs,
+            insight.derive_ops_insights, reasoning.build_ops_chains,
+            scenario.what_if_ops,
+            lambda i, s: {},                      # le opzioni tech sono già nel pack
+            decision.ops_recommendations,
+            pack.get("dati_da_raccogliere") or [])
+        for key in ("insight_derivati", "analisi_sistemica", "simulazioni",
+                    "raccomandazioni_operative", "copertura_dati"):
+            if engine.get(key):
+                pack[key] = engine[key]
+        return pack
     if problem == "finanza_liquidita":
         return build_finance_pack(inputs, deliverable)
+    if problem == "marketing_canali":
+        return _engine_pack(
+            "marketing_canali", inputs,
+            insight.derive_marketing_insights, reasoning.build_marketing_chains,
+            scenario.what_if_marketing, decision.marketing_options,
+            decision.marketing_recommendations,
+            ["Origine di ogni prenotazione/ordine degli ultimi 12 mesi",
+             "Costo e resa per canale (commissioni incluse)",
+             "Base contatti proprietaria: dimensione e stato"])
+    if problem == "hr_persone":
+        return _engine_pack(
+            "hr_persone", inputs,
+            insight.derive_hr_insights, reasoning.build_hr_chains,
+            scenario.what_if_hr, decision.hr_options,
+            decision.hr_recommendations,
+            ["Organico FTE per ruolo e anzianità",
+             "Uscite/ingressi ultimi 24 mesi (turnover reale)",
+             "Ore per persona per tipo di attività (fatturabile/non)"])
+    if problem == "legale_compliance":
+        return _engine_pack(
+            "legale_compliance", inputs,
+            insight.derive_legal_insights, reasoning.build_legal_chains,
+            lambda _inputs: [],                    # niente simulazioni numeriche sul legale
+            decision.legal_options, decision.legal_recommendations,
+            ["Contratti attivi (elenco e copia) per la revisione",
+             "Mappa dei trattamenti dati esistente, se presente",
+             "Eventuali contestazioni/diffide degli ultimi 3 anni"])
+    if problem == "strategia_crescita":
+        return _engine_pack(
+            "strategia_crescita", inputs,
+            insight.derive_strategy_insights, reasoning.build_strategy_chains,
+            scenario.what_if_strategy, decision.strategy_options,
+            decision.strategy_recommendations,
+            ["Margine effettivo per canale (contabilità analitica)",
+             "Vincoli dei contratti di distribuzione esistenti",
+             "Dati di domanda del mercato target (fonti da citare)"])
     return None

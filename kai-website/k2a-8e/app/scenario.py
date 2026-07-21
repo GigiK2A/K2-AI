@@ -137,3 +137,123 @@ def what_if(inputs: dict) -> list[dict]:
         })
 
     return sims
+
+
+def what_if_ops(inputs: dict) -> list[dict]:
+    """Simulazioni operations in unità NATIVE (ore, commesse, %): niente euro inventati."""
+    f = Facts(inputs)
+    sims: list[dict] = []
+    tot, rit = f.get("progetti_in_corso"), f.get("progetti_in_ritardo")
+    lav, fatb = f.get("ore_lavorate"), f.get("ore_fatturabili")
+
+    if tot and rit is not None and tot > 0:
+        nuovo = round((rit * 1.5) / tot * 100, 1)
+        sims.append({
+            "domanda": "Cosa succede se le commesse in ritardo aumentano del 50%?",
+            "risultato": f"il ritardo passa al {nuovo}% del portafoglio",
+            "calcolo": f"({rit:.0f} × 1,5) / {tot:.0f}",
+            "dati_usati": ["progetti_in_corso", "progetti_in_ritardo"],
+            "implicazione": "Oltre questa soglia le urgenze dettano l'agenda: la "
+                            "pianificazione diventa rincorsa. Il registro blocchi va "
+                            "attivato PRIMA di arrivarci.",
+            "source": "system_calculated"})
+    if lav and fatb is not None and lav > 0:
+        perse = round(lav * 0.05, 0)
+        util = fatb / lav * 100
+        sims.append({
+            "domanda": "Cosa succede se l'utilizzo fatturabile cala di 5 punti?",
+            "risultato": f"~{perse:,.0f} ore/periodo in più non fatturano "
+                         f"(utilizzo dal {util:.0f}% al {util - 5:.0f}%)".replace(",", "."),
+            "calcolo": "ore_lavorate × 5%",
+            "dati_usati": ["ore_lavorate", "ore_fatturabili"],
+            "implicazione": "È l'equivalente di perdere una persona part-time senza "
+                            "che nessuno se ne accorga: l'utilizzo va misurato ogni mese.",
+            "source": "system_calculated"})
+    return sims
+
+
+def what_if_marketing(inputs: dict) -> list[dict]:
+    f = Facts(inputs)
+    sims: list[dict] = []
+    dep = f.get("dipendenza_canale")
+    if dep is not None:
+        sims.append({
+            "domanda": "Cosa succede se il canale principale riduce la visibilità del 20%?",
+            "risultato": f"a rischio fino al {round(dep * 0.2, 0):.0f}% della domanda totale",
+            "calcolo": f"dipendenza {dep:.0f}% × 20%",
+            "dati_usati": ["dipendenza_canale"],
+            "implicazione": "Un cambio di algoritmo o di commissioni non si negozia: "
+                            "si subisce. L'unica difesa è il mix di canali costruito prima.",
+            "source": "system_calculated"})
+        sims.append({
+            "domanda": "Cosa succede spostando 10 punti di mix sul canale diretto in 12 mesi?",
+            "risultato": f"la dipendenza scende dal {dep:.0f}% al {dep - 10:.0f}%",
+            "calcolo": f"{dep:.0f}% − 10 punti",
+            "dati_usati": ["dipendenza_canale"],
+            "implicazione": "Obiettivo realistico con incentivi al canale diretto e base "
+                            "clienti proprietaria: misurarlo ogni mese, non a fine anno.",
+            "source": "system_calculated"})
+    return sims
+
+
+def what_if_hr(inputs: dict) -> list[dict]:
+    f = Facts(inputs)
+    sims: list[dict] = []
+    fat, dip = f.get("fatturato_annuo"), f.get("dipendenti")
+    if fat and dip and dip > 0:
+        per_addetto = fat / dip
+        sims.append({
+            "domanda": "Cosa succede se si perdono 2 persone chiave in 6 mesi?",
+            "risultato": f"~{round(per_addetto * 2, 0):,.0f} € di fatturato/anno da "
+                         "ricoprire, più i tempi di sostituzione".replace(",", "."),
+            "calcolo": f"fatturato per addetto × 2 = {per_addetto:,.0f} × 2",
+            "dati_usati": ["fatturato_annuo", "dipendenti"],
+            "implicazione": "Con un organico piccolo ogni uscita è strutturale, non "
+                            "statistica: la retention dei ruoli chiave È gestione del rischio.",
+            "source": "system_calculated"})
+        sims.append({
+            "domanda": "Cosa succede assumendo 1 persona a produttività invariata?",
+            "risultato": f"servono ~{round(per_addetto, 0):,.0f} € di nuovo fatturato "
+                         "per mantenere la produttività attuale".replace(",", "."),
+            "calcolo": f"fatturato per addetto attuale = {per_addetto:,.0f}",
+            "dati_usati": ["fatturato_annuo", "dipendenti"],
+            "implicazione": "Assumere prima del fatturato è un investimento, dopo è una "
+                            "conseguenza: basta saperlo quando si firma.",
+            "source": "system_calculated"})
+    return sims
+
+
+def what_if_strategy(inputs: dict) -> list[dict]:
+    f = Facts(inputs)
+    sims: list[dict] = []
+    md, mdist = f.get("margine_canale_diretto"), f.get("margine_distributore")
+    fat = f.get("fatturato_annuo")
+    if md is not None and mdist is not None and fat:
+        delta_eur = round(fat * 0.10 * (md - mdist) / 100, 0)
+        sims.append({
+            "domanda": "Cosa succede spostando il 10% del fatturato sul canale diretto?",
+            "risultato": f"~{delta_eur:,.0f} €/anno di margine in più a parità di "
+                         "volumi".replace(",", "."),
+            "calcolo": f"fatturato × 10% × (margine diretto − distributore) "
+                       f"= {fat:,.0f} × 10% × {md - mdist:.0f}pp",
+            "dati_usati": ["fatturato_annuo", "margine_canale_diretto",
+                           "margine_distributore"],
+            "implicazione": "Il mix di canale è una leva di margine grande quanto una "
+                            "rinegoziazione prezzi — ma senza toccare il listino.",
+            "source": "system_calculated"})
+    b = f.get("budget_espansione")
+    mol = f.get("mol_pct")
+    if b and fat and mol is not None:
+        recupero = round(b / (fat * mol / 100) * 12, 0) if fat * mol > 0 else None
+        if recupero:
+            sims.append({
+                "domanda": "In quanto tempo il MOL attuale ripaga il budget di espansione?",
+                "risultato": f"~{recupero:.0f} mesi di MOL a livelli correnti",
+                "calcolo": f"budget / (fatturato × MOL%) × 12 = {b:,.0f} / "
+                           f"({fat:,.0f} × {mol:.0f}%)",
+                "dati_usati": ["budget_espansione", "fatturato_annuo", "mol_pct"],
+                "implicazione": "Misura la pazienza che il piano richiede: se il "
+                                "rientro atteso è più lungo, il budget è sottodimensionato "
+                                "o l'ambizione va scalata.",
+                "source": "system_calculated"})
+    return sims

@@ -39,7 +39,34 @@ _ALIASES: dict[str, tuple[str, ...]] = {
     "dpo": ("dpo", "dpo_giorni", "giorni_pagamento"),
     "crediti_clienti": ("crediti_clienti", "crediti", "crediti_commerciali"),
     "costi_operativi": ("costi_operativi", "costi_mese", "costi"),
+    # operations (cruscotto/ControlBoost)
+    "progetti_in_corso": ("progetti_in_corso", "commesse_attive", "commesse_in_corso"),
+    "progetti_in_ritardo": ("progetti_in_ritardo", "commesse_in_ritardo"),
+    "ore_lavorate": ("ore_lavorate",),
+    "ore_fatturabili": ("ore_fatturabili",),
+    "clienti_attivi": ("clienti_attivi",),
+    "clienti_persi": ("clienti_persi",),
+    "clienti_nuovi": ("clienti_nuovi", "nuovi_clienti"),
+    "scarti_resi_reclami": ("scarti_resi_reclami", "reclami", "non_conformita"),
+    "concentrazione_top5": ("concentrazione_top5", "concentrazione_top5_pct"),
+    # marketing / canali
+    "dipendenza_canale": ("ota_dependency_pct", "dipendenza_canale_pct",
+                          "quota_canale_principale"),
+    "budget_marketing": ("budget_mensile_eur", "budget_marketing", "budget_marketing_mese"),
+    # strategia / crescita
+    "margine_canale_diretto": ("margine_ecommerce_pct", "margine_diretto_pct"),
+    "margine_distributore": ("margine_distributore_pct",),
+    "budget_espansione": ("budget_espansione_eur",),
+    "mol_pct": ("mol_medio_pct", "ebitda_pct", "mol_pct"),
 }
+
+# Alias per uscite: anche 'pagamenti' (cruscotto) e organico da 'dimensione_organico'.
+_ALIASES["uscite_mese"] = _ALIASES["uscite_mese"] + ("pagamenti",)
+_ALIASES["dipendenti"] = _ALIASES["dipendenti"] + ("dimensione_organico", "n_dipendenti")
+
+# Boolean di compliance (LegalBoost): letti così come sono, non numerici.
+LEGAL_FLAGS = ("tratta_dati_personali", "ha_contratti_standard", "ha_modello_231",
+               "ha_marchio", "usa_ai_profilazione", "opera_estero", "ha_sito_ecommerce")
 
 # Campi che, se forniti, DEVONO essere usati da almeno un'analisi.
 IMPORTANT_FIELDS = tuple(_ALIASES.keys())
@@ -231,3 +258,269 @@ def coverage_report(facts: Facts) -> dict:
         "dati_non_sfruttati": unused,
         "copertura_pct": round(len(facts.used) / len(provided) * 100, 0) if provided else 100.0,
     }
+
+
+# ── Operations / commesse ─────────────────────────────────────────────────────
+def derive_ops_insights(inputs: dict) -> tuple[list[dict], Facts]:
+    f = Facts(inputs)
+    out: list[dict] = []
+
+    if f.has("progetti_in_corso", "progetti_in_ritardo"):
+        tot, rit = f.get("progetti_in_corso"), f.get("progetti_in_ritardo")
+        if tot > 0:
+            pct = round(rit / tot * 100, 1)
+            out.append(_ins(
+                "ops.pct_ritardo", "Commesse in ritardo", pct, "%",
+                f"in_ritardo / in_corso = {rit:.0f} / {tot:.0f}",
+                ("progetti_in_corso", "progetti_in_ritardo"),
+                "Ogni commessa in ritardo occupa capacità che non fattura e rimanda "
+                "l'incasso: il ritardo operativo diventa problema di cassa.",
+                tipo="rischio", gravita="alta" if pct >= 20 else "media"))
+
+    if f.has("ore_lavorate", "ore_fatturabili"):
+        lav, fat = f.get("ore_lavorate"), f.get("ore_fatturabili")
+        if lav > 0:
+            util = round(fat / lav * 100, 1)
+            out.append(_ins(
+                "ops.utilizzo", "Utilizzo fatturabile della capacità", util, "%",
+                f"ore_fatturabili / ore_lavorate = {fat:.0f} / {lav:.0f}",
+                ("ore_lavorate", "ore_fatturabili"),
+                f"Il {100 - util:.0f}% delle ore lavorate non produce fatturato: lì "
+                "dentro ci sono riunioni, rilavorazioni e gestione dei blocchi — è il "
+                "costo nascosto della disorganizzazione.",
+                tipo="rischio" if util < 70 else "insight",
+                gravita="alta" if util < 60 else ("media" if util < 70 else None)))
+
+    if f.has("clienti_attivi", "clienti_persi"):
+        att, persi = f.get("clienti_attivi"), f.get("clienti_persi")
+        if att > 0:
+            churn = round(persi / att * 100, 1)
+            out.append(_ins(
+                "ops.churn", "Clienti persi sul parco attivo", churn, "%",
+                f"clienti_persi / clienti_attivi = {persi:.0f} / {att:.0f}",
+                ("clienti_attivi", "clienti_persi"),
+                "Sostituire un cliente costa più che tenerlo: il churn è il moltiplicatore "
+                "silenzioso dello sforzo commerciale.",
+                tipo="rischio" if churn >= 5 else "insight",
+                gravita="media" if churn >= 5 else None))
+
+    conc5 = f.get("concentrazione_top5")
+    if conc5 is not None:
+        out.append(_ins(
+            "risk.concentrazione", "Concentrazione sui primi clienti", conc5, "%",
+            f"quota fatturato top 5 = {conc5:.0f}%", ("concentrazione_top5",),
+            "Pochi clienti muovono la maggioranza del lavoro: le loro priorità "
+            "diventano le tue, anche quando non conviene.",
+            tipo="rischio", gravita="alta" if conc5 >= 60 else "media"))
+
+    return out, f
+
+
+# ── Marketing / canali ────────────────────────────────────────────────────────
+def derive_marketing_insights(inputs: dict) -> tuple[list[dict], Facts]:
+    f = Facts(inputs)
+    out: list[dict] = []
+
+    dep = f.get("dipendenza_canale")
+    if dep is not None:
+        out.append(_ins(
+            "mkt.dipendenza_canale", "Dipendenza dal canale principale", dep, "%",
+            f"quota prenotazioni/lead dal canale principale = {dep:.0f}%",
+            ("dipendenza_canale",),
+            "Il canale principale detta commissioni, visibilità e regole: sopra il 50% "
+            "non è un canale, è un padrone. Ogni suo cambio di algoritmo o tariffa "
+            "entra dritto nel margine.",
+            tipo="rischio", gravita="alta" if dep >= 60 else "media"))
+
+    if f.has("budget_marketing", "fatturato_annuo"):
+        b, fat = f.get("budget_marketing"), f.get("fatturato_annuo")
+        if fat > 0:
+            pct = round(b * 12 / fat * 100, 1)
+            out.append(_ins(
+                "mkt.peso_budget", "Investimento marketing sul fatturato", pct, "%",
+                f"budget_mensile × 12 / fatturato = {b:,.0f} × 12 / {fat:,.0f}",
+                ("budget_marketing", "fatturato_annuo"),
+                "Misura se il canale diretto ha davvero le risorse per crescere o se "
+                "l'indipendenza dal canale dominante è solo un auspicio."))
+
+    if f.has("clienti_attivi", "clienti_nuovi"):
+        att, nuovi = f.get("clienti_attivi"), f.get("clienti_nuovi")
+        if att > 0:
+            out.append(_ins(
+                "mkt.tasso_acquisizione", "Nuovi clienti sul parco attivo",
+                round(nuovi / att * 100, 1), "%",
+                f"clienti_nuovi / clienti_attivi = {nuovi:.0f} / {att:.0f}",
+                ("clienti_attivi", "clienti_nuovi"),
+                "Il ritmo di acquisizione dice quanta strada può fare la "
+                "diversificazione dei canali con le forze attuali."))
+
+    return out, f
+
+
+# ── HR / organizzazione ───────────────────────────────────────────────────────
+def derive_hr_insights(inputs: dict) -> tuple[list[dict], Facts]:
+    f = Facts(inputs)
+    out: list[dict] = []
+
+    if f.has("fatturato_annuo", "dipendenti"):
+        fat, dip = f.get("fatturato_annuo"), f.get("dipendenti")
+        if dip > 0:
+            out.append(_ins(
+                "org.fatturato_addetto", "Fatturato per addetto",
+                round(fat / dip, 0), "€/addetto",
+                f"fatturato / dipendenti = {fat:,.0f} / {dip:.0f}",
+                ("fatturato_annuo", "dipendenti"),
+                "La produttività per persona è il tetto della crescita a organico "
+                "invariato: sotto la media di settore si cresce solo assumendo, sopra "
+                "c'è spazio organizzativo."))
+
+    if f.has("costi_operativi", "dipendenti"):
+        c, dip = f.get("costi_operativi"), f.get("dipendenti")
+        if dip > 0:
+            out.append(_ins(
+                "org.costo_struttura_addetto", "Costo di struttura per addetto",
+                round(c / dip, 0), "€/addetto",
+                f"costi_operativi / dipendenti = {c:,.0f} / {dip:.0f}",
+                ("costi_operativi", "dipendenti"),
+                "Insieme al fatturato per addetto definisce il margine di manovra per "
+                "assunzioni e aumenti: si decide sui numeri, non sulle sensazioni."))
+
+    if f.has("ore_lavorate", "dipendenti"):
+        lav, dip = f.get("ore_lavorate"), f.get("dipendenti")
+        if dip > 0:
+            out.append(_ins(
+                "org.carico_medio", "Ore lavorate medie per addetto (periodo)",
+                round(lav / dip, 0), "ore",
+                f"ore_lavorate / dipendenti = {lav:.0f} / {dip:.0f}",
+                ("ore_lavorate", "dipendenti"),
+                "Il carico medio rende visibile la saturazione PRIMA che diventi "
+                "turnover: chi è saturo non si lamenta, se ne va."))
+
+    return out, f
+
+
+# ── Legale / compliance (gap analysis sui flag dichiarati) ────────────────────
+def derive_legal_insights(inputs: dict) -> tuple[list[dict], Facts]:
+    f = Facts(inputs)
+    out: list[dict] = []
+
+    def flag(name: str):
+        v = NORM.unwrap_value((inputs or {}).get(name))
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            lv = v.strip().lower()
+            if lv in ("si", "sì", "true", "yes", "1"):
+                return True
+            if lv in ("no", "false", "0"):
+                return False
+        return None
+
+    tratta_dati = flag("tratta_dati_personali")
+    contratti = flag("ha_contratti_standard")
+    ecommerce = flag("ha_sito_ecommerce")
+    ai_prof = flag("usa_ai_profilazione")
+    estero = flag("opera_estero")
+    marchio = flag("ha_marchio")
+    modello231 = flag("ha_modello_231")
+
+    def gap(id_, titolo, presente, spiegazione, gravita="media"):
+        if presente is False:
+            out.append(_ins(id_, titolo, "assente", "",
+                            f"dichiarato dal cliente: {titolo.lower()} = no",
+                            (id_.split(".")[-1],), spiegazione,
+                            tipo="rischio", gravita=gravita))
+
+    if tratta_dati and contratti is False:
+        gap("legal.ha_contratti_standard", "Contratti standard", False,
+            "Si trattano dati personali senza una base contrattuale standard: ogni "
+            "rapporto è un negoziato (o un rischio) a sé.", "alta")
+    elif contratti is False:
+        gap("legal.ha_contratti_standard", "Contratti standard", False,
+            "Senza condizioni standard ogni incarico nasce su termini improvvisati: "
+            "il contenzioso si previene alla firma, non in tribunale.")
+    if ecommerce and tratta_dati:
+        out.append(_ins("legal.gdpr_ecommerce", "Perimetro GDPR e-commerce", "attivo", "",
+                        "e-commerce + trattamento dati dichiarati", 
+                        ("ha_sito_ecommerce", "tratta_dati_personali"),
+                        "Vendita online + dati personali = informative, cookie, registro "
+                        "trattamenti e data breach plan: il perimetro c'è per legge, la "
+                        "domanda è solo se è presidiato.", tipo="rischio", gravita="media"))
+    if ai_prof:
+        out.append(_ins("legal.ai_profilazione", "Profilazione con AI", "attiva", "",
+                        "dichiarato: usa AI per profilazione",
+                        ("usa_ai_profilazione",),
+                        "La profilazione automatizzata attiva obblighi specifici (GDPR "
+                        "art. 22, AI Act in arrivo): va mappata ora, non quando arriva "
+                        "il controllo.", tipo="rischio", gravita="alta"))
+    gap("legal.ha_marchio", "Tutela del marchio", marchio,
+        "Il nome su cui si costruisce la reputazione non è registrato: chiunque può "
+        "occuparlo, e difendersi DOPO costa multipli della registrazione.")
+    if estero and contratti is False:
+        out.append(_ins("legal.estero_no_contratti", "Operatività estera senza contratti standard",
+                        "critico", "", "dichiarato: opera all'estero + no contratti standard",
+                        ("opera_estero", "ha_contratti_standard"),
+                        "All'estero senza clausole su foro e legge applicabile: un "
+                        "contenzioso si gioca in casa dell'altro.", tipo="rischio",
+                        gravita="alta"))
+    if modello231 is False:
+        n = f.get("dipendenti")
+        if n is not None and n >= 15:
+            out.append(_ins("legal.modello_231", "Modello organizzativo 231", "assente", "",
+                            f"dichiarato: no modello 231 con {n:.0f} dipendenti",
+                            ("ha_modello_231", "dipendenti"),
+                            "Con questa dimensione l'assenza del 231 espone la società "
+                            "alla responsabilità amministrativa per reati dei singoli: "
+                            "lo scudo esiste solo se costruito prima.", tipo="rischio",
+                            gravita="media"))
+    return out, f
+
+
+# ── Strategia / crescita ──────────────────────────────────────────────────────
+def derive_strategy_insights(inputs: dict) -> tuple[list[dict], Facts]:
+    f = Facts(inputs)
+    out: list[dict] = []
+
+    md, mdist = f.get("margine_canale_diretto"), f.get("margine_distributore")
+    if md is not None and mdist is not None:
+        delta = round(md - mdist, 1)
+        out.append(_ins(
+            "strat.delta_margine_canali", "Differenza di margine tra canali",
+            delta, "punti %",
+            f"margine diretto − margine distributore = {md:.0f}% − {mdist:.0f}%",
+            ("margine_canale_diretto", "margine_distributore"),
+            "Ogni euro spostato sul canale a margine più alto vale questo delta: la "
+            "scelta dei canali È una decisione di margine, non solo di volumi."))
+
+    if f.has("budget_espansione", "fatturato_annuo"):
+        b, fat = f.get("budget_espansione"), f.get("fatturato_annuo")
+        if fat > 0:
+            out.append(_ins(
+                "strat.peso_budget_espansione", "Budget espansione sul fatturato",
+                round(b / fat * 100, 1), "%",
+                f"budget_espansione / fatturato = {b:,.0f} / {fat:,.0f}",
+                ("budget_espansione", "fatturato_annuo"),
+                "Dimensiona l'ambizione: sotto certe soglie l'espansione è un test, "
+                "non una strategia — va bene, purché lo si sappia."))
+
+    mol = f.get("mol_pct")
+    if mol is not None:
+        out.append(_ins(
+            "strat.mol", "Marginalità operativa dichiarata", mol, "%",
+            f"MOL/EBITDA dichiarato = {mol:.0f}%", ("mol_pct",),
+            "È il carburante dell'espansione: definisce quanti errori il piano può "
+            "permettersi prima di intaccare la gestione corrente.",
+            tipo="rischio" if mol < 10 else "insight",
+            gravita="media" if mol < 10 else None))
+
+    conc = f.get("concentrazione_top1") or f.get("concentrazione_top3") or f.get("concentrazione_top5")
+    if conc is not None:
+        out.append(_ins(
+            "risk.concentrazione", "Concentrazione del fatturato", conc, "%",
+            f"quota clienti principali = {conc:.0f}%",
+            ("concentrazione_top1",),
+            "Espandersi partendo da una base concentrata significa costruire il nuovo "
+            "sul fragile: la diversificazione È parte del piano di crescita.",
+            tipo="rischio", gravita="alta" if conc >= 50 else "media"))
+
+    return out, f

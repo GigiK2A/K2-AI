@@ -1033,9 +1033,14 @@ def _consulting_blocks(deliverable, S) -> list:
     pack = deliverable.get("consulenza_operativa")
     if not isinstance(pack, dict):
         return []
-    titolo_sezione = ("Analisi sistemica — diagnosi, scenari e decisioni"
-                      if pack.get("_tipo") == "finanza_liquidita"
-                      else "Modello operativo — diagnosi e riorganizzazione")
+    _TITOLI = {"finanza_liquidita": "Analisi sistemica — diagnosi, scenari e decisioni",
+               "operations_commesse": "Modello operativo — diagnosi e riorganizzazione",
+               "marketing_canali": "Analisi dei canali — diagnosi e riequilibrio",
+               "hr_persone": "Persone e organizzazione — diagnosi e leve",
+               "legale_compliance": "Presidio legale — gap, priorità e percorso",
+               "strategia_crescita": "Strategia di crescita — canali, margini e scenari"}
+    titolo_sezione = _TITOLI.get(str(pack.get("_tipo")),
+                                 "Analisi consulenziale — diagnosi e decisioni")
     out: list = [PageBreak(),
                  _Heading(titolo_sezione, S["h1"], "consulenza"),
                  Spacer(1, 4),

@@ -147,3 +147,199 @@ def validate_chain(c: dict) -> list[str]:
     if oss is not None and not oss.get("evidenze"):
         problems.append("osservazione senza evidenze")
     return problems
+
+
+def build_ops_chains(insights: list[dict], inputs: dict) -> list[dict]:
+    """Catene causali operations/commesse."""
+    ins = _by_id(insights)
+    chains: list[dict] = []
+    rit = ins.get("ops.pct_ritardo")
+    util = ins.get("ops.utilizzo")
+    churn = ins.get("ops.churn")
+
+    if rit:
+        ev = [rit["id"]] + ([util["id"]] if util else [])
+        conseq = ("capacità assorbita da urgenze e rilavorazioni"
+                  + (f" (solo il {util['valore']:.0f}% delle ore fattura)" if util else "")
+                  + "; incassi rimandati insieme alle consegne; clienti che percepiscono "
+                    "il ritardo prima che l'azienda lo misuri")
+        chains.append(chain(
+            "ops.spirale_ritardi", "La spirale dei ritardi",
+            [node("osservazione",
+                  f"Il {rit['valore']:.0f}% delle commesse è in ritardo.", [rit["id"]]),
+             node("cause",
+                  "Stati e priorità non standard; nessun owner unico per commessa; "
+                  "il carico si vede solo quando esplode (manca una dashboard delle "
+                  "eccezioni)."),
+             node("conseguenze", conseq, ev),
+             node("priorita",
+                  "Alta: il ritardo è il punto dove operations e cassa si toccano — "
+                  "ogni settimana di consegna slittata è una settimana di incasso slittato."),
+             node("intervento",
+                  "Stati standard con owner unico e data prossima azione; riunione "
+                  "settimanale SOLO sulle eccezioni; registro blocchi con motivazione."),
+             node("risultato_atteso",
+                  "Ritardi visibili prima che diventino urgenze; capacità liberata "
+                  "dalle rilavorazioni; incassi più regolari.")],
+            priorita="alta"))
+
+    if churn and churn.get("gravita"):
+        chains.append(chain(
+            "ops.churn", "Perdita clienti e costo della sostituzione",
+            [node("osservazione",
+                  f"Ogni periodo si perde il {churn['valore']:.1f}% del parco clienti.",
+                  [churn["id"]]),
+             node("cause",
+                  "Il servizio percepito peggiora con i ritardi; nessun presidio "
+                  "sistematico della relazione dopo la consegna."),
+             node("conseguenze",
+                  "Lo sforzo commerciale serve a RIMPIAZZARE, non a crescere: il "
+                  "fatturato corre sul posto."),
+             node("priorita", "Media-alta: agisce in silenzio sul lungo periodo."),
+             node("intervento",
+                  "Analisi delle uscite (perché se ne vanno, dato per dato); presidio "
+                  "post-consegna sui clienti principali."),
+             node("risultato_atteso",
+                  "Il nuovo fatturato si somma invece di sostituire.")],
+            priorita="media"))
+    return chains
+
+
+def build_marketing_chains(insights: list[dict], inputs: dict) -> list[dict]:
+    ins = _by_id(insights)
+    chains: list[dict] = []
+    dep = ins.get("mkt.dipendenza_canale")
+    if dep:
+        chains.append(chain(
+            "mkt.dipendenza", "La dipendenza dal canale dominante",
+            [node("osservazione",
+                  f"Il {dep['valore']:.0f}% della domanda arriva da un solo canale.",
+                  [dep["id"]]),
+             node("cause",
+                  "Il canale dominante è comodo: porta volumi senza sforzo commerciale "
+                  "diretto — ed è esattamente così che diventa indispensabile."),
+             node("conseguenze",
+                  "Commissioni e visibilità le decide il canale; il margine è ostaggio "
+                  "di regole altrui; i clienti sono SUOI, non tuoi (niente dati, niente "
+                  "relazione diretta)."),
+             node("priorita",
+                  "Alta: ogni mese di attesa rende la dipendenza più profonda."),
+             node("intervento",
+                  "Costruire il canale diretto per gradi: base clienti proprietaria, "
+                  "incentivi alla prenotazione/ordine diretto, misurare il mix ogni mese."),
+             node("risultato_atteso",
+                  "Mix riequilibrato nel tempo: il canale dominante torna a essere UNA "
+                  "fonte, non LA fonte.")],
+            priorita="alta"))
+    return chains
+
+
+def build_hr_chains(insights: list[dict], inputs: dict) -> list[dict]:
+    ins = _by_id(insights)
+    chains: list[dict] = []
+    prod = ins.get("org.fatturato_addetto")
+    carico = ins.get("org.carico_medio")
+    if prod and carico:
+        chains.append(chain(
+            "org.saturazione", "Saturazione e produttività",
+            [node("osservazione",
+                  f"Produttività {prod['valore']:,.0f} €/addetto con carico medio "
+                  f"{carico['valore']:,.0f} ore/addetto nel periodo.",
+                  [prod["id"], carico["id"]]),
+             node("cause",
+                  "La crescita è passata dalle persone prima che dal metodo: i processi "
+                  "assorbono ore che non fatturano."),
+             node("conseguenze",
+                  "Chi è saturo non segnala: accumula. Prima cala la qualità, poi la "
+                  "disponibilità, poi arriva la lettera di dimissioni — nell'ordine."),
+             node("priorita",
+                  "Media-alta: il costo vero si vede con 6-12 mesi di ritardo."),
+             node("intervento",
+                  "Misurare il carico per persona (non per reparto); togliere lavoro non "
+                  "fatturabile PRIMA di aggiungere organico; decidere assunzioni sui "
+                  "numeri di produttività."),
+             node("risultato_atteso",
+                  "Capacità recuperata senza nuovi costi fissi; assunzioni fatte quando "
+                  "servono davvero, motivate dai dati.")],
+            priorita="media"))
+    return chains
+
+
+def build_legal_chains(insights: list[dict], inputs: dict) -> list[dict]:
+    ins = _by_id(insights)
+    chains: list[dict] = []
+    contratti = ins.get("legal.ha_contratti_standard")
+    estero = ins.get("legal.estero_no_contratti")
+    if contratti or estero:
+        base = estero or contratti
+        oss = ("Si opera all'estero senza contratti standard."
+               if estero else "Si lavora senza una base contrattuale standard.")
+        chains.append(chain(
+            "legal.contratti", "Dal contratto mancante al contenzioso",
+            [node("osservazione", oss, [base["id"]]),
+             node("cause",
+                  "I contratti sembrano un costo finché tutto va bene: si rimandano "
+                  "perché il lavoro 'urgente' vince sempre su quello importante."),
+             node("conseguenze",
+                  "Ogni incarico nasce su termini improvvisati: tempi, responsabilità e "
+                  "pagamenti si discutono DOPO, quando il potere negoziale è già speso"
+                  + ("; all'estero il foro lo sceglie la controparte" if estero else "") + "."),
+             node("priorita",
+                  "Alta: è il rischio a rapporto costo/prevenzione più sbilanciato che "
+                  "esista — prevenire costa una frazione del primo contenzioso."),
+             node("intervento",
+                  "Set di condizioni standard (incarico, fornitura, riservatezza) con "
+                  "clausole su pagamenti, proprietà e foro; revisione legale una tantum, "
+                  "riuso su ogni rapporto."),
+             node("risultato_atteso",
+                  "Rapporti che nascono già regolati: il contenzioso si sposta da "
+                  "probabile a raro, e comunque su un terreno scelto da te.")],
+            priorita="alta"))
+    return chains
+
+
+def build_strategy_chains(insights: list[dict], inputs: dict) -> list[dict]:
+    ins = _by_id(insights)
+    chains: list[dict] = []
+    delta = ins.get("strat.delta_margine_canali")
+    conc = ins.get("risk.concentrazione")
+    if delta:
+        chains.append(chain(
+            "strat.mix_canali", "Il mix di canali decide il margine",
+            [node("osservazione",
+                  f"Tra canale diretto e distributore ballano {delta['valore']:.0f} "
+                  "punti di margine.", [delta["id"]]),
+             node("cause",
+                  "Il canale intermediato compra volumi con margine; quello diretto "
+                  "chiede investimento prima di rendere."),
+             node("conseguenze",
+                  "A parità di fatturato, il mix sposta il risultato: crescere sul "
+                  "canale sbagliato può DIMINUIRE l'utile."),
+             node("priorita",
+                  "Alta in fase di espansione: la scelta si paga per anni."),
+             node("intervento",
+                  "Fissare il mix obiettivo per mercato PRIMA di investire; misurare il "
+                  "margine per canale, non solo i volumi."),
+             node("risultato_atteso",
+                  "Crescita che porta utile, non solo fatturato.")],
+            priorita="alta"))
+    if conc:
+        chains.append(chain(
+            "strat.base_fragile", "Espandersi su una base concentrata",
+            [node("osservazione",
+                  f"Il {conc['valore']:.0f}% del fatturato dipende da pochi clienti.",
+                  [conc["id"]]),
+             node("cause",
+                  "La concentrazione nasce dal successo: i clienti migliori crescono "
+                  "e assorbono capacità."),
+             node("conseguenze",
+                  "Il piano di espansione poggia su una base che un solo addio può "
+                  "incrinare: il rischio del nuovo si somma alla fragilità del vecchio."),
+             node("priorita", "Alta: condiziona il ritmo sostenibile dell'espansione."),
+             node("intervento",
+                  "Diversificare DENTRO il piano di crescita: target commerciali su "
+                  "nuovi clienti nel mercato attuale in parallelo all'espansione."),
+             node("risultato_atteso",
+                  "Base più larga sotto un piano più ambizioso.")],
+            priorita="alta"))
+    return chains
