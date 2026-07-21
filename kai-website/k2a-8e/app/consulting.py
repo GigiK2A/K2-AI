@@ -115,6 +115,11 @@ _LEGAL_HINTS = ("contratt", "gdpr", "privacy", "marchio", "contenzios", "legale"
 _STRATEGY_HINTS = ("espansione", "estero", "export", "crescita", "strategi",
                    "competitor", "distributore", "marketplace", "nuovo mercato",
                    "posizionamento")
+_MA_HINTS = ("acquisizione", "acquisire", "acquistare un", "acquistare una",
+             "comprare un", "comprare una", "rilevare", "m&a", "due diligence",
+             "fusione", "cessione d'azienda", "target", "concorrente", "azienda da "
+             "acquistare", "valuto l'acquisto", "conviene acquistarla",
+             "crescere internamente", "comprarla")
 
 
 def classify_problem(inputs: dict, skill: str = "") -> Optional[str]:
@@ -129,6 +134,7 @@ def classify_problem(inputs: dict, skill: str = "") -> Optional[str]:
         return sum(1 for h in hints if h in text) if text else 0
 
     scores = {
+        "ma_acquisizione": hits(_MA_HINTS) * 2,   # l'M&A è un marcatore di dominio forte
         "finanza_liquidita": hits(_FINANCE_HINTS),
         "operations_commesse": hits(_OPERATIONS_HINTS),
         "legale_compliance": hits(_LEGAL_HINTS),
@@ -137,6 +143,9 @@ def classify_problem(inputs: dict, skill: str = "") -> Optional[str]:
         "hr_persone": hits(_HR_HINTS),
     }
     # Segnali strutturati: i dati forniti pesano quanto il racconto.
+    # M&A: prezzo richiesto + EBITDA/PN del target = firma inconfondibile del deal.
+    if facts.has("prezzo_richiesto") and (facts.has("ebitda") or facts.has("patrimonio_netto")):
+        scores["ma_acquisizione"] += 3
     if facts.has("incassi_mese", "uscite_mese") or facts.has("scoperto"):
         scores["finanza_liquidita"] += 2
     if facts.has("progetti_in_corso", "progetti_in_ritardo"):
@@ -149,9 +158,9 @@ def classify_problem(inputs: dict, skill: str = "") -> Optional[str]:
     if facts.has("dipendenza_canale"):
         scores["marketing_canali"] += 2
 
-    # priorità stabile a parità di punteggio
-    ordine = ("finanza_liquidita", "operations_commesse", "legale_compliance",
-              "strategia_crescita", "marketing_canali", "hr_persone")
+    # priorità stabile a parità di punteggio (M&A prima: è la decisione più specifica)
+    ordine = ("ma_acquisizione", "finanza_liquidita", "operations_commesse",
+              "legale_compliance", "strategia_crescita", "marketing_canali", "hr_persone")
     best = max(ordine, key=lambda k: (scores[k], -ordine.index(k)))
     return best if scores[best] >= 2 else None
 
@@ -459,11 +468,44 @@ def _engine_pack(tipo: str, inputs: dict, derive_fn, chains_fn, whatif_fn,
     return pack
 
 
+def build_ma_pack(inputs: dict, deliverable: dict) -> dict:
+    """Pacchetto M&A: valutazione del target (multipli), catene di rischio, confronto
+    comprare-vs-crescere-vs-partnership, decisione motivata. La decisione guida
+    l'Executive Summary (spec §6)."""
+    from . import decision, insight, reasoning, scenario
+
+    insights, facts = insight.derive_ma_insights(inputs)
+    decisione = decision.ma_decision(inputs, insights)
+    pack: dict[str, Any] = {
+        "_tipo": "ma_acquisizione",
+        "decisione_sintesi": decisione,             # letta dall'Executive Summary
+        "insight_derivati": insights,
+        "analisi_sistemica": reasoning.build_ma_chains(insights, inputs),
+        "confronto_soluzioni": decision.ma_options(inputs, insights),
+        "raccomandazioni_operative": [],
+        "copertura_dati": insight.coverage_report(facts),
+        **_value_sections_generic(insights),
+        "dati_da_raccogliere": [
+            "Ultimi 3 bilanci del target (per confermare EBITDA e normalizzarlo)",
+            "Elenco e contratti dei clienti principali (durata, esclusive, churn storico)",
+            "Dettaglio dei debiti finanziari (scadenze, tassi, garanzie, covenant)",
+            "Eventuali passività potenziali (cause, contenziosi, fiscale) — due diligence",
+            "Piano di integrazione e sinergie attese, quantificate",
+        ],
+    }
+    sims = scenario.what_if_ma(inputs)
+    if sims:
+        pack["simulazioni"] = sims
+    return pack
+
+
 def build_pack(skill: str, inputs: dict, deliverable: dict) -> Optional[dict]:
     """Entry point del planner: pacchetto consulenziale se il caso lo richiede."""
     from . import decision, insight, reasoning, scenario
 
     problem = classify_problem(inputs, skill)
+    if problem == "ma_acquisizione":
+        return build_ma_pack(inputs, deliverable)
     if problem == "operations_commesse":
         pack = build_operations_pack(inputs, deliverable)
         # Upgrade coi motori: insight quantitativi, catene, simulazioni, 4-perché.

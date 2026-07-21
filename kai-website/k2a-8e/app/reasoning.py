@@ -343,3 +343,94 @@ def build_strategy_chains(insights: list[dict], inputs: dict) -> list[dict]:
                   "Base più larga sotto un piano più ambizioso.")],
             priorita="alta"))
     return chains
+
+
+def build_ma_chains(insights: list[dict], inputs: dict) -> list[dict]:
+    """Catene causali della valutazione M&A."""
+    ins = _by_id(insights)
+    chains: list[dict] = []
+    evm = ins.get("ma.ev_ebitda")
+    lev = ins.get("ma.debt_ebitda")
+    conc = ins.get("risk.concentrazione")
+    pe = ins.get("ma.prezzo_utile")
+
+    # Catena 1: prezzo, multipli e ritorno.
+    if evm and pe:
+        chains.append(chain(
+            "ma.prezzo_ritorno", "Dal prezzo richiesto al ritorno reale",
+            [node("osservazione",
+                  f"Il target è valutato {evm['valore']:.1f}× l'EBITDA e "
+                  f"{pe['valore']:.1f}× l'utile.", [evm["id"], pe["id"]]),
+             node("cause",
+                  "Il prezzo richiesto riflette l'ottica del venditore (il massimo che "
+                  "spera), non il valore per te: incorpora avviamento e aspettative, "
+                  "non ancora le tue sinergie."),
+             node("conseguenze",
+                  f"A parità di gestione il capitale rientra in ~{pe['valore']:.1f} anni: "
+                  "è la soglia che le sinergie devono battere per giustificare il premio. "
+                  "Se non le hai concrete, stai comprando il passato del venditore al suo "
+                  "prezzo."),
+             node("priorita",
+                  "Massima: il prezzo è la leva su cui si vince o si perde il deal — "
+                  "tutto il resto viene dopo."),
+             node("intervento",
+                  "Ancorare la trattativa ai TUOI multipli (EV/EBITDA sostenibile per il "
+                  "settore), non al prezzo richiesto; legare parte del prezzo ai risultati "
+                  "futuri (earn-out) per condividere il rischio col venditore."),
+             node("risultato_atteso",
+                  "Prezzo allineato al valore reale per l'acquirente e rischio del "
+                  "'passato che non si ripete' spostato in parte sul venditore.")],
+            priorita="alta"))
+
+    # Catena 2: la concentrazione clienti è il rischio che si compra.
+    if conc and evm:
+        chains.append(chain(
+            "ma.concentrazione_target", "La concentrazione che ti porti in casa",
+            [node("osservazione",
+                  f"Il {conc['valore']:.0f}% del fatturato del target dipende da pochi "
+                  "clienti.", [conc["id"]]),
+             node("cause",
+                  "Le PMI crescono spesso appoggiandosi a pochi grandi clienti: è la "
+                  "loro forza e, per chi compra, il loro rischio."),
+             node("conseguenze",
+                  f"Hai pagato {evm['valore']:.1f}× un EBITDA che poggia su quei clienti: "
+                  "se uno esce dopo il closing — e un cambio di proprietà è spesso "
+                  "l'occasione per rivedere i rapporti — il multiplo che hai pagato si "
+                  "gonfia di colpo sull'EBITDA rimasto."),
+             node("priorita",
+                  "Alta: è il rischio che trasforma un multiplo ragionevole in un cattivo "
+                  "affare da un giorno all'altro."),
+             node("intervento",
+                  "Due diligence commerciale sui top client (contratti, durata, "
+                  "soddisfazione); earn-out legato alla loro permanenza; clausole di "
+                  "aggiustamento prezzo se il churn supera una soglia."),
+             node("risultato_atteso",
+                  "Rischio-cliente verificato prima di firmare e in parte trasferito al "
+                  "venditore tramite la struttura del deal.")],
+            priorita="alta"))
+
+    # Catena 3: leva post-acquisizione (se il deal è a debito).
+    if lev:
+        chains.append(chain(
+            "ma.leva_post_deal", "La leva dopo il deal",
+            [node("osservazione",
+                  f"Il target ha già {lev['valore']:.1f}× EBITDA di debiti finanziari.",
+                  [lev["id"]]),
+             node("cause",
+                  "Il debito del target si eredita; se poi l'acquisto è finanziato a "
+                  "debito, le due leve si sommano."),
+             node("conseguenze",
+                  "Un'azienda comprata a debito su un target già indebitato nasce fragile: "
+                  "il primo anno difficile intacca la capacità di ripagare, e la banca lo "
+                  "sa prima di te."),
+             node("priorita", "Alta se il finanziamento dell'acquisto è a debito."),
+             node("intervento",
+                  "Costruire il piano di servizio del debito COMBINATO (target + "
+                  "acquisizione) su uno scenario prudente; verificare la sostenibilità "
+                  "PRIMA di impegnarsi sul prezzo."),
+             node("risultato_atteso",
+                  "Struttura finanziaria del dopo-deal sostenibile anche nello scenario "
+                  "critico, non solo in quello medio.")],
+            priorita="alta"))
+
+    return chains

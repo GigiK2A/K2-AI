@@ -292,10 +292,18 @@ def _exec_summary(deliverable, S, ambito: str = "") -> list:
     l'eventuale eccedenza continua a piena larghezza sotto."""
     out = [_Heading("Executive Summary", S["h1"], "exec")]
     score = _find_score(deliverable)
-    # to_text: sballa eventuali wrapper {type,$value} e rende slice-safe la sintesi.
-    summary = NORM.to_text(_find_text(deliverable, "sintesi", "executive", "summary", "esecutiv")) \
-        or ("Sintesi dei principali risultati dell'analisi, delle criticità rilevate e delle "
-            "priorità d'azione individuate per l'azienda.")
+    # Problema 6: se c'è una DECISIONE da prendere (pacchetto consulenziale con
+    # decisione_sintesi), l'Executive Summary PARTE da quella, non dal primo alert.
+    pack = deliverable.get("consulenza_operativa")
+    decisione = pack.get("decisione_sintesi") if isinstance(pack, dict) else None
+    if isinstance(decisione, dict) and decisione.get("sintesi"):
+        summary = (decisione.get("domanda_decisionale", "") + " "
+                   + decisione["sintesi"]).strip()
+    else:
+        # to_text: sballa eventuali wrapper {type,$value} e rende slice-safe la sintesi.
+        summary = NORM.to_text(_find_text(deliverable, "sintesi", "executive", "summary", "esecutiv")) \
+            or ("Sintesi dei principali risultati dell'analisi, delle criticità rilevate e delle "
+                "priorità d'azione individuate per l'azienda.")
     lead, rest = _split_lead(summary, 560)
     # riga: gauge (o banda di rischio sui legali) + lead della sintesi
     if ambito == "legale-compliance" and score:
@@ -1038,7 +1046,8 @@ def _consulting_blocks(deliverable, S) -> list:
                "marketing_canali": "Analisi dei canali — diagnosi e riequilibrio",
                "hr_persone": "Persone e organizzazione — diagnosi e leve",
                "legale_compliance": "Presidio legale — gap, priorità e percorso",
-               "strategia_crescita": "Strategia di crescita — canali, margini e scenari"}
+               "strategia_crescita": "Strategia di crescita — canali, margini e scenari",
+               "ma_acquisizione": "Valutazione dell'acquisizione — multipli, rischi e decisione"}
     titolo_sezione = _TITOLI.get(str(pack.get("_tipo")),
                                  "Analisi consulenziale — diagnosi e decisioni")
     out: list = [PageBreak(),

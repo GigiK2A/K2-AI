@@ -538,3 +538,123 @@ def strategy_recommendations(inputs: dict, insights: list[dict]) -> list[dict]:
             soglie=[soglia("mix obiettivo", "proposta_iniziale",
                            "Da fissare col vincolo dei contratti esistenti.")]))
     return out
+
+
+def ma_options(inputs: dict, insights: list[dict]) -> dict:
+    """Confronto delle alternative reali (spec §9): acquisire vs crescere vs partnership."""
+    from .insight import Facts
+    f = Facts(inputs)
+    prezzo = f.get("prezzo_richiesto")
+    fat = f.get("fatturato_annuo")
+    ebitda = f.get("ebitda")
+    evm = _ins(insights, "ma.ev_ebitda")
+    pe = _ins(insights, "ma.prezzo_utile")
+
+    prezzo_txt = (f"~{prezzo:,.0f} €".replace(",", ".") + " di equity"
+                  + (" + PFN ereditata" if f.get("debiti_finanziari") else "")) if prezzo else "da definire"
+    ebitda_txt = (f"+{ebitda:,.0f} € di EBITDA".replace(",", ".")) if ebitda else "l'EBITDA del target"
+    fat_txt = (f"+{fat:,.0f} € di fatturato".replace(",", ".")) if fat else "il fatturato del target"
+
+    return {"nota": "Le tre strade rispondono alla stessa domanda — crescere — con "
+                    "rischi, tempi e ritorni diversi. La scelta dipende da quanto vale "
+                    "il TEMPO rispetto al capitale e al rischio.",
+            "opzioni": [
+        _opt("A — Acquisire il target",
+             f"Comprare l'azienda concorrente: {prezzo_txt}.",
+             [f"Crescita immediata: {fat_txt} e {ebitda_txt} dal giorno uno",
+              "Elimini un concorrente e ne acquisisci clienti/quote",
+              "Risultato certo (l'azienda esiste già e produce)"],
+             ["Capitale importante subito", "Rischio integrazione (persone, sistemi, clienti)",
+              "Erediti debiti e rischi del target (concentrazione clienti)"],
+             prezzo_txt + " + costi di due diligence/integrazione",
+             "Il valore su cui paghi (EBITDA) può erodersi post-closing",
+             "3-6 mesi al closing, 6-18 all'integrazione piena",
+             "alta", "Capitale/finanziamento; capacità di integrare",
+             f"Quando il prezzo è ragionevole (EV/EBITDA "
+             + (f"{evm['valore']:.1f}× oggi" if evm else "in linea col settore")
+             + ") e le sinergie sono concrete e verificabili",
+             "Se il payback ("
+             + (f"~{pe['valore']:.1f} anni" if pe else "sull'utile")
+             + ") è più lungo del tuo orizzonte, o se non sai integrare"),
+        _opt("B — Crescere internamente (organica)",
+             "Usare lo stesso capitale per crescere con le proprie forze (commerciale, "
+             "capacità produttiva, marketing).",
+             ["Nessun rischio di integrazione", "Costruisci sul tuo modello e cultura",
+              "Investimento graduale e reversibile"],
+             ["Tempi lunghi e incerti: la quota di mercato del target non si conquista "
+              "in un anno", "Il concorrente resta sul mercato e reagisce",
+              "Il ritorno dipende dall'esecuzione, non è garantito"],
+             "Investimento equivalente da dosare nel tempo (marketing, forza vendita, "
+             "capacità) — da quotare sul piano",
+             "Esecuzione: crescere organicamente è più difficile che comprarlo",
+             "18-36 mesi per un impatto paragonabile", "media",
+             "Capacità commerciale e produttiva interne",
+             "Quando il prezzo del target è fuori mercato o l'integrazione è troppo "
+             "rischiosa, e c'è tempo",
+             "Quando la finestra competitiva è stretta: crescere piano lascia spazio "
+             "al concorrente"),
+        _opt("C — Acquisizione parziale / partnership",
+             "Acquisire una quota di minoranza/maggioranza graduale, o partnership "
+             "commerciale con opzione di acquisto futura.",
+             ["Rischio e capitale scaglionati", "Testi l'integrazione prima di impegnarti",
+              "Allinei gli interessi col venditore (che resta cointeressato)"],
+             ["Controllo parziale: le decisioni si condividono",
+              "Struttura più complessa da negoziare e governare",
+              "Il prezzo finale può salire se il target migliora"],
+             "Quota iniziale ridotta + earn-out/opzione (da strutturare)",
+             "Disallineamento col socio-venditore nel tempo",
+             "3-6 mesi per l'accordo, orizzonte pluriennale", "media-alta",
+             "Accordo parasociale/opzione ben scritto",
+             "Quando i dati per decidere secchi non bastano, o il rischio-cliente è alto: "
+             "compri tempo e informazione",
+             "Se serve controllo pieno subito, o se il venditore vuole solo uscire"),
+    ],
+            "conclusione_motivata":
+        "La scelta si gioca su tre domande: il prezzo è giusto (multipli sostenibili)? "
+        "le sinergie battono il payback? sai integrare? Se sì a tutte → A. Se il prezzo "
+        "o l'integrazione preoccupano ma la finestra è aperta → C, che compra tempo e "
+        "informazione condividendo il rischio col venditore. B resta la scelta giusta "
+        "solo se il deal è caro o troppo rischioso E c'è tempo per crescere da soli. "
+        "Perché non decidere sul solo prezzo richiesto: quello è il punto di partenza "
+        "del venditore, non il valore per te.",
+            "source": "system_calculated"}
+
+
+def ma_decision(inputs: dict, insights: list[dict]) -> dict:
+    """Sintesi decisionale per l'Executive Summary (spec §6): parte dalla DECISIONE."""
+    evm = _ins(insights, "ma.ev_ebitda")
+    pe = _ins(insights, "ma.prezzo_utile")
+    conc = _ins(insights, "risk.concentrazione")
+    lev = _ins(insights, "ma.debt_ebitda")
+
+    verdetto = "condizionata"
+    ragioni = []
+    if evm:
+        caro = evm["valore"] >= 7
+        ragioni.append(
+            f"Il target è valutato {evm['valore']:.1f}× EV/EBITDA"
+            + (" — un premio che va giustificato dalle sinergie." if caro
+               else ", un multiplo in linea per una PMI: il prezzo di partenza è ragionevole."))
+    if pe:
+        ragioni.append(f"Il capitale rientra in ~{pe['valore']:.1f} anni a gestione "
+                       "invariata: è la soglia che le sinergie devono battere.")
+    if conc and conc.get("gravita") == "alta":
+        ragioni.append(f"Il rischio principale è la concentrazione clienti del target "
+                       f"({conc['valore']:.0f}%): va verificata in due diligence e protetta "
+                       "con earn-out.")
+    if lev and lev.get("gravita"):
+        ragioni.append(f"La leva del target ({lev['valore']:.1f}× EBITDA) va sommata a "
+                       "un eventuale debito d'acquisto: verificare la sostenibilità "
+                       "combinata prima del prezzo.")
+
+    sintesi = (
+        "La domanda — comprare o crescere da soli — non si decide sul prezzo richiesto "
+        "ma sul valore per te. " + " ".join(ragioni) + " "
+        "L'acquisizione conviene SE il prezzo si ancora a multipli sostenibili, le "
+        "sinergie battono il payback e la concentrazione clienti regge la due diligence; "
+        "altrimenti la partnership graduale (opzione C) compra tempo e riduce il rischio, "
+        "e la crescita organica resta l'alternativa se il deal è caro e la finestra "
+        "competitiva lo consente.")
+    return {"domanda_decisionale": "Conviene acquisire il target o crescere internamente?",
+            "verdetto": verdetto, "sintesi": sintesi, "confidence": "B",
+            "fattori": ragioni}

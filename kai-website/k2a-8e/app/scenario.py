@@ -257,3 +257,65 @@ def what_if_strategy(inputs: dict) -> list[dict]:
                                 "o l'ambizione va scalata.",
                 "source": "system_calculated"})
     return sims
+
+
+def what_if_ma(inputs: dict) -> list[dict]:
+    """Simulazioni what-if sull'acquisizione (§9): stress sui presupposti del deal."""
+    f = Facts(inputs)
+    sims: list[dict] = []
+    ebitda = f.get("ebitda")
+    prezzo = f.get("prezzo_richiesto")
+    debiti = f.get("debiti_finanziari")
+    liq = f.get("liquidita")
+    conc = f.get("concentrazione_top5") or f.get("concentrazione_top3") or f.get("concentrazione_top1")
+    fat = f.get("fatturato_annuo")
+
+    ev = (prezzo + (debiti or 0) - (liq or 0)) if prezzo is not None else None
+
+    # 1) Il cliente principale del target se ne va dopo il closing.
+    if ebitda and conc and fat and ev:
+        # stima EBITDA perso ∝ quota fatturato del primo cliente (uso metà della top-N come proxy prudente)
+        quota_uno = conc / 2 if conc else 0
+        ebitda_perso = round(ebitda * quota_uno / 100, 0)
+        nuovo_ebitda = ebitda - ebitda_perso
+        nuovo_mult = round(ev / nuovo_ebitda, 1) if nuovo_ebitda > 0 else None
+        sims.append({
+            "domanda": "Cosa succede se il cliente principale del target esce dopo il closing?",
+            "risultato": (f"l'EBITDA scende di ~{ebitda_perso:,.0f} € e il multiplo pagato "
+                          f"sale a ~{nuovo_mult}× EBITDA".replace(",", ".")
+                          if nuovo_mult else "l'EBITDA su cui hai pagato si assottiglia"),
+            "calcolo": f"EBITDA × ~{quota_uno:.0f}% (proxy quota primo cliente); "
+                       f"EV / EBITDA residuo",
+            "dati_usati": ["ebitda", "concentrazione_top5", "prezzo_richiesto"],
+            "implicazione": "È lo scenario che va scritto nel contratto: earn-out e "
+                            "aggiustamento prezzo legati alla permanenza dei top client.",
+            "source": "system_calculated"})
+
+    # 2) L'EBITDA del target cala del 20% (ciclo, perdita commessa).
+    if ebitda and ev:
+        nuovo = ebitda * 0.8
+        mult = round(ev / nuovo, 1)
+        sims.append({
+            "domanda": "Cosa succede se l'EBITDA del target cala del 20%?",
+            "risultato": f"il multiplo effettivo pagato sale a ~{mult}× EBITDA",
+            "calcolo": f"EV / (EBITDA × 0,80) = {ev:,.0f} / {nuovo:,.0f}".replace(",", "."),
+            "dati_usati": ["ebitda", "prezzo_richiesto", "debiti_finanziari"],
+            "implicazione": "Mostra quanto margine di sicurezza c'è nel prezzo: se a −20% "
+                            "il multiplo diventa fuori mercato, stai pagando la perfezione.",
+            "source": "system_calculated"})
+
+    # 3) Payback se metà dell'utile va al servizio del debito d'acquisizione.
+    utile = f.get("utile_netto")
+    if utile and prezzo:
+        payback_pieno = prezzo / utile
+        payback_meta = prezzo / (utile * 0.5)
+        sims.append({
+            "domanda": "Cosa succede al rientro se metà dell'utile serve a ripagare il debito del deal?",
+            "risultato": f"il payback dell'equity passa da ~{payback_pieno:.1f} a "
+                         f"~{payback_meta:.1f} anni",
+            "calcolo": f"prezzo / (utile × 50%) = {prezzo:,.0f} / {utile*0.5:,.0f}".replace(",", "."),
+            "dati_usati": ["prezzo_richiesto", "utile_netto"],
+            "implicazione": "Il modo in cui finanzi l'acquisto cambia il ritorno quanto il "
+                            "prezzo: la struttura del deal è metà della decisione.",
+            "source": "system_calculated"})
+    return sims

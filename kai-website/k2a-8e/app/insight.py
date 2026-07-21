@@ -58,6 +58,14 @@ _ALIASES: dict[str, tuple[str, ...]] = {
     "margine_distributore": ("margine_distributore_pct",),
     "budget_espansione": ("budget_espansione_eur",),
     "mol_pct": ("mol_medio_pct", "ebitda_pct", "mol_pct"),
+    # M&A / acquisizione (dati del TARGET)
+    "ebitda": ("ebitda", "ebitda_target", "ebitda_eur"),
+    "utile_netto": ("utile_netto", "utile_netto_target", "risultato_netto"),
+    "patrimonio_netto": ("patrimonio_netto", "pn", "equity_target"),
+    "prezzo_richiesto": ("prezzo_richiesto", "prezzo", "prezzo_acquisto",
+                         "asking_price", "valore_richiesto"),
+    "debiti_finanziari": ("debiti_finanziari", "debiti_fin", "pfl", "debito_finanziario"),
+    "liquidita": ("liquidita", "liquidità", "cassa", "disponibilita_liquide"),
 }
 
 # Alias per uscite: anche 'pagamenti' (cruscotto) e organico da 'dimensione_organico'.
@@ -521,6 +529,121 @@ def derive_strategy_insights(inputs: dict) -> tuple[list[dict], Facts]:
             ("concentrazione_top1",),
             "Espandersi partendo da una base concentrata significa costruire il nuovo "
             "sul fragile: la diversificazione È parte del piano di crescita.",
+            tipo="rischio", gravita="alta" if conc >= 50 else "media"))
+
+    return out, f
+
+
+# ── M&A / acquisizione (valutazione del target) ───────────────────────────────
+def derive_ma_insights(inputs: dict) -> tuple[list[dict], Facts]:
+    """Indicatori di valutazione di un'acquisizione, dai dati del target.
+    Ogni multiplo/indice ha formula, dati usati e lettura consulenziale."""
+    f = Facts(inputs)
+    out: list[dict] = []
+
+    fat = f.get("fatturato_annuo")
+    ebitda = f.get("ebitda")
+    utile = f.get("utile_netto")
+    pn = f.get("patrimonio_netto")
+    prezzo = f.get("prezzo_richiesto")
+    debiti = f.get("debiti_finanziari")
+    liq = f.get("liquidita")
+
+    # PFN = debiti finanziari − liquidità (base per l'Enterprise Value).
+    pfn = None
+    if debiti is not None:
+        pfn = round(debiti - (liq or 0), 2)
+        out.append(_ins(
+            "ma.pfn", "Posizione Finanziaria Netta (PFN)", pfn, "€",
+            f"debiti_finanziari − liquidità = {debiti:,.0f} − {liq or 0:,.0f}",
+            ("debiti_finanziari",) + (("liquidita",) if liq is not None else ()),
+            "È il debito 'vero' che l'acquirente eredita: si somma al prezzo dell'equity "
+            "per capire quanto costa DAVVERO l'azienda (Enterprise Value)."))
+
+    # Enterprise Value = Equity (prezzo) + PFN.
+    ev = None
+    if prezzo is not None and pfn is not None:
+        ev = round(prezzo + pfn, 2)
+        out.append(_ins(
+            "ma.enterprise_value", "Enterprise Value implicito", ev, "€",
+            f"prezzo (equity) + PFN = {prezzo:,.0f} + {pfn:,.0f}",
+            ("prezzo_richiesto", "debiti_finanziari"),
+            "Il prezzo dell'equity nasconde il debito: l'EV è il costo reale del "
+            "controllo dell'azienda, ed è su questo che si misurano i multipli."))
+
+    # EV/EBITDA — il multiplo principe dell'M&A.
+    if ev is not None and ebitda and ebitda > 0:
+        mult = round(ev / ebitda, 2)
+        out.append(_ins(
+            "ma.ev_ebitda", "Multiplo EV/EBITDA", mult, "x",
+            f"Enterprise Value / EBITDA = {ev:,.0f} / {ebitda:,.0f}",
+            ("prezzo_richiesto", "debiti_finanziari", "ebitda"),
+            f"L'azienda viene valutata {mult:.1f} volte l'EBITDA. Per una PMI non "
+            "quotata un multiplo 4-6x è tipico: sopra si paga un premio che i flussi "
+            "devono giustificare, sotto può esserci un affare o un rischio nascosto.",
+            tipo="rischio" if mult >= 7 else "insight",
+            gravita="media" if mult >= 7 else None))
+
+    # Prezzo/EBITDA (equity multiple) — a confronto con EV/EBITDA fa vedere il peso del debito.
+    if prezzo is not None and ebitda and ebitda > 0:
+        out.append(_ins(
+            "ma.prezzo_ebitda", "Multiplo Prezzo/EBITDA (equity)", round(prezzo / ebitda, 2), "x",
+            f"prezzo / EBITDA = {prezzo:,.0f} / {ebitda:,.0f}",
+            ("prezzo_richiesto", "ebitda"),
+            "Guardando solo il prezzo il deal sembra più economico di quanto sia: la "
+            "differenza con l'EV/EBITDA è il debito che ti stai portando in casa."))
+
+    # Debt/EBITDA — sostenibilità della leva del target.
+    if debiti is not None and ebitda and ebitda > 0:
+        lev = round(debiti / ebitda, 2)
+        out.append(_ins(
+            "ma.debt_ebitda", "Leva del target (Debiti/EBITDA)", lev, "x",
+            f"debiti_finanziari / EBITDA = {debiti:,.0f} / {ebitda:,.0f}",
+            ("debiti_finanziari", "ebitda"),
+            f"Il target ripaga i debiti in ~{lev:.1f} anni di EBITDA. Oltre 3x la "
+            "struttura è tesa: la banca la guarda, e tu la erediti.",
+            tipo="rischio" if lev >= 3 else "insight",
+            gravita="alta" if lev >= 4 else ("media" if lev >= 3 else None)))
+
+    # Prezzo/Patrimonio netto (P/B).
+    if prezzo is not None and pn and pn > 0:
+        out.append(_ins(
+            "ma.prezzo_pn", "Prezzo/Patrimonio netto", round(prezzo / pn, 2), "x",
+            f"prezzo / patrimonio_netto = {prezzo:,.0f} / {pn:,.0f}",
+            ("prezzo_richiesto", "patrimonio_netto"),
+            "Quanto si paga sopra il valore contabile: il premio remunera avviamento, "
+            "clienti e posizione — va giustificato, non dato per scontato."))
+
+    # Prezzo/Utile (P/E) e ROI/payback dell'equity.
+    if prezzo is not None and utile and utile > 0:
+        pe = round(prezzo / utile, 2)
+        roi = round(utile / prezzo * 100, 1)
+        out.append(_ins(
+            "ma.prezzo_utile", "Prezzo/Utile (P/E) del target", pe, "x",
+            f"prezzo / utile_netto = {prezzo:,.0f} / {utile:,.0f}",
+            ("prezzo_richiesto", "utile_netto"),
+            f"A utile costante il capitale investito rientra in ~{pe:.1f} anni "
+            f"(ROI ~{roi:.0f}%): è il primo metro della convenienza, prima delle sinergie."))
+        out.append(_ins(
+            "ma.roi_preliminare", "ROI preliminare dell'equity", roi, "%",
+            f"utile_netto / prezzo = {utile:,.0f} / {prezzo:,.0f}",
+            ("utile_netto", "prezzo_richiesto"),
+            "Ritorno lordo prima delle sinergie e del costo del debito d'acquisizione: "
+            "la soglia da battere è il costo del capitale che useresti per pagarlo.",
+            tipo="insight"))
+
+    # Concentrazione clienti del target = rischio che si acquista.
+    conc = f.get("concentrazione_top5") or f.get("concentrazione_top3") or f.get("concentrazione_top1")
+    if conc is not None:
+        campo = ("concentrazione_top5" if f.get("concentrazione_top5") is not None
+                 else "concentrazione_top3" if f.get("concentrazione_top3") is not None
+                 else "concentrazione_top1")
+        out.append(_ins(
+            "risk.concentrazione", "Concentrazione clienti del target", conc, "%",
+            f"quota fatturato clienti principali = {conc:.0f}%", (campo,),
+            f"Il {conc:.0f}% del fatturato su pochi clienti è il rischio che compri: "
+            "se uno se ne va dopo il closing, l'EBITDA su cui hai pagato il multiplo "
+            "svanisce. Va protetto con clausole (earn-out) e verificato in due diligence.",
             tipo="rischio", gravita="alta" if conc >= 50 else "media"))
 
     return out, f
