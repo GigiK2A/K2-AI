@@ -88,6 +88,12 @@ _OPERATIONS_HINTS = (
     "gestionale", "attività aperte", "task", "consegn", "pianificazion",
 )
 
+_FINANCE_HINTS = (
+    "liquidit", "cassa", "scoperto", "fido", "incass", "dso", "tesoreria",
+    "interessi", "banca", "pagament", "credit", "fattur", "insolut", "anticipo",
+    "cash flow", "flussi di cassa", "circolante",
+)
+
 
 def _free_text(inputs: dict) -> str:
     """Concatena i campi testuali liberi degli input (il 'racconto' dell'utente)."""
@@ -101,13 +107,19 @@ def _free_text(inputs: dict) -> str:
 
 
 def classify_problem(inputs: dict, skill: str = "") -> Optional[str]:
-    """Tipo di problema dal testo fornito. Oggi riconosce 'operations_commesse';
-    None = nessun pacchetto extra (il report resta com'è)."""
+    """Tipo di problema dal testo/dati forniti. Riconosce 'operations_commesse' e
+    'finanza_liquidita'; None = nessun pacchetto extra (il report resta com'è)."""
     text = _free_text(inputs).lower()
-    if not text:
-        return None
-    hits = sum(1 for h in _OPERATIONS_HINTS if h in text)
-    if hits >= 2:
+    ops_hits = sum(1 for h in _OPERATIONS_HINTS if h in text) if text else 0
+    fin_hits = sum(1 for h in _FINANCE_HINTS if h in text) if text else 0
+    # segnali strutturati contano quanto il testo: dati di tesoreria forniti = caso finance
+    from .insight import Facts
+    facts = Facts(inputs)
+    if facts.has("incassi_mese", "uscite_mese") or facts.has("scoperto"):
+        fin_hits += 2
+    if fin_hits >= 2 and fin_hits >= ops_hits:
+        return "finanza_liquidita"
+    if ops_hits >= 2:
         return "operations_commesse"
     return None
 
@@ -296,9 +308,89 @@ def build_operations_pack(inputs: dict, deliverable: dict) -> dict:
     }
 
 
+# ── Pacchetto finanza/liquidità: i 4 motori di ragionamento ───────────────────
+def _value_sections_finance(insights: list[dict], facts) -> dict:
+    """Sezioni §13 dedotte dai DATI (mai testo generico): errori probabili,
+    opportunità, decisioni entro 7 giorni, domande per il management."""
+    by_id = {i["id"]: i for i in insights}
+    errori, opportunita, decisioni, domande = [], [], [], []
+
+    saldo = by_id.get("cash.saldo_mensile")
+    costo = by_id.get("debt.costo_scoperto")
+    capitale = by_id.get("wc.capitale_in_crediti")
+    conc = by_id.get("risk.concentrazione")
+
+    if saldo and saldo["valore"] < 0:
+        errori.append("Trattare lo scoperto come 'normalità operativa': con un deficit "
+                      "strutturale il fido non è un cuscinetto, è il sintomo.")
+        decisioni.append("Decidere CHI è l'owner della cassa (una persona, non 'l'ufficio') "
+                         "e avviare il forecast settimanale.")
+        domande.append("Sappiamo oggi in quale settimana del prossimo trimestre la cassa "
+                       "tocca il punto peggiore?")
+    if capitale:
+        errori.append("Considerare i crediti 'fatturato fatto': finché non incassati sono "
+                      "capitale prestato ai clienti a costo pieno.")
+        opportunita.append(f"~{capitale['valore']:,.0f} € recuperabili (in parte) "
+                           .replace(",", ".") + "accorciando il ciclo di incasso: è la "
+                           "'linea di credito' più economica disponibile.")
+        domande.append("Chi sollecita i crediti, con quale cadenza, e dopo quanti giorni "
+                       "di ritardo parte la prima azione?")
+    if costo:
+        errori.append(f"Accettare un costo del debito ~{costo['valore']:.0f}%/anno senza "
+                      "confrontare alternative: lo scoperto è la forma più cara.")
+        decisioni.append("Chiedere entro 7 giorni due quotazioni alternative (anticipo "
+                         "fatture, consolidamento) da confrontare con lo scoperto.")
+    if conc:
+        opportunita.append("Rinegoziare i termini di pagamento coi clienti principali "
+                           "al prossimo rinnovo: pochi contratti muovono gran parte "
+                           "della cassa.")
+        domande.append("Cosa succede alla cassa se il cliente principale sposta il "
+                       "pagamento di 30 giorni? (la simulazione è nel report)")
+
+    return {"errori_probabili": errori, "opportunita_non_sfruttate": opportunita,
+            "decisioni_entro_7_giorni": decisioni, "domande_per_il_management": domande}
+
+
+def build_finance_pack(inputs: dict, deliverable: dict) -> dict:
+    """Pacchetto consulenziale finanza/liquidità: insight → catene causali →
+    forecast/simulazioni → confronto opzioni → raccomandazioni coi 4 perché."""
+    from . import decision, insight, reasoning, scenario
+
+    insights, facts = insight.derive_finance_insights(inputs)
+    chains = reasoning.build_finance_chains(insights, inputs)
+    forecast = scenario.cash_forecast_13w(inputs)
+    sims = scenario.what_if(inputs)
+    options = decision.finance_options(inputs, insights)
+    recs = decision.finance_recommendations(inputs, insights)
+    value = _value_sections_finance(insights, facts)
+    coverage = insight.coverage_report(facts)
+
+    pack: dict[str, Any] = {
+        "_tipo": "finanza_liquidita",
+        "insight_derivati": insights,
+        "analisi_sistemica": chains,
+        "confronto_soluzioni": options,
+        "raccomandazioni_operative": recs,
+        "copertura_dati": coverage,
+        **value,
+        "dati_da_raccogliere": [
+            "Scadenzario incassi/pagamenti (per il forecast reale settimana per settimana)",
+            "Aging crediti per cliente (chi deve cosa, da quanto)",
+            "Condizioni bancarie scritte (tassi, commissioni, covenant)",
+        ],
+    }
+    if forecast:
+        pack["forecast_13_settimane"] = forecast
+    if sims:
+        pack["simulazioni"] = sims
+    return pack
+
+
 def build_pack(skill: str, inputs: dict, deliverable: dict) -> Optional[dict]:
     """Entry point del planner: pacchetto consulenziale se il caso lo richiede."""
     problem = classify_problem(inputs, skill)
     if problem == "operations_commesse":
         return build_operations_pack(inputs, deliverable)
+    if problem == "finanza_liquidita":
+        return build_finance_pack(inputs, deliverable)
     return None

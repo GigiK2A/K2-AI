@@ -843,6 +843,189 @@ def _raci_table(raci: dict, S):
     return t
 
 
+_FASE_LABEL = {"osservazione": "OSSERVAZIONE", "cause": "CAUSE",
+               "conseguenze": "CONSEGUENZE", "priorita": "PRIORITÀ",
+               "intervento": "INTERVENTO", "risultato_atteso": "RISULTATO ATTESO"}
+
+
+def _causal_chain_block(c: dict, S) -> list:
+    """Catena causa-effetto come flusso verticale: fase → testo → ↓."""
+    out = [Paragraph(f"<b>{html.escape(str(c.get('titolo', 'Catena delle cause')))}</b>"
+                     + _conf_chip(c.get("confidence")), S["h3"])]
+    nodi = [n for n in (c.get("catena") or []) if n.get("testo")]
+    rows = []
+    for i, n in enumerate(nodi):
+        label = _FASE_LABEL.get(str(n.get("fase")), str(n.get("fase", "")).upper())
+        cell = [Paragraph(f'<font name="{ST.F_BOLD}" size="8" color="{ST.hx(ST.GOLD_DK)}">'
+                          f'{label}</font>', S["kv"]),
+                Paragraph(_rich(n["testo"]), S["small"])]
+        rows.append([cell])
+        if i < len(nodi) - 1:
+            rows.append([Paragraph(f'<font size="11" color="{ST.hx(ST.GOLD_DK)}">▼</font>',
+                                   S["kv"])])
+    t = Table(rows, colWidths=[ST.CONTENT_W])
+    style = [("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+             ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]
+    for r in range(0, len(rows), 2):          # box solo sulle celle-fase, non sulle frecce
+        style += [("BACKGROUND", (0, r), (0, r), ST.WARM),
+                  ("BOX", (0, r), (0, r), 0.6, ST.LINE)]
+    t.setStyle(TableStyle(style))
+    out += [t, Spacer(1, 6)]
+    return out
+
+
+def _finance_reasoning_blocks(pack: dict, S) -> list:
+    """Sezioni del pacchetto finanza: insight, catene, forecast, simulazioni,
+    confronto soluzioni, raccomandazioni 4-perché, sezioni di valore §13."""
+    out: list = []
+
+    ins = pack.get("insight_derivati") or []
+    if ins:
+        out.append(Paragraph("Cosa dicono i tuoi numeri (analisi derivata)", S["h2"]))
+        for i in ins:
+            unita = f" {i.get('unita', '')}" if i.get("unita") else ""
+            tone = ST.RED if i.get("gravita") == "alta" else (
+                ST.AMBER if i.get("gravita") == "media" else ST.GOLD_DK)
+            out.append(Paragraph(
+                f'<font name="{ST.F_BOLD}" color="{ST.hx(tone)}">'
+                f'{html.escape(str(i.get("titolo", "")))}: '
+                f'{html.escape(_scalar_str(i.get("valore")))}{html.escape(unita)}</font>'
+                + _conf_chip(i.get("confidence")), S["body"]))
+            out.append(Paragraph(_rich(i.get("spiegazione", "")), S["small"]))
+            out.append(Paragraph(f'<font size="7.5" color="#8A7A55">Calcolo: '
+                                 f'{html.escape(str(i.get("formula", "")))}</font>', S["bullet"]))
+            out.append(Spacer(1, 3))
+        out.append(Spacer(1, 4))
+
+    for c in (pack.get("analisi_sistemica") or []):
+        out += _causal_chain_block(c, S)
+
+    fc = pack.get("forecast_13_settimane")
+    if isinstance(fc, dict) and fc.get("scenari"):
+        out.append(Paragraph("Forecast di cassa a 13 settimane (simulazione)", S["h2"]))
+        header = [Paragraph("<b>Scenario</b>", S["kv"])] + [
+            Paragraph(f"<b>S{w}</b>", S["kv"]) for w in (1, 3, 5, 7, 9, 11, 13)] + [
+            Paragraph("<b>1ª sett. negativa</b>", S["kv"])]
+        rows = [header]
+        for nome, sc in fc["scenari"].items():
+            weeks = {r["settimana"]: r["saldo"] for r in sc.get("settimane", [])}
+            cells = [Paragraph(html.escape(nome.capitalize()), S["kv"])]
+            for w in (1, 3, 5, 7, 9, 11, 13):
+                v = weeks.get(w)
+                tone = ST.RED if (v is not None and v < 0) else ST.CARBON
+                cells.append(Paragraph(f'<font color="{ST.hx(tone)}">'
+                                       f'{html.escape(_scalar_str(v))}</font>', S["kv"]))
+            neg = sc.get("prima_settimana_negativa")
+            cells.append(Paragraph("—" if neg is None else f"settimana {neg}", S["kv"]))
+            rows.append(cells)
+        t = Table(rows, colWidths=[26 * mm] + [(ST.CONTENT_W - 26 * mm - 30 * mm) / 7] * 7
+                  + [30 * mm], repeatRows=1)
+        t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), ST.WARM),
+                               ("GRID", (0, 0), (-1, -1), 0.4, ST.LINE),
+                               ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                               ("TOPPADDING", (0, 0), (-1, -1), 4),
+                               ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
+        out += [t, Spacer(1, 3)]
+        out.append(_neutral_box([f"• {h}" for h in (fc.get("ipotesi") or [])]
+                                + ([str(fc.get("nota"))] if fc.get("nota") else []),
+                                "Ipotesi della simulazione (esplicite)", S))
+        out.append(Spacer(1, 6))
+
+    sims = pack.get("simulazioni") or []
+    if sims:
+        out.append(Paragraph("Simulazioni what-if sui rischi principali", S["h2"]))
+        for s in sims:
+            out.append(Paragraph(f"<b>{html.escape(str(s.get('domanda', '')))}</b>", S["h3"]))
+            out.append(Paragraph(f"→ {_rich(s.get('risultato', ''))} "
+                                 f'<font size="7.5" color="#8A7A55">(calcolo: '
+                                 f'{html.escape(str(s.get("calcolo", "")))})</font>', S["body"]))
+            if s.get("implicazione"):
+                out.append(Paragraph(_rich(s["implicazione"]), S["small"]))
+            out.append(Spacer(1, 3))
+        out.append(Spacer(1, 4))
+
+    conf = pack.get("confronto_soluzioni") or {}
+    if conf.get("opzioni"):
+        out.append(Paragraph("Confronto delle soluzioni", S["h2"]))
+        if conf.get("nota"):
+            out.append(Paragraph(f'<font size="8" color="#8A7A55">'
+                                 f'{html.escape(str(conf["nota"]))}</font>', S["bullet"]))
+        for o in conf["opzioni"]:
+            out.append(Paragraph(f"<b>{html.escape(str(o.get('opzione', '')))}</b>", S["h3"]))
+            if o.get("descrizione"):
+                out.append(Paragraph(_rich(o["descrizione"]), S["small"]))
+            for label, key, tone in (("Vantaggi", "vantaggi", ST.GREEN),
+                                     ("Svantaggi", "svantaggi", ST.RED)):
+                for v in (o.get(key) or []):
+                    out.append(Paragraph(f'<font color="{ST.hx(tone)}">•</font> {_rich(v)}',
+                                         S["bullet"]))
+            detail = " · ".join(f"{_humanize(k)}: {o[k]}" for k in
+                                ("costi", "rischi", "tempi", "complessita", "dipendenze")
+                                if o.get(k))
+            if detail:
+                out.append(Paragraph(f'<font size="8" color="#8A7A55">{html.escape(detail)}'
+                                     "</font>", S["bullet"]))
+            for label, key in (("Quando sceglierla", "quando_sceglierla"),
+                               ("Quando evitarla", "quando_evitarla")):
+                if o.get(key):
+                    out.append(Paragraph(f"<b>{label}:</b> {_rich(o[key])}", S["bullet"]))
+            out.append(Spacer(1, 4))
+        if conf.get("conclusione_motivata"):
+            out.append(_neutral_box([str(conf["conclusione_motivata"])],
+                                    "Conclusione motivata", S, border=ST.GOLD_DK))
+        out.append(Spacer(1, 6))
+
+    recs = pack.get("raccomandazioni_operative") or []
+    if recs:
+        out.append(Paragraph("Raccomandazioni — il perché e il come", S["h2"]))
+        for r in recs:
+            out.append(Paragraph(f"<b>{html.escape(str(r.get('titolo', '')))}</b>", S["h3"]))
+            for label, key in (("Perché", "perche"), ("Perché ora", "perche_ora"),
+                               ("Perché questa", "perche_questa"),
+                               ("Perché non un'altra", "perche_non_altre")):
+                if r.get(key):
+                    out.append(Paragraph(f"<b>{label}:</b> {_rich(r[key])}", S["bullet"]))
+            op = r.get("operativo") or {}
+            det = " · ".join(f"{_humanize(k)}: {v}" for k, v in op.items()
+                             if isinstance(v, str) and v)
+            if det:
+                out.append(Paragraph(f'<font size="8" color="#8A7A55">{html.escape(det)}'
+                                     "</font>", S["bullet"]))
+            if op.get("kpi_generati"):
+                out.append(Paragraph(f'<font size="8" color="#8A7A55">KPI generati: '
+                                     f'{html.escape(", ".join(op["kpi_generati"]))}</font>',
+                                     S["bullet"]))
+            for sg in (r.get("soglie") or []):
+                out.append(Paragraph(
+                    f'<font size="8" color="#8A7A55">Soglia «{html.escape(str(sg.get("valore")))}» '
+                    f'[{html.escape(str(sg.get("classificazione")))}]'
+                    + (f" — {html.escape(str(sg.get('nota')))}" if sg.get("nota") else "")
+                    + "</font>", S["bullet"]))
+            out.append(Spacer(1, 4))
+
+    for titolo, key in (("Errori che l'azienda sta probabilmente commettendo",
+                         "errori_probabili"),
+                        ("Opportunità non sfruttate", "opportunita_non_sfruttate"),
+                        ("Decisioni da prendere entro 7 giorni", "decisioni_entro_7_giorni"),
+                        ("Domande che il management dovrebbe porsi",
+                         "domande_per_il_management")):
+        items = pack.get(key) or []
+        if items:
+            out.append(Paragraph(titolo, S["h2"]))
+            for it in items:
+                out.append(Paragraph(f'<font color="{ST.hx(ST.GOLD_DK)}">•</font> {_rich(it)}',
+                                     S["bullet"]))
+            out.append(Spacer(1, 4))
+
+    cov = pack.get("copertura_dati") or {}
+    if cov.get("dati_non_sfruttati"):
+        out.append(_neutral_box(
+            [f"• {d}" for d in cov["dati_non_sfruttati"]],
+            "Dati forniti non ancora sfruttati (per trasparenza)", S))
+        out.append(Spacer(1, 4))
+    return out
+
+
 def _consulting_blocks(deliverable, S) -> list:
     """Renderizza il pacchetto consulenziale (consulenza_operativa) come sezioni
     dedicate: AS-IS, criticità, TO-BE, stati, RACI, governance, SLA, requisiti,
@@ -850,13 +1033,17 @@ def _consulting_blocks(deliverable, S) -> list:
     pack = deliverable.get("consulenza_operativa")
     if not isinstance(pack, dict):
         return []
+    titolo_sezione = ("Analisi sistemica — diagnosi, scenari e decisioni"
+                      if pack.get("_tipo") == "finanza_liquidita"
+                      else "Modello operativo — diagnosi e riorganizzazione")
     out: list = [PageBreak(),
-                 _Heading("Modello operativo — diagnosi e riorganizzazione", S["h1"], "consulenza"),
+                 _Heading(titolo_sezione, S["h1"], "consulenza"),
                  Spacer(1, 4),
                  Paragraph("Sezione consulenziale costruita sui dati forniti: le proposte "
                            "sono marcate come tali e ogni affermazione porta il suo livello "
                            "di certezza [A] verificato · [B] inferenza · [C] ipotesi.", S["small"]),
                  Spacer(1, 6)]
+    out += _finance_reasoning_blocks(pack, S)
 
     asis = pack.get("processo_as_is") or {}
     if asis:

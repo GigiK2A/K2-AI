@@ -1155,7 +1155,12 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
             # preliminare senza il modello finanziario (che senza bilancio non ha senso).
             try:
                 from .xlsx import render_finance_workbook
-                xlsx_path = render_finance_workbook(inputs, out_dir / "modello-finanziario.xlsx")
+                # Col pacchetto consulenziale il workbook diventa lo strumento vivo del
+                # report (forecast 13 settimane, aging, KPI tesoreria, simulazioni…) e
+                # funziona anche SENZA bilanci (caso liquidità da conversazione).
+                xlsx_path = render_finance_workbook(
+                    inputs, out_dir / "modello-finanziario.xlsx",
+                    pack=deliverable.get("consulenza_operativa"))
                 extra_outputs["xlsx_path"] = str(xlsx_path)
                 bundle.append({"formato": "xlsx", "path": str(xlsx_path), "formule_vive": True})
             except Exception as exc:

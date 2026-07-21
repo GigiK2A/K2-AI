@@ -6,13 +6,23 @@ from pathlib import Path
 from typing import Any
 
 
-def render_finance_workbook(inputs: dict, path: Path) -> Path:
+def render_finance_workbook(inputs: dict, path: Path, pack: dict | None = None) -> Path:
+    """Workbook FinanceBoost. Coi bilanci → fogli di analisi di bilancio; col
+    pacchetto consulenziale (pack) → in più i fogli di tesoreria VIVI (forecast,
+    aging, KPI, simulazioni, piano, registro decisioni). Senza bilanci ma con
+    pack → workbook di sola tesoreria (il caso liquidità non ha bilanci)."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
 
     rows = [r for r in (inputs.get("bilanci") or []) if isinstance(r, dict)]
-    if not rows:
+    if not rows and pack is None:
         raise ValueError("bilanci mancanti")
+    if not rows:
+        wb = Workbook()
+        wb.remove(wb.active)
+        _append_treasury_sheets(wb, inputs, pack)
+        _finalize(wb, path)
+        return path
     latest = max(rows, key=lambda r: int(r.get("anno") or 0))
 
     wb = Workbook()
@@ -80,18 +90,143 @@ def render_finance_workbook(inputs: dict, path: Path) -> Path:
     sc["A6"] = "Le celle gialle/blu sono assunzioni utente: nessuno scenario viene inventato dal sistema."
     sc.merge_cells("A6:E6"); sc["A6"].alignment = Alignment(wrap_text=True)
 
+    if pack:
+        _append_treasury_sheets(wb, inputs, pack)
+
+    wb.calculation.forceFullCalc = True
+    _finalize(wb, path)
+    return path
+
+
+def _finalize(wb, path: Path) -> None:
     for sheet in wb.worksheets:
         for row in sheet.iter_rows():
             for cell in row:
                 font = copy(cell.font)
                 font.name = "Arial"
                 cell.font = font
-
     wb.calculation.fullCalcOnLoad = True
-    wb.calculation.forceFullCalc = True
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
-    return path
+
+
+def _append_treasury_sheets(wb, inputs: dict, pack: dict) -> None:
+    """Fogli tesoreria del pacchetto consulenziale (spec §10): il proseguimento
+    operativo del report — formule vive, celle input evidenziate, mai zeri finti."""
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    def hdr(ws, r=1):
+        for c in ws[r]:
+            if c.value is not None:
+                c.fill = PatternFill("solid", fgColor="0C7A6F")
+                c.font = Font(color="FFFFFF", bold=True)
+
+    def widths(ws, ww):
+        from openpyxl.utils import get_column_letter
+        for i, w in enumerate(ww, start=1):
+            ws.column_dimensions[get_column_letter(i)].width = w
+
+    from .insight import Facts
+    f = Facts(inputs)
+    inc = f.get("incassi_mese")
+    usc = f.get("uscite_mese")
+    sc = f.get("scoperto") or 0.0
+
+    # 1) Forecast 13 settimane — VIVO: cambi le celle gialle, tutto si ricalcola.
+    ws = wb.create_sheet("Forecast 13 settimane")
+    ws.append(["Parametro", "Valore", "Nota"])
+    hdr(ws)
+    ws.append(["Incassi medi mese", inc if inc is not None else "Da rilevare",
+               "cella INPUT: aggiorna col dato reale"])
+    ws.append(["Uscite medie mese", usc if usc is not None else "Da rilevare",
+               "cella INPUT"])
+    ws.append(["Saldo iniziale (−scoperto)", -sc, "cella INPUT"])
+    for r in (2, 3, 4):
+        ws.cell(r, 2).fill = PatternFill("solid", fgColor="FFF2CC")
+        ws.cell(r, 2).font = Font(color="0000FF")
+    ws.append([])
+    ws.append(["Settimana", "Entrate", "Uscite", "Saldo progressivo"])
+    hdr(ws, 6)
+    for w in range(1, 14):
+        r = ws.max_row + 1
+        prev = "B4" if w == 1 else f"D{r - 1}"
+        ws.append([w, '=IF(ISNUMBER($B$2),$B$2/4.33,"")',
+                   '=IF(ISNUMBER($B$3),$B$3/4.33,"")',
+                   f'=IF(AND(ISNUMBER(B{r}),ISNUMBER(C{r})),{prev}+B{r}-C{r},"")'])
+        for col in (2, 3, 4):
+            ws.cell(r, col).number_format = '#,##0'
+    widths(ws, (24, 16, 16, 18))
+    ws.freeze_panes = "A7"
+    ws.append([])
+    ws.append(["Scenari: duplica il foglio e varia le celle gialle "
+               "(prudente: entrate −15%, uscite +5% · critico: entrate −30%)."])
+    ws.cell(ws.max_row, 1).font = Font(italic=True, color="8A7A55")
+
+    # 2) Aging crediti — template da compilare (il dato per-cliente non è stato fornito).
+    ws = wb.create_sheet("Aging crediti")
+    ws.append(["Cliente", "Importo", "Data fattura", "Scadenza", "Giorni di ritardo",
+               "Stato sollecito", "Prossima azione", "Data azione"])
+    hdr(ws)
+    for _ in range(12):
+        ws.append([None] * 8)
+    widths(ws, (26, 14, 13, 13, 14, 16, 26, 12))
+    ws.freeze_panes = "A2"
+
+    # 3) Piano incassi — settimana per settimana, collegabile all'aging.
+    ws = wb.create_sheet("Piano incassi")
+    ws.append(["Settimana", "Cliente", "Importo atteso", "Incassato", "Delta", "Note"])
+    hdr(ws)
+    for _ in range(12):
+        r = ws.max_row + 1
+        ws.append([None, None, None, None,
+                   f'=IF(AND(ISNUMBER(C{r}),ISNUMBER(D{r})),D{r}-C{r},"")', None])
+    widths(ws, (12, 26, 15, 13, 12, 26))
+    ws.freeze_panes = "A2"
+
+    # 4) KPI tesoreria — dagli insight derivati (stessi numeri del PDF).
+    ws = wb.create_sheet("KPI tesoreria")
+    ws.append(["KPI", "Valore", "Unità", "Formula", "Dati usati", "Periodicità", "Owner"])
+    hdr(ws)
+    for i in (pack.get("insight_derivati") or []):
+        ws.append([i.get("titolo"), i.get("valore"), i.get("unita") or "",
+                   i.get("formula") or "", ", ".join(i.get("dati_usati") or []),
+                   "Mensile", DA_RILEVARE])
+    if not (pack.get("insight_derivati") or []):
+        ws.append(["Nessun KPI derivabile dai dati forniti", DA_RILEVARE, "", "", "", "", ""])
+    widths(ws, (30, 14, 10, 40, 30, 12, 14))
+    ws.freeze_panes = "A2"
+
+    # 5) Simulazioni — what-if del report, con dati e calcolo.
+    ws = wb.create_sheet("Simulazioni")
+    ws.append(["Domanda", "Risultato", "Calcolo", "Dati usati"])
+    hdr(ws)
+    for s in (pack.get("simulazioni") or []):
+        ws.append([s.get("domanda"), s.get("risultato"), s.get("calcolo"),
+                   ", ".join(s.get("dati_usati") or [])])
+        ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True)
+    widths(ws, (44, 34, 30, 26))
+    ws.freeze_panes = "A2"
+
+    # 6) Piano azione — dalle raccomandazioni (owner/cadenza dal motore decisionale).
+    ws = wb.create_sheet("Piano azione")
+    ws.append(["Azione", "Chi", "Quando", "Cadenza", "KPI generati", "Stato"])
+    hdr(ws)
+    for r_ in (pack.get("raccomandazioni_operative") or []):
+        op = r_.get("operativo") or {}
+        ws.append([r_.get("titolo"), op.get("chi"), op.get("quando"), op.get("cadenza"),
+                   ", ".join(op.get("kpi_generati") or []), "Da avviare"])
+    widths(ws, (40, 24, 20, 24, 34, 12))
+    ws.freeze_panes = "A2"
+
+    # 7) Registro decisioni — traccia di chi decide cosa (disciplina del metodo).
+    ws = wb.create_sheet("Registro decisioni")
+    ws.append(["Data", "Decisione", "Chi ha deciso", "Su quali dati", "Esito atteso",
+               "Verifica (data)", "Esito reale"])
+    hdr(ws)
+    for _ in range(10):
+        ws.append([None] * 7)
+    widths(ws, (12, 40, 18, 30, 26, 14, 26))
+    ws.freeze_panes = "A2"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
