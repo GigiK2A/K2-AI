@@ -586,12 +586,22 @@ def _pat_value(pat: str) -> str:
     return "0000000000" if "\\d" in pat else "esempio"
 
 
+def _enum_placeholder(enum: list):
+    """Valore-placeholder per un enum degradato. Su un enum semaforico
+    (verde/giallo/rosso) restituisce 'giallo' (incerto), MAI verde: un dato
+    mancante non deve mai apparire come rassicurante. Altri enum → primo valore."""
+    lowered = [str(e).lower() for e in enum]
+    if "giallo" in lowered and ("verde" in lowered or "rosso" in lowered):
+        return enum[lowered.index("giallo")]
+    return enum[0]
+
+
 def _det_string(key: str, schema: dict, inputs: dict, servizio: str) -> str:
     az = inputs.get("ragione_sociale") or inputs.get("azienda") or "Cliente"
     if "const" in schema:
         return schema["const"]
     if "enum" in schema:
-        return schema["enum"][0]
+        return _enum_placeholder(schema["enum"])
     # echo diretto del form: se la chiave combacia con un input stringa, usalo
     if key and isinstance(inputs.get(key), str) and inputs[key]:
         return inputs[key]
@@ -646,7 +656,7 @@ def _det_sample(schema: dict, root: dict, inputs: dict, servizio: str, key: str 
     if "const" in schema:
         return schema["const"]
     if "enum" in schema:
-        return schema["enum"][0]
+        return _enum_placeholder(schema["enum"])
     t = schema.get("type")
     if isinstance(t, list):
         t = t[0]
@@ -1011,9 +1021,9 @@ def _clamp_to_schema(val, schema: dict, root: dict):
     # const: il valore DEVE essere esattamente quello → forzalo
     if "const" in schema:
         return schema["const"]
-    # enum: valore fuori dall'insieme chiuso → primo valido (rete di sicurezza)
+    # enum: valore fuori dall'insieme chiuso → placeholder valido (mai verde su semaforo)
     if "enum" in schema and isinstance(schema["enum"], list) and val not in schema["enum"]:
-        return schema["enum"][0]
+        return _enum_placeholder(schema["enum"])
     t = schema.get("type")
     if isinstance(t, list):
         t = t[0]

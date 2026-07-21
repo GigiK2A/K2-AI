@@ -1072,7 +1072,9 @@ def run(job_id: str, service_id: str, inputs: dict, auth_level: str = "FULL",
         # della consegna è opt-in via env per non fermare report legittimi prima della
         # validazione sui dati reali (dopo il normalizzatore i bloccanti non dovrebbero comparire).
         from .quality_gate import run_report_quality_gate
-        qgate = run_report_quality_gate(deliverable)
+        from . import provenance as _prov
+        _evidence = _prov.build_evidence(inputs)
+        qgate = run_report_quality_gate(deliverable, evidence=_evidence)
         if qgate["findings"]:
             log.warning("quality gate (job %s):\n%s", job_id, qgate["report"])
         _gate_block = os.environ.get("K2A_8E_QUALITY_GATE_BLOCK", "").strip().lower() in (

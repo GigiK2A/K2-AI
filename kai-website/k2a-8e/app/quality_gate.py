@@ -128,6 +128,15 @@ def run_report_quality_gate(deliverable: Any, workbook: Any = None,
         if label:
             seen_kpis.append((label.lower(), NORM.unwrap_value(val), path))
 
+    # 2b) provenienza (spec §2/§3, Test 2): metriche che DICHIARANO una source vengono
+    # validate contro l'evidence store. Le metriche senza source non sono toccate qui
+    # (retro-compatibile → nessun falso positivo sui KPI attuali).
+    if evidence is not None:
+        from . import provenance as PROV
+        for path, node in _walk(deliverable):
+            if isinstance(node, dict) and node.get("source"):
+                findings.extend(PROV.validate_metric(node, evidence, location=path))
+
     # 3) dedup (warning): stesso (etichetta, valore) ripetuto in più punti
     by_label: dict[str, list[tuple[Any, str]]] = {}
     for lbl, val, path in seen_kpis:
