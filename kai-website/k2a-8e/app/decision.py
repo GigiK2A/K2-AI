@@ -209,6 +209,47 @@ def _opt(opzione, descrizione, vantaggi, svantaggi, costi, rischi, tempi,
             "quando_sceglierla": quando, "quando_evitarla": evitare}
 
 
+_NO_ACTION_MARKERS = ("non interv", "status quo", "nessun interv", "non fare nulla",
+                      "non agire", "solo reazione", "rimand", "attendere e monitor")
+
+
+def _has_no_action(opzioni: list) -> bool:
+    for o in opzioni or []:
+        if not isinstance(o, dict):
+            continue
+        txt = (str(o.get("opzione", "")) + " " + str(o.get("descrizione", ""))).lower()
+        if any(m in txt for m in _NO_ACTION_MARKERS):
+            return True
+    return False
+
+
+def ensure_no_action_option(block: dict, contesto: str = "") -> dict:
+    """Garantisce che tra le opzioni ci sia SEMPRE il «non intervenire» (review #5: il
+    non-intervento è una decisione consulenziale valida a pieno titolo, non un'assenza di
+    scelta). No-op se già presente o se il block non ha una lista `opzioni`. Non muta
+    l'input (ritorna una copia)."""
+    if not isinstance(block, dict):
+        return block
+    opzioni = block.get("opzioni")
+    if not isinstance(opzioni, list) or not opzioni or _has_no_action(opzioni):
+        return block
+    out = dict(block)
+    out["opzioni"] = list(opzioni) + [_opt(
+        "D — Non intervenire ora (status quo consapevole)",
+        "Rinviare l'intervento e monitorare: nessuna spesa né rischio finché i dati non "
+        "giustificano un'azione. È una scelta deliberata, non un'assenza di scelta.",
+        ["Zero costo e zero rischio di esecuzione", "Tiene aperte tutte le opzioni",
+         "Evita di «risolvere» un problema non ancora accertato"],
+        ["Se il problema è reale, il costo del non agire cresce nel tempo",
+         "Richiede di fissare COSA monitorare e QUANDO rivalutare"],
+        "Nessun costo diretto", "Peggioramento se la causa è reale e trascurata",
+        "Rivalutazione a scadenza definita", "bassa",
+        "Indicatori-spia e data di riesame definiti",
+        "Quando i dati NON giustificano ancora la spesa/il rischio, o restano ipotesi aperte",
+        "Quando c'è un rischio concreto e verificato che peggiora se ignorato")]
+    return out
+
+
 def marketing_options(inputs: dict, insights: list[dict]) -> dict:
     dep = _ins(insights, "mkt.dipendenza_canale")
     dep_txt = f" (oggi {dep['valore']:.0f}%)" if dep else ""

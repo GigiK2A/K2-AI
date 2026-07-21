@@ -101,6 +101,15 @@ def test_options_complete_where_present():
         assert conf["conclusione_motivata"], domain
 
 
+def test_no_action_option_in_every_domain():
+    # #5 review: l'opzione «non intervenire» deve esistere in ogni dominio decisionale.
+    from app import decision
+    for domain in ("marketing_canali", "hr_persone", "legale_compliance",
+                   "strategia_crescita"):
+        conf = _pack(domain)["confronto_soluzioni"]
+        assert decision._has_no_action(conf["opzioni"]), domain
+
+
 def test_recommendations_4_whys_everywhere():
     for domain in _CASES:
         for r in _pack(domain)["raccomandazioni_operative"]:

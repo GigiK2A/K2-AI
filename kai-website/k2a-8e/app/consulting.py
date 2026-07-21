@@ -456,13 +456,15 @@ def _engine_pack(tipo: str, inputs: dict, derive_fn, chains_fn, whatif_fn,
     """Assemblaggio standard di un pacchetto dominio dai 4 motori (chiavi comuni
     → il renderer funziona invariato per ogni dominio)."""
     from . import insight as _insight
+    from . import decision as _decision
 
     insights, facts = derive_fn(inputs)
     pack: dict[str, Any] = {
         "_tipo": tipo,
         "insight_derivati": insights,
         "analisi_sistemica": chains_fn(insights, inputs),
-        "confronto_soluzioni": options_fn(inputs, insights),
+        # #5 review: garantisce l'opzione «non intervenire» tra le alternative di ogni dominio.
+        "confronto_soluzioni": _decision.ensure_no_action_option(options_fn(inputs, insights), tipo),
         "raccomandazioni_operative": recs_fn(inputs, insights),
         "copertura_dati": _insight.coverage_report(facts),
         **_value_sections_generic(insights),
