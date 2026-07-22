@@ -389,10 +389,13 @@ async def _required_fields_hint(collected: dict) -> str:
     # dei costi salariali" mentre il caso era organizzativo. Durante la diagnosi si discriminano
     # le ipotesi, non si compila un form. I campi restano gestiti dal pre-flight alla generazione.
     _diag = collected.get("diagnosi") or {}
-    still_diagnosing = (
-        str(_diag.get("fase") or "").lower() in ("esplorazione", "diagnosi", "validazione")
-        or (str(_diag.get("confidenza") or "").lower() in ("bassa", "media"))
-    )
+    _conf = str(_diag.get("confidenza") or "").lower()
+    _fase = str(_diag.get("fase") or "").lower()
+    # I campi-form tecnici del boost si spingono SOLO quando la diagnosi è SOLIDA (i dati
+    # tecnici vengono TARDI: prima si capisce problema e persona). Finché non è solida —
+    # inclusi i PRIMI turni, quando ancora non c'è un blocco diagnosi — si sopprime. Prima
+    # il gate aveva un buco al turno 1 (diagnosi vuota → non sopprimeva → checklist tecnica).
+    still_diagnosing = not (_conf == "alta" or _fase in ("piano", "pronto"))
     return readiness.required_fields_hint(
         form.get("campi") or [], boost_label=collected.get("boost_suggerito_label"),
         consulenza_ricca=consulenza_ricca or still_diagnosing)
