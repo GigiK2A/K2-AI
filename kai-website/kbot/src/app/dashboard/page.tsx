@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useKbotAuth } from "@/app/providers";
 import { fetchUserSessions, type DashboardPayload, type KbotSession } from "@/lib/api";
 import BillingPanel from "@/components/billing/BillingPanel";
+import CompanyProfileForm from "@/components/profile/CompanyProfileForm";
 
 export default function DashboardPage() {
   const { user, isSignedIn, hasPaid, loading: authLoading, getToken } = useKbotAuth();
@@ -81,6 +82,15 @@ export default function DashboardPage() {
         <div className="mb-8">
           <BillingPanel />
         </div>
+
+        <section className="mb-8">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#9ca3af]">
+            Dati azienda
+          </h2>
+          <div className="rounded-2xl border border-[#111] bg-[#0a0a0a] p-6">
+            <CompanyProfileForm />
+          </div>
+        </section>
 
         <section>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#9ca3af]">

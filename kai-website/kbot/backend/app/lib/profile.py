@@ -24,6 +24,17 @@ log = logging.getLogger(__name__)
 TABLE = "kbot_client_memory"
 _MAX_LIST = 10  # cap per liste (storico, problemi): il prompt deve restare compatto
 
+# Campi anagrafici che l'utente può impostare ESPLICITAMENTE (dashboard / signup), così non
+# vanno reinseriti in ogni chat: vengono presi dall'account e iniettati nel prompt.
+ANAGRAFICA_FIELDS = ("ragione_sociale", "partita_iva", "codice_ateco", "forma_giuridica",
+                     "settore", "dipendenti", "fatturato", "citta")
+_ANAGRAFICA_LABELS = {
+    "ragione_sociale": "Ragione sociale", "partita_iva": "Partita IVA",
+    "codice_ateco": "Codice ATECO", "forma_giuridica": "Forma giuridica",
+    "settore": "Settore", "dipendenti": "Dipendenti", "fatturato": "Fatturato",
+    "citta": "Città / sede",
+}
+
 
 def _enabled() -> bool:
     return os.getenv("KBOT_PROFILE_MEMORY", "1") != "0"
@@ -127,6 +138,58 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
     return p, changed
 
 
+def load_anagrafica(user_id: Optional[str]) -> dict:
+    """Dati azienda impostati sull'account (per il form dashboard/signup). {} se assente."""
+    prof = load(user_id) or {}
+    ana = prof.get("anagrafica") if isinstance(prof, dict) else None
+    return {k: v for k, v in (ana or {}).items() if k in ANAGRAFICA_FIELDS and _clean(v)}
+
+
+def seed_from_metadata(user_id: Optional[str], user_metadata: Optional[dict]) -> dict:
+    """Al primo accesso, se l'anagrafica è vuota, la inizializza dai metadati raccolti al
+    signup (company_name → ragione sociale, work_sector → settore) così il nuovo utente
+    trova già precompilato ciò che ha inserito. Best-effort. Ritorna l'anagrafica corrente."""
+    try:
+        current = load_anagrafica(user_id)
+        if current or not user_id or not _enabled():
+            return current
+        meta = user_metadata or {}
+        seed = {}
+        rs = _clean(meta.get("company_name") or meta.get("companyName"))
+        st = _clean(meta.get("work_sector") or meta.get("workSector"))
+        if rs:
+            seed["ragione_sociale"] = rs
+        if st:
+            seed["settore"] = st
+        if not seed:
+            return {}
+        return save_anagrafica(user_id, seed)
+    except Exception:
+        log.warning("profilo: seed da metadati fallito (fail-open)", exc_info=True)
+        return {}
+
+
+def save_anagrafica(user_id: str, data: dict) -> dict:
+    """Salva/aggiorna i dati azienda dell'account (merge sui campi noti). I campi vuoti
+    RIMUOVONO il valore. Ritorna l'anagrafica risultante. Solleva su errore (l'endpoint
+    lo traduce): a differenza dell'auto-merge best-effort, questo è un salvataggio esplicito."""
+    if not _enabled():
+        raise RuntimeError("profile memory disabled")
+    prof = dict(load(user_id) or {})
+    ana = dict(prof.get("anagrafica") or {})
+    for k in ANAGRAFICA_FIELDS:
+        if k in data:
+            v = _clean(data.get(k))
+            if v:
+                ana[k] = v[:120]
+            else:
+                ana.pop(k, None)
+    ana = {k: v for k, v in ana.items() if k in ANAGRAFICA_FIELDS or _clean(v)}
+    prof["anagrafica"] = ana
+    _save(user_id, prof)
+    return {k: v for k, v in ana.items() if k in ANAGRAFICA_FIELDS}
+
+
 def update_after_turn(session: dict) -> None:
     """Aggiorna il profilo dell'owner della sessione (best-effort, mai bloccante)."""
     if not _enabled():
@@ -150,7 +213,8 @@ def render_block(profile: Optional[dict]) -> str:
     parts = []
     ana = profile.get("anagrafica") or {}
     if ana:
-        parts.append("Anagrafica: " + "; ".join(f"{k.replace('_', ' ')}: {v}" for k, v in ana.items()))
+        parts.append("Anagrafica: " + "; ".join(
+            f"{_ANAGRAFICA_LABELS.get(k, k.replace('_', ' '))}: {v}" for k, v in ana.items()))
     ctx = profile.get("contesto") or {}
     if ctx.get("problemi"):
         parts.append("Problemi/temi già trattati: " + " | ".join(ctx["problemi"][-5:]))

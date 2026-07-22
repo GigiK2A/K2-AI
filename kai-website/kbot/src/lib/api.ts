@@ -156,6 +156,45 @@ export async function fetchUserSessions(authToken: string): Promise<DashboardPay
   return res.json();
 }
 
+/* -----------------------------------------------------------------
+ * Dati azienda dell'account (dashboard / signup): impostati una volta,
+ * presi dall'account e iniettati nel prompt → non da reinserire in ogni chat.
+ * ----------------------------------------------------------------- */
+export type CompanyProfile = {
+  ragione_sociale?: string;
+  partita_iva?: string;
+  codice_ateco?: string;
+  forma_giuridica?: string;
+  settore?: string;
+  dipendenti?: string;
+  fatturato?: string;
+  citta?: string;
+};
+
+export async function getCompanyProfile(authToken: string): Promise<CompanyProfile> {
+  const res = await fetch(`${API_BASE}/api/kbot/profile`, {
+    headers: { ...authHeaders(authToken) },
+    cache: "no-store",
+  });
+  if (!res.ok) return {};
+  const data = await res.json();
+  return (data.profile as CompanyProfile) ?? {};
+}
+
+export async function saveCompanyProfile(
+  profile: CompanyProfile,
+  authToken: string,
+): Promise<CompanyProfile> {
+  const res = await fetch(`${API_BASE}/api/kbot/profile`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify(profile),
+  });
+  if (!res.ok) await parseErr(res, "Errore salvataggio dati azienda");
+  const data = await res.json();
+  return (data.profile as CompanyProfile) ?? {};
+}
+
 export async function linkSessionToUser(
   sessionId: string,
   authToken: string,
