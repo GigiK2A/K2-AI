@@ -189,6 +189,49 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isSignedIn]);
 
+  /* Restore al MOUNT (bug "chat persa al refresh"): se localStorage ha una sessione
+     salvata, la ripristiniamo SUBITO — senza aspettare il primo messaggio — così la
+     cronologia (persistita dal backend su Supabase) riappare dopo il refresh. */
+  useEffect(() => {
+    if (authLoading || kbotSession?.id) return;
+    let stored: string | null = null;
+    try { stored = window.localStorage.getItem("kbot.session_id"); } catch { stored = null; }
+    if (stored) void ensureSession({ mode: "report" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading]);
+
+  /* Re-idrata i MESSAGGI nella UI quando la sessione ripristinata li porta: se la
+     conversazione attiva è ancora stub (solo welcome), la cronologia backend viene
+     mappata dentro. Copre anonimi (nessun lazy-load esisteva) e loggati al refresh
+     (il lazy-load scattava solo al click in sidebar, non sulla conv attiva). */
+  const kbotSessionMsgCount = kbotSession?.messages?.length ?? 0;
+  const kbotSessionId = kbotSession?.id ?? null;
+  useEffect(() => {
+    const backendMsgs = kbotSession?.messages || [];
+    if (!kbotSession?.id || backendMsgs.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== activeId) return c;
+        if ((c.messages?.length ?? 0) > 1) return c;              // conversazione già viva
+        if (c.kbotSessionId && c.kbotSessionId !== kbotSession.id) return c;
+        const mapped: ChatMessage[] = [
+          { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
+          ...backendMsgs
+            .filter((m) => typeof m.content === "string" && m.content)
+            .map((m) => ({
+              id: uid("msg"),
+              role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+              content: m.content as string,
+              ts: Date.now(),
+            })),
+        ];
+        return { ...c, kbotSessionId: kbotSession.id, messages: mapped };
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kbotSessionId, kbotSessionMsgCount]);
+
   /* Cross-bot bridge: when arriving from suite-ai widget with ?continue=<id>,
      adopt that session id instead of creating a new one. Also picks up the
      pillar tag (scenario C) from ?tag= or sessionStorage["kbot.tag_pillar"]

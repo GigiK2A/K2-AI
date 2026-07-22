@@ -664,6 +664,10 @@ async def post_message_stream(
     async def event_gen():
         raw_buffer: list[str] = []
         usage = None
+        # Scrubber dello stream (bug UX "continua a ragionare e poi cambia messaggio"):
+        # i blocchi-macchina in coda (DIAGNOSI_STATO/CONSULENZA_SUMMARY) NON si streammano
+        # in diretta — raw_buffer resta completo per il post-processing.
+        scrub = signals.StreamScrubber()
         # web_search è un CLIENT-tool agganciato a OpenAI (il path streaming è quello LIVE
         # della chat usato dal frontend). Loop: stream Claude → se chiama web_search,
         # eseguiamo la ricerca via OpenAI e proseguiamo lo stream coi risultati.
@@ -691,7 +695,9 @@ async def post_message_stream(
                         if not text_chunk:
                             continue
                         raw_buffer.append(text_chunk)
-                        yield _sse({"delta": text_chunk})
+                        visible_chunk = scrub.feed(text_chunk)
+                        if visible_chunk:
+                            yield _sse({"delta": visible_chunk})
                     final = stream.get_final_message()
                 usage = getattr(final, "usage", None)
                 # Claude ha chiamato web_search? esegui la ricerca OpenAI e continua.
@@ -718,6 +724,11 @@ async def post_message_stream(
             log.exception("Unexpected stream error")
             yield _sse({"error": "Errore imprevisto durante lo stream."})
             return
+
+        # coda residua dello scrubber (prosa trattenuta dall'holdback, mai marker)
+        _tail = scrub.flush()
+        if _tail:
+            yield _sse({"delta": _tail})
 
         raw_text = "".join(raw_buffer)
         # Finalize CONDIVISA coi due path: forced-summary + quality gate (vedi _postprocess_turn).

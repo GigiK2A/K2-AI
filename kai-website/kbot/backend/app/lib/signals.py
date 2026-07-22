@@ -160,6 +160,50 @@ LEGAL_ARTICLE_RE = re.compile(
     r"D\.\s?Lgs\.?\s*\d+[/.]\d+|L\.\s?\d+[/.]\d+)",
     re.IGNORECASE)
 
+# --- Scrubber dello STREAM: i blocchi-macchina non si vedono mai in diretta -----------
+# Bug UX (review chat): il modello chiude la prosa e poi streama DIAGNOSI_STATO /
+# CONSULENZA_SUMMARY → l'utente vede il bot "continuare a ragionare" con JSON, e alla
+# fine il messaggio viene sostituito dal testo ripulito. Qui i delta si FILTRANO alla
+# fonte: appena inizia un marker, lo stream visibile si ferma (il testo completo continua
+# ad accumularsi lato server per il post-processing). Un piccolo holdback gestisce i
+# marker spezzati tra chunk.
+_STREAM_MARKERS = ("CONSULENZA_SUMMARY", "DIAGNOSI_STATO")
+_HOLDBACK = max(len(m) for m in _STREAM_MARKERS) - 1
+
+
+class StreamScrubber:
+    """Filtra i delta di uno stream: emette il testo visibile, trattiene i blocchi
+    macchina. feed(chunk) → testo da emettere ("" se nulla). Dopo il primo marker
+    non emette più nulla (i blocchi stanno in coda al messaggio per contratto)."""
+
+    def __init__(self) -> None:
+        self._pending = ""
+        self._stopped = False
+
+    def feed(self, chunk: str) -> str:
+        if self._stopped or not chunk:
+            return ""
+        self._pending += chunk
+        idx = min((i for i in (self._pending.find(m) for m in _STREAM_MARKERS) if i != -1),
+                  default=-1)
+        if idx != -1:
+            out = self._pending[:idx].rstrip()
+            self._pending, self._stopped = "", True
+            return out
+        if len(self._pending) > _HOLDBACK:
+            out, self._pending = self._pending[:-_HOLDBACK], self._pending[-_HOLDBACK:]
+            return out
+        return ""
+
+    def flush(self) -> str:
+        """Coda residua a fine stream (mai un marker: quelli fermano prima)."""
+        if self._stopped:
+            return ""
+        out, self._pending = self._pending, ""
+        idx = min((i for i in (out.find(m) for m in _STREAM_MARKERS) if i != -1), default=-1)
+        return out[:idx].rstrip() if idx != -1 else out
+
+
 # --- Blocco CONSULENZA_SUMMARY (trigger di generazione) ------------------------------
 # TOLLERANTE al formato: i modelli locali emettono spesso il blocco INLINE
 # ("START {json} END" su una riga) — il vecchio regex pretendeva \n e l'estrazione

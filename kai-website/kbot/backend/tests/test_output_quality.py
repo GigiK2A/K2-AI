@@ -98,6 +98,43 @@ def test_final_checks_telemetry():
     assert set(failed) >= {"html_tag", "template_var", "nd_placeholder", "unclosed_fence"}
 
 
+# ── StreamScrubber: i blocchi-macchina non si vedono mai in diretta ──────────────────────
+def _scrub(chunks):
+    from app.lib.signals import StreamScrubber
+    s = StreamScrubber()
+    return "".join(s.feed(c) for c in chunks) + s.flush()
+
+
+def test_stream_scrubber_blocks_whole_marker():
+    out = _scrub(["Ecco l'analisi. ", 'DIAGNOSI_STATO_START {"f":1} DIAGNOSI_STATO_END'])
+    assert "DIAGNOSI" not in out and "analisi." in out
+
+
+def test_stream_scrubber_blocks_split_marker():
+    # il marker arriva SPEZZATO tra chunk (caso reale dello streaming)
+    out = _scrub(["Raccomandazione chiara. DIAGNO", 'SI_STATO_START {"x":1} DIAGNOSI_STATO_END'])
+    assert "DIAGNO" not in out and "chiara." in out
+    out2 = _scrub(["Procedo. CONSULEN", "ZA_SUMM", 'ARY_START {"a":1} CONSULENZA_SUMMARY_END'])
+    assert "CONSULEN" not in out2 and "Procedo." in out2
+
+
+def test_stream_scrubber_char_by_char():
+    text = "Risposta breve. DIAGNOSI_STATO_START {} DIAGNOSI_STATO_END"
+    assert _scrub(list(text)) == "Risposta breve."
+
+
+def test_stream_scrubber_clean_text_intact():
+    assert _scrub(["Testo normale ", "senza blocchi, ", "fine."]) == "Testo normale senza blocchi, fine."
+
+
+def test_stream_scrubber_stops_after_marker():
+    from app.lib.signals import StreamScrubber
+    s = StreamScrubber()
+    s.feed("ok. DIAGNOSI_STATO_START {}")
+    assert s.feed(" DIAGNOSI_STATO_END e altro dopo") == ""
+    assert s.flush() == ""
+
+
 # ── wiring: il testo visibile della chat passa dal polish ────────────────────────────────
 def test_visible_chat_text_polished():
     from app.api.message import _extract_gated_summary

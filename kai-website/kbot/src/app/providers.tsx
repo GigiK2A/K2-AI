@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseAuthConfigured, supabase } from "@/lib/supabase";
-import { createSession, linkSessionToUser, type KbotSession, type Mode } from "@/lib/api";
+import { createSession, getSession, linkSessionToUser, type KbotSession, type Mode } from "@/lib/api";
 import { initAnalytics } from "@/lib/analytics";
 
 const STORAGE_KEY = "kbot.session_id";
@@ -166,24 +166,43 @@ export function Providers({ children }: { children: React.ReactNode }) {
         adopted ||
         (typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null);
       if (stored) {
-        // Trust the stored id; we'll refresh on first /message round-trip if stale.
-        const placeholder: KbotSession = {
-          id: stored,
-          serviceId: opts?.serviceId ?? null,
-          mode: opts?.mode ?? "report",
-          messages: [],
-          extractedData: {},
-          summary: null,
-          recommendedServiceId: null,
-          recommendedServiceName: null,
-          recommendedTier: null,
-          status: "active",
-          pdfUrl: null,
-          hasUser: false,
-          timestamps: { createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        };
-        setKbotSession(placeholder);
-        return placeholder;
+        // Restore della sessione REALE (bug "chat persa al refresh"): il backend ha già
+        // tutta la cronologia su Supabase — la fetchiamo così la UI può re-idratare i
+        // messaggi. Se la sessione non esiste più (404/scaduta) si riparte pulita.
+        try {
+          const real = await getSession(stored, token);
+          if (real?.id) {
+            setKbotSession(real);
+            persistSessionId(real.id);
+            return real;
+          }
+        } catch (err) {
+          // sessione morta o di un altro utente → dimentica l'id e crea fresh.
+          const msg = String(err instanceof Error ? err.message : err).toLowerCase();
+          if (msg.includes("404") || msg.includes("403") || msg.includes("not found") ||
+              msg.includes("non trovata") || msg.includes("not your session")) {
+            persistSessionId(null);
+          } else {
+            // errore di rete transitorio: placeholder col solo id (comportamento storico)
+            const placeholder: KbotSession = {
+              id: stored,
+              serviceId: opts?.serviceId ?? null,
+              mode: opts?.mode ?? "report",
+              messages: [],
+              extractedData: {},
+              summary: null,
+              recommendedServiceId: null,
+              recommendedServiceName: null,
+              recommendedTier: null,
+              status: "active",
+              pdfUrl: null,
+              hasUser: false,
+              timestamps: { createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+            };
+            setKbotSession(placeholder);
+            return placeholder;
+          }
+        }
       }
       const fresh = await createSession({
         mode: opts?.mode ?? "report",
