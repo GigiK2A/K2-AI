@@ -84,19 +84,22 @@ def post_followups(
         return {"followups": []}
 
     prompt = _build_prompt(messages)
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    # FAST-FAIL (fix 524): i follow-up sono un EXTRA cosmetico (3 chip). Niente retry SDK e
+    # timeout basso → la chiamata non può mai avvicinarsi al limite edge di Cloudflare (~100s)
+    # e degradare in un 524. Peggio caso: pochi secondi, poi lista vuota. max_retries=0 sul
+    # client evita il retry-storm di Anthropic quando è lento/rate-limited.
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=0)
     try:
         result = client.messages.create(
             model=ANTHROPIC_MODEL,
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
-            timeout=30.0,
+            timeout=15.0,
         )
-    except anthropic.APITimeoutError:
-        raise HTTPException(status_code=504, detail="timeout follow-ups")
-    except anthropic.APIError:
-        log.exception("follow-ups APIError")
-        raise HTTPException(status_code=502, detail="errore upstream")
+    except (anthropic.APITimeoutError, anthropic.APIError):
+        # non è un errore da esporre: nessun follow-up, il frontend degrada in silenzio.
+        log.info("follow-ups non disponibili (upstream lento/errore) — degrado a lista vuota")
+        return {"followups": []}
 
     raw = "".join(b.text for b in result.content if getattr(b, "type", "") == "text")
     return {"followups": _parse_lines(raw)}

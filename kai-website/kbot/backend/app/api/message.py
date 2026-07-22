@@ -665,6 +665,12 @@ async def post_message_stream(
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     async def event_gen():
+        # HEARTBEAT immediato: flush del primo byte PRIMA della chiamata LLM (che può tardare
+        # per i retry Anthropic). L'edge (Cloudflare) vede lo stream partito e risponde 200
+        # con body vivo, invece di un 524/timeout su time-to-first-byte che il frontend
+        # mostra come "errore invio messaggio". È un COMMENTO SSE (riga ':'): il client lo
+        # ignora (nessuna riga 'data:'), zero impatto sul parsing.
+        yield ": ok\n\n"
         raw_buffer: list[str] = []
         usage = None
         # Scrubber dello stream (bug UX "continua a ragionare e poi cambia messaggio"):
