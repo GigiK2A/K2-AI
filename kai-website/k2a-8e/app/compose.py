@@ -275,11 +275,32 @@ def evidence_ledger(deliverable, S) -> list:
             out.append(_line("◐", f"{html_escape(str(i.get('causa', '')))}{ptxt}",
                              _conf_it(i.get("confidence")), ST.AMBER))
         out.append(Spacer(1, 3))
+    # IPOTESI ANCORA DA VERIFICARE (review #6): ciò che serve per confermare/escludere —
+    # dai dati mancanti dichiarati e dal singolo dato critico della diagnosi.
+    pack = _pack(deliverable)
+    da_verificare = list(pack.get("dati_da_raccogliere") or [])
+    if diag.get("manca"):
+        da_verificare = [str(diag["manca"])] + da_verificare
+    da_verificare = [d for d in da_verificare if str(d).strip()]
+    if da_verificare:
+        out.append(Paragraph("IPOTESI ANCORA DA VERIFICARE", S["h3"]))
+        for d in da_verificare[:5]:
+            out.append(_line("?", html_escape(str(d)), "da confermare", ST.NEUTRAL))
+        out.append(Spacer(1, 3))
     if recs:
         out.append(Paragraph("RACCOMANDAZIONI", S["h3"]))
         for r in recs[:4]:
             out.append(_line("✓", f"<b>{html_escape(str(r.get('titolo', '')))}</b>",
                              "dalla diagnosi", ST.GOLD_DK))
+        out.append(Spacer(1, 3))
+    # INCERTEZZA DICHIARATA (review #7): diagnosi PRELIMINARE quando restano ipotesi aperte
+    # o dati mancanti — mai fingere precisione.
+    if da_verificare or any(str(i.get("s", "aperta")).lower() == "aperta" for i in ipotesi):
+        out.append(ST.insight_box(
+            "Valutazione basata sulle informazioni raccolte in consulenza: è una DIAGNOSI "
+            "PRELIMINARE. Alcune ipotesi potranno essere confermate, ridimensionate o escluse "
+            "una volta disponibili i dati economici e operativi ancora da raccogliere.",
+            "Diagnosi preliminare", S))
     out.append(Spacer(1, 8))
     return out
 

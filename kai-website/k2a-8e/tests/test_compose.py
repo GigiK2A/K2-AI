@@ -82,6 +82,25 @@ def test_evidence_ledger_confidence():
     assert "Alta" in txt or "Media" in txt or "Bassa" in txt
 
 
+# ── #6/#7 filosofia diagnostica: ipotesi da verificare + incertezza dichiarata ───────────
+def test_evidence_ledger_has_to_verify_and_preliminary():
+    txt = _flat(compose.evidence_ledger(_deliv(_EFF, "cruscotto-direzionale"), _S))
+    assert "ANCORA DA VERIFICARE" in txt                 # #6: ipotesi da verificare
+    assert "PRELIMINARE" in txt.upper()                  # #7: incertezza dichiarata
+    assert "confermate, ridimensionate o escluse" in txt
+
+
+def test_generation_prompt_diagnostic_honesty():
+    # il prompt di generazione 8e porta le regole della review
+    from app.llm import _QUALITA_TRASVERSALE as Q
+    assert "NIENTE ENTITÀ INVENTATE" in Q                # #4 no ruoli/tool inventati
+    assert "PMO" in Q and "Power BI" in Q
+    assert "CITA LE PAROLE DEL CLIENTE" in Q             # #3 citare il cliente
+    assert "PROPORZIONATE ALLA DIMENSIONE" in Q          # #5 azioni proporzionate
+    assert "non è un fatto" in Q.lower()                 # #2 deduzioni ≠ fatti
+    assert "INCERTEZZA DICHIARATA" in Q                  # #7
+
+
 # ── #9 matrice decisionale + #8 perché-non + #7 raccomandazione finale ───────────────────
 def test_decision_matrix_and_why_not():
     d = _deliv(_MKT, "campaign-plan")
