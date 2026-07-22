@@ -72,6 +72,48 @@ _TECHNICAL_RE = re.compile(
     r"il\s+ccnl|la\s+norma|il\s+codice))\b", re.I)
 
 
+# --- Messaggio che è SOLO un identificativo (nome/ragione sociale/P.IVA/CF) ------------
+# Review "gestione del contesto": a metà di una consulenza sul turnover l'utente scrive
+# «Prova SRLS» → è la RAGIONE SOCIALE, non «come apro una SRLS». Un messaggio composto solo
+# da un nome/identificativo va letto come DATO DI CONTESTO, non come nuova richiesta.
+_COMPANY_SUFFIX = re.compile(
+    r"\b(?:s\.?r\.?l\.?s\.?|s\.?r\.?l\.?|s\.?p\.?a\.?|s\.?n\.?c\.?|s\.?a\.?s\.?|s\.?a\.?p\.?a\.?|"
+    r"s\.?c\.?a\.?r\.?l\.?|srls?|spa|snc|sas|sapa|scarl|soc(?:iet[àa])?\.?\s*coop\w*)\s*$", re.I)
+_VAT_RE = re.compile(r"^\s*(?:it[-\s]?)?\d{11}\s*$", re.I)
+_CF_RE = re.compile(r"^\s*[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\s*$", re.I)
+# marcatori di RICHIESTA (verbi/interrogativi): se ci sono, NON è un mero identificativo.
+_REQUEST_RE = re.compile(
+    r"[?]|\b(come|cosa|quando|dove|perch\w+|qual\w+|quant\w+|posso|devo|dovrei|vorrei|voglio|"
+    r"puoi|potresti|mi\s+serve|aiut\w+|spieg\w+|dimmi|consigli\w+|apri\w*|aprire|apro|fai|"
+    r"fammi|mostra\w*|analizz\w+|valut\w+|calcol\w+|convien\w+|meglio|differenz\w+|"
+    r"vs\b|oppure|sto\s+(?:pensando|valutando)|ho\s+bisogno)\b", re.I)
+
+
+def looks_like_identifier(text: str) -> bool:
+    """True se il messaggio è SOLO un nome/ragione sociale/marchio/codice/P.IVA/C.F. —
+    cioè un dato di contesto, non una nuova richiesta. Conservativo: alla minima traccia di
+    domanda/verbo di richiesta → False."""
+    t = (text or "").strip().strip(".")
+    if not t or len(t) > 60:
+        return False
+    if _VAT_RE.match(t) or _CF_RE.match(t):
+        return True
+    if _REQUEST_RE.search(t):
+        return False
+    words = t.split()
+    if len(words) > 5:
+        return False
+    # finisce con un suffisso societario (Srl/SRLS/Spa…) preceduto da almeno un token nominale
+    if _COMPANY_SUFFIX.search(t) and any(w[:1].isalpha() and w[:1].isupper() for w in words[:-1]):
+        return True
+    # 1-4 parole tutte "nominali" (iniziali maiuscole o sigle/codici), senza punteggiatura-frase
+    if 1 <= len(words) <= 4 and not re.search(r"[.!?;:,]", t):
+        toks = [w for w in words if any(c.isalpha() for c in w)]
+        if toks and all(w[:1].isupper() or w.isupper() or any(c.isdigit() for c in w) for w in toks):
+            return True
+    return False
+
+
 def is_strategic_decision(text: str) -> bool:
     """True se il messaggio è una DECISIONE strategica («conviene / dovrei / voglio fare X?»)
     e NON una domanda tecnica di procedura («come faccio X / cosa dice la norma»). In tal
