@@ -171,9 +171,12 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
     diagnosi = extract_diagnosi(raw_text)
     # Guardia normativa: citazioni con numero verificate contro il corpus 8e restano,
     # le altre vengono de-specificate. Fail-closed → strip puro (mai fail-open).
-    from ..lib import norme_guard, deadline_guard, finance_guard
+    from ..lib import norme_guard, deadline_guard, finance_guard, output_quality
     visible = finance_guard.sanitize(deadline_guard.sanitize(norme_guard.sanitize(
         normalize_assistant_reply(strip_summary_block(strip_diagnosi_block(raw_text))))))
+    # OUTPUT QUALITY ENGINE (ultimo miglio, review "AI Proof"): l'utente non vede mai
+    # HTML/template/placeholder/artefatti tecnici/tipografia sporca. Fail-open.
+    visible = output_quality.polish(visible)
     if summary and _interview_gate_active(merged_messages):
         summary = None
         if len((visible or "").strip()) < 5:

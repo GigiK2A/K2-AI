@@ -70,13 +70,27 @@ _EMOJI = re.compile(r"[\U0001F000-\U0001FAFF☀-➿←-⇿⬀-⯿️�]")
 _fix_spacing = ST.fix_spacing  # normalizzatore punteggiatura condiviso (def in styling.py)
 
 
+_HTML_TAG = re.compile(r"</?[a-zA-Z][a-zA-Z0-9:-]*(?:\s[^<>]*)?/?>")
+_TPL_VAR = re.compile(r"\{\{[^{}]{0,60}\}\}|\$\{[^{}]{0,60}\}")
+_BRACKET_PH = re.compile(r"(?i)\[\s*(?:inserire|inserisci|placeholder|da\s+compilare|todo)"
+                         r"\s*[^\]]{0,40}\]")
+
+
 def _rich(s) -> str:
     """Prosa → markup reportlab: escape, **grassetto** reale, via le emoji non
-    renderizzabili. I modelli a volte scrivono markdown/emoji: qui si normalizza."""
+    renderizzabili. I modelli a volte scrivono markdown/emoji: qui si normalizza.
+    Output-quality (review "AI Proof"): niente tag HTML del modello, niente {{template}}
+    né [PLACEHOLDER] in un report pagato."""
     s = NORM.unwrap_value(s)                 # sballa involucri {type,$value}/{value}/JSON
     if isinstance(s, (dict, list)):
         s = NORM.to_text(s)                  # mai far arrivare un dict a str()
-    s = _fix_spacing(str(s if s is not None else ""))
+    s = str(s if s is not None else "")
+    if "<" in s:
+        s = re.sub(r"(?i)<\s*br\s*/?\s*>", "\n", s)
+        s = _HTML_TAG.sub("", s)             # il markup del MODELLO non arriva mai al PDF
+    s = _TPL_VAR.sub("", s)
+    s = _BRACKET_PH.sub("", s)
+    s = _fix_spacing(s)
     s = html.escape(s)
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s, flags=re.S)
     s = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"<i>\1</i>", s)  # *corsivo*
