@@ -21,6 +21,7 @@ def render_finance_workbook(inputs: dict, path: Path, pack: dict | None = None) 
         wb = Workbook()
         wb.remove(wb.active)
         _append_treasury_sheets(wb, inputs, pack)
+        append_decision_sheets(wb, pack)
         _finalize(wb, path)
         return path
     latest = max(rows, key=lambda r: int(r.get("anno") or 0))
@@ -92,10 +93,70 @@ def render_finance_workbook(inputs: dict, path: Path, pack: dict | None = None) 
 
     if pack:
         _append_treasury_sheets(wb, inputs, pack)
+        append_decision_sheets(wb, pack)
 
     wb.calculation.forceFullCalc = True
     _finalize(wb, path)
     return path
+
+
+def append_decision_sheets(wb, pack: dict | None) -> None:
+    """Fogli decisionali dal pacchetto consulenziale (#14 review deliverable — l'Excel è
+    uno strumento operativo, non un dump): «Confronto opzioni» (matrice decisionale con
+    colonna Decisione da compilare) e «Parametri da definire» (celle EDITABILI gialle per
+    i dati mancanti/da personalizzare — il PDF li cita come 'Parametro da definire').
+    No-op senza pack o senza dati (mai inventa righe)."""
+    if not isinstance(pack, dict):
+        return
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    _EDIT = PatternFill("solid", fgColor="FFF2CC")
+    _HDRF = PatternFill("solid", fgColor="0C7A6F")
+
+    conf = pack.get("confronto_soluzioni") or {}
+    opzioni = [o for o in (conf.get("opzioni") or []) if isinstance(o, dict)]
+    if opzioni:
+        ws = wb.create_sheet("Confronto opzioni")
+        ws.append(["Opzione", "Costi", "Tempi", "Rischi", "Complessità",
+                   "Quando sceglierla", "Quando evitarla", "Decisione (compila)"])
+        for c in ws[1]:
+            c.fill = _HDRF; c.font = Font(color="FFFFFF", bold=True)
+        for o in opzioni:
+            ws.append([str(o.get(k) or "") for k in
+                       ("opzione", "costi", "tempi", "rischi", "complessita",
+                        "quando_sceglierla", "quando_evitarla")] + [None])
+            dcell = ws.cell(ws.max_row, 8)
+            dcell.fill = _EDIT; dcell.font = Font(color="0000FF")
+        for col, width in zip("ABCDEFGH", (30, 26, 16, 26, 12, 34, 34, 18)):
+            ws.column_dimensions[col].width = width
+        for row in ws.iter_rows(min_row=2):
+            for cell in row:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+        ws.freeze_panes = "A2"
+        if conf.get("conclusione_motivata"):
+            ws.append([]); ws.append([f"Conclusione motivata: {conf['conclusione_motivata']}"])
+            ws.merge_cells(start_row=ws.max_row, start_column=1, end_row=ws.max_row, end_column=8)
+            ws.cell(ws.max_row, 1).alignment = Alignment(wrap_text=True)
+
+    dati = [str(d) for d in (pack.get("dati_da_raccogliere") or []) if str(d).strip()]
+    kpis = [k for k in (pack.get("kpi_da_misurare") or []) if isinstance(k, dict)]
+    if dati or kpis:
+        ws = wb.create_sheet("Parametri da definire")
+        ws.append(["Parametro / KPI", "Perché serve", "Valore (compila)", "Responsabile (compila)"])
+        for c in ws[1]:
+            c.fill = _HDRF; c.font = Font(color="FFFFFF", bold=True)
+        for d in dati[:12]:
+            ws.append([d, "dato mancante per completare la misurazione", None, None])
+        for k in kpis[:10]:
+            ws.append([str(k.get("kpi") or ""), str(k.get("perche") or ""), None, None])
+        for row in ws.iter_rows(min_row=2):
+            row[2].fill = _EDIT; row[2].font = Font(color="0000FF")
+            row[3].fill = _EDIT; row[3].font = Font(color="0000FF")
+            for cell in row:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+        for col, width in zip("ABCD", (36, 44, 18, 20)):
+            ws.column_dimensions[col].width = width
+        ws.freeze_panes = "A2"
 
 
 def _finalize(wb, path: Path) -> None:
@@ -440,6 +501,18 @@ def render_control_workbook(deliverable: dict, inputs: dict, path: Path) -> tupl
     _widths(ws, (22, 90))
     ws.freeze_panes = "A2"
     mapping["istruzioni"] = {"sheet": ws.title, "range": f"A1:B{ws.max_row}"}
+
+    # Fogli decisionali dal pacchetto consulenziale (#14): confronto opzioni + parametri
+    # editabili. Il pack vive nel deliverable; no-op se assente.
+    _pack = deliverable.get("consulenza_operativa")
+    if isinstance(_pack, dict):
+        _before = set(wb.sheetnames)
+        append_decision_sheets(wb, _pack)
+        for _name in wb.sheetnames:
+            if _name not in _before:
+                _ws = wb[_name]
+                mapping[_name.lower().replace(" ", "_")] = {
+                    "sheet": _name, "range": f"A1:H{_ws.max_row}"}
 
     for sheet in wb.worksheets:
         for row in sheet.iter_rows():

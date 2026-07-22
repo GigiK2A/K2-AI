@@ -38,12 +38,19 @@ def _humanize(key: str) -> str:
     return str(key).replace("_", " ").strip().capitalize()
 
 
+_ND_TOKENS = {"n/d", "nd", "n.d.", "n.d", "non disponibile", "na", "n/a", "none", "null", "-", "—"}
+
+
 def _scalar_str(v) -> str:
     """Scalare → testo da stampare: bool in Sì/No (mai 'True' raw in un report pagato),
-    numeri in formato italiano (migliaia col punto, decimali con virgola)."""
+    numeri in formato italiano (migliaia col punto, decimali con virgola). I placeholder
+    'N/D' non compaiono MAI nel report (#6 review): diventano 'Parametro da definire'
+    (personalizzabile — l'Excel lo espone come cella editabile)."""
     v = NORM.unwrap_value(v)   # sballa {type,$value}/{value}/JSON-stringato prima di stampare
     if isinstance(v, (dict, list)):
         return NORM.to_text(v)   # mai stampare un dict/list grezzo come str(v)
+    if v is None or (isinstance(v, str) and v.strip().lower() in _ND_TOKENS):
+        return "Parametro da definire"
     if isinstance(v, bool):
         return "Sì" if v else "No"
     if isinstance(v, float) and v.is_integer():
@@ -74,6 +81,8 @@ def _rich(s) -> str:
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s, flags=re.S)
     s = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"<i>\1</i>", s)  # *corsivo*
     s = re.sub(r"^\s*[-•]\s+", "", s)  # bullet residui a inizio riga
+    # #6 review: 'N/D' non compare mai in prosa — diventa un campo dichiarato da definire.
+    s = re.sub(r"\bN/?D\b\.?", "da definire", s)
     s = _strip_akn(s)
     s = _EMOJI.sub("", s)
     return s
@@ -296,7 +305,31 @@ def _exec_summary(deliverable, S, ambito: str = "") -> list:
     # decisione_sintesi), l'Executive Summary PARTE da quella, non dal primo alert.
     pack = deliverable.get("consulenza_operativa")
     decisione = pack.get("decisione_sintesi") if isinstance(pack, dict) else None
-    if isinstance(decisione, dict) and decisione.get("sintesi"):
+    # ORDINE CONSULENZIALE (#1 review deliverable): il management capisce il PERCHÉ prima
+    # del cosa — problema → causa → raccomandazione; le azioni vengono DOPO (in coda).
+    # NB: nei report DECISIONALI (M&A: c'è decisione_sintesi) il lead resta la decisione
+    # (è già il "perché" condensato) — la struttura vale per i report diagnostici.
+    _structured = ""
+    if isinstance(pack, dict) and not (isinstance(decisione, dict) and decisione.get("sintesi")):
+        from . import compose as CMP
+        _ins_l = CMP._ins(deliverable)
+        _alti = [i for i in _ins_l if str(i.get("gravita")) == "alta"]
+        _ipo = [i for i in (CMP._diag(deliverable).get("ipotesi") or []) if isinstance(i, dict)]
+        _parts = []
+        if _alti:
+            _parts.append(f"Il problema: {_alti[0].get('titolo', '')} ({CMP._fmt_val(_alti[0])}).")
+        if _ipo:
+            _p = _ipo[0].get("probabilita")
+            _ptxt = f" (~{int(_p)}% di probabilità)" if isinstance(_p, (int, float)) else ""
+            _parts.append(f"La causa più probabile: {_ipo[0].get('causa', '')}{_ptxt}.")
+        _racc = CMP._first_sentence((CMP._conf_options(deliverable) or {}).get("conclusione_motivata"))
+        if _racc:
+            _parts.append(f"La raccomandazione: {_racc}")
+        if len(_parts) >= 2:
+            _structured = " ".join(_parts)
+    if _structured:
+        summary = _structured
+    elif isinstance(decisione, dict) and decisione.get("sintesi"):
         summary = (decisione.get("domanda_decisionale", "") + " "
                    + decisione["sintesi"]).strip()
     else:
@@ -566,6 +599,10 @@ def _build(pdf_path: Path, cover_meta, report_name, body_blocks, deliverable, am
         story += _preliminary_banner(S)
     story += _methodology(S, ambito, has_citations)
     story += [PageBreak(), _Heading("Indice del report", S["h1"], "indice"), Spacer(1, 4), toc, PageBreak()]
+    # Pagina-diagnosi CEO (#2, review deliverable): tutto il report in <1 minuto,
+    # PRIMA dell'Executive Summary. Presente solo se il pacchetto ha i dati.
+    from . import compose as CMP
+    story += CMP.premium_front(deliverable, S)
     story += [ST.layer_band("executive", "Livello 1 — Executive",
                             "lettura 30 secondi · per chi decide", S), Spacer(1, 6)]
     story += _exec_summary(deliverable, S, ambito)
@@ -1448,6 +1485,11 @@ def render_generic_pdf(deliverable: dict, blueprint: dict, citazioni: list, pdf_
         body += _ops_blocks(deliverable, S)
     if "decision_board" not in _supp:
         body += _decision_board(deliverable, S)
+    # Livello 3 — Decisione (review deliverable): evidenze/confidenza, matrice decisionale,
+    # perché-non, raccomandazione finale, KPI governance, roadmap grafica. Componenti
+    # DINAMICI: esistono solo se il pacchetto ha i dati (struttura per-caso, non template).
+    from . import compose as CMP
+    body += CMP.premium_back(deliverable, S)
     body += _appendix(citazioni, deliverable, blueprint, S)
     _build(pdf_path, cover_meta, report_name, body, deliverable, "professionale",
            has_citations=bool(citazioni), preliminare=preliminare)
