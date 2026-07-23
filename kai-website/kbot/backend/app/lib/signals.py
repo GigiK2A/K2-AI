@@ -114,6 +114,19 @@ def looks_like_identifier(text: str) -> bool:
     return False
 
 
+# --- Richiesta di verifica di conformità («è tutto in regola? / siamo conformi?») -------
+# Attiva la MODALITÀ AUDIT GUIDATO: prima risposta completa a scenari, poi una domanda per
+# turno con valutazione incrementale e semaforo (review "audit GDPR guidato").
+_COMPLIANCE_RE = re.compile(
+    r"\b(?:in\s+regola|a\s+norma|conform\w+|compliant|audit|"
+    r"rispett\w*\s+(?:il|la|le|i)?\s*(?:gdpr|normativ\w+|la\s+legge|il\s+regolamento))\b", re.I)
+
+
+def is_compliance_check(text: str) -> bool:
+    """True se il cliente chiede una verifica di conformità (GDPR, fisco, sicurezza…)."""
+    return bool(_COMPLIANCE_RE.search(text or ""))
+
+
 # --- Messaggio che è una CORREZIONE di un refuso del turno precedente -------------------
 # Bug reale: «ho scelto penai» → poi «openai volevo scrivere scusa». Il bot ha letto
 # «scusa» come «scrivimi delle scuse» e ha perso il filo GDPR. Una correzione va letta come

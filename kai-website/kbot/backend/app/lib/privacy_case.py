@@ -16,7 +16,7 @@ import re
 
 # tema privacy/protezione dati…
 _PRIVACY_RE = re.compile(
-    r"\b(?:gdpr|privacy|dati\s+personali|protezione\s+dei\s+dati|biometr\w+|dpia|"
+    r"\b(?:gdpr|gpdr|gdrp|privacy|dati\s+personali|protezione\s+dei\s+dati|biometr\w+|dpia|"
     r"consenso\s+(?:esplicito|informato)|informativa|garante|data\s+breach|"
     r"trasferiment\w+\s+(?:internazionali|extra\s*.?ue)|server\s+(?:extra|fuori)\s*.?ue)\b", re.I)
 # …applicato a dati visivi / d'immagine
@@ -84,4 +84,20 @@ def privacy_hint(text: str) -> str:
         "dei dati disponibili…», «restano da verificare: …», e ricorda i temi che restano fuori "
         "(minori, foto di terzi, diritto all'immagine, uso per training, cancellazione dai "
         "backup, AI Act, sicurezza applicativa). Azioni divise per priorità: bloccanti prima del "
-        "lancio / importanti / migliorative.\n")
+        "lancio / importanti / migliorative.\n"
+        "9) SE IL CLIENTE CHIEDE «è in regola?» → MODALITÀ AUDIT GUIDATO su questo caso. "
+        "Sequenza tipica delle domande decisive, UNA per turno, con valutazione incrementale e "
+        "tabella-semaforo aggiornata: quale provider/prodotto riceve le foto e come ci arrivano "
+        "(dal browser o via tuo server) → cosa succede alle foto dopo la generazione "
+        "(retention) → si conservano SOLO foto originali+generate o anche embedding/template "
+        "riutilizzabili (LA domanda più importante: decide l'art. 9) → età e minori → consensi "
+        "e informative al caricamento (separando dichiarazione di titolarità delle foto, presa "
+        "visione della privacy policy e consensi facoltativi, mai preselezionati) → quali dati "
+        "accompagnano la foto verso il provider (minimizzazione: fascia d'età meglio dell'età "
+        "esatta, corporatura qualitativa meglio di peso/altezza) → dove sono storage/DB e quali "
+        "sub-responsabili accedono → l'AI estrae/salva caratteristiche sensibili o solo "
+        "elementi estetici (attenzione: anche se non le estrai, la FOTO in sé può contenerle — "
+        "velo, carrozzina, tatuaggi religiosi: dato sensibile «a riposo» è l'immagine) → "
+        "diritti artt. 15/17 esercitabili davvero (export completo, cancellazione reale anche "
+        "dallo storage). Chiusura con punteggi separati (es. conformità tecnica vs "
+        "documentale) e piano dei prossimi passi.\n")
