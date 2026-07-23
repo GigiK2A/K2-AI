@@ -114,6 +114,76 @@ def looks_like_identifier(text: str) -> bool:
     return False
 
 
+# --- Messaggio che è una CORREZIONE di un refuso del turno precedente -------------------
+# Bug reale: «ho scelto penai» → poi «openai volevo scrivere scusa». Il bot ha letto
+# «scusa» come «scrivimi delle scuse» e ha perso il filo GDPR. Una correzione va letta come
+# EDIT del messaggio precedente («volevo scrivere OpenAI, scusa il refuso»), mai come nuova
+# richiesta. Rilevazione conservativa: formula di correzione esplicita, oppure «*termine»,
+# oppure scuse brevi + termine a edit-distance <=2 da un token del messaggio precedente.
+_CORRECTION_FORMULA = re.compile(
+    r"\b(?:volevo|intendevo|dovevo)\s+(?:scrivere|dire)\b|\bintendevo\b|"
+    r"\bmi\s+sono\s+sbagliat\w+\b|\bho\s+(?:scritto|digitato)\s+male\b|"
+    r"\bho\s+sbagliato\s+a\s+scrivere\b|\berrata\s+corrige\b|\bcorreggo\b|\bcorrezione\s*:", re.I)
+_APOLOGY_RE = re.compile(r"\b(?:scusa|scusami|scusate|sorry|pardon|perdonami)\b", re.I)
+_ASTERISK_FIX_RE = re.compile(r"^\*\s*\S+\s*$")
+# parole della formula/scuse/filler: NON fanno parte del termine corretto
+_CORRECTION_STOP = frozenset(
+    "volevo intendevo dovevo scrivere dire sbagliato sbagliata scritto digitato male "
+    "errata corrige correggo correzione scusa scusami scusate sorry pardon perdonami "
+    "mi sono ho a il lo la un una che cioè anzi no non ecco e o è".split())
+
+
+def _lev_le(a: str, b: str, k: int) -> bool:
+    """Levenshtein(a, b) <= k, con early-exit (token corti, k piccolo)."""
+    if abs(len(a) - len(b)) > k:
+        return False
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        if min(cur) > k:
+            return False
+        prev = cur
+    return prev[-1] <= k
+
+
+def correction_term(text: str) -> str:
+    """I token del messaggio-correzione che NON sono formula/scuse/filler — cioè il
+    termine corretto («openai volevo scrivere scusa» → «openai»)."""
+    toks = re.findall(r"[A-Za-zÀ-ù0-9&@.\-]{2,}", (text or "").replace("*", " "))
+    return " ".join(t for t in toks if t.lower() not in _CORRECTION_STOP)
+
+
+def is_correction(text: str, prev_text: str = "") -> bool:
+    """True se il messaggio è la CORREZIONE di un refuso/termine del messaggio precedente,
+    non una nuova richiesta. Conservativo: serve una formula esplicita o «*termine» o
+    scuse + termine simile (edit-distance <=2) a un token del turno precedente."""
+    t = (text or "").strip()
+    if not t or len(t) > 100:
+        return False
+    if _ASTERISK_FIX_RE.match(t):
+        return True
+    formula = bool(_CORRECTION_FORMULA.search(t))
+    apology = bool(_APOLOGY_RE.search(t))
+    if not formula and not apology:
+        return False
+    payload = correction_term(t).split()
+    # il segnale più forte: un termine del payload è il typo-fix di un token precedente
+    prev_toks = {w for w in re.findall(r"[a-zà-ù0-9]{4,}", (prev_text or "").lower())}
+    for p in payload:
+        pl = p.lower()
+        if len(pl) >= 4 and any(pl != q and _lev_le(pl, q, 2) for q in prev_toks):
+            return True
+    if formula and apology:                      # «X volevo scrivere, scusa»
+        return True
+    if formula and len(payload) <= 2:            # «intendevo OpenAI»
+        return True
+    if apology and 1 <= len(payload) <= 2:       # «scusa, OpenAI» (breve)
+        return len(t) <= 60
+    return False
+
+
 def is_strategic_decision(text: str) -> bool:
     """True se il messaggio è una DECISIONE strategica («conviene / dovrei / voglio fare X?»)
     e NON una domanda tecnica di procedura («come faccio X / cosa dice la norma»). In tal

@@ -79,3 +79,47 @@ def test_prompt_general_rules_present():
     assert "DAI PIÙ PESO ALLE NOVITÀ" in p               # il dato appena emerso è prioritario
     assert "confirmation bias" in p.lower()
     assert "Prova SRLS" in p                             # esempio del caso reale
+
+
+# ── correzioni di refusi: «openai volevo scrivere scusa» NON è «scrivimi delle scuse» ─────
+_PREV_PENAI = "io in questo caso ho scelto penai, devo contattare loro?"
+
+
+def test_corrections_recognized():
+    assert signals.is_correction("openai volevo scrivere scusa", _PREV_PENAI)
+    assert signals.is_correction("volevo dire OpenAI, scusa", _PREV_PENAI)
+    assert signals.is_correction("intendevo OpenAI", _PREV_PENAI)
+    assert signals.is_correction("*openai", _PREV_PENAI)
+    assert signals.is_correction("mi sono sbagliato, è openai", _PREV_PENAI)
+    assert signals.is_correction("scusa, openai", _PREV_PENAI)          # typo-fix (lev<=2)
+    assert signals.is_correction("volevo dire 300k non 3M", "fatturato 3M?")
+
+
+def test_real_requests_not_corrections():
+    assert not signals.is_correction("come scrivo una lettera di scuse a un cliente?", _PREV_PENAI)
+    assert not signals.is_correction("devo scrivere delle scuse ai clienti per il ritardo", "")
+    assert not signals.is_correction("volevo scrivere un articolo sul blog aziendale, mi aiuti?", "")
+    assert not signals.is_correction("scusa il ritardo, comunque volevo chiederti del bilancio", "")
+    assert not signals.is_correction("Sto analizzando il turnover della mia azienda", "")
+
+
+def test_correction_term_extracted():
+    assert signals.correction_term("openai volevo scrivere scusa") == "openai"
+    assert signals.correction_term("intendevo OpenAI") == "OpenAI"
+
+
+def test_correction_injected_in_prompt():
+    p = _prompt([
+        {"role": "user", "content": _PREV_PENAI},
+        {"role": "assistant", "content": "PenAI…"},
+        {"role": "user", "content": "openai volevo scrivere scusa"}])
+    assert "INTERPRETAZIONE CONTESTUALE" in p and "CORREZIONE di un refuso" in p
+    assert "«openai»" in p                                   # termine corretto nominato
+    assert "NON ti sta chiedendo di scrivere delle scuse" in p
+
+
+def test_unknown_entity_rule_always_in_prompt():
+    p = _prompt([{"role": "user", "content": "ciao"}])
+    assert "ENTITÀ NON RICONOSCIUTE" in p
+    assert "NON inventare fatti" in p
+    assert "CORREZIONI E REFUSI" in p
