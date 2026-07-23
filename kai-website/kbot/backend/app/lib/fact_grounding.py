@@ -19,7 +19,7 @@ import logging
 import os
 import re
 
-from . import web_search
+from . import signals, web_search
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +55,33 @@ _JUDGMENT = re.compile(
     r"cosa\s+(?:faccio|mi\s+consigli|devo\s+fare)|ha\s+senso|vale\s+la\s+pena)\b", re.I)
 
 
+# --- Estensione "webresearch effettivo" (lug 2026, richiesta Luca) ----------------------
+# Il tool-use discrezionale sul modello locale non parte quasi mai → la ricerca scatta
+# DETERMINISTICAMENTE anche su: (a) richieste esplicite («cerca», «verifica online»);
+# (b) due diligence di un provider/fornitore nominato in contesto normativo/contrattuale
+# (es. «ho scelto openai» in un audit GDPR → documentazione DPA/data residency ufficiale);
+# (c) verifiche di conformità («è tutto in regola?»); (d) domande su norme/adempimenti.
+_EXPLICIT = re.compile(
+    r"\b(cerca\w*|ricerca\s+(?:sul\s+web|online)|verifica\s+(?:online|sul\s+web)|"
+    r"controlla\s+(?:online|sul\s+web)|trova\w*\s+(?:informazioni|dati|fonti)|"
+    r"fonti\s+aggiornate|notizie\s+(?:su|recenti))\b", re.I)
+_PROVIDERS = re.compile(
+    r"\b(open\s?ai|anthropic|google|microsoft|azure|aws|amazon|meta|stripe|paypal|"
+    r"supabase|firebase|cloudflare|vercel|railway|render|replicate|hugging\s?face|"
+    r"mistral|clerk|auth0|shopify|salesforce|hubspot|mailchimp|resend|zendesk|"
+    r"chat\s?gpt|gpt-\w+|claude|gemini|copilot)\b", re.I)
+_NORM_CONTEXT = re.compile(
+    r"\b(gdpr|gpdr|privacy|dati\s+personali|dpia|dpa|ai\s+act|normativ\w+|decreto|"
+    r"regolament\w+|direttiv\w+|ccnl|codice\s+civile|testo\s+unico|obblig\w+|"
+    r"adempiment\w+|autorizzazion\w+|conform\w+|compliance|contratt\w+|clausol\w+|"
+    r"licenz\w+|trasferiment\w+|consenso|informativ\w+|231|whistleblowing|"
+    r"antiriciclaggio|sicurezza\s+sul\s+lavoro|haccp)\b", re.I)
+_NORM_QUESTION = re.compile(
+    r"\b(cosa\s+(?:dice|prevede|richiede)\s+(?:la|il|lo)\b|è\s+obbligatori\w+|"
+    r"serve\s+(?:il|la|un|una)\s+(?:consenso|autorizzazione|licenza|dpia|dpa|informativa)|"
+    r"in\s+regola|a\s+norma|conform\w+|quali\s+(?:obblighi|requisiti|adempimenti))", re.I)
+
+
 def _enabled() -> bool:
     return os.getenv("KBOT_FACT_GROUNDING", "1") != "0" and web_search.enabled()
 
@@ -74,24 +101,60 @@ def _query(user_text: str) -> str:
     return f"{user_text.strip()[:220]} (contesto: Italia, dato aggiornato)"
 
 
-def ground_block(user_text: str) -> str | None:
+def research_query(user_text: str, context_text: str = "") -> str | None:
+    """La query di ricerca per questo turno, o None se la ricerca non serve.
+    Decisione DETERMINISTICA sull'ULTIMO messaggio (il contesto recente serve solo a
+    qualificare il tema, mai a ri-triggerare da solo → niente ricerca a ogni turno)."""
+    t = (user_text or "").strip()
+    if len(t) < 12:
+        return None
+    ctx = f"{context_text or ''} {t}"
+    # (a) richiesta esplicita di cercare → si cerca sempre
+    if _EXPLICIT.search(t):
+        return _query(t)
+    # (b) provider nominato in contesto normativo/contrattuale → due diligence documentale
+    m = _PROVIDERS.search(t)
+    if m and _NORM_CONTEXT.search(ctx):
+        provider = m.group(0).strip()
+        return (f"{provider}: DPA, data residency, trasferimento dati extra-UE, uso dei "
+                f"dati per training, termini API vs consumer — documentazione ufficiale "
+                f"aggiornata (contesto GDPR Italia)")
+    if _JUDGMENT.search(t):               # giudizio/strategia → niente ricerca
+        return None
+    # (c) verifica di conformità → requisiti e obblighi dalle fonti
+    if signals.is_compliance_check(t):
+        return f"{t[:200]} (requisiti e obblighi, normativa italiana, fonti ufficiali)"
+    # (d) domanda su norme/adempimenti
+    if _NORM_QUESTION.search(t) and _NORM_CONTEXT.search(ctx):
+        return f"{t[:220]} (normativa italiana aggiornata, fonte ufficiale)"
+    # (e) fatto specifico (trigger storico)
+    if _FACTUAL.search(t):
+        return _query(t)
+    return None
+
+
+def ground_block(user_text: str, context_text: str = "") -> str | None:
     """Blocco di grounding da iniettare nel prompt, o None se non serve / ricerca non
     disponibile. best-effort: qualunque errore → None (fail-open, prosegue col prompt)."""
-    if not _enabled() or not needs_grounding(user_text):
+    if not _enabled():
+        return None
+    q = research_query(user_text, context_text)
+    if not q:
         return None
     try:
-        res = web_search.run_openai_search(_query(user_text))
+        res = web_search.run_openai_search(q)
     except Exception:
         log.warning("fact_grounding: ricerca fallita (fail-open)", exc_info=True)
         return None
     if not res or res.startswith("[ricerca web"):
         return None  # nessun risultato utile → il prompt prudente gestisce da solo
     return (
-        "\nRISULTATI DI RICERCA WEB (aggiornati, NON pre-validati) — la domanda chiede un "
-        "numero/termine specifico. Usa QUESTI risultati come base, NON la tua memoria, e "
-        "cita un valore solo se compare QUI. ATTENZIONE: sono pagine web generiche, non una "
-        "fonte ufficiale — su scadenze e termini di legge il web ripete spesso errori. Se i "
-        "risultati non danno il dato preciso in modo CHIARO e COERENTE (o si contraddicono), "
-        "NON asserire un numero: dillo e rimanda alla fonte ufficiale, senza indovinare.\n"
+        "\nRISULTATI DI RICERCA WEB (aggiornati, NON pre-validati) — la domanda richiede "
+        "fatti, norme o documentazione verificabili. Usa QUESTI risultati come base, NON la "
+        "tua memoria, e cita un valore/termine/condizione solo se compare QUI (cita le "
+        "fonti nel testo). ATTENZIONE: sono pagine web generiche, non una fonte ufficiale — "
+        "su scadenze e termini di legge il web ripete spesso errori. Se i risultati non "
+        "danno il dato preciso in modo CHIARO e COERENTE (o si contraddicono), NON asserire "
+        "un numero: dillo e rimanda alla fonte ufficiale, senza indovinare.\n"
         "<<<RISULTATI RICERCA>>>\n" + res[:2500] + "\n<<<FINE RISULTATI>>>\n"
     )

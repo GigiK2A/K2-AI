@@ -499,3 +499,49 @@ def test_prompt_struttura_risposte_giuridiche():
     # citare la normativa in parole è incoraggiato, ma il NUMERO dell'articolo resta al report
     assert "CITA la normativa principale" in p
     assert "solo il numero dell'articolo" in p.lower() or "è SOLO il numero dell'articolo" in p
+
+
+# ── webresearch effettivo (lug 2026): ricerca proattiva oltre i numeri-fatto ─────────────
+def test_research_query_compliance_and_norms():
+    from app.lib import fact_grounding as fg
+    # verifica di conformità → si cerca (requisiti dalle fonti)
+    q = fg.research_query("la mia app di outfit è in regola col GPDR?")
+    assert q and "fonti ufficiali" in q
+    # domanda normativa in contesto normativo → si cerca
+    q = fg.research_query("è obbligatoria la DPIA per la mia app?", "parliamo di gdpr e privacy")
+    assert q and "normativa italiana" in q
+
+
+def test_research_query_provider_due_diligence():
+    from app.lib import fact_grounding as fg
+    # provider nominato in contesto normativo (anche dal contesto recente, non solo il turno)
+    q = fg.research_query("io in questo caso ho scelto openai, devo contattare loro?",
+                          "server extra ue gdpr foto dati personali")
+    assert q and "DPA" in q and "data residency" in q
+    assert "openai" in q.lower()
+    # provider nominato SENZA contesto normativo → nessuna ricerca (chiacchiera di prodotto)
+    assert fg.research_query("uso openai per generare le immagini, è velocissimo") is None
+
+
+def test_research_query_explicit_and_negatives():
+    from app.lib import fact_grounding as fg
+    assert fg.research_query("cercami i competitor del packaging in Umbria")   # esplicita
+    # giudizi/strategia e chitchat → mai
+    for t in ("Conviene assumere ora o aspettare?", "come faccio a ridurre i costi?",
+              "ok grazie", "Come miglioro il clima aziendale?"):
+        assert fg.research_query(t) is None, t
+    # il trigger storico sui numeri-fatto resta attivo
+    assert fg.research_query("Qual è l'aliquota IVA sugli alimentari?")
+
+
+def test_ground_block_uses_research_query(monkeypatch):
+    from app.lib import fact_grounding as fg
+    monkeypatch.setattr(fg, "_enabled", lambda: True)
+    seen = {}
+    def _fake_search(q):
+        seen["q"] = q
+        return "OpenAI offre un DPA standard. Fonti: openai.com"
+    monkeypatch.setattr(fg.web_search, "run_openai_search", _fake_search)
+    b = fg.ground_block("ho scelto openai per le foto, è un problema?", "audit gdpr privacy")
+    assert b and "DPA standard" in b and "documentazione verificabili" in b
+    assert "DPA" in seen["q"]                       # la query è quella di due diligence

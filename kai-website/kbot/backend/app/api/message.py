@@ -452,10 +452,12 @@ async def post_message(
     if web_search.enabled():
         system_prompt += web_search.SYSTEM_HINT
     # GROUNDING FORZATO (filosofia: la risposta si costruisce dalla CONOSCENZA, non dalla
-    # memoria del modello): se l'ultimo messaggio chiede un fatto specifico (scadenza/
-    # aliquota/soglia/termine legale-fiscale), il server recupera la fonte PRIMA del turno
-    # e la inietta → il modello risponde ancorato. best-effort in thread (non blocca il loop).
-    _gb = await asyncio.to_thread(fact_grounding.ground_block, last_user_text)
+    # memoria del modello): fatto specifico, conformità, provider nominato o richiesta
+    # esplicita → il server recupera la fonte PRIMA del turno e la inietta (il contesto
+    # recente qualifica il tema, es. provider in audit GDPR). best-effort in thread.
+    _recent_ctx = " ".join(str(m.get("content") or "") for m in merged_messages[-8:]
+                           if isinstance(m, dict) and m.get("role") == "user")[-1500:]
+    _gb = await asyncio.to_thread(fact_grounding.ground_block, last_user_text, _recent_ctx)
     if _gb:
         system_prompt += _gb
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
@@ -588,13 +590,9 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
     if web_search.enabled():
         system_prompt += web_search.SYSTEM_HINT
-    # GROUNDING FORZATO (filosofia: la risposta si costruisce dalla CONOSCENZA, non dalla
-    # memoria del modello): se l'ultimo messaggio chiede un fatto specifico (scadenza/
-    # aliquota/soglia/termine legale-fiscale), il server recupera la fonte PRIMA del turno
-    # e la inietta → il modello risponde ancorato. best-effort in thread (non blocca il loop).
-    _gb = await asyncio.to_thread(fact_grounding.ground_block, last_user_text)
-    if _gb:
-        system_prompt += _gb
+    # NB: il GROUNDING FORZATO (ricerca web proattiva) NON avviene qui: nello stream gira
+    # DOPO l'heartbeat (event_gen), così una ricerca lenta non tiene fermo il primo byte
+    # (rischio 524 all'edge). Vedi post_message_stream.
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
 
     if not ANTHROPIC_API_KEY:
@@ -663,6 +661,11 @@ async def post_message_stream(
 ):
     session, merged_messages, collected, system_prompt, history, skills = await _prepare_turn(body, user)
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    # Testi per il grounding proattivo (calcolati qui, eseguito DOPO l'heartbeat).
+    _users_for_ground = [str(m.get("content") or "") for m in merged_messages
+                         if isinstance(m, dict) and m.get("role") == "user"]
+    _last_user_text = _users_for_ground[-1] if _users_for_ground else ""
+    _recent_user_text = " ".join(_users_for_ground[-6:])[-1500:]
 
     async def event_gen():
         # HEARTBEAT immediato: flush del primo byte PRIMA della chiamata LLM (che può tardare
@@ -671,6 +674,20 @@ async def post_message_stream(
         # mostra come "errore invio messaggio". È un COMMENTO SSE (riga ':'): il client lo
         # ignora (nessuna riga 'data:'), zero impatto sul parsing.
         yield ": ok\n\n"
+        # GROUNDING FORZATO ("webresearch effettivo"): sul modello locale il tool-use
+        # discrezionale non parte quasi mai → quando l'ultimo messaggio richiede fatti/
+        # norme/documentazione (fatto specifico, conformità, provider nominato, richiesta
+        # esplicita), il SERVER cerca ORA (OpenAI) e inietta i risultati nel prompt.
+        # Best-effort in thread, fail-open; gira dopo l'heartbeat → niente 524.
+        sys_prompt = system_prompt
+        try:
+            _gb = await asyncio.to_thread(
+                fact_grounding.ground_block, _last_user_text, _recent_user_text)
+            if _gb:
+                sys_prompt += _gb
+                yield ": search-done\n\n"   # commento SSE: tiene vivo lo stream, il client lo ignora
+        except Exception:
+            log.warning("grounding proattivo fallito (fail-open)", exc_info=True)
         raw_buffer: list[str] = []
         usage = None
         # Scrubber dello stream (bug UX "continua a ragionare e poi cambia messaggio"):
@@ -689,7 +706,7 @@ async def post_message_stream(
                 stream_kwargs: dict = dict(
                     model=ANTHROPIC_MODEL,
                     max_tokens=16000,
-                    system=system_prompt,
+                    system=sys_prompt,
                     messages=messages,
                     timeout=120.0,
                 )
