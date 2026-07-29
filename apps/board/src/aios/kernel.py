@@ -21,11 +21,50 @@ class ExecOutcome(Enum):
     DENIED = auto()
 
 
+def esito_effettivo(result: Any) -> dict[str, Any] | None:
+    """Estrae l'esito REALE di una run dal valore di ritorno del tool.
+
+    L'attuatore non solleva: incapsula i fallimenti in result['attuatore'] (vedi
+    agents/domain.py). Senza questa estrazione un'azione fallita risulterebbe
+    'executed' identica a una riuscita — ed è così che Telegram e l'audit
+    finivano per dichiarare successi mai avvenuti. Ritorna None se il tool non
+    riporta un esito strutturato (nulla da dire).
+    """
+    if not isinstance(result, dict):
+        return None
+    att = result.get("attuatore")
+    if not isinstance(att, dict):
+        return None
+    out: dict[str, Any] = {"ok": bool(att.get("ok"))}
+    for campo in ("errore", "tabella", "op", "canale", "workflow"):
+        if att.get(campo):
+            out[campo] = str(att[campo])[:200]
+    if att.get("righe") is not None:
+        righe = att["righe"]
+        out["righe"] = len(righe) if isinstance(righe, list) else righe
+    return out
+
+
 @dataclass
 class ExecResult:
     outcome: ExecOutcome
     result: Any = None
     approval_id: int | None = None
+
+    @property
+    def esito(self) -> dict[str, Any] | None:
+        """Esito reale dell'attuatore, se il tool ne ha riportato uno."""
+        return esito_effettivo(self.result)
+
+    @property
+    def eseguita_davvero(self) -> bool:
+        """True solo se l'azione è arrivata a destinazione. Un'azione che l'attuatore
+        ha rifiutato o non è riuscita a compiere è EXECUTED per il kernel ma NON
+        eseguita davvero: chi riporta all'umano deve distinguere i due casi."""
+        if self.outcome != ExecOutcome.EXECUTED:
+            return False
+        es = self.esito
+        return True if es is None else bool(es.get("ok"))
 
 
 class Kernel:
@@ -77,8 +116,15 @@ class Kernel:
             self.audit.append(action_key=action_key, event="error",
                               actor=actor, detail={"error": str(exc)})
             raise
-        self.audit.append(action_key=action_key, event="executed",
-                          actor=actor, detail={"args": args})
+        # L'esito dell'attuatore va in audit: senza, un'azione fallita lascia la
+        # stessa traccia di una riuscita e il fallimento diventa invisibile.
+        detail: dict[str, Any] = {"args": args}
+        esito = esito_effettivo(result)
+        if esito is not None:
+            detail["esito"] = esito
+        self.audit.append(action_key=action_key,
+                          event="executed" if (esito is None or esito.get("ok")) else "failed",
+                          actor=actor, detail=detail)
         return ExecResult(outcome=ExecOutcome.EXECUTED, result=result)
 
     def execute(self, name: str, *, actor: str, args: dict[str, Any]) -> ExecResult:

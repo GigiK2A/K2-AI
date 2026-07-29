@@ -20,7 +20,9 @@ if ! command -v psql >/dev/null 2>&1; then
   exit 1
 fi
 
-# Tables to check (union of ai-board + kai-website).
+# Tables to check (union of board AIOS + kai-website). Le tabelle legacy del
+# vecchio ai-board (tasks/agent_logs/approvals) esistono ancora e restano
+# protette da RLS anche se non più scritte da nessuno.
 PROTECTED_TABLES=(
   tasks agent_logs agent_logs_archive approvals pipeline_leads shared_memory
   projects project_phases project_tasks project_documents project_agent_links

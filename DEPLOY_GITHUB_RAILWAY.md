@@ -3,7 +3,13 @@
 Questa repo contiene due servizi separati:
 
 - `kai-website` (sito pubblico Vite statico)
-- `ai-board` (FastAPI + scheduler + Telegram + Notion)
+- `apps/board` (AIOS: cockpit FastAPI + agenti + attuatore + Telegram, su Supabase)
+
+> **Storico (lug 2026)**: esisteva un secondo board in `ai-board/` (FastAPI + Notion).
+> Non è mai andato in produzione — le sue tabelle Supabase (`approvals`, `tasks`,
+> `agent_logs`) sono rimaste a zero righe per tutta la sua vita — ed è stato rimosso.
+> Il board vivo è **`apps/board`**. Se trovi documentazione che parla di `ai-board`,
+> è obsoleta.
 
 ## 1) GitHub
 
@@ -12,8 +18,8 @@ Questa repo contiene due servizi separati:
 3. Verifica che siano presenti:
    - `kai-website/Dockerfile`
    - `kai-website/railway.toml`
-   - `ai-board/Dockerfile`
-   - `ai-board/railway.toml`
+   - `apps/board/Dockerfile`
+   - `apps/board/railway.toml`
 
 ## 2) Railway Project
 
@@ -43,60 +49,66 @@ Variabile ambiente richiesta:
 VITE_KAI_API_BASE_URL=https://board.tuodominio.it
 ```
 
-### Servizio B: `k2-ai-board`
+### Servizio B: `k2-board` (AIOS)
 
 - Source repo: questo repository
-- Root Directory: `ai-board`
+- Root Directory: `apps/board`
 - Builder: Dockerfile (automatico)
-- Healthcheck: `/healthz`
-- Replica: 1 (il board usa scheduler e bot Telegram nel processo)
+- Healthcheck: `/health`
+- Replica: **1 obbligatoria** — il canale Telegram usa long-polling `getUpdates`:
+  due repliche significano due poller in conflitto (Telegram ne serve uno solo).
 
 Variabili ambiente minime:
 
 ```env
-APP_ENV=production
-LOG_LEVEL=INFO
 PORT=8000
+AIOS_HOST=0.0.0.0
 
-APP_ALLOWED_ORIGINS=https://tuodominio.it,https://www.tuodominio.it,https://board.tuodominio.it
+# Obbligatori per girare
+AIOS_SUPABASE_URL=<https://xxx.supabase.co>
+AIOS_SUPABASE_SERVICE_KEY=<service-key>
+ANTHROPIC_API_KEY=<anthropic>
 
-BOARD_AUTH_ENABLED=true
-BOARD_USERNAME=admin
-BOARD_PASSWORD=<password-lunga>
-BOARD_DATA_BACKEND=notion
+# Obbligatorio fuori da locale: senza, l'API resta SENZA autenticazione
+# (serve_cockpit.py si rifiuta di partire con AIOS_HOST non locale e token vuoto)
+AIOS_API_TOKEN=<token-lungo>
+AIOS_ALLOWED_ORIGIN=https://app.k2-ai.it
 
-NOTION_TOKEN=<token>
-NOTION_PAGE_ID=<page-id>
-NOTION_VERSION=2022-06-28
-
-OPENAI_API_KEY=<openai>
-ANTHROPIC_API_KEY=<anthropic-opzionale>
-TAVILY_API_KEY=<tavily-opzionale>
-
+# Autonomia + Telegram nello stesso processo del cockpit
+AIOS_AUTONOMY=1
 TELEGRAM_BOT_TOKEN=<bot-token>
 TELEGRAM_CHAT_ID=<chat-id>
-TELEGRAM_MODE=webhook
-TELEGRAM_WEBHOOK_URL=https://board.tuodominio.it
+TELEGRAM_ALLOWED_CHAT_IDS=<altri-id-ammessi>
+
+# Braccio esecutore ESTERNO: senza questo, ogni azione verso il mondo
+# (invio email, pubblicazione) non parte e viene riportata come non eseguita
+N8N_WEBHOOK_URL=https://n8n.tuodominio.it/webhook/k2ai
+N8N_WEBHOOK_TOKEN=<token-firma-opzionale>
+
+AIOS_IG_TOKEN=<instagram>
 ```
+
+> ⚠️ Non usare il process `worker` del Procfile **insieme** a `AIOS_AUTONOMY=1`:
+> sono due loop di autonomia e quindi due poller Telegram in conflitto. Scegline uno.
 
 ## 3) Dominio
 
 Configura due host:
 
 - `tuodominio.it` -> servizio `k2-ai-website`
-- `board.tuodominio.it` -> servizio `k2-ai-board`
+- `board.tuodominio.it` -> servizio `k2-board`
 
 ## 4) Go-live check (10 minuti)
 
-1. `https://board.tuodominio.it/healthz` risponde `ok`.
-2. Dal sito invia un form contatti test.
-3. Verifica in Notion:
-   - nuovo record in `Clienti`
-   - nuova `Commessa`
-   - nuovo `Pipeline Lead`
-   - nuovo `Task`
-   - sottopagina cliente con messaggio completo.
-4. Verifica Telegram: notifica con formattazione (grassetto/corsivo) corretta.
+1. `https://board.tuodominio.it/health` risponde `ok`.
+2. Il cockpit su `/api/approvals` risponde 401 senza token (auth attiva) e 200 col token.
+3. Telegram riceve il messaggio di avvio `🟢 K2-AI è attivo`.
+4. **Verifica che l'approvazione esegua davvero**: approva una decisione dalla card
+   Telegram e controlla che la risposta dica *cosa* ha fatto (`✅ Eseguito: insert su
+   <tabella>` o `✅ Inviato a n8n · workflow «…»`). Se leggi
+   `⚠️ Approvato ma NON eseguito — …`, l'azione non è partita e il messaggio riporta
+   la causa: quasi sempre `N8N_WEBHOOK_URL` mancante o credenziali del workflow scadute.
+5. Controlla in `aios_audit` che l'evento sia `executed` e non `failed`.
 
 ## 4.1) Publish del sito da terminale
 

@@ -74,6 +74,48 @@ def azione_riga(azione) -> str:
     return f"⚙️ {op or 'azione'} su {tab}"
 
 
+def esito_riga(esito) -> str:
+    """Riga leggibile di COSA è successo davvero dopo un Approva.
+
+    `esito` è il dict prodotto da kernel.esito_effettivo (None = il tool non riporta
+    un esito strutturato). Serve a non dire mai 'eseguito' quando l'attuatore ha
+    fallito in silenzio."""
+    if esito is None:
+        return "✅ Approvato ed eseguito."
+    if not esito.get("ok"):
+        return f"⚠️ Approvato ma NON eseguito — {esito.get('errore') or 'causa non riportata'}"
+    canale = esito.get("canale")
+    if canale == "n8n":
+        return f"✅ Inviato a n8n · workflow «{esito.get('workflow', '?')}»"
+    if canale == "meta":
+        return "✅ Eseguito su Meta"
+    tab, op = esito.get("tabella"), esito.get("op")
+    if tab and op:
+        righe = esito.get("righe")
+        n = f" ({righe} righe)" if isinstance(righe, int) else ""
+        return f"✅ Eseguito: {op} su {tab}{n}"
+    return "✅ Approvato ed eseguito."
+
+
+def send_email_draft_card(draft_id, to: str, subject: str, body: str = "") -> None:
+    """Card di una bozza email in uscita, con invio/scarto. Le bozze vivono in
+    `email_messages`, non nella coda approvazioni: senza questa card non erano
+    raggiungibili da Telegram e restavano ferme a 'bozza' per sempre."""
+    if not enabled():
+        return
+    txt = (f"*Bozza email da approvare*\n\n*A:* {to or '—'}\n*Oggetto:* {subject or '—'}\n\n"
+           f"{(body or '')[:600]}\n\n⚙️ *Su Invia:* 🌐 ESTERNO · parte la mail al destinatario\n"
+           f"ID: `{draft_id}`")
+    try:
+        _post("sendMessage", {
+            "chat_id": os.environ["TELEGRAM_CHAT_ID"], "text": txt, "parse_mode": "Markdown",
+            "reply_markup": {"inline_keyboard": [[
+                {"text": "📤 Invia", "callback_data": f"mailok:{draft_id}"},
+                {"text": "🗑 Scarta", "callback_data": f"mailno:{draft_id}"}]]}}, timeout=15)
+    except Exception:
+        pass
+
+
 def send_approval_card(approval_id, title: str, body: str = "", azione=None) -> None:
     """Manda una card con bottoni Approva/Rifiuta. callback_data = approve|reject:<id>.
     Mostra anche COSA esegue l'azione (azione) per evitare approvazioni cieche."""
@@ -126,10 +168,14 @@ def send_command_card(res: dict) -> None:
 
 
 def poll_decisions(on_approve, on_reject, *, on_text=None, on_confirm=None,
+                   on_email_send=None, on_email_discard=None,
                    once: bool = False, max_loops: int | None = None) -> None:
-    """Long-poll getUpdates. callback_query: approve:/reject:/cmdok:<id>. Se on_text è
-    dato, ascolta anche i messaggi di testo (istruzioni in linguaggio naturale).
-    once=True fa un solo giro (test). max_loops limita le iterazioni."""
+    """Long-poll getUpdates. callback_query: approve:/reject:/cmdok:/mailok:/mailno:<id>.
+    Se on_text è dato, ascolta anche i messaggi di testo (istruzioni in linguaggio
+    naturale). once=True fa un solo giro (test). max_loops limita le iterazioni.
+
+    I gestori possono ritornare una stringa: viene mostrata nel toast al posto di un
+    esito generico, così l'utente legge cosa è successo davvero e non un 'fatto' fisso."""
     if not enabled():
         return
     allow = _allowed_chats()
@@ -162,15 +208,20 @@ def poll_decisions(on_approve, on_reject, *, on_text=None, on_confirm=None,
                 cqid = cq.get("id", "")
                 try:
                     if cqd.startswith("approve:"):
-                        on_approve(cqd.split(":", 1)[1]); _answer(cqid, "Approvato.")
+                        # il toast riporta l'esito reale se il gestore lo restituisce
+                        _answer(cqid, on_approve(cqd.split(":", 1)[1]) or "Approvato.")
                     elif cqd.startswith("reject:"):
-                        on_reject(cqd.split(":", 1)[1]); _answer(cqid, "Rifiutato.")
+                        _answer(cqid, on_reject(cqd.split(":", 1)[1]) or "Rifiutato.")
                     elif cqd.startswith("cmdok:") and on_confirm:
-                        on_confirm(cqd.split(":", 1)[1]); _answer(cqid, "Eseguito.")
+                        _answer(cqid, on_confirm(cqd.split(":", 1)[1]) or "Eseguito.")
+                    elif cqd.startswith("mailok:") and on_email_send:
+                        _answer(cqid, on_email_send(cqd.split(":", 1)[1]) or "Inviata.")
+                    elif cqd.startswith("mailno:") and on_email_discard:
+                        _answer(cqid, on_email_discard(cqd.split(":", 1)[1]) or "Scartata.")
                     else:
                         _answer(cqid, "Azione sconosciuta.")
-                except Exception:
-                    _answer(cqid, "Errore nell'azione.")
+                except Exception as exc:
+                    _answer(cqid, f"Errore: {str(exc)[:150]}")
                 continue
             msg = upd.get("message")
             if msg and on_text:

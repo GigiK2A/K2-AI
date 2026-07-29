@@ -5,19 +5,24 @@ Contenitore unico per il sito pubblico e il software operativo.
 ## Struttura
 
 - `kai-website` -> sito pubblico K2-AI
-- `ai-board` -> software operativo AI Board
+- `apps/board` -> AIOS, il software operativo del board
 
 ## Logica
 
 - Il sito pubblico resta un frontend separato e deployabile in autonomia.
-- AI Board resta il backend operativo, con dashboard, pipeline, memoria e agenti.
-- Il form contatti del sito invia ora le richieste a `POST /api/intake/contact` su AI Board.
-- Anche K-BOT invia i turni di diagnosi a `POST /api/intake/kbot-chat` su AI Board.
+- AIOS (`apps/board`) è il backend operativo: cockpit, agenti di dominio, coda di
+  approvazione e attuatore che esegue le azioni approvate su Supabase / n8n.
+- Il form contatti del sito è servito da `kai-website/server.js`, che fa da proxy
+  verso `api/intake/contact.ts` (Resend). Non dipende dal board.
+
+> **Nota storica (lug 2026)**: `ai-board/` era un secondo board mai andato in
+> produzione (tabelle Supabase sempre a zero righe). È stato rimosso; il board
+> operativo è `apps/board`.
 
 ## Locale
 
 - Sito: `cd kai-website && npm run dev`
-- Software: `cd ai-board && uv sync && source .venv/bin/activate && python main.py`
+- Board: `cd apps/board && python3 serve_cockpit.py` (test: `python3 -m pytest`)
 
 ## Deploy
 
