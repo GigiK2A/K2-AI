@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-07-22",
+  "updated_at": "2026-07-29",
   "description": "Scaletta blog + IG K2-AI. Source of truth unica per blog autopilot e n8n IG.",
   "rows": [
     {
@@ -139,9 +139,9 @@
       "url": "https://www.k2-ai.it/laboratorio",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "",
-      "blog_pubblicato": "",
-      "blog_url": ""
+      "blog_slug": "verbali-sopralluogo-digitali-da-3-a-1-passaggio",
+      "blog_pubblicato": "2026-07-29",
+      "blog_url": "/blog/verbali-sopralluogo-digitali-da-3-a-1-passaggio"
     },
     {
       "row": 12,
