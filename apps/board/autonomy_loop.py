@@ -43,6 +43,41 @@ def _run_agents(platform) -> dict:
     return out
 
 
+def diagnostica(platform) -> str:
+    """Fotografia all'avvio di cosa può davvero arrivare a destinazione.
+
+    Il braccio esterno è env-gated: senza N8N_WEBHOOK_URL ogni invio/pubblicazione
+    viene rifiutato dall'attuatore. Dirlo all'avvio evita di scoprirlo una
+    approvazione alla volta."""
+    from aios.sources.n8n import n8n_enabled
+
+    righe = ["*Diagnostica avvio*"]
+    esterno_ok = n8n_enabled()
+    righe.append(f"{'✅' if esterno_ok else '⛔'} Azioni esterne (n8n): "
+                 + ("configurate" if esterno_ok else
+                    "NON configurate — manca N8N_WEBHOOK_URL. "
+                    "Invii e pubblicazioni non partiranno."))
+    try:
+        n_pending = len(platform.kernel.approvals.pending())
+        righe.append(f"📋 Decisioni in coda: {n_pending}")
+    except Exception:
+        righe.append("⚠️ Coda approvazioni non leggibile")
+    conv = getattr(platform, "conversations", None)
+    if conv is not None:
+        try:
+            righe.append(f"✉️ Bozze email da approvare: {len(conv.bozze_in_attesa(limit=50))}")
+        except Exception:
+            righe.append("⚠️ Bozze email non leggibili")
+    return "\n".join(righe)
+
+
+# Massimo di card per tick. `seen` vive in memoria: dopo un riavvio l'intero
+# arretrato risulterebbe "nuovo" e partirebbero centinaia di messaggi in pochi
+# secondi (oltre i limiti Telegram). Con il cap l'arretrato viene smaltito poco
+# per volta invece che tutto insieme.
+MAX_CARD_PER_TICK = int(os.environ.get("AIOS_MAX_CARD_PER_TICK", "8"))
+
+
 def _notify_new_pending(kernel, seen: set) -> int:
     """Manda su Telegram solo le decisioni in coda non ancora notificate."""
     n = 0
@@ -50,10 +85,39 @@ def _notify_new_pending(kernel, seen: set) -> int:
         for a in kernel.approvals.pending():
             if a.id in seen:
                 continue
+            if n >= MAX_CARD_PER_TICK:
+                break
             seen.add(a.id)
             p = a.payload or {}
             telegram.send_approval_card(a.id, p.get("titolo") or a.action_key,
                                         p.get("contenuto") or "", p.get("azione"))
+            n += 1
+    except Exception:
+        pass
+    return n
+
+
+def _notify_new_email_drafts(platform, seen_mail: set) -> int:
+    """Propone su Telegram le bozze email mai inviate.
+
+    Le bozze stanno in `email_messages`, non nella coda approvazioni: prima di questa
+    funzione erano raggiungibili solo dal cockpit web ed è per questo che restavano
+    ferme a 'bozza' a tempo indefinito."""
+    conv = getattr(platform, "conversations", None)
+    if conv is None:
+        return 0
+    n = 0
+    try:
+        for d in conv.bozze_in_attesa():
+            did = d.get("id")
+            if did is None or did in seen_mail:
+                continue
+            if n >= MAX_CARD_PER_TICK:
+                break
+            seen_mail.add(did)
+            telegram.send_email_draft_card(did, str(d.get("to_email") or ""),
+                                           str(d.get("subject") or ""),
+                                           str(d.get("body") or ""))
             n += 1
     except Exception:
         pass
@@ -68,12 +132,39 @@ def _start_telegram(platform) -> None:
 
     def _bot():
         def on_approve(aid):
-            k.resolve_approval(int(aid), approve=True)
-            telegram.send_text("✅ Approvato ed eseguito.")
+            # L'esito va LETTO: resolve_approval ritorna EXECUTED anche quando
+            # l'attuatore ha fallito in silenzio (l'errore è dentro il risultato).
+            res = k.resolve_approval(int(aid), approve=True)
+            riga = telegram.esito_riga(res.esito)
+            telegram.send_text(riga)
+            return riga[:190]
 
         def on_reject(aid):
             k.resolve_approval(int(aid), approve=False, reason="rifiutato via Telegram")
             telegram.send_text("🚫 Rifiutato.")
+            return "Rifiutato."
+
+        def on_email_send(draft_id):
+            conv = getattr(platform, "conversations", None)
+            if conv is None:
+                return "Email non disponibili."
+            out = conv.send(str(draft_id), actor="telegram")
+            if out.get("ok"):
+                msg = "📤 Email inviata."
+            else:
+                err = out.get("errore") or (out.get("esito") or {}).get("errore") or "causa non riportata"
+                msg = f"⚠️ NON inviata — {err}"
+            telegram.send_text(msg)
+            return msg[:190]
+
+        def on_email_discard(draft_id):
+            conv = getattr(platform, "conversations", None)
+            if conv is None:
+                return "Email non disponibili."
+            out = conv.discard(str(draft_id))
+            msg = "🗑 Bozza scartata." if out.get("ok") else f"⚠️ {out.get('errore', 'errore')}"
+            telegram.send_text(msg)
+            return msg[:190]
 
         def on_text(text):
             if platform.commands is None:
@@ -84,10 +175,13 @@ def _start_telegram(platform) -> None:
 
         def on_confirm(token):
             out = platform.commands.confirm(int(token), actor="telegram")
-            telegram.send_text("✅ Eseguito." if out.get("ok") else
-                               f"⚠️ Non eseguito: {out.get('errore') or ''}")
+            msg = ("✅ Eseguito." if out.get("ok") else
+                   f"⚠️ Non eseguito: {out.get('errore') or ''}")
+            telegram.send_text(msg)
+            return msg[:190]
 
-        telegram.poll_decisions(on_approve, on_reject, on_text=on_text, on_confirm=on_confirm)
+        telegram.poll_decisions(on_approve, on_reject, on_text=on_text, on_confirm=on_confirm,
+                                on_email_send=on_email_send, on_email_discard=on_email_discard)
 
     threading.Thread(target=_bot, daemon=True, name="telegram-poll").start()
 
@@ -107,6 +201,7 @@ def main() -> None:
     tick = int(os.environ.get("AIOS_TICK_SECONDS", "1800"))
     agents_hour = int(os.environ.get("AIOS_AGENTS_HOUR", "7"))
     seen: set = set()
+    seen_mail: set = set()
     last_agents_day = None
 
     # Heartbeat per-agente (Paperclip #4), opt-in: se AIOS_HEARTBEATS è impostato
@@ -118,6 +213,7 @@ def main() -> None:
     if telegram.enabled():
         telegram.send_text("🟢 *K2-AI* è attivo. Preparo bozze e proposte, ti avviso qui. "
                            "Scrivimi un'istruzione quando vuoi.")
+        telegram.send_text(diagnostica(platform))
 
     mode = "heartbeat per-agente" if hb else f"batch alle {agents_hour:02d}:00 UTC"
     print(f"AIOS autonomy loop avviato (tick {tick}s, agenti: {mode}).")
@@ -152,6 +248,10 @@ def main() -> None:
         nuovi = _notify_new_pending(k, seen)
         if nuovi:
             print(f"[{time.strftime('%H:%M', now)}] notificate {nuovi} nuove decisioni")
+        # le bozze email vanno proposte esplicitamente: non passano dalla coda approvazioni
+        nuove_mail = _notify_new_email_drafts(platform, seen_mail)
+        if nuove_mail:
+            print(f"[{time.strftime('%H:%M', now)}] proposte {nuove_mail} bozze email")
         time.sleep(tick)
 
 

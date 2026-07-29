@@ -221,6 +221,16 @@ class ConversationManager:
                 pass
         return {"bozze_create": made}
 
+    def bozze_in_attesa(self, limit: int = 20) -> list[dict]:
+        """Bozze in uscita mai inviate (status 'bozza'). Servono al canale Telegram per
+        proporle all'approvazione: senza, restano visibili solo nel cockpit web."""
+        try:
+            return _arr(self.client.select("email_messages", {
+                "select": "*", "direction": "eq.out", "status": "eq.bozza",
+                "order": "created_at.desc", "limit": str(max(1, min(int(limit), 50)))}))
+        except Exception:
+            return []
+
     # ---- invio (esterno: solo dopo approvazione) ----
     def send(self, draft_id: str, actor: str = "cockpit",
              override: dict | None = None) -> dict[str, Any]:

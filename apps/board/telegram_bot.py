@@ -24,10 +24,15 @@ def main() -> None:
     telegram.send_text(f"K2-AI: {len(pending)} decisioni in coda. Approva/rifiuta qui o dal cockpit.")
 
     def on_approve(aid):
-        k.resolve_approval(int(aid), approve=True)
+        # l'esito reale va letto e riportato: EXECUTED non significa "riuscito"
+        res = k.resolve_approval(int(aid), approve=True)
+        riga = telegram.esito_riga(res.esito)
+        telegram.send_text(riga)
+        return riga[:190]
 
     def on_reject(aid):
         k.resolve_approval(int(aid), approve=False, reason="rifiutato via Telegram")
+        return "Rifiutato."
 
     def on_text(text):
         # Istruzione in linguaggio naturale → valuta ed esegue (interne subito,
