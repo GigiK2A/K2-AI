@@ -279,7 +279,11 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
         res = kernel.resolve_approval(approval_id, approve=True,
                                       edited_payload=body.edited_payload)
         _invalidate_cache()   # dato cambiato → cockpit lo vede subito
-        out = {"outcome": res.outcome.name}
+        # 'outcome' dice solo che il kernel ha girato: l'esito VERO sta nell'attuatore.
+        # Stessa frase del canale Telegram (una sola fonte per il testo).
+        from aios.notify.telegram import esito_riga
+        out = {"outcome": res.outcome.name, "eseguita": res.eseguita_davvero,
+               "messaggio": esito_riga(res.esito)}
         if isinstance(res.result, dict) and "attuatore" in res.result:
             out["attuatore"] = res.result["attuatore"]   # esito scrittura reale
         return out

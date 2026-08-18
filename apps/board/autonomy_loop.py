@@ -43,6 +43,13 @@ def _run_agents(platform) -> dict:
     return out
 
 
+# Massimo di card per tick. `seen` vive in memoria: dopo un riavvio l'intero
+# arretrato risulterebbe "nuovo" e partirebbero centinaia di messaggi in pochi
+# secondi (oltre i limiti Telegram, che li scarta in silenzio). Con il cap
+# l'arretrato viene smaltito poco per volta invece che perso tutto insieme.
+MAX_CARD_PER_TICK = int(os.environ.get("AIOS_MAX_CARD_PER_TICK", "8"))
+
+
 def _notify_new_pending(kernel, seen: set) -> int:
     """Manda su Telegram solo le decisioni in coda non ancora notificate."""
     n = 0
@@ -50,6 +57,8 @@ def _notify_new_pending(kernel, seen: set) -> int:
         for a in kernel.approvals.pending():
             if a.id in seen:
                 continue
+            if n >= MAX_CARD_PER_TICK:
+                break
             seen.add(a.id)
             p = a.payload or {}
             telegram.send_approval_card(a.id, p.get("titolo") or a.action_key,
@@ -68,12 +77,17 @@ def _start_telegram(platform) -> None:
 
     def _bot():
         def on_approve(aid):
-            k.resolve_approval(int(aid), approve=True)
-            telegram.send_text("✅ Approvato ed eseguito.")
+            # L'esito va LETTO: resolve_approval ritorna EXECUTED anche quando
+            # l'attuatore ha fallito in silenzio (l'errore è dentro il risultato).
+            res = k.resolve_approval(int(aid), approve=True)
+            riga = telegram.esito_riga(res.esito)
+            telegram.send_text(riga)
+            return riga[:190]
 
         def on_reject(aid):
             k.resolve_approval(int(aid), approve=False, reason="rifiutato via Telegram")
             telegram.send_text("🚫 Rifiutato.")
+            return "Rifiutato."
 
         def on_text(text):
             if platform.commands is None:
@@ -84,8 +98,10 @@ def _start_telegram(platform) -> None:
 
         def on_confirm(token):
             out = platform.commands.confirm(int(token), actor="telegram")
-            telegram.send_text("✅ Eseguito." if out.get("ok") else
-                               f"⚠️ Non eseguito: {out.get('errore') or ''}")
+            msg = ("✅ Eseguito." if out.get("ok") else
+                   f"⚠️ Non eseguito: {out.get('errore') or ''}")
+            telegram.send_text(msg)
+            return msg[:190]
 
         telegram.poll_decisions(on_approve, on_reject, on_text=on_text, on_confirm=on_confirm)
 

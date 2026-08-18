@@ -55,11 +55,15 @@ def _ensure_action(p: dict) -> dict:
     """Affidabilità attuatore: ogni proposta DEVE avere un'azione valida (allowlist).
     Se l'LLM ne ha data una valida → la tiene; altrimenti fallback deterministico =
     crea un task operativo (board_tasks) con titolo+contenuto. Mai dipendere dall'LLM."""
-    from aios.actuator import validate, validate_ddl, ActuatorError, is_external_action
+    from aios.actuator import (preflight, validate_ddl, ActuatorError,
+                               is_external_action, segnaposto)
     az = p.get("azione")
     if isinstance(az, dict):
-        if is_external_action(az):     # azione esterna (n8n: pubblica/invia/social) → valida
-            return az
+        if is_external_action(az):     # azione esterna (n8n: pubblica/invia/social)
+            # ma con segnaposto dentro non è spedibile: meglio un task che una mail
+            # con "{{nome}}" al cliente.
+            if not segnaposto(az.get("payload") or az.get("dati") or {}):
+                return az
         if az.get("tipo") == "ddl" or az.get("sql"):   # proposta di schema (DDL guardato)
             try:
                 validate_ddl(str(az.get("sql", "")))
@@ -68,7 +72,7 @@ def _ensure_action(p: dict) -> dict:
                 pass
         else:
             try:
-                validate(az)
+                preflight(az)   # perimetro + i dati mappano su colonne reali
                 return az
             except ActuatorError:
                 pass

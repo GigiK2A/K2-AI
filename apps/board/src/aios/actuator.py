@@ -108,8 +108,29 @@ def is_external_action(action: Any) -> bool:
     return c in _EXTERNAL_CANALI or c in _META_CANALI
 
 
+# Segnaposto mai risolti dall'LLM ({{uuid}}, {{now_iso}}, {{month}}, ${nome}…). Scritti
+# in DB danno righe inutilizzabili o un 400 da PostgREST; mandati fuori via n8n finiscono
+# in una email al cliente. Vanno intercettati PRIMA di eseguire.
+_PLACEHOLDER = re.compile(r"\{\{[^}]*\}\}|\$\{[^}]*\}")
+
+
 class ActuatorError(RuntimeError):
     pass
+
+
+def segnaposto(valore: Any) -> str | None:
+    """Primo segnaposto non risolto nel valore (ricorsivo su dict/list), o None."""
+    if isinstance(valore, str):
+        m = _PLACEHOLDER.search(valore)
+        return m.group(0) if m else None
+    if isinstance(valore, dict):
+        valore = list(valore.values())
+    if isinstance(valore, (list, tuple)):
+        for v in valore:
+            trovato = segnaposto(v)
+            if trovato:
+                return trovato
+    return None
 
 
 def validate(action: dict[str, Any]) -> tuple[str, str, dict, dict]:
@@ -124,6 +145,10 @@ def validate(action: dict[str, Any]) -> tuple[str, str, dict, dict]:
         raise ActuatorError(f"tabella vietata alla scrittura: {table}")
     if table not in ALLOWLIST:
         raise ActuatorError(f"tabella non in allowlist: {table}")
+    # Template non risolti: non si scrive un record con "{{uuid}}" dentro.
+    ph = segnaposto(data) or segnaposto(match)
+    if ph:
+        raise ActuatorError(f"valore segnaposto non risolto: {ph}")
     # delete consentita SOLO sotto approvazione umana (apply_action gira all'approve),
     # con match obbligatorio (niente cancellazioni di massa) e MAI su registri immutabili.
     if op == "delete":
@@ -144,6 +169,16 @@ def validate(action: dict[str, Any]) -> tuple[str, str, dict, dict]:
     if op == "update" and (not isinstance(match, dict) or not match):
         raise ActuatorError("update richiede un match (niente update di massa)")
     return table, op, match, data
+
+
+def preflight(action: dict[str, Any]) -> None:
+    """Verifica a monte che l'azione sia eseguibile DAVVERO: perimetro (validate) più
+    mappatura sui campi reali della tabella (_sanitize a vuoto). Serve a non mettere in
+    coda una proposta che all'Approva non potrebbe scrivere niente — meglio un task
+    onesto che una riga fantasma. Solleva ActuatorError se non è eseguibile."""
+    table, op, _match, data = validate(action)
+    if op != "delete":
+        _sanitize(table, data, op)
 
 
 def validate_ddl(sql: str) -> str:
@@ -267,6 +302,13 @@ def _sanitize(table: str, data: dict, op: str = "insert") -> dict:
                     break
     known = {k: v for k, v in d.items() if k in cols}
     extra = {k: v for k, v in d.items() if k not in cols}
+    # Se NESSUN campo dell'LLM finisce su una colonna reale con un valore, ripiegare
+    # tutto nel campo note produce una riga con ogni colonna utile a null: è così che
+    # in performance_reviews è finita una riga con employee_id/period/score vuoti e le
+    # note piene di segnaposto. Meglio non scrivere: il chiamante ripiega su un task.
+    utili = {k: v for k, v in known.items() if v not in (None, "", [], {})}
+    if extra and not utili:
+        raise ActuatorError(f"nessun campo di {table} riconosciuto: {sorted(extra)[:6]}")
     note_col = next((c for c in _NOTE_COLS if c in cols), None)
     if extra and note_col:                        # gli extra non vanno persi
         txt = "; ".join(f"{k}: {v}" for k, v in extra.items() if v not in (None, "", [], {}))
@@ -303,6 +345,12 @@ def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
         from aios.sources.n8n import trigger_n8n
         wf = str(action.get("workflow") or "k2ai")
         payload = action.get("payload") or action.get("dati") or {}
+        # Verso l'esterno i segnaposto sono peggio che in DB: finirebbero in una email
+        # o in un post. Meglio non partire e dirlo.
+        ph = segnaposto(payload)
+        if ph:
+            return {"ok": False, "canale": "n8n", "workflow": wf,
+                    "errore": f"segnaposto non risolto nel payload: {ph}"}
         out = trigger_n8n(wf, payload if isinstance(payload, dict) else {})
         return {"ok": bool(out.get("ok")), "canale": "n8n", "workflow": wf, "esito": out}
     table, op, match, data = validate(action)
@@ -310,7 +358,7 @@ def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
         # eq. esatto per ogni chiave di match → niente cancellazioni di massa
         filters = {k: f"eq.{v}" for k, v in match.items()}
         rows = client.delete(table, filters)
-        return {"ok": True, "tabella": table, "op": "delete", "match": match, "righe": rows}
+        return _esito_righe(table, "delete", rows, match=match)
     data = _sanitize(table, data, op)
     if op == "insert":
         rows = client.insert(table, data)
@@ -319,4 +367,21 @@ def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
     # passthrough (in./gte./...) → impossibile un update di massa via match crafted.
     filters = {k: f"eq.{v}" for k, v in match.items()}
     rows = client.update(table, filters, data)
-    return {"ok": True, "tabella": table, "op": "update", "match": match, "righe": rows}
+    return _esito_righe(table, "update", rows, match=match)
+
+
+def _esito_righe(table: str, op: str, rows: Any, *, match: dict) -> dict[str, Any]:
+    """Esito di un update/delete: 0 righe toccate NON è un successo.
+
+    PostgREST risponde 200 con lista vuota quando il match non trova niente (riga
+    inesistente, tabella vuota, id sbagliato). Dichiararlo 'ok' ha fatto passare per
+    fatte 6 modifiche a policy_register su una tabella vuota: qui diventa un
+    fallimento esplicito, così Telegram e l'audit lo riportano."""
+    n = len(rows) if isinstance(rows, list) else rows
+    out: dict[str, Any] = {"tabella": table, "op": op, "match": match, "righe": rows}
+    if n == 0:
+        out["ok"] = False
+        out["errore"] = f"nessuna riga di {table} corrisponde al match {match}"
+    else:
+        out["ok"] = True
+    return out

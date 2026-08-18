@@ -74,6 +74,33 @@ def azione_riga(azione) -> str:
     return f"⚙️ {op or 'azione'} su {tab}"
 
 
+def esito_riga(esito) -> str:
+    """Riga leggibile di COSA è successo davvero dopo un Approva.
+
+    `esito` è il dict prodotto da kernel.esito_effettivo (None = il tool non riporta
+    un esito strutturato). Serve a non dire mai 'eseguito' quando l'attuatore ha
+    fallito in silenzio, e a non spacciare per fatto un update che non ha trovato
+    nessuna riga."""
+    if esito is None:
+        return "✅ Approvato ed eseguito."
+    if not esito.get("ok"):
+        return f"⚠️ Approvato ma NON eseguito — {esito.get('errore') or 'causa non riportata'}"
+    canale = esito.get("canale")
+    if canale == "n8n":
+        return f"✅ Inviato a n8n · workflow «{esito.get('workflow', '?')}»"
+    if canale == "meta":
+        return "✅ Eseguito su Meta"
+    tab, op = esito.get("tabella"), esito.get("op")
+    righe = esito.get("righe")
+    if isinstance(righe, int) and righe == 0 and op in ("update", "delete"):
+        # 0 righe toccate non è un successo: l'intenzione non si è materializzata.
+        return f"⚠️ Approvato ma NULLA cambiato — nessuna riga di {tab} corrisponde al match"
+    if tab and op:
+        n = f" ({righe} righe)" if isinstance(righe, int) else ""
+        return f"✅ Eseguito: {op} su {tab}{n}"
+    return "✅ Approvato ed eseguito."
+
+
 def send_approval_card(approval_id, title: str, body: str = "", azione=None) -> None:
     """Manda una card con bottoni Approva/Rifiuta. callback_data = approve|reject:<id>.
     Mostra anche COSA esegue l'azione (azione) per evitare approvazioni cieche."""
@@ -129,7 +156,11 @@ def poll_decisions(on_approve, on_reject, *, on_text=None, on_confirm=None,
                    once: bool = False, max_loops: int | None = None) -> None:
     """Long-poll getUpdates. callback_query: approve:/reject:/cmdok:<id>. Se on_text è
     dato, ascolta anche i messaggi di testo (istruzioni in linguaggio naturale).
-    once=True fa un solo giro (test). max_loops limita le iterazioni."""
+    once=True fa un solo giro (test). max_loops limita le iterazioni.
+
+    I gestori possono ritornare una stringa: viene mostrata nel toast al posto di un
+    esito generico, così chi clicca legge cosa è successo davvero e non un 'fatto'
+    fisso. Un gestore che solleva porta l'errore nel toast, non un 'Errore' muto."""
     if not enabled():
         return
     allow = _allowed_chats()
@@ -162,15 +193,16 @@ def poll_decisions(on_approve, on_reject, *, on_text=None, on_confirm=None,
                 cqid = cq.get("id", "")
                 try:
                     if cqd.startswith("approve:"):
-                        on_approve(cqd.split(":", 1)[1]); _answer(cqid, "Approvato.")
+                        # il toast riporta l'esito reale se il gestore lo restituisce
+                        _answer(cqid, on_approve(cqd.split(":", 1)[1]) or "Approvato.")
                     elif cqd.startswith("reject:"):
-                        on_reject(cqd.split(":", 1)[1]); _answer(cqid, "Rifiutato.")
+                        _answer(cqid, on_reject(cqd.split(":", 1)[1]) or "Rifiutato.")
                     elif cqd.startswith("cmdok:") and on_confirm:
-                        on_confirm(cqd.split(":", 1)[1]); _answer(cqid, "Eseguito.")
+                        _answer(cqid, on_confirm(cqd.split(":", 1)[1]) or "Eseguito.")
                     else:
                         _answer(cqid, "Azione sconosciuta.")
-                except Exception:
-                    _answer(cqid, "Errore nell'azione.")
+                except Exception as exc:
+                    _answer(cqid, f"Errore: {str(exc)[:150]}")
                 continue
             msg = upd.get("message")
             if msg and on_text:

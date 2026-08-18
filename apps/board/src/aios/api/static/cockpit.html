@@ -365,9 +365,9 @@ function openDecisioni(title){
 }
 function closeDecisioni(){const el=document.getElementById("decModal");if(el)el.style.display="none";document.body.style.overflow="";}
 function wireDecisioni(root){root=root||document;
-  root.querySelectorAll(".approve").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{});const a=r&&r.attuatore;closeDecisioni();if(a){alert(a.ok?("✅ Scritto su "+(a.tabella||"DB")+" ("+(a.op||"")+")"):("⚠️ Azione non eseguita: "+(a.errore||"")));}load();};});
+  root.querySelectorAll(".approve").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{});closeDecisioni();if(r&&r.messaggio)alert(r.messaggio);load();};});
   root.querySelectorAll(".reject").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const reason=prompt("Motivo del rifiuto?")||"rifiutato";closeDecisioni();await jpost(`/api/approvals/${b.dataset.id}/reject`,{reason});load();};});
-  root.querySelectorAll(".edit").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const titolo=prompt("Modifica titolo (poi approva):");if(titolo===null)return;const contenuto=prompt("Modifica contenuto:");if(contenuto===null)return;closeDecisioni();await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{titolo,contenuto}});load();};});
+  root.querySelectorAll(".edit").forEach(b=>{if(!b.dataset.id||b.dataset.id==="undefined")return;b.onclick=async()=>{const titolo=prompt("Modifica titolo (poi approva):");if(titolo===null)return;const contenuto=prompt("Modifica contenuto:");if(contenuto===null)return;closeDecisioni();const r=await jpost(`/api/approvals/${b.dataset.id}/approve`,{edited_payload:{titolo,contenuto}});if(r&&r.messaggio)alert(r.messaggio);load();};});
 }
 
 // ---------------- OVERVIEW (premium) ----------------
