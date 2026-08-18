@@ -111,7 +111,13 @@ def is_external_action(action: Any) -> bool:
 # Segnaposto mai risolti dall'LLM ({{uuid}}, {{now_iso}}, {{month}}, ${nome}…). Scritti
 # in DB danno righe inutilizzabili o un 400 da PostgREST; mandati fuori via n8n finiscono
 # in una email al cliente. Vanno intercettati PRIMA di eseguire.
-_PLACEHOLDER = re.compile(r"\{\{[^}]*\}\}|\$\{[^}]*\}")
+# Compresi i merge-field da mail-merge in parentesi quadre: in coda c'era davvero una
+# email pronta a partire che iniziava con "Ciao [Name],". Elenco chiuso di parole per
+# non prendere per segnaposto un testo legittimo tra parentesi quadre.
+_PLACEHOLDER = re.compile(
+    r"\{\{[^}]*\}\}|\$\{[^}]*\}"
+    r"|\[(?:name|nome|first[_ ]?name|cognome|azienda|company|cliente|email|città|citta)\]",
+    re.IGNORECASE)
 
 
 class ActuatorError(RuntimeError):

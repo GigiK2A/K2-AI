@@ -144,6 +144,14 @@ def test_segnaposto_trovato_anche_annidato():
     assert segnaposto({"a": "tutto risolto"}) is None
 
 
+def test_merge_field_da_mail_merge():
+    """Caso reale trovato in coda: una email pronta a partire con 'Ciao [Name],'."""
+    assert segnaposto("Ciao [Name],\n\nRileggere un contratto…") == "[Name]"
+    assert segnaposto({"body": "Buongiorno [Azienda]"}) == "[Azienda]"
+    # testo legittimo tra parentesi quadre: non è un segnaposto
+    assert segnaposto("vedi allegato [1] e la nota [ndr]") is None
+
+
 def test_segnaposto_non_diventa_una_riga():
     with pytest.raises(ActuatorError):
         validate({"tabella": "performance_reviews", "op": "insert",
