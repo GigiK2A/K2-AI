@@ -57,8 +57,16 @@ function formatItalianDate(iso: string): string {
     "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
     "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
   ];
-  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
-  return `${d} ${months[m - 1]} ${y}`;
+  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10)) as [
+    number | undefined,
+    number | undefined,
+    number | undefined,
+  ];
+  // Data non conforme a YYYY-MM-DD: restituiamo l'ISO grezzo invece di
+  // produrre "undefined undefined NaN" dentro una pagina pubblicata.
+  const mese = m !== undefined ? months[m - 1] : undefined;
+  if (y === undefined || d === undefined || mese === undefined) return iso;
+  return `${d} ${mese} ${y}`;
 }
 
 /** Path della pagina pillar per codice (es. "P01" → "/suite-ai/agenti-email-crm.html"). */
@@ -75,7 +83,7 @@ function pillarPathsByCode(): Map<string, string> {
 /** Estrae i metadati SEO-rilevanti da un file articolo. Ritorna null se non è un articolo del bot. */
 export function parseArticle(html: string): PillarArticleRef | null {
   const header = html.match(/<!--\s*pillar:\s*(\S+)\s*\|\s*slug:\s*(\S+)\s*-->/);
-  if (!header) return null;
+  if (!header?.[1] || !header[2]) return null;
 
   const ogTitle = html.match(/<meta property="og:title" content="([^"]*)"/);
   const titleTag = html.match(/<title>([^<]*)<\/title>/);

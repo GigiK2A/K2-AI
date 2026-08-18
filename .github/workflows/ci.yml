@@ -41,7 +41,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Vite 7 richiede ^20.19.0 || >=22.12.0. Con "20" il job passava solo
+          # perché setup-node risolve all'ultima 20.x: un pin implicito che si
+          # romperebbe in silenzio se mai risolvesse a una 20.x precedente.
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: kai-website/package-lock.json
       - name: Install deps
@@ -90,6 +93,36 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Test suite (hermetic, no secrets needed)
         run: python -m pytest -q
+
+  # Il blog-bot pubblica NON PRESIDIATO su main ogni mercoledì e committa
+  # direttamente, saltando il flusso PR: era l'unico componente del repo senza
+  # nessun job di CI, pur avendo già suite di test e tsconfig. Un errore qui non
+  # si manifesta in una PR ma in un articolo pubblicato o in un run fallito alle
+  # 03:40. I test sono ermetici: nessuna API key, nessuna rete.
+  blog-bot-test:
+    needs: rome-time-gate
+    if: needs.rome-time-gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/blog-bot
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Allineato a blog-autopilot.yml: se divergono, la CI valida un
+          # runtime diverso da quello che pubblica davvero.
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: tools/blog-bot/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Test suite (ermetica, nessun segreto)
+        run: npm test
+      - name: Type-check
+        run: npx tsc -p tsconfig.json --noEmit
 
   # Il backend FastAPI del K-BOT era FUORI dalla CI (kbot-build compila solo il
   # frontend Next.js) → 6 test stale erano passati inosservati. La suite pytest è

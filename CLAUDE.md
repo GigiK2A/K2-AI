@@ -27,21 +27,25 @@ Il sito v1 è live, ha traffico residuo e backlink. Architettura visiva, design 
 
 Se stai per proporre un refactor più ampio di 3 file esistenti, **fermati e chiedi**.
 
-## 3. Stack tecnologico (vincolato — verificato aprile 2026)
+## 3. Stack tecnologico (vincolato — riverificato contro `origin/main` il 18 agosto 2026)
 
 | Layer | Tecnologia | Note |
 |---|---|---|
-| Frontend | **Vite 5.2.0 + HTML/CSS/JS vanilla** | NO framework JS/React/Next.js |
-| Hosting | Vercel + Docker (railway.toml presente) | dominio www.k2-ai.it già collegato |
-| API backend | Node.js HTTP server (port 4173/8000) | proxied via Vite dev + Vercel rewrites |
+| Frontend | **Vite 7.3.3 + HTML/CSS/JS vanilla** | Le pagine del sito restano HTML vanilla: NON introdurre framework nel sito vetrina. React 19 è però già una dipendenza reale del repo (con `@vitejs/plugin-react`), usata fuori dalle pagine statiche. |
+| Hosting | **Railway via Docker** (`kai-website/railway.toml` + `Dockerfile` + `server.js`) | dominio www.k2-ai.it già collegato. **`vercel.json` non esiste**: redirect 301 e header di sicurezza vivono in `server.js`. |
+| API backend | Node.js HTTP server (`server.js`, porta 4173) | proxy verso FastAPI per `/api/kbot/*` e `/api/stripe/webhook` |
 | DB | Supabase EU (region Frankfurt) | GDPR-compliant |
 | Pagamenti | Stripe Payment Link | no integrazione custom, solo link |
 | Email transazionale | Resend | free tier 3k email/mese |
 | Analytics | PostHog self-host | no Google Analytics |
-| LLM API | Claude API (Anthropic) | no OpenAI — **ECCEZIONE (giu 2026, OK Luca): OpenAI SOLO per la web search del K-BOT** (Responses API, dietro il client-tool `web_search` di Claude). Tutto il resto resta Claude. |
+| LLM API | Claude API (Anthropic) | no OpenAI — **ECCEZIONE (giu 2026, OK Luca): OpenAI SOLO per la web search del K-BOT** (Responses API, dietro il client-tool `web_search` di Claude). Tutto il resto resta Claude. ⚠️ **Secondo uso di OpenAI constatato nel codice e mai documentato qui**: `tools/blog-bot/lib/images.ts` genera le 3 immagini di ogni articolo con `gpt-image-1`, e `OPENAI_API_KEY` è fra i secret di `blog-autopilot.yml`. **Da confermare o rimuovere con Luca.** |
 | Form/CRM embedded | Airtable free + webhook | no HubSpot |
 
-**Stack confermato da audit aprile 2026**: package.json ha solo Vite 5.2.0 come devDependency. Zero npm packages frontend.
+**Stato reale di `kai-website/package.json` (18 agosto 2026)**: devDependencies `vite ^7.3.3`, `typescript ^6.0.3`, `@vitejs/plugin-react`, tipi React/Node. Dependencies (14): `@anthropic-ai/sdk`, `@supabase/supabase-js`, `stripe`, `resend`, `posthog-js`, `three`, `react`, `react-dom`, `@react-pdf/renderer`, `docx`, `pdf-parse`, `puppeteer-core`, `@sparticuz/chromium`, `@sentry/node`.
+
+> La vecchia dicitura *«package.json ha solo Vite 5.2.0, zero npm packages frontend»* era ferma ad aprile 2026 ed è stata rimossa perché falsa. La **regola** resta in vigore: niente nuove dipendenze senza motivare il peso sul bundle. Prima di stimare bundle o Lighthouse, leggi il `package.json`, non questa tabella.
+
+**Vincolo Node**: Vite 7 richiede `^20.19.0 || >=22.12.0`. Il Node locale è 22.11 e **non basta** per buildare il sito (vedi §9).
 
 **Budget tech fisso: 65€/mese**. Ogni SaaS aggiuntivo richiede OK di Luca.
 
@@ -149,7 +153,8 @@ kai-website/                 ← sito principale (Vite + HTML vanilla)
 ├── src/
 │   ├── *.html               ← pagine principali (k-bot.html è brochure, NON chat)
 │   ├── k-bot/grazie.html    ← landing post-pagamento (gestisce session_id query)
-│   ├── suite-ai/*.html      ← 10 pillar hub
+│   ├── suite-ai/*.html      ← 20 pillar hub sul disco (P01-P20). I 10 di §4 sono quelli con keyword map e priorità SEO; gli altri esistono già come pagine.
+│   ├── blog/                ← index.html (sentinel BLOG_INDEX_AUTO) + <slug>.html + img/
 │   ├── css/                 ← base.css, nav.css, components.css, pages.css, k2-immersive.css
 │   ├── js/
 │   │   ├── chat.js          ← widget K-BOT lite per landing (qualificazione lead, NON la chat premium)
@@ -158,18 +163,22 @@ kai-website/                 ← sito principale (Vite + HTML vanilla)
 │   └── public/              ← sitemap.xml, robots.txt, llms.txt, fonts/
 ├── api/                     ← API Node/TS (alcune deprecated, prod usa Python)
 │   └── kbot/                ← endpoint K-BOT TS (legacy, prod proxia a Python)
-├── server.js                ← Node HTTP server prod (proxy /api/kbot/* + /api/stripe/webhook a FastAPI)
-├── vite.config.js           ← entry points multi-page
-└── vercel.json              ← header CSP + redirects 301
+├── server.js                ← Node HTTP server prod: proxy /api/kbot/* + /api/stripe/webhook a FastAPI,
+│                              mappa REDIRECTS_301, clean-URL (.html → 301 senza estensione), apex → www
+├── vite.config.js           ← entry points multi-page + header CSP del dev server
+├── Dockerfile, entrypoint.sh, railway.toml   ← deploy reale (NON c'è vercel.json)
+└── kbot/                    ← K-BOT Premium app (Next.js + Python, deploy Railway separato)
 
-kbot/                        ← K-BOT Premium app (Next.js + Python, deploy Railway separato)
+kai-website/kbot/            ← ⚠ percorso reale: è DENTRO kai-website, non alla root
 ├── src/                     ← Next.js 16 (basePath /app, output standalone)
 │   ├── app/                 ← page.tsx, sign-in, dashboard, providers.tsx
 │   ├── components/chat/     ← MessageBubble.tsx (CTA paid qui)
 │   ├── lib/api.ts           ← client FastAPI
 │   └── types/chat.ts
 ├── backend/                 ← FastAPI Python
-│   └── app/api/             ← session, message, checkout, generate-pdf, webhook
+│   └── app/api/             ← ~19 moduli: session, message, checkout, webhook, generate_pdf, status,
+│                               upload, skills, report, billing_api, compute, conversations,
+│                               deliverables, diagnostics, export, fetch_url, followups, checks, context
 ├── next.config.ts           ← basePath '/app'
 └── AGENTS.md                ← guida specifica K-BOT (leggi anche questa)
 ```
@@ -177,7 +186,7 @@ kbot/                        ← K-BOT Premium app (Next.js + Python, deploy Rai
 ## 10. Cosa NON fare mai senza chiedere
 
 1. Cambiare il dominio o la configurazione DNS
-2. Disattivare redirect 301 esistenti (`/workshop.html` → `/suite-ai.html`, `/casi-studio.html` → `/laboratorio.html`)
+2. Disattivare i redirect 301 esistenti, che vivono nella mappa `REDIRECTS_301` di `kai-website/server.js`: `/workshop` e `/workshop.html` → `/suite-ai`; `/casi-studio` e `/casi-studio.html` → `/laboratorio`. Ogni nuovo 301 va aggiunto lì, **non** in un `vercel.json` (che non esiste).
 3. Rimuovere pagine v1 che hanno backlink
 4. Integrare SaaS a pagamento non in elenco (eccezione approvata: **OpenAI per la SOLA web search del K-BOT**, giu 2026 — vedi §3)
 5. Modificare pricing mostrato al pubblico senza conferma

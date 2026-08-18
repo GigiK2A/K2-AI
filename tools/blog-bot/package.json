@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Autopilot blog publishing for K2-AI — pulls topic from Google Sheet, generates teaser article via Claude, validates, commits to repo. Designed to run from GitHub Actions cron.",
+  "description": "Autopilot blog publishing for K2-AI — pulls the next topic from schedule.json, generates a teaser article via Claude, validates, commits to repo. Designed to run from GitHub Actions cron.",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "run": "tsx generate-article.ts",

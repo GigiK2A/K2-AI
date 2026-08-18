@@ -5,10 +5,12 @@
  *   tsx generate-article.ts            (genera + valida + pubblica)
  *   tsx generate-article.ts --dry-run  (genera + valida, NON pubblica)
  *
- * Env vars richieste:
- *   - ANTHROPIC_API_KEY
- *   - GOOGLE_SHEETS_CREDENTIALS (JSON service account)
- *   - GOOGLE_SHEET_ID
+ * La scaletta è `schedule.json` in questa cartella: nessuna Google API è
+ * coinvolta (vedi lib/sheet-client.ts per il perché).
+ *
+ * Env vars:
+ *   - ANTHROPIC_API_KEY (richiesta)
+ *   - OPENAI_API_KEY (opzionale: senza, l'articolo esce senza immagini)
  *   - TELEGRAM_BOT_TOKEN (opzionale ma raccomandato)
  *   - TELEGRAM_CHAT_ID (opzionale)
  */
@@ -249,7 +251,7 @@ async function main() {
       `📝 ${pieces.meta.title_h1}\n` +
       `🔗 https://www.k2-ai.it${blogUrl}\n` +
       `📌 Riga sheet ${row.rowIndex} — ${row.servizio}\n\n` +
-      `n8n IG userà questa riga giovedì 18:00 con link al blog.`
+      `n8n IG userà questa riga stasera alle 18:00 con link al blog.`
   );
 }
 

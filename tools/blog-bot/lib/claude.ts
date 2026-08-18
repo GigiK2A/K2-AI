@@ -52,7 +52,7 @@ export function createClient(): Anthropic {
 
 function parsePieces(rawText: string): ArticlePieces {
   const metaMatch = rawText.match(/<!--META\s*([\s\S]+?)\s*-->/);
-  if (!metaMatch) {
+  if (!metaMatch?.[1]) {
     throw new Error("model output missing <!--META ... --> block");
   }
   const metaJson = metaMatch[1].trim();

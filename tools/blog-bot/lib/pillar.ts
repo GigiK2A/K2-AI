@@ -34,7 +34,6 @@ export const URL_TO_PILLAR: Record<string, PillarInfo> = {
   "/suite-ai/integrazione-gestionali-erp.html": { code: "P10", label: "Integrazione gestionali & ERP" },
   "/suite-ai/ai-marketing-contenuti.html": { code: "P11", label: "AI marketing & contenuti" },
   "/suite-ai/analisi-strategica-pmi.html": { code: "P12", label: "Analisi strategica PMI" },
-  "/suite-ai/diagnosi-strategica-pmi.html": { code: "P12", label: "Analisi strategica PMI" },
   "/suite-ai/agevolazioni-finanza-agevolata.html": { code: "P13", label: "Agevolazioni & finanza agevolata" },
   "/suite-ai/ai-edilizia-appalti-pubblici.html": { code: "P14", label: "AI edilizia & appalti pubblici" },
   "/suite-ai/ai-hr-recruiting.html": { code: "P15", label: "AI HR & recruiting" },
