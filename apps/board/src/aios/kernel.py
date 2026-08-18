@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -19,6 +20,50 @@ class ExecOutcome(Enum):
     EXECUTED = auto()
     QUEUED = auto()
     DENIED = auto()
+
+
+_STOPWORD = {"per", "con", "del", "della", "delle", "dei", "degli", "alla", "alle", "dal",
+             "dalla", "nel", "nella", "sul", "sulla", "che", "non", "una", "uno", "gli",
+             "and", "the", "task", "verifica", "controllo", "aggiornamento", "creazione"}
+
+
+def _parole(titolo: Any) -> set[str]:
+    """Parole significative di un titolo, per riconoscere due proposte che dicono la
+    stessa cosa con parole diverse. Via punteggiatura, numeri e parole di servizio."""
+    if not isinstance(titolo, str):
+        return set()
+    pulito = re.sub(r"[^a-zàèéìòù ]", " ", titolo.lower())
+    return {w for w in pulito.split() if len(w) > 3 and w not in _STOPWORD}
+
+
+def _bersaglio(azione: Any) -> str:
+    """Bersaglio dell'azione (tabella+op, o canale+workflow se esterna)."""
+    if not isinstance(azione, dict):
+        return ""
+    if azione.get("canale"):
+        return f"{azione['canale']}:{azione.get('workflow', '')}"
+    return f"{azione.get('tabella') or azione.get('table', '')}:{azione.get('op', '')}"
+
+
+def _gemella(in_attesa: list, args: dict[str, Any], soglia: float = 0.66):
+    """Proposta già in coda che dice la stessa cosa, o None.
+
+    Tre segnali insieme: stesso bersaglio (tabella+op), titoli che si sovrappongono per
+    almeno `soglia` delle parole significative, e — implicito nel chiamante — stesso
+    reparto. Regge le riformulazioni ("Fatture scadute > 30 gg" / "Solleciti fatture
+    scadute >30 gg") senza fondere intenzioni diverse sulla stessa tabella."""
+    titolo = _parole(args.get("titolo"))
+    if not titolo:
+        return None
+    bersaglio = _bersaglio(args.get("azione"))
+    for a in in_attesa:
+        p = a.payload or {}
+        if _bersaglio(p.get("azione")) != bersaglio:
+            continue
+        altre = _parole(p.get("titolo"))
+        if altre and len(titolo & altre) / len(titolo | altre) >= soglia:
+            return a
+    return None
 
 
 def esito_effettivo(result: Any) -> dict[str, Any] | None:
@@ -68,12 +113,16 @@ class ExecResult:
 
 
 class Kernel:
-    def __init__(self, *, promotion_threshold: int = 10) -> None:
+    def __init__(self, *, promotion_threshold: int = 10,
+                 coda_max: int | None = None) -> None:
         self.tools = ToolRegistry()
         self.policy = PolicyEngine(promotion_threshold=promotion_threshold)
         self.audit = AuditLog()
         self.killswitch = KillSwitch()
         self.approvals = ApprovalQueue()
+        # Quante decisioni in attesa può avere al massimo un reparto (AIOS_CODA_MAX).
+        self.coda_max = coda_max if coda_max is not None else int(
+            os.environ.get("AIOS_CODA_MAX", "20"))
 
     @classmethod
     def with_postgres(cls, dsn: str, *, promotion_threshold: int = 10) -> "Kernel":
@@ -149,6 +198,29 @@ class Kernel:
             return ExecResult(outcome=ExecOutcome.DENIED)
 
         if decision == Decision.PROPOSE:
+            try:
+                stessa_azione = [a for a in self.approvals.pending()
+                                 if a.action_key == action_key]
+            except Exception:
+                stessa_azione = []
+            # Tetto per reparto. Gli agenti propongono ad ogni heartbeat e nessuno
+            # svuotava la coda: era arrivata a 646 proposte in attesa, ingestibili, e
+            # l'unico modo di uscirne è stato annullarle in blocco. Oltre il tetto
+            # l'agente smette di accodare: prima decidi quelle che hai.
+            if len(stessa_azione) >= self.coda_max:
+                self.audit.append(action_key=action_key, event="queue_full", actor=actor,
+                                  detail={"in_attesa": len(stessa_azione),
+                                          "tetto": self.coda_max,
+                                          "scartata": str(args.get("titolo") or "")[:160]})
+                return ExecResult(outcome=ExecOutcome.DENIED)
+            # Doppione: gli agenti girano sugli stessi dati e ripropongono la stessa
+            # cosa con parole diverse. Se è già in attesa, non se ne accoda un'altra.
+            gemella = _gemella(stessa_azione, args)
+            if gemella is not None:
+                self.audit.append(action_key=action_key, event="duplicate", actor=actor,
+                                  detail={"approval_id": gemella.id,
+                                          "titolo": str(args.get("titolo") or "")[:160]})
+                return ExecResult(outcome=ExecOutcome.QUEUED, approval_id=gemella.id)
             appr = self.approvals.enqueue(action_key=action_key, actor=actor, payload=args)
             self.audit.append(action_key=action_key, event="proposed",
                               actor=actor, detail={"approval_id": appr.id, "args": args})
