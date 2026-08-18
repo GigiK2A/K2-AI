@@ -1,6 +1,19 @@
 name: Blog autopilot
 
-# Esegue ogni mercoledì.
+# ══════════════════════════════════════════════════════════════════════════
+# ⏸  PUBBLICAZIONE AUTOMATICA SOSPESA — 18 agosto 2026, su richiesta di Luca.
+#
+# Nessun articolo deve uscire questa settimana. Lo `schedule` qui sotto è
+# commentato: il workflow resta eseguibile SOLO a mano (workflow_dispatch),
+# così una pubblicazione volontaria è ancora possibile ma nessuna parte da sola.
+#
+# PER RIPRENDERE: togli il commento alle due righe `schedule:` / `- cron:`.
+# Il bot riparte dal primo mercoledì utile e pesca la prima riga di
+# schedule.json con `blog_pubblicato` vuoto — la coda non si è persa, si è
+# solo fermata. Non serve nient'altro.
+# ══════════════════════════════════════════════════════════════════════════
+#
+# Sul perché l'orario è 03:40 e non 04:00 (vale quando si riattiva):
 # GitHub Actions cron è SOLO UTC, non timezone-aware, ed è best-effort:
 # i job schedulati al minuto :00 cadono nella massima congestione e GitHub
 # li ritarda di ore o li scarta. Usiamo un minuto NON tondo e anticipiamo
@@ -9,10 +22,9 @@ name: Blog autopilot
 #   - 05:40 CEST (estate Italia) ← target principale
 #   - 04:40 CET  (inverno Italia)
 # Anche con ritardo GitHub l'articolo esce in mattinata italiana.
-# Workflow accetta anche manual dispatch on-demand.
 on:
-  schedule:
-    - cron: "40 3 * * 3"   # Mercoledì 03:40 UTC (= 05:40 CEST / 04:40 CET)
+  # schedule:
+  #   - cron: "40 3 * * 3"   # Mercoledì 03:40 UTC (= 05:40 CEST / 04:40 CET)
   workflow_dispatch:
     inputs:
       dry_run:
