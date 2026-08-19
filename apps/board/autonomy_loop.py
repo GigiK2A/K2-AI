@@ -107,7 +107,11 @@ def _cerca_clienti(platform) -> dict:
 # arretrato risulterebbe "nuovo" e partirebbero centinaia di messaggi in pochi
 # secondi (oltre i limiti Telegram, che li scarta in silenzio). Con il cap
 # l'arretrato viene smaltito poco per volta invece che perso tutto insieme.
-MAX_CARD_PER_TICK = int(os.environ.get("AIOS_MAX_CARD_PER_TICK", "8"))
+# 3 e non 8: otto messaggi in un ciclo stretto arrivano come una raffica, poi mezz'ora
+# di silenzio — non è un'azienda che lavora, è un batch. Ora che l'elenco dei già
+# notificati è durevole (stato_loop) distribuire non fa perdere niente: con tick da 30
+# minuti sono 6 card l'ora fra decisioni e bozze, e l'arretrato si smaltisce comunque.
+MAX_CARD_PER_TICK = int(os.environ.get("AIOS_MAX_CARD_PER_TICK", "3"))
 
 
 def _notify_new_pending(kernel, seen: set, stato=None) -> int:
