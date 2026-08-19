@@ -247,28 +247,74 @@ class ConversationManager:
         d = rows[0]
         if d.get("direction") != "out":
             return {"ok": False, "errore": "non è una bozza in uscita"}
+        stato = str(d.get("status") or "")
+        if stato != "bozza":
+            # idempotenza vista dall'umano: due clic sulla stessa card non fanno danno
+            return {"ok": False, "gia_gestita": True,
+                    "errore": f"bozza già in stato '{stato}': non la rimando"}
         ov = override or {}
         subject = str(ov.get("subject") or d.get("subject") or "")[:300]
         body = str(ov.get("body") or d.get("body") or "")[:6000]
+        # PRENOTAZIONE ATOMICA prima di uscire verso il cliente: l'update filtra su
+        # status='bozza', quindi vince un solo chiamante. Senza, due clic sulla card (o
+        # una card riproposta dopo un riavvio del loop, dato che l'elenco delle già
+        # notificate vive in memoria) mandavano DUE mail allo stesso cliente. E se
+        # l'update DOPO l'invio falliva, la riga restava 'bozza' e ripartiva al tick
+        # successivo: doppio invio silenzioso.
+        try:
+            presa = self.client.update(
+                "email_messages", {"id": f"eq.{draft_id}", "status": "eq.bozza"},
+                {"status": "inviato"})
+        except Exception as exc:
+            return {"ok": False, "errore": f"non riesco a prenotare l'invio: {str(exc)[:140]}"}
+        if not presa:
+            return {"ok": False, "gia_gestita": True,
+                    "errore": "un altro invio ha già preso questa bozza"}
+        try:
+            self.platform.kernel.audit.append(action_key="vendite.email_inviata",
+                event="proposed", actor=actor,
+                detail={"to": d.get("to_email"), "fase": "prenotata"})
+        except Exception:
+            pass
         from aios.sources.n8n import trigger_n8n
         out = trigger_n8n("send_email", {
             "to": d.get("to_email"), "subject": subject, "body": body,
             "reply_to_message_id": d.get("reply_to_message_id"),
             "conversation_id": d.get("conversation_id")})
         if out.get("ok"):
-            patch = {"status": "inviato"}
             if ov:
-                patch["subject"], patch["body"] = subject, body
-            try:
-                self.client.update("email_messages", {"id": f"eq.{draft_id}"}, patch)
-            except Exception:
-                pass
+                try:
+                    self.client.update("email_messages", {"id": f"eq.{draft_id}"},
+                                       {"subject": subject, "body": body})
+                except Exception:
+                    pass
             try:
                 self.platform.kernel.audit.append(action_key="vendite.email_inviata",
                     event="executed", actor=actor, detail={"to": d.get("to_email")})
             except Exception:
                 pass
-        return {"ok": out.get("ok", False), "esito": out}
+            return {"ok": True, "esito": out}
+        # invio fallito: la bozza torna disponibile, altrimenti resterebbe 'inviato'
+        # senza essere mai partita
+        errore_ripristino = None
+        try:
+            self.client.update("email_messages", {"id": f"eq.{draft_id}"},
+                               {"status": "bozza"})
+        except Exception as exc:
+            errore_ripristino = str(exc)[:140]
+        try:
+            self.platform.kernel.audit.append(action_key="vendite.email_inviata",
+                event="failed", actor=actor,
+                detail={"to": d.get("to_email"), "errore": str(out)[:200],
+                        "ripristino": errore_ripristino or "ok"})
+        except Exception:
+            pass
+        res = {"ok": False, "esito": out}
+        if errore_ripristino:
+            res["errore"] = ("invio fallito E stato non ripristinato "
+                             f"({errore_ripristino}): la bozza risulta 'inviato' "
+                             "senza essere partita, va rimessa a mano")
+        return res
 
     def discard(self, draft_id: str) -> dict[str, Any]:
         try:

@@ -78,7 +78,11 @@ def test_send_requires_n8n_and_marks_sent(monkeypatch):
     m, client = _mgr([draft], FakeLLM(["{}"]))
     out = m.send("d1")
     assert out["ok"] is False                 # senza webhook non parte
-    assert client.updates == []               # quindi non marca 'inviato'
+    # L'invio prenota (status='inviato') PRIMA di uscire, per non mandare due mail allo
+    # stesso cliente, e ripristina se l'invio non parte: conta l'effetto NETTO, cioè che
+    # la bozza resti disponibile e non risulti inviata.
+    assert client.updates[-1][2] == {"status": "bozza"}
+    assert not any(u[2].get("status") == "inviato" for u in client.updates[1:])
 
 
 def test_discard_marks_scartata():
