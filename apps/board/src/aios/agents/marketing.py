@@ -144,8 +144,9 @@ class MarketingAgent:
         for opt in ("leggi_iscritti", "leggi_newsletter", "leggi_analytics", "leggi_voce_clienti",
                     "leggi_ranking_seo", "leggi_funnel_web", "leggi_competitor_web", "leggi_ads_meta",
                     "leggi_ads_google", "leggi_brand_mentions", "leggi_calendario_contenuti",
-                    "leggi_costi", "leggi_suite", "leggi_prospect", "leggi_competitor",
-                    "leggi_lead", "leggi_inbox"):
+                    "leggi_costi", "leggi_suite", "leggi_prospects",
+                    "leggi_competitor_trovati", "leggi_lead", "leggi_lead_kbot",
+                    "leggi_clienti", "leggi_inbox"):
             if opt in names:
                 v = self._leggi_sicuro(opt)
                 if v is not None:
@@ -228,9 +229,11 @@ class MarketingAgent:
                 ("leggi_voce_clienti", "Voce clienti (sessioni K-BOT, per research)", 1000),
                 ("leggi_iscritti", "Iscritti newsletter (email/lifecycle)", 800),
                 ("leggi_newsletter", "Newsletter pubblicate", 600),
-                ("leggi_prospect", "Prospect (ricerca clienti)", 1000),
+                ("leggi_prospects", "Prospect qualificati (ricerca clienti)", 1000),
                 ("leggi_lead", "Pipeline lead (demand gen)", 800),
-                ("leggi_competitor", "Competitor (ricerca web)", 800),
+                ("leggi_lead_kbot", "Lead dal K-BOT (chi ha chiesto la diagnosi)", 800),
+                ("leggi_clienti", "Clienti attivi", 600),
+                ("leggi_competitor_trovati", "Competitor trovati (ricerca web)", 800),
                 ("leggi_competitor_web", "Competitor web", 800),
                 ("leggi_brand_mentions", "Brand mentions (PR)", 1000),
                 ("leggi_ads_meta", "Ads Meta (paid)", 800),

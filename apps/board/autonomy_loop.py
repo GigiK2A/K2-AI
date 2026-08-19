@@ -43,6 +43,51 @@ def _run_agents(platform) -> dict:
     return out
 
 
+# Quanti clienti potenziali cercare per giro. La ricerca costa una chiamata con web
+# search: pochi e ogni giorno vale più di tanti una volta.
+PROSPECT_PER_GIRO = int(os.environ.get("AIOS_PROSPECT_PER_GIRO", "3"))
+
+
+def _cerca_clienti(platform) -> dict:
+    """Ricerca clienti autonoma: trova PMI in target, qualifica, salva con la bozza.
+
+    Finora il Prospector esisteva ma partiva SOLO dal bottone nel cockpit: nessuno lo
+    chiamava mai da solo, ed è per questo che `marketing_prospects` era fermo a 9 righe
+    mentre l'azienda dovrebbe cercare clienti ogni giorno. La bozza viene salvata, MAI
+    inviata: l'invio è esterno e resta una decisione dell'owner."""
+    pros = getattr(platform, "prospector", None)
+    client = getattr(platform.kernel, "_supabase", None)
+    if pros is None or client is None:
+        return {}
+    from aios.actuator import apply_action
+    from aios.prospecting import Prospector
+    try:
+        trovati = pros.find(PROSPECT_PER_GIRO)
+    except Exception as exc:
+        return {"errore": str(exc)[:140]}
+    salvati, scartati, nomi = 0, 0, []
+    for p in trovati:
+        # qualificato = in target E fit >= 60, come il percorso del cockpit
+        if not (bool(p.get("in_target")) and int(p.get("fit_score") or 0) >= 60):
+            scartati += 1
+            continue
+        try:
+            out = apply_action(client, {"tabella": "marketing_prospects", "op": "insert",
+                                        "dati": Prospector.to_row(p)})
+            if out.get("ok"):
+                salvati += 1
+                nomi.append(str(p.get("company") or "?")[:60])
+            platform.kernel.audit.append(
+                action_key="marketing.prospect", event="executed" if out.get("ok") else "failed",
+                actor="autonomy_loop",
+                detail={"company": p.get("company"), "esito": out.get("errore")})
+        except Exception as exc:
+            platform.kernel.audit.append(
+                action_key="marketing.prospect", event="failed", actor="autonomy_loop",
+                detail={"company": p.get("company"), "errore": str(exc)[:200]})
+    return {"trovati": len(trovati), "salvati": salvati, "scartati": scartati, "nomi": nomi}
+
+
 # Massimo di card per tick. `seen` vive in memoria: dopo un riavvio l'intero
 # arretrato risulterebbe "nuovo" e partirebbero centinaia di messaggi in pochi
 # secondi (oltre i limiti Telegram, che li scarta in silenzio). Con il cap
@@ -124,6 +169,7 @@ def main() -> None:
     agents_hour = int(os.environ.get("AIOS_AGENTS_HOUR", "7"))
     seen: set = set()
     last_agents_day = None
+    last_prospect_day = None
 
     # Heartbeat per-agente (Paperclip #4), opt-in: se AIOS_HEARTBEATS è impostato
     # ogni dominio si sveglia col suo intervallo; altrimenti resta il batch giornaliero.
@@ -164,6 +210,22 @@ def main() -> None:
                     print(f"[{time.strftime('%H:%M', now)}] follow-up lead: {fu}")
                 except Exception as exc:
                     print(f"follow-up lead error: {exc}")
+
+        # ── Ricerca clienti, una volta al giorno e indipendente dal ritmo degli agenti.
+        # Un'azienda cerca clienti ogni giorno: prima questa ricerca partiva solo se
+        # qualcuno cliccava un bottone nel cockpit, e infatti non partiva mai.
+        if last_prospect_day != now.tm_yday and now.tm_hour >= agents_hour:
+            last_prospect_day = now.tm_yday
+            pr = _cerca_clienti(platform)
+            if pr:
+                print(f"[{time.strftime('%H:%M', now)}] ricerca clienti: {pr}")
+                if telegram.enabled() and pr.get("salvati"):
+                    telegram.send_text(
+                        f"🔎 Ricerca clienti: {pr['salvati']} nuovi prospect qualificati "
+                        f"({', '.join(pr.get('nomi') or [])}). Le bozze di primo contatto "
+                        "sono pronte nel cockpit — l'invio resta una tua decisione.")
+                elif telegram.enabled() and pr.get("errore"):
+                    telegram.send_text(f"🔎 Ricerca clienti non riuscita — {pr['errore']}")
 
         nuovi = _notify_new_pending(k, seen)
         if nuovi:

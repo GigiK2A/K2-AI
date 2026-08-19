@@ -17,4 +17,6 @@ dev = ["pytest>=8", "httpx>=0.27"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "." serve per i runner nella root del board (autonomy_loop, scheduler, serve_cockpit):
+# senza, il loop di autonomia non era importabile dai test e restava senza copertura.
+pythonpath = ["src", "."]
