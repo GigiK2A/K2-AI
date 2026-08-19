@@ -327,6 +327,138 @@ class LocalLLM:
         text = self._chat(system=system, user=user, fmt=schema or "json")
         return _robust_json(text)
 
+    # ---- streaming tool-use (chat multi-agente) ------------------------------
+    @staticmethod
+    def _tool_ollama(tools: list[dict] | None) -> list[dict]:
+        """Definizioni tool dal formato Anthropic (`name`/`input_schema`) a quello di
+        Ollama (`function`/`parameters`). I server-tool di Anthropic (web_search) non
+        hanno equivalente: si scartano invece di far fallire la richiesta."""
+        fuori = []
+        for t in tools or []:
+            nome = (t or {}).get("name")
+            if not nome or t.get("type"):        # {"type": "web_search_..."} → non c'è
+                continue
+            fuori.append({"type": "function", "function": {
+                "name": nome, "description": str(t.get("description") or "")[:1024],
+                "parameters": t.get("input_schema") or {"type": "object", "properties": {}}}})
+        return fuori
+
+    @staticmethod
+    def _immagini(media: list[dict] | None) -> list[str]:
+        """Immagini base64 dai blocchi Anthropic → campo `images` di Ollama.
+        I PDF restano fuori: il modello locale non li legge come blocchi nativi."""
+        out = []
+        for m in media or []:
+            src = (m or {}).get("source") or {}
+            if (src.get("type") == "base64"
+                    and str(src.get("media_type") or "").startswith("image/")
+                    and src.get("data")):
+                out.append(src["data"])
+        return out
+
+    def _stream_chat(self, messages: list[dict], strumenti: list[dict],
+                     max_tokens: int | None):
+        """Righe NDJSON di /api/chat con stream=true. Solleva LocalLLMUnreachable se
+        Ollama non risponde, così la riserva può entrare come per le altre chiamate."""
+        body: dict[str, Any] = {
+            "model": self._model, "stream": True, "think": self._think_value(),
+            "messages": messages,
+            "options": {"num_predict": max(int(max_tokens or 0), self._num_predict),
+                        "num_ctx": _LOCAL_NUM_CTX}}
+        if strumenti:
+            body["tools"] = strumenti
+        data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        last: Exception | None = None
+        for tentativo in range(_LOCAL_RETRIES + 1):
+            try:
+                req = urllib.request.Request(self._base + "/api/chat", data=data,
+                                             headers=_local_headers(), method="POST")
+                with _local_opener().open(req, timeout=_LOCAL_TIMEOUT) as resp:
+                    for riga in resp:
+                        riga = riga.strip()
+                        if not riga:
+                            continue
+                        try:
+                            yield json.loads(riga.decode("utf-8"))
+                        except Exception:
+                            continue        # riga parziale: la salta, lo stream continua
+                return
+            except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+                last = exc
+                if tentativo < _LOCAL_RETRIES:
+                    time.sleep(1.5 * (tentativo + 1))
+        raise LocalLLMUnreachable(
+            f"LocalLLM: Ollama non raggiungibile su {self._base} "
+            f"(modello {self._model}): {last}")
+
+    def stream_agentic(self, *, system: str, user: str, tools: list[dict],
+                       tool_exec, max_iters: int = 6, max_tokens: int | None = None,
+                       web_search: bool = False, history: list[dict] | None = None,
+                       media: list[dict] | None = None):
+        """Loop tool-use in streaming sul modello LOCALE, con gli stessi eventi della
+        versione Anthropic — così il cockpit non cambia una riga.
+
+        Perché esiste: lo streaming tool-use era solo di Anthropic, quindi con la chiave
+        non valida (o senza) la chat multi-agente restava muta pur avendo un gpt-oss:120b
+        perfettamente funzionante a due passi di distanza. Ora la chat gira sul locale.
+
+        `web_search` viene ignorato: è un server-tool di Anthropic e qui non esiste — si
+        preferisce una risposta senza ricerca web a nessuna risposta."""
+        messages: list[dict] = [{"role": "system", "content": system}]
+        messages += [m for m in (history or []) if isinstance(m, dict)]
+        turno_utente: dict[str, Any] = {"role": "user", "content": user}
+        immagini = self._immagini(media)
+        if immagini:
+            turno_utente["images"] = immagini
+        messages.append(turno_utente)
+        strumenti = self._tool_ollama(tools)
+
+        for _ in range(max_iters):
+            yield {"phase": "thinking"}
+            testo, chiamate, iniziato = "", [], False
+            for chunk in self._stream_chat(messages, strumenti, max_tokens):
+                msg = chunk.get("message") or {}
+                for tc in (msg.get("tool_calls") or []):
+                    fn = (tc or {}).get("function") or {}
+                    args = fn.get("arguments")
+                    if isinstance(args, str):        # certe versioni le mandano come JSON
+                        try:
+                            args = json.loads(args)
+                        except Exception:
+                            args = {}
+                    chiamate.append({"name": str(fn.get("name") or ""),
+                                     "args": args if isinstance(args, dict) else {}})
+                    yield {"phase": "tool", "tool": str(fn.get("name") or "")}
+                pezzo = msg.get("content") or ""
+                if pezzo:
+                    if not iniziato:
+                        yield {"phase": "writing"}
+                        iniziato = True
+                    testo += pezzo
+                    yield {"phase": "delta", "text": pezzo}
+                if chunk.get("done"):
+                    try:      # metering: token locali (costo 0, ma visibilità dei consumi)
+                        billing.record_usage(self._model,
+                                             int(chunk.get("prompt_eval_count", 0) or 0),
+                                             int(chunk.get("eval_count", 0) or 0))
+                    except Exception:
+                        pass
+            if not chiamate:
+                yield {"phase": "done", "text": testo}
+                return
+            messages.append({"role": "assistant", "content": testo, "tool_calls": [
+                {"function": {"name": c["name"], "arguments": c["args"]}} for c in chiamate]})
+            for c in chiamate:
+                yield {"phase": "tool_run", "tool": c["name"]}
+                try:
+                    out = tool_exec(c["name"], dict(c["args"]))
+                except Exception as exc:
+                    out = {"error": str(exc)}
+                messages.append({
+                    "role": "tool", "tool_name": c["name"],
+                    "content": json.dumps(out, ensure_ascii=False, default=str)[:6000]})
+        yield {"phase": "done", "text": testo or "(troppi passaggi, mi fermo qui)"}
+
 
 class FallbackLLM:
     """LLM con riserva: usa il primario, e se è IRRAGGIUNGIBILE passa al secondario.
@@ -372,11 +504,24 @@ class FallbackLLM:
             return self._backup().complete_json(system=system, user=user, schema=schema)
 
     def stream_agentic(self, **kw):
-        """Lo streaming tool-use esiste solo su Anthropic: se il primario non ce l'ha
-        (LocalLLM), la chat multi-agente usa direttamente la riserva invece di rompersi
-        con AttributeError."""
+        """Streaming tool-use con riserva, ma solo se il primario cade PRIMA di parlare.
+
+        Se cade a metà stream la riserva non entra: ripartire da zero duplicherebbe il
+        testo già arrivato all'utente. Meglio un troncamento visibile che una risposta
+        schizofrenica. Se il primario non ha lo streaming, si usa direttamente la riserva."""
         primario = self._primario
-        if hasattr(primario, "stream_agentic"):
-            yield from primario.stream_agentic(**kw)
-        else:
+        if not hasattr(primario, "stream_agentic"):
             yield from self._backup().stream_agentic(**kw)
+            return
+        emesso = False
+        try:
+            for ev in primario.stream_agentic(**kw):
+                emesso = True
+                yield ev
+            return
+        except Exception as exc:
+            if emesso or not guasto_di_trasporto(exc):
+                raise
+            self.fallback_usati += 1
+            print(f"[llm] stream del primario giù ({type(exc).__name__}) → riserva")
+        yield from self._backup().stream_agentic(**kw)
