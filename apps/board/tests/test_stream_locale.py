@@ -158,6 +158,22 @@ class StreamAMeta:
         raise ConnectionError("caduto a metà")
 
 
+class StreamCheDichiaraEPoiMuore:
+    """Come la versione Anthropic: annuncia `thinking` e POI prende il 401.
+    Bug reale del 19 ago 2026: così la riserva non entrava mai."""
+
+    def stream_agentic(self, **kw):
+        yield {"phase": "thinking"}
+        raise ConnectionError("401 dopo l'annuncio")
+
+
+class StreamCheEseguePoiMuore:
+    def stream_agentic(self, **kw):
+        yield {"phase": "thinking"}
+        yield {"phase": "tool_run", "tool": "esegui"}
+        raise ConnectionError("caduto dopo aver eseguito")
+
+
 class StreamBuono:
     def stream_agentic(self, **kw):
         yield {"phase": "done", "text": "dalla riserva"}
@@ -173,6 +189,22 @@ def test_se_il_primario_cade_prima_di_parlare_entra_la_riserva():
 def test_se_cade_a_meta_non_si_riparte_da_zero():
     """Ripartire duplicherebbe il testo già letto dall'utente: meglio un troncamento."""
     llm = FallbackLLM(StreamAMeta(), StreamBuono())
+    with pytest.raises(ConnectionError):
+        list(llm.stream_agentic(system="s", user="u", tools=[], tool_exec=None))
+
+
+def test_thinking_non_conta_come_aver_parlato():
+    """L'evento di stato non è output: la riserva deve poter entrare."""
+    llm = FallbackLLM(StreamCheDichiaraEPoiMuore(), StreamBuono())
+    eventi = list(llm.stream_agentic(system="s", user="u", tools=[], tool_exec=None))
+    assert eventi[0]["phase"] == "thinking"          # l'annuncio del primario resta
+    assert eventi[-1]["text"] == "dalla riserva"     # ma la risposta arriva
+    assert llm.fallback_usati == 1
+
+
+def test_dopo_un_tool_eseguito_non_si_riparte():
+    """Un tool già eseguito è irreversibile: rifarlo raddoppierebbe l'azione."""
+    llm = FallbackLLM(StreamCheEseguePoiMuore(), StreamBuono())
     with pytest.raises(ConnectionError):
         list(llm.stream_agentic(system="s", user="u", tools=[], tool_exec=None))
 

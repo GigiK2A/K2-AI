@@ -513,14 +513,22 @@ class FallbackLLM:
         if not hasattr(primario, "stream_agentic"):
             yield from self._backup().stream_agentic(**kw)
             return
-        emesso = False
+        # "Irreversibile" NON è il primo evento qualunque: `thinking` e `tool` sono
+        # dichiarazioni di stato, non output. Contano solo il testo già mostrato
+        # all'utente (`delta`) e un tool già ESEGUITO (`tool_run`) — ripartire dopo
+        # quelli duplicherebbe testo o azioni.
+        # Bug trovato in produzione il 19 ago 2026: la versione Anthropic emette
+        # `thinking` PRIMA di aprire lo stream, quindi il 401 arrivava con "già parlato"
+        # a true e la riserva non entrava mai.
+        irreversibile = False
         try:
             for ev in primario.stream_agentic(**kw):
-                emesso = True
+                if ev.get("phase") in ("delta", "tool_run"):
+                    irreversibile = True
                 yield ev
             return
         except Exception as exc:
-            if emesso or not guasto_di_trasporto(exc):
+            if irreversibile or not guasto_di_trasporto(exc):
                 raise
             self.fallback_usati += 1
             print(f"[llm] stream del primario giù ({type(exc).__name__}) → riserva")
