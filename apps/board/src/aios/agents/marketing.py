@@ -4,7 +4,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from aios.agents import sensori
+from aios.agents import competenza, sensori
 from aios.autonomy import ActionType, AutonomyLevel
 from aios.kernel import Kernel
 from aios.founder import FounderModel
@@ -103,9 +103,11 @@ def propose_tool(client=None) -> Tool:
 class MarketingAgent:
     def __init__(self, *, kernel: Kernel, llm: LLM, founder: FounderModel,
                  skills: "SkillLibrary | None" = None, actor: str = "marketing_agent",
-                 discover_competitors: bool = True) -> None:
+                 discover_competitors: bool = True, llm_strong: "LLM | None" = None) -> None:
         self.k = kernel
         self.llm = llm
+        # scelta playbook e letture col modello economico, GIUDIZIO col forte
+        self.llm_giudizio = llm_strong or llm
         self.founder = founder
         self.skills = skills
         self.actor = actor
@@ -174,29 +176,13 @@ class MarketingAgent:
     def _stato_fonti(self) -> str:
         return sensori.blocco_stato(getattr(self, "fonti", {}))
 
-    def _skill_context(self) -> str:
+    def _skill_context(self, dati: str = "") -> str:
         """Il metodo professionale che il CMO ha in mano.
 
-        Prima: 2 skill × 500 caratteri = frontmatter YAML e titolo, cioè zero metodo su
-        una libreria di 312 playbook. Ora: le skill curate più quelle instradate sul
-        reparto, e l'estratto salta l'intestazione e parte dalle sezioni operative."""
-        if not self.skills:
-            return ""
-        from aios.agents.domain import SKILL_CARATTERI, SKILL_PER_REPARTO
-        picked = list(_FOCUS)
-        try:
-            for n in self.skills.for_domain("marketing", k=8):
-                if n not in picked:
-                    picked.append(n)
-        except Exception:
-            pass
-        out = []
-        for n in picked[:SKILL_PER_REPARTO]:
-            try:
-                out.append(f"## SKILL: {n}\n" + self.skills.estratto(n, SKILL_CARATTERI))
-            except KeyError:
-                pass
-        return ("\n\n# FRAMEWORK (estratti operativi)\n" + "\n\n".join(out)) if out else ""
+        Prima: 2 skill × 500 caratteri, cioè frontmatter YAML e titolo — zero metodo su
+        una libreria di 43 playbook del reparto. Ora: indice di TUTTI i suoi playbook
+        (sa cosa ha) più il testo pieno di quelli che sceglie per i dati di oggi."""
+        return competenza.competenza(self.skills, self.llm, "marketing", _FOCUS, dati)
 
     def run(self) -> MarketingResult:
         from aios import billing
@@ -263,7 +249,7 @@ class MarketingAgent:
             if data.get(chiave):
                 user += f"\n## {etichetta}\n" + sec(chiave, cap)
         user += self._stato_fonti()
-        user += self._skill_context()
+        user += self._skill_context(sec('servizi', 600) + sec('leggi_ranking_seo', 600))
         # Coda del prompt costruita su cosa risponde: chiedere l'analisi post-per-post
         # quando Instagram è giù produce solo invenzioni.
         coperte = [n for n, s in getattr(self, "fonti", {}).items() if s.startswith("ok")]
@@ -279,7 +265,7 @@ class MarketingAgent:
                  "disponibili permettono (seo, email, demand_gen, research, competitor, cro, "
                  "analytics, product_mkt, budget, strategy, automation, pr…), una proposta per "
                  "area dove ha senso, e dove utile voci di calendario datate. "
-                 "Massimo 10 proposte.")
+                 "una proposta per area dove ha senso." + competenza.ESIGENZA_QUALITA)
         schema = {"type": "object", "properties": {
             "proposte": {"type": "array", "items": {"type": "object", "properties": {
                 "tipo": {"type": "string"}, "titolo": {"type": "string"},
@@ -293,7 +279,8 @@ class MarketingAgent:
                 "bozza": {"type": "string"}, "data_programmata": {"type": "string"}},
                 "required": ["canale", "titolo"]}}},
             "required": ["proposte"]}
-        parsed = self.llm.complete_json(system=_SYSTEM, user=user, schema=schema)
+        # giudizio col modello forte, letture e scelta dei playbook col leggero
+        parsed = self.llm_giudizio.complete_json(system=_SYSTEM, user=user, schema=schema)
         proposte = _as_dict_list(parsed.get("proposte"))
         voci = _as_dict_list(parsed.get("voci_calendario"))
         ids, cal_ids, eseguite = [], [], []

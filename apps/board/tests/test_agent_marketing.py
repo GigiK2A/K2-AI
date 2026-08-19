@@ -97,8 +97,12 @@ def test_agent_includes_skill_menu_when_library_given():
     agent = MarketingAgent(kernel=k, llm=llm, founder=default_founder_model(),
                            skills=SkillLibrary())
     agent.run()
-    system, user = llm.calls[0]
-    assert "FRAMEWORK (estratti operativi)" in user
+    # calls[0] è il passo di SELEZIONE dei playbook (vede solo l'indice);
+    # la proposta vera è l'ultima chiamata.
+    system, user = llm.calls[-1]
+    # indice di TUTTA la biblioteca del reparto + metodo dei playbook scelti
+    assert "LA TUA BIBLIOTECA" in user
+    assert "# METODO" in user
     # il metodo, non l'etichetta: nessun frontmatter YAML nel prompt
     assert "argument-hint:" not in user
     assert "content-creation" in user  # a real skill name from the library

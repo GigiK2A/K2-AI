@@ -124,7 +124,8 @@ def test_il_marketing_non_riceve_piu_solo_l_etichetta():
     MarketingAgent(kernel=k, llm=llm, founder=default_founder_model(),
                    skills=SkillFinte(), discover_competitors=False).run()
     _system, user = llm.calls[-1]
-    assert "FRAMEWORK (estratti operativi)" in user
+    assert "LA TUA BIBLIOTECA" in user            # indice di tutto ciò che ha
+    assert "# METODO" in user                     # e il testo di ciò che ha scelto
     assert "name: campaign-plan" not in user      # niente frontmatter
     assert "## Metodo" in user or "obiettivo misurabile" in user
 

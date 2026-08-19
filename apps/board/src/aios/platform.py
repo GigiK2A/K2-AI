@@ -254,11 +254,13 @@ def build_platform() -> Platform:
     llm_strong = _make_llm(max_tokens=8192, strong=True)
 
     def _domain(cfg):
-        return DomainAgent(kernel=k, llm=llm, founder=founder, config=cfg,
+        return DomainAgent(kernel=k, llm=llm, llm_strong=llm_strong,
+                           founder=founder, config=cfg,
                            skills=skills, knowledge=knowledge, deliverable_client=client)
 
     agents = {
-        "marketing": MarketingAgent(kernel=k, llm=llm, founder=founder, skills=skills),
+        "marketing": MarketingAgent(kernel=k, llm=llm, llm_strong=llm_strong,
+                                    founder=founder, skills=skills),
         "vendite": _domain(SALES_CONFIG),
         "finance": _domain(FINANCE_CONFIG),
         "operations": _domain(OPERATIONS_CONFIG),
