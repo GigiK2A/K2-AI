@@ -23,6 +23,20 @@ class BadRequestError(Exception):
     pass
 
 
+class AuthenticationError(Exception):
+    """401: chiave non valida. È esattamente quello che avevamo in produzione."""
+
+
+class RateLimitError(Exception):
+    pass
+
+
+class ErroreConStatus(Exception):
+    def __init__(self, status_code):
+        super().__init__(f"http {status_code}")
+        self.status_code = status_code
+
+
 def test_ollama_giu_e_trasporto():
     assert guasto_di_trasporto(LocalLLMUnreachable("non raggiungibile")) is True
 
@@ -30,6 +44,21 @@ def test_ollama_giu_e_trasporto():
 def test_connessione_anthropic_e_trasporto():
     assert guasto_di_trasporto(APIConnectionError("Connection error.")) is True
     assert guasto_di_trasporto(TimeoutError("timeout")) is True
+
+
+def test_chiave_non_valida_e_provider_inutilizzabile():
+    """Il 401 trovato in produzione: insistere è inutile, la riserva è la risposta."""
+    assert guasto_di_trasporto(AuthenticationError("API key is invalid.")) is True
+
+
+def test_rate_limit_e_provider_inutilizzabile():
+    assert guasto_di_trasporto(RateLimitError("slow down")) is True
+
+
+def test_riconosce_anche_il_solo_status_code():
+    assert guasto_di_trasporto(ErroreConStatus(401)) is True
+    assert guasto_di_trasporto(ErroreConStatus(529)) is True
+    assert guasto_di_trasporto(ErroreConStatus(400)) is False
 
 
 def test_errore_di_contenuto_non_e_trasporto():
@@ -49,6 +78,18 @@ class ForteGiu:
     def complete(self, **kw):
         self.tentativi += 1
         raise APIConnectionError("Connection error.")
+
+
+def test_con_chiave_non_valida_i_reparti_lavorano_comunque():
+    """Scenario reale di stasera: giudizio su Anthropic, chiave invalida. Senza riserva
+    l'agente si sarebbe rotto al primo heartbeat."""
+    class ChiaveRotta:
+        def complete_json(self, **kw):
+            raise AuthenticationError("API key is invalid.")
+
+    llm = FallbackLLM(ChiaveRotta(), FakeLLM(responses=['{"proposte":[{"tipo":"t"}]}']))
+    assert llm.complete_json(system="s", user="u") == {"proposte": [{"tipo": "t"}]}
+    assert llm.fallback_usati == 1
 
 
 def test_se_anthropic_non_risponde_si_ripiega_sul_locale():

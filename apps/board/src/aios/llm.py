@@ -234,21 +234,38 @@ class LocalLLMUnreachable(RuntimeError):
     non di contenuto: è l'unico caso in cui vale la pena passare alla riserva."""
 
 
-# Guasti di TRASPORTO degli altri provider, riconosciuti dal nome della classe per non
-# importare l'SDK qui. `APIConnectionError` è quello che alza l'SDK Anthropic quando
-# l'endpoint non risponde — succede davvero: ANTHROPIC_BASE_URL sul board puntava a un
-# tunnel Cloudflare morto e ogni chiamata finiva in "Connection error.".
-_TRASPORTO = ("APIConnectionError", "APITimeoutError", "APIConnectionTimeoutError",
-              "ConnectionError", "TimeoutError", "InternalServerError",
-              "ServiceUnavailableError", "OverloadedError")
+# Provider INUTILIZZABILE: non ci arrivo, non mi lascia entrare, o non ce la fa. Sono i
+# casi in cui insistere è inutile e la riserva è la risposta giusta. Riconosciuti dal nome
+# della classe per non importare l'SDK qui.
+# Storia vera del 19 ago 2026, in mezza giornata: ANTHROPIC_BASE_URL puntava a un tunnel
+# Cloudflare morto (APIConnectionError), e sotto c'era anche una ANTHROPIC_API_KEY non
+# valida (401 authentication_error). Se la riserva coprisse solo il primo caso, il
+# secondo fermerebbe i reparti — ed è esattamente quello che sarebbe successo stasera.
+_PROVIDER_INUTILIZZABILE = (
+    # trasporto
+    "APIConnectionError", "APITimeoutError", "APIConnectionTimeoutError",
+    "ConnectionError", "TimeoutError",
+    # il provider non ce la fa
+    "InternalServerError", "ServiceUnavailableError", "OverloadedError",
+    "RateLimitError",
+    # non mi lascia entrare / non ha quel modello
+    "AuthenticationError", "PermissionDeniedError", "NotFoundError")
 
 
 def guasto_di_trasporto(exc: BaseException) -> bool:
-    """True se l'errore è "non ci arrivo", non "mi ha risposto male"."""
+    """True se il provider è inutilizzabile (non ci arrivo, non mi lascia entrare, non
+    ce la fa) e quindi vale la pena passare alla riserva.
+
+    NON copre gli errori di CONTENUTO — prompt troppo lungo, schema non valido, JSON
+    malformato: quelli devono emergere, perché sono bug nostri e la riserva li
+    mascherebbe."""
     if isinstance(exc, LocalLLMUnreachable):
         return True
     nomi = {c.__name__ for c in type(exc).__mro__}
-    return bool(nomi & set(_TRASPORTO))
+    if nomi & set(_PROVIDER_INUTILIZZABILE):
+        return True
+    # ultima rete: l'SDK a volte incapsula il codice HTTP nell'attributo
+    return getattr(exc, "status_code", None) in (401, 403, 404, 429, 500, 502, 503, 529)
 
 
 class LocalLLM:
