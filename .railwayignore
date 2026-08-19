@@ -20,7 +20,14 @@ dist/
 .git/
 
 # Alberi estranei al servizio website (deploy separati o repo di lavoro).
-apps/
+# NB: NON escludere `apps/` in blocco. Questo file vale per OGNI `railway up` lanciato
+# dalla root, e il servizio k2-ai-board ha rootDirectory=apps/board: con apps/ escluso
+# il suo snapshot arriva senza il board e la build non trova niente da costruire
+# (bruciato mezzo pomeriggio del 19 ago 2026 su questo). apps/board pesa 13MB, nel
+# payload del sito è ininfluente. `apps/website` invece va escluso: è un symlink verso
+# kai-website, e senza escluderlo il walker duplica 169MB nello snapshot.
+apps/website
+apps/board/dev-local/
 ai-board/
 docs/
 skills sito k2-ai 2/
