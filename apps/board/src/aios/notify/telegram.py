@@ -74,6 +74,27 @@ def azione_riga(azione) -> str:
     return f"⚙️ {op or 'azione'} su {tab}"
 
 
+def send_email_draft_card(draft_id, to: str, subject: str, body: str = "") -> None:
+    """Card di una bozza email in uscita, con Invia/Scarta.
+
+    Le bozze vivono in `email_messages`, non nella coda approvazioni: senza questa card
+    non erano raggiungibili da Telegram e restavano ferme a 'bozza' per sempre (123 ad
+    agosto 2026). L'invio è un'azione ESTERNA: parte solo su clic dell'owner."""
+    if not enabled():
+        return
+    txt = (f"*Bozza email da approvare*\n\n*A:* {to or '—'}\n*Oggetto:* {subject or '—'}\n\n"
+           f"{(body or '')[:600]}\n\n⚙️ *Su Invia:* 🌐 ESTERNO · parte la mail al destinatario\n"
+           f"ID: `{draft_id}`")
+    try:
+        _post("sendMessage", {
+            "chat_id": os.environ["TELEGRAM_CHAT_ID"], "text": txt, "parse_mode": "Markdown",
+            "reply_markup": {"inline_keyboard": [[
+                {"text": "📤 Invia", "callback_data": f"mailok:{draft_id}"},
+                {"text": "🗑 Scarta", "callback_data": f"mailno:{draft_id}"}]]}}, timeout=15)
+    except Exception:
+        pass
+
+
 def esito_riga(esito) -> str:
     """Riga leggibile di COSA è successo davvero dopo un Approva.
 
@@ -153,6 +174,7 @@ def send_command_card(res: dict) -> None:
 
 
 def poll_decisions(on_approve, on_reject, *, on_text=None, on_confirm=None,
+                   on_email_send=None, on_email_discard=None,
                    once: bool = False, max_loops: int | None = None) -> None:
     """Long-poll getUpdates. callback_query: approve:/reject:/cmdok:<id>. Se on_text è
     dato, ascolta anche i messaggi di testo (istruzioni in linguaggio naturale).
@@ -199,6 +221,10 @@ def poll_decisions(on_approve, on_reject, *, on_text=None, on_confirm=None,
                         _answer(cqid, on_reject(cqd.split(":", 1)[1]) or "Rifiutato.")
                     elif cqd.startswith("cmdok:") and on_confirm:
                         _answer(cqid, on_confirm(cqd.split(":", 1)[1]) or "Eseguito.")
+                    elif cqd.startswith("mailok:") and on_email_send:
+                        _answer(cqid, on_email_send(cqd.split(":", 1)[1]) or "Inviata.")
+                    elif cqd.startswith("mailno:") and on_email_discard:
+                        _answer(cqid, on_email_discard(cqd.split(":", 1)[1]) or "Scartata.")
                     else:
                         _answer(cqid, "Azione sconosciuta.")
                 except Exception as exc:

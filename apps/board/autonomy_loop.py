@@ -114,6 +114,33 @@ def _notify_new_pending(kernel, seen: set) -> int:
     return n
 
 
+def _notify_new_email_drafts(platform, seen_mail: set) -> int:
+    """Propone su Telegram le bozze email mai inviate.
+
+    Vivono in `email_messages`, non nella coda approvazioni: prima di questa funzione
+    erano raggiungibili solo dal cockpit web, ed è per questo che ad agosto 2026 ce
+    n'erano 123 ferme a 'bozza' — risposte già scritte a clienti, mai viste da nessuno."""
+    conv = getattr(platform, "conversations", None)
+    if conv is None:
+        return 0
+    n = 0
+    try:
+        for d in conv.bozze_in_attesa():
+            did = d.get("id")
+            if did is None or did in seen_mail:
+                continue
+            if n >= MAX_CARD_PER_TICK:
+                break
+            seen_mail.add(did)
+            telegram.send_email_draft_card(did, str(d.get("to_email") or ""),
+                                           str(d.get("subject") or ""),
+                                           str(d.get("body") or ""))
+            n += 1
+    except Exception:
+        pass
+    return n
+
+
 def _start_telegram(platform) -> None:
     """Canale di controllo Telegram in un thread daemon (se configurato)."""
     if not telegram.enabled():
@@ -134,6 +161,30 @@ def _start_telegram(platform) -> None:
             telegram.send_text("🚫 Rifiutato.")
             return "Rifiutato."
 
+        def on_email_send(draft_id):
+            """Invio della bozza: azione ESTERNA, parte solo perché l'owner ha cliccato."""
+            conv = getattr(platform, "conversations", None)
+            if conv is None:
+                return "Email non disponibili."
+            out = conv.send(str(draft_id), actor="telegram")
+            if out.get("ok"):
+                msg = "📤 Email inviata."
+            else:
+                err = (out.get("errore") or (out.get("esito") or {}).get("errore")
+                       or "causa non riportata")
+                msg = f"⚠️ NON inviata — {err}"
+            telegram.send_text(msg)
+            return msg[:190]
+
+        def on_email_discard(draft_id):
+            conv = getattr(platform, "conversations", None)
+            if conv is None:
+                return "Email non disponibili."
+            out = conv.discard(str(draft_id))
+            msg = "🗑 Bozza scartata." if out.get("ok") else f"⚠️ {out.get('errore', 'errore')}"
+            telegram.send_text(msg)
+            return msg[:190]
+
         def on_text(text):
             if platform.commands is None:
                 telegram.send_text("Comandi non disponibili.")
@@ -148,7 +199,8 @@ def _start_telegram(platform) -> None:
             telegram.send_text(msg)
             return msg[:190]
 
-        telegram.poll_decisions(on_approve, on_reject, on_text=on_text, on_confirm=on_confirm)
+        telegram.poll_decisions(on_approve, on_reject, on_text=on_text, on_confirm=on_confirm,
+                                on_email_send=on_email_send, on_email_discard=on_email_discard)
 
     threading.Thread(target=_bot, daemon=True, name="telegram-poll").start()
 
@@ -168,6 +220,7 @@ def main() -> None:
     tick = int(os.environ.get("AIOS_TICK_SECONDS", "1800"))
     agents_hour = int(os.environ.get("AIOS_AGENTS_HOUR", "7"))
     seen: set = set()
+    seen_mail: set = set()
     last_agents_day = None
     last_prospect_day = None
 
@@ -230,6 +283,11 @@ def main() -> None:
         nuovi = _notify_new_pending(k, seen)
         if nuovi:
             print(f"[{time.strftime('%H:%M', now)}] notificate {nuovi} nuove decisioni")
+        # Le bozze email non passano dalla coda approvazioni: vanno proposte a parte,
+        # altrimenti restano ferme nel cockpit e nessuno risponde ai clienti.
+        nuove_mail = _notify_new_email_drafts(platform, seen_mail)
+        if nuove_mail:
+            print(f"[{time.strftime('%H:%M', now)}] proposte {nuove_mail} bozze email")
         time.sleep(tick)
 
 
