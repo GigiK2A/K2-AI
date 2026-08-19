@@ -42,10 +42,19 @@ def _make_llm(*, max_tokens: int, strong: bool = False):
     locale, come prima."""
     model = "claude-sonnet-4-6" if strong else "claude-haiku-4-5-20251001"
     backend = os.environ.get("AIOS_LLM_BACKEND", "anthropic").strip().lower()
+    ha_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY"))
     if backend == "local":
         locale = LocalLLM(max_tokens=max_tokens)
-        if not os.environ.get("ANTHROPIC_API_KEY"):
+        if not ha_anthropic:
             return locale
+        if strong:
+            # "Forte" deve significare forte. Con backend=local anche il modello del
+            # GIUDIZIO era il modello locale con solo più token: Sonnet non entrava mai
+            # nel giro degli agenti, e chiedere il parere di un CFO al modello economico
+            # era il vero tetto alla qualità. Qui la priorità si inverte: giudizio su
+            # Sonnet, e se l'API non risponde si ripiega sul locale invece di fermarsi.
+            return FallbackLLM(AnthropicLLM(model=model, max_tokens=max_tokens),
+                               lambda: LocalLLM(max_tokens=max_tokens))
         return FallbackLLM(locale, lambda: AnthropicLLM(model=model, max_tokens=max_tokens))
     return AnthropicLLM(model=model, max_tokens=max_tokens)
 

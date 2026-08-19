@@ -234,6 +234,23 @@ class LocalLLMUnreachable(RuntimeError):
     non di contenuto: è l'unico caso in cui vale la pena passare alla riserva."""
 
 
+# Guasti di TRASPORTO degli altri provider, riconosciuti dal nome della classe per non
+# importare l'SDK qui. `APIConnectionError` è quello che alza l'SDK Anthropic quando
+# l'endpoint non risponde — succede davvero: ANTHROPIC_BASE_URL sul board puntava a un
+# tunnel Cloudflare morto e ogni chiamata finiva in "Connection error.".
+_TRASPORTO = ("APIConnectionError", "APITimeoutError", "APIConnectionTimeoutError",
+              "ConnectionError", "TimeoutError", "InternalServerError",
+              "ServiceUnavailableError", "OverloadedError")
+
+
+def guasto_di_trasporto(exc: BaseException) -> bool:
+    """True se l'errore è "non ci arrivo", non "mi ha risposto male"."""
+    if isinstance(exc, LocalLLMUnreachable):
+        return True
+    nomi = {c.__name__ for c in type(exc).__mro__}
+    return bool(nomi & set(_TRASPORTO))
+
+
 class LocalLLM:
     """LLM locale via Ollama. Drop-in di AnthropicLLM per `complete`/`complete_json`."""
 
@@ -320,17 +337,21 @@ class FallbackLLM:
     def complete(self, *, system: str, user: str) -> str:
         try:
             return self._primario.complete(system=system, user=user)
-        except LocalLLMUnreachable as exc:
+        except Exception as exc:
+            if not guasto_di_trasporto(exc):
+                raise
             self.fallback_usati += 1
-            print(f"[llm] primario giù ({exc}) → passo alla riserva")
+            print(f"[llm] primario giù ({type(exc).__name__}: {exc}) → passo alla riserva")
             return self._backup().complete(system=system, user=user)
 
     def complete_json(self, *, system: str, user: str, schema: dict | None = None) -> dict:
         try:
             return self._primario.complete_json(system=system, user=user, schema=schema)
-        except LocalLLMUnreachable as exc:
+        except Exception as exc:
+            if not guasto_di_trasporto(exc):
+                raise
             self.fallback_usati += 1
-            print(f"[llm] primario giù ({exc}) → passo alla riserva")
+            print(f"[llm] primario giù ({type(exc).__name__}: {exc}) → passo alla riserva")
             return self._backup().complete_json(system=system, user=user, schema=schema)
 
     def stream_agentic(self, **kw):
