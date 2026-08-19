@@ -110,15 +110,20 @@ def _cerca_clienti(platform) -> dict:
 MAX_CARD_PER_TICK = int(os.environ.get("AIOS_MAX_CARD_PER_TICK", "8"))
 
 
-def _notify_new_pending(kernel, seen: set) -> int:
-    """Manda su Telegram solo le decisioni in coda non ancora notificate."""
+def _notify_new_pending(kernel, seen: set, stato=None) -> int:
+    """Manda su Telegram solo le decisioni in coda non ancora notificate.
+
+    `seen` viveva solo in memoria: al riavvio ripartiva vuoto e le card già viste
+    tornavano tutte. Ora l'insieme è anche su Supabase (vedi stato_loop)."""
     n = 0
+    nuovi_id: list = []
     try:
         for a in kernel.approvals.pending():
             if a.id in seen:
                 continue
             if n >= MAX_CARD_PER_TICK:
                 break
+            nuovi_id.append(a.id)
             seen.add(a.id)
             p = a.payload or {}
             telegram.send_approval_card(a.id, p.get("titolo") or a.action_key,
@@ -126,10 +131,12 @@ def _notify_new_pending(kernel, seen: set) -> int:
             n += 1
     except Exception:
         pass
+    if nuovi_id and stato is not None:
+        stato.segna_visto("decisioni", nuovi_id)
     return n
 
 
-def _notify_new_email_drafts(platform, seen_mail: set) -> int:
+def _notify_new_email_drafts(platform, seen_mail: set, stato=None) -> int:
     """Propone su Telegram le bozze email mai inviate.
 
     Vivono in `email_messages`, non nella coda approvazioni: prima di questa funzione
@@ -139,6 +146,7 @@ def _notify_new_email_drafts(platform, seen_mail: set) -> int:
     if conv is None:
         return 0
     n = 0
+    nuove_id: list = []
     try:
         for d in conv.bozze_in_attesa():
             did = d.get("id")
@@ -147,12 +155,15 @@ def _notify_new_email_drafts(platform, seen_mail: set) -> int:
             if n >= MAX_CARD_PER_TICK:
                 break
             seen_mail.add(did)
+            nuove_id.append(did)
             telegram.send_email_draft_card(did, str(d.get("to_email") or ""),
                                            str(d.get("subject") or ""),
                                            str(d.get("body") or ""))
             n += 1
     except Exception:
         pass
+    if nuove_id and stato is not None:
+        stato.segna_visto("bozze_email", nuove_id)
     return n
 
 
@@ -234,10 +245,15 @@ def main() -> None:
     k = platform.kernel
     tick = int(os.environ.get("AIOS_TICK_SECONDS", "1800"))
     agents_hour = int(os.environ.get("AIOS_AGENTS_HOUR", "7"))
-    seen: set = set()
-    seen_mail: set = set()
-    last_agents_day = None
-    last_prospect_day = None
+    from aios.stato_loop import StatoLoop
+    # Stato che sopravvive al riavvio: il 19 ago 2026 il servizio è ripartito tre volte
+    # e tre volte sono tornate le stesse card, perché questi insiemi erano solo in RAM.
+    stato = StatoLoop(getattr(k, "_supabase", None))
+    seen: set = stato.visti("decisioni")
+    seen_mail: set = stato.visti("bozze_email")
+    last_agents_day = stato.giorno("agenti")
+    last_prospect_day = stato.giorno("prospect")
+    print(f"stato durevole: {len(seen)} decisioni e {len(seen_mail)} bozze già notificate")
 
     # Heartbeat per-agente (Paperclip #4), opt-in: se AIOS_HEARTBEATS è impostato
     # ogni dominio si sveglia col suo intervallo; altrimenti resta il batch giornaliero.
@@ -270,6 +286,7 @@ def main() -> None:
         elif now.tm_hour == agents_hour and last_agents_day != now.tm_yday:
             # ── Batch storico: tutti gli agenti una volta al giorno all'ora prevista. ──
             last_agents_day = now.tm_yday
+            stato.segna_giorno("agenti", now.tm_yday)
             res = _run_agents(platform)
             print(f"[{time.strftime('%H:%M', now)}] agenti: {res}")
             _riporta_autonomia(res)
@@ -286,6 +303,7 @@ def main() -> None:
         # qualcuno cliccava un bottone nel cockpit, e infatti non partiva mai.
         if last_prospect_day != now.tm_yday and now.tm_hour >= agents_hour:
             last_prospect_day = now.tm_yday
+            stato.segna_giorno("prospect", now.tm_yday)
             pr = _cerca_clienti(platform)
             if pr:
                 print(f"[{time.strftime('%H:%M', now)}] ricerca clienti: {pr}")
@@ -297,12 +315,12 @@ def main() -> None:
                 elif telegram.enabled() and pr.get("errore"):
                     telegram.send_text(f"🔎 Ricerca clienti non riuscita — {pr['errore']}")
 
-        nuovi = _notify_new_pending(k, seen)
+        nuovi = _notify_new_pending(k, seen, stato)
         if nuovi:
             print(f"[{time.strftime('%H:%M', now)}] notificate {nuovi} nuove decisioni")
         # Le bozze email non passano dalla coda approvazioni: vanno proposte a parte,
         # altrimenti restano ferme nel cockpit e nessuno risponde ai clienti.
-        nuove_mail = _notify_new_email_drafts(platform, seen_mail)
+        nuove_mail = _notify_new_email_drafts(platform, seen_mail, stato)
         if nuove_mail:
             print(f"[{time.strftime('%H:%M', now)}] proposte {nuove_mail} bozze email")
         time.sleep(tick)
