@@ -67,9 +67,13 @@ class Platform:
         if domain not in self.agents:
             raise KeyError(domain)
         res = self.agents[domain].run()
+        eseguite = list(getattr(res, "eseguite", []) or [])
         return {"domain": domain,
                 "proposte": len(getattr(res, "proposals", []) or []),
-                "calendario": len(getattr(res, "calendar", []) or [])}
+                "calendario": len(getattr(res, "calendar", []) or []),
+                "eseguite": eseguite,
+                "fatte": sum(1 for e in eseguite if e.get("ok")),
+                "non_riuscite": sum(1 for e in eseguite if not e.get("ok"))}
 
     def deliverables(self) -> list[dict[str, Any]]:
         return self.kernel._supabase.select(

@@ -33,6 +33,21 @@ def _draft_emails(platform) -> dict:
         return {"error": str(exc)[:120]}
 
 
+def _riporta_autonomia(res_per_reparto: dict) -> None:
+    """Dice all'owner cosa hanno fatto gli agenti da soli. Non chiede: riporta.
+    Un messaggio per scrittura sarebbero 40 notifiche al giorno, quindi si raggruppa
+    per tabella e si dettagliano solo i fallimenti."""
+    from aios.agents import esecuzione
+    eseguite = []
+    for r in (res_per_reparto or {}).values():
+        if isinstance(r, dict):
+            eseguite.extend(r.get("eseguite") or [])
+    testo = esecuzione.riepilogo(eseguite)
+    if testo and telegram.enabled():
+        telegram.send_text("🤖 *Fatto dagli agenti, senza chiedere*\n" + testo
+                           + "\n\nLe azioni verso l'esterno restano in coda: quelle le decidi tu.")
+
+
 def _run_agents(platform) -> dict:
     out = {}
     for d in platform.domains():
@@ -251,11 +266,13 @@ def main() -> None:
                 res = _run_one_agent(platform, d)
                 hb.mark_ran(d, now_epoch)
                 print(f"[{time.strftime('%H:%M', now)}] heartbeat {d}: {res}")
+                _riporta_autonomia({d: res})
         elif now.tm_hour == agents_hour and last_agents_day != now.tm_yday:
             # ── Batch storico: tutti gli agenti una volta al giorno all'ora prevista. ──
             last_agents_day = now.tm_yday
             res = _run_agents(platform)
             print(f"[{time.strftime('%H:%M', now)}] agenti: {res}")
+            _riporta_autonomia(res)
             conv = getattr(platform, "conversations", None)
             if conv is not None:
                 try:

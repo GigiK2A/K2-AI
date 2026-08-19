@@ -49,6 +49,8 @@ class MarketingResult:
     proposals: list[dict]
     calendar_ids: list[int] = field(default_factory=list)
     calendar: list[dict] = field(default_factory=list)
+    # azioni interne partite da sole, da riportare all'owner
+    eseguite: list[dict] = field(default_factory=list)
 
 
 def _extract_json(text: str) -> dict:
@@ -281,17 +283,22 @@ class MarketingAgent:
         parsed = self.llm.complete_json(system=_SYSTEM, user=user, schema=schema)
         proposte = _as_dict_list(parsed.get("proposte"))
         voci = _as_dict_list(parsed.get("voci_calendario"))
-        ids, cal_ids = [], []
+        ids, cal_ids, eseguite = [], [], []
+        from aios.agents import esecuzione
         from aios.agents.domain import _ensure_action
         for p in proposte:
             p["azione"] = _ensure_action(p)   # attuatore: ogni proposta ha azione valida
-            r = self.k.execute("proponi_marketing", actor=self.actor, args=p)
-            if r.approval_id is not None:
-                ids.append(r.approval_id)
+            # interno → si fa subito e si riporta; esterno/delete/DDL → in coda
+            modo, out = esecuzione.applica_o_accoda(self.k, "proponi_marketing", self.actor, p)
+            if modo == "eseguita":
+                eseguite.append(out)
+            elif out is not None:
+                ids.append(out)
         if "programma_contenuto" in self.k.tools.names():
             for v in voci:
                 r = self.k.execute("programma_contenuto", actor=self.actor, args=v)
                 if r.approval_id is not None:
                     cal_ids.append(r.approval_id)
         return MarketingResult(approval_ids=ids, proposals=proposte,
-                               calendar_ids=cal_ids, calendar=voci)
+                               calendar_ids=cal_ids, calendar=voci,
+                               eseguite=eseguite)

@@ -41,6 +41,9 @@ class DomainConfig:
 class DomainResult:
     approval_ids: list
     proposals: list
+    # Azioni interne eseguite dall'agente da solo (autonomia interna autorizzata
+    # dall'owner il 19 ago 2026): servono per RIPORTARLE, non per chiederle.
+    eseguite: list = field(default_factory=list)
 
 
 def _as_dict_list(x) -> list[dict]:
@@ -231,10 +234,14 @@ class DomainAgent:
                 proposte = _as_dict_list(parsed.get("proposte"))
             except Exception:
                 proposte = []
-        ids = []
+        from aios.agents import esecuzione
+        ids, eseguite = [], []
         for p in proposte:
             p["azione"] = _ensure_action(p)   # affidabilità: ogni proposta ha un'azione valida
-            r = self.k.execute(self.cfg.tool_name, actor=self.actor, args=p)
-            if r.approval_id is not None:
-                ids.append(r.approval_id)
-        return DomainResult(approval_ids=ids, proposals=proposte)
+            # interno → si fa subito e si riporta; esterno/delete/DDL → in coda
+            modo, out = esecuzione.applica_o_accoda(self.k, self.cfg.tool_name, self.actor, p)
+            if modo == "eseguita":
+                eseguite.append(out)
+            elif out is not None:
+                ids.append(out)
+        return DomainResult(approval_ids=ids, proposals=proposte, eseguite=eseguite)
