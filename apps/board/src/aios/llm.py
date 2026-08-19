@@ -229,6 +229,11 @@ def _local_headers() -> dict:
     return h
 
 
+class LocalLLMUnreachable(RuntimeError):
+    """Ollama non risponde (tailnet giù, GB10 spento, timeout). Errore di TRASPORTO,
+    non di contenuto: è l'unico caso in cui vale la pena passare alla riserva."""
+
+
 class LocalLLM:
     """LLM locale via Ollama. Drop-in di AnthropicLLM per `complete`/`complete_json`."""
 
@@ -276,7 +281,7 @@ class LocalLLM:
                 last = exc
                 if attempt < _LOCAL_RETRIES:
                     time.sleep(1.5 * (attempt + 1))
-        raise RuntimeError(
+        raise LocalLLMUnreachable(
             f"LocalLLM: Ollama non raggiungibile su {self._base} "
             f"(modello {self._model}): {last}")
 
@@ -287,3 +292,53 @@ class LocalLLM:
         # `format`=schema → output vincolato allo schema; senza schema, "json" forza JSON valido
         text = self._chat(system=system, user=user, fmt=schema or "json")
         return _robust_json(text)
+
+
+class FallbackLLM:
+    """LLM con riserva: usa il primario, e se è IRRAGGIUNGIBILE passa al secondario.
+
+    Il modello locale sul GB10 arriva via tailnet e va e viene: il 19 ago 2026 alle
+    06:24 finance/operations/legal sono andati in timeout, alle 07:15 hanno girato tutti.
+    Un reparto che salta il giro perde la giornata e non lo dice a nessuno (l'errore
+    finisce solo nei log). Con la riserva l'agente gira comunque.
+
+    Passa alla riserva SOLO su LocalLLMUnreachable, cioè un problema di trasporto: un
+    JSON malformato o una risposta vuota restano errori del primario e devono emergere.
+    """
+
+    def __init__(self, primario: Any, riserva: Any) -> None:
+        self._primario = primario
+        self._riserva = riserva          # istanza o callable che la costruisce a richiesta
+        self._istanza = None
+        self.fallback_usati = 0
+
+    def _backup(self):
+        if self._istanza is None:
+            self._istanza = self._riserva() if callable(self._riserva) else self._riserva
+        return self._istanza
+
+    def complete(self, *, system: str, user: str) -> str:
+        try:
+            return self._primario.complete(system=system, user=user)
+        except LocalLLMUnreachable as exc:
+            self.fallback_usati += 1
+            print(f"[llm] primario giù ({exc}) → passo alla riserva")
+            return self._backup().complete(system=system, user=user)
+
+    def complete_json(self, *, system: str, user: str, schema: dict | None = None) -> dict:
+        try:
+            return self._primario.complete_json(system=system, user=user, schema=schema)
+        except LocalLLMUnreachable as exc:
+            self.fallback_usati += 1
+            print(f"[llm] primario giù ({exc}) → passo alla riserva")
+            return self._backup().complete_json(system=system, user=user, schema=schema)
+
+    def stream_agentic(self, **kw):
+        """Lo streaming tool-use esiste solo su Anthropic: se il primario non ce l'ha
+        (LocalLLM), la chat multi-agente usa direttamente la riserva invece di rompersi
+        con AttributeError."""
+        primario = self._primario
+        if hasattr(primario, "stream_agentic"):
+            yield from primario.stream_agentic(**kw)
+        else:
+            yield from self._backup().stream_agentic(**kw)

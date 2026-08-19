@@ -5,7 +5,7 @@ from typing import Any
 
 from aios.kernel import Kernel
 from aios.founder import default_founder_model
-from aios.llm import AnthropicLLM, LocalLLM
+from aios.llm import AnthropicLLM, FallbackLLM, LocalLLM
 from aios.skills import SkillLibrary
 from aios.layers.knowledge import KnowledgeStore
 from aios.sources.instagram import InstagramClient
@@ -33,11 +33,20 @@ from aios.agents.hr_config import HR_CONFIG
 
 def _make_llm(*, max_tokens: int, strong: bool = False):
     """Fabbrica dell'LLM workhorse/strong. Sceglie il backend da AIOS_LLM_BACKEND
-    (default 'anthropic' = comportamento invariato; 'local' = Ollama sul GB10)."""
+    (default 'anthropic' = comportamento invariato; 'local' = Ollama sul GB10).
+
+    Col backend locale la riserva è Claude: il GB10 arriva via tailnet e va e viene,
+    e un reparto che va in timeout perde il giro senza dirlo a nessuno. La riserva
+    entra SOLO quando Ollama è irraggiungibile (vedi FallbackLLM), quindi il costo
+    API si paga solo quando il locale è giù. Senza ANTHROPIC_API_KEY resta il solo
+    locale, come prima."""
+    model = "claude-sonnet-4-6" if strong else "claude-haiku-4-5-20251001"
     backend = os.environ.get("AIOS_LLM_BACKEND", "anthropic").strip().lower()
     if backend == "local":
-        return LocalLLM(max_tokens=max_tokens)
-    model = "claude-sonnet-4-6" if strong else "claude-haiku-4-5-20251001"
+        locale = LocalLLM(max_tokens=max_tokens)
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            return locale
+        return FallbackLLM(locale, lambda: AnthropicLLM(model=model, max_tokens=max_tokens))
     return AnthropicLLM(model=model, max_tokens=max_tokens)
 
 
