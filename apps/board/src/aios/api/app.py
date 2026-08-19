@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import json
+import queue
+import threading
 from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Path as FPath, Request
@@ -178,6 +180,11 @@ def _process_attachments(atts: list[dict] | None):
                      "image_url in `esegui` pubblica_post se l'owner chiede di pubblicarle "
                      "su Instagram):\n" + "\n".join(image_urls))
     return media, doc_text, names
+
+
+# Ogni quanto mandare un ping SSE mentre il modello pensa. Sotto il timeout dei gateway
+# (Railway/Cloudflare chiudono una connessione muta), sopra il rumore.
+KEEPALIVE_SSE = int(os.environ.get("AIOS_SSE_KEEPALIVE_SECONDI", "15"))
 
 
 def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
@@ -560,19 +567,47 @@ def create_app(kernel: Kernel, platform: Any = None) -> FastAPI:
                 yield _sse({"phase": "error", "agent": "",
                             "error": "chat non disponibile"})
                 return
+            # PRIMO BYTE SUBITO. Il primo evento vero è il triage, che è una chiamata LLM
+            # intera: sul modello locale può arrivare dopo minuti, e il gateway chiude la
+            # connessione con 502 prima di vederlo (misurato il 19 ago 2026: 125s e zero
+            # eventi, poi 502). Un commento SSE non viene interpretato dal cockpit — salta
+            # le righe che non iniziano con "data:" — ma tiene aperta la connessione.
+            yield ": ok\n\n"
             _invalidate_cache()   # eventuali scritture della chat → cockpit le vede dopo
             # Ogni evento 'done' è UN turno (agente in un giro, o la sintesi): li salvo TUTTI
             # in ordine → il trascritto del dibattito è ricostruibile e diventa memoria.
             turns: list[tuple[str, str]] = []
-            try:
-                for ev in chat.stream(request_text, body.agents, history, media=media_blocks):
-                    if ev.get("phase") == "done" and ev.get("agent"):
-                        txt = ev.get("text") or ""
-                        if txt.strip():
-                            turns.append((ev["agent"], txt))
-                    yield _sse(ev)
-            except Exception as exc:
-                yield _sse({"phase": "error", "agent": "", "error": str(exc)[:200]})
+            # Il generatore non può produrre keepalive mentre è bloccato sull'LLM: la
+            # conversazione gira in un thread e qui si consuma una coda, così ogni
+            # KEEPALIVE_SSE secondi parte un ping anche nel mezzo di un turno lungo.
+            coda: queue.Queue = queue.Queue()
+            FINE = object()
+
+            def _produttore():
+                try:
+                    for ev in chat.stream(request_text, body.agents, history,
+                                          media=media_blocks):
+                        coda.put(ev)
+                except Exception as exc:
+                    coda.put({"phase": "error", "agent": "", "error": str(exc)[:200]})
+                finally:
+                    coda.put(FINE)
+
+            threading.Thread(target=_produttore, daemon=True,
+                             name="chat-stream").start()
+            while True:
+                try:
+                    ev = coda.get(timeout=KEEPALIVE_SSE)
+                except queue.Empty:
+                    yield ": ping\n\n"      # il modello sta ancora pensando
+                    continue
+                if ev is FINE:
+                    break
+                if ev.get("phase") == "done" and ev.get("agent"):
+                    txt = ev.get("text") or ""
+                    if txt.strip():
+                        turns.append((ev["agent"], txt))
+                yield _sse(ev)
             # Persistenza post-streaming: ogni turno del dibattito + aggiornamento sessione.
             if sid and client is not None:
                 for ag, txt in turns:
