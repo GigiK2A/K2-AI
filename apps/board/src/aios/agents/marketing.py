@@ -4,6 +4,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from aios.agents import sensori
 from aios.autonomy import ActionType, AutonomyLevel
 from aios.kernel import Kernel
 from aios.founder import FounderModel
@@ -119,26 +120,40 @@ class MarketingAgent:
     def _read(self, name, **a):
         return self.k.execute(name, actor=self.actor, args=a).result
 
+    def _leggi_sicuro(self, name, **a):
+        """Legge un sensore isolando il guasto e registrando la provenienza in
+        self.fonti. Con il token Instagram invalidato (ago 2026) `_gather` sollevava
+        sul primo read e il marketing non produceva NIENTE per giorni: un sensore rotto
+        deve costare quel sensore, non la giornata del reparto."""
+        return sensori.leggi_sicuro(self._read, name, self.fonti, **a)
+
     def _gather(self) -> dict:
         names = self.k.tools.names()
-        data = {"servizi": self._read("leggi_servizi"), "topics": self._read("leggi_topics"),
-                "profilo_ig": self._read("leggi_profilo_ig"),
-                "post_ig": self._read("leggi_post_ig", limit=10)}
-        if "leggi_insight_ig" in names:
-            data["insight"] = self._read("leggi_insight_ig")
-        if "leggi_calendario" in names:
-            data["calendario"] = self._read("leggi_calendario")
+        self.fonti: dict[str, str] = {}
+        data: dict = {}
+        # Nessun sensore è obbligatorio: il reparto lavora su quello che risponde.
+        for chiave, tool, args in (
+                ("servizi", "leggi_servizi", {}), ("topics", "leggi_topics", {}),
+                ("profilo_ig", "leggi_profilo_ig", {}),
+                ("post_ig", "leggi_post_ig", {"limit": 10}),
+                ("insight", "leggi_insight_ig", {}), ("calendario", "leggi_calendario", {})):
+            if tool in names:
+                v = self._leggi_sicuro(tool, **args)
+                if v is not None:
+                    data[chiave] = v
         for opt in ("leggi_iscritti", "leggi_newsletter", "leggi_analytics", "leggi_voce_clienti",
                     "leggi_ranking_seo", "leggi_funnel_web", "leggi_competitor_web", "leggi_ads_meta",
                     "leggi_ads_google", "leggi_brand_mentions", "leggi_calendario_contenuti",
-                    "leggi_costi", "leggi_suite"):
+                    "leggi_costi", "leggi_suite", "leggi_prospect", "leggi_competitor",
+                    "leggi_lead", "leggi_inbox"):
             if opt in names:
-                try:
-                    data[opt] = self._read(opt)
-                except Exception:
-                    pass
+                v = self._leggi_sicuro(opt)
+                if v is not None:
+                    data[opt] = v
         if "leggi_competitor_ig" in names:
-            data["competitor_ig"] = self._read("leggi_competitor_ig")
+            v = self._leggi_sicuro("leggi_competitor_ig")
+            if v is not None:
+                data["competitor_ig"] = v
         # NB: competitor discovery consumes one extra llm.complete() call BEFORE the proposals call
         elif self.discover and "analizza_competitor" in names:
             try:
@@ -148,8 +163,13 @@ class MarketingAgent:
                 handles = []
             if handles:
                 data["competitor_handles"] = handles
-                data["competitor_ig"] = self._read("analizza_competitor", usernames=handles)
+                v = self._leggi_sicuro("analizza_competitor", usernames=handles)
+                if v is not None:
+                    data["competitor_ig"] = v
         return data
+
+    def _stato_fonti(self) -> str:
+        return sensori.blocco_stato(getattr(self, "fonti", {}))
 
     def _skill_context(self) -> str:
         if not self.skills:
@@ -194,48 +214,54 @@ class MarketingAgent:
         user = (self.founder.to_prompt()[:900]
                 + (("\n\n" + role_ctx) if role_ctx else "")
                 + (("\n\n" + goals_ctx) if goals_ctx else "")
-                + "\n\n# DATI REALI\n## Servizi\n" + sec("servizi", 900)
-                + "\n## Temi blog\n" + sec("topics", 800)
-                + "\n## Profilo IG\n" + sec("profilo_ig", 400)
-                + "\n## Post IG (analizza UNO PER UNO vs metriche)\n" + sec("post_ig", 1200))
-        if "insight" in data:
-            user += "\n## Insight IG\n" + sec("insight", 600)
-        if "leggi_iscritti" in data:
-            user += "\n## Iscritti newsletter (email/lifecycle)\n" + sec("leggi_iscritti", 800)
-        if "leggi_newsletter" in data:
-            user += "\n## Newsletter pubblicate\n" + sec("leggi_newsletter", 600)
-        if "leggi_analytics" in data:
-            user += "\n## Analytics snapshot (cross-canale)\n" + sec("leggi_analytics", 800)
-        if "leggi_voce_clienti" in data:
-            user += "\n## Voce clienti (sessioni K-BOT, per research)\n" + sec("leggi_voce_clienti", 1000)
-        if data.get("leggi_ranking_seo"):
-            user += "\n## Ranking SEO (Search Console)\n" + sec("leggi_ranking_seo", 1000)
-        if data.get("leggi_funnel_web"):
-            user += "\n## Funnel web (PostHog)\n" + sec("leggi_funnel_web", 800)
-        if data.get("leggi_competitor_web"):
-            user += "\n## Competitor web\n" + sec("leggi_competitor_web", 800)
-        if data.get("leggi_ads_meta"):
-            user += "\n## Ads Meta (paid)\n" + sec("leggi_ads_meta", 800)
-        if data.get("leggi_ads_google"):
-            user += "\n## Ads Google (paid)\n" + sec("leggi_ads_google", 600)
-        if data.get("leggi_brand_mentions"):
-            user += "\n## Brand mentions (PR)\n" + sec("leggi_brand_mentions", 1000)
-        if data.get("leggi_calendario_contenuti"):
-            user += "\n## Calendario contenuti (automation/ops)\n" + sec("leggi_calendario_contenuti", 800)
-        if data.get("leggi_costi"):
-            user += "\n## Costi (budget)\n" + sec("leggi_costi", 600)
-        if data.get("leggi_suite"):
-            user += "\n## Catalogo prodotti K2-AI (suite, fonte unica)\n" + sec("leggi_suite", 1200)
-        if "competitor_ig" in data:
-            user += "\n## Competitor (analisi)\n" + sec("competitor_ig", 1000)
-        if "calendario" in data:
-            user += "\n## Calendario attuale\n" + sec("calendario", 600)
+                + "\n\n# DATI REALI")
+        # Solo le sezioni che hanno davvero dati: una sezione con "null" dentro insegna
+        # all'agente che quel canale esiste e va commentato, ed è così che nascono le
+        # proposte su metriche immaginarie.
+        for chiave, etichetta, cap in (
+                ("servizi", "Servizi", 900),
+                ("topics", "Temi blog", 800),
+                ("leggi_suite", "Catalogo prodotti K2-AI (suite, fonte unica)", 1200),
+                ("leggi_ranking_seo", "Ranking SEO (Search Console)", 1000),
+                ("leggi_funnel_web", "Funnel web (PostHog)", 800),
+                ("leggi_analytics", "Analytics snapshot (cross-canale)", 800),
+                ("leggi_voce_clienti", "Voce clienti (sessioni K-BOT, per research)", 1000),
+                ("leggi_iscritti", "Iscritti newsletter (email/lifecycle)", 800),
+                ("leggi_newsletter", "Newsletter pubblicate", 600),
+                ("leggi_prospect", "Prospect (ricerca clienti)", 1000),
+                ("leggi_lead", "Pipeline lead (demand gen)", 800),
+                ("leggi_competitor", "Competitor (ricerca web)", 800),
+                ("leggi_competitor_web", "Competitor web", 800),
+                ("leggi_brand_mentions", "Brand mentions (PR)", 1000),
+                ("leggi_ads_meta", "Ads Meta (paid)", 800),
+                ("leggi_ads_google", "Ads Google (paid)", 600),
+                ("leggi_calendario_contenuti", "Calendario contenuti (automation/ops)", 800),
+                ("leggi_costi", "Costi (budget)", 600),
+                ("profilo_ig", "Profilo IG", 400),
+                ("post_ig", "Post IG (analizza UNO PER UNO vs metriche)", 1200),
+                ("insight", "Insight IG", 600),
+                ("competitor_ig", "Competitor IG (analisi)", 1000),
+                ("calendario", "Calendario attuale", 600)):
+            if data.get(chiave):
+                user += f"\n## {etichetta}\n" + sec(chiave, cap)
+        user += self._stato_fonti()
         user += self._skill_context()
-        user += ("\n\nValuta i post uno per uno rispetto a reach/like, confronta coi competitor, "
-                 "e proponi miglioramenti concreti (proposte) e, dove utile, voci di calendario datate. "
-                 "Copri il PIÙ possibile delle 19 sotto-funzioni (incluse paid, demand_gen, "
-                 "automation, pr, influencer, events, cro, creative, budget, strategy), una proposta "
-                 "per area dove ha senso. Massimo 10 proposte.")
+        # Coda del prompt costruita su cosa risponde: chiedere l'analisi post-per-post
+        # quando Instagram è giù produce solo invenzioni.
+        coperte = [n for n, s in getattr(self, "fonti", {}).items() if s.startswith("ok")]
+        if data.get("post_ig"):
+            user += ("\n\nValuta i post uno per uno rispetto a reach/like, confronta coi "
+                     "competitor, e proponi miglioramenti concreti.")
+        else:
+            user += ("\n\nInstagram non è disponibile in questo giro: NON parlare di post, "
+                     "reach o follower. Il reparto marketing è molto più largo di un canale "
+                     "social — lavora su ciò che risponde davvero.")
+        user += (f"\n\nFonti con dati adesso: {', '.join(coperte) or 'nessuna'}. "
+                 "Copri il PIÙ possibile delle 19 sotto-funzioni tra quelle che le fonti "
+                 "disponibili permettono (seo, email, demand_gen, research, competitor, cro, "
+                 "analytics, product_mkt, budget, strategy, automation, pr…), una proposta per "
+                 "area dove ha senso, e dove utile voci di calendario datate. "
+                 "Massimo 10 proposte.")
         schema = {"type": "object", "properties": {
             "proposte": {"type": "array", "items": {"type": "object", "properties": {
                 "tipo": {"type": "string"}, "titolo": {"type": "string"},
