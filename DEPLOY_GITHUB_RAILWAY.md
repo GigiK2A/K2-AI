@@ -91,6 +91,47 @@ AIOS_IG_TOKEN=<instagram>
 > ⚠️ Non usare il process `worker` del Procfile **insieme** a `AIOS_AUTONOMY=1`:
 > sono due loop di autonomia e quindi due poller Telegram in conflitto. Scegline uno.
 
+## 2.1) Se `main` è aggiornato ma la produzione è vecchia
+
+Succede in silenzio: nessun errore, nessuna build, i log applicativi continuano a
+scorrere con l'istanza vecchia. È costato mezza giornata il 19 ago 2026 — il board
+girava un'immagine del **12 agosto** con `main` avanti di giorni.
+
+Come accertarlo in un minuto:
+
+```bash
+# 1. quale immagine sta girando davvero (annotazione OCI nella build ATTIVA)
+railway logs --build --service k2-ai-board | grep -oE 'eyJtZWRpYVR5[A-Za-z0-9+/=]+' \
+  | tail -1 | base64 -d | grep -o '"org.opencontainers.image.created":"[^"]*"'
+
+# 2. controprova indipendente: cerca nel cockpit servito un marcatore del codice nuovo
+curl -s https://api.k2-ai.it/ | grep -c 'r.messaggio'
+
+# 3. leggere un file DENTRO il container in esecuzione (la prova definitiva)
+railway service files --service k2-ai-board download /app/src/aios/kernel.py /tmp/k.py --overwrite
+```
+
+Attenzione: `railway logs --build` mostra la build della deployment **attiva**, quindi
+mentre una build nuova è in corso continua a stampare quella vecchia e inganna.
+
+Cause viste, in ordine di probabilità:
+
+1. **"Wait for CI" acceso sul servizio.** Il board aspettava le check suites di GitHub
+   (`checkSuites: true` sul repo trigger) mentre `k2-ai-website` no: con la CI di `main`
+   non verde, nessun push deployava e da nessuna parte era scritto perché. Si spegne da
+   Settings del servizio ("Wait for CI"). Tenerlo acceso è legittimo, ma allora la CI su
+   `main` deve stare verde, altrimenti il board resta fermo per sempre.
+2. Watch paths che non includono `apps/board/**` (verificare: se vuote, guardano tutto).
+3. Source scollegata dal repo.
+
+Deploy manuale, quando serve forzare (mai dalla working copy: usa un worktree allineato
+a `main`, vedi §1):
+
+```bash
+railway link -p k2-ai -e production -s k2-ai-board
+railway up --service k2-ai-board --ci    # --ci stampa i log di build ed esce
+```
+
 ## 3) Dominio
 
 Configura due host:
