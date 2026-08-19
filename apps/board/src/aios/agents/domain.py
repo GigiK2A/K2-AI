@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -10,6 +11,12 @@ from aios.kernel import Kernel
 from aios.founder import FounderModel
 from aios.llm import LLM
 from aios.tools import Tool
+
+# Quanto metodo professionale entra nel prompt di un reparto. Il tetto esiste perché il
+# modello economico con forced-JSON degrada oltre ~12k token: 4 playbook da 2200 caratteri
+# sono ~2,2k token, cioè metodo vero senza affogare il resto del contesto.
+SKILL_PER_REPARTO = int(os.environ.get("AIOS_SKILL_PER_REPARTO", "4"))
+SKILL_CARATTERI = int(os.environ.get("AIOS_SKILL_CARATTERI", "2200"))
 
 _SCHEMA = {"type": "object", "properties": {"proposte": {"type": "array", "items": {
     "type": "object", "properties": {
@@ -153,9 +160,20 @@ class DomainAgent:
             if hits:
                 out += "\n\n# CONOSCENZA K2-AI\n" + "\n".join(f"- {h[:300]}" for h in hits)
         if self.skills:
-            for n in self.cfg.skill_focus:
+            # I 4 reparti su 5 avevano `skill_focus=[]`: finance, operations, legal e HR
+            # lavoravano senza aprire un solo playbook, con 312 in libreria. Le skill
+            # curate del config vengono prima, poi quelle instradate automaticamente sul
+            # nome del reparto (`for_domain`, che finora usava solo la chat).
+            picked = list(self.cfg.skill_focus)
+            try:
+                for n in self.skills.for_domain(self.cfg.name, k=8):
+                    if n not in picked:
+                        picked.append(n)
+            except Exception:
+                pass
+            for n in picked[:SKILL_PER_REPARTO]:
                 try:
-                    out += f"\n\n## SKILL: {n}\n" + self.skills.load(n)[:700]
+                    out += f"\n\n## SKILL: {n}\n" + self.skills.estratto(n, SKILL_CARATTERI)
                 except KeyError:
                     pass
         return out

@@ -175,15 +175,28 @@ class MarketingAgent:
         return sensori.blocco_stato(getattr(self, "fonti", {}))
 
     def _skill_context(self) -> str:
+        """Il metodo professionale che il CMO ha in mano.
+
+        Prima: 2 skill × 500 caratteri = frontmatter YAML e titolo, cioè zero metodo su
+        una libreria di 312 playbook. Ora: le skill curate più quelle instradate sul
+        reparto, e l'estratto salta l'intestazione e parte dalle sezioni operative."""
         if not self.skills:
             return ""
+        from aios.agents.domain import SKILL_CARATTERI, SKILL_PER_REPARTO
+        picked = list(_FOCUS)
+        try:
+            for n in self.skills.for_domain("marketing", k=8):
+                if n not in picked:
+                    picked.append(n)
+        except Exception:
+            pass
         out = []
-        for n in _FOCUS[:2]:
+        for n in picked[:SKILL_PER_REPARTO]:
             try:
-                out.append(f"## SKILL: {n}\n" + self.skills.load(n)[:500])
+                out.append(f"## SKILL: {n}\n" + self.skills.estratto(n, SKILL_CARATTERI))
             except KeyError:
                 pass
-        return ("\n\n# FRAMEWORK (estratti)\n" + "\n\n".join(out)) if out else ""
+        return ("\n\n# FRAMEWORK (estratti operativi)\n" + "\n\n".join(out)) if out else ""
 
     def run(self) -> MarketingResult:
         from aios import billing

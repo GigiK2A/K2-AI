@@ -108,6 +108,36 @@ class SkillLibrary:
             raise KeyError(name)
         return f.read_text(encoding="utf-8")
 
+    # Sezioni operative: se il playbook è più lungo del budget, meglio il metodo
+    # dell'introduzione.
+    _SEZIONI_OPERATIVE = ("## metodo", "## come", "## passi", "## procedura",
+                          "## processo", "## checklist", "## framework", "## regole",
+                          "## output", "## struttura", "## workflow", "## step")
+
+    def estratto(self, name: str, cap: int = 2200) -> str:
+        """Il METODO di una skill, non la sua etichetta.
+
+        `load()` ritorna il file intero, frontmatter YAML compreso. Leggerne i primi
+        500-700 caratteri — come facevano gli agenti fino al 19 ago 2026 — significa
+        dare al modello `name`, `description`, `argument-hint` e il titolo: zero
+        metodo. Con 312 playbook in libreria per 3,2 milioni di caratteri, gli agenti
+        ne usavano lo 0,1%, e quella parte era intestazione.
+
+        Qui si salta il frontmatter e, se il testo non entra nel budget, si parte dalla
+        prima sezione operativa invece che dall'introduzione."""
+        testo = self.load(name)
+        if testo.startswith("---"):
+            fine = testo.find("\n---", 3)
+            if fine != -1:
+                testo = testo[fine + 4:]
+        testo = testo.strip()
+        if len(testo) > cap:
+            basso = testo.lower()
+            inizi = [i for i in (basso.find(s) for s in self._SEZIONI_OPERATIVE) if i > 0]
+            if inizi:
+                testo = testo[min(inizi):]
+        return testo[:cap].strip()
+
     def describe(self, name: str) -> str:
         """Description della skill (con cache)."""
         if name in self._desc_cache:
