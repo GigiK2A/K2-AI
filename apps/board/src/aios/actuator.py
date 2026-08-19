@@ -108,6 +108,26 @@ def is_external_action(action: Any) -> bool:
     return c in _EXTERNAL_CANALI or c in _META_CANALI
 
 
+def is_autonomous_internal(action: Any) -> bool:
+    """True se l'azione è INTERNA e sicura da eseguire senza chiedere: scrittura
+    insert/update/upsert su una tabella del board in allowlist.
+
+    Restano SEMPRE alla conferma umana, qualunque sia il livello di autonomia:
+    - azioni ESTERNE (n8n, social, email, ads) → mandano roba fuori dall'azienda;
+    - DELETE → distruttive;
+    - DDL / SQL grezzo → modificano lo schema.
+
+    Regola dell'owner (ago 2026): «non voglio dare autorizzazioni su cose banali; se
+    qualcosa legalmente è sbagliata l'agente la sistema e me lo dice». Quindi: tutto
+    l'interno è autonomo e viene RIPORTATO, l'esterno resta ad approvazione."""
+    if not isinstance(action, dict) or is_external_action(action):
+        return False
+    if action.get("tipo") == "ddl" or action.get("sql"):
+        return False
+    op = str(action.get("op") or "insert").lower()
+    return op in ("insert", "update", "upsert")
+
+
 # Segnaposto mai risolti dall'LLM ({{uuid}}, {{now_iso}}, {{month}}, ${nome}…). Scritti
 # in DB danno righe inutilizzabili o un 400 da PostgREST; mandati fuori via n8n finiscono
 # in una email al cliente. Vanno intercettati PRIMA di eseguire.

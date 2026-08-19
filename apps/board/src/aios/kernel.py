@@ -228,6 +228,19 @@ class Kernel:
 
         return self._run(tool, actor, args, action_key)
 
+    def execute_now(self, name: str, *, actor: str, args: dict[str, Any]) -> ExecResult:
+        """Esecuzione IMMEDIATA (autonomia interna): salta la coda di approvazione ma NON
+        il killswitch. Da usare SOLO su azioni pre-classificate come interne e sicure
+        (vedi actuator.is_autonomous_internal). Registra in audit come le altre, quindi
+        resta tutto ispezionabile a posteriori: autonomo non vuol dire invisibile."""
+        tool = self.tools.get(name)
+        action_key = tool.action_type.key if tool.action_type else f"readonly.{tool.name}"
+        if self.killswitch.engaged:
+            self.audit.append(action_key=action_key, event="blocked_killswitch",
+                              actor=actor, detail={"reason": self.killswitch.reason})
+            return ExecResult(outcome=ExecOutcome.DENIED)
+        return self._run(tool, actor, args, action_key)
+
     def resolve_approval(self, approval_id: int, *, approve: bool,
                          edited_payload: dict[str, Any] | None = None,
                          reason: str | None = None) -> ExecResult:
