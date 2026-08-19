@@ -213,3 +213,34 @@ def test_primario_senza_streaming_usa_la_riserva():
     llm = FallbackLLM(FakeLLM(responses=["x"]), StreamBuono())
     eventi = list(llm.stream_agentic(system="s", user="u", tools=[], tool_exec=None))
     assert eventi[-1]["text"] == "dalla riserva"
+
+
+# ---- parametri da interattivo (latenza) ----
+def test_la_chat_usa_un_budget_corto(monkeypatch):
+    """Il budget di 8192 token era il moltiplicatore della latenza: su un 120B remoto
+    ogni token si paga in secondi, e una risposta di chat non ne ha bisogno."""
+    op = _monta(monkeypatch, [[{"message": {"content": "ok"}, "done": True}]])
+    list(LocalLLM().stream_agentic(system="s", user="u", tools=[], tool_exec=lambda n, i: {}))
+    req = op.richieste[0]
+    assert req["options"]["num_predict"] == llm_mod._LOCAL_CHAT_NUM_PREDICT
+    assert req["options"]["num_predict"] <= 2048
+    assert req["think"] == llm_mod._LOCAL_CHAT_THINK      # reasoning corto in chat
+
+
+def test_il_chiamante_puo_imporre_il_suo_budget(monkeypatch):
+    op = _monta(monkeypatch, [[{"message": {"content": "ok"}, "done": True}]])
+    list(LocalLLM().stream_agentic(system="s", user="u", tools=[],
+                                   tool_exec=lambda n, i: {}, max_tokens=4096))
+    assert op.richieste[0]["options"]["num_predict"] == 4096
+
+
+def test_meno_giri_di_tool_in_chat(monkeypatch):
+    """Ogni giro è una generazione intera: tre bastano, sei sono minuti."""
+    assert llm_mod._LOCAL_CHAT_ITERS <= 4
+
+
+def test_chi_chiede_pochi_token_ne_ottiene_pochi():
+    """Prima era max(richiesta, 8192): il chiamante non poteva chiedere meno."""
+    assert LocalLLM(max_tokens=1000)._num_predict == 1000
+    assert LocalLLM(max_tokens=10)._num_predict == llm_mod._LOCAL_NUM_PREDICT_MIN
+    assert LocalLLM()._num_predict == llm_mod._LOCAL_NUM_PREDICT

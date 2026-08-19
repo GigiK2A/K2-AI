@@ -202,6 +202,16 @@ _OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstri
 _LOCAL_MODEL = os.environ.get("AIOS_LOCAL_MODEL", "gpt-oss:120b")
 _LOCAL_THINK = os.environ.get("AIOS_LOCAL_THINK", "medium")      # low|medium|high (mai false su gpt-oss)
 _LOCAL_NUM_PREDICT = int(os.environ.get("AIOS_LOCAL_NUM_PREDICT", "8192"))  # budget out largo: headroom per il reasoning
+# Pavimento sotto cui non si scende comunque: serve al reasoning di gpt-oss, che consuma
+# token prima di scrivere. Ma NON è il default: un chiamante che chiede meno deve
+# ottenere meno, altrimenti ogni risposta di chat ha il budget di un report.
+_LOCAL_NUM_PREDICT_MIN = int(os.environ.get("AIOS_LOCAL_NUM_PREDICT_MIN", "768"))
+# La CHAT è interattiva: chi aspetta guarda lo schermo. Budget e reasoning più corti,
+# perché una risposta conversazionale non ha bisogno di 8192 token — e su un 120B remoto
+# ogni token si paga in secondi.
+_LOCAL_CHAT_NUM_PREDICT = int(os.environ.get("AIOS_LOCAL_CHAT_NUM_PREDICT", "1536"))
+_LOCAL_CHAT_THINK = os.environ.get("AIOS_LOCAL_CHAT_THINK", "low")
+_LOCAL_CHAT_ITERS = int(os.environ.get("AIOS_LOCAL_CHAT_ITERS", "3"))
 _LOCAL_NUM_CTX = int(os.environ.get("AIOS_LOCAL_NUM_CTX", "16384"))         # ctx ampio: i prompt del board portano dati reali
 _LOCAL_TIMEOUT = int(os.environ.get("AIOS_LOCAL_TIMEOUT", "600"))
 _LOCAL_RETRIES = int(os.environ.get("AIOS_LOCAL_RETRIES", "2"))  # blip del tunnel → ritenta (opzione A: degrada e ritenta)
@@ -274,8 +284,11 @@ class LocalLLM:
     def __init__(self, model: str | None = None, max_tokens: int | None = None,
                  base_url: str | None = None, think: str | None = None) -> None:
         self._model = model or _LOCAL_MODEL
-        # num_predict = il più largo tra quanto chiede il chiamante e il default generoso
-        self._num_predict = max(int(max_tokens or 0), _LOCAL_NUM_PREDICT)
+        # Il chiamante decide: se chiede meno token, ne ottiene meno (col solo pavimento
+        # tecnico per il reasoning). Prima era `max(richiesta, 8192)`, quindi anche una
+        # risposta di chat generava fino a 8192 token — su un 120B remoto sono minuti.
+        self._num_predict = (max(int(max_tokens), _LOCAL_NUM_PREDICT_MIN)
+                             if max_tokens else _LOCAL_NUM_PREDICT)
         self._base = (base_url or _OLLAMA_BASE).rstrip("/")
         self._think = think if think is not None else _LOCAL_THINK
 
@@ -357,13 +370,14 @@ class LocalLLM:
         return out
 
     def _stream_chat(self, messages: list[dict], strumenti: list[dict],
-                     max_tokens: int | None):
+                     max_tokens: int | None, think: Any = None):
         """Righe NDJSON di /api/chat con stream=true. Solleva LocalLLMUnreachable se
         Ollama non risponde, così la riserva può entrare come per le altre chiamate."""
         body: dict[str, Any] = {
-            "model": self._model, "stream": True, "think": self._think_value(),
+            "model": self._model, "stream": True,
+            "think": think if think is not None else self._think_value(),
             "messages": messages,
-            "options": {"num_predict": max(int(max_tokens or 0), self._num_predict),
+            "options": {"num_predict": int(max_tokens or self._num_predict),
                         "num_ctx": _LOCAL_NUM_CTX}}
         if strumenti:
             body["tools"] = strumenti
@@ -392,7 +406,7 @@ class LocalLLM:
             f"(modello {self._model}): {last}")
 
     def stream_agentic(self, *, system: str, user: str, tools: list[dict],
-                       tool_exec, max_iters: int = 6, max_tokens: int | None = None,
+                       tool_exec, max_iters: int | None = None, max_tokens: int | None = None,
                        web_search: bool = False, history: list[dict] | None = None,
                        media: list[dict] | None = None):
         """Loop tool-use in streaming sul modello LOCALE, con gli stessi eventi della
@@ -404,6 +418,10 @@ class LocalLLM:
 
         `web_search` viene ignorato: è un server-tool di Anthropic e qui non esiste — si
         preferisce una risposta senza ricerca web a nessuna risposta."""
+        # Parametri da INTERATTIVO: chi aspetta una chat guarda lo schermo. Il chiamante
+        # può ancora imporre il suo budget passando max_tokens/max_iters.
+        budget = int(max_tokens) if max_tokens else _LOCAL_CHAT_NUM_PREDICT
+        giri = int(max_iters) if max_iters else _LOCAL_CHAT_ITERS
         messages: list[dict] = [{"role": "system", "content": system}]
         messages += [m for m in (history or []) if isinstance(m, dict)]
         turno_utente: dict[str, Any] = {"role": "user", "content": user}
@@ -413,10 +431,11 @@ class LocalLLM:
         messages.append(turno_utente)
         strumenti = self._tool_ollama(tools)
 
-        for _ in range(max_iters):
+        for _ in range(giri):
             yield {"phase": "thinking"}
             testo, chiamate, iniziato = "", [], False
-            for chunk in self._stream_chat(messages, strumenti, max_tokens):
+            for chunk in self._stream_chat(messages, strumenti, budget,
+                                           think=_LOCAL_CHAT_THINK):
                 msg = chunk.get("message") or {}
                 for tc in (msg.get("tool_calls") or []):
                     fn = (tc or {}).get("function") or {}
