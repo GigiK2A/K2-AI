@@ -4,7 +4,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from aios.agents import competenza, sensori
+from aios.agents import competenza, esperienza, sensori
 from aios.autonomy import ActionType, AutonomyLevel
 from aios.kernel import Kernel
 from aios.founder import FounderModel
@@ -249,6 +249,8 @@ class MarketingAgent:
             if data.get(chiave):
                 user += f"\n## {etichetta}\n" + sec(chiave, cap)
         user += self._stato_fonti()
+        user += esperienza.blocco_esperienza(self._client, "marketing",
+                                             PROPOSE_ACTION.key)
         user += self._skill_context(sec('servizi', 600) + sec('leggi_ranking_seo', 600))
         # Coda del prompt costruita su cosa risponde: chiedere l'analisi post-per-post
         # quando Instagram è giù produce solo invenzioni.
