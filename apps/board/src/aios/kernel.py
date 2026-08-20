@@ -265,11 +265,23 @@ class Kernel:
                               actor=appr.actor, detail={"reason": reason})
             return ExecResult(outcome=ExecOutcome.DENIED)
 
-        resolved = self.approvals.approve(approval_id, edited_payload=edited_payload)
-        self.policy.record_outcome(action, clean=resolved.clean)
+        # Il tool si cerca PRIMA di marcare approvata: se non esiste, _tool_for_action
+        # solleva e la riga resterebbe APPROVED senza che nulla sia stato eseguito —
+        # in produzione ci sono 86 righe così, senza traccia in audit.
         tool_name = self._tool_for_action(appr.action_key)
         tool = self.tools.get(tool_name)
-        return self._run(tool, appr.actor, resolved.payload, appr.action_key)
+        resolved = self.approvals.approve(approval_id, edited_payload=edited_payload)
+        try:
+            res = self._run(tool, appr.actor, resolved.payload, appr.action_key)
+        except Exception:
+            self.policy.record_outcome(action, clean=False)
+            raise
+        # L'autonomia si guadagna eseguendo, non facendosi approvare: `clean` da solo
+        # vuol dire «l'owner non ha corretto il payload», e dieci fallimenti silenziosi
+        # di fila promuovevano l'azione da L1 a L2 (esecuzione senza chiedere).
+        self.policy.record_outcome(action,
+                                   clean=resolved.clean and res.eseguita_davvero)
+        return res
 
     def _tool_for_action(self, action_key: str) -> str:
         for name in self.tools.names():

@@ -119,3 +119,58 @@ def test_raising_tool_is_audited_then_reraised():
         k.execute("publish_post", actor="marketing_agent", args={"caption": "x"})
     assert k.audit.records()[-1].event == "error"
     assert k.audit.records()[-1].detail["error"] == "api down"
+
+
+# ---- l'autonomia si guadagna eseguendo, non facendosi approvare ----
+# `clean` significa solo «l'owner non ha corretto il payload»: contarlo come
+# successo faceva salire lo streak anche quando l'attuatore non scriveva niente,
+# e a dieci di fila l'azione passava da L1 (chiedi) a L2 (esegui da solo).
+
+def _kernel_con_esito(esito):
+    k = Kernel()
+    k.register_tool(Tool(name="publish_post", action_type=PUBLISH,
+                         run=lambda **kw: {"attuatore": esito}))
+    k.policy.set_level(PUBLISH, AutonomyLevel.L1_PROPOSE)
+    return k
+
+
+def test_attuatore_fallito_non_fa_salire_lo_streak():
+    k = _kernel_con_esito({"ok": False, "errore": "nessuna riga corrisponde al match"})
+    res = k.execute("publish_post", actor="marketing_agent", args={"caption": "c"})
+    run = k.resolve_approval(res.approval_id, approve=True)
+    assert run.eseguita_davvero is False
+    assert k.audit.records()[-1].event == "failed"
+    assert k.policy._state(PUBLISH).streak == 0
+
+
+def test_attuatore_riuscito_fa_salire_lo_streak():
+    k = _kernel_con_esito({"ok": True, "tabella": "board_tasks", "op": "insert",
+                           "righe": [{"id": 1}]})
+    res = k.execute("publish_post", actor="marketing_agent", args={"caption": "c"})
+    assert k.resolve_approval(res.approval_id, approve=True).eseguita_davvero is True
+    assert k.policy._state(PUBLISH).streak == 1
+
+
+def test_dieci_fallimenti_non_promuovono_ad_autonomia():
+    k = Kernel(promotion_threshold=3)
+    k.register_tool(Tool(name="publish_post", action_type=PUBLISH,
+                         run=lambda **kw: {"attuatore": {"ok": False, "errore": "x"}}))
+    k.policy.set_level(PUBLISH, AutonomyLevel.L1_PROPOSE)
+    k.policy.set_cap(PUBLISH, AutonomyLevel.L3_AUTO)
+    for _ in range(5):
+        res = k.execute("publish_post", actor="marketing_agent", args={"caption": "c"})
+        k.resolve_approval(res.approval_id, approve=True)
+    assert k.policy.level_for(PUBLISH) == AutonomyLevel.L1_PROPOSE  # resta a chiedere
+
+
+def test_azione_senza_tool_non_resta_approvata_a_vuoto():
+    # _tool_for_action solleva: la riga NON deve essere marcata APPROVED, altrimenti
+    # risulta approvata senza che nulla sia stato eseguito (86 righe così in prod).
+    from aios.approvals import ApprovalStatus
+    k, _ = _kernel_with_publish()
+    k.policy.set_level(PUBLISH, AutonomyLevel.L1_PROPOSE)
+    res = k.execute("publish_post", actor="marketing_agent", args={"caption": "c"})
+    k.tools = type(k.tools)()          # nessun tool registrato per quell'action_key
+    with pytest.raises(KeyError):
+        k.resolve_approval(res.approval_id, approve=True)
+    assert k.approvals.get(res.approval_id).status == ApprovalStatus.PENDING
