@@ -202,3 +202,61 @@ def _kernel_with_fake_sensors():
 def _founder():
     from aios.founder import default_founder_model
     return default_founder_model()
+
+
+# ── OpenAI nel listino ────────────────────────────────────────────────────────
+# Fino al 20 ago 2026 il listino aveva solo Anthropic mentre la catena era già su
+# OpenAI: ogni chiamata a gpt-4o costava zero, quindi non consumava budget e il
+# hard-stop di AIOS_AGENT_BUDGETS non poteva scattare. Il board spendeva senza tetto.
+
+def test_i_modelli_openai_hanno_un_prezzo():
+    for m in ("gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "o3-mini", "o4-mini"):
+        assert cost_eur(m, 1_000_000, 1_000_000) > 0, f"{m} fatturato zero"
+
+
+def test_mini_costa_meno_del_modello_pieno():
+    # Il prefisso più lungo, non il primo: "gpt-4o-mini" comincia anche per "gpt-4o".
+    # Col match sul primo, il mini veniva fatturato al prezzo del grande.
+    pieno = cost_eur("gpt-4o", 1_000_000, 1_000_000)
+    mini = cost_eur("gpt-4o-mini", 1_000_000, 1_000_000)
+    assert 0 < mini < pieno
+
+
+def test_prezzo_indipendente_dall_ordine_del_listino():
+    from aios import billing as b
+    ordinato = dict(sorted(b._PRICING_USD.items()))
+    originale = b._PRICING_USD
+    try:
+        b._PRICING_USD = ordinato        # riordinare il listino non deve cambiare i prezzi
+        assert b._price_for("gpt-4o-mini") == (0.15, 0.60)
+        assert b._price_for("gpt-4o") == (2.50, 10.0)
+    finally:
+        b._PRICING_USD = originale
+
+
+def test_snapshot_di_versione_dei_modelli_openai():
+    # OpenAI appende la data alla versione: gpt-4o-mini-2024-07-18 deve costare
+    # come gpt-4o-mini, non zero.
+    assert cost_eur("gpt-4o-mini-2024-07-18", 1_000_000, 0) == cost_eur(
+        "gpt-4o-mini", 1_000_000, 0) > 0
+
+
+def test_il_budget_si_esaurisce_spendendo_su_openai():
+    # La prova che conta: con OpenAI il tetto mensile dell'agente scatta davvero.
+    meter = CostMeter(budgets={"vendite_agent": 0.50})
+    billing.set_meter(meter)
+    assert meter.check("vendite_agent").over is False
+    with attribute("vendite_agent"):
+        billing.record_usage("gpt-4o", 1_000_000, 0)   # ~2,30 EUR, oltre il tetto
+    stato = meter.check("vendite_agent")
+    assert stato.spent_eur > 0.50
+    assert stato.over is True
+
+
+def test_il_locale_resta_gratis_e_non_consuma_budget():
+    meter = CostMeter(budgets={"vendite_agent": 0.50})
+    billing.set_meter(meter)
+    with attribute("vendite_agent"):
+        billing.record_usage("gpt-oss:120b", 5_000_000, 5_000_000)
+    assert meter.check("vendite_agent").spent_eur == 0.0
+    assert meter.check("vendite_agent").over is False

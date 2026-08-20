@@ -29,16 +29,32 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 # ── Listino prezzi (USD per 1M token: input, output) ──────────────────────────
-# Fonte: listino Anthropic. Configurabile via env AIOS_PRICING_JSON per non
-# hard-codare i prezzi nel codice. Modelli locali / sconosciuti = costo 0
-# (tracciamo comunque i token, ma non stimiamo un prezzo a caso).
+# Configurabile via env AIOS_PRICING_JSON per non hard-codare i prezzi nel codice.
+# Modelli locali (Ollama sul GB10) = costo 0: i token si tracciano comunque, per
+# vedere i consumi, ma non si inventa un prezzo.
+#
+# ATTENZIONE — qui dentro deve stare OGNI fornitore che il board può usare. Un
+# modello assente vale zero, e un modello che vale zero non consuma budget: il
+# hard-stop di AIOS_AGENT_BUDGETS non scatta mai e l'agente spende senza tetto.
+# Fino al 20 ago 2026 c'era solo Anthropic, mentre la catena era già passata a
+# OpenAI: ogni chiamata a gpt-4o risultava gratis.
 _DEFAULT_PRICING_USD: dict[str, tuple[float, float]] = {
+    # Anthropic
     "claude-haiku-4-5": (1.0, 5.0),
     "claude-sonnet-4-6": (3.0, 15.0),
     "claude-sonnet": (3.0, 15.0),
     "claude-opus-4": (15.0, 75.0),
     "claude-opus": (15.0, 75.0),
     "claude-haiku": (1.0, 5.0),
+    # OpenAI. I nomi più lunghi vanno PRIMA: `_price_for` accetta il primo match
+    # per prefisso, quindi "gpt-4o-mini" va cercato prima di "gpt-4o".
+    "gpt-4o-mini": (0.15, 0.60),
+    "gpt-4o": (2.50, 10.0),
+    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-4.1": (2.00, 8.00),
+    "o4-mini": (1.10, 4.40),
+    "o3-mini": (1.10, 4.40),
+    "o3": (2.00, 8.00),
 }
 
 
@@ -59,14 +75,20 @@ _EUR_PER_USD = float(os.environ.get("AIOS_EUR_PER_USD", "0.92"))
 
 
 def _price_for(model: str) -> tuple[float, float]:
-    """(input, output) USD per 1M token. Match esatto, poi per prefisso, poi 0."""
+    """(input, output) USD per 1M token. Match esatto, poi prefisso PIÙ LUNGO, poi 0.
+
+    Il prefisso più lungo e non il primo che capita: «gpt-4o-mini» comincia anche
+    per «gpt-4o», e prendere il primo match dipendeva dall'ordine con cui il
+    listino è scritto — con le chiavi in ordine alfabetico il mini sarebbe stato
+    fatturato 16 volte il suo prezzo. Un tetto di spesa non può dipendere
+    dall'ordine di un dizionario."""
     m = (model or "").strip().lower()
     if m in _PRICING_USD:
         return _PRICING_USD[m]
-    for key, price in _PRICING_USD.items():
-        if m.startswith(key):
-            return price
-    return (0.0, 0.0)
+    candidati = [k for k in _PRICING_USD if m.startswith(k)]
+    if not candidati:
+        return (0.0, 0.0)
+    return _PRICING_USD[max(candidati, key=len)]
 
 
 def cost_eur(model: str, input_tokens: int, output_tokens: int) -> float:

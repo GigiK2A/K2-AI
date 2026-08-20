@@ -32,16 +32,19 @@ from aios.agents.hr_config import HR_CONFIG
 
 
 def _make_llm(*, max_tokens: int, strong: bool = False, per_chat: bool = False):
-    """Fabbrica dell'LLM workhorse/strong. Sceglie il backend da AIOS_LLM_BACKEND
-    (default 'anthropic' = comportamento invariato; 'local' = Ollama sul GB10).
+    """Fabbrica dell'LLM workhorse/strong. Sceglie il backend da AIOS_LLM_BACKEND:
+    'local' = Ollama sul GB10 (default), 'openai' = OpenAI.
 
-    Col backend locale la riserva è Claude: il GB10 arriva via tailnet e va e viene,
+    Col backend locale la riserva è OpenAI: il GB10 arriva via tailnet e va e viene,
     e un reparto che va in timeout perde il giro senza dirlo a nessuno. La riserva
     entra SOLO quando Ollama è irraggiungibile (vedi FallbackLLM), quindi il costo
-    API si paga solo quando il locale è giù. Senza ANTHROPIC_API_KEY resta il solo
-    locale, come prima."""
+    API si paga solo quando il locale è giù.
+
+    Anthropic è fuori dal giro per decisione dell'owner (20 ago 2026: «non voglio la
+    chiave Anthropic, voglio che giri con OpenAI»). Il codice resta, spento, e
+    rientra solo con AIOS_USA_ANTHROPIC=1 + una chiave valida."""
     model = "claude-sonnet-4-6" if strong else "claude-haiku-4-5-20251001"
-    backend = os.environ.get("AIOS_LLM_BACKEND", "anthropic").strip().lower()
+    backend = os.environ.get("AIOS_LLM_BACKEND", "local").strip().lower()
 
     def _locale():
         return LocalLLM(max_tokens=max_tokens)
@@ -55,9 +58,9 @@ def _make_llm(*, max_tokens: int, strong: bool = False, per_chat: bool = False):
     disponibili = {"local": _locale}
     if os.environ.get("OPENAI_API_KEY"):
         disponibili["openai"] = _openai
-    # Anthropic è FUORI dalla catena per decisione dell'owner (19 ago 2026: «cancella
-    # per ora Anthropic»). Il codice resta, ma rientra solo riaccendendolo:
-    #   AIOS_USA_ANTHROPIC=1 + ANTHROPIC_API_KEY valida.
+    # Anthropic è FUORI dalla catena per decisione dell'owner (19-20 ago 2026:
+    # «non voglio la chiave Anthropic, voglio che giri con OpenAI»). Il codice resta,
+    # ma rientra solo riaccendendolo: AIOS_USA_ANTHROPIC=1 + ANTHROPIC_API_KEY valida.
     if (os.environ.get("AIOS_USA_ANTHROPIC", "").strip() in ("1", "true", "si", "yes")
             and os.environ.get("ANTHROPIC_API_KEY")):
         disponibili["anthropic"] = _claude
