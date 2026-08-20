@@ -38,7 +38,7 @@ Se stai per proporre un refactor più ampio di 3 file esistenti, **fermati e chi
 | Pagamenti | Stripe Payment Link | no integrazione custom, solo link |
 | Email transazionale | Resend | free tier 3k email/mese |
 | Analytics | PostHog self-host | no Google Analytics |
-| LLM API | Claude API (Anthropic) | no OpenAI — **ECCEZIONE (giu 2026, OK Luca): OpenAI SOLO per la web search del K-BOT** (Responses API, dietro il client-tool `web_search` di Claude). Tutto il resto resta Claude. |
+| LLM API | Claude API (Anthropic) come primo scelto | **Multi-fornitore dal 19 ago 2026 (OK Luca)**: il board usa una CATENA di riserve — Claude, OpenAI (`gpt-4o`/`gpt-4o-mini`, Chat Completions via urllib, nessun SDK), modello locale `gpt-oss` su Ollama. La riserva entra SOLO quando il fornitore precedente è inutilizzabile (401, 429, 5xx, timeout), quindi il costo del tier successivo si paga solo quando serve. Motivo: quel giorno il GB10 non rispondeva E la chiave Anthropic era invalida nella stessa ora — con un solo fornitore alternativo l'azienda si ferma. Ordine e primario configurabili con `AIOS_LLM_BACKEND` (`anthropic`\|`openai`\|`local`). OpenAI resta usato anche per la web search del K-BOT (giu 2026) e per le immagini (lug 2026). |
 | Form/CRM embedded | Airtable free + webhook | no HubSpot |
 
 **Stack confermato da audit aprile 2026**: package.json ha solo Vite 5.2.0 come devDependency. Zero npm packages frontend.
@@ -179,7 +179,7 @@ kbot/                        ← K-BOT Premium app (Next.js + Python, deploy Rai
 1. Cambiare il dominio o la configurazione DNS
 2. Disattivare redirect 301 esistenti (`/workshop.html` → `/suite-ai.html`, `/casi-studio.html` → `/laboratorio.html`)
 3. Rimuovere pagine v1 che hanno backlink
-4. Integrare SaaS a pagamento non in elenco (eccezione approvata: **OpenAI per la SOLA web search del K-BOT**, giu 2026 — vedi §3)
+4. Integrare SaaS a pagamento non in elenco (**OpenAI è approvato**: web search K-BOT giu 2026, immagini lug 2026, tier LLM del board ago 2026 — vedi §3)
 5. Modificare pricing mostrato al pubblico senza conferma
 6. Aggiungere npm packages frontend senza motivazione esplicita di peso bundle
 

@@ -190,6 +190,192 @@ class AnthropicLLM:
         yield {"phase": "done", "text": "(troppi passaggi, mi fermo qui)"}
 
 
+# --- Backend OpenAI ----------------------------------------------------------
+# Eccezione al "no OpenAI" ampliata dall'owner (19 ago 2026): oltre alla web search del
+# K-BOT e alla generazione immagini, OpenAI è un TIER del board. Motivo pratico: nella
+# stessa giornata il modello locale non rispondeva (GB10 via tailnet) e la chiave
+# Anthropic era invalida — con un solo fornitore alternativo l'azienda si ferma.
+# Nessuna dipendenza nuova: Chat Completions via urllib, come già fa image_gen.py.
+_OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+_OPENAI_MODEL = os.environ.get("AIOS_OPENAI_MODEL") or os.environ.get(
+    "DEFAULT_OPENAI_MODEL", "gpt-4o")
+_OPENAI_MINI = os.environ.get("AIOS_OPENAI_MINI_MODEL") or os.environ.get(
+    "DEFAULT_OPENAI_MINI_MODEL", "gpt-4o-mini")
+_OPENAI_TIMEOUT = int(os.environ.get("AIOS_OPENAI_TIMEOUT", "120"))
+
+
+class OpenAIError(RuntimeError):
+    """Errore HTTP di OpenAI, con lo `status` esposto perché la riserva lo riconosca."""
+
+    def __init__(self, messaggio: str, status: int | None = None) -> None:
+        super().__init__(messaggio)
+        self.status_code = status
+
+
+class OpenAILLM:
+    """LLM via Chat Completions di OpenAI: `complete`, `complete_json`,
+    `stream_agentic`. Stessa interfaccia degli altri, così è interscambiabile."""
+
+    def __init__(self, model: str | None = None, max_tokens: int = 2000,
+                 api_key: str | None = None, mini: bool = False) -> None:
+        self._model = model or (_OPENAI_MINI if mini else _OPENAI_MODEL)
+        self._max_tokens = int(max_tokens)
+        self._key = api_key or os.environ.get("OPENAI_API_KEY", "")
+
+    # -- trasporto -------------------------------------------------------
+    def _post(self, body: dict, *, stream: bool = False, timeout: int | None = None):
+        if not self._key:
+            raise OpenAIError("OPENAI_API_KEY non configurato", status=401)
+        data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(_OPENAI_ENDPOINT, data=data, method="POST", headers={
+            "Authorization": f"Bearer {self._key}", "Content-Type": "application/json"})
+        try:
+            return urllib.request.urlopen(req, timeout=timeout or _OPENAI_TIMEOUT)  # noqa: S310
+        except urllib.error.HTTPError as exc:
+            try:
+                msg = json.loads(exc.read().decode()).get("error", {}).get("message", "")
+            except Exception:
+                msg = ""
+            raise OpenAIError(f"OpenAI HTTP {exc.code}: {msg[:160]}", status=exc.code) from exc
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+            raise OpenAIError(f"OpenAI non raggiungibile: {exc}", status=503) from exc
+
+    def _messaggi(self, system: str, user: str, media: list[dict] | None = None) -> list[dict]:
+        contenuto: Any = user
+        immagini = []
+        for m in media or []:
+            src = (m or {}).get("source") or {}
+            if (src.get("type") == "base64"
+                    and str(src.get("media_type") or "").startswith("image/")):
+                immagini.append({"type": "image_url", "image_url": {
+                    "url": f"data:{src['media_type']};base64,{src.get('data','')}"}})
+        if immagini:
+            contenuto = [{"type": "text", "text": user}] + immagini
+        return [{"role": "system", "content": system},
+                {"role": "user", "content": contenuto}]
+
+    # -- completions -----------------------------------------------------
+    def complete(self, *, system: str, user: str) -> str:
+        with self._post({"model": self._model, "max_tokens": self._max_tokens,
+                         "messages": self._messaggi(system, user)}) as r:
+            d = json.loads(r.read().decode("utf-8"))
+        self._metering(d)
+        return (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+
+    def complete_json(self, *, system: str, user: str, schema: dict | None = None) -> dict:
+        """JSON garantito con `response_format: json_object` — più compatibile dello
+        json_schema strict, che pretende additionalProperties=false su ogni livello
+        (gli schemi del board non lo rispettano)."""
+        istruzione = system + "\n\nRispondi SOLO con un oggetto JSON valido."
+        if schema:
+            istruzione += ("\nSegui questa struttura (JSON Schema):\n"
+                           + json.dumps(schema, ensure_ascii=False)[:2000])
+        with self._post({"model": self._model, "max_tokens": self._max_tokens,
+                         "response_format": {"type": "json_object"},
+                         "messages": self._messaggi(istruzione, user)}) as r:
+            d = json.loads(r.read().decode("utf-8"))
+        self._metering(d)
+        testo = (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+        return _robust_json(testo)
+
+    def _metering(self, d: dict) -> None:
+        try:
+            u = d.get("usage") or {}
+            billing.record_usage(self._model, int(u.get("prompt_tokens", 0) or 0),
+                                 int(u.get("completion_tokens", 0) or 0))
+        except Exception:
+            pass
+
+    # -- streaming tool-use ---------------------------------------------
+    @staticmethod
+    def _tool_openai(tools: list[dict] | None) -> list[dict]:
+        fuori = []
+        for t in tools or []:
+            nome = (t or {}).get("name")
+            if not nome or t.get("type"):     # server-tool Anthropic: non esistono qui
+                continue
+            fuori.append({"type": "function", "function": {
+                "name": nome, "description": str(t.get("description") or "")[:1024],
+                "parameters": t.get("input_schema") or {"type": "object", "properties": {}}}})
+        return fuori
+
+    def stream_agentic(self, *, system: str, user: str, tools: list[dict],
+                       tool_exec, max_iters: int = 4, max_tokens: int | None = None,
+                       web_search: bool = False, history: list[dict] | None = None,
+                       media: list[dict] | None = None):
+        """Loop tool-use in streaming, stessi eventi degli altri backend."""
+        messaggi = [{"role": "system", "content": system}]
+        messaggi += [m for m in (history or []) if isinstance(m, dict)]
+        messaggi += self._messaggi("", user, media)[1:]      # solo il turno utente
+        strumenti = self._tool_openai(tools)
+
+        for _ in range(max_iters):
+            yield {"phase": "thinking"}
+            corpo: dict[str, Any] = {
+                "model": self._model, "stream": True,
+                "max_tokens": int(max_tokens or self._max_tokens),
+                "messages": messaggi}
+            if strumenti:
+                corpo["tools"] = strumenti
+            testo, iniziato = "", False
+            # le tool call arrivano a pezzi: si accumulano per indice
+            parziali: dict[int, dict] = {}
+            with self._post(corpo, stream=True) as r:
+                for riga in r:
+                    riga = riga.strip()
+                    if not riga.startswith(b"data: "):
+                        continue
+                    grezzo = riga[6:]
+                    if grezzo == b"[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(grezzo)
+                    except Exception:
+                        continue
+                    delta = ((chunk.get("choices") or [{}])[0]).get("delta") or {}
+                    for tc in delta.get("tool_calls") or []:
+                        i = int(tc.get("index") or 0)
+                        acc = parziali.setdefault(i, {"name": "", "args": ""})
+                        fn = tc.get("function") or {}
+                        if fn.get("name"):
+                            acc["name"] = fn["name"]
+                            yield {"phase": "tool", "tool": fn["name"]}
+                        if fn.get("arguments"):
+                            acc["args"] += fn["arguments"]
+                    pezzo = delta.get("content") or ""
+                    if pezzo:
+                        if not iniziato:
+                            yield {"phase": "writing"}
+                            iniziato = True
+                        testo += pezzo
+                        yield {"phase": "delta", "text": pezzo}
+            if not parziali:
+                yield {"phase": "done", "text": testo}
+                return
+            chiamate = []
+            for i in sorted(parziali):
+                acc = parziali[i]
+                try:
+                    args = json.loads(acc["args"]) if acc["args"].strip() else {}
+                except Exception:
+                    args = {}
+                chiamate.append({"name": acc["name"], "args": args if isinstance(args, dict) else {}})
+            messaggi.append({"role": "assistant", "content": testo or None, "tool_calls": [
+                {"id": f"call_{i}", "type": "function",
+                 "function": {"name": c["name"], "arguments": json.dumps(c["args"])}}
+                for i, c in enumerate(chiamate)]})
+            for i, c in enumerate(chiamate):
+                yield {"phase": "tool_run", "tool": c["name"]}
+                try:
+                    out = tool_exec(c["name"], dict(c["args"]))
+                except Exception as exc:
+                    out = {"error": str(exc)}
+                messaggi.append({"role": "tool", "tool_call_id": f"call_{i}",
+                                 "content": json.dumps(out, ensure_ascii=False,
+                                                       default=str)[:6000]})
+        yield {"phase": "done", "text": testo or "(troppi passaggi, mi fermo qui)"}
+
+
 # --- Backend LOCALE (Ollama) -------------------------------------------------
 # Stessa Protocol di AnthropicLLM, ma parla all'API nativa di Ollama (/api/chat).
 # Pensato per girare su un Ollama REMOTO (il GB10 sempre acceso, esposto via
@@ -280,8 +466,11 @@ def guasto_di_trasporto(exc: BaseException) -> bool:
     nomi = {c.__name__ for c in type(exc).__mro__}
     if nomi & set(_PROVIDER_INUTILIZZABILE):
         return True
-    # ultima rete: l'SDK a volte incapsula il codice HTTP nell'attributo
-    return getattr(exc, "status_code", None) in (401, 403, 404, 429, 500, 502, 503, 529)
+    # Ultima rete: il codice HTTP, con i tre nomi che usano SDK e urllib
+    # (`urllib.error.HTTPError` espone `code`, non `status_code`).
+    stato = (getattr(exc, "status_code", None) or getattr(exc, "status", None)
+             or getattr(exc, "code", None))
+    return stato in (401, 403, 404, 429, 500, 502, 503, 529)
 
 
 class LocalLLM:

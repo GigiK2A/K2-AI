@@ -5,7 +5,7 @@ from typing import Any
 
 from aios.kernel import Kernel
 from aios.founder import default_founder_model
-from aios.llm import AnthropicLLM, FallbackLLM, LocalLLM
+from aios.llm import AnthropicLLM, FallbackLLM, LocalLLM, OpenAILLM
 from aios.skills import SkillLibrary
 from aios.layers.knowledge import KnowledgeStore
 from aios.sources.instagram import InstagramClient
@@ -42,21 +42,49 @@ def _make_llm(*, max_tokens: int, strong: bool = False):
     locale, come prima."""
     model = "claude-sonnet-4-6" if strong else "claude-haiku-4-5-20251001"
     backend = os.environ.get("AIOS_LLM_BACKEND", "anthropic").strip().lower()
-    ha_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+    def _locale():
+        return LocalLLM(max_tokens=max_tokens)
+
+    def _claude():
+        return AnthropicLLM(model=model, max_tokens=max_tokens)
+
+    def _openai():
+        return OpenAILLM(max_tokens=max_tokens, mini=not strong)
+
+    disponibili = {"local": _locale}
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        disponibili["anthropic"] = _claude
+    if os.environ.get("OPENAI_API_KEY"):
+        disponibili["openai"] = _openai
+
+    # Ordine di preferenza. Il GIUDIZIO vuole il modello migliore per primo; le letture
+    # e le decisioni brevi restano sul locale, che costa zero. Il resto della catena è
+    # la riserva, nell'ordine.
     if backend == "local":
-        locale = LocalLLM(max_tokens=max_tokens)
-        if not ha_anthropic:
-            return locale
-        if strong:
-            # "Forte" deve significare forte. Con backend=local anche il modello del
-            # GIUDIZIO era il modello locale con solo più token: Sonnet non entrava mai
-            # nel giro degli agenti, e chiedere il parere di un CFO al modello economico
-            # era il vero tetto alla qualità. Qui la priorità si inverte: giudizio su
-            # Sonnet, e se l'API non risponde si ripiega sul locale invece di fermarsi.
-            return FallbackLLM(AnthropicLLM(model=model, max_tokens=max_tokens),
-                               lambda: LocalLLM(max_tokens=max_tokens))
-        return FallbackLLM(locale, lambda: AnthropicLLM(model=model, max_tokens=max_tokens))
-    return AnthropicLLM(model=model, max_tokens=max_tokens)
+        ordine = ["anthropic", "openai", "local"] if strong else ["local", "anthropic", "openai"]
+    elif backend == "openai":
+        ordine = ["openai", "anthropic", "local"]
+    else:
+        ordine = ["anthropic", "openai", "local"]
+
+    catena = [disponibili[n] for n in ordine if n in disponibili]
+    if not catena:
+        return _locale()
+    return _incatena(catena)
+
+
+def _incatena(fabbriche: list):
+    """Costruisce la catena di riserve annidando FallbackLLM: il primo è il primario,
+    ognuno ripiega sul successivo. Serve perché con UN solo fornitore alternativo
+    l'azienda si ferma — il 19 ago 2026 il modello locale non rispondeva E la chiave
+    Anthropic era invalida nello stesso momento.
+    La riserva entra solo su provider inutilizzabile (vedi llm.guasto_di_trasporto),
+    quindi il costo del tier successivo si paga solo quando il precedente è giù."""
+    primo = fabbriche[0]()
+    if len(fabbriche) == 1:
+        return primo
+    return FallbackLLM(primo, lambda: _incatena(fabbriche[1:]))
 
 
 class Platform:
