@@ -236,11 +236,14 @@ def _start_telegram(platform) -> None:
             return msg[:190]
 
         def on_text(text):
-            if platform.commands is None:
-                telegram.send_text("Comandi non disponibili.")
-                return
-            res = platform.commands.handle(text, actor="telegram")
-            telegram.send_command_card(res.to_dict())
+            # Telegram e il cockpit sono LA STESSA conversazione (stesse tabelle, stessa
+            # sessione, stessi agenti). Il comando secco resta col prefisso "!".
+            from aios import telegram_chat
+            try:
+                modo = telegram_chat.gestisci_testo(platform, text)
+                print(f"[telegram] {modo}: {text[:60]}")
+            except Exception as exc:
+                telegram.send_text(f"⚠️ Errore nell'elaborare il messaggio: {str(exc)[:180]}")
 
         def on_confirm(token):
             out = platform.commands.confirm(int(token), actor="telegram")
