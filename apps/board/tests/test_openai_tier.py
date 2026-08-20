@@ -137,20 +137,40 @@ def test_un_solo_tier_niente_wrapper():
     assert _incatena([lambda: solo]) is solo
 
 
-def test_ordine_col_backend_locale(monkeypatch):
+def _tutte_le_chiavi(monkeypatch):
     monkeypatch.setenv("AIOS_LLM_BACKEND", "local")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     monkeypatch.setattr(llm_mod, "_anthropic_client", lambda key: object())
-    # lavoro normale: prima il locale (costa zero)
-    leggero = _make_llm(max_tokens=4096)
-    assert isinstance(leggero._primario, LocalLLM)
-    # giudizio: prima il migliore, e in fondo il locale
-    forte = _make_llm(max_tokens=8192, strong=True)
-    assert type(forte._primario).__name__ == "AnthropicLLM"
-    secondo = forte._backup()
-    assert type(secondo._primario).__name__ == "OpenAILLM"
-    assert isinstance(secondo._backup(), LocalLLM)
+
+
+def test_gli_agenti_al_lavoro_girano_sul_locale(monkeypatch):
+    """Regola dell'owner: il lavoro di fondo costa zero e può aspettare."""
+    _tutte_le_chiavi(monkeypatch)
+    for forte in (False, True):
+        llm = _make_llm(max_tokens=4096, strong=forte)
+        assert isinstance(llm._primario, LocalLLM), f"strong={forte} non parte dal locale"
+
+
+def test_la_chat_gira_su_openai(monkeypatch):
+    """In chat conta il tempo di risposta, e il GB10 va e viene."""
+    _tutte_le_chiavi(monkeypatch)
+    for forte in (False, True):
+        llm = _make_llm(max_tokens=2048, strong=forte, per_chat=True)
+        assert type(llm._primario).__name__ == "OpenAILLM"
+        # e dietro resta la catena, non il vuoto
+        secondo = llm._backup()
+        assert type(secondo._primario).__name__ == "AnthropicLLM"
+        assert isinstance(secondo._backup(), LocalLLM)
+
+
+def test_la_chat_usa_openai_anche_senza_anthropic(monkeypatch):
+    monkeypatch.setenv("AIOS_LLM_BACKEND", "local")
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    llm = _make_llm(max_tokens=2048, per_chat=True)
+    assert type(llm._primario).__name__ == "OpenAILLM"
+    assert isinstance(llm._backup(), LocalLLM)
 
 
 def test_backend_openai_mette_openai_per_primo(monkeypatch):

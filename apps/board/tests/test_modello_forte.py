@@ -111,15 +111,18 @@ def test_errore_di_contenuto_non_viene_mascherato():
 
 
 # ---- la fabbrica costruisce le priorità giuste ----
-def test_backend_locale_il_giudizio_e_anthropic(monkeypatch):
+def test_il_lavoro_degli_agenti_resta_sul_locale(monkeypatch):
+    """Decisione dell'owner (19 ago 2026), che SUPERA la mia di poche ore prima: la
+    scelta del modello segue l'USO, non la potenza. Gli agenti che fanno il loro lavoro
+    girano sul locale — costa zero e nessuno aspetta davanti allo schermo — anche per il
+    passo di giudizio. La chat, dove il tempo conta, va su OpenAI."""
     monkeypatch.setenv("AIOS_LLM_BACKEND", "local")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
     monkeypatch.setattr("aios.llm._anthropic_client", lambda key: object())
     forte = _make_llm(max_tokens=8192, strong=True)
     assert isinstance(forte, FallbackLLM)
-    # il PRIMARIO del giudizio deve essere Anthropic, il ripiego il locale
-    assert type(forte._primario).__name__ == "AnthropicLLM"
-    assert isinstance(forte._backup(), LocalLLM)
+    assert isinstance(forte._primario, LocalLLM)      # il lavoro di fondo NON esce
+    assert type(forte._backup()).__name__ in ("FallbackLLM", "AnthropicLLM")
 
 
 def test_backend_locale_il_lavoro_normale_resta_locale(monkeypatch):

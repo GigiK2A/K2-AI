@@ -31,7 +31,7 @@ from aios.agents.legal_config import LEGAL_CONFIG
 from aios.agents.hr_config import HR_CONFIG
 
 
-def _make_llm(*, max_tokens: int, strong: bool = False):
+def _make_llm(*, max_tokens: int, strong: bool = False, per_chat: bool = False):
     """Fabbrica dell'LLM workhorse/strong. Sceglie il backend da AIOS_LLM_BACKEND
     (default 'anthropic' = comportamento invariato; 'local' = Ollama sul GB10).
 
@@ -58,15 +58,20 @@ def _make_llm(*, max_tokens: int, strong: bool = False):
     if os.environ.get("OPENAI_API_KEY"):
         disponibili["openai"] = _openai
 
-    # Ordine di preferenza. Il GIUDIZIO vuole il modello migliore per primo; le letture
-    # e le decisioni brevi restano sul locale, che costa zero. Il resto della catena è
-    # la riserva, nell'ordine.
-    if backend == "local":
-        ordine = ["anthropic", "openai", "local"] if strong else ["local", "anthropic", "openai"]
+    # Regola dell'owner (19 ago 2026), per USO e non per potenza del modello:
+    #   agenti che fanno il loro lavoro (heartbeat, proposte, azioni) → LOCALE
+    #     costa zero, può aspettare, nessuno guarda lo schermo;
+    #   agenti IN CHAT (e le istruzioni scritte a mano) → OPENAI
+    #     lì conta il tempo di risposta, e il GB10 va e viene.
+    # Il resto della catena è la riserva, che entra solo se il primario è inutilizzabile.
+    if per_chat:
+        ordine = ["openai", "anthropic", "local"]
     elif backend == "openai":
         ordine = ["openai", "anthropic", "local"]
-    else:
+    elif backend == "anthropic":
         ordine = ["anthropic", "openai", "local"]
+    else:
+        ordine = ["local", "anthropic", "openai"]
 
     catena = [disponibili[n] for n in ordine if n in disponibili]
     if not catena:
@@ -286,9 +291,14 @@ def build_platform() -> Platform:
     # Si accende il locale impostando AIOS_LLM_BACKEND=local nell'env Railway (persistente
     # = "sempre attivo"), una volta che la tailnet verso l'Ollama è su.
     # NB: la web search (llm_web, sotto) resta SEMPRE su Anthropic, per scelta.
+    # lavoro di fondo: locale primo (vedi _make_llm)
     llm = _make_llm(max_tokens=4096)
     # modello "strong" per i casi delicati (schema DB / codice / workflow) via CommandRouter
     llm_strong = _make_llm(max_tokens=8192, strong=True)
+    # interattivo (chat multi-agente e istruzioni): OpenAI primo, veloce e
+    # indipendente dal GB10
+    llm_chat = _make_llm(max_tokens=2048, per_chat=True)
+    llm_chat_strong = _make_llm(max_tokens=4096, strong=True, per_chat=True)
 
     def _domain(cfg):
         return DomainAgent(kernel=k, llm=llm, llm_strong=llm_strong,
@@ -306,11 +316,11 @@ def build_platform() -> Platform:
     }
     platform = Platform(k, agents)
     platform.org = _org.get_chart()                                # organigramma navigabile
-    platform.commands = CommandRouter(platform, llm, llm_strong)   # chat a istruzioni
+    platform.commands = CommandRouter(platform, llm_chat, llm_chat_strong)  # istruzioni: interattive
     # Chat multi-agente in streaming: parli con uno/alcuni/tutti gli agenti in parallelo,
     # con stato reale (pensa/usa tool/scrive). Riusa attuatore+coda del CommandRouter.
     from aios.chat_runner import ChatOrchestrator
-    platform.chat = ChatOrchestrator(platform, llm, llm_strong, skills=skills,
+    platform.chat = ChatOrchestrator(platform, llm_chat, llm_chat_strong, skills=skills,
                                      web_search=True)
     # Prospecting: ricerca web (Sonnet + web search) → qualifica → bozza (mai inviata)
     llm_web = AnthropicLLM(model="claude-sonnet-4-6", max_tokens=4096, enable_web_search=True)
