@@ -84,3 +84,35 @@ def test_approval_roundtrip():
     b.save(a)
     assert b.pending() == []
     assert b.get(1).status == ApprovalStatus.APPROVED
+
+
+# ---- il backend REST deve timbrare quello che timbra Postgres (censimento 20 ago
+# 2026: 835 righe su 835 con resolved_at NULL, policy_state fermo al 13 giugno) ----
+
+def test_approvazione_risolta_timbra_resolved_at():
+    c = FakeClient()
+    b = RestApprovalBackend(c)
+    a = b.add(action_key="a.b", actor="x", payload={})
+    assert c.tables["aios_approvals"][0].get("resolved_at") is None  # PENDING: niente
+    a.status = ApprovalStatus.APPROVED
+    b.save(a)
+    assert c.tables["aios_approvals"][0]["resolved_at"]
+
+
+def test_approvazione_ancora_pending_non_timbra():
+    c = FakeClient()
+    b = RestApprovalBackend(c)
+    a = b.add(action_key="a.b", actor="x", payload={})
+    a.payload = {"k": "v"}
+    b.save(a)
+    assert "resolved_at" not in c.tables["aios_approvals"][0]
+
+
+def test_policy_state_aggiorna_updated_at():
+    c = FakeClient()
+    s = RestPolicyStateStore(c)
+    s.save("marketing.x", PolicyState(level=AutonomyLevel.L1_PROPOSE, streak=1))
+    primo = c.tables["aios_policy_state"][0]["updated_at"]
+    s.save("marketing.x", PolicyState(level=AutonomyLevel.L2_ROUTINE, streak=0))
+    assert c.tables["aios_policy_state"][0]["updated_at"] >= primo
+    assert c.tables["aios_policy_state"][0]["level"] == int(AutonomyLevel.L2_ROUTINE)

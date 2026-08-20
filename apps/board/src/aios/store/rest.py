@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from aios.audit import AuditRecord
 from aios.approvals import Approval, ApprovalStatus
 from aios.autonomy import AutonomyLevel
 from aios.policy import PolicyState
+
+
+def _adesso() -> str:
+    """Istante in ISO 8601 UTC. Il backend Postgres usa now() lato DB; via PostgREST
+    il timestamp lo mette il chiamante, altrimenti la colonna resta a NULL."""
+    return datetime.now(timezone.utc).isoformat()
 
 
 class RestAuditBackend:
@@ -43,9 +50,13 @@ class RestPolicyStateStore:
                            capped_at=AutonomyLevel(cap))
 
     def save(self, action_key: str, state: PolicyState) -> None:
+        # `updated_at` va scritto a mano: l'upsert PostgREST non tocca la colonna e
+        # il default now() vale solo all'inserimento. In produzione la tabella diceva
+        # 13 giugno per ogni azione, mesi dopo l'ultimo cambio di autonomia.
         self._c.upsert("aios_policy_state", {
             "action_key": action_key, "level": int(state.level),
-            "streak": state.streak, "capped_at": int(state.capped_at)},
+            "streak": state.streak, "capped_at": int(state.capped_at),
+            "updated_at": _adesso()},
             on_conflict="action_key")
 
 
@@ -79,6 +90,12 @@ class RestApprovalBackend:
                          reason=r.get("reason")) for r in rows]
 
     def save(self, approval: Approval) -> None:
-        self._c.update("aios_approvals", {"id": f"eq.{approval.id}"}, {
+        patch: dict[str, Any] = {
             "payload": approval.payload, "status": approval.status.name,
-            "clean": approval.clean, "reason": approval.reason})
+            "clean": approval.clean, "reason": approval.reason}
+        # Come il backend Postgres: appena la decisione esce da PENDING si timbra
+        # quando. Via REST non lo faceva nessuno e in produzione tutte le 835 righe
+        # avevano resolved_at NULL — impossibile dire da quanto una decisione è ferma.
+        if approval.status != ApprovalStatus.PENDING:
+            patch["resolved_at"] = _adesso()
+        self._c.update("aios_approvals", {"id": f"eq.{approval.id}"}, patch)
