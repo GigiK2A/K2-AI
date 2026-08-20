@@ -235,3 +235,44 @@ def test_invalid_action_does_not_crash_approval():
     out = k.resolve_approval(res.approval_ids[0], approve=True)
     # tabella vietata sostituita dal fallback (board_tasks); mai scritta, no crash
     assert all(t != "aios_policy_state" for t, _ in client.inserts)
+
+
+# ---- Lessico dell'LLM: accenti e trattini tipografici (censimento 20 ago 2026:
+# in coda c'erano proposte con "priorità", "finalità", "scadenza" e date scritte
+# col non-breaking hyphen. Tutto finiva nelle note o in un 400 di PostgREST).
+
+def test_campo_accentato_mappa_sulla_colonna_reale():
+    from aios.actuator import _sanitize
+    out = _sanitize("board_tasks", {"titolo": "X", "priorità": "Alta"}, "insert")
+    assert out["priority"] == "alta"
+    assert "priorità" not in str(out.get("notes", ""))
+
+
+def test_scadenza_diventa_due_at():
+    from aios.actuator import _sanitize
+    out = _sanitize("board_tasks", {"titolo": "X", "scadenza": "2026-08-04"}, "insert")
+    assert out["due_at"] == "2026-08-04"
+
+
+def test_trattino_tipografico_nella_data_torna_ascii():
+    from aios.actuator import _sanitize
+    out = _sanitize("board_tasks", {"titolo": "X", "due_at": "2026‑08‑04"}, "insert")
+    assert out["due_at"] == "2026-08-04"
+
+
+def test_registro_privacy_prende_finalita_e_base_legale():
+    from aios.actuator import _sanitize
+    out = _sanitize("privacy_registro_trattamenti", {
+        "finalità": "Assistenza clienti via chatbot",
+        "base_legale": "Consenso (art. 6‑1‑a)",
+        "categorie_dati": "email"}, "insert")
+    assert out["trattamento"] == "Assistenza clienti via chatbot"
+    assert out["base_giuridica"] == "Consenso (art. 6-1-a)"
+
+
+def test_data_non_iso_non_finisce_su_colonna_temporale():
+    # "48h" su due_at fa 400 e perde l'intera insert: resta un extra, va nelle note.
+    from aios.actuator import _sanitize
+    out = _sanitize("board_tasks", {"titolo": "X", "due_at": "entro 48h"}, "insert")
+    assert "due_at" not in out
+    assert "entro 48h" in out["notes"]

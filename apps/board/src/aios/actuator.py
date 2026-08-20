@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+import unicodedata
 from typing import Any
 
 # DDL consentito: solo modifiche NON distruttive (aggiungere, mai togliere/svuotare).
@@ -294,6 +295,16 @@ _SCHEMA: dict[str, set[str]] = {
 _NOTE_COLS = ("notes", "note", "descrizione", "fit_reason", "pain_point")
 _SYN: dict[str, tuple[str, ...]] = {
     "title": ("task", "titolo", "oggetto", "attivita", "compito", "azione"),
+    # L'LLM scrive in italiano e mette la scadenza sotto il nome che gli viene: senza
+    # questi sinonimi finiva nelle note e il task nasceva senza data.
+    "due_at": ("scadenza", "due_date", "data_scadenza", "deadline", "entro", "termine"),
+    # Registro dei trattamenti (GDPR art.30): il modello usa il lessico della norma
+    # ("finalità", "base legale"), la tabella quello del DB. Senza mappatura la riga
+    # nasceva con `trattamento` vuoto — un registro inservibile.
+    "trattamento": ("finalita", "finalità", "descrizione_trattamento", "id_trattamento"),
+    "base_giuridica": ("base_legale", "fondamento_giuridico", "base_giuridica_gdpr"),
+    "retention": ("conservazione", "durata_conservazione", "periodo_conservazione"),
+    "responsabile": ("titolare", "referente", "owner", "destinatari"),
     "name": ("nome", "azienda", "ragione_sociale", "voce", "servizio", "societa", "cliente"),
     "full_name": ("nome", "name", "nominativo", "candidato"),
     "company": ("azienda", "societa", "ragione_sociale"),
@@ -314,20 +325,89 @@ _ENUM = {"board_tasks": {"priority": {"alta", "media", "bassa"},
                          "status": {"todo", "doing", "done", "cancelled"}}}
 
 
+# Trattini e meno "tipografici" che i modelli infilano al posto del '-' ASCII:
+# non-breaking hyphen (U+2011), en/em dash, minus sign, fullwidth. Dentro una data
+# ("2026‑08‑04") PostgREST risponde 400 e l'azione approvata non scrive niente —
+# è successo su board_tasks.due_at e su privacy_registro_trattamenti.
+_TRATTINI = dict.fromkeys(
+    map(ord, "‐‑‒–—―−﹘﹣－"), "-")
+
+
+def _ascii_trattini(valore: Any) -> Any:
+    """Riporta a '-' i trattini tipografici nei valori scalari (ricorsivo)."""
+    if isinstance(valore, str):
+        return valore.translate(_TRATTINI)
+    if isinstance(valore, dict):
+        return {k: _ascii_trattini(v) for k, v in valore.items()}
+    if isinstance(valore, list):
+        return [_ascii_trattini(v) for v in valore]
+    return valore
+
+
+# Una colonna temporale accetta solo una data ISO. Il modello ci scrive dentro
+# "48h", "entro 7 giorni", "prossima settimana": Postgres risponde 400 e l'intera
+# insert si perde. Meglio la colonna vuota e il testo nelle note.
+_ISO_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}([ T]|$)")
+
+
+def _colonna_temporale(nome: str) -> bool:
+    return (nome in ("data", "scadenza", "last_done")
+            or nome.startswith(("data_", "date_"))
+            or nome.endswith(("_at", "_date", "deadline")))
+
+
+def _valore_ammesso(colonna: str, valore: Any) -> bool:
+    """False se il valore non è scrivibile su quella colonna (data non ISO)."""
+    if not _colonna_temporale(colonna) or not isinstance(valore, str):
+        return True
+    return bool(_ISO_DATA.match(valore.strip()))
+
+
+def _senza_accenti(nome: str) -> str:
+    """Chiave di confronto per i nomi di campo: minuscolo e senza diacritici.
+
+    Il modello scrive «priorità», «finalità», «attività»; i sinonimi e le colonne
+    sono in ASCII. Senza questa normalizzazione il campo non veniva riconosciuto e
+    il valore finiva nelle note: il task nasceva senza priorità e il registro
+    privacy senza finalità del trattamento."""
+    piatto = unicodedata.normalize("NFKD", nome)
+    return "".join(c for c in piatto if not unicodedata.combining(c)).lower()
+
+
 def _sanitize(table: str, data: dict, op: str = "insert") -> dict:
     """Adatta i dati alle colonne/valori reali della tabella (l'LLM ne inventa)."""
     cols = _SCHEMA.get(table)
     if not cols or not isinstance(data, dict):
         return data
-    d = dict(data)
+    d = {k: _ascii_trattini(v) for k, v in data.items()}
+    # Un campo scritto con l'accento è lo stesso campo: «priorità» → «priorita».
+    piatte: dict[str, list[str]] = {}
+    for k in d:
+        piatte.setdefault(_senza_accenti(k), []).append(k)
+    for canon in list(cols):                     # colonna reale scritta con accenti
+        if canon in d:
+            continue
+        for k in piatte.get(_senza_accenti(canon), ()):
+            if d.get(k) not in (None, "") and _valore_ammesso(canon, d[k]):
+                d[canon] = d.pop(k)
+                piatte[_senza_accenti(canon)] = []
+                break
     for canon, aliases in _SYN.items():          # sinonimi → colonna canonica
         if canon in cols and not d.get(canon):
             for a in aliases:
-                if a in d and d[a] not in (None, ""):
-                    d[canon] = d.pop(a)
+                for k in piatte.get(_senza_accenti(a), ()):
+                    # "scadenza: 48h" non è una data: resta un extra e va nelle
+                    # note col suo nome, invece di far fallire l'insert su due_at.
+                    if k in d and d[k] not in (None, "") and _valore_ammesso(canon, d[k]):
+                        d[canon] = d.pop(k)
+                        break
+                if canon in d:
                     break
     known = {k: v for k, v in d.items() if k in cols}
     extra = {k: v for k, v in d.items() if k not in cols}
+    # Data non ISO scritta direttamente sulla colonna: retrocede a extra (nelle note).
+    for col in [c for c in known if not _valore_ammesso(c, known[c])]:
+        extra[col] = known.pop(col)
     # Se NESSUN campo dell'LLM finisce su una colonna reale con un valore, ripiegare
     # tutto nel campo note produce una riga con ogni colonna utile a null: è così che
     # in performance_reviews è finita una riga con employee_id/period/score vuoti e le
