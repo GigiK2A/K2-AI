@@ -371,6 +371,12 @@ _PRIORITY = {"alta": "alta", "high": "alta", "critical": "alta", "urgent": "alta
 _ENUM = {"board_tasks": {"priority": {"alta", "media", "bassa"},
                          "status": {"todo", "doing", "done", "cancelled"}}}
 
+# Colonne NOT NULL senza default, con le colonne da cui dedurle in ordine di preferenza.
+# Verificato sullo schema reale via OpenAPI di PostgREST il 20 ago 2026.
+_OBBLIGATORIE: dict[str, dict[str, tuple[str, ...]]] = {
+    "pipeline_leads": {"name": ("company", "email")},
+}
+
 
 # Trattini e meno "tipografici" che i modelli infilano al posto del '-' ASCII:
 # non-breaking hyphen (U+2011), en/em dash, minus sign, fullwidth. Dentro una data
@@ -475,6 +481,16 @@ def _sanitize(table: str, data: dict, op: str = "insert") -> dict:
             known[col] = v if v in allowed else known.pop(col)
     if op == "insert" and "title" in cols and not known.get("title"):
         known["title"] = str(known.get(note_col) if note_col else "Attività")[:160] or "Attività"
+    # Colonna NOT NULL che l'agente non pensa a compilare perché la chiama con un altro
+    # nome. Vendite ha provato a creare 10 lead da altrettanti prospect e PostgREST ha
+    # risposto 400 (23502, null in "name") su TUTTI: chi apre un lead ragiona in termini
+    # di azienda, la tabella pretende `name`. Meglio dedurlo che perdere la riga.
+    if op == "insert":
+        for col, fonti in _OBBLIGATORIE.get(table, {}).items():
+            if col in cols and not known.get(col):
+                valore = next((known[f] for f in fonti if known.get(f)), None)
+                if valore:
+                    known[col] = str(valore)[:200]
     if not known:
         raise ActuatorError(f"nessuna colonna valida per {table}")
     return known
