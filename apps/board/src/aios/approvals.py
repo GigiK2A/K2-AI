@@ -51,6 +51,17 @@ class ApprovalQueue:
         self._backend.save(appr)
         return appr
 
+    def annota_esito(self, approval_id: int, esito: str) -> Approval:
+        """Scrive sulla riga com'è finita l'azione approvata.
+
+        Riusa `reason`, la colonna che il rifiuto già usa per la motivazione: così
+        una decisione risolta porta sempre con sé il perché, sia quando è stata
+        scartata sia quando è stata eseguita (o non è riuscita)."""
+        appr = self._backend.get(approval_id)
+        appr.reason = esito
+        self._backend.save(appr)
+        return appr
+
     def reject(self, approval_id: int, *, reason: str) -> Approval:
         appr = self._backend.get(approval_id)
         appr.status = ApprovalStatus.REJECTED

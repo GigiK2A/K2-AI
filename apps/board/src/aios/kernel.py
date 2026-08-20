@@ -90,6 +90,29 @@ def esito_effettivo(result: Any) -> dict[str, Any] | None:
     return out
 
 
+def esito_testo(esito: dict[str, Any] | None) -> str:
+    """Riga da conservare SULLA riga di approvazione.
+
+    «APPROVED» dice solo che l'owner ha cliccato: in produzione le 86 righe
+    approvate hanno `reason` a NULL, e dal DB o dal cockpit non si distingue
+    un'approvazione arrivata a destinazione da una che l'attuatore ha rifiutato.
+    L'esito lo diceva solo Telegram, una volta, e poi si perdeva."""
+    if esito is None:
+        return "eseguita"
+    if not esito.get("ok"):
+        return f"NON eseguita — {esito.get('errore') or 'causa non riportata'}"[:400]
+    canale = esito.get("canale")
+    if canale == "n8n":
+        return f"eseguita — inviata a n8n, workflow «{esito.get('workflow', '?')}»"
+    if canale == "meta":
+        return "eseguita — su Meta"
+    tab, op, righe = esito.get("tabella"), esito.get("op"), esito.get("righe")
+    if tab and op:
+        n = f" ({righe} righe)" if isinstance(righe, int) else ""
+        return f"eseguita — {op} su {tab}{n}"
+    return "eseguita"
+
+
 @dataclass
 class ExecResult:
     outcome: ExecOutcome
@@ -281,6 +304,10 @@ class Kernel:
         # di fila promuovevano l'azione da L1 a L2 (esecuzione senza chiedere).
         self.policy.record_outcome(action,
                                    clean=resolved.clean and res.eseguita_davvero)
+        try:
+            self.approvals.annota_esito(approval_id, esito_testo(res.esito))
+        except Exception:
+            pass  # l'esito annotato è un servizio: non deve far fallire l'approve
         return res
 
     def _tool_for_action(self, action_key: str) -> str:
