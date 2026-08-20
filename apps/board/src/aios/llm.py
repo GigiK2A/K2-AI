@@ -212,6 +212,12 @@ _LOCAL_NUM_PREDICT_MIN = int(os.environ.get("AIOS_LOCAL_NUM_PREDICT_MIN", "768")
 _LOCAL_CHAT_NUM_PREDICT = int(os.environ.get("AIOS_LOCAL_CHAT_NUM_PREDICT", "1536"))
 _LOCAL_CHAT_THINK = os.environ.get("AIOS_LOCAL_CHAT_THINK", "low")
 _LOCAL_CHAT_ITERS = int(os.environ.get("AIOS_LOCAL_CHAT_ITERS", "3"))
+# In chat si aspetta poco e non si ritenta. Con i parametri da background (600s × 3
+# tentativi) una richiesta a un Ollama che non risponde teneva l'utente 30 MINUTI davanti
+# a uno schermo muto: misurato il 19 ago 2026 — 885 secondi, 60 ping e nemmeno il triage.
+# Meglio dire in un minuto «il modello non risponde» che tacere per mezz'ora.
+_LOCAL_CHAT_TIMEOUT = int(os.environ.get("AIOS_LOCAL_CHAT_TIMEOUT", "75"))
+_LOCAL_CHAT_RETRIES = int(os.environ.get("AIOS_LOCAL_CHAT_RETRIES", "0"))
 _LOCAL_NUM_CTX = int(os.environ.get("AIOS_LOCAL_NUM_CTX", "16384"))         # ctx ampio: i prompt del board portano dati reali
 _LOCAL_TIMEOUT = int(os.environ.get("AIOS_LOCAL_TIMEOUT", "600"))
 _LOCAL_RETRIES = int(os.environ.get("AIOS_LOCAL_RETRIES", "2"))  # blip del tunnel → ritenta (opzione A: degrada e ritenta)
@@ -370,7 +376,8 @@ class LocalLLM:
         return out
 
     def _stream_chat(self, messages: list[dict], strumenti: list[dict],
-                     max_tokens: int | None, think: Any = None):
+                     max_tokens: int | None, think: Any = None,
+                     timeout: int | None = None, retries: int | None = None):
         """Righe NDJSON di /api/chat con stream=true. Solleva LocalLLMUnreachable se
         Ollama non risponde, così la riserva può entrare come per le altre chiamate."""
         body: dict[str, Any] = {
@@ -382,12 +389,14 @@ class LocalLLM:
         if strumenti:
             body["tools"] = strumenti
         data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        attesa = int(timeout if timeout is not None else _LOCAL_TIMEOUT)
+        giri = int(retries if retries is not None else _LOCAL_RETRIES)
         last: Exception | None = None
-        for tentativo in range(_LOCAL_RETRIES + 1):
+        for tentativo in range(giri + 1):
             try:
                 req = urllib.request.Request(self._base + "/api/chat", data=data,
                                              headers=_local_headers(), method="POST")
-                with _local_opener().open(req, timeout=_LOCAL_TIMEOUT) as resp:
+                with _local_opener().open(req, timeout=attesa) as resp:
                     for riga in resp:
                         riga = riga.strip()
                         if not riga:
@@ -399,10 +408,10 @@ class LocalLLM:
                 return
             except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
                 last = exc
-                if tentativo < _LOCAL_RETRIES:
+                if tentativo < giri:
                     time.sleep(1.5 * (tentativo + 1))
         raise LocalLLMUnreachable(
-            f"LocalLLM: Ollama non raggiungibile su {self._base} "
+            f"LocalLLM: Ollama non ha risposto entro {attesa}s su {self._base} "
             f"(modello {self._model}): {last}")
 
     def stream_agentic(self, *, system: str, user: str, tools: list[dict],
@@ -435,7 +444,9 @@ class LocalLLM:
             yield {"phase": "thinking"}
             testo, chiamate, iniziato = "", [], False
             for chunk in self._stream_chat(messages, strumenti, budget,
-                                           think=_LOCAL_CHAT_THINK):
+                                           think=_LOCAL_CHAT_THINK,
+                                           timeout=_LOCAL_CHAT_TIMEOUT,
+                                           retries=_LOCAL_CHAT_RETRIES):
                 msg = chunk.get("message") or {}
                 for tc in (msg.get("tool_calls") or []):
                     fn = (tc or {}).get("function") or {}

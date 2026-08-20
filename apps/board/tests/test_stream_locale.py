@@ -244,3 +244,39 @@ def test_chi_chiede_pochi_token_ne_ottiene_pochi():
     assert LocalLLM(max_tokens=1000)._num_predict == 1000
     assert LocalLLM(max_tokens=10)._num_predict == llm_mod._LOCAL_NUM_PREDICT_MIN
     assert LocalLLM()._num_predict == llm_mod._LOCAL_NUM_PREDICT
+
+
+# ---- fail fast in chat (niente attese da mezz'ora) ----
+def test_in_chat_si_aspetta_poco_e_non_si_ritenta(monkeypatch):
+    """885 secondi di silenzio misurati in produzione: erano 600s × 3 tentativi.
+    In chat si dice presto che il modello non risponde."""
+    tentativi = []
+
+    class OpenerLento:
+        def open(self, req, timeout=None):
+            tentativi.append(timeout)
+            raise TimeoutError("non risponde")
+
+    monkeypatch.setattr(llm_mod, "_local_opener", lambda: OpenerLento())
+    with pytest.raises(LocalLLMUnreachable) as e:
+        list(LocalLLM().stream_agentic(system="s", user="u", tools=[],
+                                       tool_exec=lambda n, i: {}))
+    assert tentativi == [llm_mod._LOCAL_CHAT_TIMEOUT]      # un solo tentativo
+    assert llm_mod._LOCAL_CHAT_TIMEOUT <= 120              # e corto
+    assert "non ha risposto entro" in str(e.value)
+
+
+def test_i_percorsi_di_background_mantengono_l_attesa_lunga(monkeypatch):
+    """Un report notturno può aspettare: lì i 600s e i ritentativi restano."""
+    tentativi = []
+
+    class OpenerLento:
+        def open(self, req, timeout=None):
+            tentativi.append(timeout)
+            raise TimeoutError("non risponde")
+
+    monkeypatch.setattr(llm_mod, "_local_opener", lambda: OpenerLento())
+    monkeypatch.setattr(llm_mod, "_LOCAL_RETRIES", 1)
+    with pytest.raises(LocalLLMUnreachable):
+        LocalLLM().complete(system="s", user="u")
+    assert tentativi == [llm_mod._LOCAL_TIMEOUT, llm_mod._LOCAL_TIMEOUT]
