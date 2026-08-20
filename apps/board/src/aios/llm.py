@@ -217,10 +217,51 @@ class OpenAILLM:
     `stream_agentic`. Stessa interfaccia degli altri, così è interscambiabile."""
 
     def __init__(self, model: str | None = None, max_tokens: int = 2000,
-                 api_key: str | None = None, mini: bool = False) -> None:
+                 api_key: str | None = None, mini: bool = False,
+                 web_search: bool = False) -> None:
         self._model = model or (_OPENAI_MINI if mini else _OPENAI_MODEL)
         self._max_tokens = int(max_tokens)
         self._key = api_key or os.environ.get("OPENAI_API_KEY", "")
+        # Con la ricerca web `complete()` passa dalla Responses API: serve al
+        # prospecting, che senza dati veri dal web si INVENTEREBBE le aziende.
+        self._web = bool(web_search)
+
+    def _cerca_sul_web(self, system: str, user: str) -> str:
+        """`complete()` con ricerca web via Responses API (l'unica che espone il tool
+        `web_search`). Ritorna il testo aggregato della risposta."""
+        if not self._key:
+            raise OpenAIError("OPENAI_API_KEY non configurato", status=401)
+        corpo = {"model": self._model, "tools": [{"type": "web_search"}],
+                 "max_output_tokens": max(512, self._max_tokens),
+                 "input": [{"role": "system", "content": system},
+                           {"role": "user", "content": user}]}
+        data = json.dumps(corpo, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request("https://api.openai.com/v1/responses", data=data,
+                                     method="POST", headers={
+                                         "Authorization": f"Bearer {self._key}",
+                                         "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=max(180, _OPENAI_TIMEOUT)) as r:  # noqa: S310
+                d = json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            try:
+                msg = json.loads(exc.read().decode()).get("error", {}).get("message", "")
+            except Exception:
+                msg = ""
+            raise OpenAIError(f"OpenAI HTTP {exc.code}: {msg[:160]}", status=exc.code) from exc
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+            raise OpenAIError(f"OpenAI non raggiungibile: {exc}", status=503) from exc
+        self._metering({"usage": {
+            "prompt_tokens": (d.get("usage") or {}).get("input_tokens", 0),
+            "completion_tokens": (d.get("usage") or {}).get("output_tokens", 0)}})
+        if d.get("output_text"):
+            return str(d["output_text"])
+        pezzi = []
+        for blocco in d.get("output") or []:
+            for c in (blocco or {}).get("content") or []:
+                if c.get("type") in ("output_text", "text") and c.get("text"):
+                    pezzi.append(c["text"])
+        return "\n".join(pezzi)
 
     # -- trasporto -------------------------------------------------------
     def _post(self, body: dict, *, stream: bool = False, timeout: int | None = None):
@@ -256,6 +297,8 @@ class OpenAILLM:
 
     # -- completions -----------------------------------------------------
     def complete(self, *, system: str, user: str) -> str:
+        if self._web:
+            return self._cerca_sul_web(system, user)
         with self._post({"model": self._model, "max_tokens": self._max_tokens,
                          "messages": self._messaggi(system, user)}) as r:
             d = json.loads(r.read().decode("utf-8"))

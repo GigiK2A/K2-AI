@@ -117,21 +117,42 @@ def test_il_lavoro_degli_agenti_resta_sul_locale(monkeypatch):
     girano sul locale — costa zero e nessuno aspetta davanti allo schermo — anche per il
     passo di giudizio. La chat, dove il tempo conta, va su OpenAI."""
     monkeypatch.setenv("AIOS_LLM_BACKEND", "local")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
-    monkeypatch.setattr("aios.llm._anthropic_client", lambda key: object())
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
     forte = _make_llm(max_tokens=8192, strong=True)
     assert isinstance(forte, FallbackLLM)
     assert isinstance(forte._primario, LocalLLM)      # il lavoro di fondo NON esce
-    assert type(forte._backup()).__name__ in ("FallbackLLM", "AnthropicLLM")
+    assert type(forte._backup()).__name__ == "OpenAILLM"
 
 
 def test_backend_locale_il_lavoro_normale_resta_locale(monkeypatch):
     monkeypatch.setenv("AIOS_LLM_BACKEND", "local")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
-    monkeypatch.setattr("aios.llm._anthropic_client", lambda key: object())
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
     leggero = _make_llm(max_tokens=4096)
     assert isinstance(leggero, FallbackLLM)
     assert isinstance(leggero._primario, LocalLLM)     # letture sul locale, come prima
+
+
+def test_anthropic_e_spento_finche_non_lo_riaccendi(monkeypatch):
+    """«Cancella per ora Anthropic» (owner, 19 ago 2026): la chiave da sola non basta
+    più a rimetterlo nel giro."""
+    monkeypatch.setenv("AIOS_LLM_BACKEND", "local")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    monkeypatch.delenv("AIOS_USA_ANTHROPIC", raising=False)
+    monkeypatch.setattr("aios.llm._anthropic_client", lambda key: object())
+    catena = _make_llm(max_tokens=2048, per_chat=True)
+    nomi = []
+    nodo = catena
+    while type(nodo).__name__ == "FallbackLLM":
+        nomi.append(type(nodo._primario).__name__)
+        nodo = nodo._backup()
+    nomi.append(type(nodo).__name__)
+    assert "AnthropicLLM" not in nomi, nomi
+    assert nomi == ["OpenAILLM", "LocalLLM"]
+    # riaccendendolo torna disponibile
+    monkeypatch.setenv("AIOS_USA_ANTHROPIC", "1")
+    catena = _make_llm(max_tokens=2048, per_chat=True)
+    assert type(catena._backup()._primario).__name__ == "AnthropicLLM"
 
 
 def test_senza_chiave_anthropic_resta_solo_il_locale(monkeypatch):

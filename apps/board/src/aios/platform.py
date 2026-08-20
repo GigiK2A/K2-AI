@@ -53,10 +53,14 @@ def _make_llm(*, max_tokens: int, strong: bool = False, per_chat: bool = False):
         return OpenAILLM(max_tokens=max_tokens, mini=not strong)
 
     disponibili = {"local": _locale}
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        disponibili["anthropic"] = _claude
     if os.environ.get("OPENAI_API_KEY"):
         disponibili["openai"] = _openai
+    # Anthropic è FUORI dalla catena per decisione dell'owner (19 ago 2026: «cancella
+    # per ora Anthropic»). Il codice resta, ma rientra solo riaccendendolo:
+    #   AIOS_USA_ANTHROPIC=1 + ANTHROPIC_API_KEY valida.
+    if (os.environ.get("AIOS_USA_ANTHROPIC", "").strip() in ("1", "true", "si", "yes")
+            and os.environ.get("ANTHROPIC_API_KEY")):
+        disponibili["anthropic"] = _claude
 
     # Regola dell'owner (19 ago 2026), per USO e non per potenza del modello:
     #   agenti che fanno il loro lavoro (heartbeat, proposte, azioni) → LOCALE
@@ -290,7 +294,7 @@ def build_platform() -> Platform:
     #   "anthropic"→ API Claude (default sicuro: nessun cambio di comportamento al deploy).
     # Si accende il locale impostando AIOS_LLM_BACKEND=local nell'env Railway (persistente
     # = "sempre attivo"), una volta che la tailnet verso l'Ollama è su.
-    # NB: la web search (llm_web, sotto) resta SEMPRE su Anthropic, per scelta.
+    # NB: la web search (llm_web, sotto) è su OpenAI (Responses API).
     # lavoro di fondo: locale primo (vedi _make_llm)
     llm = _make_llm(max_tokens=4096)
     # modello "strong" per i casi delicati (schema DB / codice / workflow) via CommandRouter
@@ -323,7 +327,11 @@ def build_platform() -> Platform:
     platform.chat = ChatOrchestrator(platform, llm_chat, llm_chat_strong, skills=skills,
                                      web_search=True)
     # Prospecting: ricerca web (Sonnet + web search) → qualifica → bozza (mai inviata)
-    llm_web = AnthropicLLM(model="claude-sonnet-4-6", max_tokens=4096, enable_web_search=True)
+    # Ricerca clienti/competitor: serve la RICERCA WEB, altrimenti il modello si
+    # inventa le aziende. Su OpenAI (Responses API, tool web_search); se manca la
+    # chiave si ripiega sulla catena normale, che almeno non è cieca sui dati interni.
+    llm_web = (OpenAILLM(max_tokens=4096, web_search=True)
+               if os.environ.get("OPENAI_API_KEY") else llm_chat)
     def _suite():
         try:
             return k.execute("leggi_suite", actor="prospector", args={}).result

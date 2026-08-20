@@ -158,10 +158,8 @@ def test_la_chat_gira_su_openai(monkeypatch):
     for forte in (False, True):
         llm = _make_llm(max_tokens=2048, strong=forte, per_chat=True)
         assert type(llm._primario).__name__ == "OpenAILLM"
-        # e dietro resta la catena, non il vuoto
-        secondo = llm._backup()
-        assert type(secondo._primario).__name__ == "AnthropicLLM"
-        assert isinstance(secondo._backup(), LocalLLM)
+        # e dietro resta il locale come riserva, non il vuoto
+        assert isinstance(llm._backup(), LocalLLM)
 
 
 def test_la_chat_usa_openai_anche_senza_anthropic(monkeypatch):
