@@ -55,11 +55,18 @@ _SCHEMA = {
         "properties": {
             "company": {"type": "string"}, "website": {"type": "string"},
             "sector": {"type": "string"}, "in_target": {"type": "boolean"},
+            # cosa fa l'azienda e DOVE è: senza questi due il prospect è un nome
+            "attivita": {"type": "string"}, "zona": {"type": "string"},
+            # verifica esplicita della sede: «Perugia» sta in Umbria, ma non contiene
+            # la parola «Umbria» — un confronto di stringhe scarterebbe le aziende giuste
+            "in_zona": {"type": "boolean"},
+            "contact_phone": {"type": "string"},
             "fit_score": {"type": "integer"}, "fit_reason": {"type": "string"},
             "contact_email": {"type": "string"}, "contact_role": {"type": "string"},
             "email_source": {"type": "string"},
             "draft_subject": {"type": "string"}, "draft_body": {"type": "string"}},
-        "required": ["company", "in_target", "fit_score", "fit_reason"]}}},
+        "required": ["company", "in_target", "fit_score", "fit_reason",
+                     "attivita", "zona"]}}},
     "required": ["prospects"],
 }
 
@@ -100,18 +107,56 @@ class Prospector:
                 "IT/AI, chi vende AI/automazione/software. Quelli sono CONCORRENTI, non clienti.")
         return out
 
-    def find(self, n: int = 5) -> list[dict]:
+    def find(self, n: int = 5, zona: str | None = None,
+             settori: str | None = None, esclusioni: str | None = None) -> list[dict]:
+        """Cerca clienti potenziali. `zona`, `settori` ed `esclusioni` arrivano da chi
+        chiede (owner in chat, o il loop): senza il vincolo geografico il modello
+        restituiva aziende sparse per l'Italia anche quando la richiesta diceva Umbria."""
         ctx = self._context()
-        user_research = (ctx + f"\n\n# COMPITO\nTrova {n} CLIENTI POTENZIALI reali (PMI che "
-                         "comprerebbero i nostri servizi), NON concorrenti né fornitori del nostro "
-                         "spazio. Settori ICP, mail di contatto reale e fonte. No fuffa.")
+        vincoli = ""
+        if zona:
+            vincoli += (f"\n\nVINCOLO GEOGRAFICO NON NEGOZIABILE: SOLO aziende con sede in "
+                        f"{zona}. Verifica la sede su fonte (sito, Registro Imprese, "
+                        f"prefisso telefonico, indirizzo). Un'azienda fuori da {zona} NON va "
+                        f"riportata, nemmeno se perfetta: scartala e cercane un'altra. "
+                        f"Se non trovi abbastanza aziende in {zona}, riportane meno e dillo. "
+                        f"Per OGNI azienda compila `zona` con città e provincia reali e "
+                        f"`in_zona`: true solo se la SEDE è dentro «{zona}» (es. Perugia, "
+                        f"Terni, Foligno sono in Umbria; Roma e Milano no).")
+        if settori:
+            vincoli += f"\n\nSETTORI RICHIESTI: {settori}. Resta dentro questi."
+        if esclusioni:
+            vincoli += (f"\n\nESCLUSIONI RICHIESTE DALL'OWNER: {esclusioni}. "
+                        "Se un'azienda ricade qui, scartala.")
+        user_research = (ctx + vincoli + f"\n\n# COMPITO\nTrova {n} CLIENTI POTENZIALI reali "
+                         "(PMI che comprerebbero i nostri servizi), NON concorrenti né fornitori "
+                         "del nostro spazio.\nPer OGNUNA servono, dalla ricerca e non dalla "
+                         "memoria: nome esatto, sede (città e provincia), UNA RIGA su cosa fa "
+                         "davvero l'azienda, il problema operativo concreto che potremmo "
+                         "risolverle, e un CONTATTO RAGGIUNGIBILE (email o telefono) con la "
+                         "fonte da cui l'hai preso.\n«Contatto via form web» NON è un contatto: "
+                         "se non hai email o telefono, riporta l'URL esatto della pagina contatti. "
+                         "Non inventare aziende, indirizzi o numeri: se un dato non c'è, lascialo "
+                         "vuoto e dillo.")
         research = self.llm_web.complete(system=_RESEARCH_SYS, user=user_research)
         parsed = self.llm_struct.complete_json(
             system=_STRUCT_SYS,
-            user=ctx + "\n\n# RISULTATI RICERCA WEB (grezzi, da strutturare)\n"
+            user=ctx + vincoli + "\n\n# RISULTATI RICERCA WEB (grezzi, da strutturare)\n"
                  + str(research)[:8000],
             schema=_SCHEMA)
-        return _as_list(parsed.get("prospects"))
+        trovati = _as_list(parsed.get("prospects"))
+        if zona:
+            # Secondo controllo, perché il modello a volte ignora il vincolo. Si usa il
+            # booleano `in_zona` e NON un confronto di stringhe: «Perugia (PG)» è in
+            # Umbria senza contenere la parola, e una sottostringa scarterebbe le
+            # aziende giuste. Se il campo manca non si squalifica nessuno: un falso
+            # negativo qui costa un cliente.
+            for p in trovati:
+                if p.get("in_zona") is False:
+                    p["in_target"] = False
+                    p["fit_reason"] = (f"sede fuori dalla zona richiesta ({zona}): "
+                                       + str(p.get("fit_reason") or ""))[:1000]
+        return trovati
 
     @staticmethod
     def to_row(p: dict) -> dict:
@@ -121,7 +166,15 @@ class Prospector:
             "website": str(p.get("website") or "")[:300] or None,
             "sector": str(p.get("sector") or "")[:120] or None,
             "fit_score": int(p.get("fit_score") or 0),
-            "fit_reason": str(p.get("fit_reason") or "")[:1000] or None,
+            # cosa fa e dove: nel fit_reason, che è il campo che l'owner legge
+            # `marketing_prospects` non ha colonne per attività/zona/telefono: vanno nel
+            # fit_reason, che è il campo che l'owner legge. Prima restava solo un nome.
+            "fit_reason": ((str(p.get("attivita") or "").strip()
+                            + (f" · sede: {p.get('zona')}" if p.get("zona") else "")
+                            + (f" · tel: {p.get('contact_phone')}"
+                               if p.get("contact_phone") else "")
+                            + (" — " if p.get("attivita") or p.get("zona") else "")
+                            + str(p.get("fit_reason") or "").strip())[:1000] or None),
             "contact_email": str(p.get("contact_email") or "")[:200] or None,
             "contact_role": str(p.get("contact_role") or "")[:120] or None,
             "email_source": str(p.get("email_source") or "")[:300] or None,

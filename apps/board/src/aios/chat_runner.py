@@ -111,6 +111,22 @@ _CERCA_SKILL_DEF = {
                      "required": ["query"]},
 }
 
+_CERCA_CLIENTI_DEF = {
+    "name": "cerca_clienti",
+    "description": (
+        "CERCA SUL WEB clienti potenziali reali e li salva come prospect. Usalo SEMPRE "
+        "quando l'owner chiede di trovare clienti, aziende o contatti: gli altri tuoi "
+        "strumenti leggono solo il database interno, e senza questo finiresti per "
+        "elencare aziende a memoria — sbagliate di zona e senza contatti veri. "
+        "Parametri: zona (es. 'Umbria', 'provincia di Perugia' — VINCOLANTE), settori "
+        "(es. 'agroalimentare, turismo, manifatturiero'), esclusioni (es. 'studi di "
+        "ingegneria'), quanti (1-8). Ritorna per ognuna: cosa fa, sede, contatto e fonte."),
+    "input_schema": {"type": "object", "properties": {
+        "zona": {"type": "string"}, "settori": {"type": "string"},
+        "esclusioni": {"type": "string"}, "quanti": {"type": "integer"}},
+        "additionalProperties": True},
+}
+
 _CALCOLA_DEF = {
     "name": "calcola",
     "description": (
@@ -246,6 +262,9 @@ class ChatAgent:
                                      "additionalProperties": True},
                 })
         defs.append(_ESEGUI_DEF)
+        if (self.dominio in ("marketing", "vendite")
+                and getattr(self.orch.platform, "prospector", None) is not None):
+            defs.append(_CERCA_CLIENTI_DEF)
         if self.orch.skills is not None:      # skill invocabili (progressive disclosure)
             defs.append(_CARICA_SKILL_DEF)
             defs.append(_CERCA_SKILL_DEF)
@@ -267,6 +286,8 @@ class ChatAgent:
     def _exec_tool(self, name: str, tinput: dict) -> Any:
         if name == "esegui":
             return self._do_action(tinput or {})
+        if name == "cerca_clienti":
+            return self._cerca_clienti(tinput or {})
         if name in ("carica_skill", "cerca_skill"):
             return self._skill_tool(name, tinput or {})
         if name == "calcola":
@@ -335,6 +356,53 @@ class ChatAgent:
                            "motivo": str(exc)[:160]}
         self.azioni.append(rec)
         return rec
+
+    def _cerca_clienti(self, tinput: dict) -> Any:
+        """Ricerca clienti VERA (web) dalla chat, e salvataggio dei qualificati.
+
+        Il 20 ago 2026 l'owner ha chiesto clienti in Umbria e si è visto aziende sparse
+        per l'Italia, senza descrizione né contatti: in chat gli agenti non hanno la
+        ricerca web (è un server-tool, viene scartato per OpenAI e per il locale), quindi
+        Marketing aveva risposto a memoria. Questo tool collega la chat al Prospector,
+        che cerca davvero — con la zona come vincolo."""
+        pros = getattr(self.orch.platform, "prospector", None)
+        if pros is None:
+            return {"errore": "ricerca clienti non disponibile (Prospector assente)"}
+        zona = str(tinput.get("zona") or "").strip()
+        quanti = max(1, min(int(tinput.get("quanti") or 4), 8))
+        try:
+            trovati = pros.find(quanti, zona=zona or None,
+                                settori=str(tinput.get("settori") or "").strip() or None,
+                                esclusioni=str(tinput.get("esclusioni") or "").strip() or None)
+        except Exception as exc:
+            return {"errore": f"ricerca non riuscita: {str(exc)[:160]}"}
+        client = getattr(self.kernel, "_supabase", None)
+        fuori, salvati = [], 0
+        for p in trovati:
+            qualificato = bool(p.get("in_target")) and int(p.get("fit_score") or 0) >= 60
+            voce = {"azienda": p.get("company"), "sede": p.get("zona"),
+                    "attivita": p.get("attivita"), "sito": p.get("website"),
+                    "email": p.get("contact_email") or "", "telefono": p.get("contact_phone") or "",
+                    "fonte_contatto": p.get("email_source") or "",
+                    "perche": p.get("fit_reason"), "fit": p.get("fit_score"),
+                    "qualificato": qualificato}
+            if qualificato and client is not None:
+                try:
+                    from aios.actuator import apply_action
+                    from aios.prospecting import Prospector
+                    out = apply_action(client, {"tabella": "marketing_prospects",
+                                                "op": "insert",
+                                                "dati": Prospector.to_row(p)})
+                    voce["salvato"] = bool(out.get("ok"))
+                    salvati += 1 if out.get("ok") else 0
+                except Exception as exc:
+                    voce["salvato"] = False
+                    voce["errore_salvataggio"] = str(exc)[:120]
+            fuori.append(voce)
+        return {"zona_richiesta": zona or "(non specificata)", "trovati": len(fuori),
+                "salvati": salvati, "prospect": fuori,
+                "nota": ("Riporta all'owner SOLO queste aziende, con cosa fanno, la sede e "
+                         "il contatto. Se un contatto è vuoto dillo: non inventarlo.")}
 
     @staticmethod
     def _confirm_label(az: dict) -> str:
