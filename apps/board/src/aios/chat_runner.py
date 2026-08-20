@@ -152,6 +152,9 @@ _CALCOLA_DEF = {
 }
 # I calcolatori vendorizzati coprono finanza/fisco → tool esposto a questi reparti.
 _CALCOLA_DOMINI = {"finance"}
+# Chi possiede la pipeline commerciale: cercare clienti può chiunque, la scheda
+# prospect la scrivono solo questi due.
+_DOMINI_PROSPECT = {"marketing", "vendite"}
 
 # Tool trasversali a TUTTI gli agenti (registrati in platform.py). Lettura Supabase di
 # qualsiasi tabella + verifica stato dei workflow n8n.
@@ -262,8 +265,13 @@ class ChatAgent:
                                      "additionalProperties": True},
                 })
         defs.append(_ESEGUI_DEF)
-        if (self.dominio in ("marketing", "vendite")
-                and getattr(self.orch.platform, "prospector", None) is not None):
+        # La ricerca la può fare CHIUNQUE gliela chieda: prima era solo di marketing e
+        # vendite, e una domanda instradata a legal («dammi 2 aziende in Umbria da
+        # contattare») finiva senza strumenti — rispondeva «non ci riesco». Instradare
+        # meglio aiuta ma resta un elenco di parole chiave: qui il buco si chiude.
+        # La SCHEDA prospect però la scrivono solo i due reparti commerciali: vedi
+        # _DOMINI_PROSPECT in _cerca_clienti.
+        if getattr(self.orch.platform, "prospector", None) is not None:
             defs.append(_CERCA_CLIENTI_DEF)
         if self.orch.skills is not None:      # skill invocabili (progressive disclosure)
             defs.append(_CARICA_SKILL_DEF)
@@ -377,6 +385,10 @@ class ChatAgent:
         except Exception as exc:
             return {"errore": f"ricerca non riuscita: {str(exc)[:160]}"}
         client = getattr(self.kernel, "_supabase", None)
+        # Cercare può chiunque; la scheda prospect la scrivono i reparti a cui la
+        # pipeline appartiene. Così allargando la ricerca non si allarga il perimetro
+        # di scrittura di nessun agente.
+        puo_salvare = self.dominio in _DOMINI_PROSPECT
         fuori, salvati = [], 0
         for p in trovati:
             qualificato = bool(p.get("in_target")) and int(p.get("fit_score") or 0) >= 60
@@ -386,7 +398,7 @@ class ChatAgent:
                     "fonte_contatto": p.get("email_source") or "",
                     "perche": p.get("fit_reason"), "fit": p.get("fit_score"),
                     "qualificato": qualificato}
-            if qualificato and client is not None:
+            if qualificato and client is not None and puo_salvare:
                 try:
                     from aios.actuator import apply_action
                     from aios.prospecting import Prospector
@@ -399,10 +411,13 @@ class ChatAgent:
                     voce["salvato"] = False
                     voce["errore_salvataggio"] = str(exc)[:120]
             fuori.append(voce)
+        nota = ("Riporta all'owner SOLO queste aziende, con cosa fanno, la sede e "
+                "il contatto. Se un contatto è vuoto dillo: non inventarlo.")
+        if not puo_salvare:
+            nota += (" Le hai cercate ma non salvate: la scheda prospect la scrivono "
+                     "Marketing e Vendite. Dillo all'owner e proponi di girarla a loro.")
         return {"zona_richiesta": zona or "(non specificata)", "trovati": len(fuori),
-                "salvati": salvati, "prospect": fuori,
-                "nota": ("Riporta all'owner SOLO queste aziende, con cosa fanno, la sede e "
-                         "il contatto. Se un contatto è vuoto dillo: non inventarlo.")}
+                "salvati": salvati, "prospect": fuori, "nota": nota}
 
     @staticmethod
     def _confirm_label(az: dict) -> str:

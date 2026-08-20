@@ -135,9 +135,69 @@ def test_il_tool_dice_di_usarlo_al_posto_della_memoria():
         assert campo in _CERCA_CLIENTI_DEF["input_schema"]["properties"]
 
 
-def test_il_tool_e_dato_a_marketing_e_vendite_non_agli_altri():
-    import aios.chat_runner as cr
-    sorgente = cr.__loader__.get_source(cr.__name__)
-    blocco = sorgente.split("defs.append(_ESEGUI_DEF)")[1][:400]
-    assert "_CERCA_CLIENTI_DEF" in blocco
-    assert '"marketing", "vendite"' in blocco
+def _orch_con_prospector(prospects):
+    """Orchestratore minimo con un Prospector finto attaccato alla platform."""
+    from types import SimpleNamespace
+
+    from aios.chat_runner import ChatOrchestrator
+    from aios.kernel import Kernel
+
+    class ClientFinto:
+        def __init__(self):
+            self.scritture = []
+
+        def insert(self, table, row):
+            self.scritture.append((table, row))
+            return [row]
+
+    k = Kernel()
+    client = ClientFinto()
+    k._supabase = client
+    pros, _w, _s = _prospector(prospects)
+    platform = SimpleNamespace(kernel=k, agents={}, commands=None, chat=None,
+                               prospector=pros)
+    return ChatOrchestrator(platform, None, None, skills=None), client
+
+
+def test_qualunque_reparto_puo_cercare():
+    """Prima il tool era solo di marketing e vendite: una domanda instradata a legal
+    («dammi 2 aziende in Umbria da contattare») restava senza strumenti e l'agente
+    rispondeva «non ci riesco». Instradare meglio aiuta, ma è un elenco di parole
+    chiave: il buco si chiude dando la ricerca a tutti."""
+    from aios.chat_runner import ChatAgent
+    orch, _c = _orch_con_prospector([_p("Alfa", "Perugia (PG)")])
+    for dominio in ("marketing", "vendite", "legal", "finance", "hr", "operations"):
+        nomi = [t["name"] for t in ChatAgent(orch, dominio, None)._tool_defs()]
+        assert "cerca_clienti" in nomi, dominio
+
+
+def test_senza_prospector_il_tool_non_c_e():
+    from types import SimpleNamespace
+
+    from aios.chat_runner import ChatAgent, ChatOrchestrator
+    from aios.kernel import Kernel
+    platform = SimpleNamespace(kernel=Kernel(), agents={}, commands=None, chat=None,
+                               prospector=None)
+    orch = ChatOrchestrator(platform, None, None, skills=None)
+    assert "cerca_clienti" not in [t["name"]
+                                   for t in ChatAgent(orch, "vendite", None)._tool_defs()]
+
+
+def test_la_scheda_prospect_la_scrivono_solo_i_commerciali():
+    """Allargare la ricerca non deve allargare il perimetro di SCRITTURA di nessuno."""
+    from aios.chat_runner import ChatAgent
+    orch, client = _orch_con_prospector([_p("Alfa", "Perugia (PG)")])
+
+    res = ChatAgent(orch, "legal", None)._exec_tool("cerca_clienti", {"zona": "Umbria"})
+    assert res["trovati"] == 1 and res["salvati"] == 0
+    assert client.scritture == []                        # niente riga scritta da legal
+    assert "Marketing e Vendite" in res["nota"]          # e lo dice all'owner
+
+    res = ChatAgent(orch, "vendite", None)._exec_tool("cerca_clienti", {"zona": "Umbria"})
+    assert res["salvati"] == 1
+    assert client.scritture and client.scritture[0][0] == "marketing_prospects"
+
+
+def test_i_reparti_che_possono_salvare_sono_due():
+    from aios.chat_runner import _DOMINI_PROSPECT
+    assert _DOMINI_PROSPECT == {"marketing", "vendite"}
