@@ -377,6 +377,34 @@ _OBBLIGATORIE: dict[str, dict[str, tuple[str, ...]]] = {
     "pipeline_leads": {"name": ("company", "email")},
 }
 
+# Colonne numeriche con un CHECK sul range. Nel board convivono DUE scale per la stessa
+# idea: `marketing_prospects.fit_score` va 0-100, `pipeline_leads.score` 1-10 (vincolo
+# `pipeline_leads_score_check`). Vendite copiava il primo nel secondo e PostgREST
+# rispondeva 23514 su OGNI lead: dieci opportunità vere perse per una scala.
+_RANGE: dict[str, dict[str, tuple[int, int]]] = {
+    "pipeline_leads": {"score": (1, 10)},
+}
+
+
+def _in_scala(valore: Any, minimo: int, massimo: int) -> Any:
+    """Riporta un numero dentro il range della colonna, preservando l'ordinamento.
+
+    Un 85 su 100 diventa 9 su 10, non 10: schiacciare tutto sul massimo renderebbe
+    indistinguibili un prospect ottimo e uno mediocre. Fuori scala si taglia."""
+    try:
+        n = float(valore)
+    except (TypeError, ValueError):
+        return valore
+    if minimo <= n <= massimo:
+        return int(n) if float(n).is_integer() else n
+    # Arrotondamento normale, non quello di Python: `round()` è bancario e su una scala
+    # di punteggi dà passi incoerenti (85 → 8 ma 95 → 10).
+    def _mezzo_su(x: float) -> int:
+        return int(x + 0.5) if x >= 0 else -int(-x + 0.5)
+    if massimo == 10 and n <= 100:               # 0-100 → 1-10
+        return max(minimo, min(massimo, _mezzo_su(n / 10)))
+    return max(minimo, min(massimo, _mezzo_su(n)))
+
 
 # Trattini e meno "tipografici" che i modelli infilano al posto del '-' ASCII:
 # non-breaking hyphen (U+2011), en/em dash, minus sign, fullwidth. Dentro una data
@@ -491,6 +519,9 @@ def _sanitize(table: str, data: dict, op: str = "insert") -> dict:
                 valore = next((known[f] for f in fonti if known.get(f)), None)
                 if valore:
                     known[col] = str(valore)[:200]
+    for col, (minimo, massimo) in _RANGE.get(table, {}).items():   # CHECK sul range
+        if known.get(col) is not None:
+            known[col] = _in_scala(known[col], minimo, massimo)
     if not known:
         raise ActuatorError(f"nessuna colonna valida per {table}")
     return known
