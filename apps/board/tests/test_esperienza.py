@@ -47,10 +47,11 @@ def test_legge_i_fallimenti_con_la_causa():
     out = esperienza.fallimenti_recenti(c, "legal.azione")
     assert out[0]["tabella"] == "privacy_registro_trattamenti"
     assert "finalità" in out[0]["errore"]
-    # deve filtrare per reparto e per event=failed, non scaricare tutto l'audit
+    # deve filtrare per reparto e per i soli eventi di insuccesso, non scaricare
+    # tutto l'audit
     _tab, params = c.query[0]
     assert params["action_key"] == "eq.legal.azione"
-    assert params["event"] == "eq.failed"
+    assert params["event"] == "in.(failed,ripiegata)"
     assert "limit" in params
 
 
@@ -100,3 +101,29 @@ def test_l_esperienza_arriva_nel_prompt_del_reparto():
     assert "LA TUA ESPERIENZA" in user
     assert "colonna inesistente" in user
     assert "Adeguamento ToS art.50" in user
+
+
+# ---- il ripiegamento entra nell'esperienza ----
+# Una proposta ripiegata a task non produce un `failed`: il reparto non sapeva di
+# aver sbagliato tabella e la riproponeva il giorno dopo. Il 20 ago 2026 tutte e
+# quattro le proposte di vendite sono finite così (enablement, analytics).
+
+def _ripiego(titolo, tabella_voluta, causa):
+    return {"seq": 2, "event": "ripiegata",
+            "detail": {"titolo": titolo, "tabella_voluta": tabella_voluta, "causa": causa}}
+
+
+def test_una_proposta_ripiegata_conta_come_fallimento_da_non_ripetere():
+    c = Client(audit=[_ripiego("5 lead prioritari", "enablement",
+                               "tabella non in allowlist: enablement")])
+    out = esperienza.fallimenti_recenti(c, "vendite.azione")
+    assert out[0]["tabella"] == "enablement"
+    assert "allowlist" in out[0]["errore"]
+
+
+def test_il_blocco_dice_di_non_richiedere_la_tabella_inesistente():
+    c = Client(audit=[_ripiego("Battlecard", "enablement",
+                               "tabella non in allowlist: enablement")])
+    testo = esperienza.blocco_esperienza(c, "vendite", "vendite.azione")
+    assert "enablement" in testo
+    assert "non chiederla di nuovo" in testo

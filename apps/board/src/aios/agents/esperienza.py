@@ -30,16 +30,30 @@ def _righe(client: Any, tabella: str, params: dict) -> list[dict]:
 
 def fallimenti_recenti(client: Any, action_key: str,
                        limit: int = FALLIMENTI_MAX) -> list[dict]:
-    """Le azioni di questo reparto che NON hanno scritto niente, con la causa.
+    """Le azioni di questo reparto che NON hanno fatto quello che dicevano, con la causa.
 
-    Legge `aios_audit` con event='failed' — l'evento esiste da quando l'audit è onesto
-    (ago 2026): prima un'azione fallita lasciava la stessa traccia di una riuscita."""
+    Due eventi, non uno:
+    - `failed`: l'attuatore ha provato e non ha scritto niente;
+    - `ripiegata`: l'azione non era nemmeno eseguibile (tabella fuori allowlist,
+      nessun campo riconosciuto) ed è diventata un task generico.
+
+    Il secondo caso era il buco: non produce un `failed`, quindi il reparto non
+    sapeva di aver sbagliato e riproponeva la stessa tabella inesistente il giorno
+    dopo. Il 20 ago tutte e quattro le proposte di vendite sono finite così."""
     righe = _righe(client, "aios_audit", {
-        "select": "seq,detail", "action_key": f"eq.{action_key}",
-        "event": "eq.failed", "order": "seq.desc", "limit": str(max(1, limit))})
+        "select": "seq,event,detail", "action_key": f"eq.{action_key}",
+        "event": "in.(failed,ripiegata)", "order": "seq.desc",
+        "limit": str(max(1, limit))})
     fuori = []
     for r in righe:
         d = r.get("detail") or {}
+        if r.get("event") == "ripiegata" or d.get("causa"):
+            fuori.append({
+                "titolo": str(d.get("titolo") or "")[:120],
+                "tabella": str(d.get("tabella_voluta") or "?")[:60],
+                "op": "azione voluta",
+                "errore": str(d.get("causa") or "azione non eseguibile")[:160]})
+            continue
         esito = d.get("esito") or {}
         args = d.get("args") or {}
         azione = args.get("azione") or {}
@@ -81,7 +95,9 @@ def blocco_esperienza(client: Any, dominio: str, action_key: str) -> str:
         for f in falliti:
             parti.append(f"- «{f['titolo']}» → {f['op']} su {f['tabella']}: {f['errore']}")
         parti.append("Regola: se una colonna non esiste, non esiste — non inventarla una "
-                     "seconda volta. Se un update non trova la riga, prima va creata.")
+                     "seconda volta. Se un update non trova la riga, prima va creata. "
+                     "Se una tabella non è fra quelle del tuo reparto, non chiederla di "
+                     "nuovo: usa una di quelle elencate sotto o proponi un task.")
     if fatti:
         parti.append("Hai già prodotto questo di recente: "
                      + "; ".join(f"«{t}»" for t in fatti)
