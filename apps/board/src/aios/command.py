@@ -31,8 +31,14 @@ CHAT_CONFIRM_TABLES: set[str] = set()
 _ROUTE = {
     "marketing": ("caption", "post", "contenut", "instagram", " ig", "newsletter",
                   "campagn", "seo", "social", "pubblic", "reel", "hashtag"),
-    "vendite": ("lead", "vendit", "crm", "pipeline", "trattativ", "cliente",
-                "offerta", "proposta commerciale", "preventiv"),
+    # «client» e non «cliente»: la forma che si usa davvero è il plurale, e "cliente"
+    # NON è sottostringa di "clienti" — le domande sui clienti finivano al
+    # classificatore di riserva. Le frasi di prospecting sono esplicite perché
+    # «trovami 2 aziende in Umbria da contattare» non conteneva nessuna parola chiave
+    # e il fallback LLM l'ha mandata a legal.
+    "vendite": ("lead", "vendit", "crm", "pipeline", "trattativ", "client",
+                "offerta", "proposta commerciale", "preventiv",
+                "prospect", "da contattar", "aziende in ", "aziende del "),
     "finance": ("fattur", "ricav", "cost", "budget", "cashflow", "finanz",
                 "iva", "contabil", "forecast", "tax", "scadenz fiscal"),
     "operations": ("commess", "progett", "task", "fase", " sal", "workflow",
@@ -134,7 +140,9 @@ class CommandRouter:
         try:  # fallback LLM: scegli un dominio
             r = self.llm.complete_json(
                 system="Classifica l'istruzione in UN dominio tra: "
-                       "marketing, vendite, finance, operations, legal, hr.",
+                       "marketing, vendite, finance, operations, legal, hr. "
+                       "Trovare aziende, prospect o contatti nuovi = vendite "
+                       "(sono gli unici, con marketing, che sanno cercare sul web).",
                 user=text,
                 schema={"type": "object", "properties": {"dominio": {"type": "string"}},
                         "required": ["dominio"]})
