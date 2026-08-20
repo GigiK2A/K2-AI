@@ -30,6 +30,67 @@ from aios.agents.operations_config import OPERATIONS_CONFIG
 from aios.agents.legal_config import LEGAL_CONFIG
 from aios.agents.hr_config import HR_CONFIG
 
+# Operatori di filtro PostgREST. Un valore senza prefisso operatore fa rispondere 400 e
+# la lettura si perde intera, quindi il caso ovvio («status: nuovo») lo si completa a
+# `eq.`, e la prosa («dal 2026-08-20») diventa un errore che spiega la sintassi.
+_OPERATORI_PG = frozenset({
+    "eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "match", "imatch",
+    "in", "is", "isdistinct", "fts", "plfts", "phfts", "wfts", "cs", "cd",
+    "ov", "sl", "sr", "nxr", "nxl", "adj", "not", "or", "and", "all", "any",
+})
+
+
+def _filtro_postgrest(valore: Any) -> tuple[bool, str]:
+    """(valido, valore_normalizzato_o_originale) per un filtro PostgREST.
+
+    Un valore già prefissato passa; uno scalare secco diventa `eq.<valore>`; la prosa
+    viene rifiutata perché indovinarla porterebbe a leggere righe SBAGLIATE e a
+    riportare numeri falsi — meglio dirlo all'agente e fargli correggere il filtro."""
+    testo = str(valore).strip()
+    if not testo:
+        return False, testo
+    testa = testo.split(".", 1)[0].lstrip("(").lower()
+    if "." in testo and testa in _OPERATORI_PG:
+        return True, testo
+    # Operatore sbagliato («dopo.2026-08-20»): completarlo a `eq.dopo.2026-08-20`
+    # cercherebbe un valore letterale che non esiste, tornerebbe zero righe e l'agente
+    # riferirebbe «nessun prospect» — un numero falso è peggio di un errore.
+    # Un valore che contiene punti ma non ha forma di operatore («info@x.it») passa.
+    if "." in testo and testa.isalpha() and len(testa) <= 10:
+        return False, testo
+    if " " not in testo:                      # «nuovo» → «eq.nuovo»
+        return True, f"eq.{testo}"
+    return False, testo
+
+
+def leggi_tabella(client: Any, tabella: str | None = None, filtri: dict | None = None,
+                  limit: int = 50, ordine: str | None = None, **_) -> Any:
+    """Lettura generica di una tabella Supabase (sola lettura, cap 200 righe).
+
+    Filtri PostgREST opzionali (es. {"stato": "eq.usato"}). Un filtro non valido si
+    ferma QUI con un messaggio che spiega la sintassi: mandarlo a PostgREST vorrebbe
+    dire un 400 e la lettura persa intera, ed è quello che ha bloccato Vendite."""
+    if not tabella:
+        return {"error": "specifica 'tabella'"}
+    params = {"select": "*", "limit": str(max(1, min(int(limit or 50), 200)))}
+    if ordine:
+        params["order"] = str(ordine)
+    if isinstance(filtri, dict):
+        for kk, vv in filtri.items():
+            ok, valore = _filtro_postgrest(vv)
+            if not ok:
+                return {"error": f"filtro '{kk}' non valido: {valore!r}. Serve la sintassi "
+                                 f"PostgREST 'operatore.valore': per una data "
+                                 f"{{'{kk}': 'gte.2026-08-20'}}; se {valore!r} è invece il "
+                                 f"valore esatto da cercare scrivilo come "
+                                 f"'eq.{valore}'. Operatori: "
+                                 f"{', '.join(sorted(_OPERATORI_PG))}."}
+            params[str(kk)] = valore
+    try:
+        return client.select(str(tabella), params)
+    except Exception as exc:
+        return {"error": str(exc)[:200]}
+
 
 def _make_llm(*, max_tokens: int, strong: bool = False, per_chat: bool = False):
     """Fabbrica dell'LLM workhorse/strong. Sceglie il backend da AIOS_LLM_BACKEND:
@@ -191,23 +252,8 @@ def build_platform() -> Platform:
     k.register_tool(n8n_executions_tool())  # sensore: esecuzioni (partite? errori?)
 
     # Lettura GENERICA di qualsiasi tabella Supabase (service key = accesso pieno).
-    # Readonly: filtri PostgREST opzionali (es. {"stato":"eq.usato"}), cap a 200 righe.
-    def _leggi_tabella(tabella: str | None = None, filtri: dict | None = None,
-                       limit: int = 50, ordine: str | None = None, **_):
-        if not tabella:
-            return {"error": "specifica 'tabella'"}
-        params = {"select": "*", "limit": str(max(1, min(int(limit or 50), 200)))}
-        if ordine:
-            params["order"] = str(ordine)
-        if isinstance(filtri, dict):
-            for kk, vv in filtri.items():
-                params[str(kk)] = str(vv)
-        try:
-            return client.select(str(tabella), params)
-        except Exception as exc:
-            return {"error": str(exc)[:200]}
     k.register_tool(Tool(name="leggi_tabella", action_type=None, readonly=True,
-                         run=_leggi_tabella))
+                         run=lambda **kw: leggi_tabella(client, **kw)))
 
     # Generazione immagini (GPT Image) → caricata su Storage → URL pubblico pronto per
     # essere pubblicato con `esegui` pubblica_post. Env: OPENAI_API_KEY.

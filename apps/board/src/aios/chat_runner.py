@@ -162,7 +162,9 @@ _BASE_TOOL_DEFS = [
     {"name": "leggi_tabella",
      "description": ("Leggi QUALSIASI tabella Supabase (sola lettura). params: {tabella, "
                      "filtri? (PostgREST, es. {\"stato\":\"eq.usato\",\"canale\":\"eq.instagram\"}), "
-                     "ordine? (es. \"created_at.desc\"), limit? (max 200)}."),
+                     "ordine? (es. \"created_at.desc\"), limit? (max 200)}. "
+                     "I filtri vogliono SEMPRE 'operatore.valore', mai una frase: per una "
+                     "data usa {\"created_at\":\"gte.2026-08-20\"}, non \"dal 20 agosto\"."),
      "input_schema": {"type": "object", "properties": {
          "tabella": {"type": "string"}, "filtri": {"type": "object"},
          "ordine": {"type": "string"}, "limit": {"type": "integer"}},
