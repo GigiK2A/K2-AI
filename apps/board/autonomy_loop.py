@@ -48,6 +48,26 @@ def _riporta_autonomia(res_per_reparto: dict) -> None:
                            + "\n\nLe azioni verso l'esterno restano in coda: quelle le decidi tu.")
 
 
+def _autodiagnosi(platform) -> dict:
+    """Il board si guarda allo specchio e riferisce: quanto ha eseguito davvero,
+    quante proposte ha dovuto ripiegare e perché, com'è la qualità, cosa è fermo.
+
+    Prima lo faceva una routine esterna una volta al giorno. Ma sono letture delle
+    proprie tabelle: non serve nessuno da fuori per contare i propri errori."""
+    from aios import salute
+    client = getattr(platform.kernel, "_supabase", None)
+    if client is None:
+        return {}
+    try:
+        dati = salute.esamina(client, ore=24)
+    except Exception as exc:
+        return {"errore": str(exc)[:160]}
+    testo = salute.referto(dati)
+    if testo and telegram.enabled():
+        telegram.send_text(testo)
+    return dati
+
+
 def _run_agents(platform) -> dict:
     out = {}
     for d in platform.domains():
@@ -257,6 +277,7 @@ def main() -> None:
     seen_mail: set = stato.visti("bozze_email")
     last_agents_day = stato.giorno("agenti")
     last_prospect_day = stato.giorno("prospect")
+    last_salute_day = stato.giorno("salute")
     print(f"stato durevole: {len(seen)} decisioni e {len(seen_mail)} bozze già notificate")
 
     # Heartbeat per-agente (Paperclip #4), opt-in: se AIOS_HEARTBEATS è impostato
@@ -318,6 +339,14 @@ def main() -> None:
                         "sono pronte nel cockpit — l'invio resta una tua decisione.")
                 elif telegram.enabled() and pr.get("errore"):
                     telegram.send_text(f"🔎 Ricerca clienti non riuscita — {pr['errore']}")
+
+        # ── Autodiagnosi, una volta al giorno DOPO che gli agenti hanno girato: se
+        # arrivasse prima misurerebbe la giornata di ieri e direbbe sempre "zero".
+        if last_salute_day != now.tm_yday and now.tm_hour >= agents_hour + 1:
+            last_salute_day = now.tm_yday
+            stato.segna_giorno("salute", now.tm_yday)
+            sal = _autodiagnosi(platform)
+            print(f"[{time.strftime('%H:%M', now)}] salute: {sal.get('eventi') or sal}")
 
         nuovi = _notify_new_pending(k, seen, stato)
         if nuovi:
