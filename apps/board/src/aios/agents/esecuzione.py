@@ -35,6 +35,7 @@ def applica_o_accoda(kernel: Any, tool_name: str, actor: str,
     if autonomia_interna_attiva() and is_autonomous_internal(azione):
         res = kernel.execute_now(tool_name, actor=actor, args=proposta)
         esito = res.esito or {}
+        rip = proposta.get("_ripiego") or {}
         return "eseguita", {
             "titolo": str(proposta.get("titolo") or "")[:120],
             "reparto": actor,
@@ -42,6 +43,10 @@ def applica_o_accoda(kernel: Any, tool_name: str, actor: str,
             "op": esito.get("op") or azione.get("op") or "?",
             "ok": bool(res.eseguita_davvero),
             "errore": esito.get("errore"),
+            # Se l'azione voluta non era eseguibile, la riga scritta è un task
+            # generico: va detto, altrimenti passa per il lavoro chiesto.
+            "ripiego": ({"causa": rip.get("causa"),
+                         "tabella_voluta": rip.get("tabella_voluta")} if rip else None),
         }
     res = kernel.execute(tool_name, actor=actor, args=proposta)
     return "in_coda", res.approval_id
@@ -55,12 +60,24 @@ def riepilogo(eseguite: list[dict[str, Any]]) -> str:
         return ""
     ok = [e for e in eseguite if e.get("ok")]
     ko = [e for e in eseguite if not e.get("ok")]
+    # Ripiegate: scritte sì, ma come task generico invece dell'azione voluta. Contate
+    # a parte, o "4 scritture fatte" fa credere che il lavoro chiesto sia stato fatto.
+    ripiegate = [e for e in ok if e.get("ripiego")]
+    piene = [e for e in ok if not e.get("ripiego")]
     righe = []
-    if ok:
-        conteggio = Counter(f"{e['tabella']}" for e in ok)
+    if piene:
+        conteggio = Counter(f"{e['tabella']}" for e in piene)
         dettaglio = ", ".join(f"{t}×{n}" if n > 1 else t
                               for t, n in conteggio.most_common())
-        righe.append(f"✅ {len(ok)} scritture interne fatte da sole: {dettaglio}")
+        righe.append(f"✅ {len(piene)} scritture interne fatte da sole: {dettaglio}")
+    if ripiegate:
+        righe.append(f"↩️ {len(ripiegate)} proposte ripiegate a task "
+                     "(l'azione voluta non era eseguibile):")
+        for e in ripiegate:
+            r = e["ripiego"]
+            voluta = r.get("tabella_voluta") or "?"
+            righe.append(f"   · {e['titolo']} → {voluta}: "
+                         f"{r.get('causa') or 'causa non riportata'}")
     for e in ko:
         righe.append(f"⚠️ NON riuscita — {e['titolo']} ({e['tabella']}): "
                      f"{e.get('errore') or 'causa non riportata'}")

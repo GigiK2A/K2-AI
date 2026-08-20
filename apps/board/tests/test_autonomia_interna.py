@@ -130,3 +130,60 @@ def test_riepilogo_raggruppa_i_successi_e_dettaglia_i_fallimenti():
 
 def test_riepilogo_vuoto_se_non_c_e_niente_da_dire():
     assert esecuzione.riepilogo([]) == ""
+
+
+# ---- il ripiegamento a task non è più muto ----
+# Il 20 ago 2026 tutte e quattro le proposte di vendite (5 lead in pipeline_leads,
+# una battlecard, due report) sono diventate task generici, e all'owner è arrivato
+# «✅ 4 scritture interne fatte da sole: board_tasks×4». Nessuna traccia della causa.
+
+def test_ripiego_annotato_sulla_proposta_con_causa_e_tabella():
+    from aios.agents.domain import _ensure_action
+    p = {"titolo": "5 lead prioritari", "contenuto": "c", "motivo": "m",
+         "azione": {"tabella": "enablement", "op": "insert", "dati": {"x": 1}}}
+    az = _ensure_action(p)
+    assert az["tabella"] == "board_tasks"           # ripiegata
+    assert p["_ripiego"]["tabella_voluta"] == "enablement"
+    assert "allowlist" in p["_ripiego"]["causa"]
+    assert p["_ripiego"]["azione_originale"]["tabella"] == "enablement"
+
+
+def test_azione_valida_non_annota_ripiego():
+    from aios.agents.domain import _ensure_action
+    p = {"titolo": "t", "contenuto": "c", "azione": {
+        "tabella": "board_tasks", "op": "insert", "dati": {"title": "t"}}}
+    _ensure_action(p)
+    assert "_ripiego" not in p
+
+
+def test_riepilogo_separa_le_ripiegate_dalle_scritture_vere():
+    testo = esecuzione.riepilogo([
+        {"titolo": "Lead pipeline", "tabella": "board_tasks", "op": "insert", "ok": True,
+         "ripiego": {"causa": "tabella non in allowlist: enablement",
+                     "tabella_voluta": "enablement"}},
+        {"titolo": "Costo n8n", "tabella": "board_cost_items", "op": "insert", "ok": True,
+         "ripiego": None},
+    ])
+    assert "1 scritture interne fatte da sole: board_cost_items" in testo
+    assert "1 proposte ripiegate a task" in testo
+    assert "enablement" in testo
+    # e la ripiegata NON viene contata fra le scritture riuscite
+    assert "2 scritture interne" not in testo
+
+
+def test_audit_registra_il_ripiego_con_la_causa():
+    from aios.agents.domain import DomainAgent, DomainConfig
+    from aios.founder import default_founder_model
+    from aios.llm import FakeLLM
+    k = _kernel({"accettata": True})
+    llm = FakeLLM(responses=[
+        '{"proposte":[{"tipo":"x","titolo":"5 lead","contenuto":"c","motivo":"m",'
+        '"azione":{"tabella":"enablement","op":"insert","dati":{"a":1}}}]}'])
+    cfg = DomainConfig(name="legal", action=AZIONE, tool_name="azione",
+                       sensors=[], system="s")
+    agent = DomainAgent(kernel=k, llm=llm, founder=default_founder_model(), config=cfg)
+    agent.run()
+    ripieghi = [r for r in k.audit.records() if r.event == "ripiegata"]
+    assert len(ripieghi) == 1
+    assert ripieghi[0].detail["tabella_voluta"] == "enablement"
+    assert "allowlist" in ripieghi[0].detail["causa"]

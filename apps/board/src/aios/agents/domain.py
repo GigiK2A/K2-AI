@@ -64,28 +64,46 @@ def _as_dict_list(x) -> list[dict]:
 def _ensure_action(p: dict) -> dict:
     """Affidabilità attuatore: ogni proposta DEVE avere un'azione valida (allowlist).
     Se l'LLM ne ha data una valida → la tiene; altrimenti fallback deterministico =
-    crea un task operativo (board_tasks) con titolo+contenuto. Mai dipendere dall'LLM."""
+    crea un task operativo (board_tasks) con titolo+contenuto. Mai dipendere dall'LLM.
+
+    Quando ripiega annota su `p['_ripiego']` la causa e la tabella che l'agente
+    voleva toccare. Senza questo il ripiegamento era muto: il 20 ago tutte e quattro
+    le proposte di vendite (5 lead in pipeline_leads, una battlecard, due report)
+    sono diventate task generici e all'owner è arrivato «✅ 4 scritture interne
+    fatte da sole: board_tasks×4». Un difetto strutturale — tabella fuori allowlist,
+    sinonimo mancante — così non emerge mai."""
     from aios.actuator import (preflight, validate_ddl, ActuatorError,
                                is_external_action, segnaposto)
     az = p.get("azione")
+    causa: str | None = None
     if isinstance(az, dict):
         if is_external_action(az):     # azione esterna (n8n: pubblica/invia/social)
             # ma con segnaposto dentro non è spedibile: meglio un task che una mail
             # con "{{nome}}" al cliente.
-            if not segnaposto(az.get("payload") or az.get("dati") or {}):
+            ph = segnaposto(az.get("payload") or az.get("dati") or {})
+            if not ph:
                 return az
-        if az.get("tipo") == "ddl" or az.get("sql"):   # proposta di schema (DDL guardato)
+            causa = f"segnaposto non risolto nel payload: {ph}"
+        elif az.get("tipo") == "ddl" or az.get("sql"):  # proposta di schema (DDL guardato)
             try:
                 validate_ddl(str(az.get("sql", "")))
                 return az
-            except ActuatorError:
-                pass
+            except ActuatorError as exc:
+                causa = str(exc)
         else:
             try:
                 preflight(az)   # perimetro + i dati mappano su colonne reali
                 return az
-            except ActuatorError:
-                pass
+            except ActuatorError as exc:
+                causa = str(exc)
+    else:
+        causa = "nessuna azione nella proposta"
+    p["_ripiego"] = {
+        "causa": (causa or "azione non eseguibile")[:200],
+        "tabella_voluta": (str(az.get("tabella") or az.get("canale") or "")[:60]
+                           if isinstance(az, dict) else ""),
+        "azione_originale": az if isinstance(az, dict) else None,
+    }
     titolo = str(p.get("titolo") or p.get("tipo") or "Azione")[:120]
     note = str(p.get("contenuto") or "")
     if p.get("motivo"):
@@ -146,6 +164,24 @@ class DomainAgent:
 
     def _read(self, name, **a):
         return self.k.execute(name, actor=self.actor, args=a).result
+
+    def _audita_ripiego(self, p: dict) -> None:
+        """Traccia in audit ogni proposta degradata a task generico, con la causa.
+
+        Serve a far emergere la causa STRUTTURALE: se un reparto ripiega sempre sulla
+        stessa tabella mancante o sullo stesso sinonimo assente, si vede contando
+        questo evento invece di scoprirlo leggendo i task a mano."""
+        rip = p.get("_ripiego")
+        if not rip:
+            return
+        try:
+            self.k.audit.append(
+                action_key=self.cfg.action.key, event="ripiegata", actor=self.actor,
+                detail={"causa": rip.get("causa"),
+                        "tabella_voluta": rip.get("tabella_voluta"),
+                        "titolo": str(p.get("titolo") or "")[:160]})
+        except Exception:
+            pass  # l'audit rotto non deve fermare il reparto
 
     def _context(self) -> str:
         out = self.founder.to_prompt()
@@ -256,6 +292,7 @@ class DomainAgent:
         ids, eseguite = [], []
         for p in proposte:
             p["azione"] = _ensure_action(p)   # affidabilità: ogni proposta ha un'azione valida
+            self._audita_ripiego(p)
             # interno → si fa subito e si riporta; esterno/delete/DDL → in coda
             modo, out = esecuzione.applica_o_accoda(self.k, self.cfg.tool_name, self.actor, p)
             if modo == "eseguita":
