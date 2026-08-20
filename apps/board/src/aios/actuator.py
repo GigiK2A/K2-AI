@@ -141,6 +141,26 @@ _PLACEHOLDER = re.compile(
     re.IGNORECASE)
 
 
+# Contatti da manuale d'istruzioni. Nel dibattito del 20 ago Vendite proponeva
+# `test@k2ai.com` come lead: non è un segnaposto di template, quindi passava il controllo
+# qui sopra. Ma un indirizzo così in `pipeline_leads` è un lead che non esiste, e in una
+# campagna è un invio a vuoto. Elenco chiuso e ancorato: si bloccano gli indirizzi
+# d'esempio, non quelli veri — `mail@`, `info@` e `nome.cognome@` sono normalissimi in
+# Italia e NON devono finire qui dentro.
+_MAIL_FINTA = re.compile(
+    r"^(?:test|prova|esempio|example|sample|demo|dummy|foo|bar|abc|xxx|"
+    r"user|utente|nome|name|tuaemail|youremail)@"
+    r"|@(?:example\.(?:com|org|net)|test\.[a-z]+|esempio\.[a-z]+|"
+    r"domain\.[a-z]+|azienda\.[a-z]+|dominio\.[a-z]+)$",
+    re.IGNORECASE)
+# Solo i campi che sono davvero un contatto: altrove «test» è testo legittimo (il nome
+# di una campagna A/B, la nota di un task).
+_CAMPI_CONTATTO = ("email", "mail", "contatto", "contact", "destinatario", "recipient")
+# `to`/`cc` vanno confrontati per chiave ESATTA: come sottostringa prenderebbero
+# «totale», «photo_url», «account». Ed è proprio `to` il campo di una email che parte.
+_CHIAVI_CONTATTO = frozenset({"to", "a", "cc", "bcc", "reply_to", "from"})
+
+
 class ActuatorError(RuntimeError):
     pass
 
@@ -155,6 +175,29 @@ def segnaposto(valore: Any) -> str | None:
     if isinstance(valore, (list, tuple)):
         for v in valore:
             trovato = segnaposto(v)
+            if trovato:
+                return trovato
+    return None
+
+
+def contatto_finto(valore: Any) -> str | None:
+    """Primo contatto d'esempio trovato nei campi di contatto (ricorsivo), o None."""
+    if isinstance(valore, dict):
+        for chiave, v in valore.items():
+            nome = str(chiave).lower().strip()
+            e_contatto = nome in _CHIAVI_CONTATTO or any(c in nome
+                                                         for c in _CAMPI_CONTATTO)
+            if isinstance(v, str) and e_contatto:
+                if _MAIL_FINTA.search(v.strip()):
+                    return v.strip()
+            elif isinstance(v, (dict, list, tuple)):
+                trovato = contatto_finto(v)
+                if trovato:
+                    return trovato
+        return None
+    if isinstance(valore, (list, tuple)):
+        for v in valore:
+            trovato = contatto_finto(v)
             if trovato:
                 return trovato
     return None
@@ -176,6 +219,10 @@ def validate(action: dict[str, Any]) -> tuple[str, str, dict, dict]:
     ph = segnaposto(data) or segnaposto(match)
     if ph:
         raise ActuatorError(f"valore segnaposto non risolto: {ph}")
+    # Contatto d'esempio: un lead con `test@…` è un lead che non esiste.
+    finto = contatto_finto(data)
+    if finto:
+        raise ActuatorError(f"contatto d'esempio, non un contatto reale: {finto}")
     # delete consentita SOLO sotto approvazione umana (apply_action gira all'approve),
     # con match obbligatorio (niente cancellazioni di massa) e MAI su registri immutabili.
     if op == "delete":
@@ -457,6 +504,10 @@ def apply_action(client: Any, action: dict[str, Any]) -> dict[str, Any]:
         if ph:
             return {"ok": False, "canale": "n8n", "workflow": wf,
                     "errore": f"segnaposto non risolto nel payload: {ph}"}
+        finto = contatto_finto(payload)
+        if finto:
+            return {"ok": False, "canale": "n8n", "workflow": wf,
+                    "errore": f"destinatario d'esempio, non reale: {finto}"}
         out = trigger_n8n(wf, payload if isinstance(payload, dict) else {})
         return {"ok": bool(out.get("ok")), "canale": "n8n", "workflow": wf, "esito": out}
     table, op, match, data = validate(action)
