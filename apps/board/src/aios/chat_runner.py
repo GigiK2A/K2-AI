@@ -50,7 +50,12 @@ _CHAT_PREAMBLE = (
     "tuoi tool sensore (nomi che iniziano per 'leggi_'), poi — se l'istruzione è "
     "corretta e fattibile — AGISCI chiamando il tool `esegui`. Non inventare numeri: "
     "usa solo ciò che leggi. Se un'azione non è nel tuo perimetro, spiega perché. "
-    "Chiudi con una frase che dice cosa hai fatto o proposto."
+    "Chiudi con una frase che dice cosa hai fatto o proposto.\n"
+    "CONTA PRIMA DI DIRE «FATTO». Se l'istruzione riguarda N elementi, riporta «fatte X "
+    "su N» e ELENCA quelli che NON hai fatto, con il motivo. Non usare «tutti», «tutte» "
+    "o «completato» se X è minore di N: dire che sei a metà è utile, dire che hai finito "
+    "quando non è vero manda l'owner a valle con dati sbagliati. Se ti sei fermato prima "
+    "della fine (troppi elementi in un turno) dillo e proponi di continuare."
 )
 
 _ESEGUI_DEF = {
@@ -152,6 +157,29 @@ _CALCOLA_DEF = {
 }
 # I calcolatori vendorizzati coprono finanza/fisco → tool esposto a questi reparti.
 _CALCOLA_DOMINI = {"finance"}
+
+
+def conteggio(azioni: list[dict]) -> str:
+    """Riga finale col conto REALE delle azioni del turno, scritta dal codice.
+
+    Il 20 ago 2026 Vendite ha creato 6 lead su 10 e ha chiuso con «tutti i lead sono
+    stati inseriti correttamente»: vero su quello che aveva fatto, falso sul lavoro
+    chiesto. Il modello racconta, questa riga conta — e la conta finisce anche nello
+    storico e nel messaggio Telegram, non solo nella lista azioni del cockpit."""
+    if not azioni:
+        return ""
+    fatte = sum(1 for a in azioni if a.get("stato") == "eseguito")
+    male = sum(1 for a in azioni if a.get("stato") == "non_riuscito")
+    attesa = sum(1 for a in azioni if a.get("stato") == "da_confermare")
+    no = sum(1 for a in azioni if a.get("stato") == "rifiutato")
+    voci = [f"{fatte} eseguite"]
+    if male:
+        voci.append(f"{male} NON riuscite")
+    if attesa:
+        voci.append(f"{attesa} in attesa di conferma")
+    if no:
+        voci.append(f"{no} rifiutate")
+    return "\n\n— azioni di questo turno: " + ", ".join(voci) + "."
 # Chi possiede la pipeline commerciale: cercare clienti può chiunque, la scheda
 # prospect la scrivono solo questi due.
 _DOMINI_PROSPECT = {"marketing", "vendite"}
@@ -359,10 +387,21 @@ class ChatAgent:
             else:                       # internal_auto → esegui ORA
                 try:
                     out = router._exec_internal(az, self.actor)
-                    rec = {"stato": "eseguito", "descrizione": descr,
-                           "tabella": az.get("tabella"), "op": az.get("op"), "esito": out}
+                    # «eseguito» solo se è andata DAVVERO: l'attuatore torna ok=False
+                    # quando l'update non tocca nessuna riga o un canale esterno
+                    # rifiuta. Marcarla comunque eseguita è come dirlo all'owner: è il
+                    # bug da cui è partito tutto. `non_riuscito` è distinto da
+                    # `rifiutato` (fuori perimetro) perché la mossa giusta è diversa:
+                    # qui si corregge il dato e si riprova, là no.
+                    ok = bool(out.get("ok", True))
+                    rec = {"stato": "eseguito" if ok else "non_riuscito",
+                           "descrizione": descr, "tabella": az.get("tabella"),
+                           "op": az.get("op"), "esito": out}
+                    if not ok:
+                        rec["motivo"] = str(out.get("errore") or "nessuna riga scritta")[:160]
                 except Exception as exc:
-                    rec = {"stato": "rifiutato", "descrizione": descr,
+                    rec = {"stato": "non_riuscito", "descrizione": descr,
+                           "tabella": az.get("tabella"), "op": az.get("op"),
                            "motivo": str(exc)[:160]}
         self.azioni.append(rec)
         return rec
@@ -514,7 +553,9 @@ class ChatAgent:
                     tools=self._tool_defs(), tool_exec=self._exec_tool,
                     web_search=bool(self.orch.web), history=hist, media=self.media):
                 if ev.get("phase") == "done":
-                    ev = {**ev, "azioni": list(self.azioni)}
+                    azioni = list(self.azioni)
+                    ev = {**ev, "azioni": azioni,
+                          "text": (ev.get("text") or "") + conteggio(azioni)}
                 yield ev
         except Exception as exc:
             yield {"phase": "error", "error": str(exc)[:200]}

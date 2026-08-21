@@ -191,9 +191,24 @@ class CommandRouter:
         return "internal_confirm" if table in CHAT_CONFIRM_TABLES else "internal_auto"
 
     def _exec_internal(self, az: dict, actor: str) -> dict:
-        res = apply_action(self._client, az)
-        self._audit("integrazioni.comando", "executed", actor,
-                    {"azione": {k: az.get(k) for k in ("tabella", "op")}, "esito": res.get("ok")})
+        """Esegue un'azione interna e la REGISTRA, riuscita o no.
+
+        Prima l'audit stava dopo `apply_action`: un 400 solleva, quindi le azioni
+        fallite non lasciavano NESSUNA traccia. Il 20 ago 2026 Vendite ha provato dieci
+        volte a creare un lead, PostgREST ha risposto 400 ogni volta e in `aios_audit`
+        c'erano solo i `read`: per trovare la causa è servito riprodurre l'inserimento a
+        mano. E l'evento era `executed` fisso, anche a esito negativo."""
+        anagrafica = {k: az.get(k) for k in ("tabella", "op", "canale", "workflow")}
+        try:
+            res = apply_action(self._client, az)
+        except Exception as exc:
+            self._audit("integrazioni.comando", "failed", actor,
+                        {"azione": anagrafica, "errore": str(exc)[:400]})
+            raise
+        ok = bool(res.get("ok", True))
+        self._audit("integrazioni.comando", "executed" if ok else "failed", actor,
+                    {"azione": anagrafica, "esito": res.get("ok"),
+                     "errore": res.get("errore")})
         return res
 
     def _audit(self, key: str, event: str, actor: str, detail: dict) -> None:

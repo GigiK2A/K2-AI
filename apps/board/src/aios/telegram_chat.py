@@ -79,12 +79,18 @@ def _salva(client: Any, sid: str | None, role: str, testo: str,
 
 def _card_azioni(azioni: list[dict]) -> None:
     """Le azioni del turno con gli stessi bottoni di conferma di prima: la chat mette in
-    coda i casi sensibili col token `cmdok:`, che il poller già gestisce."""
+    coda i casi sensibili col token `cmdok:`, che il poller già gestisce.
+
+    Le `non_riuscito` (tentate e andate male) vanno nella stessa colonna di quelle
+    rifiutate: per l'owner contano allo stesso modo — non è stato fatto — ma il motivo
+    dice che è un errore da correggere, non un divieto."""
     if not azioni:
         return
+    fallite = [{**a, "motivo": f"non riuscito: {a.get('motivo') or 'errore'}"}
+               for a in azioni if a.get("stato") == "non_riuscito"]
     telegram.send_command_card({
         "eseguite": [a for a in azioni if a.get("stato") == "eseguito"],
-        "rifiutate": [a for a in azioni if a.get("stato") == "rifiutato"],
+        "rifiutate": [a for a in azioni if a.get("stato") == "rifiutato"] + fallite,
         "da_confermare": [a for a in azioni if a.get("stato") == "da_confermare"]})
 
 
