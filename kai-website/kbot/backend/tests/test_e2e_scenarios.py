@@ -637,10 +637,18 @@ def test_message_empty_payload_returns_400(client):
 # 14. Long conversation — compact applied
 # ---------------------------------------------------------------------------
 
-def test_long_conversation_compacted_history_sent_to_claude(client, fake_anthropic):
+def test_long_conversation_history_bounded_but_not_mutilated(client, fake_anthropic):
+    """La finestra è limitata da un BUDGET, e i messaggi che ci stanno restano INTERI.
+
+    Prima questo test fissava la vecchia politica (12 messaggi × 900 char): ogni messaggio
+    veniva troncato a 900 caratteri, comprese le analisi del bot, che rientravano nel
+    contesto mutilate. Ora si verifica l'invariante nuova: tetto complessivo rispettato,
+    nessun troncamento sotto il tetto per-messaggio, finestra che apre su un turno utente
+    (l'API rifiuta una conversazione che inizia con `assistant`).
+    """
+    from app.settings import HISTORY_CHAR_BUDGET, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS
+
     sid = _make_session(client)
-    # 15 turns. Each /message persists user + assistant, so after N posts we'll
-    # have ≤ 2N msgs. We only need to verify compaction caps history.
     for i in range(15):
         r = client.post("/api/kbot/message", json={
             "session_id": sid,
@@ -648,12 +656,17 @@ def test_long_conversation_compacted_history_sent_to_claude(client, fake_anthrop
         })
         assert r.status_code == 200
 
-    # Last call's `messages` (history) should be ≤ MAX_HISTORY_MESSAGES (12).
-    last = FakeAnthropic.captured_calls[-1]
-    hist = last["messages"]
-    assert len(hist) <= 12, f"history not capped: {len(hist)}"
+    hist = FakeAnthropic.captured_calls[-1]["messages"]
+    assert hist, "finestra vuota"
+    assert len(hist) <= MAX_HISTORY_MESSAGES, f"finestra non limitata: {len(hist)}"
     for m in hist:
-        assert len(m["content"]) <= 900
+        assert len(m["content"]) <= MAX_MESSAGE_CHARS
+    # Il budget può essere sforato solo dall'ultimo messaggio, che entra sempre.
+    assert sum(len(m["content"]) for m in hist[:-1]) <= HISTORY_CHAR_BUDGET
+    assert hist[0]["role"] == "user", "la finestra deve aprire su un turno utente"
+    # Il punto della modifica: un messaggio da ~1500 char NON viene tagliato a 900.
+    assert any(len(m["content"]) > 900 for m in hist), \
+        "messaggi ancora troncati alla vecchia soglia"
 
 
 # ---------------------------------------------------------------------------

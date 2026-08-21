@@ -12,6 +12,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ..lib import conversations_index, sessions
 from ..lib.auth import AuthUser, require_user
 from ..lib.supabase_admin import get_admin_client
 
@@ -67,13 +68,24 @@ def _check_owner(row: dict, user: AuthUser) -> None:
 @router.get("/conversations")
 def list_conversations(user: AuthUser = Depends(require_user)) -> dict:
     client = get_admin_client()
+    # Recupero delle sessioni orfane PRIMA di leggere: una chat esistente in kbot_sessions
+    # ma senza riga qui era invisibile in cronologia (visibile solo in dashboard, che legge
+    # /sessions). Best-effort: se fallisce, si prosegue con la lista che c'è.
+    try:
+        conversations_index.backfill_orphan_sessions(
+            user.id, sessions.list_user_sessions(user.id, limit=100))
+    except Exception:
+        log.warning("recupero sessioni orfane fallito (fail-open)", exc_info=True)
     try:
         res = (
             client.table(TABLE)
             .select("*")
             .eq("user_id", user.id)
             .is_("deleted_at", "null")
-            .order("created_at", desc=True)
+            # Ordinamento per ULTIMA ATTIVITÀ, non per creazione: una conversazione ripresa
+            # oggi deve stare in cima. `updated_at` viene toccato a ogni turno di chat
+            # (lib/conversations_index.touch_by_session).
+            .order("updated_at", desc=True)
             .limit(100)
             .execute()
         )

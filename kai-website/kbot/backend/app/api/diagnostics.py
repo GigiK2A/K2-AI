@@ -43,6 +43,38 @@ def _check_supabase() -> Dict[str, Any]:
         return {"status": "error", "error": exc.__class__.__name__, "msg": str(exc)[:200]}
 
 
+def _check_memory_tables() -> Dict[str, Any]:
+    """Le tabelle della memoria esistono davvero?
+
+    Sia `profile.load()` (memoria cross-sessione) sia `list_conversations` (cronologia)
+    sono fail-open: se la tabella manca loggano e proseguono. Il risultato è una feature
+    spenta senza che nulla lo dica. Qui la si vede: `missing` elenca cosa va creato
+    (migration 007 per kbot_conversations, 008 per kbot_client_memory).
+    """
+    try:
+        from ..lib.supabase_admin import get_admin_client
+
+        client = get_admin_client()
+        missing = []
+        for table in ("kbot_client_memory", "kbot_conversations"):
+            try:
+                client.table(table).select("*").limit(1).execute()
+            except Exception as exc:
+                from ..lib.conversations_index import is_missing_table_error
+
+                if is_missing_table_error(exc):
+                    missing.append(table)
+                else:
+                    return {"status": "error", "error": exc.__class__.__name__,
+                            "msg": str(exc)[:200]}
+        if missing:
+            return {"status": "error", "missing": missing,
+                    "msg": "memoria/cronologia disattivate in silenzio: applica le migration"}
+        return {"status": "ok"}
+    except Exception as exc:
+        return {"status": "error", "error": exc.__class__.__name__, "msg": str(exc)[:200]}
+
+
 def _check_anthropic() -> Dict[str, Any]:
     if not ANTHROPIC_API_KEY:
         return {"status": "error", "error": "MissingApiKey"}
@@ -121,6 +153,7 @@ def diagnostics(
 
     checks = {
         "supabase": _check_supabase(),
+        "memory_tables": _check_memory_tables(),
         "anthropic": _check_anthropic(),
         "pdfplumber": _check_pdfplumber(),
         "reportlab": _check_reportlab(),

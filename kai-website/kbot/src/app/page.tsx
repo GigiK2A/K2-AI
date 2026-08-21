@@ -387,12 +387,30 @@ export default function HomePage() {
     }
   }
 
+  /* Rinomina dalla sidebar. Prima aggiornava SOLO lo stato locale: al refresh il titolo
+     tornava quello vecchio, perché la riga remota non veniva mai toccata (a differenza del
+     titolo automatico in maybeSetTitle, che invece si salva). */
   function handleRenameConversation(convId: string, nextTitle: string) {
     const clean = nextTitle.trim().slice(0, 80);
     if (!clean) return;
+    let remoteIdToSync: string | null | undefined;
     setConversations((prev) =>
-      prev.map((c) => (c.id === convId ? { ...c, title: clean } : c)),
+      prev.map((c) => {
+        if (c.id !== convId) return c;
+        remoteIdToSync = c.remoteId;
+        return { ...c, title: clean };
+      }),
     );
+    if (remoteIdToSync && isSignedIn) {
+      void (async () => {
+        try {
+          const token = await getToken();
+          if (token) await updateRemoteConversation(token, remoteIdToSync!, { title: clean });
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 
   function toggleForcedSkill(name: string) {

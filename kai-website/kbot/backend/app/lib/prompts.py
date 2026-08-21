@@ -5,9 +5,14 @@ import json
 import re
 from typing import List, Optional
 
-from ..settings import CHAT_SYSTEM_MAX_CHARS
+from ..settings import (
+    CHAT_SYSTEM_MAX_CHARS,
+    HISTORY_CHAR_BUDGET,
+    PROMPT_CACHE_ENABLED,
+)
 from .skills import load_skill_bundle
 from . import profile as profile_mod
+from . import conversation_memory
 from . import rag, signals, strategy_alternatives, client_profile, privacy_case
 
 REPORT_TYPES_OVERVIEW = """TIPI DI ANALISI / REPORT che puoi produrre (K-BOT PREMIUM = SOLO analisi e report, NON proporre automazioni o implementazioni software):
@@ -68,8 +73,16 @@ UNICO CONFINE — cosa NON fai:
   bilancio. Le simulazioni post-fusione dille chiaramente non disponibili in self-service."""
 
 
-def build_system_prompt_v2(skill_names: List[str], session: dict,
-                           required_fields_hint: str = "") -> str:
+def _assemble_system_parts(skill_names: List[str], session: dict,
+                           required_fields_hint: str = "") -> tuple[str, str]:
+    """Costruisce il system prompt in due parti: (STABILE, VOLATILE).
+
+    STABILE = il bundle skill. Non dipende dal turno, quindi è l'UNICO prefisso su cui il
+    prompt caching può fare cache-hit (le letture da cache costano 0,1×). VOLATILE = tutto
+    il resto: gate di fase, stato diagnostico, sintesi, RAG, profilo, hint — cambia ogni
+    turno per costruzione. L'ordine canonico è stabile-poi-volatile: un prefisso cacheabile
+    funziona solo se sta all'inizio, e qualunque byte che lo precede e cambia lo invalida.
+    """
     skill_content = load_skill_bundle(
         skill_names,
         max_total_chars=CHAT_SYSTEM_MAX_CHARS,
@@ -314,10 +327,16 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
     # consulenza continuativa e personalizzata.
     profile_context = profile_mod.render_block(session.get("_profilo"))
 
+    # SINTESI PROGRESSIVA della conversazione: ciò che è uscito dalla finestra verbatim non
+    # è perso, vive qui (fatti, numeri, decisioni, punti aperti). Prodotta e persistita da
+    # lib/conversation_memory.py; qui viene solo resa. Senza questo blocco, al superamento
+    # della finestra il bot ri-chiedeva dati già dati e perdeva il filo del problema.
+    rolling_summary_context = conversation_memory.render_block(collected)
+
     base_prompt = f"""Sei K-BOT, il consulente AI di K2-AI per PMI, professionisti e partite IVA italiane.
 Copri i temi d'impresa a 360°: legale, finanza, fisco, organizzazione, HR, marketing, strategia, operations, gestione quotidiana. Il tuo obiettivo è essere il punto di riferimento dell'imprenditore: un consulente sempre disponibile che aiuta a capire i problemi e a decidere — e che SOLO QUANDO SERVE produce un'analisi professionale approfondita (report premium). PRINCIPIO GUIDA: prima consulente, poi generatore di report.
 
-PRINCIPIO DI CONOSCENZA (il più importante — definisce cosa vale K-BOT): il valore di K-BOT NON è la conoscenza del modello, è la CONOSCENZA CURATA di K2-AI: le competenze di dominio (le skill qui sotto) e le fonti verificate (corpus normativo, ricerca web, dati reali). Il tuo compito è ANDARE A PRENDERE le informazioni dalla conoscenza disponibile e COMPORRE una risposta — non attingere alla tua memoria. Regole ferree: (1) METODO, struttura e ragionamento vengono dalle SKILL; (2) i FATTI SPECIFICI — numeri, aliquote, scadenze, termini, durate, importi, articoli di legge, nomi — vengono SOLO dalle fonti fornite o recuperate ('DATI VERIFICATI DA RICERCA WEB', file/URL caricati, corpus); (3) se un fatto specifico NON è nella conoscenza disponibile, NON prenderlo dalla tua memoria: dillo apertamente («questo dato va verificato sulla fonte ufficiale / sul tuo CCNL») e, se utile, offri di verificarlo. Meglio dichiarare «va verificato» che dare un numero preciso ma non ancorato a una fonte: un numero inventato distrugge la credibilità, un rimando alla fonte la costruisce.
+PRINCIPIO DI CONOSCENZA (il più importante — definisce cosa vale K-BOT): il valore di K-BOT NON è la conoscenza del modello, è la CONOSCENZA CURATA di K2-AI: le competenze di dominio (le skill caricate all'inizio di questo prompt) e le fonti verificate (corpus normativo, ricerca web, dati reali). Il tuo compito è ANDARE A PRENDERE le informazioni dalla conoscenza disponibile e COMPORRE una risposta — non attingere alla tua memoria. Regole ferree: (1) METODO, struttura e ragionamento vengono dalle SKILL; (2) i FATTI SPECIFICI — numeri, aliquote, scadenze, termini, durate, importi, articoli di legge, nomi — vengono SOLO dalle fonti fornite o recuperate ('DATI VERIFICATI DA RICERCA WEB', file/URL caricati, corpus); (3) se un fatto specifico NON è nella conoscenza disponibile, NON prenderlo dalla tua memoria: dillo apertamente («questo dato va verificato sulla fonte ufficiale / sul tuo CCNL») e, se utile, offri di verificarlo. Meglio dichiarare «va verificato» che dare un numero preciso ma non ancorato a una fonte: un numero inventato distrugge la credibilità, un rimando alla fonte la costruisce.
 
 DUE MODALITÀ — decidi TU turno per turno, senza mai chiederlo all'utente:
 1) CONSULENZA IMMEDIATA (default). La richiesta è una domanda puntuale, un chiarimento, un consiglio operativo, un dubbio che si risolve con una risposta breve (es. «posso licenziare un dipendente in prova?», «meglio SRL o ditta individuale?», «come riduco i tempi di incasso?», «un cliente non paga, cosa faccio?», «quali KPI dovrei monitorare?»): RISPONDI SUBITO, in chat, come farebbe un consulente. Risposta concreta e pratica (max 8-10 righe), con rischi e opportunità dove rilevanti e, se utile, i 2-3 passi successivi. Al massimo UNA domanda di chiarimento, e SOLO se senza è impossibile rispondere. In questa modalità NON raccogliere dati in modo strutturato, NON proporre report, NON nominare il report né il prezzo (nemmeno di sfuggita), NON emettere CONSULENZA_SUMMARY. Dare valore gratis È il servizio: è ciò che fa tornare l'utente.
@@ -419,7 +438,7 @@ URGENZA > COMPLETEZZA (ma NON > CORRETTEZZA): se l'utente segnala una situazione
 TRIGGER PROCEDI — applicabile con QUALUNQUE di queste forme: "vai", "procedi", "procediamo", "fai il report", "fammi il report", "voglio il report", "basta domande", "salta le domande", "fai senza domande", "ok procedi", "dai procedi". Quando arriva il trigger letterale, emetti subito CONSULENZA_SUMMARY (vedi sotto), anche se hai solo 2 turni.
 {required_fields_hint}
 NON sei un consulente di automazione. NON proporre agenti AI, microapp, automazioni, integrazioni software o implementazioni. Il tuo output è ESCLUSIVAMENTE un documento di analisi scritto.
-{service_context}{strategy_context}{privacy_context}{audit_context}{profile_calibration}{context_interpretation}{diagnosi_context}{profile_context}{url_context}{attachments_section}
+{service_context}{strategy_context}{privacy_context}{audit_context}{profile_calibration}{context_interpretation}{diagnosi_context}{rolling_summary_context}{profile_context}{url_context}{attachments_section}
 STILE CONVERSAZIONALE — consulente senior, NON generatore di checklist (review dialogo lungo). Stai PARLANDO con un imprenditore, non compilando un report: costruisci una vera conversazione.
 • NON ogni risposta è una lista. Il pattern «introduzione → elenco numerato → conclusione → prossimi passi» ad ogni turno è prevedibile e poco naturale. Spesso è meglio RAGIONARE col cliente: spiega perché un dubbio conta, collegalo a ciò che è già emerso, approfondisci il rischio principale — e SOLO se serve suggerisci verifiche. La checklist è uno strumento, non il formato standard.
 • LUNGHEZZA ∝ COMPLESSITÀ: poche frasi se bastano, più lunga quando serve. Mai una lunghezza da schema fisso.
@@ -556,7 +575,7 @@ l'utente lo chiede. Se stai ancora chiedendo un dato per confermare, NON dichiar
                 "VIETATO in questo messaggio, in ENTRAMBE le modalità: emettere il blocco "
                 "CONSULENZA_SUMMARY, produrre il report, dire che stai generando.\n\n"
             )
-        return f"{_gate}{base_prompt}\n\n{skill_content}"
+        return skill_content, f"{_gate}{base_prompt}"
     # SINTESI PERIODICA (review dialogo lungo): ~ogni 4 turni da >=5, ricorda al consulente
     # di fermarsi, sintetizzare cosa ha capito e gerarchizzare il rischio principale, invece
     # di rispondere solo all'ultima domanda. Nudge deterministico, non a ogni turno.
@@ -568,8 +587,45 @@ l'utente lo chiede. Se stai ancora chiedendo un dato per confermare, NON dichiar
             "Y, ma mi sembra che il vero nodo sia Z»); se un rischio è ormai predominante, "
             "dillo e subordina ad esso le prossime analisi. Poi prosegui. Mostra che stai "
             "costruendo un modello della situazione, non solo rispondendo.\n\n")
-        return f"{_synth}{base_prompt}\n\n{skill_content}"
-    return f"{base_prompt}\n\n{skill_content}"
+        return skill_content, f"{_synth}{base_prompt}"
+    return skill_content, base_prompt
+
+
+def build_system_prompt_v2(skill_names: List[str], session: dict,
+                           required_fields_hint: str = "") -> str:
+    """System prompt come stringa unica (ordine canonico: skill, poi il resto)."""
+    stable, volatile = _assemble_system_parts(skill_names, session, required_fields_hint)
+    return f"{stable}\n\n{volatile}" if stable else volatile
+
+
+def build_system_blocks(skill_names: List[str], session: dict,
+                        required_fields_hint: str = "") -> List[dict]:
+    """Lo stesso prompt in BLOCCHI, con `cache_control` sul prefisso stabile.
+
+    Il contenuto è identico byte per byte a `build_system_prompt_v2` (stessa funzione di
+    assemblaggio): l'unica differenza è che il bundle skill viaggia in un blocco proprio,
+    marcato per la cache. Su Haiku 4.5 il prefisso minimo cacheabile è 4096 token: sotto
+    soglia l'API accetta il marker e semplicemente non cachea — nessun errore.
+    """
+    stable, volatile = _assemble_system_parts(skill_names, session, required_fields_hint)
+    blocks: List[dict] = []
+    if stable:
+        block: dict = {"type": "text", "text": stable}
+        if PROMPT_CACHE_ENABLED:
+            block["cache_control"] = {"type": "ephemeral"}
+        blocks.append(block)
+    blocks.append({"type": "text", "text": volatile})
+    return blocks
+
+
+def append_system_text(blocks: List[dict], text: str) -> List[dict]:
+    """Appende testo al blocco VOLATILE (l'ultimo). MAI al prefisso cacheato: cambiargli
+    un byte lo renderebbe una cache-key diversa, azzerando gli hit."""
+    if not text:
+        return blocks
+    out = [dict(b) for b in blocks]
+    out[-1] = {**out[-1], "text": f"{out[-1].get('text', '')}{text}"}
+    return out
 
 
 # Le regex di governo vivono in signals.py (SSOT testata) — qui restano solo le
@@ -643,6 +699,46 @@ def normalize_assistant_reply(raw: str) -> str:
     # NO hard truncation: K-BOT premium produce report da migliaia di caratteri.
     # Il tetto 1200 char era pensato per chat brevi e segava i report a metà.
     return text
+
+
+def build_history(messages: List[dict], max_messages: int, max_chars_per_message: int,
+                  char_budget: int = HISTORY_CHAR_BUDGET) -> List[dict]:
+    """Finestra di conversazione a BUDGET di caratteri, con messaggi INTERI.
+
+    Sostituisce `compact_messages(msgs, 12, 900)` nel path chat. Il vecchio comportamento
+    troncava OGNI messaggio a 900 caratteri — comprese le analisi prodotte dal bot, che
+    rientravano nel contesto mutilate a un quinto — e teneva solo 12 messaggi su una
+    finestra modello da 200k token. Qui: si scorre dal più recente al più vecchio e si
+    prendono messaggi interi finché stanno nel budget; si tronca solo il singolo messaggio
+    che da solo sfonda il tetto per-messaggio. Ciò che resta fuori non è perso: lo raccoglie
+    la sintesi progressiva (lib/conversation_memory.py).
+
+    Garantisce anche che la finestra INIZI con un turno utente: l'API rifiuta una
+    conversazione che apre con `assistant`, e una finestra a budget può cadere lì in mezzo.
+    """
+    picked: List[dict] = []
+    used = 0
+    for m in reversed(messages or []):
+        if len(picked) >= max(1, max_messages):
+            break
+        role = m.get("role")
+        if role not in ("user", "assistant"):
+            continue
+        content = str(m.get("content") or "")
+        if not content.strip():
+            continue
+        if len(content) > max_chars_per_message:
+            content = content[: max_chars_per_message - 1].rstrip() + "…"
+        # Il messaggio più recente entra sempre, anche se da solo supera il budget:
+        # senza di lui non c'è turno da processare.
+        if picked and used + len(content) > char_budget:
+            break
+        picked.append({"role": role, "content": content})
+        used += len(content)
+    out = list(reversed(picked))
+    while out and out[0]["role"] != "user":
+        out.pop(0)
+    return out
 
 
 def compact_messages(messages: List[dict], max_messages: int, max_chars_per_message: int) -> List[dict]:

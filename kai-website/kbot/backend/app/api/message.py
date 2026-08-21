@@ -11,11 +11,13 @@ import re as _re
 from typing import List, Optional
 
 import anthropic
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..lib import sessions, engine, readiness, web_search, quality_gate
+from ..lib import conversation_memory
+from ..lib import conversations_index
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib import profile as profile_lib
@@ -23,8 +25,9 @@ from ..lib import fact_grounding
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
-    build_system_prompt_v2,
-    compact_messages,
+    append_system_text,
+    build_history,
+    build_system_blocks,
     extract_summary,
     normalize_assistant_reply,
     sanitize_unverified_legal_citations,
@@ -34,6 +37,7 @@ from ..lib.services import normalize_service_id, resolve_skills_for_session
 from ..settings import (
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL,
+    HISTORY_CHAR_BUDGET,
     MAX_HISTORY_MESSAGES,
     MAX_MESSAGE_CHARS,
 )
@@ -406,6 +410,7 @@ async def _required_fields_hint(collected: dict) -> str:
 async def post_message(
     request: Request,
     body: MessageBody,
+    background: BackgroundTasks,
     user: Optional[AuthUser] = Depends(optional_user),
 ):
     session = sessions.get_session(body.sessionId)
@@ -448,9 +453,12 @@ async def post_message(
                 skills.append(fs)
                 seen.add(fs)
     req_hint = await _required_fields_hint(collected)
-    system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
+    # System prompt in BLOCCHI: il bundle skill viaggia in un blocco proprio marcato per la
+    # cache (letture a 0,1×), tutto ciò che cambia ogni turno resta nel blocco volatile —
+    # appenderlo al blocco cacheato ne cambierebbe i byte e azzererebbe gli hit.
+    system_prompt = build_system_blocks(skills, session_for_prompt, required_fields_hint=req_hint)
     if web_search.enabled():
-        system_prompt += web_search.SYSTEM_HINT
+        system_prompt = append_system_text(system_prompt, web_search.SYSTEM_HINT)
     # GROUNDING FORZATO (filosofia: la risposta si costruisce dalla CONOSCENZA, non dalla
     # memoria del modello): fatto specifico, conformità, provider nominato o richiesta
     # esplicita → il server recupera la fonte PRIMA del turno e la inietta (il contesto
@@ -459,8 +467,9 @@ async def post_message(
                            if isinstance(m, dict) and m.get("role") == "user")[-1500:]
     _gb = await asyncio.to_thread(fact_grounding.ground_block, last_user_text, _recent_ctx)
     if _gb:
-        system_prompt += _gb
-    history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
+        system_prompt = append_system_text(system_prompt, _gb)
+    history = build_history(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS,
+                           HISTORY_CHAR_BUDGET)
 
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
@@ -493,8 +502,13 @@ async def post_message(
     # Finalize CONDIVISA (stessa catena del path streaming): forced-summary + quality gate.
     raw_text = _postprocess_turn(client, system_prompt, history, merged_messages, raw_text, collected)
     usage = getattr(result, "usage", None)
-    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected)
-    _persist_diagnosi(collected, diagnosi)
+    # Persist: STESSA funzione del path streaming. Prima era duplicata qui in linea, ed è
+    # esattamente il tipo di divergenza che questo file documenta a ogni commento («il
+    # fallback readiness esisteva solo sullo streaming»): ora memoria di conversazione,
+    # tocco su `updated_at` e sintesi progressiva girano per costruzione su entrambi i path.
+    user_visible, summary, updated = _persist_assistant_turn(
+        session, body.sessionId, merged_messages, collected, raw_text, skills
+    )
     _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
     track_server(
         distinct_id=body.sessionId,
@@ -503,50 +517,23 @@ async def post_message(
             "role": "assistant",
             "tokens_in": getattr(usage, "input_tokens", None) if usage else None,
             "tokens_out": getattr(usage, "output_tokens", None) if usage else None,
+            "cache_read": getattr(usage, "cache_read_input_tokens", None) if usage else None,
+            "cache_write": getattr(usage, "cache_creation_input_tokens", None) if usage else None,
             "model": ANTHROPIC_MODEL,
             # telemetria qualità chat: quanti turni serve l'intake, quando esce il summary,
             # se il bot mantiene lo stato diagnostico — per vedere i trend senza stress test.
+            # cache_read/cache_write: se cache_read resta a 0 turno dopo turno, il prefisso
+            # stabile non sta facendo hit (qualcosa lo precede e cambia).
             "user_turns": _user_turns,
             "summary_emitted": bool(summary),
-            "diagnosi_tracked": bool(diagnosi),
+            "diagnosi_tracked": bool(signals.DIAGNOSI_RE.search(raw_text)),
+            "history_msgs": len(history),
+            "history_chars": sum(len(m.get("content") or "") for m in history),
         },
     )
-
-    # Persist updated state.
-    updated_messages = sessions.append_messages(
-        {**session, "messages": merged_messages},
-        [{"role": "assistant", "content": user_visible}],
-    )
-    if summary:
-        collected.update(
-            {
-                k: v
-                for k, v in summary.items()
-                if v is not None and v != ""
-            }
-        )
-        collected["extractedData"] = {**(collected.get("extractedData") or {}), **summary}
-        collected["analysis_ready"] = True
-        _apply_summary_contract(collected, summary)
-    # Boost ricalcolato FUORI da `if summary:`, a OGNI turno, sull'intento corrente
-    # (come le skill): chiude l'asimmetria che lasciava un boost stantio sul bottone.
-    _recompute_boost(collected, merged_messages, summary)
-
-    # Always expose the skills used in this turn so the UI can render them.
-    existing_extracted = dict(collected.get("extractedData") or {})
-    existing_extracted["used_skills"] = list(skills)
-    collected["extractedData"] = existing_extracted
-
-    new_step = int(session.get("step") or 1) + 1
-    updated = sessions.update_session(
-        body.sessionId,
-        {
-            "messages": updated_messages,
-            "collected_data": collected,
-            "step": new_step,
-        },
-    )
-    profile_lib.update_after_turn(updated)  # memoria cross-sessione (fail-open)
+    # Sintesi progressiva DOPO la risposta: non entra nella latenza del turno visibile.
+    background.add_task(conversation_memory.refresh_if_stale,
+                        client, ANTHROPIC_MODEL, body.sessionId, len(history))
 
     return {
         "message": user_visible,
@@ -587,13 +574,14 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
                           "_profilo": profile_lib.load(session.get("user_id"))}
     skills = resolve_skills_for_session(session_for_prompt)
     req_hint = await _required_fields_hint(collected)
-    system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
+    system_prompt = build_system_blocks(skills, session_for_prompt, required_fields_hint=req_hint)
     if web_search.enabled():
-        system_prompt += web_search.SYSTEM_HINT
+        system_prompt = append_system_text(system_prompt, web_search.SYSTEM_HINT)
     # NB: il GROUNDING FORZATO (ricerca web proattiva) NON avviene qui: nello stream gira
     # DOPO l'heartbeat (event_gen), così una ricerca lenta non tiene fermo il primo byte
     # (rischio 524 all'edge). Vedi post_message_stream.
-    history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
+    history = build_history(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS,
+                           HISTORY_CHAR_BUDGET)
 
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
@@ -645,6 +633,11 @@ def _persist_assistant_turn(
         },
     )
     profile_lib.update_after_turn(updated)  # memoria cross-sessione (fail-open)
+    # La riga in sidebar deve risalire quando la chat viene usata: `kbot_conversations.
+    # updated_at` era toccato solo da un PATCH del frontend (rinomina/bind), quindi la
+    # cronologia restava ordinata per data di CREAZIONE e una chat vecchia ripresa oggi
+    # rimaneva in fondo. Best-effort, non blocca il turno.
+    conversations_index.touch_by_session(body_session_id)
     return user_visible, summary, updated
 
 
@@ -684,7 +677,7 @@ async def post_message_stream(
             _gb = await asyncio.to_thread(
                 fact_grounding.ground_block, _last_user_text, _recent_user_text)
             if _gb:
-                sys_prompt += _gb
+                sys_prompt = append_system_text(sys_prompt, _gb)
                 yield ": search-done\n\n"   # commento SSE: tiene vivo lo stream, il client lo ignora
         except Exception:
             log.warning("grounding proattivo fallito (fail-open)", exc_info=True)
@@ -767,11 +760,15 @@ async def post_message_stream(
                 "role": "assistant",
                 "tokens_in": getattr(usage, "input_tokens", None) if usage else None,
                 "tokens_out": getattr(usage, "output_tokens", None) if usage else None,
+                "cache_read": getattr(usage, "cache_read_input_tokens", None) if usage else None,
+                "cache_write": getattr(usage, "cache_creation_input_tokens", None) if usage else None,
                 "model": ANTHROPIC_MODEL,
                 "stream": True,
                 "user_turns": _user_turns,
                 "summary_emitted": bool(extract_summary(raw_text)),
                 "diagnosi_tracked": bool(signals.DIAGNOSI_RE.search(raw_text)),
+                "history_msgs": len(history),
+                "history_chars": sum(len(m.get("content") or "") for m in history),
             },
         )
         try:
@@ -792,6 +789,15 @@ async def post_message_stream(
                 "session": sessions.public_session(updated),
             }
         )
+        # Sintesi progressiva: DOPO l'evento `done`, quindi a risposta già consegnata. Il
+        # generatore continua a girare dopo l'ultimo yield: è il posto giusto per il lavoro
+        # che non deve pesare sul turno. Best-effort in thread (chiamata Anthropic sync).
+        try:
+            await asyncio.to_thread(
+                conversation_memory.refresh_if_stale,
+                client, ANTHROPIC_MODEL, body.sessionId, len(history))
+        except Exception:
+            log.warning("sintesi conversazione (stream) fallita (fail-open)", exc_info=True)
 
     return StreamingResponse(
         event_gen(),

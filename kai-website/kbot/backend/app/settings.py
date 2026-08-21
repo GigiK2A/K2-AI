@@ -140,8 +140,32 @@ ENTITLEMENT_TTL_S = int(_env("K2A_ENTITLEMENT_TTL", default="900") or "900")  # 
 # Prompt size limits, mirroring api/kbot/_shared.ts.
 CHAT_SYSTEM_MAX_CHARS = int(_env("CHAT_SYSTEM_MAX_CHARS", default="26000") or "26000")
 PDF_SYSTEM_MAX_CHARS = int(_env("PDF_SYSTEM_MAX_CHARS", default="55000") or "55000")
-MAX_HISTORY_MESSAGES = int(_env("MAX_HISTORY_MESSAGES", default="12") or "12")
-MAX_MESSAGE_CHARS = int(_env("MAX_MESSAGE_CHARS", default="900") or "900")
+# FINESTRA DI CONVERSAZIONE inviata al modello. Era 12 messaggi × 900 char (~2.7k token):
+# su Haiku 4.5, che ha 200k di finestra, buttava via tutto ciò che precedeva gli ultimi 12
+# messaggi E troncava a 900 char le analisi del bot nella sua STESSA memoria — mentre il
+# system prompt (skill + RAG + hint) ne occupava 8-13k. Ora: messaggi INTERI dentro un
+# budget di caratteri; ciò che esce dalla finestra sopravvive nella sintesi progressiva
+# (lib/conversation_memory.py), non viene perso.
+MAX_HISTORY_MESSAGES = int(_env("MAX_HISTORY_MESSAGES", default="40") or "40")
+MAX_MESSAGE_CHARS = int(_env("MAX_MESSAGE_CHARS", default="6000") or "6000")
+# Tetto complessivo della finestra (~15k token a 4 char/token). Comanda questo: il conteggio
+# messaggi è solo un limite superiore di sicurezza.
+HISTORY_CHAR_BUDGET = int(_env("HISTORY_CHAR_BUDGET", default="60000") or "60000")
+
+# Storia usata per GENERARE IL REPORT (lib/analysis.py): resta ai valori storici. Il report
+# ha un suo prompt e un suo modello (Sonnet), allargarlo è un intervento a parte.
+REPORT_HISTORY_MESSAGES = int(_env("REPORT_HISTORY_MESSAGES", default="12") or "12")
+REPORT_MESSAGE_CHARS = int(_env("REPORT_MESSAGE_CHARS", default="900") or "900")
+
+# SINTESI PROGRESSIVA della conversazione: si rigenera quando i messaggi FUORI dalla finestra
+# verbatim sono cresciuti di almeno N dall'ultima sintesi. 0 = disattivata.
+ROLLING_SUMMARY_EVERY = int(_env("ROLLING_SUMMARY_EVERY", default="6") or "6")
+ROLLING_SUMMARY_MAX_CHARS = int(_env("ROLLING_SUMMARY_MAX_CHARS", default="2500") or "2500")
+
+# PROMPT CACHING sul blocco stabile del system prompt (bundle skill). Su Haiku 4.5 il prefisso
+# minimo cacheabile è 4096 token: sotto soglia non è un errore, semplicemente non fa cache.
+# Le letture costano 0,1× — a regime dimezza il costo input del turno. 0 = disattivato.
+PROMPT_CACHE_ENABLED = (_env("PROMPT_CACHE_ENABLED", default="1") or "1") != "0"
 
 # PostHog Cloud EU (server-side). Empty → analytics disabled (no-op).
 POSTHOG_API_KEY = _env("POSTHOG_API_KEY")
