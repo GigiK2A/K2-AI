@@ -36,6 +36,12 @@ _SENSOR_DESC = {
     "leggi_commenti_ig": ("Legge il TESTO dei commenti sotto i post Instagram (non solo il "
                           "numero). Senza parametri scorre i post recenti con commenti e ne "
                           "riporta il contenuto; con {media_id} legge quel post specifico."),
+    "leggi_tabella_clienti": (
+        "LA tabella clienti (pipeline_leads): tutte le righe più il conteggio per stato e "
+        "quanti lead sono aperti. Usalo SEMPRE quando si parla di pipeline, clienti, lead o "
+        "stato di una trattativa: gli altri sensori danno pezzi, questo dà il quadro con i "
+        "numeri. Gli stati e le regole per muoverli sono nella skill "
+        "`pipeline-clienti-stati`."),
 }
 _MK_SYSTEM = (
     "Sei il responsabile Marketing di K2-AI (PMI italiana, AI operativa per PMI). "

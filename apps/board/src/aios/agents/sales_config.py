@@ -7,7 +7,7 @@ SALES_CONFIG = DomainConfig(
     name="vendite",
     action=ActionType("vendite", "azione"),
     tool_name="proponi_vendite",
-    sensors=[("leggi_lead", {}), ("leggi_memo_vendite", {}),
+    sensors=[("leggi_tabella_clienti", {}), ("leggi_lead", {}), ("leggi_memo_vendite", {}),
              ("leggi_clienti", {}), ("leggi_ricavi_chiusi", {}),
              ("leggi_lead_kbot", {}), ("leggi_suite", {}),
              ("leggi_inbox", {}), ("leggi_calendario_google", {})],

@@ -6,7 +6,15 @@ from aios.tools import Tool
 
 
 def lead_tools(client: Any) -> list[Tool]:
+    from aios.pipeline_clienti import tabella as _tabella_clienti
     return [
+        # Il QUADRO della tabella clienti: righe più conteggio per stato e quanti aperti.
+        # `leggi_lead` dà le righe, questo dà i numeri — senza, «come va la pipeline?» si
+        # risponde a impressione. Sta qui e non in build_platform perché un sensore di
+        # reparto va registrato dalla fabbrica del reparto: dichiararlo nel config e
+        # registrarlo altrove lo rende invisibile all'agente.
+        Tool(name="leggi_tabella_clienti", action_type=None, readonly=True,
+             run=lambda **kw: _tabella_clienti(client, **kw)),
         Tool(name="leggi_lead", action_type=None, readonly=True,
              run=lambda **_: client.select("pipeline_leads", {
                  "select": "id,name,company,sector,status,score,next_action,"

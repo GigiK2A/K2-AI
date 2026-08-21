@@ -53,12 +53,36 @@ def test_la_skill_dice_quali_stati_sono_automatici():
     assert "da 1 a 10" in testo
 
 
-def test_il_quadro_e_un_sensore_di_sola_lettura():
-    """L'agente deve poter leggere la tabella senza passare da `esegui`."""
-    sorgente = Path("src/aios/platform.py").read_text(encoding="utf-8")
-    blocco = sorgente.split("leggi_tabella_clienti")[1][:400]
-    assert "readonly=True" in blocco
-    assert "action_type=None" in blocco
+def test_il_sensore_e_nei_sensori_di_vendite():
+    """Registrarlo nel kernel non basta: l'agente vede solo i sensori del suo config.
+    Provato in produzione il 21 ago: il sensore c'era ma Vendite non lo chiamava,
+    perché per lui non esisteva."""
+    from aios.agents.sales_config import SALES_CONFIG
+    nomi = [t for t, _a in SALES_CONFIG.sensors]
+    assert nomi[0] == "leggi_tabella_clienti"     # primo: è il quadro d'insieme
+
+
+def test_il_sensore_si_spiega_da_solo():
+    """Senza descrizione un sensore si chiama «Sensore di reparto: nome» e il modello
+    preferisce quelli che capisce — infatti aveva usato leggi_lead e leggi_clienti."""
+    from aios.chat_runner import _SENSOR_DESC
+    d = _SENSOR_DESC["leggi_tabella_clienti"]
+    assert "pipeline_leads" in d and "conteggio per stato" in d
+    assert "pipeline-clienti-stati" in d          # rimanda al metodo
+
+
+def test_il_quadro_e_un_sensore_di_sola_lettura_del_reparto():
+    """Registrato dalla fabbrica di Vendite — dichiararlo nel config e registrarlo in
+    build_platform lo rendeva invisibile all'agente, e un test preesistente lo ha preso."""
+    from aios.sources.sales import lead_tools
+
+    class C:
+        def select(self, tab, params):
+            return [{"name": "Alfa", "status": "nuovo"}]
+
+    t = {x.name: x for x in lead_tools(C())}["leggi_tabella_clienti"]
+    assert t.readonly is True and t.action_type is None
+    assert t.run()["per_stato"] == {"nuovo": 1}
 
 
 def test_l_aggiornamento_dalla_posta_gira_nel_loop():
