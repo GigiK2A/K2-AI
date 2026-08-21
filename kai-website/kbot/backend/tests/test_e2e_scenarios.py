@@ -41,6 +41,15 @@ from app.lib.prompts import (  # noqa: E402
 # Fake Supabase (in-memory). Mirrors the tiny surface we use.
 # ---------------------------------------------------------------------------
 
+def _system_text(call: dict) -> str:
+    """Il system prompt di una chiamata catturata, come testo — `system` può essere una
+    stringa o una lista di blocchi (prompt caching). Vedi la gemella in test_security_edge."""
+    sys = call.get("system", "")
+    if isinstance(sys, str):
+        return sys
+    return "\n\n".join(str(b.get("text", "")) for b in sys)
+
+
 class _FakeStorageBucket:
     def __init__(self):
         self.files: Dict[str, bytes] = {}
@@ -51,6 +60,9 @@ class _FakeStorageBucket:
 
     def get_public_url(self, path):
         return f"https://fake.supabase.co/storage/{path}"
+
+    def create_signed_url(self, path, expires_in):
+        return {"signedURL": f"https://fake.supabase.co/signed/{path}?exp={expires_in}"}
 
 
 class _FakeStorage:
@@ -605,7 +617,7 @@ def test_message_endpoint_sends_file_text_to_claude(client, fake_anthropic):
     # Verify the system prompt sent to Claude actually contained the file text.
     assert FakeAnthropic.captured_calls, "Claude was never called"
     last_call = FakeAnthropic.captured_calls[-1]
-    sys_prompt = last_call.get("system", "")
+    sys_prompt = _system_text(last_call)
     assert "MARKER_BILANCIO_XYZ" in sys_prompt, "file text didn't reach Claude"
     # max_tokens generoso, must be >= 4000 (was 1200 bug)
     assert last_call.get("max_tokens", 0) >= 4000, \

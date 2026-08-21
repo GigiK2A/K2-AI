@@ -156,6 +156,51 @@ def test_summary_build_covers_only_what_left_the_window():
     assert "u9" not in sent, "nel riassunto sono finiti messaggi ancora visibili"
 
 
+def test_summary_build_is_incremental_not_from_scratch():
+    """Si riparte da dove finiva la sintesi precedente: rimandare al modello i messaggi
+    già riassunti è spreco che cresce con la conversazione."""
+    msgs = _msgs(10, size=50)  # 20 messaggi
+    client = _FakeClient()
+    cm.build(client, "m", msgs, {"rolling_summary": {"text": "vecchia", "upto": 10}},
+             window_len=6)
+    sent = client.calls[0]["messages"][0]["content"]
+    assert "u0" not in sent and "u4" not in sent, "rimandati messaggi già riassunti"
+    assert "u5" in sent or "u6" in sent, "la fetta nuova non è stata mandata"
+
+
+def test_summary_build_noop_when_previous_already_covers_everything():
+    client = _FakeClient()
+    out = cm.build(client, "m", _msgs(10), {"rolling_summary": {"text": "x", "upto": 14}},
+                   window_len=6)
+    assert out is None
+    assert client.calls == [], "chiamata al modello senza niente di nuovo da riassumere"
+
+
+def test_summary_transcript_is_bounded_and_reports_what_it_covered():
+    """Il payload non deve crescere senza limiti: oltre il tetto si copre meno e `upto`
+    lo dice, così il refresh successivo riprende da lì invece di fallire per sempre."""
+    huge = [{"role": "user", "content": "z" * 30000} for _ in range(40)]
+    client = _FakeClient()
+    entry = cm.build(client, "m", huge, {}, window_len=0)
+    sent = client.calls[0]["messages"][0]["content"]
+    assert len(sent) < 60000, f"transcript non limitato: {len(sent)} char"
+    assert 0 < entry["upto"] < 40, "upto deve riflettere solo ciò che è stato incluso"
+
+
+def test_summary_makes_progress_across_refreshes_on_a_huge_conversation():
+    """Rigenerazioni successive devono avanzare, non ripresentare la stessa fetta."""
+    huge = [{"role": "user", "content": "z" * 30000} for _ in range(60)]
+    client = _FakeClient()
+    collected = {}
+    seen = []
+    for _ in range(3):
+        entry = cm.build(client, "m", huge, collected, window_len=0)
+        assert entry is not None
+        seen.append(entry["upto"])
+        collected = {"rolling_summary": entry}
+    assert seen == sorted(seen) and len(set(seen)) == 3, f"nessun avanzamento: {seen}"
+
+
 def test_summary_build_feeds_the_previous_summary_back_in():
     client = _FakeClient()
     cm.build(client, "m", _msgs(10, size=50),

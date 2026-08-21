@@ -12,7 +12,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from ..lib import conversations_index, sessions
+from ..lib import conversations_index
 from ..lib.auth import AuthUser, require_user
 from ..lib.supabase_admin import get_admin_client
 
@@ -72,8 +72,7 @@ def list_conversations(user: AuthUser = Depends(require_user)) -> dict:
     # ma senza riga qui era invisibile in cronologia (visibile solo in dashboard, che legge
     # /sessions). Best-effort: se fallisce, si prosegue con la lista che c'è.
     try:
-        conversations_index.backfill_orphan_sessions(
-            user.id, sessions.list_user_sessions(user.id, limit=100))
+        conversations_index.backfill_orphan_sessions(user.id)
     except Exception:
         log.warning("recupero sessioni orfane fallito (fail-open)", exc_info=True)
     try:

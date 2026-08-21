@@ -49,6 +49,20 @@ from fastapi.testclient import TestClient  # noqa: E402
 # Fake Supabase (in-memory)
 # ---------------------------------------------------------------------------
 
+def _system_text(call: dict) -> str:
+    """Il system prompt di una chiamata catturata, come testo.
+
+    `system` può essere una stringa o una LISTA di blocchi (prompt caching: il bundle skill
+    viaggia in un blocco proprio marcato `cache_control`). Concatenare i blocchi nell'ordine
+    riproduce esattamente la stringa che il modello vede, quindi le asserzioni posizionali
+    — dove cade un'iniezione rispetto ai delimitatori UNTRUSTED — restano valide.
+    """
+    sys = call.get("system", "")
+    if isinstance(sys, str):
+        return sys
+    return "\n\n".join(str(b.get("text", "")) for b in sys)
+
+
 class _FakeStorageBucket:
     def __init__(self):
         self.files: Dict[str, bytes] = {}
@@ -59,6 +73,9 @@ class _FakeStorageBucket:
 
     def get_public_url(self, path):
         return f"https://fake.supabase.co/storage/{path}"
+
+    def create_signed_url(self, path, expires_in):
+        return {"signedURL": f"https://fake.supabase.co/signed/{path}?exp={expires_in}"}
 
 
 class _FakeStorage:
@@ -350,7 +367,7 @@ def test_prompt_injection_in_pdf_is_wrapped(client, fake_anthropic):
     r = client.post("/api/kbot/message", json={"session_id": sid, "message": "ciao"})
     assert r.status_code == 200, r.text
     last = FakeAnthropic.captured_calls[-1]
-    sys = last["system"]
+    sys = _system_text(last)
 
     # The injection MUST land inside the UNTRUSTED block.
     open_idx = sys.find("<UNTRUSTED_FILE_CONTENT>")

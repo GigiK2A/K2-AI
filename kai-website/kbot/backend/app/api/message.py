@@ -14,6 +14,7 @@ import anthropic
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.background import BackgroundTask
 
 from ..lib import sessions, engine, readiness, web_search, quality_gate
 from ..lib import conversation_memory
@@ -789,16 +790,14 @@ async def post_message_stream(
                 "session": sessions.public_session(updated),
             }
         )
-        # Sintesi progressiva: DOPO l'evento `done`, quindi a risposta già consegnata. Il
-        # generatore continua a girare dopo l'ultimo yield: è il posto giusto per il lavoro
-        # che non deve pesare sul turno. Best-effort in thread (chiamata Anthropic sync).
-        try:
-            await asyncio.to_thread(
-                conversation_memory.refresh_if_stale,
-                client, ANTHROPIC_MODEL, body.sessionId, len(history))
-        except Exception:
-            log.warning("sintesi conversazione (stream) fallita (fail-open)", exc_info=True)
-
+    # Sintesi progressiva: nel BACKGROUND della response, non dentro `event_gen`.
+    # Metterla dopo l'ultimo `yield` sembrava giusto («il generatore continua a girare»)
+    # ed era il contrario: StreamingResponse chiude il body solo quando il generatore si
+    # esaurisce, e il client chiama `onDone` solo alla chiusura del body (lib/api.ts). Con
+    # l'await dentro il generatore la chiamata Haiku restava interamente addosso all'utente:
+    # spinner acceso, composer bloccato e CTA del report in ritardo fino a 45s a risposta
+    # già scritta a schermo. Starlette esegue il background DOPO aver chiuso il body.
+    # `refresh_if_stale` è già fail-open al suo interno.
     return StreamingResponse(
         event_gen(),
         media_type="text/event-stream",
@@ -807,4 +806,7 @@ async def post_message_stream(
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
+        background=BackgroundTask(
+            asyncio.to_thread, conversation_memory.refresh_if_stale,
+            client, ANTHROPIC_MODEL, body.sessionId, len(history)),
     )

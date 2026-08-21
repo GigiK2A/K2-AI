@@ -25,6 +25,10 @@ from ..settings import ROLLING_SUMMARY_EVERY, ROLLING_SUMMARY_MAX_CHARS
 log = logging.getLogger(__name__)
 
 KEY = "rolling_summary"
+# Tetti del transcript mandato al modello. Servono a rendere il costo della sintesi
+# COSTANTE invece che crescente con la lunghezza della conversazione.
+_TRANSCRIPT_MSG_CAP = 2000
+_TRANSCRIPT_TOTAL_CAP = 40000
 
 _SYSTEM = (
     "Sei l'archivista di una consulenza aziendale in corso. Ti viene dato l'inizio di una "
@@ -97,16 +101,41 @@ def is_stale(collected: Optional[dict], total_messages: int, window_len: int) ->
     return (out - covered(collected)) >= ROLLING_SUMMARY_EVERY
 
 
-def _transcript(messages: List[dict], upto: int) -> str:
-    lines = []
-    for m in (messages or [])[:upto]:
+def _transcript(messages: List[dict], start: int, upto: int) -> tuple[str, int]:
+    """Il transcript dei messaggi in `[start, upto)`, dentro tetti fissi.
+
+    Ritorna `(testo, coperto_fino_a)`. Due proprietà che servono entrambe:
+
+    - **Incrementale.** Si riparte da dove finiva la sintesi precedente, non da zero: la
+      sintesi vecchia viene comunque data al modello, quindi rimandargli anche i messaggi
+      già riassunti è spreco che cresce con la conversazione.
+    - **Autolimitante.** Se la fetta sfonda il tetto complessivo, si include solo la parte
+      iniziale e `coperto_fino_a` dice fin dove si è arrivati davvero: il refresh successivo
+      riprende da lì. Senza questo, una conversazione lunga finiva per costruire un payload
+      sempre più grande e, superata la finestra del modello, la sintesi falliva a ogni
+      tentativo — per sempre, e in silenzio (build è fail-open).
+    """
+    lines: List[str] = []
+    used = 0
+    covered = start
+    for i in range(max(0, start), min(int(upto), len(messages or []))):
+        m = messages[i]
         if not isinstance(m, dict):
+            covered = i + 1
             continue
-        role = "UTENTE" if m.get("role") == "user" else "CONSULENTE"
         text = str(m.get("content") or "").strip()
-        if text:
-            lines.append(f"{role}: {text}")
-    return "\n\n".join(lines)
+        if not text:
+            covered = i + 1
+            continue
+        if len(text) > _TRANSCRIPT_MSG_CAP:
+            text = text[:_TRANSCRIPT_MSG_CAP - 1].rstrip() + "…"
+        if lines and used + len(text) > _TRANSCRIPT_TOTAL_CAP:
+            break
+        role = "UTENTE" if m.get("role") == "user" else "CONSULENTE"
+        lines.append(f"{role}: {text}")
+        used += len(text)
+        covered = i + 1
+    return "\n\n".join(lines), covered
 
 
 def build(client, model: str, messages: List[dict], collected: Optional[dict],
@@ -117,10 +146,13 @@ def build(client, model: str, messages: List[dict], collected: Optional[dict],
     upto = outside_window(len(messages or []), window_len)
     if upto <= 0:
         return None
-    body = _transcript(messages, upto)
+    previous = get(collected)
+    start = covered(collected)
+    if start >= upto:
+        return None
+    body, upto = _transcript(messages, start, upto)
     if not body.strip():
         return None
-    previous = get(collected)
     prefix = ""
     if previous:
         prefix = (

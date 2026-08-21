@@ -393,13 +393,13 @@ export default function HomePage() {
   function handleRenameConversation(convId: string, nextTitle: string) {
     const clean = nextTitle.trim().slice(0, 80);
     if (!clean) return;
-    let remoteIdToSync: string | null | undefined;
+    /* remoteId letto dallo stato CORRENTE, non da dentro l'updater: React esegue
+       l'updater in modo eager solo quando non ci sono già aggiornamenti in coda per
+       quell'hook, quindi una variabile assegnata lì dentro e letta subito dopo può
+       essere ancora undefined — e il PATCH non partirebbe. */
+    const remoteIdToSync = conversations.find((c) => c.id === convId)?.remoteId;
     setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== convId) return c;
-        remoteIdToSync = c.remoteId;
-        return { ...c, title: clean };
-      }),
+      prev.map((c) => (c.id === convId ? { ...c, title: clean } : c)),
     );
     if (remoteIdToSync && isSignedIn) {
       void (async () => {
