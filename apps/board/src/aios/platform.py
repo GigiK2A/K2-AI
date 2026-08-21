@@ -287,6 +287,11 @@ def build_platform() -> Platform:
     k.register_tool(Tool(name="controlla_workflow_n8n", action_type=None, readonly=True,
                          run=_controlla_workflow))
     k.register_tool(prospects_tool(client))  # sensore: prospect marketing (readonly)
+    # La tabella clienti come quadro leggibile: righe + conteggio per stato. Sola
+    # lettura; a muovere gli stati ci pensano la posta (loop) e l'agente con `esegui`.
+    from aios.pipeline_clienti import tabella as _tabella_clienti
+    k.register_tool(Tool(name="leggi_tabella_clienti", action_type=None, readonly=True,
+                         run=lambda **kw: _tabella_clienti(client, **kw)))
     from aios.competitor_scout import competitors_tool
     k.register_tool(competitors_tool(client))  # sensore: competitor trovati (readonly)
     # leggi_inbox via tabella alimentata da n8n (Outlook OAuth) — override dell'IMAP,

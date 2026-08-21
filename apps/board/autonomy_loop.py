@@ -19,6 +19,7 @@ import os
 import threading
 import time
 
+from aios import pipeline_clienti
 from aios.platform import build_platform
 from aios.notify import telegram
 
@@ -342,6 +343,21 @@ def main() -> None:
                         "sono pronte nel cockpit — l'invio resta una tua decisione.")
                 elif telegram.enabled() and pr.get("errore"):
                     telegram.send_text(f"🔎 Ricerca clienti non riuscita — {pr['errore']}")
+
+        # ── La tabella clienti si aggiorna dalla posta a OGNI giro, non una volta al
+        # giorno: se un cliente risponde alle 9 e lo stato si muove alle 18, per nove ore
+        # la pipeline dice una cosa falsa. Costa due letture e nessuna chiamata al
+        # modello, quindi può girare spesso.
+        try:
+            agg = pipeline_clienti.aggiorna_da_email(k._supabase)
+            if agg.get("aggiornati") or agg.get("errori"):
+                print(f"[{time.strftime('%H:%M', now)}] pipeline clienti: {agg}")
+            if telegram.enabled() and agg.get("aggiornati"):
+                righe = "\n".join(f"· {a['lead']}: {a['da']} → *{a['a']}*"
+                                  for a in agg["aggiornati"][:8])
+                telegram.send_text(f"📇 Pipeline aggiornata dalla posta:\n{righe}")
+        except Exception as exc:
+            print(f"pipeline clienti error: {exc}")
 
         # ── Autodiagnosi, una volta al giorno DOPO che gli agenti hanno girato: se
         # arrivasse prima misurerebbe la giornata di ieri e direbbe sempre "zero".

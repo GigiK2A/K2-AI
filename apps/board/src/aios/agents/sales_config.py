@@ -31,7 +31,10 @@ SALES_CONFIG = DomainConfig(
         "Fuori ICP → dillo. Tono diretto, niente 'forse'. Dato mancante = segnalalo, non inventarlo.\n"
         "Ogni proposta: tipo, target, contenuto eseguibile, motivo su dato reale."
     ),
-    skill_focus=["draft-outreach", "linkedin-b2b-outreach", "draft-offer"],
+    # `pipeline-clienti-stati` per prima: è il contratto sulla tabella clienti — quali
+    # stati esistono, quali si muovono da soli dalla posta e quali richiedono giudizio.
+    skill_focus=["pipeline-clienti-stati", "draft-outreach", "linkedin-b2b-outreach",
+                 "draft-offer"],
     knowledge_query="vendite CRM lead pipeline offerta pricing ICP retention forecast",
     action_tables=[
         ("pipeline_leads", "nuovo lead/opportunità (insert) o avanzamento stage (update con match)"),
