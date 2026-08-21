@@ -500,7 +500,8 @@ class ChatAgent:
 
     # ---- contesto (system) ----
     def _system_prompt(self) -> str:
-        out = self.system + _CHAT_PREAMBLE
+        from aios.adesso import blocco_data
+        out = self.system + _CHAT_PREAMBLE + blocco_data()
         if self.dominio in _CALCOLA_DOMINI:
             out += ("\n\n# NUMERI VERI — hai il tool `calcola` (motore deterministico 8e). "
                     "Per indici di bilancio, carico fiscale (IRES/IRPEF/IRAP), aliquote: "

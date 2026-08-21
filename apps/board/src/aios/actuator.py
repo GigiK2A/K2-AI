@@ -437,11 +437,26 @@ def _colonna_temporale(nome: str) -> bool:
             or nome.endswith(("_at", "_date", "deadline")))
 
 
+# Colonne che indicano un PIANO: la data sta davanti per definizione. Una data di piano
+# nel passato remoto non è un ritardo, è una data inventata — il 21 ago 2026 Vendite ha
+# messo la prossima azione di nove lead al «2023-11-20», che è l'anno del modello e non
+# del calendario. `last_contact_at`, `due_at` e le date di fatto restano fuori: quelle
+# stanno legittimamente nel passato.
+_COLONNE_PIANO = frozenset({"next_action_date", "expected_close_date", "scadenza",
+                            "next_deadline", "expiry_date", "renewal_date"})
+
+
 def _valore_ammesso(colonna: str, valore: Any) -> bool:
-    """False se il valore non è scrivibile su quella colonna (data non ISO)."""
+    """False se il valore non è scrivibile su quella colonna: data non ISO, oppure una
+    data di piano così indietro nel tempo da essere un ricordo del modello."""
     if not _colonna_temporale(colonna) or not isinstance(valore, str):
         return True
-    return bool(_ISO_DATA.match(valore.strip()))
+    if not _ISO_DATA.match(valore.strip()):
+        return False
+    if colonna in _COLONNE_PIANO:
+        from aios.adesso import data_assurda
+        return not data_assurda(valore)
+    return True
 
 
 def _senza_accenti(nome: str) -> str:
