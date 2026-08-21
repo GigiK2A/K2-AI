@@ -12,7 +12,7 @@ import time
 import pytest
 
 from aios.actuator import _sanitize, _valore_ammesso
-from aios.adesso import blocco_data, data_assurda, oggi_iso
+from aios.adesso import blocco_data, data_assurda, giorno_lavorativo, oggi_iso
 
 # 21 agosto 2026, 12:00
 ADESSO = time.mktime(time.strptime("2026-08-21 12:00", "%Y-%m-%d %H:%M"))
@@ -87,6 +87,42 @@ def test_data_assurda_solo_su_date_vere():
     assert data_assurda("2026-08-20", ADESSO) is False
     assert data_assurda("entro 7 giorni", ADESSO) is False   # non è questo il controllo
     assert data_assurda("", ADESSO) is False
+
+
+# ---- il weekend ----
+def test_sabato_e_domenica_slittano_al_lunedi():
+    """Vendite ha distribuito i primi contatti «nei prossimi giorni lavorativi» e ne ha
+    messi due sabato 29 e domenica 30 agosto 2026: ha contato giorni di calendario."""
+    assert giorno_lavorativo("2026-08-29") == "2026-08-31"   # sabato → lunedì
+    assert giorno_lavorativo("2026-08-30") == "2026-08-31"   # domenica → lunedì
+
+
+@pytest.mark.parametrize("giorno", ["2026-08-25", "2026-08-26", "2026-08-27",
+                                    "2026-08-28", "2026-08-31"])
+def test_i_giorni_lavorativi_non_si_toccano(giorno):
+    assert giorno_lavorativo(giorno) == giorno
+
+
+def test_quello_che_non_e_una_data_passa_intatto():
+    assert giorno_lavorativo("entro 7 giorni") == "entro 7 giorni"
+    assert giorno_lavorativo("") == ""
+
+
+def test_l_ora_resta_attaccata():
+    assert giorno_lavorativo("2026-08-29T15:30:00") == "2026-08-31T15:30:00"
+
+
+def test_una_azione_di_domenica_viene_spostata_nella_riga():
+    out = _sanitize("pipeline_leads",
+                    {"name": "Alfa", "next_action_date": "2026-08-30"}, "insert")
+    assert out["next_action_date"] == "2026-08-31"
+
+
+def test_una_scadenza_di_domenica_resta():
+    """Un contratto scade anche di domenica: non è una nostra azione."""
+    out = _sanitize("insurance_policies",
+                    {"tipo": "RC", "expiry_date": "2026-08-30"}, "insert")
+    assert out["expiry_date"] == "2026-08-30"
 
 
 # ---- effetto sulla riga scritta ----

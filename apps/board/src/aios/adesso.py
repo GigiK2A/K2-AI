@@ -41,6 +41,28 @@ def blocco_data(adesso: float | None = None) -> str:
             f"{t.tm_year}, fermati e ricontrolla.")
 
 
+def giorno_lavorativo(valore: str) -> str:
+    """Sposta al lunedì una data che cade nel weekend, lasciando il resto intatto.
+
+    Il 21 ago 2026 Vendite ha distribuito i primi contatti «nei prossimi giorni
+    lavorativi» e ne ha messi due sabato 29 e domenica 30: ha contato giorni di
+    calendario. Una telefonata commerciale a una PMI italiana di domenica non avviene,
+    quindi la data è sbagliata anche se il campo è pieno.
+
+    Vale solo per le date di AZIONE nostra. Una scadenza contrattuale o una data di
+    rinnovo cadono legittimamente di domenica: quelle non passano da qui."""
+    testo = str(valore or "").strip()
+    try:
+        t = time.strptime(testo[:10], "%Y-%m-%d")
+    except (ValueError, OverflowError):
+        return testo
+    if t.tm_wday < 5:
+        return testo
+    avanti = 7 - t.tm_wday                      # sabato → +2, domenica → +1
+    spostata = time.localtime(time.mktime(t) + avanti * 86400)
+    return time.strftime("%Y-%m-%d", spostata) + testo[10:]
+
+
 def data_assurda(valore: str, adesso: float | None = None) -> bool:
     """True se una data «di piano» è troppo nel passato per essere vera.
 

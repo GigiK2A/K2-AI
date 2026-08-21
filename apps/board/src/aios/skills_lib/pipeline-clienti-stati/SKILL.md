@@ -85,3 +85,7 @@ Numeri che contano più del totale:
   interno e lo fai da solo; scrivere a un'azienda esce dall'azienda e si conferma.
 - **Se sposti dieci lead e ne riesci a spostare sei, dici sei.** Elenca i quattro
   rimasti e il motivo.
+- **Le date partono da oggi, e cadono in giorni lavorativi.** Una `next_action_date` di
+  domenica viene spostata al lunedì dall'attuatore, ma arrivarci già giusta evita di far
+  leggere all'owner un piano che non torna. Se stai per scrivere un anno diverso da
+  quello corrente, hai sbagliato.

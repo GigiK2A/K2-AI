@@ -444,6 +444,9 @@ def _colonna_temporale(nome: str) -> bool:
 # stanno legittimamente nel passato.
 _COLONNE_PIANO = frozenset({"next_action_date", "expected_close_date", "scadenza",
                             "next_deadline", "expiry_date", "renewal_date"})
+# Sottoinsieme: le date di una NOSTRA azione. Un contratto scade anche di domenica, una
+# telefonata commerciale a una PMI italiana no.
+_COLONNE_AZIONE = frozenset({"next_action_date"})
 
 
 def _valore_ammesso(colonna: str, valore: Any) -> bool:
@@ -537,6 +540,12 @@ def _sanitize(table: str, data: dict, op: str = "insert") -> dict:
     for col, (minimo, massimo) in _RANGE.get(table, {}).items():   # CHECK sul range
         if known.get(col) is not None:
             known[col] = _in_scala(known[col], minimo, massimo)
+    # Una NOSTRA azione programmata di domenica non avviene: si sposta al lunedì. Solo
+    # le date di azione — una scadenza o un rinnovo cadono legittimamente nel weekend.
+    for col in _COLONNE_AZIONE:
+        if isinstance(known.get(col), str) and known[col]:
+            from aios.adesso import giorno_lavorativo
+            known[col] = giorno_lavorativo(known[col])
     if not known:
         raise ActuatorError(f"nessuna colonna valida per {table}")
     return known
