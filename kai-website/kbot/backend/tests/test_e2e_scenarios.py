@@ -191,6 +191,14 @@ def fake_db(monkeypatch):
     monkeypatch.setattr("app.lib.supabase_admin.get_admin_client", lambda: fake)
     monkeypatch.setattr("app.lib.sessions.get_admin_client", lambda: fake)
     monkeypatch.setattr("app.api.upload.get_admin_client", lambda: fake)
+    # `app.lib.storage` fa `from .supabase_admin import get_admin_client`, quindi tiene una
+    # PROPRIA referenza al simbolo: patchare gli altri namespace non la raggiunge. La usa
+    # `signed_url()`, che upload.py chiama dopo ogni PUT — senza questa riga la richiesta
+    # esce DAVVERO in rete verso NEXT_PUBLIC_SUPABASE_URL e il test muore con
+    # httpx.ConnectError, che riemerge come 500 dentro l'assert di un test funzionale non
+    # correlato. È la fuga che teneva rossi 8 test di questo file dal passaggio agli URL
+    # firmati (1f6c76e), mascherata da problema di rete.
+    monkeypatch.setattr("app.lib.storage.get_admin_client", lambda: fake)
     # Reset bucket-ready cache so _ensure_bucket runs against fake.
     monkeypatch.setattr("app.api.upload._BUCKET_READY", False, raising=False)
     return fake
@@ -713,7 +721,14 @@ def test_ocr_fallback_when_text_layer_below_threshold(client, fake_anthropic):
     c.save()
     data = buf.getvalue()
 
-    fake_anthropic.canned_text = "OCR_RECOVERED_TEXT_42 valori finanziari ricostruiti."
+    # Il testo OCR mockato deve superare OCR_MIN_TEXT_CHARS (120): sotto soglia
+    # `_extract_text` SCARTA il risultato (upload.py:440), il metodo torna "none" e il test
+    # si auto-skippa senza verificare nulla — verde e inutile. Era esattamente il suo stato.
+    fake_anthropic.canned_text = (
+        "OCR_RECOVERED_TEXT_42 valori finanziari ricostruiti dalla scansione: "
+        "ricavi 1.250.000 EUR, EBITDA 180.000 EUR, dipendenti 14, "
+        "posizione finanziaria netta negativa per 95.000 EUR."
+    )
 
     sid = _make_session(client)
     r = client.post("/api/kbot/upload", json={
@@ -729,6 +744,12 @@ def test_ocr_fallback_when_text_layer_below_threshold(client, fake_anthropic):
         pytest.skip("pdfplumber.to_image not available in this sandbox")
     assert f["extractionMethod"] == "claude-vision-ocr"
     assert "OCR_RECOVERED_TEXT_42" in f["extractedText"]
+    # 1f6c76e ha sostituito `get_public_url` con un signed URL a scadenza su bucket
+    # privato, e NESSUN test lo verificava: tornare all'URL pubblico permanente lasciava
+    # la suite interamente verde. Il doppio dello storage espone i due metodi con prefissi
+    # distinti (/storage/ vs /signed/?exp=), quindi qui si discrimina davvero.
+    assert "/signed/" in f["publicUrl"], f"URL non firmato: {f['publicUrl']!r}"
+    assert "exp=" in f["publicUrl"], f"signed URL senza scadenza: {f['publicUrl']!r}"
 
 
 # ---------------------------------------------------------------------------
