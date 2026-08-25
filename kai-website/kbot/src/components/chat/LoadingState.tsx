@@ -5,81 +5,42 @@ import { useEffect, useState } from "react";
 
 interface LoadingStateProps {
   text?: string;
-  /** Quando passato, sostituisce l'animazione fake con i valori reali ricevuti via SSE. */
+  /** Quando passato (SSE reale), mostra la progress della generazione report.
+   *  Se null, mostriamo lo stato onesto "sta ragionando" col tempo trascorso. */
   reportProgress?: { stage: string; progress: number } | null;
 }
 
-const REPORT_STEPS = [
-  "Analisi del contesto...",
-  "Raccolta benchmark di mercato...",
-  "Strutturazione del report...",
-  "Generazione sezioni...",
-  "Applicazione design system...",
-  "Calcolo KPI e proiezioni...",
-  "Generazione grafici...",
-  "Conversione PDF...",
-  "Finalizzazione documento...",
-];
-
-// After REPORT_THRESHOLD ms with no response, assume a report is being generated
-const REPORT_THRESHOLD = 8000;
-
-export function LoadingState({ text = "K2-AI sta elaborando...", reportProgress = null }: LoadingStateProps) {
-  const [isReport, setIsReport] = useState(!!reportProgress);
-  const [progress, setProgress] = useState(reportProgress?.progress ?? 0);
-  const [stepIndex, setStepIndex] = useState(0);
+export function LoadingState({ text = "K2-AI sta ragionando...", reportProgress = null }: LoadingStateProps) {
   const live = !!reportProgress;
+  const [elapsed, setElapsed] = useState(0);
 
-  // Real progress: sync local state with external prop coming from SSE stream.
-  useEffect(() => {
-    if (reportProgress) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsReport(true);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setProgress(reportProgress.progress);
-    }
-  }, [reportProgress]);
-
-  // Switch to report mode after 8 seconds of waiting (solo se non guidato da SSE)
+  // Timer in tempo reale mentre il modello pensa. Niente più euristica "dopo 8s
+  // assumo un report": un turno lento (es. modello con reasoning) NON è un report.
+  // La UI di generazione report compare solo con progress reale via SSE (`live`).
   useEffect(() => {
     if (live) return;
-    const timer = setTimeout(() => setIsReport(true), REPORT_THRESHOLD);
-    return () => clearTimeout(timer);
+    const start = Date.now();
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(t);
   }, [live]);
-
-  // Progress bar animation fake — solo se non c'è SSE attivo
-  useEffect(() => {
-    if (!isReport || live) return;
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 92) return prev;
-        const increment = prev < 40 ? 2.5 : prev < 70 ? 1.2 : 0.5;
-        return Math.min(prev + increment, 92);
-      });
-    }, 600);
-    const stepInterval = setInterval(() => {
-      setStepIndex((prev) => (prev + 1) % REPORT_STEPS.length);
-    }, 8000);
-    return () => {
-      clearInterval(interval);
-      clearInterval(stepInterval);
-    };
-  }, [isReport, live]);
-
-  const liveStageLabel = reportProgress?.stage;
 
   return (
     <AnimatePresence mode="wait">
-      {!isReport ? (
+      {!live ? (
         <motion.div
-          key="dots"
+          key="thinking"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           className="k2-panel max-w-2xl rounded-2xl p-4"
         >
-          <p className="text-sm text-[var(--text-soft)]">{text}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-[var(--text-soft)]">{text}</p>
+            {elapsed >= 3 && (
+              <span className="text-xs tabular-nums text-[var(--text-soft)] opacity-70">{elapsed}s</span>
+            )}
+          </div>
           <div className="mt-3 flex gap-2">
             {[0, 1, 2].map((i) => (
               <motion.span
@@ -101,33 +62,30 @@ export function LoadingState({ text = "K2-AI sta elaborando...", reportProgress 
         >
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold text-[var(--text-main)]">Generazione report in corso</p>
-            <motion.span
-              key={Math.floor(progress)}
-              initial={{ opacity: 0.6, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-sm font-bold tabular-nums text-[var(--teal)]"
-            >
-              {Math.floor(progress)}%
-            </motion.span>
+            <span className="text-sm font-bold tabular-nums text-[var(--teal)]">
+              {Math.floor(reportProgress!.progress)}%
+            </span>
           </div>
 
           <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-1,#1e2a38)]">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-[var(--teal)] to-[var(--accent,#E8A020)]"
-              animate={{ width: `${progress}%` }}
+              animate={{ width: `${reportProgress!.progress}%` }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             />
           </div>
 
-          <motion.p
-            key={liveStageLabel ?? stepIndex}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="mt-3 text-xs text-[var(--text-soft)]"
-          >
-            {liveStageLabel ?? REPORT_STEPS[stepIndex]}
-          </motion.p>
+          {reportProgress!.stage && (
+            <motion.p
+              key={reportProgress!.stage}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mt-3 text-xs text-[var(--text-soft)]"
+            >
+              {reportProgress!.stage}
+            </motion.p>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

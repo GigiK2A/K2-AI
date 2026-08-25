@@ -239,12 +239,19 @@ export function AuthForm({ mode }: AuthFormProps) {
             </Link>
           </p>
         ) : (
-          <p>
-            Non hai un account?{" "}
-            <Link href="/sign-up" className="font-semibold text-[#14b8a6]">
-              Registrati
-            </Link>
-          </p>
+          <div className="space-y-2">
+            <p>
+              <Link href="/forgot-password" className="font-semibold text-[#14b8a6]">
+                Password dimenticata?
+              </Link>
+            </p>
+            <p>
+              Non hai un account?{" "}
+              <Link href="/sign-up" className="font-semibold text-[#14b8a6]">
+                Registrati
+              </Link>
+            </p>
+          </div>
         )}
       </div>
     </form>
