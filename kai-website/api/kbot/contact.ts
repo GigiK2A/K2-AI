@@ -5,6 +5,18 @@ import { getSystemEnvVar } from '../../lib/env/system'
 export default async function handler(req: any, res: any) {
   if (!ensurePost(req, res)) return
 
+  // ENDPOINT DISMESSO — fail-closed.
+  // La produzione (Railway/Docker) non spedisce affatto `api/`: server.js proxa
+  // ogni /api/kbot/* al backend FastAPI, che questo endpoint non ce l'ha. Il file
+  // resta però pubblicabile come serverless function da qualsiasi deploy Vercel
+  // del progetto (i .vercel/project.json sono ancora tracciati), e senza auth
+  // consegnerebbe gli ultimi 10 messaggi di UNA SESSIONE QUALSIASI a un indirizzo
+  // scelto dal chiamante, da noreply@k2-ai.it (SPF/DKIM validi): esfiltrazione +
+  // relay di phishing. Se serve di nuovo, va riscritto con JWT Supabase +
+  // verifica di session.user_id e destinatario preso dalla sessione, non dal body.
+  return sendJson(res, 410, { error: 'endpoint dismesso' })
+
+  // eslint-disable-next-line no-unreachable
   try {
     const { session_id, email, disponibilita, nome } = await parseJsonBody(req)
     const resendApiKey = getSystemEnvVar('RESEND_API_KEY')

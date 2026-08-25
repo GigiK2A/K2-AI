@@ -30,6 +30,7 @@ from ..lib.auth import AuthUser, optional_user
 from ..lib.email import send_report_ready_email
 from ..lib.pdf_renderer import render_pdf
 from ..lib.storage import upload_pdf
+from .. import settings
 from ..settings import INTERNAL_API_KEY, STORAGE_REPORTS_BUCKET
 
 
@@ -68,12 +69,25 @@ class GeneratePdfBody(BaseModel):
         populate_by_name = True
 
 
+def _apply_test_mode_policy(body: GeneratePdfBody) -> None:
+    """`test_mode` arriva dal BODY: è una comodità, non un'autorizzazione.
+
+    Da solo salta il 402, quindi chiunque potrebbe farsi generare il report senza
+    pagare. Oggi il flusso free lo usa davvero (il frontend lo manda sempre) e la
+    CTA a 19€ è disattivata, perciò il default resta permissivo; con
+    KBOT_ALLOW_TEST_MODE=0 il flag viene ignorato e il paywall torna pieno.
+    """
+    if body.testMode and not settings.test_mode_allowed():
+        body.testMode = False
+
+
 @router.post("/generate-pdf")
 def generate_pdf(
     body: GeneratePdfBody,
     user: Optional[AuthUser] = Depends(optional_user),
     x_internal_key: Optional[str] = Header(default=None),
 ):
+    _apply_test_mode_policy(body)
     session = sessions.get_session(body.sessionId)
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
@@ -176,6 +190,7 @@ async def generate_pdf_stream(
     x_internal_key: Optional[str] = Header(default=None),
 ):
     """SSE variant: emette stage events real-time durante la generazione."""
+    _apply_test_mode_policy(body)
     session = sessions.get_session(body.sessionId)
     if not session:
         raise HTTPException(status_code=404, detail="session not found")

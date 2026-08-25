@@ -106,6 +106,15 @@ async function summarizePdfWithClaude(fileBase64: string, fileName: string): Pro
 export default async function handler(req: any, res: any) {
   if (!ensurePost(req, res)) return
 
+  // ENDPOINT DISMESSO — fail-closed. Vale la stessa nota di contact.ts: non è
+  // deployato su Railway (server.js proxa /api/kbot/* a FastAPI, che ha il suo
+  // upload.py con controllo di ownership), ma resterebbe pubblicabile da un
+  // deploy Vercel del progetto. Senza auth chiunque conoscesse un session_id
+  // potrebbe appendere file propri al contesto di un'altra sessione — testo che
+  // finisce nel system prompt e nel PDF pagato di quel cliente.
+  return sendJson(res, 410, { error: 'endpoint dismesso' })
+
+  // eslint-disable-next-line no-unreachable
   try {
     const { session_id, files } = await parseJsonBody(req)
     if (!session_id || !Array.isArray(files) || files.length === 0) {

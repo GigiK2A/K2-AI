@@ -152,6 +152,21 @@ def _is_production() -> bool:
     return (ENVIRONMENT or "").strip().lower() in ("production", "prod")
 
 
+# TEST MODE = `test_mode: true` nel BODY di generate-pdf / render-deliverable-xlsx
+# salta il 402. È un booleano del CLIENT, non un'autorizzazione: chiunque può
+# metterlo. Oggi serve al flusso free (il frontend lo manda sempre, page.tsx, e la
+# CTA 19€ è disattivata), quindi il default resta ON per non rompere la produzione.
+# Il giorno in cui il report a pagamento torna in vendita, KBOT_ALLOW_TEST_MODE=0
+# chiude il bypass in un colpo solo — senza toccare il codice degli endpoint.
+_ALLOW_TEST_MODE_RAW = (_env("KBOT_ALLOW_TEST_MODE", default="1") or "1").strip().lower()
+KBOT_ALLOW_TEST_MODE = _ALLOW_TEST_MODE_RAW in ("1", "true", "yes")
+
+
+def test_mode_allowed() -> bool:
+    """True se il flag `test_mode` del client può saltare il paywall."""
+    return KBOT_ALLOW_TEST_MODE
+
+
 def paywall_bypass_active() -> bool:
     """True se un flag di bypass del paywall è attivo (demo/dev)."""
     return bool(KBOT_FREE_MODE or KBOT_FAKE_PAYMENT)
@@ -191,3 +206,15 @@ def assert_paywall_safe() -> None:
                 msg + " Avvio interrotto (fail-closed). Per consentirlo "
                 "intenzionalmente imposta KBOT_ALLOW_PAYWALL_BYPASS=1."
             )
+
+    # `test_mode` non blocca l'avvio (oggi il flusso free ci gira sopra), ma in
+    # produzione dev'essere una scelta visibile nei log, non un dettaglio invisibile.
+    if _is_production() and KBOT_ALLOW_TEST_MODE:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "SECURITY: KBOT_ALLOW_TEST_MODE attivo in PRODUCTION — un client può "
+            "chiedere la generazione con `test_mode: true` senza pagare. Necessario "
+            "finché la fase free usa questo flag; metti KBOT_ALLOW_TEST_MODE=0 "
+            "quando il report a pagamento torna in vendita."
+        )

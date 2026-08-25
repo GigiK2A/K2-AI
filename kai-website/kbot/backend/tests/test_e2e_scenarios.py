@@ -752,7 +752,11 @@ def test_extraction_cache_hit_skips_extraction(client, fake_anthropic, monkeypat
 def test_diagnostics_endpoint_shape(client, monkeypatch):
     # Anthropic ping is mocked via FakeAnthropic fixture (already active);
     # supabase ping uses our fake table; the rest are real package imports.
-    r = client.get("/api/kbot/diagnostics")
+    # L'auth è SEMPRE richiesta (fail-closed): qui si verifica la forma della
+    # risposta a chiamante autorizzato.
+    monkeypatch.setattr("app.api.diagnostics.INTERNAL_API_KEY", "secret-shape")
+    r = client.get("/api/kbot/diagnostics",
+                   headers={"Authorization": "Bearer secret-shape"})
     assert r.status_code == 200, r.text
     body = r.json()
     for key in ("status", "checks", "packages", "env", "runtime", "ts"):
@@ -774,3 +778,14 @@ def test_diagnostics_requires_internal_key_when_set(client, monkeypatch):
     r2 = client.get("/api/kbot/diagnostics",
                     headers={"Authorization": "Bearer secret-123"})
     assert r2.status_code == 200
+
+
+def test_diagnostics_closed_when_key_not_configured(client, monkeypatch):
+    """Fail-closed: se INTERNAL_API_KEY non è configurata l'endpoint NON si apre.
+
+    Prima l'auth era `if INTERNAL_API_KEY:` — un deploy che dimenticava la
+    variabile pubblicava versioni, platform ed env presenti a chiunque.
+    """
+    monkeypatch.setattr("app.api.diagnostics.INTERNAL_API_KEY", "")
+    r = client.get("/api/kbot/diagnostics")
+    assert r.status_code == 503

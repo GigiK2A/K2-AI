@@ -5,8 +5,8 @@ Playwright) and reports versions of the core Python packages. Used by
 uptime probes and by us when "PDFs aren't extracting" suddenly happens.
 
 Rate-limited (10/min) to discourage automated scraping. Bearer auth via
-INTERNAL_API_KEY is optional: if the env var is set, the header is
-required; otherwise the endpoint is open (best-effort dev experience).
+INTERNAL_API_KEY is ALWAYS required: senza la variabile configurata l'endpoint
+risponde 503 invece di aprirsi (fail-closed). Il liveness pubblico è /health.
 
 Never leaks secrets: we report presence/absence of env vars, not values.
 """
@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import os
 import platform
+import secrets
 import sys
 import time
 from datetime import datetime, timezone
@@ -109,11 +110,14 @@ def diagnostics(
     request: Request,
     authorization: str | None = Header(default=None),
 ):
-    # Optional bearer auth — only enforced if INTERNAL_API_KEY is configured.
-    if INTERNAL_API_KEY:
-        expected = f"Bearer {INTERNAL_API_KEY}"
-        if authorization != expected:
-            raise HTTPException(status_code=401, detail="unauthorized")
+    # Bearer auth SEMPRE richiesta. Prima era condizionata a `if INTERNAL_API_KEY:`,
+    # cioè un deploy che dimentica la variabile pubblicava l'endpoint: la presenza di
+    # un segreto non può decidere SE autenticare. Senza chiave configurata l'endpoint
+    # non si serve affatto (503) — fail-closed. Il liveness pubblico è /health.
+    if not INTERNAL_API_KEY:
+        raise HTTPException(status_code=503, detail="diagnostics non configurato")
+    if not secrets.compare_digest(authorization or "", f"Bearer {INTERNAL_API_KEY}"):
+        raise HTTPException(status_code=401, detail="unauthorized")
 
     checks = {
         "supabase": _check_supabase(),

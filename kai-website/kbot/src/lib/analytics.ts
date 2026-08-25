@@ -34,6 +34,18 @@ export function initAnalytics(): Promise<void> {
           respect_dnt: true,
           opt_out_capturing_by_default: false,
           autocapture: false,
+          // Il link di recovery di Supabase atterra su
+          // /app/reset-password#access_token=…&refresh_token=… (flusso implicito).
+          // Un pageview che porta con sé l'URL intero spedirebbe quei token a
+          // PostHog. supabase-js di norma ripulisce il fragment prima, ma qui è
+          // una corsa: togliamo fragment e query dagli URL prima dell'invio.
+          sanitize_properties: (props: Record<string, unknown>) => {
+            for (const k of ["$current_url", "$referrer", "$pathname"]) {
+              const v = props[k];
+              if (typeof v === "string") props[k] = v.split("#")[0].split("?")[0];
+            }
+            return props;
+          },
         });
         initialized = true;
         // Make available for ad-hoc calls.

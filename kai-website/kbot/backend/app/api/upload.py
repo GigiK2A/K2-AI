@@ -53,6 +53,43 @@ ALLOWED_CONTENT_TYPES = {
 }
 
 
+# Content-type SERVITO da Supabase Storage, derivato dall'estensione già validata.
+# Non si usa quello dichiarato dal client: `{"name":"nota.txt","type":"text/html"}`
+# passa la whitelist (l'estensione è ammessa) e farebbe servire HTML/JS attivo
+# dall'origin dello storage. La whitelist esiste proprio per bloccare html/svg.
+_EXT_CONTENT_TYPE = {
+    ".pdf": "application/pdf",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xls": "application/vnd.ms-excel",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".csv": "text/csv",
+    ".txt": "text/plain",
+    ".md": "text/plain",
+    ".json": "application/json",
+    ".xml": "text/plain",  # mai text/xml: alcuni browser lo renderizzano
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+
+
+def _storage_content_type(name: str, declared: str) -> str:
+    """Content-type da persistere sull'oggetto: mai quello dichiarato dal client."""
+    import os
+
+    ext = os.path.splitext(name or "")[1].lower()
+    if ext in _EXT_CONTENT_TYPE:
+        return _EXT_CONTENT_TYPE[ext]
+    # Nessuna estensione riconosciuta: _validate_file_kind ha già imposto che il
+    # content-type dichiarato fosse nella whitelist, quindi qui è sicuro.
+    ctype = (declared or "").split(";", 1)[0].strip().lower()
+    if ctype in ALLOWED_CONTENT_TYPES:
+        return ctype
+    return "application/octet-stream"
+
+
 def _validate_file_kind(name: str, content_type: str) -> None:
     """Rifiuta (415) i file il cui tipo non è nella whitelist. Un file è ammesso se
     l'estensione È consentita; se manca un'estensione riconosciuta si ripiega sul
@@ -504,7 +541,7 @@ def upload(
             storage.upload(
                 path,
                 data,
-                {"content-type": f.type or "application/octet-stream", "upsert": "true"},
+                {"content-type": _storage_content_type(f.name, f.type or ""), "upsert": "true"},
             )
         except Exception:
             log.exception("storage upload failed")

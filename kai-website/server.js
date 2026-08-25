@@ -153,6 +153,13 @@ function proxyKbotPython(req, res, rawPath, rawQuery) {
     'x-forwarded-for': realIp,
     'x-real-ip': realIp,
   };
+  // Header di FIDUCIA server-to-server: il backend li usa per saltare ownership e
+  // paywall (x-internal-key in generate_pdf/export) o per identificare il chiamante.
+  // Non devono MAI poter arrivare dalla rete pubblica: il proxy è il confine, li
+  // cancella qui. Le richieste interne parlano con FastAPI su loopback, non da qui.
+  for (const h of ['x-internal-key', 'x-api-key', 'x-forwarded-host', 'x-forwarded-server']) {
+    delete upstreamHeaders[h];
+  }
   // nosemgrep: problem-based-packs.insecure-transport.js-node.http-request.http-request,problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- localhost loopback to internal FastAPI; TLS terminated at edge proxy (Railway)
   const proxyReq = http.request(
     {

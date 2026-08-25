@@ -1,10 +1,13 @@
 """Tests for url_fetcher utilities (no network calls)."""
+import asyncio
+
 import pytest
 from app.lib.url_fetcher import (
     validate_url,
     extract_html_content,
     build_url_summary,
     UrlFetchError,
+    _safe_get,
 )
 
 
@@ -77,6 +80,73 @@ def test_validate_url_accepts_standard_https_port():
 def test_validate_url_accepts_custom_high_port():
     # Custom app ports (e.g. 8080) should still be allowed.
     assert validate_url("http://example.com:8080/") is None
+
+
+# --- Crawl multi-pagina: i redirect NON aggirano validate_url ------------------
+# Il client del crawl usava follow_redirects=True: validate_url veniva applicata
+# all'URL pubblico di partenza e poi ignorata al 30x. Una pagina same-host che
+# rimandava su 169.254.169.254 o su un host interno diventava SSRF, con title/H1
+# della risposta interna rimandati al chiamante dentro il summary.
+
+
+class _FakeResponse:
+    def __init__(self, status_code, headers=None):
+        self.status_code = status_code
+        self.headers = headers or {}
+        self.is_redirect = status_code in (301, 302, 303, 307, 308)
+        self.text = ""
+
+    @property
+    def url(self):
+        import httpx
+        return httpx.URL(self._url)
+
+
+class _FakeClient:
+    """Client che risponde 302 verso `location` e poi 200 su qualsiasi cosa."""
+
+    def __init__(self, location):
+        self.location = location
+        self.requested = []
+
+    async def get(self, url, timeout=None):
+        self.requested.append(url)
+        if len(self.requested) == 1:
+            resp = _FakeResponse(302, {"location": self.location})
+            resp._url = url
+            return resp
+        resp = _FakeResponse(200, {"content-type": "text/html"})
+        resp._url = url
+        return resp
+
+
+def test_crawl_redirect_verso_ip_interno_viene_bloccato():
+    client = _FakeClient("http://169.254.169.254/latest/meta-data/")
+    assert asyncio.run(_safe_get("https://example.com/p1", client, "example.com")) is None
+    # la richiesta verso l'IP interno non è mai partita
+    assert client.requested == ["https://example.com/p1"]
+
+
+def test_crawl_redirect_same_host_passa_comunque_da_validate_url():
+    """Anche restando sullo stesso host il redirect è ri-validato a ogni hop:
+    porta di servizio bloccata, IP privato dietro lo stesso nome, ecc."""
+    client = _FakeClient("https://example.com:22/shell")
+    with pytest.raises(UrlFetchError, match="Porta non consentita"):
+        asyncio.run(_safe_get("https://example.com/p1", client, "example.com"))
+    assert client.requested == ["https://example.com/p1"]
+
+
+def test_crawl_redirect_fuori_dominio_viene_ignorato():
+    client = _FakeClient("https://altro-sito.example/pagina")
+    assert asyncio.run(_safe_get("https://example.com/p1", client, "example.com")) is None
+    assert client.requested == ["https://example.com/p1"]
+
+
+def test_crawl_redirect_same_host_viene_seguito():
+    client = _FakeClient("https://example.com/p2")
+    resp = asyncio.run(_safe_get("https://example.com/p1", client, "example.com"))
+    assert resp is not None and resp.status_code == 200
+    assert client.requested == ["https://example.com/p1", "https://example.com/p2"]
 
 
 def test_extract_metadata_only():

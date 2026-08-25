@@ -11,6 +11,7 @@ verificato dall'8e. Qui si verifica solo che il servizio sia pagato sulla sessio
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional
 
 from datetime import datetime, timezone
@@ -29,6 +30,13 @@ router = APIRouter()
 log = logging.getLogger(__name__)
 
 PREVIEW_LIMIT_MESE = 2  # gate W8, A/B 2 vs 3 post-live
+
+# Forma canonica dei job id: "job_"+hex (motore 8e, k2a-8e/app/jobs.py) oppure
+# "agt_"+hex (agente A2, lib/agent_jobs.py). Validarla PRIMA di usare il valore
+# serve dove il job id NON arriva da un path param (il body di /deliverables/save):
+# lì può contenere `/` e `..` e finirebbe sia nell'URL verso l'8e sia nella chiave
+# di storage.
+_JOB_ID_RE = re.compile(r"^(job|agt)_[0-9a-f]{8,32}$")
 
 
 def _session_company(session: dict) -> Optional[str]:
@@ -111,6 +119,8 @@ def _authorize_job_download(job_id: str, user: Optional[AuthUser]) -> dict:
     prima di questo binding, o lookup fallito) NON serviamo il file → 403. Meglio
     negare un raro download legacy che lasciare aperto un accesso non pagato.
     """
+    if not _JOB_ID_RE.match(str(job_id or "")):
+        raise HTTPException(status_code=403, detail="download non autorizzato per questo job")
     session = _session_for_job(job_id)
     if not session:
         raise HTTPException(status_code=403, detail="download non autorizzato per questo job")
@@ -735,11 +745,18 @@ async def save_deliverable(body: SaveDeliverableBody,
                            user: Optional[AuthUser] = Depends(optional_user)):
     """Rende DURATURO il deliverable 8e: carica il PDF (effimero in /tmp) su
     Supabase Storage e lo lega alla sessione → compare in dashboard/storico.
-    Idempotente: se già salvato per questo job, ritorna l'URL esistente."""
-    session = sessions.get_session(body.sessionId)
-    if not session:
-        raise HTTPException(status_code=404, detail="session not found")
-    _check_ownership(session, user)
+    Idempotente: se già salvato per questo job, ritorna l'URL esistente.
+
+    C1 — stesso gate dei download (`_authorize_job_download`): il job va risolto
+    alla sessione che lo POSSIEDE, non alla sessione che il chiamante dichiara.
+    Prima qui si controllava solo la proprietà della sessione del body: con una
+    sessione anonima creata al volo + il job id di un altro cliente si otteneva il
+    suo PDF pagato (IDOR) e senza alcun controllo di pagamento (bypass paywall).
+    """
+    session = _authorize_job_download(body.jobId, user)
+    # Il job deve appartenere ALLA sessione indicata, non a una qualsiasi.
+    if str(session.get("id") or "") != str(body.sessionId):
+        raise HTTPException(status_code=403, detail="job non appartiene a questa sessione")
 
     collected = dict(session.get("collected_data") or {})
     if collected.get("deliverable_saved_job") == body.jobId and session.get("pdf_url"):
@@ -757,9 +774,12 @@ async def save_deliverable(body: SaveDeliverableBody,
         log.warning("fetch_output error for job %s", body.jobId, exc_info=True)
         raise HTTPException(status_code=502, detail="motore non disponibile, riprova tra poco")
 
+    # Chiave di storage e update sulla sessione RISOLTA dal job, non sulla stringa
+    # del body (già validata identica sopra, ma la fonte di verità è una sola).
+    sid = str(session.get("id"))
     public_url = upload_pdf(
         bucket=STORAGE_REPORTS_BUCKET,
-        path=f"deliverables/{body.sessionId}/{body.jobId}.pdf",
+        path=_durable_pdf_path(sid, body.jobId),
         content=content,
     )
     # Label leggibile del servizio per la dashboard/storico.
@@ -769,7 +789,7 @@ async def save_deliverable(body: SaveDeliverableBody,
     collected["deliverable_pdf_url"] = public_url
     if servizio:
         collected["deliverable_label"] = servizio.get("label")
-    sessions.update_session(body.sessionId, {"pdf_url": public_url, "collected_data": collected})
+    sessions.update_session(sid, {"pdf_url": public_url, "collected_data": collected})
     return {"pdf_url": public_url}
 
 

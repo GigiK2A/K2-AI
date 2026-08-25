@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import base64
 import logging
+from html import escape
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 
@@ -34,15 +36,31 @@ def send_report_ready_email(
         log.info("No recipient email — skipping notification")
         return False
 
+    # Il titolo arriva da `analysis.meta.title`, cioè output del modello costruito
+    # sulla conversazione e sui file caricati dall'utente: è testo NON fidato che
+    # finisce in un'email firmata DKIM da noreply@k2-ai.it (e in BCC all'operatore).
+    # Senza escape ci si iniettava markup — un bottone "Apri il report" verso un
+    # dominio dell'attaccante dentro una nostra email autentica.
+    safe_title = escape(str(report_title or "Report operativo"))[:160]
+    # Subject: niente HTML da escapare, ma né newline (igiene) né lunghezze assurde.
+    subject_title = " ".join(str(report_title or "Report operativo").split())[:160]
+    # Il link deve essere un URL assoluto http(s) generato da noi (signed URL di
+    # Supabase Storage): mai un `javascript:` o un break-out dell'attributo href.
+    parsed_url = urlparse(report_url or "")
+    if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+        log.error("report_url non valido, email non inviata: %r", report_url)
+        return False
+    safe_url = escape(report_url, quote=True)
+
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; color:#0F172A; max-width:540px;">
       <h2 style="color:#0F2544; font-size:20px; margin:0 0 16px;">Il tuo report K2-AI è pronto</h2>
       <p style="font-size:14px; line-height:1.6; margin:0 0 12px;">
-        Ciao, abbiamo generato il documento <strong>{report_title}</strong> con priorità,
+        Ciao, abbiamo generato il documento <strong>{safe_title}</strong> con priorità,
         azioni operative e roadmap a partire dalla conversazione con K-BOT.
       </p>
       <p style="margin:18px 0;">
-        <a href="{report_url}" style="background:#C2410C; color:#fff; padding:10px 18px; border-radius:4px; text-decoration:none; font-weight:600; font-size:14px;">Apri il report (PDF)</a>
+        <a href="{safe_url}" style="background:#C2410C; color:#fff; padding:10px 18px; border-radius:4px; text-decoration:none; font-weight:600; font-size:14px;">Apri il report (PDF)</a>
       </p>
       <p style="font-size:12px; color:#64748B; line-height:1.5; margin:24px 0 0;">
         Il link punta al PDF salvato su Supabase Storage. Conservalo: il report è tuo.<br>
@@ -55,7 +73,7 @@ def send_report_ready_email(
     payload = {
         "from": REPORT_FROM_EMAIL,
         "to": [to_email],
-        "subject": f"Report K2-AI pronto — {report_title}",
+        "subject": f"Report K2-AI pronto — {subject_title}",
         "html": html.strip(),
     }
     if KBOT_NOTIFY_EMAIL:

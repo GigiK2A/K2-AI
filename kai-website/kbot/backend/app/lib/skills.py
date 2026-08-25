@@ -9,6 +9,7 @@ Missing skills are silently skipped with a warning log.
 from __future__ import annotations
 
 import logging
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, List, Optional
@@ -17,9 +18,27 @@ from ..settings import SKILLS_DIR
 
 log = logging.getLogger(__name__)
 
+# Un nome di skill è il nome di UNA directory dentro SKILLS_DIR: niente separatori,
+# niente `..`, niente path assoluti. Senza questo vincolo `SKILLS_DIR / name` esce
+# dalla base (e con un name assoluto pathlib scarta del tutto la base), e il nome
+# arriva qui dal body della richiesta via `forced_skills` (api/message.py).
+_SKILL_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 
-def _skill_root(name: str) -> Path:
-    return SKILLS_DIR / name
+
+def _skill_root(name: str) -> Optional[Path]:
+    if not _SKILL_NAME_RE.match(str(name or "")) or name in (".", ".."):
+        log.warning("Nome skill non valido, ignorato: %r", name)
+        return None
+    root = SKILLS_DIR / name
+    try:
+        # Cintura + bretelle: anche con la regex passata, il path risolto deve
+        # restare sotto SKILLS_DIR (symlink inclusi).
+        if not root.resolve().is_relative_to(SKILLS_DIR.resolve()):
+            log.warning("Skill fuori da SKILLS_DIR, ignorata: %r", name)
+            return None
+    except OSError:
+        return None
+    return root
 
 
 def list_available_skills() -> List[str]:
@@ -31,6 +50,8 @@ def list_available_skills() -> List[str]:
 @lru_cache(maxsize=512)
 def load_skill(name: str, include_references: bool = True, max_chars: Optional[int] = None) -> Optional[str]:
     root = _skill_root(name)
+    if root is None:
+        return None
     skill_md = root / "SKILL.md"
     if not skill_md.exists():
         # also accept legacy lowercase

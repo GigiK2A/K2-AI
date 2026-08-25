@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useKbotAuth } from "@/app/providers";
 
+/* Letto a livello di modulo, cioè PRIMA che detectSessionInUrl (async) ripulisca il
+   fragment: è la prova che si arriva davvero dal link di recupero. */
+const ARRIVED_FROM_RECOVERY_LINK =
+  typeof window !== "undefined" &&
+  /(^|[#&?])type=recovery(&|$)/.test(`${window.location.hash}${window.location.search}`);
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const { updatePassword } = useKbotAuth();
@@ -23,16 +29,18 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      if (data.session) {
-        setReady(true);
-        setChecking(false);
-      }
-    });
+    /* Il form si apre solo per un arrivo dal link di recupero: o l'evento
+       PASSWORD_RECOVERY, o i token ancora nel fragment (`type=recovery`) che
+       detectSessionInUrl sta consumando. Una sessione qualunque già presente nel
+       browser NON basta: cambiare password senza conoscere quella vecchia è una
+       cosa che si fa dal profilo, non da questa pagina. */
+    if (ARRIVED_FROM_RECOVERY_LINK) {
+      setReady(true);
+      setChecking(false);
+    }
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || nextSession) {
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
         setReady(true);
         setChecking(false);
       }

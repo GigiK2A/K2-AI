@@ -81,6 +81,41 @@ def test_pdf_download_404_when_engine_missing(monkeypatch):
     assert ei.value.status_code == 404
 
 
+def test_save_deliverable_rifiuta_job_di_un_altro(monkeypatch):
+    """C1 — /deliverables/save passava solo da _check_ownership sulla sessione del
+    BODY: con una sessione propria (anche anonima) + il job_id di un altro cliente
+    si otteneva il suo PDF pagato, ricaricato sul proprio prefisso di storage e
+    restituito come signed URL. Ora il job va risolto alla sessione che lo possiede.
+    """
+    # Il job appartiene alla sessione della vittima…
+    monkeypatch.setattr(
+        d, "_authorize_job_download",
+        lambda job_id, user: {"id": "sess-vittima", "status": "paid", "collected_data": {}},
+    )
+    called = {"fetch": 0}
+
+    async def _f(job_id, fmt="pdf"):
+        called["fetch"] += 1
+        return b"%PDF", "application/pdf"
+    monkeypatch.setattr(d.engine, "fetch_output", _f)
+
+    # …ma l'attaccante lo chiede indicando la PROPRIA sessione.
+    body = d.SaveDeliverableBody(session_id="sess-attaccante", job_id="job_abcdef123456")
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(d.save_deliverable(body, None))
+    assert ei.value.status_code == 403
+    assert called["fetch"] == 0  # il PDF non è mai stato scaricato dall'8e
+
+
+def test_save_deliverable_job_id_malformato_bloccato():
+    """Il job_id di /save arriva dal BODY (non da un path param): può contenere `/`
+    e `..` e finirebbe nell'URL verso l'8e e nella chiave di storage."""
+    for bad in ("../../etc/passwd", "job_x/../../altro", "", "job_NONHEX"):
+        with pytest.raises(HTTPException) as ei:
+            d._authorize_job_download(bad, None)
+        assert ei.value.status_code == 403
+
+
 def test_xlsx_download_fetches_json_and_renders(monkeypatch):
     _bypass_c1_gate(monkeypatch)
     # deliverable minimale che il renderer xlsx sa gestire (nessun foglio obbligatorio).

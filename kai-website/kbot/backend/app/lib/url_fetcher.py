@@ -339,13 +339,43 @@ async def _discover_internal_links(html: str, base_url: str) -> List[str]:
     return out
 
 
+async def _safe_get(url: str, client: httpx.AsyncClient, base_host: str) -> httpx.Response | None:
+    """GET del crawl con i redirect seguiti A MANO e ri-validati a ogni hop.
+
+    Il client del crawl NON può usare `follow_redirects=True`: `validate_url`
+    verrebbe applicata al solo URL pubblico di partenza e poi buttata via al 30x.
+    Una pagina same-host che redirige su `169.254.169.254`, su un host della rete
+    privata Railway (`fd00::/8`) o su `127.0.0.1` diventerebbe SSRF — e non cieca,
+    perché title/H1 della risposta interna finiscono nel `summary` restituito al
+    chiamante. Stessa strategia già usata da `fetch_url_content`.
+
+    Oltre alla ri-validazione, il crawl non può nemmeno CAMBIARE host: si sta
+    auditando un sito preciso, un redirect fuori dominio non ha uso legittimo.
+    """
+    current = url
+    for _hop in range(MAX_REDIRECTS + 1):
+        # Prima il vincolo di dominio (più stretto e senza DNS), poi validate_url.
+        if (urlparse(current).hostname or "") != base_host:
+            return None
+        validate_url(current)
+        resp = await client.get(current, timeout=ADDITIONAL_PAGE_TIMEOUT)
+        if not resp.is_redirect:
+            return resp
+        location = resp.headers.get("location")
+        if not location:
+            return None
+        current = str(resp.url.join(location))
+    return None
+
+
 async def _try_sitemap(base_url: str, client: httpx.AsyncClient) -> List[str]:
     """If /sitemap.xml is present, return up to MAX_ADDITIONAL_PAGES * 2 URLs from it."""
     parsed = urlparse(base_url)
     sitemap_url = f"{parsed.scheme}://{parsed.netloc}/sitemap.xml"
     try:
-        validate_url(sitemap_url)
-        resp = await client.get(sitemap_url, timeout=ADDITIONAL_PAGE_TIMEOUT)
+        resp = await _safe_get(sitemap_url, client, parsed.hostname or "")
+        if resp is None:
+            return []
         if resp.status_code != 200 or "xml" not in resp.headers.get("content-type", "").lower():
             return []
         body = resp.text[:200_000]
@@ -366,11 +396,12 @@ async def _try_sitemap(base_url: str, client: httpx.AsyncClient) -> List[str]:
     return urls
 
 
-async def _fetch_page_compact(url: str, client: httpx.AsyncClient) -> Dict[str, Any] | None:
+async def _fetch_page_compact(url: str, client: httpx.AsyncClient, base_host: str) -> Dict[str, Any] | None:
     """Fetch one internal page and return only structural SEO fields."""
     try:
-        validate_url(url)
-        resp = await client.get(url, timeout=ADDITIONAL_PAGE_TIMEOUT)
+        resp = await _safe_get(url, client, base_host)
+        if resp is None:
+            return None
         if resp.status_code != 200:
             return None
         if "text/html" not in resp.headers.get("content-type", "").lower():
@@ -401,8 +432,13 @@ async def _crawl_additional_pages(html: str, base_url: str) -> List[Dict[str, An
     note-legali) venivano omesse dal crawl. Adesso le due fonti
     vengono fuse, deduplicate, e capate a MAX_ADDITIONAL_PAGES * 2.
     """
+    base_host = urlparse(base_url).hostname or ""
+    if not base_host:
+        return []
     async with httpx.AsyncClient(
-        follow_redirects=True,
+        # follow_redirects=False: i redirect li segue _safe_get, ri-validando ogni
+        # hop. Con True la validate_url del pre-redirect sarebbe carta straccia (SSRF).
+        follow_redirects=False,
         timeout=ADDITIONAL_PAGE_TIMEOUT,
         headers={
             "User-Agent": "Mozilla/5.0 (compatible; K2-AI-Bot/1.0)",
@@ -427,7 +463,7 @@ async def _crawl_additional_pages(html: str, base_url: str) -> List[Dict[str, An
         if not candidates:
             return []
         results = await asyncio.gather(
-            *[_fetch_page_compact(u, client) for u in candidates],
+            *[_fetch_page_compact(u, client, base_host) for u in candidates],
             return_exceptions=True,
         )
     pages: List[Dict[str, Any]] = []

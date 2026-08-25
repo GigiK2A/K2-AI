@@ -147,6 +147,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const updatePassword = useCallback(async (password: string) => {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
+    /* Chi resetta la password spesso lo fa PERCHÉ sospetta un accesso altrui:
+       senza questo, il refresh token dell'altro resta valido e il reset non serve
+       a niente. `scope: "others"` chiude le altre sessioni e lascia viva questa. */
+    try {
+      await supabase.auth.signOut({ scope: "others" });
+    } catch {
+      /* best-effort: la password è già cambiata, non facciamo fallire il flusso */
+    }
   }, []);
 
   /* ---------- Kbot session lifecycle ---------- */
