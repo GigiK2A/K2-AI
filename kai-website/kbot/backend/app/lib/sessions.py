@@ -38,9 +38,32 @@ def _normalize_tag(value: Optional[str]) -> Optional[str]:
     return v if re.fullmatch(r"P[0-9]{2}", v) else None
 
 
+# Settori del widget lead router del sito (SECTORS in
+# kai-website/components/kbot/KBot.tsx, SECTOR_LABELS in kai-website/server.js).
+# La colonna `sector` la legge il lead router Node per costruire il system
+# prompt: se non la scriviamo qui, il settore scelto dall'utente si perde e il
+# bot ragiona su una "PMI italiana" generica.
+VALID_SECTORS = frozenset({
+    "studio-ingegneria",
+    "commercialista",
+    "manifatturiero",
+    "servizi-b2b",
+    "hospitality",
+    "commercio-ecommerce",
+    "tlc",
+    "studio-legale",
+    "pubblica-amministrazione",
+})
+
+
+def _normalize_sector(value: Optional[str]) -> Optional[str]:
+    v = str(value or "").strip().lower()
+    return v if v in VALID_SECTORS else None
+
+
 def create_session(
     *, service_id: Optional[str], mode: Optional[str], user_id: Optional[str],
-    tag_pillar: Optional[str] = None,
+    tag_pillar: Optional[str] = None, sector: Optional[str] = None,
 ) -> dict:
     # Service-id NOT defaulted: prevents biasing the LLM toward one specific
     # analysis type (was: P12 'AI Consulenza Strategica' → made K-BOT start
@@ -76,6 +99,9 @@ def create_session(
         "messages": [],
         "collected_data": collected_data,
     }
+    resolved_sector = _normalize_sector(sector)
+    if resolved_sector:
+        row["sector"] = resolved_sector
     if user_id:
         row["user_id"] = user_id
     else:

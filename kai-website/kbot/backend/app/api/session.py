@@ -22,6 +22,9 @@ class CreateSessionBody(BaseModel):
     serviceId: Optional[str] = Field(default=None, alias="service_id")
     tagPillar: Optional[str] = Field(default=None, alias="tag_pillar")
     mode: Optional[str] = None
+    # Il widget lead router del sito manda il settore scelto dall'utente: va
+    # persistito o il prompt Node cade su "PMI italiana" (vedi VALID_SECTORS).
+    sector: Optional[str] = None
 
     class Config:
         populate_by_name = True
@@ -39,6 +42,7 @@ def create_session(
         mode=body.mode,
         user_id=user.id if user else None,
         tag_pillar=body.tagPillar,
+        sector=body.sector,
     )
     track_server(
         distinct_id=row["id"],
@@ -46,6 +50,7 @@ def create_session(
         properties={
             "service_id": body.serviceId,
             "mode": body.mode,
+            "sector": row.get("sector"),
             "authed": bool(user),
         },
     )
