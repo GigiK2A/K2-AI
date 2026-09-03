@@ -142,7 +142,10 @@ function startEngine8e() {
 }
 
 function proxyKbotPython(req, res, rawPath, rawQuery) {
-  const search = rawQuery ? `?${rawQuery}` : '';
+  // rawQuery arriva già con il '?' davanti (vedi il dispatcher): aggiungerne un
+  // altro produce `/api/kbot/status??id=…`, e FastAPI legge il parametro come
+  // `?id` → 422 "field required: id" su tutto il polling di stato.
+  const search = !rawQuery ? '' : (rawQuery.startsWith('?') ? rawQuery : `?${rawQuery}`);
   // FastAPI's SlowAPI limiter keys on X-Forwarded-For (it sits on loopback so
   // remote_addr is always 127.0.0.1). Forward the real client IP so the
   // limiter does not collapse all traffic onto a single bucket.
@@ -430,6 +433,19 @@ function createAnthropicClient() {
   // upstream is slow. Override per-call via `timeout` if a long-running task
   // (e.g. report PDF generation) needs more headroom.
   return new Anthropic({ apiKey, timeout: 60_000 });
+}
+
+// Testo della risposta = concatenazione dei blocchi `text`, non `content[0]`.
+// I modelli con reasoning (il gpt-oss locale dietro lo shim mette sempre un
+// blocco `thinking` come primo elemento) facevano restituire stringa vuota, e
+// il bot rispondeva col fallback generico a ogni turno. Il backend Python fa
+// già così (app/api/message.py).
+function anthropicText(response) {
+  return (response?.content || [])
+    .filter(block => block && block.type === 'text' && typeof block.text === 'string')
+    .map(block => block.text)
+    .join('\n')
+    .trim();
 }
 
 function resolveKbotSectorLabel(sector) {
@@ -1606,7 +1622,7 @@ async function handleKbotChat(req, res) {
         content: message.content,
       })),
     });
-    rawAssistant = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
+    rawAssistant = anthropicText(response);
   } catch (aiErr) {
     console.error('Anthropic API error in handleKbotChat:', aiErr);
     const isTimeout = aiErr && (aiErr.name === 'APITimeoutError' || /timeout/i.test(String(aiErr.message || '')));
@@ -1733,7 +1749,7 @@ async function summarizeKbotPdf(base64, fileName) {
       },
     ],
   });
-  return response.content?.[0]?.type === 'text' ? response.content[0].text.trim() : '';
+  return anthropicText(response);
 }
 
 // ── SSE streaming variant of /api/kbot/chat ──────────────────────────────────
@@ -2017,7 +2033,7 @@ ${skills.slice(0, 18000)}`,
 
   let teaser;
   try {
-    teaser = JSON.parse(String(response.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim());
+    teaser = JSON.parse(String(anthropicText(response) || '{}').replace(/```json|```/g, '').trim());
   } catch {
     teaser = {
       settore: resolveKbotSectorLabel(session.sector),
@@ -2081,7 +2097,7 @@ async function handleKbotGenerateReport(req, res) {
     }],
   });
 
-  const rawReportText = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
+  const rawReportText = anthropicText(response);
   const analysisJson = extractJsonFromText(rawReportText) || {
     meta: {
       settore: sectorLabel,
@@ -2468,6 +2484,18 @@ async function handleAdminAlert(req, res) {
   sendJson(res, 200, { ok: true, delivered });
 }
 
+// Endpoint K-BOT che vivono solo qui nel runtime Node: il backend FastAPI non li
+// implementa (ha /message al posto di /chat, e non ha teaser/contact). Sono il
+// lead router del sito (widget React in components/kbot su /suite-ai.html):
+// prompt diverso dal K-BOT premium, mappa sui 20 servizi Suite e precompila il
+// form contatti. Tutto il resto di /api/kbot/* va proxato al Python.
+const NODE_KBOT_PATHS = new Set([
+  '/api/kbot/chat',
+  '/api/kbot/chat/stream',
+  '/api/kbot/teaser',
+  '/api/kbot/contact',
+]);
+
 async function handleKbotApi(req, res, rawPath) {
   if (rawPath === '/api/kbot/session') return handleKbotSession(req, res);
   if (rawPath === '/api/kbot/chat') return handleKbotChat(req, res);
@@ -2650,6 +2678,15 @@ const server = http.createServer((req, res) => {
         sendRateLimited(res, rawPath, { key: ip, bucket: 'ip', resetAt: check.resetAt });
         return;
       }
+    }
+    // Il lead router del sito è implementato qui in Node: se lo proxiamo al
+    // Python il widget prende 404 (FastAPI espone /message, non /chat).
+    if (NODE_KBOT_PATHS.has(rawPath)) {
+      handleKbotApi(req, res, rawPath).catch(err => {
+        console.error('K-BOT API error:', err);
+        if (!res.headersSent) sendJson(res, 500, { error: 'Errore interno K-BOT' });
+      });
+      return;
     }
     // Proxy to the FastAPI Python backend (session-based, Sonnet + Playwright PDF).
     proxyKbotPython(req, res, rawPath, rawQuery);
