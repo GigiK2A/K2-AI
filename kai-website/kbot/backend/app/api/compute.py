@@ -173,8 +173,10 @@ def web_search_health(request: Request) -> dict:
     return {
         "enabled": web_search.enabled(),
         "openai_key_present": bool(settings.OPENAI_API_KEY),
+        "ddgs_fallback_present": web_search._ddgs_available(),
         "model": settings.OPENAI_SEARCH_MODEL,
-        "fonte": "OpenAI Responses API (web_search) — eccezione 'no OpenAI' (OK Luca)",
+        "fonte": ("OpenAI Responses API (web_search) — eccezione 'no OpenAI' (OK Luca); "
+                  "fallback gratuito ddgs se OpenAI non è utilizzabile"),
     }
 
 

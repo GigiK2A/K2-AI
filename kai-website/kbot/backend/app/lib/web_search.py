@@ -9,8 +9,13 @@ SOLO per il motore di ricerca. Architettura:
 - Tutto il resto (chat, ragionamento, structuring) resta su Claude/Anthropic. OpenAI è
   usato ESCLUSIVAMENTE per la ricerca web.
 
-Degrada in sicurezza: senza `OPENAI_API_KEY` (o con `KBOT_WEB_SEARCH=0`) il tool non viene
-nemmeno dichiarato → chat/generazione funzionano come prima, senza ricerca.
+Degrada in sicurezza: con `KBOT_WEB_SEARCH=0`, o senza NESSUN motore disponibile, il tool
+non viene nemmeno dichiarato → chat/generazione funzionano come prima, senza ricerca.
+
+Fallback gratuito (set 2026): se OpenAI non è utilizzabile (chiave assente o crediti
+esauriti → 429 insufficient_quota) la ricerca passa alla lib `ddgs` (DuckDuckGo & co.,
+nessuna chiave, nessun costo). OpenAI resta il motore primario quando c'è credito perché
+riassume e cita; DDG restituisce risultati grezzi che il modello digerisce da solo.
 """
 from __future__ import annotations
 
@@ -27,10 +32,18 @@ def _flag(name: str, default: str = "1") -> bool:
     return (os.environ.get(name, default) or default).strip().lower() not in ("0", "false", "no", "off")
 
 
+def _ddgs_available() -> bool:
+    try:
+        import importlib.util
+        return importlib.util.find_spec("ddgs") is not None
+    except Exception:
+        return False
+
+
 def enabled() -> bool:
-    """ON quando la ricerca è usabile: flag attivo E chiave OpenAI presente.
-    `KBOT_WEB_SEARCH=0` la spegne."""
-    return bool(OPENAI_API_KEY) and _flag("KBOT_WEB_SEARCH", "1")
+    """ON quando la ricerca è usabile: flag attivo E almeno un motore disponibile
+    (OpenAI con chiave, oppure il fallback gratuito `ddgs`). `KBOT_WEB_SEARCH=0` la spegne."""
+    return _flag("KBOT_WEB_SEARCH", "1") and (bool(OPENAI_API_KEY) or _ddgs_available())
 
 
 # Client-tool esposto a Claude (NON un server-tool: l'esecuzione è nostra → OpenAI).
@@ -101,15 +114,12 @@ def _extract_citations(resp: Any) -> list[dict]:
     return out
 
 
-def run_openai_search(query: str) -> str:
-    """Esegue UNA ricerca web via OpenAI (Responses API + tool `web_search`) e ritorna
-    testo + elenco fonti. Best-effort: ritorna una nota d'errore (mai solleva) così
-    l'handler del tool può sempre rispondere a Claude."""
-    query = (query or "").strip()[:_MAX_QUERY_CHARS]
-    if not query:
-        return "[ricerca web: query mancante]"
+def _openai_search(query: str) -> Optional[str]:
+    """UNA ricerca via OpenAI (Responses API + tool `web_search`): testo riassunto +
+    elenco fonti. None se non utilizzabile (chiave assente, crediti esauriti, rete):
+    il chiamante passa al fallback."""
     if not OPENAI_API_KEY:
-        return "[ricerca web non configurata: manca OPENAI_API_KEY]"
+        return None
     try:
         from openai import OpenAI
 
@@ -127,10 +137,54 @@ def run_openai_search(query: str) -> str:
         if cites:
             fonti = "\n".join(f"- {c['title'] or c['url']}: {c['url']}" for c in cites)
             text = f"{text}\n\nFonti:\n{fonti}" if text else f"Fonti:\n{fonti}"
-        return text or "[ricerca web: nessun risultato]"
-    except Exception as exc:  # rete/credito/modello: Claude prosegue con la nota
-        log.warning("OpenAI web search fallita: %s", exc)
-        return f"[ricerca web non riuscita: {str(exc)[:160]}]"
+        return text or None
+    except Exception as exc:  # rete/credito/modello → fallback DDG
+        log.warning("OpenAI web search fallita (passo al fallback DDG): %s", exc)
+        return None
+
+
+def _ddg_search(query: str) -> Optional[str]:
+    """Fallback gratuito senza chiave (lib `ddgs`): risultati grezzi titolo+snippet+URL,
+    è il modello a digerirli e citarli. None se lib assente, blocco rete o zero risultati."""
+    try:
+        from ddgs import DDGS
+
+        rows = DDGS().text(query, max_results=6, region="it-it") or []
+    except Exception as exc:
+        log.warning("DDG web search fallita: %s", exc)
+        return None
+    rows = [r for r in rows if r.get("href")]
+    if not rows:
+        return None
+    parts = [
+        f"{i}. {(r.get('title') or '').strip()}\n"
+        f"   {(r.get('body') or '').strip()}\n"
+        f"   URL: {r['href']}"
+        for i, r in enumerate(rows, 1)
+    ]
+    return (
+        "Risultati di ricerca web (grezzi: valuta la pertinenza e cita gli URL come fonti):\n\n"
+        + "\n\n".join(parts)
+    )
+
+
+def run_search(query: str) -> str:
+    """Esegue UNA ricerca web e ritorna sempre una stringa (mai solleva), così l'handler
+    del tool può sempre rispondere a Claude. Motori in cascata: OpenAI (riassume e cita,
+    quando c'è credito) → ddgs (gratuito, senza chiave)."""
+    query = (query or "").strip()[:_MAX_QUERY_CHARS]
+    if not query:
+        return "[ricerca web: query mancante]"
+    return (
+        _openai_search(query)
+        or _ddg_search(query)
+        or "[ricerca web non riuscita: nessun motore disponibile o nessun risultato]"
+    )
+
+
+# Alias storico: fact_grounding, boost_agent e i test chiamano/patchano questo nome.
+# Oggi la ricerca è a cascata OpenAI→DDG, non solo OpenAI: stesso contratto (mai solleva).
+run_openai_search = run_search
 
 
 def execute_tool_uses(content: Any) -> list[dict]:
@@ -145,6 +199,7 @@ def execute_tool_uses(content: Any) -> list[dict]:
         results.append({
             "type": "tool_result",
             "tool_use_id": getattr(block, "id", None),
+            # Via il nome-alias (lookup a runtime): i test lo monkeypatchano.
             "content": run_openai_search(query),
         })
     return results

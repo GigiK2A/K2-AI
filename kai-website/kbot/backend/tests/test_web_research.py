@@ -3,7 +3,7 @@
 Copre:
 - quali campi sono RICERCABILI (competitor/mercato) vs privati (bilanci/obiettivi);
 - shape del client-tool `web_search` (no max_uses: l'esecuzione è nostra → OpenAI);
-- `enabled()` = flag KBOT_WEB_SEARCH + OPENAI_API_KEY;
+- `enabled()` = flag KBOT_WEB_SEARCH + almeno un motore (OpenAI o fallback ddgs);
 - loop agentico di create_with_web_search (Claude chiama il tool → handler OpenAI → continua);
 - estrazione citazioni dalla risposta OpenAI;
 - ricerca pre-gate no-op (zero chiamate) quando non c'è nulla da cercare o è spenta;
@@ -90,7 +90,7 @@ def test_web_search_tool_is_client_tool():
     assert "max_uses" not in tool
 
 
-def test_enabled_needs_flag_and_openai_key(monkeypatch):
+def test_enabled_needs_flag_and_engine(monkeypatch):
     monkeypatch.setattr(web_search, "OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("KBOT_WEB_SEARCH", "1")
     assert web_search.enabled() is True
@@ -98,7 +98,10 @@ def test_enabled_needs_flag_and_openai_key(monkeypatch):
     assert web_search.enabled() is False
     monkeypatch.setenv("KBOT_WEB_SEARCH", "1")
     monkeypatch.setattr(web_search, "OPENAI_API_KEY", None)
-    assert web_search.enabled() is False  # niente chiave OpenAI → niente ricerca
+    monkeypatch.setattr(web_search, "_ddgs_available", lambda: True)
+    assert web_search.enabled() is True   # niente OpenAI ma fallback DDG disponibile
+    monkeypatch.setattr(web_search, "_ddgs_available", lambda: False)
+    assert web_search.enabled() is False  # nessun motore → niente ricerca
 
 
 # --- create_with_web_search (loop client-tool → OpenAI) --------------------
@@ -139,10 +142,18 @@ def test_create_no_tool_when_disabled(monkeypatch):
 
 # --- OpenAI helpers --------------------------------------------------------
 
-def test_run_openai_search_no_key(monkeypatch):
+def test_run_search_fallback_ddg_without_key(monkeypatch):
+    # Senza chiave OpenAI la cascata passa al fallback DDG (niente rete: stub).
     monkeypatch.setattr(web_search, "OPENAI_API_KEY", None)
-    out = web_search.run_openai_search("qualcosa")
-    assert "non configurata" in out.lower()
+    monkeypatch.setattr(web_search, "_ddg_search", lambda q: f"DDG:{q}")
+    assert web_search.run_search("qualcosa") == "DDG:qualcosa"
+
+
+def test_run_search_no_engine_returns_note(monkeypatch):
+    monkeypatch.setattr(web_search, "OPENAI_API_KEY", None)
+    monkeypatch.setattr(web_search, "_ddg_search", lambda q: None)
+    out = web_search.run_search("qualcosa")
+    assert "non riuscita" in out.lower()
 
 
 def test_extract_citations_dedups():
