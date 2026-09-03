@@ -315,7 +315,11 @@ export default function HomePage() {
     const liveSid = kbotSession?.id ?? null;
     if (convSid && convSid !== liveSid) {
       // Switch backend session to the one bound to this conversation.
-      resetSession();
+      // NIENTE resetSession() prima: ensureSession è memoizzata sul render corrente
+      // (closure con la sessione VECCHIA) — dopo il reset tornava comunque quella,
+      // l'adopt veniva ignorato e il primo messaggio creava una sessione fresca
+      // orfana → "cambio chat ma il bot continua la conversazione di prima".
+      // Ora ensureSession onora adopt anche a cache piena (vedi providers.tsx).
       void ensureSession({ mode: activeConversation.mode, adopt: convSid });
     } else if (!convSid && liveSid) {
       // New conv with no backend session yet — drop any stale one.
@@ -438,27 +442,30 @@ export default function HomePage() {
 
   function handleDeleteConversation(convId: string) {
     const target = conversations.find((c) => c.id === convId);
-    setConversations((prev) => {
-      const filtered = prev.filter((c) => c.id !== convId);
-      // If we deleted the active one, switch to the first remaining (or create empty)
-      if (convId === activeId) {
-        if (filtered.length > 0) {
-          setActiveId(filtered[0].id);
-        } else {
-          const fresh: Conversation = {
-            id: uid("conv"),
-            title: "Nuova chat",
-            mode,
-            messages: [{ id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 }],
-          };
-          setActiveId(fresh.id);
-          return [fresh];
-        }
-      }
-      return filtered;
-    });
-    // Drop the kbot session id from localStorage so the next message starts fresh
-    resetSession();
+    const filtered = conversations.filter((c) => c.id !== convId);
+    // setActiveId FUORI dall'updater di setConversations: un setState dentro un
+    // updater è un side effect in fase di render — React può rieseguire l'updater
+    // e lo switch della chat attiva diventava non deterministico ("elimino ma
+    // resto sulla vecchia").
+    if (filtered.length === 0) {
+      const fresh: Conversation = {
+        id: uid("conv"),
+        title: "Nuova chat",
+        mode,
+        messages: [{ id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 }],
+      };
+      setConversations([fresh]);
+      setActiveId(fresh.id);
+    } else {
+      setConversations(filtered);
+      if (convId === activeId) setActiveId(filtered[0].id);
+    }
+    // Butta la sessione backend SOLO se era quella della chat eliminata: il reset
+    // incondizionato azzerava anche la sessione della chat su cui stai lavorando
+    // (eliminavi una chat vecchia e la corrente perdeva il contesto).
+    if (target?.kbotSessionId && target.kbotSessionId === kbotSession?.id) {
+      resetSession();
+    }
     // Persist soft-delete server-side (best-effort, anon fa nulla).
     if (target?.remoteId && isSignedIn) {
       void (async () => {
@@ -526,7 +533,13 @@ export default function HomePage() {
       }));
       setUploadingFiles((prev) => [...prev, ...placeholders]);
       try {
-        const session = await ensureSession({ mode });
+        const session = await ensureSession({
+          mode,
+          // Aggancia la sessione della CONVERSAZIONE ATTIVA: senza adopt, subito dopo
+          // un cambio chat la cache del provider puo' essere ancora quella della chat
+          // precedente e il messaggio/upload finirebbe nella sessione sbagliata.
+          adopt: activeConversation.kbotSessionId ?? undefined,
+        });
         const token = await getToken();
         const uploaded = await uploadFiles(session.id, files, token);
         setPendingFiles((prev) => [...prev, ...uploaded]);
@@ -551,7 +564,7 @@ export default function HomePage() {
         );
       }
     },
-    [activeConversation.id, ensureSession, getToken, mode],
+    [activeConversation.id, activeConversation.kbotSessionId, ensureSession, getToken, mode],
   );
 
   const handleFetchUrl = useCallback(
@@ -559,7 +572,13 @@ export default function HomePage() {
       if (fetchingUrl) return;
       setFetchingUrl(true);
       try {
-        const session = await ensureSession({ mode });
+        const session = await ensureSession({
+          mode,
+          // Aggancia la sessione della CONVERSAZIONE ATTIVA: senza adopt, subito dopo
+          // un cambio chat la cache del provider puo' essere ancora quella della chat
+          // precedente e il messaggio/upload finirebbe nella sessione sbagliata.
+          adopt: activeConversation.kbotSessionId ?? undefined,
+        });
         const token = await getToken();
         const result = await fetchUrl(session.id, url, token ?? null);
         setAnalyzedUrls((prev) => {
@@ -591,7 +610,7 @@ export default function HomePage() {
         setFetchingUrl(false);
       }
     },
-    [activeConversation.messages, ensureSession, fetchingUrl, getToken, mode],
+    [activeConversation.id, activeConversation.kbotSessionId, ensureSession, fetchingUrl, getToken, mode],
   );
 
   async function handleSubmit(overrideText?: string) {
@@ -625,7 +644,13 @@ export default function HomePage() {
     setPendingFiles([]);
 
     try {
-      const session = await ensureSession({ mode });
+      const session = await ensureSession({
+        mode,
+        // Aggancia la sessione della CONVERSAZIONE ATTIVA: senza adopt, subito dopo
+        // un cambio chat la cache del provider puo' essere ancora quella della chat
+        // precedente e il messaggio/upload finirebbe nella sessione sbagliata.
+        adopt: activeConversation.kbotSessionId ?? undefined,
+      });
       const token = await getToken();
       // Live-update the stub message as deltas stream in.
       const patchStub = (patch: Partial<ChatMessage>) => {
@@ -704,7 +729,13 @@ export default function HomePage() {
   }
 
   async function startCheckoutFromUI() {
-    const session = await ensureSession({ mode });
+    const session = await ensureSession({
+      mode,
+      // Aggancia la sessione della CONVERSAZIONE ATTIVA: senza adopt, subito dopo
+      // un cambio chat la cache del provider puo' essere ancora quella della chat
+      // precedente e il messaggio/upload finirebbe nella sessione sbagliata.
+      adopt: activeConversation.kbotSessionId ?? undefined,
+    });
     track("kbot_report_requested", { mode });
     const token = await getToken();
     if (!token) return;
@@ -714,7 +745,13 @@ export default function HomePage() {
 
   /** Fase free: genera il PDF in streaming SSE, progress real-time + url al messaggio. */
   async function generateReportPdfFromUI(messageId: string) {
-    const session = await ensureSession({ mode });
+    const session = await ensureSession({
+      mode,
+      // Aggancia la sessione della CONVERSAZIONE ATTIVA: senza adopt, subito dopo
+      // un cambio chat la cache del provider puo' essere ancora quella della chat
+      // precedente e il messaggio/upload finirebbe nella sessione sbagliata.
+      adopt: activeConversation.kbotSessionId ?? undefined,
+    });
     track("kbot_pdf_generation_requested", { mode });
     const token = await getToken();
     setLoading(true);

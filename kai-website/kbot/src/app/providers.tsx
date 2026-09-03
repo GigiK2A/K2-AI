@@ -158,10 +158,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const ensureSession = useCallback(
     async (opts?: { mode?: Mode; serviceId?: string; adopt?: string; tagPillar?: string | null }) => {
-      if (kbotSession) return kbotSession;
-      const token = await getToken();
-      // Priority: explicit adopt (cross-bot bridge from suite-ai) > localStorage > fresh.
+      // Un adopt esplicito per una sessione DIVERSA da quella in memoria deve vincere:
+      // è il cambio-chat dalla sidebar (ogni conversazione ha la sua kbot_sessions row).
+      // La cache vale solo se non c'è adopt o se coincide.
       const adopted = opts?.adopt?.trim();
+      if (kbotSession && (!adopted || kbotSession.id === adopted)) return kbotSession;
+      const token = await getToken();
+      // Priority: explicit adopt (sidebar switch / cross-bot bridge) > localStorage > fresh.
       const stored =
         adopted ||
         (typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null);
