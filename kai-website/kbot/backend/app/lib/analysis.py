@@ -24,9 +24,9 @@ from ..settings import (
     ANTHROPIC_API_KEY,
     ANTHROPIC_PDF_MODEL,
     ANTHROPIC_PDF_MULTI_CALL,
-    MAX_HISTORY_MESSAGES,
-    MAX_MESSAGE_CHARS,
     PDF_SYSTEM_MAX_CHARS,
+    REPORT_HISTORY_MESSAGES,
+    REPORT_MESSAGE_CHARS,
 )
 from .prompts import compact_messages
 from .report_guard import validate_report
@@ -695,10 +695,13 @@ def generate_analysis_json(session: dict) -> Dict[str, Any]:
     # La coercizione sede→Perugia vale solo se il cliente analizzato è K2-AI (vedi M11).
     client_is_k2ai = _client_is_k2ai(session)
 
+    # Storia per il REPORT: costanti dedicate (REPORT_*), non quelle della chat. La finestra
+    # di chat è stata allargata (memoria conversazionale); il prompt del report gira su Sonnet
+    # con un suo budget, allargarlo è un intervento separato.
     history = compact_messages(
         session.get("messages") or [],
-        max_messages=MAX_HISTORY_MESSAGES,
-        max_chars_per_message=MAX_MESSAGE_CHARS,
+        max_messages=REPORT_HISTORY_MESSAGES,
+        max_chars_per_message=REPORT_MESSAGE_CHARS,
     )
     history_text = "\n".join(
         f"[{m['role'].upper()}] {m['content']}" for m in history

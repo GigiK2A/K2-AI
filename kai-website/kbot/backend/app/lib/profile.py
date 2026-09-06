@@ -49,8 +49,18 @@ def load(user_id: Optional[str]) -> Optional[dict]:
                .eq("user_id", user_id).limit(1).execute())
         rows = getattr(res, "data", None) or []
         return rows[0].get("profile") if rows else None
-    except Exception:
-        log.warning("profilo: load fallita (fail-open)", exc_info=True)
+    except Exception as exc:
+        # Tabella assente = memoria cross-sessione SPENTA per tutti, non un errore di un
+        # utente: va detto in modo distinguibile, altrimenti si confonde con un blip di
+        # rete e la feature resta morta per mesi (è già successo: la migration di questa
+        # tabella non esisteva nel repo). Vedi migration 008 e /api/kbot/diagnostics.
+        from .conversations_index import is_missing_table_error
+
+        if is_missing_table_error(exc):
+            log.error("profilo: tabella %s ASSENTE — memoria cross-sessione disattivata, "
+                      "applica la migration 008_kbot_client_memory.sql", TABLE)
+        else:
+            log.warning("profilo: load fallita (fail-open)", exc_info=True)
         return None
 
 
