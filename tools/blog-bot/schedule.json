@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-08-12",
+  "updated_at": "2026-08-13",
   "description": "Scaletta blog + IG K2-AI. Source of truth unica per blog autopilot e n8n IG.",
   "rows": [
     {
@@ -153,9 +153,9 @@
       "url": "https://www.k2-ai.it/suite-ai/ai-controllo-gestione-reporting.html",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "ai-controllo-gestione-reporting-pmi",
-      "blog_pubblicato": "2026-08-05",
-      "blog_url": "/blog/ai-controllo-gestione-reporting-pmi"
+      "blog_slug": "",
+      "blog_pubblicato": "",
+      "blog_url": ""
     },
     {
       "row": 13,
@@ -167,9 +167,9 @@
       "url": "https://www.k2-ai.it/suite-ai/integrazione-gestionali-erp.html",
       "stato_ig": "da usare",
       "data_ig": "",
-      "blog_slug": "integrazione-gestionali-erp-ai",
-      "blog_pubblicato": "2026-08-12",
-      "blog_url": "/blog/integrazione-gestionali-erp-ai"
+      "blog_slug": "",
+      "blog_pubblicato": "",
+      "blog_url": ""
     },
     {
       "row": 14,
