@@ -5,6 +5,7 @@ Triggers the PDF generation server-to-server via the internal generate-pdf endpo
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -24,6 +25,14 @@ from ..settings import (
 
 router = APIRouter()
 log = logging.getLogger(__name__)
+
+
+def _is_uuid(value: object) -> bool:
+    try:
+        uuid.UUID(str(value))
+        return True
+    except (ValueError, TypeError, AttributeError):
+        return False
 
 
 def _internal_pdf_url() -> str:
@@ -109,6 +118,14 @@ async def stripe_webhook(
     if not kbot_session_id:
         log.warning("Webhook missing kbot_session_id")
         return {"ok": True, "skipped": "no session id"}
+    # Un client_reference_id che non è un UUID (es. un id utente Clerk "user_…"
+    # di un Payment Link dell'era pre-Supabase) faceva esplodere la query su
+    # kbot_sessions.id → 500 → Stripe ritentava ogni ora per giorni. Non è una
+    # sessione K-BOT: si registra e si conferma a Stripe, senza crash.
+    if not _is_uuid(kbot_session_id):
+        log.warning("Webhook %s con client_reference_id non UUID (%s): nessuna sessione K-BOT",
+                    obj.get("id"), str(kbot_session_id)[:40])
+        return {"ok": True, "skipped": "client_reference_id non è una sessione K-BOT"}
 
     session = sessions.get_session(kbot_session_id)
     if not session:

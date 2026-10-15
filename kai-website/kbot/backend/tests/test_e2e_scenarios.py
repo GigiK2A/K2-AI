@@ -159,6 +159,28 @@ class _FakeMessages:
         self.capture.append(kwargs)
         return _FakeResp(self.canned)
 
+    def stream(self, **kwargs):
+        # Forma minima degli eventi dello stream SDK: la diagnostica legge
+        # content_block_delta/text_delta per misurare il primo testo visibile.
+        self.capture.append(kwargs)
+        return _FakeStream(self.canned)
+
+
+class _FakeStream:
+    def __init__(self, text):
+        from types import SimpleNamespace as NS
+        self._events = [NS(type="content_block_start", content_block=NS(type="text")),
+                        NS(type="content_block_delta", delta=NS(type="text_delta", text=text))]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_a):
+        return False
+
+    def __iter__(self):
+        return iter(self._events)
+
 
 class FakeAnthropic:
     canned_text: str = "Va bene, procedo con l'analisi richiesta."

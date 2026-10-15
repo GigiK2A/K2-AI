@@ -43,25 +43,57 @@ def _check_supabase() -> Dict[str, Any]:
         return {"status": "error", "error": exc.__class__.__name__, "msg": str(exc)[:200]}
 
 
+# Budget per il PRIMO TESTO VISIBILE della chat. Il vecchio check (create con
+# max_tokens=1, non in streaming) passava anche quando la chat era morta: il
+# modello a valle ragionava per minuti prima di scrivere una parola e lo stream
+# della chat (timeout 120 s fra un chunk e l'altro) moriva in ReadTimeout, mentre
+# il ping da 1 token tornava "ok" in 0,3 s su un altro nodo. Ora il check fa la
+# stessa chiamata della chat (stesso modello, streaming) e misura quello che
+# vede l'utente.
+_LLM_TEXT_BUDGET_S = float(os.getenv("KBOT_DIAG_LLM_BUDGET_S", "30"))
+_LLM_SLOW_S = float(os.getenv("KBOT_DIAG_LLM_SLOW_S", "15"))
+
+
 def _check_anthropic() -> Dict[str, Any]:
     if not ANTHROPIC_API_KEY:
         return {"status": "error", "error": "MissingApiKey"}
     t0 = time.perf_counter()
+    first_text: float | None = None
+    text: list[str] = []
+    thinking_blocks = 0
     try:
         client = _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        client.messages.create(
+        with client.messages.stream(
             model=ANTHROPIC_MODEL,
-            max_tokens=1,
-            messages=[{"role": "user", "content": "ping"}],
-            timeout=10.0,
-        )
-        return {
-            "status": "ok",
-            "model": ANTHROPIC_MODEL,
-            "latency_ms": int((time.perf_counter() - t0) * 1000),
-        }
+            max_tokens=64,
+            messages=[{"role": "user", "content": "Rispondi solo con la parola: pronto"}],
+            timeout=_LLM_TEXT_BUDGET_S,
+        ) as stream:
+            for event in stream:
+                etype = getattr(event, "type", "")
+                if etype == "content_block_start" and getattr(event.content_block, "type", "") == "thinking":
+                    thinking_blocks += 1
+                if etype == "content_block_delta" and getattr(event.delta, "type", "") == "text_delta":
+                    if first_text is None:
+                        first_text = time.perf_counter() - t0
+                    text.append(event.delta.text)
+                if time.perf_counter() - t0 > _LLM_TEXT_BUDGET_S:
+                    break
     except Exception as exc:
-        return {"status": "error", "error": exc.__class__.__name__, "msg": str(exc)[:200]}
+        return {"status": "error", "route": "chat", "model": ANTHROPIC_MODEL,
+                "error": exc.__class__.__name__, "msg": str(exc)[:200]}
+    latency_ms = int((time.perf_counter() - t0) * 1000)
+    reply = "".join(text).strip()
+    base = {"route": "chat", "model": ANTHROPIC_MODEL, "latency_ms": latency_ms,
+            "first_text_ms": int(first_text * 1000) if first_text is not None else None,
+            "thinking_blocks": thinking_blocks, "reply": reply[:40]}
+    if first_text is None or not reply:
+        return {"status": "error", "error": "NoVisibleText",
+                "msg": f"nessun testo visibile entro {_LLM_TEXT_BUDGET_S:.0f}s "
+                       "(ragionamento nascosto o modello saturo)", **base}
+    if first_text > _LLM_SLOW_S:
+        return {"status": "slow", **base}
+    return {"status": "ok", **base}
 
 
 def _check_pdfplumber() -> Dict[str, Any]:

@@ -576,6 +576,25 @@ def test_webhook_missing_session_id_returns_200_skipped(client, _stripe_secrets)
     assert "skipped" in r.json()
 
 
+def test_webhook_non_uuid_client_reference_returns_200_skipped(client, monkeypatch, _stripe_secrets):
+    """Un id utente Clerk come client_reference_id faceva esplodere la query su
+    kbot_sessions.id (uuid) → 500 → Stripe ritentava ogni ora (prod, ott 2026).
+    Deve tornare 200 senza nemmeno interrogare le sessioni."""
+    def _boom(_sid):
+        raise AssertionError("get_session non deve essere chiamata con un id non UUID")
+    monkeypatch.setattr("app.api.webhook.sessions.get_session", _boom)
+    payload, header = _signed_stripe_event(
+        {"id": "evt_test_clerk",
+         "type": "checkout.session.completed",
+         "data": {"object": {"id": "cs_test_clerk",
+                             "client_reference_id": "user_3KbE892oiJCECoXIQkk7dlMD7NY"}}},
+        _stripe_secrets,
+    )
+    r = client.post("/api/stripe/webhook", content=payload, headers={"stripe-signature": header})
+    assert r.status_code == 200
+    assert "skipped" in r.json()
+
+
 def test_webhook_replay_is_idempotent(client, fake_db, _stripe_secrets):
     """Send the same checkout.session.completed twice; only one paid update should stick."""
     sid = _make_session(client)
