@@ -420,3 +420,33 @@ def test_tutti_i_client_finti_dei_test_usano_la_firma_dell_sdk(corpus):
     # il pacchetto completo, con il client severo, deve produrre fonti: se la firma sbagliasse, sarebbe vuoto
     p = E.costruisci("Il socio della srl vuole recedere: quanto tempo per liquidare la quota?", "", _sdk_severo(), "m")
     assert p is not None and p.fonti[0].sigla == "art. 2473 c.c."
+
+
+# ── avviso di vigenza: la cifra sostituita da una nota che il corpo non ha incorporato ──────────────
+def test_avviso_di_vigenza_dice_quale_cifra_e_vigente_e_quale_e_superata(corpus):
+    r = E.riferimenti_da_testo("art. 25 D.P.R. 600/1973")[0]
+    f = E.recupera(r, ["ritenuta"], "utente", 2400, "ritenuta d'acconto su un consulente")
+    assert "20 per cento" in f.avviso and "15 per cento" in f.avviso and "SUPERATE" in f.avviso
+    blocco = E.costruisci_blocco([f])
+    assert blocco.index("ATTENZIONE VIGENZA") < blocco.index("ritenuta del 15 per cento")      # prima del testo
+
+
+def test_nessun_avviso_se_il_testo_contiene_gia_la_cifra_nuova_o_non_ci_sono_note(corpus):
+    for rif in ("art. 2473 c.c.", "D.Lgs. 231/2007 art. 49"):
+        r = E.riferimenti_da_testo(rif)[0]
+        assert E.recupera(r, ["recesso", "contanti"], "utente", 2400, "x").avviso == ""
+
+
+def test_avviso_spento_dal_flag(corpus, monkeypatch):
+    monkeypatch.setenv("KBOT_NORME_AVVISO", "0")
+    r = E.riferimenti_da_testo("art. 25 D.P.R. 600/1973")[0]
+    assert E.recupera(r, ["ritenuta"], "utente", 2400).avviso == ""
+
+
+def test_avviso_solo_sulle_cifre_del_comma_nominato_dalla_nota():
+    grezzo = ("# Art. 9 1. La ritenuta e' del 15 per cento. 2. L'interesse e' dell'1 per cento. "
+              "------------- AGGIORNAMENTO (3)\nLa L. 5 maggio 2015, n. 9 ha disposto che \"al primo comma le parole: \"15 per cento\" "
+              "sono sostituite dalle seguenti: \"20 per cento\"\"")
+    corpo, _ = E._ripulisci(grezzo)
+    avv = E.vigenza_avviso(grezzo, corpo)
+    assert "«20 per cento»" in avv and "«15 per cento»" in avv and "1 per cento" not in avv.replace("15 per cento", "").replace("20 per cento", "")

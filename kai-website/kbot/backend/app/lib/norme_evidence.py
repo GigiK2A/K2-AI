@@ -219,6 +219,7 @@ class Fonte:
     origine: str = ""              # utente | mappa | proposta | norma | affine
     testo: str = ""                # ciò che entra nel pacchetto
     note: str = ""                 # modifiche successive che toccano cifre (non incorporate nel testo)
+    avviso: str = ""               # «cifra vigente X; la cifra Y del testo è superata» (deterministico)
 
 
 @dataclass
@@ -436,6 +437,58 @@ def note_rilevanti(testo_grezzo: str) -> str:
     return " ".join(out)
 
 
+_SOSTITUTA = re.compile(r"sostituit\w+\s+dalle\s+seguenti\s*:?\s*[\"«“]\s*([^\"»”]{3,60}?)\s*[\"»”]", re.I)
+_ELEVATA = re.compile(r"(?:e'|è|sono)\s+(?:elevat|ridott|aumentat)\w+\s+(?:al|a|di)\s+(\d+(?:,\d+)?\s*per cento)", re.I)
+_QUANT_UNITA = re.compile(r"(\d{1,3}(?:\.\d{3})+|\d+(?:,\d+)?|" + "|".join(sorted(PAROLE_NUMERO, key=len, reverse=True)) +
+                          r")\s*(per cento|euro|giorni|mesi|anni)", re.I)
+
+
+def vigenza_avviso(testo_grezzo: str, corpo: str) -> str:
+    """Le note dicono che una cifra è stata SOSTITUITA ma il corpo riporta ancora quella vecchia: il corpus non
+    ha incorporato la modifica (art. 25 D.P.R. 600/1973: corpo «15 per cento»; nota: «19» → «20 per cento»). Il
+    modello, davanti a una cifra nel testo e a una nota, si fida del testo (misurato il 15/10/2026: 15% in 2 prove
+    su 3 anche con la nota nel pacchetto, mentre senza pacchetto sapeva 20%). Qui si dice ESPLICITAMENTE quale
+    cifra è vigente e quale è superata. Solo per le unità «per cento», «euro», «giorni», «mesi», «anni»."""
+    if not _flag("KBOT_NORME_NOTE") or not _flag("KBOT_NORME_AVVISO"):
+        return ""
+    parti = _NOTA_SPLIT.split(re.sub(r"\s+", " ", (testo_grezzo or "").replace("**", "")))
+    candidate = []
+    for i in range(1, len(parti) - 1, 2):
+        t = parti[i + 1]
+        anno = re.search(r"\b(19\d{2}|20\d{2})\b", t[:140])
+        for m in list(_SOSTITUTA.finditer(t)) + list(_ELEVATA.finditer(t)):
+            nuova = m.group(1).strip()
+            mq = _QUANT_UNITA.fullmatch(nuova) or re.fullmatch(r"(\d+(?:,\d+)?)\s*(per cento)", nuova, re.I)
+            if mq:
+                comma = re.search(r"\bal\s+(primo|secondo|terzo|quarto|quinto)\s+comma", t[:m.start()], re.I)
+                candidate.append((int(anno.group(1)) if anno else 0, int(parti[i]), nuova, mq.group(2).lower(),
+                                  valore(mq.group(1)) if valore(mq.group(1)) is not None else mq.group(1),
+                                  {"primo": "1", "secondo": "2", "terzo": "3", "quarto": "4", "quinto": "5"}[comma.group(1).lower()] if comma else None))
+    if not candidate:
+        return ""
+    candidate.sort(key=lambda x: (-x[0], -x[1]))
+    anno, _, nuova, unita, valnuovo, n_comma = candidate[0]
+    ambito = corpo or ""
+    if n_comma:                                    # «al primo comma…»: si guardano le cifre di QUEL comma
+        trovato = False
+        for et, t in dividi_commi(corpo or ""):
+            if et == n_comma:
+                ambito, trovato = t, True
+                break
+        if not trovato and n_comma == "1":         # articolo senza commi numerati: il primo è all'inizio
+            ambito = (corpo or "")[:700]
+    body_q = {}
+    for m in _QUANT_UNITA.finditer(ambito):
+        v = valore(m.group(1)) if valore(m.group(1)) is not None else m.group(1)
+        body_q.setdefault(m.group(2).lower(), set()).add(v)
+    stessa = body_q.get(unita, set())
+    if not stessa or valnuovo in stessa:
+        return ""                                   # il testo contiene già la cifra nuova (o non ne ha dello stesso tipo)
+    vecchie = ", ".join(sorted(f"{v} {unita}" for v in stessa if isinstance(v, (int, str)))[:3])
+    return (f"ATTENZIONE VIGENZA: secondo le modifiche successive la cifra vigente è «{nuova}»; "
+            f"le cifre «{vecchie}» riportate nel testo di questo articolo sono SUPERATE. Usa «{nuova}».")
+
+
 def _ripulisci(testo: str) -> tuple[str, bool]:
     """(corpo senza note di aggiornamento né marcatori, abrogato)."""
     corpo = _NOTE.split(testo or "", maxsplit=1)[0]
@@ -611,7 +664,8 @@ def recupera(rif: dict, parole: list[str], origine: str, budget: int, quesito: s
     return Fonte(citazione=rec.get("citazione", ""), tipo=rec.get("tipo", ""), anno=int(rec.get("anno") or rif["anno"]),
                  numero=str(rec.get("numero") or rif["numero"]), articolo=str(rec.get("articolo") or rif["articolo"]),
                  rubrica=rub.group(1).strip() if rub else "", sigla=_sigla(rec), origine=origine, testo=testo,
-                 note=note_rilevanti(rec.get("testo") or ""))
+                 note=note_rilevanti(rec.get("testo") or ""),
+                 avviso=vigenza_avviso(rec.get("testo") or "", corpo))
 
 
 _SUFFISSI_AFFINI = ("bis", "ter", "quater", "quinquies", "sexies", "septies", "octies", "novies", "decies")
@@ -690,6 +744,8 @@ def costruisci_blocco(fonti: list[Fonte]) -> str:
     for i, f in enumerate(fonti, 1):
         titolo = f"[{i}] ({f.sigla}) {f.citazione}" + (f" — {f.rubrica}" if f.rubrica else "")
         righe.append(titolo)
+        if f.avviso:
+            righe.append("  " + f.avviso)
         righe.append(f.testo)
         if f.note:
             righe.append("  Modifiche successive al testo (non ancora riportate sopra; se indicano una cifra diversa da "
