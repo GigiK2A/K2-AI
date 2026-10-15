@@ -54,6 +54,11 @@ def abilitato() -> bool:
     return os.getenv("KBOT_NORME_EVIDENCE", "1") != "0"
 
 
+def _flag(nome: str) -> bool:
+    """Funzionalità del pacchetto spegnibili una per una (per isolarle nelle misure)."""
+    return os.getenv(nome, "1") != "0"
+
+
 # ═══ 1 · lettore del corpus (app/normattiva.py dell'8e, caricato per percorso) ═════════════
 _LETTORE = None
 _LETTORE_PROVATO = False
@@ -210,8 +215,9 @@ class Fonte:
     articolo: str
     rubrica: str = ""
     sigla: str = ""                # forma breve per l'utente: «c.c. art. 2473»
-    origine: str = ""              # utente | mappa | proposta
+    origine: str = ""              # utente | mappa | proposta | norma | affine
     testo: str = ""                # ciò che entra nel pacchetto
+    note: str = ""                 # modifiche successive che toccano cifre (non incorporate nel testo)
 
 
 @dataclass
@@ -273,13 +279,15 @@ def _parole_chiave(testo: str) -> list[str]:
     return out[:14]
 
 
-def riferimenti_da_testo(testo: str) -> list[dict]:
-    """Riferimenti con estremi già scritti nel testo («art. 2473 c.c.», «D.Lgs. 231/2002 art. 4»)."""
+def riferimenti_da_testo(testo: str, solo_con_articolo: bool = True) -> list[dict]:
+    """Riferimenti con estremi già scritti nel testo («art. 2473 c.c.», «D.Lgs. 231/2002 art. 4»). Con
+    solo_con_articolo=False si tengono anche le norme senza articolo («D.Lgs. 276/2003»): il modello debole
+    spesso indovina la norma e sbaglia l'articolo, e dentro la norma si può cercare per parole."""
     m = lettore()
     if not m or not testo:
         return []
     try:
-        return [r for r in m.extract_norm_refs(testo) if r.get("articolo")]
+        return [r for r in m.extract_norm_refs(testo) if (r.get("articolo") or not solo_con_articolo)]
     except Exception:
         return []
 
@@ -319,8 +327,9 @@ _SISTEMA_PROPOSTA = (
     "quesito. Rispondi SOLO con un oggetto JSON: {\"norme\":[...],\"parole\":[...]}.\n"
     "'norme': fino a 5 riferimenti precisi, uno per voce, nella forma standard: 'art. 2473 c.c.', "
     "'art. 641 c.p.c.', 'D.Lgs. 231/2002 art. 4', 'L. 300/1970 art. 4', 'D.P.R. 633/1972 art. 7'. Scrivi solo "
-    "riferimenti di cui sei ragionevolmente certo (numero di norma, anno e articolo); se non sei certo "
-    "dell'articolo, lascialo fuori dalla lista.\n"
+    "riferimenti di cui sei ragionevolmente certo (numero di norma, anno e articolo); se sei certo della NORMA ma "
+    "non dell'articolo, scrivi la norma senza articolo ('D.Lgs. 276/2003'): il sistema cercherà l'articolo "
+    "dentro la norma.\n"
     "'parole': da 3 a 6 parole italiane tecniche che compaiono nel testo di legge pertinente (sostantivi e "
     "verbi giuridici, niente articoli o preposizioni)."
 )
@@ -352,7 +361,7 @@ def proponi(client, modello: str, quesito: str, contesto: str = "") -> tuple[lis
             return [], []
         norme = [str(x) for x in (v.get("norme") or []) if isinstance(x, (str, int))][:8]
         parole = [str(x).lower() for x in (v.get("parole") or []) if isinstance(x, str)][:8]
-        return riferimenti_da_testo("; ".join(norme)), parole
+        return riferimenti_da_testo("; ".join(norme), solo_con_articolo=False), parole
     except Exception:
         log.warning("norme_evidence: proposta dei riferimenti fallita (fail-open)", exc_info=True)
         return [], []
@@ -367,6 +376,38 @@ _COMMA = re.compile(r"(?:(?<=\s)|^)(\d{1,2}" + _SUFFISSI + r")\.\s+(?=[A-ZÀÈÉ
 _DECORRENZA = re.compile(r"\b(a decorrere dal|a partire dal|dal 1°|dal \d{1,2} (?:gennaio|febbraio|marzo|aprile|maggio|"
                          r"giugno|luglio|agosto|settembre|ottobre|novembre|dicembre) \d{4}|fino al|non oltre il|"
                          r"entro il 31|in vigore dal)\b", re.I)
+
+
+# Le NOTE DI AGGIORNAMENTO del corpus non sono rumore: a volte contengono una modifica che il testo non ha
+# incorporato. Caso reale (15/10/2026): l'art. 25 D.P.R. 600/1973 riporta nel corpo «ritenuta del 15 per
+# cento»; la nota (54) dice che la L. 449/1997 ha sostituito «19 per cento» con «20 per cento» al primo comma.
+# Senza le note il pacchetto avrebbe dato al modello una cifra superata con l'aria di una fonte.
+_NOTA_SPLIT = re.compile(r"-{5,}\s*AGGIORNAMENTO\s*\((\d+)\)", re.I)
+_NOTA_MODIFICA = re.compile(
+    r"sostituit\w+\s+(?:le parole|dalle seguenti|dal seguente)|le parole\s*[:«\"]|"
+    r"(?:\be'|\bè|\bsono)\s+(?:elevat|ridott|aumentat|adeguat)\w+\s+(?:al|a|di|all')\b", re.I)
+_NOTA_QUANTITA = re.compile(r"\d+\s*(?:per cento|euro|giorni|mesi|anni|punti)|\b(?:per cento|euro)\b", re.I)
+MAX_NOTE = int(os.getenv("KBOT_NORME_MAX_NOTE", "3"))
+MAX_CHARS_NOTA = int(os.getenv("KBOT_NORME_MAX_CHARS_NOTA", "280"))
+
+
+def note_rilevanti(testo_grezzo: str) -> str:
+    """Le note di aggiornamento che modificano CIFRE (sostituzioni, aumenti, riduzioni), le più recenti per
+    anno della norma citata, tagliate. '' se non ce ne sono o se la funzione è spenta."""
+    if not _flag("KBOT_NORME_NOTE"):
+        return ""
+    parti = _NOTA_SPLIT.split(re.sub(r"\s+", " ", (testo_grezzo or "").replace("**", "")))
+    note = []
+    for i in range(1, len(parti) - 1, 2):
+        t = parti[i + 1].strip()
+        if _NOTA_MODIFICA.search(t) and _NOTA_QUANTITA.search(t):
+            anno = re.search(r"\b(19\d{2}|20\d{2})\b", t[:140])
+            note.append((int(anno.group(1)) if anno else 0, int(parti[i]), t))
+    note.sort(key=lambda x: (-x[0], -x[1]))
+    out = []
+    for _, n, t in note[:MAX_NOTE]:
+        out.append(f"({n}) " + (t if len(t) <= MAX_CHARS_NOTA else t[:MAX_CHARS_NOTA].rstrip() + " […]"))
+    return " ".join(out)
 
 
 def _ripulisci(testo: str) -> tuple[str, bool]:
@@ -543,7 +584,54 @@ def recupera(rif: dict, parole: list[str], origine: str, budget: int, quesito: s
     testo = _formatta(commi, idx, caps)
     return Fonte(citazione=rec.get("citazione", ""), tipo=rec.get("tipo", ""), anno=int(rec.get("anno") or rif["anno"]),
                  numero=str(rec.get("numero") or rif["numero"]), articolo=str(rec.get("articolo") or rif["articolo"]),
-                 rubrica=rub.group(1).strip() if rub else "", sigla=_sigla(rec), origine=origine, testo=testo)
+                 rubrica=rub.group(1).strip() if rub else "", sigla=_sigla(rec), origine=origine, testo=testo,
+                 note=note_rilevanti(rec.get("testo") or ""))
+
+
+_SUFFISSI_AFFINI = ("bis", "ter", "quater", "quinquies", "sexies", "septies", "octies", "novies", "decies")
+
+
+def _steli(parole: list[str]) -> list[str]:
+    return sorted({w[:6] for w in parole if len(w) >= 5})
+
+
+def cerca_in_norma(rif: dict, parole: list[str], budget: int, quesito: str = "") -> list[Fonte]:
+    """La norma è nota ma l'articolo no: ricerca per PAROLE dentro quella norma (indice FTS del corpus,
+    colonna file = estremi) e si tengono i primi due articoli che contengono almeno due parole del quesito."""
+    m, steli = lettore(), _steli(parole)
+    if not m or not steli or not rif.get("anno") or not rif.get("numero"):
+        return []
+    q = (f"file:{int(rif['anno'])} AND file:{re.sub(r'[^0-9]', '', str(rif['numero']))} AND testo:("
+         + " OR ".join(f"{w}*" for w in steli[:8]) + ")")
+    try:
+        righe = m.search(q, limit=12)
+    except Exception:
+        return []
+    out: list[Fonte] = []
+    for r in righe:
+        if r.get("anno") != int(rif["anno"]) or str(r.get("numero")) != re.sub(r"[^0-9]", "", str(rif["numero"])):
+            continue
+        f = recupera({"tipo": r.get("tipo", ""), "anno": r["anno"], "numero": r["numero"], "articolo": r["articolo"]},
+                     parole, "norma", budget, quesito)
+        if f and _punteggio(f.testo + " " + f.rubrica, set(steli)) >= 2:
+            out.append(f)
+        if len(out) >= 2:
+            break
+    return out
+
+
+def articoli_affini(rif: dict, parole: list[str], budget: int, quesito: str = "") -> list[Fonte]:
+    """Gli articoli «bis, ter, quater…» di un articolo proposto: nei codici le norme gemelle stanno
+    insieme (2479 → 2479-ter «impugnazione delle decisioni»). Si tengono solo se pertinenti (≥2 parole)."""
+    art = str(rif.get("articolo") or "")
+    if not re.fullmatch(r"\d+", art):
+        return []
+    steli, out = set(_steli(parole)), []
+    for suf in _SUFFISSI_AFFINI:
+        f = recupera({**rif, "articolo": f"{art}-{suf}"}, parole, "affine", budget, quesito)
+        if f and _punteggio(f.testo + " " + f.rubrica, steli) >= 2:
+            out.append(f)
+    return out
 
 
 def _pertinente(f: Fonte, parole: list[str]) -> bool:
@@ -562,6 +650,8 @@ _ISTRUZIONI = (
     "numeri di articolo».\n"
     "- Se nello stesso articolo commi diversi danno cifre diverse, vale il comma con la decorrenza più recente "
     "(«a decorrere dal…»); il comma 1 può riportare ancora il testo storico.\n"
+    "- Dove compare «Modifiche successive al testo», quelle cifre prevalgono su quelle del testo; se non sei sicuro "
+    "di quale sia vigente, dì che la cifra va verificata.\n"
     "- Se un passaggio non riguarda il caso, ignoralo senza citarlo. Se le fonti non coprono il punto, dillo e "
     "indirizza al professionista invece di inventare.\n"
     "- Il testo può non essere aggiornato all'ultima modifica: per scadenze e importi che pesano sulla decisione "
@@ -575,6 +665,9 @@ def costruisci_blocco(fonti: list[Fonte]) -> str:
         titolo = f"[{i}] ({f.sigla}) {f.citazione}" + (f" — {f.rubrica}" if f.rubrica else "")
         righe.append(titolo)
         righe.append(f.testo)
+        if f.note:
+            righe.append("  Modifiche successive al testo (non ancora riportate sopra; se indicano una cifra diversa da "
+                         "quella del testo, vale quella più recente): " + f.note)
     righe.append(_ISTRUZIONI)
     return "\n" + "\n".join(righe) + "\n"
 
@@ -594,23 +687,36 @@ def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> O
             candidati += [(r, "proposta") for r in proposti]
         visti, uniche = set(), []
         for r, o in candidati:
-            k = (r.get("tipo"), str(r.get("numero")), r.get("anno"), re.sub(r"[^0-9a-z]", "", str(r.get("articolo")).lower()))
+            k = (r.get("tipo"), str(r.get("numero")), r.get("anno"), re.sub(r"[^0-9a-z]", "", str(r.get("articolo") or "").lower()))
             if k not in visti:
                 visti.add(k)
                 uniche.append((r, o))
-        uniche = uniche[:MAX_RIFERIMENTI + 3]
-        if not uniche:
-            return None
+        con_art = [(r, o) for r, o in uniche if r.get("articolo")][:MAX_RIFERIMENTI + 3]
+        senza_art = [(r, o) for r, o in uniche if not r.get("articolo")][:2]
         budget = MAX_CHARS_ARTICOLO
+        if not con_art and not senza_art:
+            return None
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-            risultati = list(ex.map(lambda ro: recupera(ro[0], parole, ro[1], budget, quesito), uniche))
+            dirette = list(ex.map(lambda ro: recupera(ro[0], parole, ro[1], budget, quesito), con_art))
+            extra: list[Fonte] = []
+            if _flag("KBOT_NORME_AFFINI"):
+                for lista in ex.map(lambda ro: articoli_affini(ro[0], parole, budget, quesito), con_art[:3]):
+                    extra += lista
+            if _flag("KBOT_NORME_RICERCA_NORMA"):
+                for lista in ex.map(lambda ro: cerca_in_norma(ro[0], parole, budget, quesito), senza_art):
+                    extra += lista
         fonti: list[Fonte] = []
         totale = 0
-        for f in risultati:
-            if f is None or (f.origine == "proposta" and not _pertinente(f, parole)):
+        visti_f: set[tuple] = set()
+        for f in dirette + extra:
+            if f is None or (f.origine in ("proposta", "affine", "norma") and not _pertinente(f, parole)):
+                continue
+            chiave = (f.numero, f.anno, _norm_art(f.articolo))
+            if chiave in visti_f:
                 continue
             if totale + len(f.testo) > MAX_CHARS_TOTALE and fonti:
                 continue
+            visti_f.add(chiave)
             fonti.append(f)
             totale += len(f.testo)
             if len(fonti) >= MAX_RIFERIMENTI:
@@ -618,7 +724,7 @@ def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> O
         if not fonti:
             return None
         blocco = costruisci_blocco(fonti)
-        corpo = " ".join(f.testo for f in fonti)
+        corpo = " ".join(f.testo + " " + f.note for f in fonti)
         return Pacchetto(testo=blocco, fonti=fonti, numeri=numeri_nel_testo(corpo), coppie=coppie_nel_testo(corpo))
     except Exception:
         log.warning("norme_evidence: costruzione del pacchetto fallita (fail-open)", exc_info=True)

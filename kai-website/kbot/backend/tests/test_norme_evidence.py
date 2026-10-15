@@ -47,6 +47,31 @@ ART_FERIE = ("# Art. 10 — Decreto Legislativo (Ferie annuali) **1.** Il presta
              "caso di risoluzione del rapporto di lavoro.")
 
 
+
+ART_25_DPR600 = (
+    "# Art. 25 Art. 25. ((Ritenuta sui redditi di lavoro autonomo)). I soggetti indicati nel primo comma dell'art. 23, che "
+    "corrispondono a soggetti residenti compensi per prestazioni di lavoro autonomo, devono operare all'atto del pagamento "
+    "una ritenuta del 15 per cento a titolo di acconto dell'imposta sul reddito delle persone fisiche, con l'obbligo di rivalsa."
+    "\n\n--------------- AGGIORNAMENTO (30)\nIl D.L. 2 marzo 1989, n.69, ha disposto che \"La ritenuta del 18 per cento di cui al "
+    "primo comma dell'articolo 25 e' elevata al 19 per cento.\"\n\n--------------- AGGIORNAMENTO (54)\nLa L. 27 dicembre 1997, "
+    "n.449 ha disposto (con l'art. 21 comma 11) che \"nell'articolo 25: 1) al primo comma le parole: \"19 per cento\" sono "
+    "sostituite dalle seguenti: \"20 per cento\";\"\n\n--------------- AGGIORNAMENTO (60)\nIl D.Lgs. 1 gennaio 2000 ha disposto "
+    "altre cose che non riguardano le cifre e sono abrogate norme precedenti.")
+
+ART_276_29 = ("# Art. 29 — Decreto Legislativo (Appalto) **1.** Ai fini della applicazione delle norme contenute nel presente titolo, "
+              "il contratto di appalto si distingue dalla somministrazione. **2.** In caso di appalto di opere o di servizi, il "
+              "committente imprenditore o datore di lavoro e' obbligato in solido con l'appaltatore, entro il limite di due anni "
+              "dalla cessazione dell'appalto, a corrispondere ai lavoratori i trattamenti retributivi e i contributi previdenziali.")
+ART_276_32 = ("# Art. 32 — Decreto Legislativo (Modifiche al decreto sul lavoro) 1. Sono modificate le definizioni di orario di "
+              "lavoro e di mansioni dei dipendenti in materia di organizzazione.")
+ART_2479 = ("# Art. 2479 Codice Civile Art. 2479. (Decisioni dei soci). I soci decidono sulle materie riservate alla loro competenza "
+            "dall'atto costitutivo, nonche' sugli argomenti che uno o piu' amministratori o tanti soci che rappresentano almeno un "
+            "terzo del capitale sociale sottopongono alla loro approvazione.")
+ART_2479_TER = ("# Art. 2479-ter Codice Civile Art. 2479-ter. (Invalidita' delle decisioni dei soci). Le decisioni dei soci che non "
+                "sono prese in conformita' della legge o dell'atto costitutivo possono essere impugnate dai soci che non vi hanno "
+                "consentito entro novanta giorni dalla loro trascrizione nel libro delle decisioni dei soci.")
+
+
 def _riga(tipo, anno, num, art, testo):
     return (f"normattiva_markdown_api_parsed/{tipo}_{anno}_{num}/{tipo}_{anno}_{num}_art_{art}.md", testo)
 
@@ -60,7 +85,12 @@ def corpus(tmp_path, monkeypatch):
     for f, t in (_riga("regio_decreto", 1942, 262, "2473", ART_2473), _riga("regio_decreto", 1942, 262, "2099", ART_2099),
                  _riga("decreto_legislativo", 2007, 231, "49", ART_49),
                  _riga("regio_decreto", 1942, 262, "9999", ART_ABROGATO),
-                 _riga("decreto_legislativo", 2003, 66, "10", ART_FERIE)):
+                 _riga("decreto_legislativo", 2003, 66, "10", ART_FERIE),
+                 _riga("decreto_presidente_repubblica", 1973, 600, "25", ART_25_DPR600),
+                 _riga("decreto_legislativo", 2003, 276, "29", ART_276_29),
+                 _riga("decreto_legislativo", 2003, 276, "32", ART_276_32),
+                 _riga("regio_decreto", 1942, 262, "2479", ART_2479),
+                 _riga("regio_decreto", 1942, 262, "2479-ter", ART_2479_TER)):
         con.execute("INSERT INTO chunks(file, testo, source) VALUES (?,?,?)", (f, t, "akn_bulk_xml"))
         con.execute("INSERT INTO chunks_fts(file, testo) VALUES (?,?)", (f, t))
     con.commit()
@@ -252,3 +282,65 @@ def test_elisioni_riparate_dopo_la_rimozione_dell_articolo():
     # l'italiano corretto non si tocca
     for ok in ("l'impresa", "dell'azienda", "all'inizio", "nell'ambito", "sull'importo"):
         assert prompts.ripara_elisioni(ok) == ok
+
+
+# ── vigenza: le note che modificano cifre ───────────────────────────────────────────────────
+def test_la_nota_che_cambia_l_aliquota_entra_nel_pacchetto(corpus):
+    """Il corpo dell'art. 25 D.P.R. 600/1973 dice 15%; la nota (54) dice che la L. 449/1997 ha messo 20%."""
+    r = E.riferimenti_da_testo("art. 25 D.P.R. 600/1973")[0]
+    f = E.recupera(r, ["ritenuta", "consulente"], "utente", 2400, "ritenuta d'acconto su un consulente")
+    assert "15 per cento" in f.testo
+    assert "20 per cento" in f.note and "(54)" in f.note
+    assert "(60)" not in f.note                        # la nota senza cifre non entra
+    blocco = E.costruisci_blocco([f])
+    assert "Modifiche successive al testo" in blocco and "20 per cento" in blocco
+    # e i numeri delle note sono «fondati» per le guardie
+    p = E.Pacchetto(testo=blocco, fonti=[f], numeri=E.numeri_nel_testo(f.testo + " " + f.note))
+    assert 20 in p.numeri
+
+
+def test_note_spente_dal_flag(corpus, monkeypatch):
+    monkeypatch.setenv("KBOT_NORME_NOTE", "0")
+    r = E.riferimenti_da_testo("art. 25 D.P.R. 600/1973")[0]
+    assert E.recupera(r, ["ritenuta"], "utente", 2400).note == ""
+
+
+def test_note_rilevanti_ordina_per_anno_e_taglia():
+    grezzo = ("corpo ------------- AGGIORNAMENTO (1)\nLa L. 10 marzo 1990, n. 1 ha disposto che \"le parole: \"10 per cento\" sono "
+              "sostituite dalle seguenti: \"12 per cento\"\"\n------------- AGGIORNAMENTO (2)\nLa L. 5 maggio 2015, n. 9 ha "
+              "disposto che \"le parole: \"12 per cento\" sono sostituite dalle seguenti: \"15 per cento\"\"")
+    out = E.note_rilevanti(grezzo)
+    assert out.index("(2)") < out.index("(1)")         # la più recente per prima
+
+
+# ── richiamo: la norma è nota, l'articolo no; gli articoli gemelli ───────────────────────────
+def test_cerca_dentro_la_norma_trova_l_articolo_giusto(corpus):
+    rif = E.riferimenti_da_testo("D.Lgs. 276/2003", solo_con_articolo=False)[0]
+    assert rif["articolo"] is None
+    fs = E.cerca_in_norma(rif, ["appalto", "committente", "solidale", "lavoratori", "retribuzione"], 2400, "")
+    assert [f.articolo for f in fs][:1] == ["29"] and fs[0].origine == "norma"
+    # l'articolo che non parla dell'argomento non entra (servono almeno due parole)
+    assert all(f.articolo != "32" for f in fs)
+
+
+def test_articoli_affini_trovano_il_ter(corpus):
+    rif = E.riferimenti_da_testo("art. 2479 c.c.")[0]
+    fs = E.articoli_affini(rif, ["impugnare", "decisioni", "soci", "novanta", "trascrizione"], 2400, "")
+    assert [f.articolo for f in fs] == ["2479-ter"]
+
+
+def test_costruisci_con_norma_senza_articolo_e_affini(corpus):
+    # il modello propone «D.Lgs. 276/2003» (senza articolo) e «art. 2479 c.c.»: il sistema trova 29 e 2479-ter
+    p = E.costruisci("Un operaio dell'appaltatore chiede a noi gli stipendi; e possiamo impugnare la decisione dei soci della srl?",
+                     "", _client(["D.Lgs. 276/2003", "art. 2479 c.c."],
+                                 ["appalto", "committente", "solidale", "impugnare", "decisioni", "soci", "novanta"]), "m")
+    sigle = [f.articolo for f in p.fonti]
+    assert "29" in sigle and "2479-ter" in sigle
+
+
+def test_affini_e_ricerca_norma_spegnibili(corpus, monkeypatch):
+    monkeypatch.setenv("KBOT_NORME_AFFINI", "0")
+    monkeypatch.setenv("KBOT_NORME_RICERCA_NORMA", "0")
+    p = E.costruisci("impugnare la decisione dei soci e gli stipendi dell'appalto", "",
+                     _client(["D.Lgs. 276/2003", "art. 2479 c.c."], ["appalto", "solidale", "impugnare", "decisioni", "soci"]), "m")
+    assert p is None or all(f.articolo not in ("29", "2479-ter") for f in p.fonti)
