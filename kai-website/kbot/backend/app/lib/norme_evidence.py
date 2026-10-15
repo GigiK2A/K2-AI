@@ -1,0 +1,683 @@
+"""Evidence pack NORMATIVO della chat: il testo di legge entra nel contesto PRIMA della risposta.
+
+Il problema (misurato il 15/10/2026): in chat il modello risponde a memoria. Il corpus Normattiva
+(62k articoli) c'è, ma serviva solo a cancellare numeri DOPO. Risultato: «il periodo di prova non è
+fissato da una norma», «recesso del socio: la legge non fissa un termine», il limite del contante a
+3.000 € letto dal comma sbagliato. Qui si fa il contrario: si RECUPERA la norma e la si mette nel
+prompt, con la fonte, e le guardie a valle la riconoscono.
+
+Flusso (per turno, tutto fail-open):
+  1. gate: la domanda è di ambito normativo? (niente chiamate sulle chiacchiere)
+  2. riferimenti: quelli citati dall'utente + la MAPPA TEMI (dati, da validare) + quelli PROPOSTI da
+     una chiamata corta al modello (solo la forma «art. 2473 c.c.», mai la risposta);
+  3. recupero PER ESTREMI dal corpus (mai dalla memoria del modello): il riferimento o esiste e
+     ritorna il testo vero, o non ritorna nulla;
+  4. filtro di pertinenza sui riferimenti proposti dal modello (esistenza ≠ pertinenza);
+  5. lettura PER COMMI con la vigenza: nello stesso articolo convivono testo storico e vigente
+     (art. 49 D.Lgs. 231/2007: il comma 1 dice ancora 3.000 €, il 3-bis porta il limite a 5.000 € dal
+     2023). Si tengono i commi pertinenti e quelli con decorrenza; le note di aggiornamento si tolgono;
+  6. pacchetto: blocco di prompt + elenco delle fonti + numeri «fondati» (le guardie non cancellano
+     un numero che sta nel testo di legge recuperato).
+
+Il lettore del corpus è `app/normattiva.py` dell'8e, caricato PER PERCORSO: il pacchetto `app`
+dell'8e e quello della chat hanno lo stesso nome e non si possono importare insieme.
+
+KBOT_NORME_EVIDENCE=0 spegne tutto. Senza corpus raggiungibile il modulo è inerte.
+"""
+from __future__ import annotations
+
+import concurrent.futures
+import contextvars
+import functools
+import importlib.util
+import json
+import logging
+import os
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+log = logging.getLogger(__name__)
+
+# ── configurazione ───────────────────────────────────────────────────────────────────────
+MAX_RIFERIMENTI = int(os.getenv("KBOT_NORME_MAX_RIF", "5"))
+MAX_CHARS_ARTICOLO = int(os.getenv("KBOT_NORME_MAX_CHARS_ARTICOLO", "2400"))
+MAX_CHARS_TOTALE = int(os.getenv("KBOT_NORME_MAX_CHARS", "7500"))
+# Un comma lunghissimo (il comma 1 dell'art. 49 D.Lgs. 231/2007 ha 1.450 caratteri) non deve consumare
+# il budget degli altri: si taglia a una frase e si segna «[…]».
+MAX_CHARS_COMMA = int(os.getenv("KBOT_NORME_MAX_CHARS_COMMA", "650"))
+_TIMEOUT_PROPOSTA = float(os.getenv("KBOT_NORME_TIMEOUT_PROPOSTA", "25"))
+
+
+def abilitato() -> bool:
+    return os.getenv("KBOT_NORME_EVIDENCE", "1") != "0"
+
+
+# ═══ 1 · lettore del corpus (app/normattiva.py dell'8e, caricato per percorso) ═════════════
+_LETTORE = None
+_LETTORE_PROVATO = False
+
+
+def _candidati_lettore() -> list[Path]:
+    qui = Path(__file__).resolve()
+    out: list[Path] = []
+    if os.getenv("K2A_NORMATTIVA_MODULE"):
+        out.append(Path(os.environ["K2A_NORMATTIVA_MODULE"]))
+    for i, nome in ((3, "engine-8e"), (4, "k2a-8e")):          # container / repo
+        try:
+            out.append(qui.parents[i] / nome / "app" / "normattiva.py")
+        except IndexError:
+            pass
+    return out
+
+
+def _candidati_db() -> list[Path]:
+    qui = Path(__file__).resolve()
+    out = [Path("/corpus/normattiva.db")]
+    try:
+        out.append(qui.parents[3] / "engine-8e" / "normattiva.db")
+    except IndexError:
+        pass
+    return out
+
+
+def lettore():
+    """Il modulo del corpus, o None se non c'è. Nessuna eccezione verso l'alto."""
+    global _LETTORE, _LETTORE_PROVATO
+    if _LETTORE_PROVATO:
+        return _LETTORE
+    _LETTORE_PROVATO = True
+    for p in _candidati_lettore():
+        if not p.is_file():
+            continue
+        try:
+            spec = importlib.util.spec_from_file_location("_k2a_normattiva_8e", p)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)                      # type: ignore[union-attr]
+            _LETTORE = mod
+            break
+        except Exception:
+            log.warning("norme_evidence: lettore %s non caricabile", p, exc_info=True)
+    if _LETTORE is not None and not os.environ.get("NORMATTIVA_DB_PATH"):
+        for db in _candidati_db():
+            if db.is_file():
+                os.environ["NORMATTIVA_DB_PATH"] = str(db)
+                break
+    return _LETTORE
+
+
+def disponibile() -> bool:
+    m = lettore()
+    try:
+        return bool(m and m.available())
+    except Exception:
+        return False
+
+
+# ═══ 2 · numeri in cifre e in parole (per riconoscere i numeri «fondati») ══════════════════
+_UNITA = {"uno": 1, "una": 1, "un": 1, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6, "sette": 7,
+          "otto": 8, "nove": 9}
+_SPECIALI = {"dieci": 10, "undici": 11, "dodici": 12, "tredici": 13, "quattordici": 14, "quindici": 15,
+             "sedici": 16, "diciassette": 17, "diciotto": 18, "diciannove": 19}
+_DECINE = {"venti": 20, "trenta": 30, "quaranta": 40, "cinquanta": 50, "sessanta": 60, "settanta": 70,
+           "ottanta": 80, "novanta": 90}
+
+
+def _genera_parole() -> dict[str, int]:
+    """'quaranta' → 40, 'venticinque' → 25, 'centottanta' → 180, 'cinquemila' → 5000."""
+    w: dict[str, int] = {}
+    w.update(_UNITA)
+    w.update(_SPECIALI)
+    w.update(_DECINE)
+    for d, vd in _DECINE.items():
+        for u, vu in _UNITA.items():
+            if u == "una" or u == "un":
+                continue
+            forma = d[:-1] if u in ("uno", "otto") else d      # ventuno, ventotto (elisione)
+            w[forma + u] = vd + vu
+            w[d + u] = vd + vu
+    base = dict(w)
+    w["cento"] = 100
+    for u, vu in _UNITA.items():
+        if u in ("una", "un", "uno"):
+            continue
+        w[u + "cento"] = vu * 100
+    centinaia = {k: v for k, v in w.items() if v % 100 == 0 and 100 <= v <= 900}
+    for c, vc in centinaia.items():
+        for p, vp in base.items():
+            if vp >= 100 or p in ("una", "un"):
+                continue
+            forma = c[:-1] if p[0] in "ou" else c              # centottanta, centuno
+            w[forma + p] = vc + vp
+            w[c + p] = vc + vp
+    w["mille"] = 1000
+    for u, vu in list(_UNITA.items()) + list(_SPECIALI.items()):
+        if u not in ("una", "un", "uno"):
+            w[u + "mila"] = vu * 1000
+    return w
+
+
+PAROLE_NUMERO = _genera_parole()
+_RE_NUM = re.compile(r"\b(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?\b|\b(?:" + "|".join(
+    sorted(PAROLE_NUMERO, key=len, reverse=True)) + r")\b", re.I)
+_UNITA_TEMPO = r"(giorn\w*|mes[ei]|settiman\w*|ann[io]|or[ae])"
+_RE_COPPIA = re.compile(r"(?P<n>\d{1,3}(?:\.\d{3})+|\d+|" + "|".join(sorted(PAROLE_NUMERO, key=len, reverse=True)) +
+                        r")\s*(?P<u>" + _UNITA_TEMPO + r")\b", re.I)
+
+
+def valore(tok: str) -> Optional[int]:
+    """'5.000' → 5000, 'quaranta' → 40, '25' → 25, '3,5' → None (non intero)."""
+    t = tok.strip().lower()
+    if t in PAROLE_NUMERO:
+        return PAROLE_NUMERO[t]
+    if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", t):
+        return int(t.replace(".", ""))
+    if t.isdigit():
+        return int(t)
+    return None
+
+
+def _stelo_unita(u: str) -> str:
+    return u.lower()[:3]
+
+
+def numeri_nel_testo(testo: str) -> set[int]:
+    out: set[int] = set()
+    for m in _RE_NUM.finditer(testo or ""):
+        v = valore(m.group(0))
+        if v is not None:
+            out.add(v)
+    return out
+
+
+def coppie_nel_testo(testo: str) -> set[tuple[int, str]]:
+    out: set[tuple[int, str]] = set()
+    for m in _RE_COPPIA.finditer(testo or ""):
+        v = valore(m.group("n"))
+        if v is not None:
+            out.add((v, _stelo_unita(m.group("u"))))
+    return out
+
+
+# ═══ 3 · modello dei dati e variabile di contesto ═════════════════════════════════════════
+@dataclass
+class Fonte:
+    citazione: str                 # «R.D. 262/1942, art. 2473»
+    tipo: str
+    anno: int
+    numero: str
+    articolo: str
+    rubrica: str = ""
+    sigla: str = ""                # forma breve per l'utente: «c.c. art. 2473»
+    origine: str = ""              # utente | mappa | proposta
+    testo: str = ""                # ciò che entra nel pacchetto
+
+
+@dataclass
+class Pacchetto:
+    testo: str                                         # blocco da aggiungere al prompt di sistema
+    fonti: list[Fonte] = field(default_factory=list)
+    numeri: set[int] = field(default_factory=set)
+    coppie: set[tuple[int, str]] = field(default_factory=set)
+
+
+_CORRENTE: contextvars.ContextVar[Optional[Pacchetto]] = contextvars.ContextVar("norme_pacchetto", default=None)
+
+
+def imposta(p: Optional[Pacchetto]) -> None:
+    _CORRENTE.set(p)
+
+
+def pacchetto_corrente() -> Optional[Pacchetto]:
+    return _CORRENTE.get()
+
+
+# ═══ 4 · riferimenti: utente, mappa temi, proposta del modello ═════════════════════════════
+_AMBITO = re.compile(
+    r"\b(contratt\w+|clausol\w+|penale|caparra|recess\w+|socio|soci\b|srl|s\.r\.l|quota|quote|statuto|"
+    r"assemble\w+|dipendent\w+|lavorator\w+|assunzion\w+|assumer\w+|licenzi\w+|dimission\w+|"
+    r"prova|ferie|straordinar\w+|orario|\bccnl\b|tfr|sindacat\w+|appalt\w+|subappalt\w+|"
+    r"fattur\w+|iva\b|imposta|imposte|tribut\w+|fiscal\w+|dedu\w+|deduc\w+|irpef|ires|irap|f24|"
+    r"ravvedimento|sanzion\w+|cartella|accertament\w+|dichiarazion\w+|versament\w+|contant\w+|"
+    r"pagament\w+|interess\w+|mora|creditor\w+|credit\w+|debit\w+|ingiunz\w+|decreto|opposizion\w+|"
+    r"impugn\w+|termin\w+|scadenz\w+|prescrizion\w+|decadenz\w+|risarcim\w+|inadempi\w+|"
+    r"privacy|gdpr|dati personali|data breach|garante|telecamer\w+|videosorveglianza|"
+    r"sicurezza|dvr|infortun\w+|ispezion\w+|norma\b|norme\b|legge\b|obblig\w+|divieto|vietat\w+|"
+    r"successione|eredit\w+|locazion\w+|affitto|sfratto|societ\w+|amministrator\w+|liquidazione|"
+    r"bilancio|concorrenza|non concorrenza|brevett\w+|marchio|diritto d'autore|antiriciclaggio|"
+    r"consumator\w+|garanzia|appalto|subappalto|fornitur\w+)\b", re.I)
+
+_STOP = set("""che con per una uno gli le lo la il del dei della delle dello degli nel nella nei nelle sul sulla sui
+sulle dal dalla dai dalle alla alle allo agli ai al da di in su tra fra non più anche come cosa cose fare fatto
+fatta abbiamo ho ha hanno essere stato stata sono siamo vogliamo posso possiamo deve devo dobbiamo quando quanto
+quale quali questo questa questi queste quello quella quelli loro suo sua suoi nostro nostra nostri nostre mio mia
+dopo prima ancora sempre mai molto poco tutto tutti ogni altro altra altri altre solo anche però quindi perché
+poi subito entro oggi ieri domani anno anni mese mesi giorno giorni""".split())
+
+
+def serve_evidenza(testo: str, contesto: str = "") -> bool:
+    t = (testo or "").strip()
+    if len(t) < 15:
+        return False
+    return bool(_AMBITO.search(t) or _AMBITO.search(contesto or "") and len(t) < 80)
+
+
+def _parole_chiave(testo: str) -> list[str]:
+    out, visti = [], set()
+    for w in re.findall(r"[a-zàèéìòù]{6,}", (testo or "").lower()):
+        if w in _STOP or w in visti:
+            continue
+        visti.add(w)
+        out.append(w)
+    return out[:14]
+
+
+def riferimenti_da_testo(testo: str) -> list[dict]:
+    """Riferimenti con estremi già scritti nel testo («art. 2473 c.c.», «D.Lgs. 231/2002 art. 4»)."""
+    m = lettore()
+    if not m or not testo:
+        return []
+    try:
+        return [r for r in m.extract_norm_refs(testo) if r.get("articolo")]
+    except Exception:
+        return []
+
+
+_MAPPA_PATH = Path(__file__).resolve().parent.parent / "data" / "mappa_temi.json"
+
+
+@functools.lru_cache(maxsize=1)
+def _mappa() -> list[dict]:
+    try:
+        d = json.load(open(_MAPPA_PATH, encoding="utf-8"))
+        voci = d.get("temi", []) if isinstance(d, dict) else d
+        out = []
+        for v in voci:
+            if isinstance(v, dict) and v.get("trigger") and v.get("riferimenti"):
+                out.append({"id": v.get("id", ""), "trigger": [re.compile(t, re.I) for t in v["trigger"]],
+                            "riferimenti": list(v["riferimenti"])})
+        return out
+    except FileNotFoundError:
+        return []
+    except Exception:
+        log.warning("norme_evidence: mappa temi non leggibile", exc_info=True)
+        return []
+
+
+def riferimenti_da_mappa(testo: str) -> list[dict]:
+    refs: list[dict] = []
+    for voce in _mappa():
+        if any(t.search(testo or "") for t in voce["trigger"]):
+            refs += riferimenti_da_testo("; ".join(voce["riferimenti"]))
+    return refs
+
+
+_SISTEMA_PROPOSTA = (
+    "Sei un indicizzatore giuridico per un consulente d'impresa italiano. Dato il quesito, indica quali "
+    "NORME ITALIANE disciplinano il punto, così che il sistema possa recuperarne il testo. NON rispondere al "
+    "quesito. Rispondi SOLO con un oggetto JSON: {\"norme\":[...],\"parole\":[...]}.\n"
+    "'norme': fino a 5 riferimenti precisi, uno per voce, nella forma standard: 'art. 2473 c.c.', "
+    "'art. 641 c.p.c.', 'D.Lgs. 231/2002 art. 4', 'L. 300/1970 art. 4', 'D.P.R. 633/1972 art. 7'. Scrivi solo "
+    "riferimenti di cui sei ragionevolmente certo (numero di norma, anno e articolo); se non sei certo "
+    "dell'articolo, lascialo fuori dalla lista.\n"
+    "'parole': da 3 a 6 parole italiane tecniche che compaiono nel testo di legge pertinente (sostantivi e "
+    "verbi giuridici, niente articoli o preposizioni)."
+)
+
+
+def _json_tollerante(testo: str) -> Optional[dict]:
+    t = (testo or "").strip()
+    a, b = t.find("{"), t.rfind("}")
+    if a < 0 or b <= a:
+        return None
+    try:
+        v = json.loads(t[a:b + 1])
+        return v if isinstance(v, dict) else None
+    except json.JSONDecodeError:
+        return None
+
+
+def proponi(client, modello: str, quesito: str, contesto: str = "") -> tuple[list[dict], list[str]]:
+    """Riferimenti e parole chiave PROPOSTI dal modello. Fail-open: ([], [])."""
+    try:
+        utente = f"QUESITO:\n{quesito.strip()[:1200]}"
+        if contesto.strip():
+            utente = f"CONTESTO (messaggi precedenti dell'utente):\n{contesto.strip()[-900:]}\n\n" + utente
+        r = client.messages.create(model=modello, max_tokens=320, system=_SISTEMA_PROPOSTA,
+                                   messages=[{"role": "user", "content": utente}], timeout=_TIMEOUT_PROPOSTA)
+        out = "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
+        v = _json_tollerante(out)
+        if not v:
+            return [], []
+        norme = [str(x) for x in (v.get("norme") or []) if isinstance(x, (str, int))][:8]
+        parole = [str(x).lower() for x in (v.get("parole") or []) if isinstance(x, str)][:8]
+        return riferimenti_da_testo("; ".join(norme)), parole
+    except Exception:
+        log.warning("norme_evidence: proposta dei riferimenti fallita (fail-open)", exc_info=True)
+        return [], []
+
+
+# ═══ 5 · recupero e lettura per commi ══════════════════════════════════════════════════════
+_NOTE = re.compile(r"-{5,}\s*AGGIORNAMENTO", re.I)
+_RIF_NOTA = re.compile(r"\(\(\s*\d+\s*\)\)|(?<=[.;:])\s*\(\d{1,3}\)(?=\s)")
+_RUBRICA = re.compile(r"Art\.\s*[\w\-]+\s*\.?\s*\(([^)]{3,90})\)")
+_SUFFISSI = r"(?:-(?:bis|ter|quater|quinquies|sexies|septies|octies|novies|decies))?"
+_COMMA = re.compile(r"(?:(?<=\s)|^)(\d{1,2}" + _SUFFISSI + r")\.\s+(?=[A-ZÀÈÉÌÒÙ«\"(])")
+_DECORRENZA = re.compile(r"\b(a decorrere dal|a partire dal|dal 1°|dal \d{1,2} (?:gennaio|febbraio|marzo|aprile|maggio|"
+                         r"giugno|luglio|agosto|settembre|ottobre|novembre|dicembre) \d{4}|fino al|non oltre il|"
+                         r"entro il 31|in vigore dal)\b", re.I)
+
+
+def _ripulisci(testo: str) -> tuple[str, bool]:
+    """(corpo senza note di aggiornamento né marcatori, abrogato)."""
+    corpo = _NOTE.split(testo or "", maxsplit=1)[0]
+    abrogato = bool(re.search(r"ARTICOLO ABROGATO", corpo, re.I)) and len(corpo) < 500
+    corpo = _RIF_NOTA.sub("", corpo)
+    corpo = corpo.replace("((", "").replace("))", "").replace("**", "")      # «**1.**» → «1.»
+    corpo = re.sub(r"\s+", " ", corpo).strip()
+    return corpo, abrogato
+
+
+def dividi_commi(corpo: str) -> list[tuple[str, str]]:
+    """[(etichetta, testo)]. L'etichetta '' è l'intestazione prima del comma 1. Si accettano solo
+    numerazioni plausibili (1, 2, 3, 3-bis, 4…): evita di scambiare «n. 196. L'articolo» per un comma."""
+    atteso, ultimo, tagli = 1, 0, []
+    for m in _COMMA.finditer(corpo):
+        etichetta = m.group(1)
+        n = int(re.match(r"\d+", etichetta).group(0))
+        suff = etichetta[len(str(n)):]
+        if (n == atteso and not suff) or (n == ultimo and suff):
+            tagli.append((m.start(), m.end(), etichetta))
+            if not suff:
+                ultimo, atteso = n, n + 1
+    if not tagli:
+        return [("", corpo)]
+    out = []
+    if tagli[0][0] > 0:
+        out.append(("", corpo[:tagli[0][0]].strip()))
+    for i, (_, fine, et) in enumerate(tagli):
+        stop = tagli[i + 1][0] if i + 1 < len(tagli) else len(corpo)
+        out.append((et, corpo[fine:stop].strip()))
+    return out
+
+
+def _punteggio(testo: str, steli: set[str]) -> int:
+    t = testo.lower()
+    return sum(1 for s in steli if s in t)
+
+
+def _intenti(quesito: str) -> tuple[bool, bool]:
+    """(il quesito chiede un TERMINE, il quesito chiede un IMPORTO/soglia)."""
+    q = (quesito or "").lower()
+    tempo = bool(re.search(r"\b(quando|quanto tempo|entro|termine|termini|scadenz\w*|scade|giorni|mesi|anni|"
+                           r"tempi|durata|prescri\w+|decad\w+)\b", q))
+    soldi = bool(re.search(r"\b(euro|importo|soglia|limite|massimo|minimo|quanto costa|sanzion\w+|multa|"
+                           r"interess\w+|percentuale|aliquota)\b|€", q))
+    return tempo, soldi
+
+
+def _taglia(t: str, cap: int) -> str:
+    """Taglia un comma troppo lungo a fine frase prima del tetto, con «[…]»."""
+    if len(t) <= cap:
+        return t
+    punto = max(t.rfind(". ", 0, cap), t.rfind("; ", 0, cap))
+    return (t[:punto + 1] if punto > cap * 0.45 else t[:cap].rstrip()) + " […]"
+
+
+_CAP_LIVELLO = {1: 1500, 2: 700, 3: 450}      # intestazione e comma 1 · commi con decorrenza · gli altri
+
+
+def seleziona_indici(commi: list[tuple[str, str]], parole: list[str], budget: int,
+                     quesito: str = "") -> tuple[list[int], dict[int, Optional[int]]]:
+    """(indici dei commi da tenere, tetto di caratteri per ciascuno). Tutti e interi se ci stanno.
+    Altrimenti, per LIVELLI:
+      1. intestazione e comma 1: mai tagliati (fino a 1.500 car.);
+      2. commi con DECORRENZA («a decorrere dal…»): portano la regola vigente (art. 49 c.3-bis: 5.000 €
+         dal 2023 mentre il comma 1 dice ancora 3.000), tagliati a 700;
+      3. gli altri, per pertinenza alle parole del quesito, con un aiuto a chi contiene termini o importi
+         quando il quesito li chiede, tagliati a 450.
+    Un comma lunghissimo non consuma così il budget degli altri. Ordine originale."""
+    if sum(len(t) + 12 for _, t in commi) <= budget:
+        return list(range(len(commi))), {}
+    steli = {w[:5] for w in parole if len(w) >= 5}
+    tempo, soldi = _intenti(quesito)
+    livello: dict[int, int] = {}
+    punti: dict[int, int] = {}
+    for i, (et, t) in enumerate(commi):
+        liv = 1 if (i == 0 or et == "1") else (2 if _DECORRENZA.search(t) else 3)
+        p = _punteggio(t, steli) * 10
+        if tempo and coppie_nel_testo(t):
+            p += 25
+        if soldi and any(n >= 100 for n in numeri_nel_testo(t)):
+            p += 25
+        livello[i], punti[i] = liv, p
+    cap_livelli = dict(_CAP_LIVELLO)
+    cap_livelli[1] = min(cap_livelli[1], int(budget * 0.55))     # il comma 1 non deve schiacciare gli altri
+    tenuti, caps, usato = [], {}, 0
+    for i in sorted(livello, key=lambda i: (livello[i], -punti[i], i)):
+        cap = cap_livelli[livello[i]]
+        c = min(len(commi[i][1]), cap) + 12
+        if usato + c > budget and tenuti:
+            continue
+        tenuti.append(i)
+        caps[i] = cap if len(commi[i][1]) > cap else None
+        usato += c
+    # una frase con decorrenza («Fino alla scadenza…, gli stessi datori…») si riferisce a quella prima:
+    # si porta dietro il predecessore se c'è spazio (utile per gli articoli senza commi numerati)
+    for i in sorted(t for t in tenuti if livello[t] == 2):
+        if i > 0 and i - 1 not in tenuti and not commi[i - 1][0]:
+            c = min(len(commi[i - 1][1]), _CAP_LIVELLO[3]) + 12
+            if usato + c <= budget:
+                tenuti.append(i - 1)
+                caps[i - 1] = _CAP_LIVELLO[3] if len(commi[i - 1][1]) > _CAP_LIVELLO[3] else None
+                usato += c
+    return sorted(tenuti), caps
+
+
+def _frasi(corpo: str) -> list[tuple[str, str]]:
+    """I commi del codice civile NON sono numerati: per selezionare si lavora per frasi."""
+    return [("", f.strip()) for f in re.split(r"(?<=[.;:])\s+(?=[A-ZÀÈÉÌÒÙ«\"(])", corpo) if f.strip()]
+
+
+def _formatta(commi: list[tuple[str, str]], idx: list[int], caps: Optional[dict] = None) -> str:
+    righe, prec = [], None
+    for i in idx:
+        et, t = commi[i]
+        salto = prec is not None and i != prec + 1
+        if caps and caps.get(i):
+            t = _taglia(t, caps[i])
+        righe.append(((("  […]\n" if et else "[…] ") if salto else "") + (f"  comma {et}: {t}" if et else t)))
+        prec = i
+    if all(not commi[i][0] for i in idx):
+        return "  " + " ".join(righe)
+    return "\n".join(r if r.startswith("  ") or r.startswith("[") else "  " + r for r in righe)
+
+
+def _sigla(est: dict) -> str:
+    """Forma breve per l'utente: «art. 2473 c.c.» per i codici, la citazione del lettore per il resto
+    (il corpus ha prefissi propri: un D.Lgs può stare sotto 'legge_AAAA_N')."""
+    tipo, num, anno, art = est.get("tipo", ""), str(est.get("numero", "")), est.get("anno"), est.get("articolo", "")
+    codici = {("regio_decreto", "262", 1942): "c.c.", ("regio_decreto", "1443", 1940): "c.p.c.",
+              ("regio_decreto", "1398", 1930): "c.p.",
+              ("decreto_presidente_repubblica", "447", 1988): "c.p.p."}
+    c = codici.get((tipo, num, anno))
+    return f"art. {art} {c}" if c else (est.get("citazione") or f"art. {art} {num}/{anno}")
+
+
+_CACHE_ARTICOLI: dict[tuple, dict] = {}
+
+
+def _articolo(tipo: str, anno: int, numero: str, articolo: str) -> Optional[dict]:
+    chiave = (tipo, int(anno), str(numero), _norm_art(articolo))
+    if chiave in _CACHE_ARTICOLI:
+        return _CACHE_ARTICOLI[chiave]
+    m = lettore()
+    if not m:
+        return None
+    try:
+        r = m.find_by_estremi(int(anno), str(numero), tipo, str(articolo), limit=1)
+    except Exception:
+        log.warning("norme_evidence: lettura %s %s/%s art. %s fallita", tipo, numero, anno, articolo, exc_info=True)
+        return None
+    if r:
+        if len(_CACHE_ARTICOLI) > 600:
+            _CACHE_ARTICOLI.clear()
+        _CACHE_ARTICOLI[chiave] = r[0]          # si memorizzano solo i successi: un errore non resta
+        return r[0]
+    return None
+
+
+def recupera(rif: dict, parole: list[str], origine: str, budget: int, quesito: str = "") -> Optional[Fonte]:
+    rec = _articolo(rif.get("tipo") or "", rif["anno"], rif["numero"], rif["articolo"])
+    if not rec:
+        return None
+    corpo, abrogato = _ripulisci(rec.get("testo") or "")
+    if abrogato or len(corpo) < 20:
+        return None
+    rub = _RUBRICA.search(corpo)
+    commi = dividi_commi(corpo)
+    if len(commi) == 1 and len(corpo) > budget:
+        commi = _frasi(corpo)
+    idx, caps = seleziona_indici(commi, parole, budget, quesito)
+    testo = _formatta(commi, idx, caps)
+    return Fonte(citazione=rec.get("citazione", ""), tipo=rec.get("tipo", ""), anno=int(rec.get("anno") or rif["anno"]),
+                 numero=str(rec.get("numero") or rif["numero"]), articolo=str(rec.get("articolo") or rif["articolo"]),
+                 rubrica=rub.group(1).strip() if rub else "", sigla=_sigla(rec), origine=origine, testo=testo)
+
+
+def _pertinente(f: Fonte, parole: list[str]) -> bool:
+    """Un riferimento PROPOSTO dal modello entra solo se il suo testo contiene almeno una delle parole
+    del quesito: l'art. 2099 esiste ma non parla di patto di prova. Utente e mappa non passano da qui."""
+    steli = {w[:5] for w in parole if len(w) >= 5}
+    return not steli or _punteggio(f.testo + " " + f.rubrica, steli) >= 1
+
+
+_ISTRUZIONI = (
+    "COME USARLE:\n"
+    "- Per ogni fatto di legge (termini, soglie, importi, requisiti) usa QUESTE fonti e non la memoria. Un termine "
+    "o una cifra che qui non compare non va presentato come certo.\n"
+    "- Cita la fonte fra parentesi dopo il fatto, nella forma indicata a sinistra di ogni fonte, ad esempio "
+    "«(art. 2473 c.c.)». Puoi citare SOLO gli articoli elencati qui: è l'unica eccezione alla regola «niente "
+    "numeri di articolo».\n"
+    "- Se nello stesso articolo commi diversi danno cifre diverse, vale il comma con la decorrenza più recente "
+    "(«a decorrere dal…»); il comma 1 può riportare ancora il testo storico.\n"
+    "- Se un passaggio non riguarda il caso, ignoralo senza citarlo. Se le fonti non coprono il punto, dillo e "
+    "indirizza al professionista invece di inventare.\n"
+    "- Il testo può non essere aggiornato all'ultima modifica: per scadenze e importi che pesano sulla decisione "
+    "ricorda di verificare la vigenza."
+)
+
+
+def costruisci_blocco(fonti: list[Fonte]) -> str:
+    righe = ["FONTI NORMATIVE PER QUESTO TURNO (testo ufficiale dal corpus Normattiva, recuperato dal sistema):"]
+    for i, f in enumerate(fonti, 1):
+        titolo = f"[{i}] ({f.sigla}) {f.citazione}" + (f" — {f.rubrica}" if f.rubrica else "")
+        righe.append(titolo)
+        righe.append(f.testo)
+    righe.append(_ISTRUZIONI)
+    return "\n" + "\n".join(righe) + "\n"
+
+
+def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> Optional[Pacchetto]:
+    """Il pacchetto per questo turno, o None (non serve / corpus assente / nulla trovato). Fail-open."""
+    if not abilitato() or not serve_evidenza(quesito, contesto) or not disponibile():
+        return None
+    try:
+        testo_tot = f"{contesto}\n{quesito}"
+        parole = _parole_chiave(quesito)
+        candidati: list[tuple[dict, str]] = [(r, "utente") for r in riferimenti_da_testo(testo_tot)]
+        candidati += [(r, "mappa") for r in riferimenti_da_mappa(testo_tot)]
+        if client is not None:
+            proposti, parole_modello = proponi(client, modello, quesito, contesto)
+            parole = list(dict.fromkeys(parole_modello + parole))
+            candidati += [(r, "proposta") for r in proposti]
+        visti, uniche = set(), []
+        for r, o in candidati:
+            k = (r.get("tipo"), str(r.get("numero")), r.get("anno"), re.sub(r"[^0-9a-z]", "", str(r.get("articolo")).lower()))
+            if k not in visti:
+                visti.add(k)
+                uniche.append((r, o))
+        uniche = uniche[:MAX_RIFERIMENTI + 3]
+        if not uniche:
+            return None
+        budget = MAX_CHARS_ARTICOLO
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+            risultati = list(ex.map(lambda ro: recupera(ro[0], parole, ro[1], budget, quesito), uniche))
+        fonti: list[Fonte] = []
+        totale = 0
+        for f in risultati:
+            if f is None or (f.origine == "proposta" and not _pertinente(f, parole)):
+                continue
+            if totale + len(f.testo) > MAX_CHARS_TOTALE and fonti:
+                continue
+            fonti.append(f)
+            totale += len(f.testo)
+            if len(fonti) >= MAX_RIFERIMENTI:
+                break
+        if not fonti:
+            return None
+        blocco = costruisci_blocco(fonti)
+        corpo = " ".join(f.testo for f in fonti)
+        return Pacchetto(testo=blocco, fonti=fonti, numeri=numeri_nel_testo(corpo), coppie=coppie_nel_testo(corpo))
+    except Exception:
+        log.warning("norme_evidence: costruzione del pacchetto fallita (fail-open)", exc_info=True)
+        return None
+
+
+# ═══ 6 · uso a valle: citazioni consentite, numeri fondati, elenco delle fonti ═════════════
+def _norm_art(a: str) -> str:
+    return re.sub(r"[^0-9a-z]", "", str(a or "").lower())
+
+
+def citazione_consentita(span: str) -> bool:
+    """Una citazione come «art. 2473 c.c.» o «art. 4 D.Lgs. 231/2002» è consentita solo se quell'articolo
+    sta nel pacchetto del turno: la regola del 17 luglio («niente numeri di articolo, esistenza ≠
+    pertinenza») resta, con l'eccezione delle fonti che il sistema ha recuperato e fatto leggere."""
+    p = pacchetto_corrente()
+    if not p or not span:
+        return False
+    s = re.sub(r"\s+", " ", span)
+    ma = re.search(r"art\w*\.?\s*(\d+[\w\-‑–]*)", s, re.I)
+    if not ma:
+        return False
+    art = _norm_art(ma.group(1))
+    if re.search(r"\bc\.\s?c\.|codice civile|cod\.\s*civ", s, re.I):
+        chiave = ("262", 1942)
+    else:
+        mn = re.search(r"(\d+)\s*[/.]\s*(\d{2,4})", s)
+        if not mn:
+            return False
+        a = int(mn.group(2))
+        chiave = (mn.group(1), a if a >= 100 else (2000 + a if a <= 30 else 1900 + a))
+    return any(_norm_art(f.articolo) == art and (str(f.numero), f.anno) == chiave for f in p.fonti)
+
+
+def numero_fondato(span: str) -> bool:
+    """True se i numeri di un'espressione di scadenza/soglia («entro 40 giorni», «5.000 euro») compaiono
+    nel testo di legge recuperato per questo turno, con la stessa unità quando c'è."""
+    p = pacchetto_corrente()
+    if not p or not span:
+        return False
+    coppie = coppie_nel_testo(span)
+    if coppie:
+        return all(c in p.coppie for c in coppie)
+    nums = numeri_nel_testo(span)
+    return bool(nums) and all(n in p.numeri for n in nums)
+
+
+def aggiungi_fonti(testo: str) -> str:
+    """In coda alla risposta, l'elenco delle fonti del pacchetto che il testo ha davvero citato. Lo fa il
+    codice, non il modello: la fonte c'è anche quando il modello non la scrive."""
+    p = pacchetto_corrente()
+    if not p or not testo or re.search(r"(?m)^Fonti:", testo):
+        return testo
+    usate = []
+    for f in p.fonti:
+        art = re.escape(f.articolo)
+        if re.search(rf"\bart\w*\.?\s*{art}\b", testo, re.I) or f.sigla.lower() in testo.lower():
+            usate.append(f.sigla)
+    if not usate:
+        return testo
+    elenco = "; ".join(dict.fromkeys(usate))
+    return testo.rstrip() + "\n\nFonti: " + elenco + ("" if elenco.endswith(".") else ".")

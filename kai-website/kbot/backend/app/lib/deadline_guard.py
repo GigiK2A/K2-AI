@@ -24,6 +24,8 @@ from __future__ import annotations
 import os
 import re
 
+from . import norme_evidence
+
 # ── Contesto NORMATIVO: senza uno di questi marcatori vicino, non si tocca nulla ──────────
 # (protegge i numeri di business: marketing %, prezzi, fatturato dato dall'utente, ecc.)
 _LEGAL_CTX = re.compile(
@@ -104,6 +106,11 @@ def _enabled() -> bool:
 
 
 def _soften_deadline(m: "re.Match") -> str:
+    # Un termine che sta nel testo di legge RECUPERATO per questo turno (norme_evidence) è un fatto
+    # fondato, non un numero a memoria: non si cancella (15/10/2026: i «180 giorni» giusti dell'art. 2473
+    # venivano sostituiti da «nel termine previsto dalla normativa»).
+    if norme_evidence.numero_fondato(m.group(0)):
+        return m.group(0)
     low = m.group(0).lower()
     if low.startswith("entro"):
         return "entro il termine previsto dalla normativa"
@@ -123,11 +130,15 @@ def _soften_deadline(m: "re.Match") -> str:
 
 
 def _soften_threshold(m: "re.Match") -> str:
+    if norme_evidence.numero_fondato(m.group(0)):
+        return m.group(0)
     # conserva 'pre' (parola-soglia + eventuale contesto), sostituisce solo la cifra
     return m.group("pre") + "un importo previsto dalla normativa"
 
 
 def _soften_rate(m: "re.Match") -> str:
+    if norme_evidence.numero_fondato(m.group(0)):
+        return m.group(0)
     # conserva il contesto ('tasso legale', 'interessi di mora'), toglie la misura numerica
     return m.group("pre").rstrip() + " nella misura prevista dalla normativa"
 

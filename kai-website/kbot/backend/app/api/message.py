@@ -20,6 +20,7 @@ from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user
 from ..lib import profile as profile_lib
 from ..lib import fact_grounding
+from ..lib import norme_evidence
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -190,6 +191,9 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
         if len((visible or "").strip()) < 5:
             visible = ("Restiamo sulla diagnosi, come hai chiesto. Qual è l'aspetto che vuoi "
                        "approfondire per primo?")
+    # In coda, le fonti del pacchetto normativo che la risposta ha davvero citato: lo fa il codice,
+    # quindi la fonte c'è anche quando il modello non la scrive.
+    visible = norme_evidence.aggiungi_fonti(visible)
     return visible, summary, diagnosi
 
 
@@ -467,6 +471,7 @@ async def post_message(
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    system_prompt += await _blocco_norme(client, last_user_text, _recent_ctx)
     try:
         # web_search abilitato: il modello cerca DAVVERO quando l'utente lo chiede, invece
         # di promettere una ricerca che non fa. L'helper gestisce pause_turn + fallback.
@@ -651,6 +656,24 @@ def _persist_assistant_turn(
     return user_visible, summary, updated
 
 
+async def _blocco_norme(client, last_user_text: str, recent_ctx: str) -> str:
+    """EVIDENCE PACK NORMATIVO: recupera dal corpus il testo di legge pertinente PRIMA della risposta e
+    lo rende disponibile alle guardie a valle (citazioni consentite, numeri fondati). Fail-open: senza
+    corpus, senza ambito normativo o su errore, ritorna '' e la chat funziona come prima."""
+    norme_evidence.imposta(None)
+    try:
+        pk = await asyncio.to_thread(norme_evidence.costruisci, last_user_text, recent_ctx,
+                                     client, ANTHROPIC_MODEL)
+    except Exception:
+        log.warning("norme_evidence: errore nel recupero (fail-open)", exc_info=True)
+        return ""
+    if not pk:
+        return ""
+    norme_evidence.imposta(pk)
+    log.info("norme_evidence: %d fonti nel prompt (%s)", len(pk.fonti), "; ".join(f.sigla for f in pk.fonti))
+    return pk.testo
+
+
 def _sse(event_data: dict) -> str:
     return f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
 
@@ -691,6 +714,10 @@ async def post_message_stream(
                 yield ": search-done\n\n"   # commento SSE: tiene vivo lo stream, il client lo ignora
         except Exception:
             log.warning("grounding proattivo fallito (fail-open)", exc_info=True)
+        _norme = await _blocco_norme(client, _last_user_text, _recent_user_text)
+        if _norme:
+            sys_prompt += _norme
+            yield ": norme-ok\n\n"            # commento SSE: tiene vivo lo stream, il client lo ignora
         raw_buffer: list[str] = []
         usage = None
         # Scrubber dello stream (bug UX "continua a ragionare e poi cambia messaggio"):

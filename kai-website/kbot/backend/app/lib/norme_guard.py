@@ -23,7 +23,8 @@ import httpx
 
 from ..settings import ENGINE_8E_BASE_URL, ENGINE_8E_API_KEY
 from . import signals
-from .prompts import sanitize_unverified_legal_citations  # noqa: F401 (facade retro-compat)
+from .prompts import _delegalize, ripara_elisioni, sanitize_unverified_legal_citations  # noqa: F401 (facade retro-compat)
+from . import norme_evidence
 
 log = logging.getLogger(__name__)
 
@@ -77,6 +78,15 @@ def sanitize(text: str) -> str:
     sbagliato) all'utente."""
     if not text or not signals.LEGAL_ARTICLE_RE.search(text):
         return text  # nessuna citazione con numero → nessuna latenza extra
+
+    # Eccezione alla regola «niente numeri di articolo»: restano le citazioni degli articoli che il
+    # sistema ha RECUPERATO dal corpus e messo nel prompt di questo turno (norme_evidence). Il testo
+    # di legge è nel contesto: la pertinenza non dipende dalla memoria del modello. Tutto il resto
+    # (articolo non recuperato, CCNL, ecc.) viene de-specificato come prima.
+    pk = norme_evidence.pacchetto_corrente()
+    if pk is not None and pk.fonti:
+        return ripara_elisioni(signals.LEGAL_ARTICLE_RE.sub(
+            lambda m: m.group(0) if norme_evidence.citazione_consentita(m.group(0)) else _delegalize(m), text))
 
     if not _keep_verified_enabled():
         return sanitize_unverified_legal_citations(text)  # policy default: descrittivo

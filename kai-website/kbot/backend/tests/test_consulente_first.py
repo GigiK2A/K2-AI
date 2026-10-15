@@ -304,7 +304,8 @@ def test_backstop_rimuove_articolo_codice_civile_inventato():
     t = "dall'art. 2099‑c al Codice Civile, che prevede la possibilità di recesso."
     out = san(t)
     assert "2099" not in out
-    assert "il codice civile" in out
+    # la rimozione non lascia l'elisione rotta («dall'il codice civile»)
+    assert "codice civile" in out and "l'il " not in out
 
 
 def test_backstop_gestisce_trattino_esotico_gpt_oss():
@@ -342,7 +343,7 @@ def test_norme_guard_default_strippa_anche_articolo_esistente():
     from app.lib import norme_guard
     t = "Il periodo di prova è disciplinato dall'art. 2096 c.c. e va rispettato."
     out = norme_guard.sanitize(t)
-    assert "2096" not in out and "il codice civile" in out
+    assert "2096" not in out and "codice civile" in out and "l'il " not in out
 
 
 def test_norme_guard_keep_verified_opt_in():
@@ -364,7 +365,7 @@ def test_norme_guard_default_strippa_tutti_i_numeri_articolo():
          "vedi anche artt. 62-63 del CCNL per il preavviso.")
     out = norme_guard.sanitize(t)
     assert "2096" not in out and "62" not in out and "63" not in out
-    assert "il codice civile" in out and "il CCNL applicato" in out
+    assert "codice civile" in out and "il CCNL applicato" in out and "l'il " not in out
 
 
 def test_norme_guard_fail_closed_su_errore_remoto():
@@ -415,7 +416,7 @@ def test_norme_guard_default_strippa_articolo_esteso():
     from app.lib import norme_guard
     t = "Il periodo di prova è disciplinato dall'articolo 2096 del codice civile."
     out = norme_guard.sanitize(t)  # default descriptive-only
-    assert "2096" not in out and "il codice civile" in out
+    assert "2096" not in out and "codice civile" in out and "l'il " not in out
 
 
 # ── grounding forzato + principio di conoscenza (filosofia Luca 17 lug) ────────────────

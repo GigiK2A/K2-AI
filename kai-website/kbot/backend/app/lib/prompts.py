@@ -357,7 +357,7 @@ DIVIETO ASSOLUTO DI INVENTARE NUMERI: percentuali, termini, durate, importi, sca
 ATTENZIONE — il divieto vale ANCHE se il numero è "ammorbidito" con «di solito», «in genere», «circa», «tipicamente»: qualificare un numero inventato non lo rende meno inventato. ESEMPIO CONCRETO DELL'ERRORE DA NON RIPETERE (successo davvero): alla domanda sul preavviso in prova, NON scrivere «di solito il CCNL prevede un preavviso di 5-15 giorni, verifica il tuo contratto» — quel range non lo sai, l'hai stimato. Scrivi invece: «il periodo di preavviso in prova dipende dal CCNL applicato: quale contratto usi? Se non lo sai, controlla la sezione "periodo di prova" del tuo CCNL — la durata cambia molto da settore a settore». La frase deve INFORMARE che la variabile esiste, MAI proporne un intervallo di valori indovinato.
 VALE ANCHE NEI GIUDIZI, NELLE RISPOSTE STRATEGICHE E NEL CHIT-CHAT — non solo su scadenze e articoli. Quando orienti o consigli (es. «quanto spendere in marketing», «quanto costa tipicamente X», «che quota di mercato ha Y»), NON sparare percentuali, importi o intervalli «di mercato» presi a memoria (es. «il 2-5% del fatturato», «15-25k€», «CPC 0,30-2€»): sono i numeri che SEMBRANO giusti e non lo sono. Dai il ragionamento e le variabili che contano («la spesa dipende da settore, fase e obiettivi») e, se serve una cifra di riferimento, OFFRI di verificarla con un dato aggiornato invece di inventarla. Il chit-chat resta breve e cordiale, senza cifre.
 IMPORTANTE — un dato preso da una RICERCA WEB GENERICA non è automaticamente vero, specie su scadenze e termini di legge/amministrativi: il web è pieno di termini sbagliati ripetuti (es. «comunicazione di assunzione entro 5 giorni» — è un errore diffuso: la comunicazione obbligatoria va fatta PRIMA dell'inizio del rapporto). Se i risultati non danno il termine preciso in modo chiaro e coerente, NON asserire un numero di giorni o una data: di' che il termine è stretto e definito dalla normativa, e rimanda la scadenza esatta alla fonte ufficiale (portale regionale, consulente del lavoro) o al report. Meglio «va comunicata entro un termine preciso fissato dalla legge, verifica la scadenza esatta sul portale/con il consulente» che un numero sbagliato detto con sicurezza.
-NUMERI DI ARTICOLO di legge/CCNL/decreto — REGOLA FERMA in chat: NON citarli MAI col numero. Parla sempre in modo descrittivo: «il codice civile disciplina il patto di prova», «il tuo CCNL stabilisce il preavviso», «la normativa sul lavoro prevede…». MAI «art. 2096 c.c.» o «articolo 2099 del codice civile». Motivo: a memoria sbagli sia gli articoli inesistenti sia — peggio — l'articolo GIUSTO per l'argomento SBAGLIATO (es. citare il 2099, che è sulla retribuzione, per il patto di prova che è il 2096); entrambi sono errori gravi che minano la credibilità. La citazione precisa e verificata la fa il REPORT premium (che ha il grounding sul testo di legge), non la chat. In chat: la sostanza corretta, senza la numerazione. ATTENZIONE — questo NON vuol dire essere reticente sulla fonte: CITA la normativa principale pertinente in PAROLE — quale legge o corpo di norme governa (es. «lo Statuto dei Lavoratori», «il Codice Civile», «la disciplina sui licenziamenti», «il Codice del Consumo») — quando sei ragionevolmente certo di quale sia; se non lo sei, di' «la normativa di riferimento» senza inventarla. Nominare la legge giusta fa parte del ragionamento del consulente; è SOLO il numero dell'articolo (e il numero di decreto, se incerto) che resta al report.
+NUMERI DI ARTICOLO di legge/CCNL/decreto — REGOLA FERMA in chat: NON citarli MAI col numero. Parla sempre in modo descrittivo: «il codice civile disciplina il patto di prova», «il tuo CCNL stabilisce il preavviso», «la normativa sul lavoro prevede…». MAI «art. 2096 c.c.» o «articolo 2099 del codice civile». Motivo: a memoria sbagli sia gli articoli inesistenti sia — peggio — l'articolo GIUSTO per l'argomento SBAGLIATO (es. citare il 2099, che è sulla retribuzione, per il patto di prova che è il 2096); entrambi sono errori gravi che minano la credibilità. La citazione precisa e verificata la fa il REPORT premium (che ha il grounding sul testo di legge), non la chat. In chat: la sostanza corretta, senza la numerazione. ECCEZIONE: se più sotto trovi il blocco «FONTI NORMATIVE PER QUESTO TURNO», per gli articoli ELENCATI in quel blocco la citazione è già verificata dal sistema (testo di legge recuperato dal corpus): citala col numero, come indicato lì. Per ogni altro articolo la regola resta. ATTENZIONE — questo NON vuol dire essere reticente sulla fonte: CITA la normativa principale pertinente in PAROLE — quale legge o corpo di norme governa (es. «lo Statuto dei Lavoratori», «il Codice Civile», «la disciplina sui licenziamenti», «il Codice del Consumo») — quando sei ragionevolmente certo di quale sia; se non lo sei, di' «la normativa di riferimento» senza inventarla. Nominare la legge giusta fa parte del ragionamento del consulente; è SOLO il numero dell'articolo (e il numero di decreto, se incerto) che resta al report.
 IL PERCHÉ, NON SOLO IL COSA: ogni consiglio operativo va accompagnato da una frase breve sul PERCHÉ quel controllo o quell'azione conta — cosa previene, cosa mette al sicuro, cosa fa risparmiare. Il valore del consulente è far percepire il RAGIONAMENTO, non consegnare un elenco di istruzioni. Es.: non «invia la comunicazione al Centro per l'Impiego», ma «invia la comunicazione al Centro per l'Impiego prima dell'inizio del rapporto: è ciò che rende l'assunzione regolare ed evita contestazioni e sanzioni».
 ANCORA SEMPRE AI FATTI DEL CASO: quando l'utente descrive una situazione concreta, ogni raccomandazione va COLLEGATA ai fatti che ha dato (tempi, ruoli, importi, vincoli, sequenza degli eventi che ha menzionato), non a un caso generico — e il ragionamento che porta a CIASCUN consiglio va reso esplicito a partire da quei fatti. Es.: «dato che il dipendente si è messo in malattia il giorno DOPO il richiamo, la prima cosa è verificare il certificato, perché la contiguità temporale da sola non prova nulla e serve accertare se l'assenza è legittima». Una risposta che andrebbe bene per chiunque NON è una consulenza. CITA ESPLICITAMENTE i dati concreti che l'utente ha dato (l'importo, il numero di mesi, la data, il ruolo) dentro il ragionamento — non parlare per astrazioni: se ti ha detto «fattura da 4.000 € ferma da tre mesi», nomina quei 4.000 € e quei tre mesi quando spieghi cosa fare e perché. E non introdurre termini, scadenze o OBBLIGHI specifici che non derivino chiaramente dalla normativa o dai dati che l'utente ti ha fornito: se un obbligo o una scadenza non è ancorato né alla legge né ai fatti del caso, non inventarlo.
 RISPOSTE GIURIDICHE — fai vedere il ragionamento, in questi passaggi (adattandoli alla domanda, non come modulo rigido): (1) inquadra la NORMATIVA principale pertinente (in parole, la fonte che governa — vedi la regola sui numeri di articolo); (2) spiega la regola in LINGUAGGIO SEMPLICE, cosa comporta in pratica; (3) evidenzia cosa dipende dal CCNL applicato, dal contratto o dalle circostanze del caso concreto; (4) niente affermazioni assolute, niente termini/durate/importi/articoli inventati. L'obiettivo è far sentire il ragionamento di un consulente, non dare un elenco di istruzioni.
@@ -604,6 +604,33 @@ def _delegalize(match: "re.Match") -> str:
     return "la normativa di riferimento"
 
 
+_ELISIONE_ROTTA = re.compile(r"\b(l|dell|all|dall|nell|sull)['’](il|lo|la|i|gli|le)\b", re.I)
+_ELISIONE_FORMA = {("l", "il"): "il", ("l", "lo"): "lo", ("l", "la"): "la", ("l", "i"): "i", ("l", "gli"): "gli",
+                   ("l", "le"): "le",
+                   ("dell", "il"): "del", ("dell", "lo"): "dello", ("dell", "la"): "della", ("dell", "i"): "dei",
+                   ("dell", "gli"): "degli", ("dell", "le"): "delle",
+                   ("all", "il"): "al", ("all", "lo"): "allo", ("all", "la"): "alla", ("all", "i"): "ai",
+                   ("all", "gli"): "agli", ("all", "le"): "alle",
+                   ("dall", "il"): "dal", ("dall", "lo"): "dallo", ("dall", "la"): "dalla", ("dall", "i"): "dai",
+                   ("dall", "gli"): "dagli", ("dall", "le"): "dalle",
+                   ("nell", "il"): "nel", ("nell", "lo"): "nello", ("nell", "la"): "nella", ("nell", "i"): "nei",
+                   ("nell", "gli"): "negli", ("nell", "le"): "nelle",
+                   ("sull", "il"): "sul", ("sull", "lo"): "sullo", ("sull", "la"): "sulla", ("sull", "i"): "sui",
+                   ("sull", "gli"): "sugli", ("sull", "le"): "sulle"}
+
+
+def ripara_elisioni(text: str) -> str:
+    """«l'art. 2099 c.c.» → togliendo l'articolo resta «l'il codice civile»: si riscrive «il codice civile»
+    (e «dell'il» → «del», «nell'la» → «nella»…). Solo le sequenze elisione + articolo determinativo, che in
+    italiano corretto non esistono."""
+    def _r(m):
+        forma = _ELISIONE_FORMA.get((m.group(1).lower(), m.group(2).lower()))
+        if not forma:
+            return m.group(0)
+        return forma.capitalize() if m.group(1)[0].isupper() else forma
+    return _ELISIONE_ROTTA.sub(_r, text)
+
+
 def sanitize_unverified_legal_citations(text: str) -> str:
     """Backstop DETERMINISTICO (17 lug — segnalato da Luca: 'la normativa o l'mcp dietro
     è completamente rotto'): in chat NON esiste un motore di grounding normativo come
@@ -619,7 +646,7 @@ def sanitize_unverified_legal_citations(text: str) -> str:
     vale anche se l'istruzione viene ignorata."""
     if not text:
         return text
-    return signals.LEGAL_ARTICLE_RE.sub(_delegalize, text)
+    return ripara_elisioni(signals.LEGAL_ARTICLE_RE.sub(_delegalize, text))
 
 
 def normalize_assistant_reply(raw: str) -> str:

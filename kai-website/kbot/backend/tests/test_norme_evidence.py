@@ -1,0 +1,254 @@
+"""Evidence pack normativo: il testo di legge entra nel contesto prima della risposta e le guardie lo
+riconoscono. Corpus finto (SQLite con lo stesso schema, testi reali accorciati): la CI non ha il corpus da
+1,9 GB. I casi sono quelli che hanno fatto sbagliare durante lo sviluppo (15/10/2026)."""
+import json
+import sqlite3
+from types import SimpleNamespace as NS
+
+import pytest
+
+from app.lib import deadline_guard, norme_evidence as E, norme_guard
+
+# ── articoli di prova (testo reale accorciato, struttura del corpus) ─────────────────────────
+ART_2473 = (
+    "# Art. 2473 Codice Civile Art. 2473. (Recesso del socio). L'atto costitutivo determina quando il socio puo' "
+    "recedere dalla societa' e le relative modalita'. In ogni caso il diritto di recesso compete ai soci che non hanno "
+    "consentito al cambiamento dell'oggetto o del tipo di societa'. Nel caso di societa' contratta a tempo "
+    "indeterminato il diritto di recesso compete al socio in ogni momento e puo' essere esercitato con un preavviso di "
+    "almeno centottanta giorni. I soci che recedono hanno diritto di ottenere il rimborso della propria partecipazione "
+    "in proporzione del patrimonio sociale, determinato tenendo conto del suo valore di mercato. Il rimborso delle "
+    "partecipazioni deve essere eseguito entro centottanta giorni dalla comunicazione del recesso. "
+    + "Il recesso non puo' essere esercitato e, se gia' esercitato, e' privo di efficacia se la societa' revoca la "
+      "delibera. " * 12)
+
+ART_2099 = ("# Art. 2099 Codice Civile Art. 2099. (Retribuzione). La retribuzione del prestatore di lavoro puo' essere "
+            "stabilita a tempo o a cottimo e deve essere corrisposta con le modalita' e nei termini in uso nel luogo "
+            "in cui il lavoro viene eseguito.")
+
+ART_49 = (
+    "# Art. 49 — Decreto Legislativo Limitazioni all'uso del contante e dei titoli al portatore\n\n"
+    "**1.** E' vietato il trasferimento di denaro contante tra soggetti diversi quando il valore e' complessivamente "
+    "pari o superiore a 3.000 euro. " + "Il trasferimento superiore al predetto limite e' vietato anche se frazionato. " * 18
+    + "**2.** Per il servizio di rimessa di denaro la soglia e' di 1.000 euro. "
+    "**3.** Per la negoziazione a pronti di mezzi di pagamento in valuta la soglia e' di 3.000 euro. "
+    "**3-bis.** A decorrere dal 1° luglio 2020 e fino al 31 dicembre 2022, il divieto di cui al comma 1 e' riferito alla "
+    "cifra di 2.000 euro. A decorrere dal 1° gennaio 2023, il predetto divieto di cui al comma 1 e' riferito alla cifra "
+    "di ((5.000 euro)). "
+    "**4.** I moduli di assegni bancari e postali sono rilasciati dalle banche e da Poste Italiane. "
+    + "**5.** Gli assegni emessi per importi pari o superiori a 1.000 euro devono recare il nome del beneficiario. " * 1
+    + "\n\n------------- AGGIORNAMENTO (7)\nIl D.L. 31 maggio 2010, n. 78 ha disposto che le soglie sono adeguate "
+      "all'importo di euro cinquemila. NOTA-DA-TOGLIERE")
+
+ART_ABROGATO = "# Art. 9999\n\n((ARTICOLO ABROGATO DAL D.LGS. 10 AGOSTO 2018, N. 101))"
+
+ART_FERIE = ("# Art. 10 — Decreto Legislativo (Ferie annuali) **1.** Il prestatore di lavoro ha diritto ad un periodo "
+             "annuale di ferie retribuite non inferiore a quattro settimane. **2.** Il predetto periodo minimo di "
+             "quattro settimane non puo' essere sostituito dalla relativa indennita' per ferie non godute, salvo il "
+             "caso di risoluzione del rapporto di lavoro.")
+
+
+def _riga(tipo, anno, num, art, testo):
+    return (f"normattiva_markdown_api_parsed/{tipo}_{anno}_{num}/{tipo}_{anno}_{num}_art_{art}.md", testo)
+
+
+@pytest.fixture
+def corpus(tmp_path, monkeypatch):
+    db = tmp_path / "normattiva.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE chunks (id INTEGER PRIMARY KEY AUTOINCREMENT, file TEXT, testo TEXT, source TEXT)")
+    con.execute("CREATE VIRTUAL TABLE chunks_fts USING fts5(file, testo)")
+    for f, t in (_riga("regio_decreto", 1942, 262, "2473", ART_2473), _riga("regio_decreto", 1942, 262, "2099", ART_2099),
+                 _riga("decreto_legislativo", 2007, 231, "49", ART_49),
+                 _riga("regio_decreto", 1942, 262, "9999", ART_ABROGATO),
+                 _riga("decreto_legislativo", 2003, 66, "10", ART_FERIE)):
+        con.execute("INSERT INTO chunks(file, testo, source) VALUES (?,?,?)", (f, t, "akn_bulk_xml"))
+        con.execute("INSERT INTO chunks_fts(file, testo) VALUES (?,?)", (f, t))
+    con.commit()
+    con.close()
+    monkeypatch.setenv("NORMATTIVA_DB_PATH", str(db))
+    monkeypatch.delenv("KBOT_NORME_EVIDENCE", raising=False)
+    E._CACHE_ARTICOLI.clear()
+    E.imposta(None)
+    yield db
+    E.imposta(None)
+    E._CACHE_ARTICOLI.clear()
+
+
+def _client(norme, parole=None):
+    class _M:
+        def create(self, **_kw):
+            return NS(content=[NS(type="text", text=json.dumps({"norme": norme, "parole": parole or []}))])
+    return NS(messages=_M())
+
+
+# ── numeri in cifre e in parole ──────────────────────────────────────────────────────────────
+def test_numeri_in_parole_e_cifre():
+    assert [E.valore(w) for w in ("quaranta", "venticinque", "centottanta", "cinquemila", "ventotto", "5.000", "40")] \
+        == [40, 25, 180, 5000, 28, 5000, 40]
+    assert E.numeri_nel_testo("entro quaranta giorni e 5.000 euro") == {40, 5000}
+    assert (180, "gio") in E.coppie_nel_testo("entro centottanta giorni")
+
+
+# ── riferimenti ──────────────────────────────────────────────────────────────────────────────
+def test_riferimenti_con_articolo_si_leggono_quelli_senza_si_scartano(corpus):
+    r = E.riferimenti_da_testo("art. 2473 c.c.; D.Lgs. 231/2007 art. 49; D.Lgs. 81/2008")
+    assert {(x["numero"], x["anno"], x["articolo"]) for x in r} == {("262", 1942, "2473"), ("231", 2007, "49")}
+
+
+# ── recupero e lettura ───────────────────────────────────────────────────────────────────────
+def test_recupera_art_2473_con_i_due_termini_di_180_giorni(corpus):
+    r = E.riferimenti_da_testo("art. 2473 c.c.")[0]
+    f = E.recupera(r, ["recesso", "socio"], "utente", 2400, "quanto tempo per liquidare la quota")
+    assert f is not None and f.rubrica == "Recesso del socio" and f.sigla == "art. 2473 c.c."
+    assert f.testo.lower().count("centottanta giorni") == 2
+    assert "valore di mercato" in f.testo
+
+
+def test_art_49_il_comma_3bis_con_5000_euro_non_si_perde_e_le_note_si_tolgono(corpus):
+    r = E.riferimenti_da_testo("D.Lgs. 231/2007 art. 49")[0]
+    f = E.recupera(r, ["contanti", "fornitore"], "utente", 1100, "posso pagare in contanti 1.500 euro?")
+    assert "comma 3-bis" in f.testo and "5.000 euro" in f.testo and "1° gennaio 2023" in f.testo
+    assert "NOTA-DA-TOGLIERE" not in f.testo and "AGGIORNAMENTO" not in f.testo
+    assert "((" not in f.testo and "**" not in f.testo
+    assert "[…]" in f.testo                       # il comma 1, lunghissimo, è stato tagliato
+
+
+def test_il_grassetto_dei_numeri_di_comma_non_impedisce_la_divisione(corpus):
+    corpo, _ = E._ripulisci(ART_FERIE)
+    assert [et for et, _ in E.dividi_commi(corpo)] == ["", "1", "2"]
+
+
+def test_articolo_abrogato_non_entra(corpus):
+    assert E.recupera({"tipo": "regio_decreto", "anno": 1942, "numero": "262", "articolo": "9999"}, [], "utente", 2400) is None
+
+
+def test_articolo_inesistente_ritorna_none_senza_errore(corpus):
+    assert E.recupera({"tipo": "regio_decreto", "anno": 1942, "numero": "262", "articolo": "77777"}, [], "utente", 2400) is None
+
+
+def test_i_commi_si_riconoscono_solo_in_sequenza():
+    # «n. 196. L'articolo…» non è un comma 196
+    corpo = "1. Primo comma. Vedi il decreto n. 196. L'articolo 4 resta. 2. Secondo comma. 3-bis. Terzo bis."
+    assert [et for et, _ in E.dividi_commi(corpo)] == ["1", "2"] or [et for et, _ in E.dividi_commi(corpo)][:2] == ["1", "2"]
+
+
+# ── costruisci: il pacchetto del turno ───────────────────────────────────────────────────────
+def test_costruisci_con_riferimenti_proposti_dal_modello(corpus):
+    p = E.costruisci("Il socio della srl vuole uscire: quanto tempo abbiamo per liquidargli la quota?", "",
+                     _client(["art. 2473 c.c."], ["recesso", "socio", "quota"]), "m")
+    assert p is not None and [f.sigla for f in p.fonti] == ["art. 2473 c.c."]
+    assert "FONTI NORMATIVE PER QUESTO TURNO" in p.testo and "centottanta giorni" in p.testo
+    assert 180 in p.numeri and (180, "gio") in p.coppie
+
+
+def test_riferimento_proposto_esistente_ma_non_pertinente_e_scartato(corpus):
+    # il caso 2099 vs 2096: l'articolo esiste ma parla di retribuzione, non di recesso del socio
+    p = E.costruisci("Il socio della srl vuole recedere, quanto tempo per la liquidazione?", "",
+                     _client(["art. 2099 c.c.", "art. 2473 c.c."], ["recesso", "socio", "liquidazione"]), "m")
+    assert [f.sigla for f in p.fonti] == ["art. 2473 c.c."]
+
+
+def test_il_riferimento_scritto_dall_utente_non_passa_dal_filtro_di_pertinenza(corpus):
+    p = E.costruisci("Cosa dice l'art. 2099 c.c. sulla retribuzione dei dipendenti?", "",
+                     _client([], ["recesso"]), "m")
+    assert p is not None and p.fonti[0].sigla == "art. 2099 c.c." and p.fonti[0].origine == "utente"
+
+
+def test_senza_ambito_normativo_nessuna_chiamata(corpus):
+    class _Boom:
+        class messages:
+            @staticmethod
+            def create(**_k):
+                raise AssertionError("il modello non va chiamato per una chiacchiera")
+    assert E.costruisci("ciao, come stai oggi? tutto bene da te", "", _Boom, "m") is None
+
+
+def test_fail_open_se_il_modello_va_in_errore(corpus):
+    class _Err:
+        class messages:
+            @staticmethod
+            def create(**_k):
+                raise RuntimeError("timeout")
+    assert E.costruisci("il socio della srl vuole uscire, art. 2473 c.c.", "", _Err, "m") is not None  # i riferimenti dell'utente bastano
+    assert E.costruisci("il socio della srl vuole uscire dalla societa", "", _Err, "m") is None
+
+
+def test_flag_spento_e_corpus_assente(corpus, monkeypatch):
+    monkeypatch.setenv("KBOT_NORME_EVIDENCE", "0")
+    assert E.costruisci("il socio vuole recedere art. 2473 c.c.", "", _client(["art. 2473 c.c."]), "m") is None
+    monkeypatch.delenv("KBOT_NORME_EVIDENCE")
+    monkeypatch.setenv("NORMATTIVA_DB_PATH", "/non/esiste.db")
+    assert E.costruisci("il socio vuole recedere art. 2473 c.c.", "", _client(["art. 2473 c.c."]), "m") is None
+
+
+# ── guardie: le citazioni e i numeri del pacchetto restano, il resto no ──────────────────────
+def _pacchetto(corpus):
+    E.imposta(E.costruisci("socio srl recesso quanto tempo", "", _client(["art. 2473 c.c."], ["recesso", "socio"]), "m"))
+
+
+def test_norme_guard_tiene_le_citazioni_del_pacchetto_e_toglie_le_altre(corpus):
+    _pacchetto(corpus)
+    t = "Il recesso è regolato dall'art. 2473 c.c., non dall'art. 2099 c.c.: lì si parla di retribuzione."
+    out = norme_guard.sanitize(t)
+    assert "art. 2473 c.c." in out and "art. 2099" not in out and "non dal codice civile" in out
+
+
+def test_norme_guard_senza_pacchetto_toglie_tutto_come_prima(corpus):
+    out = norme_guard.sanitize("Vale l'art. 2473 c.c. sul recesso.")
+    assert "2473" not in out and "il codice civile" in out
+
+
+def test_deadline_guard_non_cancella_un_termine_che_sta_nella_fonte(corpus):
+    _pacchetto(corpus)
+    t = "Il rimborso va eseguito entro 180 giorni dalla comunicazione del recesso (normativa sul recesso del socio)."
+    assert deadline_guard.sanitize(t) == t
+    # un termine che NON sta nella fonte si rende ancora descrittivo
+    out = deadline_guard.sanitize("Il rimborso va eseguito entro 45 giorni dalla comunicazione del recesso del socio.")
+    assert "45 giorni" not in out and "entro il termine previsto dalla normativa" in out
+
+
+def test_deadline_guard_senza_pacchetto_non_cambia_comportamento(corpus):
+    out = deadline_guard.sanitize("Il rimborso va eseguito entro 180 giorni dalla comunicazione del recesso del socio.")
+    assert "180 giorni" not in out
+
+
+def test_deadline_guard_importi_fondati(corpus):
+    E.imposta(E.costruisci("pagamento in contanti limite importo 1.500 euro", "",
+                           _client(["D.Lgs. 231/2007 art. 49"], ["contanti", "importo", "limite"]), "m"))
+    t = "Dal 2023 il limite per i pagamenti in contanti è di 5.000 euro, quindi 1.500 euro vanno bene (art. 49 D.Lgs. 231/2007)."
+    assert "5.000 euro" in deadline_guard.sanitize(t)
+
+
+# ── elenco delle fonti in coda ───────────────────────────────────────────────────────────────
+def test_aggiungi_fonti_solo_quelle_citate(corpus):
+    _pacchetto(corpus)
+    out = E.aggiungi_fonti("Il rimborso entro centottanta giorni (art. 2473 c.c.).")
+    assert out.endswith("Fonti: art. 2473 c.c.")
+    assert E.aggiungi_fonti("Il rimborso entro centottanta giorni.") == "Il rimborso entro centottanta giorni."
+    assert E.aggiungi_fonti(out) == out                        # nessun doppione
+
+
+def test_aggiungi_fonti_senza_pacchetto_non_tocca_nulla(corpus):
+    assert E.aggiungi_fonti("testo (art. 2473 c.c.)") == "testo (art. 2473 c.c.)"
+
+
+def test_il_punto_unico_del_testo_visibile_applica_guardie_e_fonti(corpus):
+    from app.api import message as M
+    _pacchetto(corpus)
+    raw = "Il recesso: rimborso entro 180 giorni (art. 2473 c.c.). Non vale l'art. 2099 c.c."
+    visible, _, _ = M._extract_gated_summary(raw, [], {})
+    assert "180 giorni" in visible and "art. 2473 c.c." in visible and "2099" not in visible
+    assert visible.rstrip().endswith("Fonti: art. 2473 c.c.")
+
+
+# ── elisioni rotte quando si toglie «art. N c.c.» (difetto vecchio, visto anche nell'audit) ─────
+def test_elisioni_riparate_dopo_la_rimozione_dell_articolo():
+    from app.lib import prompts
+    assert prompts.sanitize_unverified_legal_citations("Vale l'art. 2099 c.c. sulla retribuzione.") \
+        == "Vale il codice civile sulla retribuzione."
+    assert prompts.sanitize_unverified_legal_citations("Lo dice nell'art. 2096 c.c. e dall'art. 2119 c.c.") \
+        == "Lo dice nel codice civile e dal codice civile"
+    assert prompts.ripara_elisioni("come dell'la normativa") == "come della normativa"
+    # l'italiano corretto non si tocca
+    for ok in ("l'impresa", "dell'azienda", "all'inizio", "nell'ambito", "sull'importo"):
+        assert prompts.ripara_elisioni(ok) == ok
