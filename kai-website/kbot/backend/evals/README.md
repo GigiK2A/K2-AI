@@ -82,8 +82,10 @@ python3 evals/run_eval.py --confronta evals/risultati/A.json evals/risultati/B.j
 
 Per ogni metrica mostra media e deviazione standard fra le ripetizioni di ciascun file, la
 differenza, e dice se **supera la variazione osservata** (soglia: 2 deviazioni standard) o è
-**non distinguibile dal rumore**. Con una sola ripetizione per parte rifiuta di dare un verdetto
-(«variazione non misurabile»). Elenca anche i **controlli instabili**: quelli che sullo stesso
+**non distinguibile dal rumore**. Se nessuna delle due parti ha ripetizioni rifiuta di dare un
+verdetto («variazione non misurabile»); se ce l'ha solo una (tipico: una base a esecuzione singola
+contro una nuova esecuzione ripetuta) usa la sua deviazione anche per l'altra e lo dichiara come
+**ipotesi**, non come misura. Elenca anche i **controlli instabili**: quelli che sullo stesso
 caso passano in alcune ripetizioni e falliscono in altre. Le attese specifiche sono lo stesso
 metro per tutti: serve a rispondere a «quale modello regge il ruolo?» con dati e non a impressione.
 

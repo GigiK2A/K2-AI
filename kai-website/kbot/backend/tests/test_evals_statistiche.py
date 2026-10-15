@@ -48,12 +48,25 @@ def test_controlli_instabili_sono_quelli_che_cambiano_fra_ripetizioni():
     assert all(i["ok"] == 1 and i["su"] == 2 for i in inst)
 
 
-def test_una_sola_ripetizione_non_da_un_verdetto():
+def test_una_sola_ripetizione_per_parte_non_da_un_verdetto():
     a = _file([_r("a", 1, 1)])
     b = _file([_r("a", 1, 3)])
     righe = {r["metrica"]: r for r in S.confronta(a, b)}
     assert righe["specifici_ok"]["delta"] == 2
     assert "non misurabile" in righe["specifici_ok"]["giudizio"]
+
+
+def test_base_singola_contro_nuova_ripetuta_usa_la_variazione_della_nuova_e_lo_dichiara():
+    # A: una sola esecuzione (totale 4). B: 3 ripetizioni con totali 6, 7, 5 (media 6, sd 1)
+    a = _file([_r("x", 1, 2), _r("y", 1, 2)])
+    b = _file([_r("x", 1, 3), _r("y", 1, 3), _r("x", 2, 3), _r("y", 2, 3), _r("x", 3, 2), _r("y", 3, 3)])
+    # Δ = 6.33-4 = +2.33 > 2·sd?  sd di B = 0.58 → soglia 1.15 → oltre la variazione, con l'ipotesi dichiarata
+    g = {r["metrica"]: r for r in S.confronta(a, b)}["specifici_ok"]["giudizio"]
+    assert "oltre la variazione" in g and "ipotesi" in g and "A ha una sola esecuzione" in g
+    # e una differenza piccola resta rumore
+    a2 = _file([_r("x", 1, 3), _r("y", 1, 3)])
+    g2 = {r["metrica"]: r for r in S.confronta(a2, b)}["specifici_ok"]["giudizio"]
+    assert "entro la variazione" in g2 and "ipotesi" in g2
 
 
 def test_differenza_entro_la_variazione_e_rumore():

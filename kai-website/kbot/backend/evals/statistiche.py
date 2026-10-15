@@ -93,18 +93,29 @@ def tassi_per_controllo(risultati: list[dict]) -> dict[str, tuple[int, int]]:
 
 
 def giudizio(a: list[float], b: list[float]) -> str:
-    """Come leggere la differenza fra due serie di totali."""
+    """Come leggere la differenza fra due serie di totali.
+
+    Se SOLO una parte ha più ripetizioni (tipico: una base a esecuzione singola contro una
+    nuova esecuzione ripetuta), si usa la sua deviazione standard anche per l'altra e lo si
+    dichiara: è un'ipotesi (che la variazione sia simile), non una misura."""
     ma, sda = media_sd(a)
     mb, sdb = media_sd(b)
     delta = mb - ma
     if delta == 0:
         return "nessuna differenza"
+    nota = ""
+    if sda is None and sdb is None:
+        return "variazione non misurabile: serve più di una ripetizione in almeno una parte"
     if sda is None or sdb is None:
-        return "variazione non misurabile: serve più di una ripetizione per parte"
-    soglia = 2 * max(sda, sdb)
+        singola, ripetuta = ("A", "B") if sda is None else ("B", "A")
+        soglia = 2 * (sdb if sda is None else sda)
+        nota = (f" [ipotesi: la variazione di {singola} è simile a quella di {ripetuta}; "
+                f"{singola} ha una sola esecuzione]")
+    else:
+        soglia = 2 * max(sda, sdb)
     if abs(delta) <= soglia:
-        return f"entro la variazione osservata (2·sd = {soglia:.1f}): non distinguibile dal rumore"
-    return f"oltre la variazione osservata (2·sd = {soglia:.1f}): differenza probabilmente reale"
+        return f"entro la variazione osservata (2·sd = {soglia:.1f}): non distinguibile dal rumore{nota}"
+    return f"oltre la variazione osservata (2·sd = {soglia:.1f}): differenza probabilmente reale{nota}"
 
 
 def confronta(dati_a: dict, dati_b: dict) -> list[dict]:
