@@ -44,6 +44,34 @@ di tempo), `non_spinge_vendita`.
 
 **Prestazioni** (separate, dipendono dal modello e dalla macchina): latenza e primo token.
 
+## Due insiemi di casi: sviluppo e held-out
+
+- `casi.json` (17): i casi su cui si SVILUPPA. Servono a vedere cosa si rompe, quindi inevitabilmente
+  si tarano le modifiche anche su di essi.
+- `casi_held_out.json` (8): argomenti DIVERSI (caparra, penale, impugnazione delle decisioni della srl,
+  appalto, orario massimo, ferie, giusta causa, patto di non concorrenza), con fonte aperta sul corpus.
+  **Non vanno usati per costruire mappe, regole o prompt.** Misurano se un meccanismo generalizza o se ha
+  solo imparato i casi di sviluppo: si lanciano con `--casi evals/casi_held_out.json`.
+
+Un miglioramento che compare solo sui casi di sviluppo non è un miglioramento verificato.
+
+## Misurare una modifica senza pubblicarla: backend locale
+
+`evals/server_locale.py` avvia il backend in locale con Supabase finto (in memoria), l'LLM vero dello shim
+e il corpus vero. Due istanze dello STESSO codice con un flag diverso, lanciate insieme, danno un confronto
+alla pari (stesso modello servito nello stesso momento):
+
+```bash
+python3 evals/server_locale.py --porta 8123 --evidenza 0 &
+python3 evals/server_locale.py --porta 8124 --evidenza 1 &
+python3 evals/run_eval.py --base-url http://127.0.0.1:8123/api/kbot --ripetizioni 3 --etichetta locale-senza
+python3 evals/run_eval.py --base-url http://127.0.0.1:8124/api/kbot --ripetizioni 3 --etichetta locale-con
+python3 evals/run_eval.py --confronta evals/risultati/locale-senza.json evals/risultati/locale-con.json
+```
+
+Non è uguale alla produzione: niente ricerca web, PostHog o Stripe. Il confronto fra le due istanze è alla
+pari; quello con i risultati della produzione no.
+
 ## I casi (`casi.json`)
 
 17 casi. Ogni caso ha `fonti`: cosa è stato **aperto** e come (corpus Normattiva con

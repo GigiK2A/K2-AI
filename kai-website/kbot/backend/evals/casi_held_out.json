@@ -1,0 +1,329 @@
+{
+ "descrizione": "Casi HELD-OUT del banco di prova K-BOT: argomenti DIVERSI da quelli di casi.json, scelti per misurare se un meccanismo generalizza o se si limita a imparare i casi di sviluppo. Non vanno usati per costruire mappe, regole o prompt. Nessun caso è validato da un professionista.",
+ "casi": [
+  {
+   "id": "ho-caparra",
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Abbiamo firmato un preliminare per comprare un capannone e versato 20.000 euro come caparra. Se il venditore si tira indietro, cosa possiamo chiedere?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "può esigere il doppio della caparra",
+      "re": "doppio (della|di) caparra|il doppio"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "recesso o esecuzione",
+      "res": [
+       "recede\\w*|recesso",
+       "esecuzione|risoluzione"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "dice che si recupera solo la caparra versata",
+      "re": "(solo|soltanto) (la )?(restituzione|restituire)[^.]{0,30}caparra|perd\\w+ la caparra"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 1385",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "se inadempiente è la parte che ha ricevuto la caparra, l'altra può recedere ed esigere il doppio della caparra"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out"
+  },
+  {
+   "id": "ho-penale-eccessiva",
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Nel contratto di fornitura c'è una penale di 50.000 euro per il ritardo, ma l'ordine vale 20.000. Il cliente la pretende tutta. Si può ridurre?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "il giudice può ridurla",
+      "re": "giudice[^.]{0,80}(ridu\\w+|diminu\\w+|equamente)|(ridu\\w+|diminu\\w+|riduzione)[^.]{0,80}giudice"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "manifestamente eccessiva",
+      "res": [
+       "manifestamente eccessiv\\w+",
+       "eccessiv\\w+"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "dice che la penale non si può ridurre",
+      "re": "non (si può|è possibile|puoi) (mai )?ridurre|penale è sempre dovuta per intero"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 1384",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "la penale può essere diminuita equamente dal giudice se «l'ammontare della penale è manifestamente eccessivo»"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out"
+  },
+  {
+   "id": "ho-impugnare-decisione-srl",
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Nella nostra srl i soci di maggioranza hanno approvato una decisione che secondo me viola lo statuto. Entro quanto posso impugnarla?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "90 giorni",
+      "re": "90 giorni|novanta giorni"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "dalla trascrizione nel libro delle decisioni",
+      "res": [
+       "trascrizion\\w+",
+       "libro delle decisioni"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "termine sbagliato",
+      "re": "entro (30|trenta|60|sessanta) giorni|impugn\\w+[^.]{0,80}(180|centottanta) giorni"
+     }
+    ],
+    "escalation": "urgente"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 2479-ter",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "le decisioni non conformi alla legge o all'atto costitutivo possono essere impugnate «entro novanta giorni dalla loro trascrizione nel libro delle decisioni dei soci»"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out"
+  },
+  {
+   "id": "ho-appalto-solidale",
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Abbiamo affidato dei lavori a una ditta in appalto e ora un suo operaio chiede a noi gli stipendi arretrati. Rispondiamo noi?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "responsabilità solidale",
+      "re": "solidal\\w+|in solido"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "entro due anni dalla fine dell'appalto",
+      "res": [
+       "due anni|2 anni"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "esclude ogni responsabilità del committente",
+      "re": "non (siete|sei) (tenut\\w+|responsabil\\w+) in nessun caso|nessuna responsabilit[àa]"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "D.Lgs. 276/2003 art. 29, c.2",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "il committente è obbligato in solido con l'appaltatore «entro il limite di due anni dalla cessazione dell'appalto» a corrispondere i trattamenti retributivi e i contributi"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out"
+  },
+  {
+   "id": "ho-orario-massimo",
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Un nostro dipendente fa spesso straordinari. C'è un limite massimo di ore settimanali per legge?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "48 ore settimanali",
+      "re": "48 ore|quarantotto ore"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "calcolate come media su un periodo",
+      "res": [
+       "media",
+       "quattro mesi|4 mesi"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "nega un limite",
+      "re": "non (c'è|esiste|vi è) (alcun |un )?limite"
+     }
+    ]
+   },
+   "fonti": [
+    {
+     "riferimento": "D.Lgs. 66/2003 art. 4, c.2-3",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "la durata media dell'orario di lavoro non può superare, per ogni periodo di sette giorni, «le quarantotto ore, comprese le ore di lavoro straordinario», calcolata su un periodo non superiore a quattro mesi"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out"
+  },
+  {
+   "id": "ho-ferie-in-busta",
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Un dipendente preferisce farsi pagare le ferie invece di prenderle. Possiamo liquidargliele in busta paga?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "minimo di quattro settimane",
+      "re": "4 settimane|quattro settimane"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "non sostituibili da indennità salvo cessazione del rapporto",
+      "res": [
+       "non (può|possono|si può|è possibile)[^.]{0,80}(sostitu\\w+|monetizz\\w+|indennit\\w+)",
+       "cessazione del rapporto|fine del rapporto|risoluzione del rapporto"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "dice che si possono sempre pagare",
+      "re": "s[iì][,.:]?\\s+(puoi|potete|si può)[^.]{0,40}(pagar|liquid)\\w+[^.]{0,30}ferie"
+     }
+    ]
+   },
+   "fonti": [
+    {
+     "riferimento": "D.Lgs. 66/2003 art. 10",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "ferie annuali non inferiori a quattro settimane; «non può essere sostituito dalla relativa indennità per ferie non godute, salvo il caso di risoluzione del rapporto di lavoro»"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out"
+  },
+  {
+   "id": "ho-giusta-causa",
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Ho scoperto che un dipendente ha rubato materiale dal magazzino. Posso licenziarlo in tronco, senza preavviso?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "giusta causa",
+      "re": "giusta causa"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "senza preavviso",
+      "res": [
+       "senza preavviso"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "nega ogni licenziamento senza preavviso",
+      "re": "non (puoi|si può) (mai )?licenziar\\w+ senza preavviso"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 2119",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "ciascun contraente può recedere «senza preavviso, se il contratto è a tempo indeterminato, qualora si verifichi una causa che non consenta la prosecuzione, anche provvisoria, del rapporto»"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out"
+  },
+  {
+   "id": "ho-patto-non-concorrenza",
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Vogliamo far firmare ai dipendenti un patto di non concorrenza per dopo che se ne vanno, senza pagargli niente. Va bene?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "nullo senza corrispettivo",
+      "re": "null\\w+[^.]{0,120}(corrispettivo|compenso)|(corrispettivo|compenso)[^.]{0,120}null\\w+"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "durata massima tre anni (cinque per i dirigenti)",
+      "res": [
+       "tre anni|3 anni",
+       "cinque anni|5 anni"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "dice che si può senza compenso",
+      "re": "(puoi|potete|si può)[^.]{0,40}senza (alcun )?(compenso|corrispettivo)"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 2125",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "il patto è nullo se non risulta da atto scritto, se non è pattuito un corrispettivo a favore del prestatore di lavoro e se il vincolo non è contenuto entro limiti di oggetto, tempo e luogo; durata massima cinque anni per i dirigenti, tre negli altri casi"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out"
+  }
+ ]
+}

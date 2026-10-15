@@ -1,0 +1,284 @@
+{
+ "descrizione": "Secondo insieme HELD-OUT del banco K-BOT: argomenti mai usati per sviluppare né diagnosticare. Si usa SOLO per la misura finale di un meccanismo. Nessun caso è validato da un professionista.",
+ "casi": [
+  {
+   "id": "h2-ritenuta-acconto",
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "ritenuta del 20%",
+      "re": "20\\s?%|venti per cento"
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "aliquota superata (15%)",
+      "re": "ritenut\\w+[^.]{0,60}\\b(15\\s?%|quindici per cento)"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "D.P.R. 600/1973 art. 25, c.1",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "ritenuta a titolo di acconto sui compensi di lavoro autonomo",
+     "nota": "TRAPPOLA DI VIGENZA: il corpo dell'articolo nel corpus riporta ancora «ritenuta del 15 per cento»; la nota di aggiornamento (54) dice che la L. 449/1997 art. 21 c.11 ha sostituito «19 per cento» con «20 per cento» al primo comma. Un modello che legge solo il corpo risponde 15%. Questo caso è stato ispezionato PRIMA di scrivere la gestione delle note: non è held-out puro per quella funzione."
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-2"
+  },
+  {
+   "id": "h2-cessione-quote-srl",
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Un socio vuole vendere la sua quota della srl a un terzo. Come si fa formalmente e cosa dobbiamo depositare?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "deposito al registro delle imprese entro 30 giorni",
+      "re": "(30|trenta) giorni"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "a cura del notaio / registro delle imprese",
+      "res": [
+       "notaio",
+       "registro delle imprese"
+      ]
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 2470",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "l'atto di trasferimento, con sottoscrizione autenticata, deve essere depositato entro trenta giorni, a cura del notaio, presso il registro delle imprese"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-2"
+  },
+  {
+   "id": "h2-approvazione-bilancio-srl",
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Entro quando dobbiamo approvare il bilancio della nostra srl dopo la chiusura dell'esercizio?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "120 giorni dalla chiusura",
+      "re": "120 giorni|centoventi giorni|quattro mesi"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "maggior termine (180 giorni) con le condizioni di legge",
+      "res": [
+       "180 giorni|centottanta giorni|sei mesi|maggior termine"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "termine sbagliato",
+      "re": "entro (30|trenta|60|sessanta|90|novanta) giorni dalla chiusura"
+     }
+    ]
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 2478-bis",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "il bilancio è presentato ai soci entro il termine stabilito dall'atto costitutivo e comunque non superiore a centoventi giorni dalla chiusura dell'esercizio, salva la possibilità di un maggior termine nei limiti previsti dall'art. 2364, secondo comma"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-2"
+  },
+  {
+   "id": "h2-vizi-compravendita",
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Abbiamo comprato un macchinario da un'impresa e dopo un mese ha un difetto. Entro quanto dobbiamo contestarlo al venditore?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "denuncia entro 8 giorni dalla scoperta",
+      "re": "(8|otto) giorni"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "azione in un anno dalla consegna",
+      "res": [
+       "un anno|1 anno"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "termine sbagliato",
+      "re": "entro (30|trenta|60|sessanta) giorni dalla (scoperta|consegna)"
+     }
+    ]
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 1495",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "il compratore decade dalla garanzia se non denunzia i vizi entro otto giorni dalla scoperta; l'azione si prescrive in un anno dalla consegna"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-2"
+  },
+  {
+   "id": "h2-risarcimento-illecito",
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Un'altra impresa ci ha causato un danno con un comportamento illecito due anni fa. Siamo ancora in tempo per chiedere il risarcimento?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "prescrizione in cinque anni",
+      "re": "(5|cinque) anni"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 2947",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "il diritto al risarcimento del danno derivante da fatto illecito si prescrive in cinque anni dal giorno in cui il fatto si è verificato (due anni per la circolazione dei veicoli)"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-2"
+  },
+  {
+   "id": "h2-ricorso-accertamento",
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Ci è arrivato un avviso di accertamento dall'Agenzia delle Entrate. Entro quanto possiamo fare ricorso?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "60 giorni dalla notifica",
+      "re": "(60|sessanta) giorni"
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "termine sbagliato",
+      "re": "entro (30|trenta|90|novanta) giorni"
+     }
+    ],
+    "escalation": "urgente"
+   },
+   "fonti": [
+    {
+     "riferimento": "D.Lgs. 546/1992 art. 21, c.1",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "il ricorso deve essere proposto a pena di inammissibilità entro sessanta giorni dalla data di notificazione dell'atto impugnato"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-2"
+  },
+  {
+   "id": "h2-difetti-gravi-capannone",
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Il capannone che ci ha costruito un'impresa ha dei difetti gravi comparsi dopo cinque anni. Possiamo pretendere qualcosa dall'impresa?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "responsabilità per dieci anni dal compimento",
+      "re": "(10|dieci) anni"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "denuncia entro un anno dalla scoperta",
+      "res": [
+       "un anno|1 anno"
+      ]
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 1669",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "l'appaltatore è responsabile se nel corso di dieci anni dal compimento l'opera rovina o presenta gravi difetti, purché la denunzia sia fatta entro un anno dalla scoperta"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-2"
+  },
+  {
+   "id": "h2-patto-concorrenza-imprese",
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Vogliamo far firmare a un nostro distributore un impegno a non farci concorrenza per 8 anni. Regge?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "durata massima cinque anni",
+      "re": "(5|cinque) anni|quinquennio"
+     }
+    ],
+    "una_di": [
+     {
+      "nome": "forma scritta o riduzione a cinque anni",
+      "res": [
+       "per iscritto|forma scritta|atto scritto",
+       "ridu\\w+|valido per (la durata di )?(un )?quinquennio|cinque anni"
+      ]
+     }
+    ],
+    "nessuno": [
+     {
+      "nome": "dà per valido un patto di 8 anni",
+      "re": "(8|otto) anni[^.]{0,30}(è|sono) (valid\\w+|ammess\\w+|consentit\\w+)(?!\\s+(solo|soltanto|per un quinquennio|per cinque))"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "c.c. art. 2596",
+     "verifica": "corpus Normattiva locale (find_by_estremi), letto il 2026-10-15",
+     "estratto": "il patto che limita la concorrenza deve essere provato per iscritto, è valido se circoscritto a una zona o attività e non può eccedere cinque anni; se la durata è maggiore il patto è valido per un quinquennio"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-2"
+  }
+ ]
+}
