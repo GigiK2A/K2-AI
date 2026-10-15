@@ -142,6 +142,9 @@ CHAT_SYSTEM_MAX_CHARS = int(_env("CHAT_SYSTEM_MAX_CHARS", default="26000") or "2
 PDF_SYSTEM_MAX_CHARS = int(_env("PDF_SYSTEM_MAX_CHARS", default="55000") or "55000")
 MAX_HISTORY_MESSAGES = int(_env("MAX_HISTORY_MESSAGES", default="12") or "12")
 MAX_MESSAGE_CHARS = int(_env("MAX_MESSAGE_CHARS", default="900") or "900")
+# Tetto per l'ULTIMO messaggio dell'utente (quello a cui si risponde): ~2.300 token. La storia
+# vecchia resta a MAX_MESSAGE_CHARS. Vedi prompts.compact_messages.
+MAX_LAST_USER_CHARS = int(_env("MAX_LAST_USER_CHARS", default="8000") or "8000")
 
 # PostHog Cloud EU (server-side). Empty → analytics disabled (no-op).
 POSTHOG_API_KEY = _env("POSTHOG_API_KEY")

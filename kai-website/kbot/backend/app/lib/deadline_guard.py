@@ -64,7 +64,10 @@ _DEADLINE = re.compile(
     # ── 'termine (di/dei/del/è di) N unità' ──
     + r"|\btermine\s+(?:massimo\s+)?(?:di|dei|del|è\s+di)\s+" + _NUM + r"\s*" + _UNIT + r"\b"
     # ── 'N unità dalla/prima/successivi…' ──
-    + r"|\b" + _NUM + r"\s*" + _UNIT + r"\s+" + _TAILKW + r"\b" + _CODA,
+    # La preposizione che lo precede ('è DI 40 giorni dalla notifica', 'a 30 giorni dalla fattura')
+    # entra nel match: così la sostituzione può riscrivere anche lei e la frase resta integra
+    # (prima: «è di nel termine previsto dalla normativa», 15/10/2026).
+    + r"|(?P<prep>\b(?:di|a|da|in|per|con)\s+)?\b" + _NUM + r"\s*" + _UNIT + r"\s+" + _TAILKW + r"\b" + _CODA,
     re.I,
 )
 
@@ -106,6 +109,16 @@ def _soften_deadline(m: "re.Match") -> str:
         return "entro il termine previsto dalla normativa"
     if low.startswith("termine"):
         return "termine preciso previsto dalla normativa"  # NB: senza articolo (lo precede già)
+    # forma 'N unità dalla…' con la preposizione già inglobata dal match:
+    #   'è di 40 giorni dalla notifica' → 'è quello previsto dalla normativa'
+    #   'a 30 giorni dalla fattura'     → 'nel termine previsto dalla normativa' (la prep. cade)
+    prep = (m.groupdict().get("prep") or "").strip().lower()
+    if prep == "di":
+        return "quello previsto dalla normativa"
+    #   'hai 60 giorni dalla notifica'  → 'hai il termine previsto dalla normativa'
+    if not prep and re.search(r"\b(?:hai|ha|hanno|avete|abbiamo|avrai|avrà|avrete)\s+$",
+                              m.string[:m.start()], re.I):
+        return "il termine previsto dalla normativa"
     return "nel termine previsto dalla normativa"
 
 

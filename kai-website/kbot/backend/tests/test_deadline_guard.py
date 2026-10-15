@@ -123,3 +123,31 @@ def test_dedup_ripetizione_frase_softata():
     out = dg.sanitize(t)
     assert out.lower().count("entro il termine previsto dalla normativa") == 1
     assert "nei termini di legge" in out.lower()
+
+
+# ── la sostituzione non deve ROMPERE la frase (casi reali, produzione 15/10/2026) ──────────
+# Prima: «è di nel termine previsto…», «Il pagamento a nel termine…», «hai nel termine…».
+GRAMMATICA = [
+    # (testo, frammento che NON deve comparire, frammento atteso)
+    ("Il termine per opporsi al decreto ingiuntivo è di 40 giorni dalla notifica.",
+     "di nel termine", "è quello previsto dalla normativa"),
+    ("Per il versamento dell'IVA il pagamento a 30 giorni dalla fattura non vale.",
+     "a nel termine", "pagamento nel termine previsto dalla normativa"),
+    ("Dopo la notifica del ricorso hai 60 giorni dalla notifica per costituirti.",
+     "hai nel termine", "hai il termine previsto dalla normativa"),
+]
+
+
+def test_la_sostituzione_lascia_frasi_integre():
+    for testo, vietato, atteso in GRAMMATICA:
+        out = dg.sanitize(testo)
+        assert vietato not in out, (testo, out)
+        assert atteso in out, (testo, out)
+        assert "40 giorni" not in out and "30 giorni" not in out and "60 giorni" not in out, out
+
+
+def test_la_grammatica_non_cambia_la_politica():
+    # le forme già corrette restano com'erano
+    out = dg.sanitize("Il licenziamento va impugnato entro 60 giorni dalla comunicazione.")
+    assert "entro il termine previsto dalla normativa" in out
+    assert "60 giorni" not in out

@@ -124,6 +124,23 @@ def fix_typography(text: str) -> str:
     return t
 
 
+# ── 4b · Scrittura estranea (il modello locale a volte lascia ideogrammi nel testo) ───────
+# Visto in produzione il 15/10/2026: «…garanzia e验收.» in una risposta in italiano.
+# Si tolgono SOLO CJK e hangul (il prodotto è solo italiano): altre scritture potrebbero
+# essere contenuto richiesto dall'utente (un nome, una traduzione) e non si cancellano.
+
+_FOREIGN_SCRIPT = re.compile(r"[぀-ヿ㐀-䶿一-鿿가-힯]+")
+# congiunzione rimasta appesa subito prima della punteggiatura dopo la rimozione («… garanzia e.»)
+_DANGLING_CONJ = re.compile(r"\s+\b(?:e|ed|o)\b(?=\s*[.,;:!?])", re.I)
+
+
+def strip_foreign_script(text: str) -> str:
+    if not _FOREIGN_SCRIPT.search(text):
+        return text
+    t = _FOREIGN_SCRIPT.sub("", text)
+    return _DANGLING_CONJ.sub("", t)
+
+
 # ── 5 · Liste uniformi (mai •, -, * mescolati nello stesso elenco) ───────────────────────
 
 _BULLET = re.compile(r"(?m)^(\s*)[•*–▪‣·]\s+")
@@ -181,6 +198,7 @@ def polish(text: str) -> str:
         t = strip_html(text)
         t = strip_technical(t)
         t = strip_placeholders(t)
+        t = strip_foreign_script(t)
         t = fix_lists(t)
         t = fix_typography(t)
         t = dedupe(t)

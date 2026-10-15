@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -139,7 +140,19 @@ def claim_session_with_token(
     return update_session(session_id, {"user_id": user_id, "link_token": None})
 
 
+def _is_uuid(value: object) -> bool:
+    try:
+        uuid.UUID(str(value))
+        return True
+    except (ValueError, TypeError, AttributeError):
+        return False
+
+
 def get_session(session_id: str) -> Optional[dict]:
+    # Un id che non è un UUID non può essere una sessione: la query su una colonna uuid
+    # esploderebbe (postgrest 22P02) e il client vedrebbe un 500 invece di un 404.
+    if not _is_uuid(session_id):
+        return None
     client = get_admin_client()
     res = client.table(TABLE).select("*").eq("id", session_id).limit(1).execute()
     if not res.data:

@@ -35,6 +35,7 @@ from ..settings import (
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL,
     MAX_HISTORY_MESSAGES,
+    MAX_LAST_USER_CHARS,
     MAX_MESSAGE_CHARS,
 )
 
@@ -460,7 +461,8 @@ async def post_message(
     _gb = await asyncio.to_thread(fact_grounding.ground_block, last_user_text, _recent_ctx)
     if _gb:
         system_prompt += _gb
-    history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
+    history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS,
+                               max_chars_last_user=MAX_LAST_USER_CHARS)
 
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
@@ -593,7 +595,8 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     # NB: il GROUNDING FORZATO (ricerca web proattiva) NON avviene qui: nello stream gira
     # DOPO l'heartbeat (event_gen), così una ricerca lenta non tiene fermo il primo byte
     # (rischio 524 all'edge). Vedi post_message_stream.
-    history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS)
+    history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS,
+                               max_chars_last_user=MAX_LAST_USER_CHARS)
 
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")

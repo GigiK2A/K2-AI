@@ -674,8 +674,13 @@ def test_long_conversation_compacted_history_sent_to_claude(client, fake_anthrop
     last = FakeAnthropic.captured_calls[-1]
     hist = last["messages"]
     assert len(hist) <= 12, f"history not capped: {len(hist)}"
-    for m in hist:
+    # La STORIA resta compattata a 900 caratteri per messaggio; l'ULTIMO messaggio dell'utente
+    # (quello a cui si risponde) arriva intero fino a MAX_LAST_USER_CHARS: prima era amputato
+    # anche lui e un dato oltre il carattere 900 non veniva letto (15/10/2026).
+    for m in hist[:-1]:
         assert len(m["content"]) <= 900
+    assert hist[-1]["role"] == "user"
+    assert hist[-1]["content"] == "turno 14 " + ("x" * 1500)
 
 
 # ---------------------------------------------------------------------------

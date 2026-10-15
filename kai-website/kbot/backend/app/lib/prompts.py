@@ -645,15 +645,27 @@ def normalize_assistant_reply(raw: str) -> str:
     return text
 
 
-def compact_messages(messages: List[dict], max_messages: int, max_chars_per_message: int) -> List[dict]:
-    """Take last N messages and truncate each."""
+def compact_messages(messages: List[dict], max_messages: int, max_chars_per_message: int,
+                     max_chars_last_user: Optional[int] = None) -> List[dict]:
+    """Take last N messages and truncate each.
+
+    `max_chars_last_user`: tetto PIÙ ALTO per l'ULTIMO messaggio dell'utente, cioè quello a
+    cui si sta rispondendo. Prima tutto era tagliato a 900 caratteri, compreso il messaggio
+    appena incollato: una clausola o una lettera da 2.000 caratteri arrivava al modello
+    amputata e il bot rispondeva «il messaggio è incompleto» (prova del 15/10/2026, un dato
+    a 1.751 caratteri non veniva letto). La storia vecchia resta compattata."""
+    window = [m for m in messages[-max_messages:] if m.get("role") in ("user", "assistant")]
+    last_user_idx = None
+    if max_chars_last_user:
+        for i in range(len(window) - 1, -1, -1):
+            if window[i].get("role") == "user":
+                last_user_idx = i
+                break
     out = []
-    for m in messages[-max_messages:]:
+    for i, m in enumerate(window):
         content = str(m.get("content") or "")
-        if len(content) > max_chars_per_message:
-            content = content[: max_chars_per_message - 1].rstrip() + "…"
-        role = m.get("role")
-        if role not in ("user", "assistant"):
-            continue
-        out.append({"role": role, "content": content})
+        cap = max_chars_last_user if i == last_user_idx else max_chars_per_message
+        if len(content) > cap:
+            content = content[: cap - 1].rstrip() + "…"
+        out.append({"role": m.get("role"), "content": content})
     return out

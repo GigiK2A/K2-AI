@@ -595,6 +595,14 @@ def test_webhook_non_uuid_client_reference_returns_200_skipped(client, monkeypat
     assert "skipped" in r.json()
 
 
+def test_session_id_non_uuid_risponde_404_non_500(client):
+    """Un session_id che non è un UUID faceva esplodere la query (22P02) → HTTP 500 in produzione
+    (15/10/2026). Deve essere «sessione non trovata»."""
+    for sid in ("user_3KbE892oiJCECoXIQkk7dlMD7NY", "abc", "../../etc/passwd"):
+        r = client.post("/api/kbot/message/stream", json={"session_id": sid, "message": "ciao"})
+        assert r.status_code == 404, (sid, r.status_code, r.text)
+
+
 def test_webhook_replay_is_idempotent(client, fake_db, _stripe_secrets):
     """Send the same checkout.session.completed twice; only one paid update should stick."""
     sid = _make_session(client)
