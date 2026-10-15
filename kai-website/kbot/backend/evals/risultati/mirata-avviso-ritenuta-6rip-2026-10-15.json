@@ -1,0 +1,651 @@
+{
+ "meta": {
+  "data": "2026-10-15T15:15:44.281424+00:00",
+  "base_url": "http://127.0.0.1:8129/api/kbot",
+  "modello": "pacchetto completo + avviso di vigenza (verifica mirata)",
+  "commit": "e64829f",
+  "file_casi": "casi_held_out_2.json",
+  "ripetizioni": 6,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "d7bc650a-8adb-4b8a-948c-85b65d49d269",
+   "84591948-c091-4edb-bab5-d2a93dea849d",
+   "36590e19-b522-4827-887c-88d8db7781a4",
+   "f2b8d232-3964-4fc1-8c74-a60c4ad94f07",
+   "bd974643-1efb-4c37-817b-741393587ca7",
+   "06cf8b62-0847-4b3e-8f65-1168ec1ddade"
+  ]
+ },
+ "riepilogo": {
+  "esecuzioni": 6,
+  "ripetizioni": 6,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 1,
+    "generici_ok": 8,
+    "generici_tot": 8,
+    "specifici_ok": 3,
+    "specifici_tot": 3,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 1
+   },
+   {
+    "ripetizione": 2,
+    "casi": 1,
+    "generici_ok": 7,
+    "generici_tot": 8,
+    "specifici_ok": 3,
+    "specifici_tot": 3,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 0
+   },
+   {
+    "ripetizione": 3,
+    "casi": 1,
+    "generici_ok": 8,
+    "generici_tot": 8,
+    "specifici_ok": 3,
+    "specifici_tot": 3,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 1
+   },
+   {
+    "ripetizione": 4,
+    "casi": 1,
+    "generici_ok": 8,
+    "generici_tot": 8,
+    "specifici_ok": 3,
+    "specifici_tot": 3,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 1
+   },
+   {
+    "ripetizione": 5,
+    "casi": 1,
+    "generici_ok": 8,
+    "generici_tot": 8,
+    "specifici_ok": 3,
+    "specifici_tot": 3,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 1
+   },
+   {
+    "ripetizione": 6,
+    "casi": 1,
+    "generici_ok": 7,
+    "generici_tot": 8,
+    "specifici_ok": 3,
+    "specifici_tot": 3,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 0
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     3,
+     3,
+     3,
+     3,
+     3,
+     3
+    ],
+    "media": 3.0,
+    "sd": 0.0
+   },
+   "generici_ok": {
+    "valori": [
+     8,
+     7,
+     8,
+     8,
+     8,
+     7
+    ],
+    "media": 7.67,
+    "sd": 0.52
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "media": 1.0,
+    "sd": 0.0
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     1,
+     0,
+     1,
+     1,
+     1,
+     0
+    ],
+    "media": 0.67,
+    "sd": 0.52
+   }
+  },
+  "controlli_instabili": [
+   {
+    "caso": "h2-ritenuta-acconto",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 4,
+    "su": 6
+   }
+  ],
+  "casi": 6,
+  "casi_senza_difetti_generici": 4,
+  "casi_con_attese_specifiche": 6,
+  "casi_con_attese_tutte_rispettate": 6,
+  "controlli_generici": "46/48",
+  "controlli_specifici": "18/18",
+  "per_controllo": {
+   "generici.frasi_integre": "6/6",
+   "generici.nessun_errore_di_stream": "6/6",
+   "generici.nessun_testo_del_critico": "6/6",
+   "generici.nessuna_autocorrezione": "6/6",
+   "generici.nessuna_fuga_prompt": "6/6",
+   "generici.nessuna_lingua_estranea": "6/6",
+   "generici.risposta_non_vuota": "6/6",
+   "generici.testo_letto_uguale_finale": "4/6",
+   "specifici.fatti_presenti": "6/6",
+   "specifici.nessuna_affermazione_errata": "6/6",
+   "specifici.rinvio_al_professionista": "6/6"
+  },
+  "latenza_s": {
+   "mediana": 26.049999999999997,
+   "p90": 50.3,
+   "max": 50.3
+  },
+  "primo_token_s": {
+   "mediana": 5.9,
+   "p90": 29.9,
+   "max": 29.9
+  }
+ },
+ "risultati": [
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 1,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "d7bc650a-8adb-4b8a-948c-85b65d49d269",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, in linea generale dovete operare la ritenuta d’acconto al 20% sui compensi di lavoro autonomo pagati a un professionista con P. IVA, trattenendola al momento del pagamento e riversandola alla banca (dichiarata in dichiarazione annuale). Il 20% è la regola standard per i compensi professionali abituali (D.P.R. 600/1973, art. 25).\n\nC’è però un’eccezione importante: se il consulente è in **regime forfettario** e vi ha comunicato formalmente il suo stato (tramite PEC, raccomandata o modulo), NON dovete trattenere la ritenuta, perché lui già versa l’imposta sostitutiva. In quel caso il pagamento è netto.\n\nQuindi, prima di pagare i 2.000 €:\n1. Verificate se il consulente vi ha inviato la comunicazione di adesione al regime forfettario.\n2. Se l’ha fatta → pagate 2.000 € netti, nessuna ritenuta.\n3. Se non l’ha fatta (o non siete sicuri) → trattenete il 20%, cioè 400 €, pagate 1.600 € e versate la ritenuta con i modelli F24 alle scadenze previste.\n\nIn caso di dubbio, chiedete direttamente al professionista: è un suo obbligo informarvi se non dovete operare la ritenuta.",
+     "visibile": "Sì, in linea generale dovete operare la ritenuta d'acconto al 20% sui compensi di lavoro autonomo pagati a un professionista con P. IVA, trattenendola al momento del pagamento e riversandola alla banca (dichiarata in dichiarazione annuale). Il 20% è la regola standard per i compensi professionali abituali (D.P.R. 600/1973, art. 25).\n\nC'è però un'eccezione importante: se il consulente è in regime forfettario e vi ha comunicato formalmente il suo stato (tramite PEC, raccomandata o modulo), NON dovete trattenere la ritenuta, perché lui già versa l'imposta sostitutiva. In quel caso il pagamento è netto.\n\nQuindi, prima di pagare i 2.000 €:\n1. Verificate se il consulente vi ha inviato la comunicazione di adesione al regime forfettario.\n2. Se l'ha fatta → pagate 2.000 € netti, nessuna ritenuta.\n3. Se non l'ha fatta (o non siete sicuri) → trattenete il 20%, cioè 400 €, pagate 1.600 € e versate la ritenuta con i modelli F24 alle scadenze previste.\n\nIn caso di dubbio, chiedete direttamente al professionista: è un suo obbligo informarvi se non dovete operare la ritenuta.\n\nFonti: D.P.R. 600/1973, art. 25.",
+     "latenza_s": 50.3,
+     "primo_token_s": 29.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 29.9s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 2,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "84591948-c091-4edb-bab5-d2a93dea849d",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, nella maggior parte dei casi devi trattenere la ritenuta d’acconto: per prestazioni di lavoro autonomo rese da un soggetto con partita IVA a un’impresa, l’aliquota ordinaria è il 20% (D.P.R. 600/1973, art. 25). Su 2.000 € la ritenuta è quindi di 400 €, e il professionista incassa 1.600 €; la ritenuta va versata all’Agenzia delle Entrate (modello F24) entro il 16 del mese successivo al pagamento.\n\nDue eccezioni da verificare prima di trattenere:\n- Se il professionista ha comunicato per iscritto di essere in regime forfettario e ha espresso il rifiuto ad essere assoggettato a ritenuta, non si trattiene nulla (ma devi conservare la comunicazione).\n- Se la prestazione è resa a un soggetto non residente, l’aliquota può essere del 30% a titolo d’imposta (D.P.R. 600/1973, art. 25).\n\nCosa verificare per essere sicuri nel caso concreto:\n1. Che il consulente abbia davvero la partita IVA attiva e non si tratti di un dipendente mascherato.\n2. Se è in regime forfettario, chiedi la comunicazione scritta di rifiuto della ritenuta; senza quella, la trattiene comunque.\n3. Che il pagamento sia tracciabile (bonifico, non contanti sopra la soglia prevista).\n\nSe vuoi, dimmi se il consulente è in regime forfettario o ordinario e se è residente in Italia: ti confermo il trattamento esatto.",
+     "visibile": "Sì, nella maggior parte dei casi devi trattenere la ritenuta d'acconto: per prestazioni di lavoro autonomo rese da un soggetto con partita IVA a un'impresa, l'aliquota ordinaria è il 20% (D.P.R. 600/1973, art. 25). Su 2.000 € la ritenuta è quindi di 400 €, e il professionista incassa 1.600 €; la ritenuta va versata all'Agenzia delle Entrate (modello F24) entro il termine previsto dalla normativa.\n\nDue eccezioni da verificare prima di trattenere:\n- Se il professionista ha comunicato per iscritto di essere in regime forfettario e ha espresso il rifiuto ad essere assoggettato a ritenuta, non si trattiene nulla (ma devi conservare la comunicazione).\n- Se la prestazione è resa a un soggetto non residente, l'aliquota può essere del 30% a titolo d'imposta (D.P.R. 600/1973, art. 25).\n\nCosa verificare per essere sicuri nel caso concreto:\n1. Che il consulente abbia davvero la partita IVA attiva e non si tratti di un dipendente mascherato.\n2. Se è in regime forfettario, chiedi la comunicazione scritta di rifiuto della ritenuta; senza quella, la trattiene comunque.\n3. Che il pagamento sia tracciabile (bonifico, non contanti sopra la soglia prevista).\n\nSe vuoi, dimmi se il consulente è in regime forfettario o ordinario e se è residente in Italia: ti confermo il trattamento esatto.\n\nFonti: D.P.R. 600/1973, art. 25.",
+     "latenza_s": 27.9,
+     "primo_token_s": 7.5,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 305: «16delmesesuccessivoalpagamento.Dueeccezi» → «termineprevistodallanormativa.Dueeccezio»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 3,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "36590e19-b522-4827-887c-88d8db7781a4",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, in linea di massima dovete operare la ritenuta d’acconto al 20% sui compensi corrisposti a un professionista con partita IVA per lavoro autonomo, trattenendo quindi 400 euro su una parcella di 2.000 euro. La ritenuta va applicata al momento del pagamento, con obbligo di rivalsa.\n\nC’è un’eccezione importante: se il consulente non ha aderito alla proposta del committente di optare per la ritenuta sostitutiva (ovvero se ha rifiutato o non ha aderito al regime della ritenuta in acconto), l’aliquota può essere diversa. In pratica, la norma prevede che, salvo diversa adesione, la ritenuta sia del 20%. Verificate se il professionista vi ha comunicato la propria scelta in materia di ritenuta: se ha aderito, la trattenete al 20%; in caso contrario, potrebbe non essere applicata la ritenuta ma il professionista dovrà versare direttamente le imposte.\n\nCosa fare in concreto:\n1. Chiedete al consulente se ha aderito o no alla ritenuta d’acconto (spesso lo si esplicita in fattura o in un’autocertificazione).\n2. Se ha aderito: trattenete 400 € e versateli all’Agenzia delle Entrate con F24.\n3. Se non ha aderito: non trattenete nulla, ma assicuratevi di avere la sua dichiarazione scritta che conferma l’assenza di ritenuta.\n\nQuesta distinzione conta perché, se trattenete una ritenuta che non spettava o ne omettete una dovuta, il rischio è di sanzioni e conguagli in capo all’azienda. Se volete, posso guidarvi anche su come compilare il F24 o su come strutturare la documentazione interna per tracciare la ritenuta.",
+     "visibile": "Sì, in linea di massima dovete operare la ritenuta d'acconto al 20% sui compensi corrisposti a un professionista con partita IVA per lavoro autonomo, trattenendo quindi 400 euro su una parcella di 2.000 euro. La ritenuta va applicata al momento del pagamento, con obbligo di rivalsa.\n\nC'è un'eccezione importante: se il consulente non ha aderito alla proposta del committente di optare per la ritenuta sostitutiva (ovvero se ha rifiutato o non ha aderito al regime della ritenuta in acconto), l'aliquota può essere diversa. In pratica, la norma prevede che, salvo diversa adesione, la ritenuta sia del 20%. Verificate se il professionista vi ha comunicato la propria scelta in materia di ritenuta: se ha aderito, la trattenete al 20%; in caso contrario, potrebbe non essere applicata la ritenuta ma il professionista dovrà versare direttamente le imposte.\n\nCosa fare in concreto:\n1. Chiedete al consulente se ha aderito o no alla ritenuta d'acconto (spesso lo si esplicita in fattura o in un'autocertificazione).\n2. Se ha aderito: trattenete 400 € e versateli all'Agenzia delle Entrate con F24.\n3. Se non ha aderito: non trattenete nulla, ma assicuratevi di avere la sua dichiarazione scritta che conferma l'assenza di ritenuta.\n\nQuesta distinzione conta perché, se trattenete una ritenuta che non spettava o ne omettete una dovuta, il rischio è di sanzioni e conguagli in capo all'azienda. Se volete, posso guidarvi anche su come compilare il F24 o su come strutturare la documentazione interna per tracciare la ritenuta.",
+     "latenza_s": 31.5,
+     "primo_token_s": 7.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 4,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "f2b8d232-3964-4fc1-8c74-a60c4ad94f07",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, in generale dovete operare la ritenuta d’acconto sul corrispettivo pagato a un professionista con partita IVA per prestazione di lavoro autonomo.\n\nL’aliquota ordinaria è il 20% (art. 25 D.P.R. 600/1973, come modificato). Quindi su una parcella di 2.000 euro la ritenuta è di 400 euro: pagherete 1.600 euro al consulente e verserete 400 euro all’Agenzia delle Entrate entro il 15 del mese successivo al pagamento.\n\nEccezione importante: se il consulente non ha aderito al regime speciale che riduce l’aliquota, oppure ha un volume d’affari rilevante, l’aliquota resta al 20%. Solo nei casi in cui ha chiesto espressamente l’applicazione dell’aliquota ridotta (0,5% per il 2028 e 1% dal 2029) si applica quella misura, e solo se le condizioni di legge sono rispettate — verificatelo nella sua fattura o nella sua comunicazione.\n\nIn pratica: controlla se in fattura c’è la dicitura “ritenuta d’acconto” con l’aliquota corretta; se non la indica, parti col 20% e segnala la cosa al consulente. La ritenuta va trattenuta all’atto del pagamento e versata con il modello F24.",
+     "visibile": "Sì, in generale dovete operare la ritenuta d'acconto sul corrispettivo pagato a un professionista con partita IVA per prestazione di lavoro autonomo.\n\nL'aliquota ordinaria è il 20% (art. 25 D.P.R. 600/1973, come modificato). Quindi su una parcella di 2.000 euro la ritenuta è di 400 euro: pagherete 1.600 euro al consulente e verserete 400 euro all'Agenzia delle Entrate entro il 15 del mese successivo al pagamento.\n\nEccezione importante: se il consulente non ha aderito al regime speciale che riduce l'aliquota, oppure ha un volume d'affari rilevante, l'aliquota resta al 20%. Solo nei casi in cui ha chiesto espressamente l'applicazione dell'aliquota ridotta (0,5% per il 2028 e 1% dal 2029) si applica quella misura, e solo se le condizioni di legge sono rispettate — verificatelo nella sua fattura o nella sua comunicazione.\n\nIn pratica: controlla se in fattura c'è la dicitura «ritenuta d'acconto» con l'aliquota corretta; se non la indica, parti col 20% e segnala la cosa al consulente. La ritenuta va trattenuta all'atto del pagamento e versata con il modello F24.\n\nFonti: D.P.R. 600/1973, art. 25.",
+     "latenza_s": 24.1,
+     "primo_token_s": 4.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 5,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "bd974643-1efb-4c37-817b-741393587ca7",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, in linea generale quando un’impresa paga un professionista con partita IVA per lavoro autonomo deve operare la ritenuta d’acconto.\n\nPer una parcella da 2.000 euro, la ritenuta standard è del 20% (D.P.R. 600/1973, art. 25): quindi 400 euro trattenuti e 1.600 euro netti pagati al consulente. La trattenuta va versata all’Agenzia delle Entrate (modello F24) entro il giorno 15 del mese successivo a quello del pagamento.\n\nAttenzione, però: se il professionista ha inviato la “dichiarazione di opzione per il regime forfettario” con la detassazione (aliquota ridotta dello 0,5% per il 2028 e dell’1% a decorrere dal 2029, art. 25, D.P.R. 600/1973), la ritenuta sarà inferiore. Verificate se la parcella indica esplicitamente il regime forfettario: in quel caso il calcolo cambia.\n\nDue cose da fare subito:\n1. Conservare la ricevuta della dichiarazione forfettaria, se presente.\n2. Indicare in F24 il codice corretto e il periodo di pagamento.\n\nSe mi confermate se il consulente è forfettario o no, vi dico l’importo esatto da trattenere.",
+     "visibile": "Sì, in linea generale quando un'impresa paga un professionista con partita IVA per lavoro autonomo deve operare la ritenuta d'acconto.\n\nPer una parcella da 2.000 euro, la ritenuta standard è del 20% (D.P.R. 600/1973, art. 25): quindi 400 euro trattenuti e 1.600 euro netti pagati al consulente. La trattenuta va versata all'Agenzia delle Entrate (modello F24) entro il giorno 15 del mese successivo a quello del pagamento.\n\nAttenzione, però: se il professionista ha inviato la «dichiarazione di opzione per il regime forfettario» con la detassazione (aliquota ridotta dello 0,5% per il 2028 e dell'1% a decorrere dal 2029, art. 25, D.P.R. 600/1973), la ritenuta sarà inferiore. Verificate se la parcella indica esplicitamente il regime forfettario: in quel caso il calcolo cambia.\n\nDue cose da fare subito:\n1. Conservare la ricevuta della dichiarazione forfettaria, se presente.\n2. Indicare in F24 il codice corretto e il periodo di pagamento.\n\nSe mi confermate se il consulente è forfettario o no, vi dico l'importo esatto da trattenere.\n\nFonti: D.P.R. 600/1973, art. 25.",
+     "latenza_s": 23.8,
+     "primo_token_s": 4.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 6,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "06cf8b62-0847-4b3e-8f65-1168ec1ddade",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, in linea generale dovete trattenere la ritenuta d’acconto sulla parcella del consulente con partita IVA: l’aliquota ordinaria sulle prestazioni di lavoro autonomo è del 20% (art. 25, D.P.R. 600/1973). Quindi, su 2.000 euro di parcella, la ritenuta sarebbe di 400 euro e il netto da versare al consulente sarebbe di 1.600 euro.\n\nPerò c’è un’eccezione importante: se il professionista ha presentato la **lettera di adesione al regime dei minimi** (o è un lavoratore autonomo occasionale che si è avvalso di tale regime), NON deve essere trattenuta alcuna ritenuta d’acconto.\n\nCosa verificare subito:\nChiedi al consulente se è in “regime dei minimi” o se ha presentato la richiesta di non applicazione della ritenuta. Se non è in quel regime, trattenete il 20% e versalo all’Agenzia delle Entrate entro il 16 del mese successivo al pagamento (utilizzando il modello F24 con i codici tributo 1085 e 1187). Se non sei sicuro del regime del professionista, il rischio di non trattenere quando invece era dovuta è a tuo carico come sostituto d’imposta.\n\nSe vuoi, posso prepararti una checklist operativa per gestire correttamente queste trattenute in futuro.",
+     "visibile": "Sì, in linea generale dovete trattenere la ritenuta d'acconto sulla parcella del consulente con partita IVA: l'aliquota ordinaria sulle prestazioni di lavoro autonomo è del 20% (art. 25, D.P.R. 600/1973). Quindi, su 2.000 euro di parcella, la ritenuta sarebbe di 400 euro e il netto da versare al consulente sarebbe di 1.600 euro.\n\nPerò c'è un'eccezione importante: se il professionista ha presentato la lettera di adesione al regime dei minimi (o è un lavoratore autonomo occasionale che si è avvalso di tale regime), NON deve essere trattenuta alcuna ritenuta d'acconto.\n\nCosa verificare subito:\nChiedi al consulente se è in «regime dei minimi» o se ha presentato la richiesta di non applicazione della ritenuta. Se non è in quel regime, trattenete il 20% e versalo all'Agenzia delle Entrate entro il termine previsto dalla normativa (utilizzando il modello F24 con i codici tributo 1085 e 1187). Se non sei sicuro del regime del professionista, il rischio di non trattenere quando invece era dovuta è a tuo carico come sostituto d'imposta.\n\nSe vuoi, posso prepararti una checklist operativa per gestire correttamente queste trattenute in futuro.\n\nFonti: D.P.R. 600/1973, art. 25.",
+     "latenza_s": 24.2,
+     "primo_token_s": 4.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 672: «16delmesesuccessivoalpagamento(utilizzan» → «termineprevistodallanormativa(utilizzand»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  }
+ ]
+}

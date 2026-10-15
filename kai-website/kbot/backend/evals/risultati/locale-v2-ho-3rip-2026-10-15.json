@@ -1,0 +1,2176 @@
+{
+ "meta": {
+  "data": "2026-10-15T13:50:55.410101+00:00",
+  "base_url": "http://127.0.0.1:8125/api/kbot",
+  "modello": "qwen locale (test) via shim k2a-kbot · backend locale, pacchetto v2",
+  "commit": "dad902d",
+  "file_casi": "casi_held_out.json",
+  "ripetizioni": 3,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "0f147aac-6824-4296-a91f-f5c1fc2d3782",
+   "708fa041-26f5-408a-b83b-c4e67b59ce5a",
+   "59a91f38-8b37-47c6-995a-f5c37f033748",
+   "a31bd852-7b02-409c-94e6-bde03f7e374e",
+   "92eadd69-ceff-44c2-b43f-a34951d4ecdc",
+   "f7ec568f-9cc1-4362-abd7-513237ad21cf",
+   "b6030399-3895-42cb-bb14-cff589f03c93",
+   "04a3269d-37cb-4736-8216-30248c609e7b",
+   "8433e4c8-a5d4-4276-8db6-a5b6d74e1f2e",
+   "5e17feea-ccff-4c30-90a1-2cc1fca1c357",
+   "38249da8-72d2-4543-bdf7-5cfabd2a4b44",
+   "dc9428c5-8af1-4157-a859-0e3b79fe1623",
+   "292e88ab-c947-4f31-8f99-29ad7bf652b1",
+   "6b6627d3-0379-44a7-9f66-409fd02ae860",
+   "f0595e7f-f453-4c9a-b85c-43cfc1f03890",
+   "2aa434bd-5cc4-4c75-8c4d-b7cda8c2ac09",
+   "0ed7a3fd-e052-48d5-b72a-d82746e46da6",
+   "ce7705b4-aa00-49a4-b40b-491c399e7931",
+   "ffc5e64f-94dc-4585-b216-72685e1a05ad",
+   "7cfa63ec-57ed-4b2a-a45c-e27cc86504fe",
+   "7d33499d-79c9-4107-83e1-882441c7c1a4",
+   "a61d1c24-3d5c-4540-8594-fa3b908d6f0a",
+   "fc10f0c2-7470-4638-b6af-73a5d10b01b7",
+   "ef90b4de-1a74-46a6-868e-72229e6c3184"
+  ]
+ },
+ "riepilogo": {
+  "esecuzioni": 24,
+  "ripetizioni": 3,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 8,
+    "generici_ok": 58,
+    "generici_tot": 64,
+    "specifici_ok": 23,
+    "specifici_tot": 30,
+    "casi_tutte_attese": 3,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 2,
+    "casi": 8,
+    "generici_ok": 56,
+    "generici_tot": 64,
+    "specifici_ok": 22,
+    "specifici_tot": 30,
+    "casi_tutte_attese": 2,
+    "casi_senza_difetti_generici": 1
+   },
+   {
+    "ripetizione": 3,
+    "casi": 8,
+    "generici_ok": 59,
+    "generici_tot": 64,
+    "specifici_ok": 22,
+    "specifici_tot": 30,
+    "casi_tutte_attese": 3,
+    "casi_senza_difetti_generici": 3
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     23,
+     22,
+     22
+    ],
+    "media": 22.33,
+    "sd": 0.58
+   },
+   "generici_ok": {
+    "valori": [
+     58,
+     56,
+     59
+    ],
+    "media": 57.67,
+    "sd": 1.53
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     3,
+     2,
+     3
+    ],
+    "media": 2.67,
+    "sd": 0.58
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     2,
+     1,
+     3
+    ],
+    "media": 2.0,
+    "sd": 1.0
+   }
+  },
+  "controlli_instabili": [
+   {
+    "caso": "ho-appalto-solidale",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "ho-appalto-solidale",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "ho-caparra",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "ho-giusta-causa",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "ho-giusta-causa",
+    "controllo": "specifici.fatti_alternativi",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "ho-orario-massimo",
+    "controllo": "generici.frasi_integre",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "ho-patto-non-concorrenza",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "ho-patto-non-concorrenza",
+    "controllo": "specifici.fatti_alternativi",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "ho-patto-non-concorrenza",
+    "controllo": "specifici.fatti_presenti",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "ho-patto-non-concorrenza",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 1,
+    "su": 3
+   }
+  ],
+  "casi": 24,
+  "casi_senza_difetti_generici": 6,
+  "casi_con_attese_specifiche": 24,
+  "casi_con_attese_tutte_rispettate": 8,
+  "controlli_generici": "173/192",
+  "controlli_specifici": "67/90",
+  "per_controllo": {
+   "generici.frasi_integre": "23/24",
+   "generici.nessun_errore_di_stream": "24/24",
+   "generici.nessun_testo_del_critico": "24/24",
+   "generici.nessuna_autocorrezione": "24/24",
+   "generici.nessuna_fuga_prompt": "24/24",
+   "generici.nessuna_lingua_estranea": "24/24",
+   "generici.risposta_non_vuota": "24/24",
+   "generici.testo_letto_uguale_finale": "6/24",
+   "specifici.fatti_alternativi": "19/24",
+   "specifici.fatti_presenti": "17/24",
+   "specifici.nessuna_affermazione_errata": "24/24",
+   "specifici.rinvio_al_professionista": "7/18"
+  },
+  "latenza_s": {
+   "mediana": 64.65,
+   "p90": 126.6,
+   "max": 175.4
+  },
+  "primo_token_s": {
+   "mediana": 14.25,
+   "p90": 31.5,
+   "max": 50.4
+  }
+ },
+ "risultati": [
+  {
+   "id": "ho-caparra",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "0f147aac-6824-4296-a91f-f5c1fc2d3782",
+   "turni": [
+    {
+     "utente": "Abbiamo firmato un preliminare per comprare un capannone e versato 20.000 euro come caparra. Se il venditore si tira indietro, cosa possiamo chiedere?",
+     "streamato": "Se il venditore si tira indietro, la caparra confirmatoria che avete versato (20.000 euro) funziona a vostro favore: la parte che ha dato la caparra e risulta inadempiente può recedere dal contratto e esigere il doppio della caparra, cioè 40.000 euro (art. 1385 c.c.).\n\nIn pratica avete due strade principali:\n\n1. **Riscuotere il doppio della caparra e recedere**: è la soluzione più rapida e semplice. L’importo è determinato dalla legge (il doppio di quanto versato) e non serve una sentenza per calcolarlo, anche se potreste dover comunque passare dal giudice o da una mediazione per farlo valere se il venditore non paga volontariamente.\n\n2. **Chiedere l’adempimento della vendita (oppure la risoluzione per il danno)**: se preferite che la vendita vada in porto (o se il danno subito è superiore al doppio della caparra), potete chiedere l’esecuzione del contratto o il risarcimento del danno secondo le regole generali. In questo caso la caparra viene imputata al prezzo o restituita, e il danno si dimostra separatamente (per esempio il maggior prezzo di mercato dello stesso immobile, i costi sostenuti, le perdite).\n\nCosa verificare subito:\n\n- **Il testo del preliminare**: assicuratevi che la clausola qualifichi esplicitamente i 20.000 euro come **caparra confirmatoria** (non “segnale” o “arruolo”). La differenza è decisiva: solo la confirmatoria dà diritto al doppio; la cauzionale (se così prevista) di norma viene solo restituita.\n- **Le modalità di pagamento e le garanzie**: come avete versato (assegno, bonifico), se c’è un atto pubblico o scrittura privata autenticata, se ci sono penali o condizioni sospensive che potrebbero influenzare il diritto.\n- **La posizione del venditore**: se è un privato o una società, se ci sono altri comproprietari, se l’immobile è ipotecato o ha vincoli che potrebbero complicare l’adempimento.\n\nPassi concreti:\n\n1. Conservate tutti i documenti: preliminare, ricevute di pagamento, eventuali comunicazioni scritte.\n2. Se il venditore non rientra, inviate una **raccomandata o PEC** che metta in mora e chieda, in alternativa, il doppio della caparra o l’adempimento, riservando ogni diritto.\n3. Valutate con un avvocato se conviene chiedere l’adempimento (se l’immobile è ancora conveniente) oppure il doppio della caparra (se il mercato è cambiato o volete uscirne subito).\n\nSe mi dice cosa c’è scritto esattamente nella clausola sulla caparra e se il venditore è un privato o una società, posso aiutarla a capire meglio quale strategia è più adatta.",
+     "visibile": "Se il venditore si tira indietro, la caparra confirmatoria che avete versato (20.000 euro) funziona a vostro favore: la parte che ha dato la caparra e risulta inadempiente può recedere dal contratto e esigere il doppio della caparra, cioè 40.000 euro (art. 1385 c.c.).\n\nIn pratica avete due strade principali:\n\n1. Riscuotere il doppio della caparra e recedere: è la soluzione più rapida e semplice. L'importo è determinato dalla legge (il doppio di quanto versato) e non serve una sentenza per calcolarlo, anche se potreste dover comunque passare dal giudice o da una mediazione per farlo valere se il venditore non paga volontariamente.\n\n2. Chiedere l'adempimento della vendita (oppure la risoluzione per il danno): se preferite che la vendita vada in porto (o se il danno subito è superiore al doppio della caparra), potete chiedere l'esecuzione del contratto o il risarcimento del danno secondo le regole generali. In questo caso la caparra viene imputata al prezzo o restituita, e il danno si dimostra separatamente (per esempio il maggior prezzo di mercato dello stesso immobile, i costi sostenuti, le perdite).\n\nCosa verificare subito:\n\n- Il testo del preliminare: assicuratevi che la clausola qualifichi esplicitamente i 20.000 euro come caparra confirmatoria (non «segnale» o «arruolo»). La differenza è decisiva: solo la confirmatoria dà diritto al doppio; la cauzionale (se così prevista) di norma viene solo restituita.\n- Le modalità di pagamento e le garanzie: come avete versato (assegno, bonifico), se c'è un atto pubblico o scrittura privata autenticata, se ci sono penali o condizioni sospensive che potrebbero influenzare il diritto.\n- La posizione del venditore: se è un privato o una società, se ci sono altri comproprietari, se l'immobile è ipotecato o ha vincoli che potrebbero complicare l'adempimento.\n\nPassi concreti:\n\n1. Conservate tutti i documenti: preliminare, ricevute di pagamento, eventuali comunicazioni scritte.\n2. Se il venditore non rientra, inviate una raccomandata o PEC che metta in mora e chieda, in alternativa, il doppio della caparra o l'adempimento, riservando ogni diritto.\n3. Valutate con un avvocato se conviene chiedere l'adempimento (se l'immobile è ancora conveniente) oppure il doppio della caparra (se il mercato è cambiato o volete uscirne subito).\n\nSe mi dice cosa c'è scritto esattamente nella clausola sulla caparra e se il venditore è un privato o una società, posso aiutarla a capire meglio quale strategia è più adatta.\n\nFonti: art. 1385 c.c.",
+     "latenza_s": 165.7,
+     "primo_token_s": 31.5,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 2080: «» → «Fonti:art.1385c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 165.7s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 31.5s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-penale-eccessiva",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "708fa041-26f5-408a-b83b-c4e67b59ce5a",
+   "turni": [
+    {
+     "utente": "Nel contratto di fornitura c'è una penale di 50.000 euro per il ritardo, ma l'ordine vale 20.000. Il cliente la pretende tutta. Si può ridurre?",
+     "streamato": "Sì, la riduzione non solo è possibile: in questo caso è molto probabile, e la legge è dalla tua parte.\n\nLa clausola penale ha l’effetto di limitare il risarcimento all’importo pattuito senza dover provare il danno, ma il giudice può ridurrela equamente se è manifestamente eccessiva rispetto all’interesse che il cliente aveva a ricevere la merce in tempo (art. 1384 c.c.). Qui la penalità (50.000 €) è il doppio e mezzo del valore dell’ordine (20.000 €): un rapporto che, da solo, configura una forte eccessività, perché il danno massimo teorico per il ritardo difficilmente può superare il valore della fornitura stessa. A ciò si aggiunge che la penale non è dovuta in automatico: se non hai causato il ritardo (causa di forza maggiore, ritardo del cliente, problemi imputabili a terzi o a lui stesso), la richiesta è infondata.\n\nCosa fare ora, in pratica:\n1. Non accettare nulla per iscritto e non firmare nulla che riconosca la penale: un riconoscimento scritto toglierebbe la possibilità di contestare l’eccessività.\n2. Invia una risposta scritta (PEC o raccomandata) in cui: (a) prendi atto della richiesta; (b) contesti l’eccessività della clausola rispetto al valore dell’ordine, richiamando espressamente la possibilità di riduzione equa da parte del giudice; (c) proponi una transazione a un importo proporzionato al ritardo effettivo e al danno concretamente subito dal cliente (es. un importo legato ai giorni di ritardo e alle sue perdite dimostrate). Il perimetro di quella proposta lo decidi tu: un orientamento prudente è ragionare su una cifra molto inferiore ai 50.000, proporzionata ai giorni di ritardo, ma senza fissare qui un numero che dipenderebbe dai fatti.\n3. Verifica due cose sui fatti: da un lato il CONTRATTO stesso — se contiene già clausole che limitano la penale o prevedono un massimale, quello cambia il ragionamento; dall’altro la CRONOLOGIA del ritardo — chi l’ha causato, da quando, se c’erano solleciti o modifiche richieste dal cliente. Sono questi i dati che discriminano se la richiesta regge in parte o no.\n\nIl rischio da evitare è cedere per convenienza (accettare i 50.000 per chiudere): in un contenzioso la giurisprudenza sulla riduzione delle penali eccessive è orientata favorevolmente, e qui il rapporto penale/valore è un argomento forte.\n\nDue domande per affinare: qual è la durata effettiva del ritardo (giorni/settimane) e il cliente ha già provato un danno concreto (es. penale a sua volta pagata a valle, fermo linea, cliente perso)? E il contratto prevede qualche massimale o formula sulla penale, o è un importo forfettario secco?",
+     "visibile": "Sì, la riduzione non solo è possibile: in questo caso è molto probabile, e la legge è dalla tua parte.\n\nLa clausola penale ha l'effetto di limitare il risarcimento all'importo pattuito senza dover provare il danno, ma il giudice può ridurrela equamente se è manifestamente eccessiva rispetto all'interesse che il cliente aveva a ricevere la merce in tempo (art. 1384 c.c.). Qui la penalità (50.000 €) è il doppio e mezzo del valore dell'ordine (20.000 €): un rapporto che, da solo, configura una forte eccessività, perché il danno massimo teorico per il ritardo difficilmente può superare il valore della fornitura stessa. A ciò si aggiunge che la penale non è dovuta in automatico: se non hai causato il ritardo (causa di forza maggiore, ritardo del cliente, problemi imputabili a terzi o a lui stesso), la richiesta è infondata.\n\nCosa fare ora, in pratica:\n1. Non accettare nulla per iscritto e non firmare nulla che riconosca la penale: un riconoscimento scritto toglierebbe la possibilità di contestare l'eccessività.\n2. Invia una risposta scritta (PEC o raccomandata) in cui: (a) prendi atto della richiesta; (b) contesti l'eccessività della clausola rispetto al valore dell'ordine, richiamando espressamente la possibilità di riduzione equa da parte del giudice; (c) proponi una transazione a un importo proporzionato al ritardo effettivo e al danno concretamente subito dal cliente (es. un importo legato ai giorni di ritardo e alle sue perdite dimostrate). Il perimetro di quella proposta lo decidi tu: un orientamento prudente è ragionare su una cifra molto inferiore ai 50.000, proporzionata ai giorni di ritardo, ma senza fissare qui un numero che dipenderebbe dai fatti.\n3. Verifica due cose sui fatti: da un lato il CONTRATTO stesso — se contiene già clausole che limitano la penale o prevedono un massimale, quello cambia il ragionamento; dall'altro la CRONOLOGIA del ritardo — chi l'ha causato, da quando, se c'erano solleciti o modifiche richieste dal cliente. Sono questi i dati che discriminano se la richiesta regge in parte o no.\n\nIl rischio da evitare è cedere per convenienza (accettare i 50.000 per chiudere): in un contenzioso la giurisprudenza sulla riduzione delle penali eccessive è orientata favorevolmente, e qui il rapporto penale/valore è un argomento forte.\n\nDue domande per affinare: qual è la durata effettiva del ritardo (giorni/settimane) e il cliente ha già provato un danno concreto (es. penale a sua volta pagata a valle, fermo linea, cliente perso)? E il contratto prevede qualche massimale o formula sulla penale, o è un importo forfettario secco?\n\nFonti: art. 1384 c.c.",
+     "latenza_s": 175.4,
+     "primo_token_s": 14.2,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 2172: «» → «Fonti:art.1384c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 175.4s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-impugnare-decisione-srl",
+   "ripetizione": 1,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "59a91f38-8b37-47c6-995a-f5c37f033748",
+   "turni": [
+    {
+     "utente": "Nella nostra srl i soci di maggioranza hanno approvato una decisione che secondo me viola lo statuto. Entro quanto posso impugnarla?",
+     "streamato": "Puoi impugnare la delibera entro 90 giorni dalla data in cui è stata trascritta nel libro delle decisioni dei soci, a condizione che tu non vi abbia consentito (art. 2479-ter c.c.).\n\nDue precisazioni importanti:\n\n1. Il termine decorre dalla trascrizione nel libro delle decisioni, non dalla data dell’assemblea: quindi verifica quando è stata registrata formalmente.\n2. La tua posizione di socio che “non vi ha consentito” è fondamentale: se hai votato a favore o non ti sei opposto, potresti perdere il diritto all’impugnazione.\n\nSe la delibera violasse anche l’oggetto sociale o contenesse contenuti illeciti/impossibili, il termine sarebbe più lungo (fino a 3 anni o illimitato in casi estremi), ma per una violazione dello statuto vale la regola dei 90 giorni.\n\nConsiglio pratico: verifica subito la data di trascrizione e valuta con un avvocato la strategia di impugnazione prima della scadenza, perché i termini sono perentori.",
+     "visibile": "Puoi impugnare la delibera entro 90 giorni dalla data in cui è stata trascritta nel libro delle decisioni dei soci, a condizione che tu non vi abbia consentito (art. 2479-ter c.c.).\n\nDue precisazioni importanti:\n\n1. Il termine decorre dalla trascrizione nel libro delle decisioni, non dalla data dell'assemblea: quindi verifica quando è stata registrata formalmente.\n2. La tua posizione di socio che «non vi ha consentito» è fondamentale: se hai votato a favore o non ti sei opposto, potresti perdere il diritto all'impugnazione.\n\nSe la delibera violasse anche l'oggetto sociale o contenesse contenuti illeciti/impossibili, il termine sarebbe più lungo (fino a 3 anni o illimitato in casi estremi), ma per una violazione dello statuto vale la regola dei 90 giorni.\n\nConsiglio pratico: verifica subito la data di trascrizione e valuta con un avvocato la strategia di impugnazione prima della scadenza, perché i termini sono perentori.\n\nFonti: art. 2479-ter c.c.",
+     "latenza_s": 55.7,
+     "primo_token_s": 8.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 785: «» → «Fonti:art.2479-terc.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-appalto-solidale",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "a31bd852-7b02-409c-94e6-bde03f7e374e",
+   "turni": [
+    {
+     "utente": "Abbiamo affidato dei lavori a una ditta in appalto e ora un suo operaio chiede a noi gli stipendi arretrati. Rispondiamo noi?",
+     "streamato": "Capisco la preoccupazione, ma la risposta breve è: di norma, no. La responsabilità di pagare gli stipendi è del datore di lavoro, cioè l'appaltatore. Tu, in quanto committente, non sei il suo datore di lavoro.\n\nC’è però un’eccezione importante da verificare subito: si chiama “solidarietà del committente”. Questa scatta solo in alcuni casi specifici, ad esempio se l’appaltatore è risultato privo dei requisiti di sicurezza o di regolarità contributiva richiesti dalla legge (come la documentazione anti-frode) e tu non ti sei accertato di questo.\n\nPrima di rispondere all’operaio o di pagare qualsiasi cosa, ho bisogno di chiarire un punto fondamentale che cambia completamente i tuoi rischi:\n\nAveresti già richiesto e verificato la documentazione di regolarità contributiva (il DURC) all’inizio dei lavori con questa ditta?",
+     "visibile": "Capisco la preoccupazione, ma la risposta breve è: di norma, no. La responsabilità di pagare gli stipendi è del datore di lavoro, cioè l'appaltatore. Tu, in quanto committente, non sei il suo datore di lavoro.\n\nC'è però un'eccezione importante da verificare subito: si chiama «solidarietà del committente». Questa scatta solo in alcuni casi specifici, ad esempio se l'appaltatore è risultato privo dei requisiti di sicurezza o di regolarità contributiva richiesti dalla legge (come la documentazione anti-frode) e tu non ti sei accertato di questo.\n\nPrima di rispondere all'operaio o di pagare qualsiasi cosa, ho bisogno di chiarire un punto fondamentale che cambia completamente i tuoi rischi:\n\nAveresti già richiesto e verificato la documentazione di regolarità contributiva (il DURC) all'inizio dei lavori con questa ditta?",
+     "latenza_s": 85.6,
+     "primo_token_s": 18.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: responsabilità solidale"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: entro due anni dalla fine dell'appalto"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-orario-massimo",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "92eadd69-ceff-44c2-b43f-a34951d4ecdc",
+   "turni": [
+    {
+     "utente": "Un nostro dipendente fa spesso straordinari. C'è un limite massimo di ore settimanali per legge?",
+     "streamato": "In generale sì, esiste un limite massimo di orario di lavoro settimanale.\n\nSecondo il D.Lgs. 66/2003, l’orario settimanale massimo non può superare le 48 ore, straordinari inclusi (D.Lgs 66/2003, art. 4). Questo limite va però calcolato su un periodo di riferimento che può essere di 4 mesi, o anche più a seconda di quanto previsto dal contratto collettivo applicato.\n\nQuindi, in pratica:\n- se il dipendente fa spesso straordinari, puoi superare le 40 ore settimanali \"normali\", ma devi stare attento a non superare le 48 in media sul periodo di riferimento.\n- la gestione corretta degli straordinari è fondamentale per evitare abusi e rischi di contestazione, oltre a garantire la sicurezza e il benessere del lavoratore.\n\nSe vuoi, posso aiutarti a capire come monitorare le ore settimanali e gestire correttamente la media per evitare di superare il limite di legge.",
+     "visibile": "In generale sì, esiste un limite massimo di orario di lavoro settimanale.\n\nSecondo il D.Lgs. 66/2003, l'orario settimanale massimo non può superare le 48 ore, straordinari inclusi (D.Lgs 66/2003, art. 4). Questo limite va però calcolato su un periodo di riferimento che può essere di 4 mesi, o anche più a seconda di quanto previsto dal contratto collettivo applicato.\n\nQuindi, in pratica:\n- se il dipendente fa spesso straordinari, puoi superare le 40 ore settimanali \"normali\", ma devi stare attento a non superare le 48 in media sul periodo di riferimento.\n- la gestione corretta degli straordinari è fondamentale per evitare abusi e rischi di contestazione, oltre a garantire la sicurezza e il benessere del lavoratore.\n\nSe vuoi, posso aiutarti a capire come monitorare le ore settimanali e gestire correttamente la media per evitare di superare il limite di legge.\n\nFonti: D.Lgs 66/2003, art. 4.",
+     "latenza_s": 33.0,
+     "primo_token_s": 11.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 725: «» → «Fonti:D.Lgs66/2003,art.4.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-ferie-in-busta",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "f7ec568f-9cc1-4362-abd7-513237ad21cf",
+   "turni": [
+    {
+     "utente": "Un dipendente preferisce farsi pagare le ferie invece di prenderle. Possiamo liquidargliele in busta paga?",
+     "streamato": "Di norma no: le ferie non sono «liquidabili» come un anticipo di stipendio o come compenso per lavoro extra. Il riposo è un diritto irrinunciabile e, salvo casi molto specifici (es. cessazione del rapporto di lavoro), la paga delle ferie senza godimento non è consentita: rischi di sanzioni e contestazioni da parte del lavoratore.\n\nEccezioni reali ma limitate:\n- Cessazione del rapporto: le ferie non godute entro le scadenze previste (di norma entro agosto dell’anno successivo, salvo diverse previsioni del CCNL) vengono liquidate come una quota del TFR, non in busta come «soldo ferie».\n- Rinvio forzato per motivi aziendali (es. chiusura, emergenza): si può posticipare il godimento, ma non trasformarlo in denaro.\n\nIn pratica, se il dipendente vuole solo «liberare» giorni o averli pagati diversamente, le alternative sono: concordare le date di fruizione in modo più flessibile (se il CCNL lo consente), valutare un ripiano diverso del piano ferie, o – se c’è la volontà di anticipare una parte della retribuzione – valutare un anticipo di stipendio con le cautele contrattuali e fiscali del caso (non è la stessa cosa delle ferie).\n\nCosa verificare nel tuo caso concreto:\n- CCNL applicato e sue eventuali flessibilità su ferie/anticipi.\n- Motivo della richiesta (esigenza di cassa, periodo non comodo, fine rapporto).\n- Eventuali patti già in essere.\n\nSe vuoi, mi dici il CCNL e il motivo della richiesta: ti dico se c’è una via praticabile e come impostarla per non creare passività.",
+     "visibile": "Di norma no: le ferie non sono «liquidabili» come un anticipo di stipendio o come compenso per lavoro extra. Il riposo è un diritto irrinunciabile e, salvo casi molto specifici (es. cessazione del rapporto di lavoro), la paga delle ferie senza godimento non è consentita: rischi di sanzioni e contestazioni da parte del lavoratore.\n\nEccezioni reali ma limitate:\n- Cessazione del rapporto: le ferie non godute entro le scadenze previste (di norma entro agosto dell'anno successivo, salvo diverse previsioni del CCNL) vengono liquidate come una quota del TFR, non in busta come «soldo ferie».\n- Rinvio forzato per motivi aziendali (es. chiusura, emergenza): si può posticipare il godimento, ma non trasformarlo in denaro.\n\nIn pratica, se il dipendente vuole solo «liberare» giorni o averli pagati diversamente, le alternative sono: concordare le date di fruizione in modo più flessibile (se il CCNL lo consente), valutare un ripiano diverso del piano ferie, o – se c'è la volontà di anticipare una parte della retribuzione – valutare un anticipo di stipendio con le cautele contrattuali e fiscali del caso (non è la stessa cosa delle ferie).\n\nCosa verificare nel tuo caso concreto:\n- CCNL applicato e sue eventuali flessibilità su ferie/anticipi.\n- Motivo della richiesta (esigenza di cassa, periodo non comodo, fine rapporto).\n- Eventuali patti già in essere.\n\nSe vuoi, mi dici il CCNL e il motivo della richiesta: ti dico se c'è una via praticabile e come impostarla per non creare passività.",
+     "latenza_s": 90.7,
+     "primo_token_s": 11.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: minimo di quattro settimane"
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 90.7s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-giusta-causa",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "b6030399-3895-42cb-bb14-cff589f03c93",
+   "turni": [
+    {
+     "utente": "Ho scoperto che un dipendente ha rubato materiale dal magazzino. Posso licenziarlo in tronco, senza preavviso?",
+     "streamato": "Sì, in linea generale la ruberia di materiale aziendale è una delle ipotesi classiche in cui si può procedere con il licenziamento per giusta causa, cioè senza preavviso e senza indennità sostitutiva: il furto incide sulla fiducia, che è alla base del rapporto di lavoro, e il codice civile prevede il recesso per giusta causa proprio quando si verifica un fatto che non consente la prosecuzione, anche provvisoria, del rapporto (art. 2119 c.c.).\n\nPerò attenzione, perché la risposta corretta non è “sì e basta”:\n\n1. Verifica che il fatto sia provato. “Ho scoperto” non è sufficiente da solo: servono elementi oggettivi (video sorveglianza, registri di magazzino con discrepanze, confessione, dichiarazioni di altri, ritrovamento del materiale). Se la prova è debole o ambigua, un licenziamento in tronco rischia di essere impugnato e definito illegittimo, con condanna a risarcimento o riassunzione.\n2. Valuta la proporzionalità. Anche il furto può essere gestito diversamente a seconda della gravità e della storicità: primo episodio di modesta entità, dipendente con lunghi anni di servizio, comportamento generalmente corretto. In questi casi talvolta si può valutare una sanzione disciplinare grave (es. multa o sospensione) anziché il licenziamento, soprattutto se la prova non è inattaccabile.\n3. Procedura: prima di procedere, è opportuno verificare la sussistenza del fatto e, se necessario, sentire il dipendente per consentirgli di difendersi (interrogatorio difensivo). Questo riduce il rischio di contenzioso.\n4. Rischi collaterali: oltre al contenzioso, valuta la gestione del momento (comunicazione ai colleghi, custodia della prova, eventuale denuncia per furto, che è reato penale).\n\nSe vuoi, dimmi come hai scoperto il fatto e quali prove concrete hai (video, registri, testimoni): in base a quello ti dico se il licenziamento in tronco è solidamente giustificato o se conviene una via più prudente.",
+     "visibile": "Sì, in linea generale la ruberia di materiale aziendale è una delle ipotesi classiche in cui si può procedere con il licenziamento per giusta causa, cioè senza preavviso e senza indennità sostitutiva: il furto incide sulla fiducia, che è alla base del rapporto di lavoro, e il codice civile prevede il recesso per giusta causa proprio quando si verifica un fatto che non consente la prosecuzione, anche provvisoria, del rapporto (art. 2119 c.c.).\n\nPerò attenzione, perché la risposta corretta non è «sì e basta»:\n\n1. Verifica che il fatto sia provato. «Ho scoperto» non è sufficiente da solo: servono elementi oggettivi (video sorveglianza, registri di magazzino con discrepanze, confessione, dichiarazioni di altri, ritrovamento del materiale). Se la prova è debole o ambigua, un licenziamento in tronco rischia di essere impugnato e definito illegittimo, con condanna a risarcimento o riassunzione.\n2. Valuta la proporzionalità. Anche il furto può essere gestito diversamente a seconda della gravità e della storicità: primo episodio di modesta entità, dipendente con lunghi anni di servizio, comportamento generalmente corretto. In questi casi talvolta si può valutare una sanzione disciplinare grave (es. multa o sospensione) anziché il licenziamento, soprattutto se la prova non è inattaccabile.\n3. Procedura: prima di procedere, è opportuno verificare la sussistenza del fatto e, se necessario, sentire il dipendente per consentirgli di difendersi (interrogatorio difensivo). Questo riduce il rischio di contenzioso.\n4. Rischi collaterali: oltre al contenzioso, valuta la gestione del momento (comunicazione ai colleghi, custodia della prova, eventuale denuncia per furto, che è reato penale).\n\nSe vuoi, dimmi come hai scoperto il fatto e quali prove concrete hai (video, registri, testimoni): in base a quello ti dico se il licenziamento in tronco è solidamente giustificato o se conviene una via più prudente.\n\nFonti: art. 2119 c.c.",
+     "latenza_s": 126.6,
+     "primo_token_s": 34.4,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1627: «» → «Fonti:art.2119c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 126.6s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 34.4s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-patto-non-concorrenza",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "04a3269d-37cb-4736-8216-30248c609e7b",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare ai dipendenti un patto di non concorrenza per dopo che se ne vanno, senza pagargli niente. Va bene?",
+     "streamato": "Va bene in parte: il patto di non concorrenza post-cessione si può fare, ma non gratis. La legge lo rende nullo se non è scritto, se non prevede un corrispettivo a favore del dipendente e se non ha limiti precisi di oggetto, tempo e luogo (art. 2125 c.c.). In pratica: serve un importo (anche simbolico, purché serio) e una durata ragionevole — al massimo 5 anni se sono dirigenti, 3 anni negli altri casi; se metti di più, il termine si riduce automaticamente a quei limiti (art. 2125 c.c.).\n\nDue cose da verificare nel tuo caso:\n- Chi vuoi vincolare: se parli di tutti i dipendenti, valuta se ha senso anche per chi non ha accesso a clienti, Know-how o informazioni strategiche — un vincolo troppo largo può essere contestato.\n- Come lo inserisci: va in un atto scritto (clausola nel contratto o accordo separato), non basta una mail o una firma generica.\n\nSe vuoi, dimmi a quali ruoli lo applicheresti e quanto intendi prevedere come corrispettivo: così ti dico se l'impostazione regge o va limata.",
+     "visibile": "Va bene in parte: il patto di non concorrenza post-cessione si può fare, ma non gratis. La legge lo rende nullo se non è scritto, se non prevede un corrispettivo a favore del dipendente e se non ha limiti precisi di oggetto, tempo e luogo (art. 2125 c.c.). In pratica: serve un importo (anche simbolico, purché serio) e una durata ragionevole — al massimo 5 anni se sono dirigenti, 3 anni negli altri casi; se metti di più, il termine si riduce automaticamente a quei limiti (art. 2125 c.c.).\n\nDue cose da verificare nel tuo caso:\n- Chi vuoi vincolare: se parli di tutti i dipendenti, valuta se ha senso anche per chi non ha accesso a clienti, Know-how o informazioni strategiche — un vincolo troppo largo può essere contestato.\n- Come lo inserisci: va in un atto scritto (clausola nel contratto o accordo separato), non basta una mail o una firma generica.\n\nSe vuoi, dimmi a quali ruoli lo applicheresti e quanto intendi prevedere come corrispettivo: così ti dico se l'impostazione regge o va limata.\n\nFonti: art. 2125 c.c.",
+     "latenza_s": 69.9,
+     "primo_token_s": 13.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 822: «» → «Fonti:art.2125c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-caparra",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "8433e4c8-a5d4-4276-8db6-a5b6d74e1f2e",
+   "turni": [
+    {
+     "utente": "Abbiamo firmato un preliminare per comprare un capannone e versato 20.000 euro come caparra. Se il venditore si tira indietro, cosa possiamo chiedere?",
+     "streamato": "Se il venditore si ritira, potete recedere dal preliminare ed esigere il doppio della caparra, cioè 40.000 euro (art. 1385 c.c.): 20.000 di restituzione e 20.000 come sanzione. È la conseguenza automatica prevista per la caparra confirmatoria, a patto che quella versata lo sia stata davvero \"a titolo di caparra\" e non come acconto o deposito cauzionale: la qualificazione dipende da come è scritto nel contratto.\n\nDue cose da verificare subito sul vostro preliminare:\n- Che la clausola definisca espressamente la somma come caparra confirmatoria (e non \"acconto sul prezzo\" o \"deposito\"): se è un acconto, non scatta il raddoppio e vi spetterebbe solo la restituzione più il risarcimento del danno per le perdite concrete subite (es. costi di perizie, trasloco rinviato).\n- Se il contratto prevede anche altre penali o condizioni risolutive, perché potrebbero valere congiuntamente o in alternativa.\n\nSe la caparra è confirmatoria, il raddoppio è la via più rapida e certa. Il prossimo passo concreto è leggere la clausola esatta: se me la incollate (o il preliminare), vi dico subito se la qualificazione regge e se conviene recedere o pretendere l'esecuzione del contratto, che a volte è più conveniente se il capannone vi interessa davvero.\n\nCosa potrebbe farmi cambiare raccomandazione: se la somma non è qualificata come caparra ma come acconto/deposito, o se il venditore ha già venduto il capannone a un terzo a un prezzo diverso e il danno reale è molto più alto del raddoppio (in quel caso il risarcimento del danno per le norme generali potrebbe essere più vantaggioso del raddoppio).",
+     "visibile": "Se il venditore si ritira, potete recedere dal preliminare ed esigere il doppio della caparra, cioè 40.000 euro (art. 1385 c.c.): 20.000 di restituzione e 20.000 come sanzione. È la conseguenza automatica prevista per la caparra confirmatoria, a patto che quella versata lo sia stata davvero \"a titolo di caparra\" e non come acconto o deposito cauzionale: la qualificazione dipende da come è scritto nel contratto.\n\nDue cose da verificare subito sul vostro preliminare:\n- Che la clausola definisca espressamente la somma come caparra confirmatoria (e non \"acconto sul prezzo\" o \"deposito\"): se è un acconto, non scatta il raddoppio e vi spetterebbe solo la restituzione più il risarcimento del danno per le perdite concrete subite (es. costi di perizie, trasloco rinviato).\n- Se il contratto prevede anche altre penali o condizioni risolutive, perché potrebbero valere congiuntamente o in alternativa.\n\nSe la caparra è confirmatoria, il raddoppio è la via più rapida e certa. Il prossimo passo concreto è leggere la clausola esatta: se me la incollate (o il preliminare), vi dico subito se la qualificazione regge e se conviene recedere o pretendere l'esecuzione del contratto, che a volte è più conveniente se il capannone vi interessa davvero.\n\nCosa potrebbe farmi cambiare raccomandazione: se la somma non è qualificata come caparra ma come acconto/deposito, o se il venditore ha già venduto il capannone a un terzo a un prezzo diverso e il danno reale è molto più alto del raddoppio (in quel caso il risarcimento del danno per le norme generali potrebbe essere più vantaggioso del raddoppio).\n\nFonti: art. 1385 c.c.",
+     "latenza_s": 53.2,
+     "primo_token_s": 14.3,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1335: «» → «Fonti:art.1385c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-penale-eccessiva",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "5e17feea-ccff-4c30-90a1-2cc1fca1c357",
+   "turni": [
+    {
+     "utente": "Nel contratto di fornitura c'è una penale di 50.000 euro per il ritardo, ma l'ordine vale 20.000. Il cliente la pretende tutta. Si può ridurre?",
+     "streamato": "Sì, in linea di principio la penale può essere ridotta: il Codice Civile consente al giudice di diminuirla equamente quando l’obbligazione principale è stata eseguita in parte o quando l’ammontare è “manifestamente eccessivo” rispetto all’interesse che il creditore aveva all’adempimento (art. 1384 c.c.).\n\nNel vostro caso il dato più rilevante è proprio quello che citi: una penale di 50.000 € su un ordine da 20.000 € (il 250% del valore). Di per sé è un elemento forte a favore della richiesta di riduzione, perché rende verosimile l’eccessività rispetto al danno realmente patito dal cliente per il ritardo.\n\nTuttavia, attenzione a due punti:\n- La riduzione non è automatica: va chiesta e argomentata, ed è il giudice a decidere la misura equa. Non potete “scorporare” unilateralmente la penale.\n- L’entità del danno effettivo conta: se il ritardo ha causato al cliente danni documentati (perdita di un sub-appalto, fermo linea, penale a sua volta pagata a valle), la penale potrebbe risultare giustificata nonostante il rapporto 2,5 a 1.\n\nPassi consigliati:\n1. Documentate il ritardo: date di consegna, cause, eventuali contestazioni scritte del cliente.\n2. Valutate l’effettivo danno subìto dal cliente (chiedetegli di quantificarlo: spesso non lo ha).\n3. In via stragiudziale, proponete una riduzione motivata dal rapporto penale/valore e dall’assenza (o entità contenuta) di danno documentato. Se non si trova un accordo, la richiesta di riduzione va portata in giudizio, allegando la documentazione.\n\nSe il ritardo dipende da cause a voi imputabili (vs. forza maggiore), la penale può essere dovuta integralmente; quel punto cambia la strategia, quindi va verificato prima di negoziare.",
+     "visibile": "Sì, in linea di principio la penale può essere ridotta: il Codice Civile consente al giudice di diminuirla equamente quando l'obbligazione principale è stata eseguita in parte o quando l'ammontare è «manifestamente eccessivo» rispetto all'interesse che il creditore aveva all'adempimento (art. 1384 c.c.).\n\nNel vostro caso il dato più rilevante è proprio quello che citi: una penale di 50.000 € su un ordine da 20.000 € (il 250% del valore). Di per sé è un elemento forte a favore della richiesta di riduzione, perché rende verosimile l'eccessività rispetto al danno realmente patito dal cliente per il ritardo.\n\nTuttavia, attenzione a due punti:\n- La riduzione non è automatica: va chiesta e argomentata, ed è il giudice a decidere la misura equa. Non potete «scorporare» unilateralmente la penale.\n- L'entità del danno effettivo conta: se il ritardo ha causato al cliente danni documentati (perdita di un sub-appalto, fermo linea, penale a sua volta pagata a valle), la penale potrebbe risultare giustificata nonostante il rapporto 2,5 a 1.\n\nPassi consigliati:\n1. Documentate il ritardo: date di consegna, cause, eventuali contestazioni scritte del cliente.\n2. Valutate l'effettivo danno subìto dal cliente (chiedetegli di quantificarlo: spesso non lo ha).\n3. In via stragiudziale, proponete una riduzione motivata dal rapporto penale/valore e dall'assenza (o entità contenuta) di danno documentato. Se non si trova un accordo, la richiesta di riduzione va portata in giudizio, allegando la documentazione.\n\nSe il ritardo dipende da cause a voi imputabili (vs. forza maggiore), la penale può essere dovuta integralmente; quel punto cambia la strategia, quindi va verificato prima di negoziare.\n\nFonti: art. 1384 c.c.",
+     "latenza_s": 61.0,
+     "primo_token_s": 10.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1430: «» → «Fonti:art.1384c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-impugnare-decisione-srl",
+   "ripetizione": 2,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "38249da8-72d2-4543-bdf7-5cfabd2a4b44",
+   "turni": [
+    {
+     "utente": "Nella nostra srl i soci di maggioranza hanno approvato una decisione che secondo me viola lo statuto. Entro quanto posso impugnarla?",
+     "streamato": "Puoi impugnarla entro 90 giorni dalla trascrizione nel libro delle decisioni dei soci, a condizione che tu non abbia consentito la decisione (art. 2479-ter c.c.).\n\nAttenzione a due distinzioni fondamentali che cambiano il termine:\n\n1. **Violenza di legge o dello statuto** (il tuo caso, presumo): 90 giorni dalla trascrizione.\n2. **Decisione lesiva presa con partecipazione determinante di soci in conflitto d’interesse**: pure 90 giorni, ma si applica la stessa impugnazione.\n3. **Decisione con oggetto illecito/impossibile o presa in assenza assoluta di informazione**: 3 anni dalla trascrizione, e può essere impugnata da chiunque vi abbia interesse (art. 2479-ter c.c.).\n\nIl punto critico pratico: i 90 giorni decorrono dalla **trascrizione nel libro delle decisioni**, non dalla data dell’assemblea né dalla data in cui ne sei venuto a conoscenza. Verifica quindi quando la delibera è stata effettivamente trascritta (o se lo è stata), perché se non è stata trascritta la situazione giuridica è diversa e va chiarita con un legale.\n\nInoltre: per poter impugnare devi essere un socio che **non ha consentito** la decisione. Se hai votato a favore o astenuto senza opposizione esplicita, la tua posizione per l’impugnazione è molto più debole.\n\nCosa potrebbe cambiare la risposta:\n- Se la delibera non è stata trascritta nel libro delle decisioni.\n- Se hai in qualche modo consensito (voto favorevole, assenso successivo).\n- Se il vizio non è di forma (statuto) ma di contenuto illecito: in quel caso il termine sale a 3 anni.\n\nSe vuoi, dimmi com’è formulata la decisione e cosa prevede lo statuto: così valuto se il vizio è reale e se rientra nei 90 giorni o nel termine lungo.",
+     "visibile": "Puoi impugnarla entro 90 giorni dalla trascrizione nel libro delle decisioni dei soci, a condizione che tu non abbia consentito la decisione (art. 2479-ter c.c.).\n\nAttenzione a due distinzioni fondamentali che cambiano il termine:\n\n1. Violenza di legge o dello statuto (il tuo caso, presumo): 90 giorni dalla trascrizione.\n2. Decisione lesiva presa con partecipazione determinante di soci in conflitto d'interesse: pure 90 giorni, ma si applica la stessa impugnazione.\n3. Decisione con oggetto illecito/impossibile o presa in assenza assoluta di informazione: 3 anni dalla trascrizione, e può essere impugnata da chiunque vi abbia interesse (art. 2479-ter c.c.).\n\nIl punto critico pratico: i 90 giorni decorrono dalla trascrizione nel libro delle decisioni, non dalla data dell'assemblea né dalla data in cui ne sei venuto a conoscenza. Verifica quindi quando la delibera è stata effettivamente trascritta (o se lo è stata), perché se non è stata trascritta la situazione giuridica è diversa e va chiarita con un legale.\n\nInoltre: per poter impugnare devi essere un socio che non ha consentito la decisione. Se hai votato a favore o astenuto senza opposizione esplicita, la tua posizione per l'impugnazione è molto più debole.\n\nCosa potrebbe cambiare la risposta:\n- Se la delibera non è stata trascritta nel libro delle decisioni.\n- Se hai in qualche modo consensito (voto favorevole, assenso successivo).\n- Se il vizio non è di forma (statuto) ma di contenuto illecito: in quel caso il termine sale a 3 anni.\n\nSe vuoi, dimmi com'è formulata la decisione e cosa prevede lo statuto: così valuto se il vizio è reale e se rientra nei 90 giorni o nel termine lungo.\n\nFonti: art. 2479-ter c.c.",
+     "latenza_s": 38.2,
+     "primo_token_s": 5.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1384: «» → «Fonti:art.2479-terc.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-appalto-solidale",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "dc9428c5-8af1-4157-a859-0e3b79fe1623",
+   "turni": [
+    {
+     "utente": "Abbiamo affidato dei lavori a una ditta in appalto e ora un suo operaio chiede a noi gli stipendi arretrati. Rispondiamo noi?",
+     "streamato": "La risposta breve è: non automaticamente, ma non puoi semplicemente dire di no se il debito verso l’appaltatore è ancora impagato.\n\nLa legge prevede un’azione diretta: chi ha lavorato alle dipendenze dell’appaltatore può chiedere al committente (cioè a voi) quanto gli è dovuto, ma esclusivamente fino a concorrenza del debito che voi dovete ancora all’appaltatore (art. 1676 c.c.). In pratica, se a voi restano a pagare 5.000 € all’appaltatore e l’operaio chiede 3.000 € di arretrati, la risposta dipende da quanto è effettivamente ancora insoluta la vostra posizione nei confronti della ditta.\n\nPer capire se risponda, per quanto e con quali tutele, ho bisogno di capire la situazione concreta. Quale importo vi è stato preteso dall’operaio e qual è la situazione dei pagamenti verso l’appaltatore: gli avete già saldato integralmente, o resta un saldo a debito a vostro favore?",
+     "visibile": "La risposta breve è: non automaticamente, ma non puoi semplicemente dire di no se il debito verso l'appaltatore è ancora impagato.\n\nLa legge prevede un'azione diretta: chi ha lavorato alle dipendenze dell'appaltatore può chiedere al committente (cioè a voi) quanto gli è dovuto, ma esclusivamente fino a concorrenza del debito che voi dovete ancora all'appaltatore (art. 1676 c.c.). In pratica, se a voi restano a pagare 5.000 € all'appaltatore e l'operaio chiede 3.000 € di arretrati, la risposta dipende da quanto è effettivamente ancora insoluta la vostra posizione nei confronti della ditta.\n\nPer capire se risponda, per quanto e con quali tutele, ho bisogno di capire la situazione concreta. Quale importo vi è stato preteso dall'operaio e qual è la situazione dei pagamenti verso l'appaltatore: gli avete già saldato integralmente, o resta un saldo a debito a vostro favore?\n\nFonti: art. 1676 c.c.",
+     "latenza_s": 49.6,
+     "primo_token_s": 25.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 740: «» → «Fonti:art.1676c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: responsabilità solidale"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: entro due anni dalla fine dell'appalto"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 25.7s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-orario-massimo",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "292e88ab-c947-4f31-8f99-29ad7bf652b1",
+   "turni": [
+    {
+     "utente": "Un nostro dipendente fa spesso straordinari. C'è un limite massimo di ore settimanali per legge?",
+     "streamato": "Sì, la normativa sul lavoro (la disciplina sugli orari e sul lavoro notturno, D.Lgs. 66/2003) fissa un limite massimo ordinario di 48 ore settimanali, calcolate come media su un periodo che non può superare 4 mesi (e, in ogni caso, 12 mesi se previsto dal contratto collettivo).\n\nDetto altrimenti: un dipendente può superare le 40 ore ordinarie, ma il totale (straordinari compresi) non dovrebbe andare oltre le 48 ore in media nel periodo di riferimento.\n\nDue precisazioni importanti per il tuo caso:\n1. Il CCNL applicato può prevedere regole più restrittive: verifica sempre il contratto collettivo di riferimento.\n2. Se il dipendente è in età di tutela (es. minori, donne in gravidanza, lavoratori con determinate condizioni), i limiti possono essere più stringenti.\n\nSe gli straordinari sono “spesso” e sistematici, il rischio non è solo la violazione del limite: è un segnale di sotto-organizzazione (carenza di personale, pianificazione dei carichi non adeguata) che può tradursi in burnout, contenzioso e costi di produzione.\n\nProssimi passi pratici:\n- Verifica il CCNL applicato e i tuoi attuali turni/orari per capire se sei entro o oltre il limite medio.\n- Analizza perché gli straordinari sono sistematici: è un problema di picchi stagionali (accettabile) o di carico strutturale (da risolvere con organico o riorganizzazione)?\n- Documenta le ore lavorate: serve sia per la correttezza fiscale/lavoristica sia per difenderti in caso di accertamento o contenzioso.\n\nSe vuoi, posso aiutarti a strutturare un’analisi rapida su come ridurre gli straordinari sistematici senza aumentare i costi fissi.",
+     "visibile": "Sì, la normativa sul lavoro (la disciplina sugli orari e sul lavoro notturno, D.Lgs. 66/2003) fissa un limite massimo ordinario di un importo previsto dalla normativa ore settimanali, calcolate come media su un periodo che non può superare 4 mesi (e, in ogni caso, 12 mesi se previsto dal contratto collettivo).\n\nDetto altrimenti: un dipendente può superare le 40 ore ordinarie, ma il totale (straordinari compresi) non dovrebbe andare oltre le 48 ore in media nel periodo di riferimento.\n\nDue precisazioni importanti per il tuo caso:\n1. Il CCNL applicato può prevedere regole più restrittive: verifica sempre il contratto collettivo di riferimento.\n2. Se il dipendente è in età di tutela (es. minori, donne in gravidanza, lavoratori con determinate condizioni), i limiti possono essere più stringenti.\n\nSe gli straordinari sono «spesso» e sistematici, il rischio non è solo la violazione del limite: è un segnale di sotto-organizzazione (carenza di personale, pianificazione dei carichi non adeguata) che può tradursi in burnout, contenzioso e costi di produzione.\n\nProssimi passi pratici:\n- Verifica il CCNL applicato e i tuoi attuali turni/orari per capire se sei entro o oltre il limite medio.\n- Analizza perché gli straordinari sono sistematici: è un problema di picchi stagionali (accettabile) o di carico strutturale (da risolvere con organico o riorganizzazione)?\n- Documenta le ore lavorate: serve sia per la correttezza fiscale/lavoristica sia per difenderti in caso di accertamento o contenzioso.\n\nSe vuoi, posso aiutarti a strutturare un'analisi rapida su come ridurre gli straordinari sistematici senza aumentare i costi fissi.",
+     "latenza_s": 47.9,
+     "primo_token_s": 9.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      false,
+      "…a un limite massimo ordinario di un importo previsto dalla normativa ore settimanali, calcolate co…"
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 110: «48oresettimanali,calcolatecomemediasuunp» → «unimportoprevistodallanormativaoresettim»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-ferie-in-busta",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "6b6627d3-0379-44a7-9f66-409fd02ae860",
+   "turni": [
+    {
+     "utente": "Un dipendente preferisce farsi pagare le ferie invece di prenderle. Possiamo liquidargliele in busta paga?",
+     "streamato": "No, in generale non si possono \"liquidare\" le ferie: il diritto al riposo è considerato inderogabile e va fruito come pausa dal lavoro, non convertito in denaro. Pagare le ferie non godute in busta, al posto della fruizione, è vietato e comporta rischi: contestazione da parte del dipendente, accertamenti ispettivi e obbligo di sanare la posizione.\n\nLe uniche eccezioni riguardano il momento della cessazione del rapporto di lavoro: in quel caso le ferie non fruite maturate vanno comunque \"liquidate\" con un indennità sostitutiva, ma non come opzione libera del lavoratore durante il rapporto.\n\nPer essere sicuri nel tuo caso concreto, verifica con il tuo consulente del lavoro la gestione dei giorni residui e le modalità di comunicazione dei periodi di ferie (che vanno stabiliti tenendo conto delle esigenze aziendali e del dipendente). Se vuoi, dimmi da quanto tempo l'azienda accumula ferie non godute: è un indicatore importante per capire il rischio.",
+     "visibile": "No, in generale non si possono \"liquidare\" le ferie: il diritto al riposo è considerato inderogabile e va fruito come pausa dal lavoro, non convertito in denaro. Pagare le ferie non godute in busta, al posto della fruizione, è vietato e comporta rischi: contestazione da parte del dipendente, accertamenti ispettivi e obbligo di sanare la posizione.\n\nLe uniche eccezioni riguardano il momento della cessazione del rapporto di lavoro: in quel caso le ferie non fruite maturate vanno comunque \"liquidate\" con un indennità sostitutiva, ma non come opzione libera del lavoratore durante il rapporto.\n\nPer essere sicuri nel tuo caso concreto, verifica con il tuo consulente del lavoro la gestione dei giorni residui e le modalità di comunicazione dei periodi di ferie (che vanno stabiliti tenendo conto delle esigenze aziendali e del dipendente). Se vuoi, dimmi da quanto tempo l'azienda accumula ferie non godute: è un indicatore importante per capire il rischio.",
+     "latenza_s": 48.8,
+     "primo_token_s": 11.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: minimo di quattro settimane"
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-giusta-causa",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "f0595e7f-f453-4c9a-b85c-43cfc1f03890",
+   "turni": [
+    {
+     "utente": "Ho scoperto che un dipendente ha rubato materiale dal magazzino. Posso licenziarlo in tronco, senza preavviso?",
+     "streamato": "In linea di massima sì: la sottrazione di beni aziendali da parte di un dipendente è una delle ipotesi tipiche che giustifica il licenziamento per giusta causa, senza preavviso, perché tradisce in modo grave il vincolo di fiducia alla base del rapporto di lavoro.\n\nDetto questo, non basta che il fatto sia vero: conta anche come è provato e come viene gestito.\n\nCosa conta concretamente:\n- La prova del fatto (video sorveglianza, inventari, ammissione, testimoni) deve essere solida e raccolta in modo legittimo.\n- La proporzionalità: il licenziamento per giusta causa è la sanzione più grave e si giustifica quando l'inadempienza è così grave da non consentire neppure la prosecuzione provvisoria del rapporto (art. 2119 c.c.).\n- I tempi: tra il fatto e la comunicazione non devono passare tempi eccessivamente lunghi, perché altrimenti la sanzione perde il carattere di “giusta causa”.\n- La forma: comunicazione scritta con le motivazioni, e attenzione a eventuali obblighi di preavviso alla procura o all’ispettorato solo se previsti (dipende da CCNL e circostanze).\n\nPrima di procedere ti consiglio di verificare tre cose:\n1. Hai una prova documentale chiara e inattaccabile?\n2. Quanto tempo è trascorso dalla scoperta al momento in cui vuoi licenziare?\n3. Il fatto è isolato o c’è una storia di comportamenti precedenti?\n\nSe la prova è certa e i tempi sono stretti, il licenziamento per giusta causa è la strada più solida. Se la prova è debole o i tempi sono lunghi, rischi che il licenziamento venga giudicato illegittimo e devi pagare indennità più alte.\n\nSe vuoi, dimmi come è provato il fatto e da quanto tempo è accaduto: ti dico se la posizione è solida o se conviene un’altra strada (ad esempio licenziamento disciplinare con preavviso o, in casi estremi, la denuncia per furto, che è un diritto ma non sostituisce la scelta sul rapporto di lavoro).",
+     "visibile": "In linea di massima sì: la sottrazione di beni aziendali da parte di un dipendente è una delle ipotesi tipiche che giustifica il licenziamento per giusta causa, senza preavviso, perché tradisce in modo grave il vincolo di fiducia alla base del rapporto di lavoro.\n\nDetto questo, non basta che il fatto sia vero: conta anche come è provato e come viene gestito.\n\nCosa conta concretamente:\n- La prova del fatto (video sorveglianza, inventari, ammissione, testimoni) deve essere solida e raccolta in modo legittimo.\n- La proporzionalità: il licenziamento per giusta causa è la sanzione più grave e si giustifica quando l'inadempienza è così grave da non consentire neppure la prosecuzione provvisoria del rapporto (art. 2119 c.c.).\n- I tempi: tra il fatto e la comunicazione non devono passare tempi eccessivamente lunghi, perché altrimenti la sanzione perde il carattere di «giusta causa».\n- La forma: comunicazione scritta con le motivazioni, e attenzione a eventuali obblighi di preavviso alla procura o all'ispettorato solo se previsti (dipende da CCNL e circostanze).\n\nPrima di procedere ti consiglio di verificare tre cose:\n1. Hai una prova documentale chiara e inattaccabile?\n2. Quanto tempo è trascorso dalla scoperta al momento in cui vuoi licenziare?\n3. Il fatto è isolato o c'è una storia di comportamenti precedenti?\n\nSe la prova è certa e i tempi sono stretti, il licenziamento per giusta causa è la strada più solida. Se la prova è debole o i tempi sono lunghi, rischi che il licenziamento venga giudicato illegittimo e devi pagare indennità più alte.\n\nSe vuoi, dimmi come è provato il fatto e da quanto tempo è accaduto: ti dico se la posizione è solida o se conviene un'altra strada (ad esempio licenziamento disciplinare con preavviso o, in casi estremi, la denuncia per furto, che è un diritto ma non sostituisce la scelta sul rapporto di lavoro).\n\nFonti: art. 2119 c.c.",
+     "latenza_s": 68.3,
+     "primo_token_s": 31.3,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1548: «» → «Fonti:art.2119c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 31.3s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-patto-non-concorrenza",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "2aa434bd-5cc4-4c75-8c4d-b7cda8c2ac09",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare ai dipendenti un patto di non concorrenza per dopo che se ne vanno, senza pagargli niente. Va bene?",
+     "streamato": "No, così non funziona: il patto di non concorrenza post-contrattuale senza corrispettivo è nullo, per legge.\n\nLa disciplina di riferimento (Codice Civile) richiede tre condizioni per la validità del patto di non concorrenza successivo alla cessazione: forma scritta, un corrispettivo a favore del dipendente e limiti ragionevoli di oggetto, tempo e luogo. La durata massima è di 5 anni per i dirigenti e 3 anni per gli altri ruoli: se si pattuisce di più, si riduce automaticamente a quei massimi (art. 2125 c.c.).\n\nQuindi \"senza pagare\" non è una scorciatoia ma l'elemento che rende il vincolo inefficace: in pratica non avreste alcun deterrente. Se il vostro obiettivo è proteggere informazioni o relazioni strategiche, la strada è prevedere un corrispettivo proporzionato (non simbolico) e vincoli mirati a ruolo, settore e area geografica.\n\nUn punto da verificare subito: a quali profili volete applicarlo? Il ragionamento su durata e corrispettivo cambia molto tra un dirigente, un commerciale senior e un operatore. Mi interessa capire qual è il rischio che volete coprire, così valutiamo se il patto è davvero lo strumento giusto o se bastano altre tutele.",
+     "visibile": "No, così non funziona: il patto di non concorrenza post-contrattuale senza corrispettivo è nullo, per legge.\n\nLa disciplina di riferimento (Codice Civile) richiede tre condizioni per la validità del patto di non concorrenza successivo alla cessazione: forma scritta, un corrispettivo a favore del dipendente e limiti ragionevoli di oggetto, tempo e luogo. La durata massima è di 5 anni per i dirigenti e 3 anni per gli altri ruoli: se si pattuisce di più, si riduce automaticamente a quei massimi (art. 2125 c.c.).\n\nQuindi \"senza pagare\" non è una scorciatoia ma l'elemento che rende il vincolo inefficace: in pratica non avreste alcun deterrente. Se il vostro obiettivo è proteggere informazioni o relazioni strategiche, la strada è prevedere un corrispettivo proporzionato (non simbolico) e vincoli mirati a ruolo, settore e area geografica.\n\nUn punto da verificare subito: a quali profili volete applicarlo? Il ragionamento su durata e corrispettivo cambia molto tra un dirigente, un commerciale senior e un operatore. Mi interessa capire qual è il rischio che volete coprire, così valutiamo se il patto è davvero lo strumento giusto o se bastano altre tutele.\n\nFonti: art. 2125 c.c.",
+     "latenza_s": 54.4,
+     "primo_token_s": 11.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 978: «» → «Fonti:art.2125c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-caparra",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "0ed7a3fd-e052-48d5-b72a-d82746e46da6",
+   "turni": [
+    {
+     "utente": "Abbiamo firmato un preliminare per comprare un capannone e versato 20.000 euro come caparra. Se il venditore si tira indietro, cosa possiamo chiedere?",
+     "streamato": "Se il venditore si tira indietro, potete chiedere il doppio della caparra: 40.000 euro, perché la caparra confirmatoria funziona così: chi ha ricevuto la caparra e non adempie deve restituire il doppio di quella ricevuta (art. 1385 c.c.).\n\nC’è una scelta importante da fare: la doppia caparra è un’alternativa, non un’aggiunta. Se la caparra era pensata come garanzia dell’acquisto, recedere e incassare il doppio vi tiene fuori dal contratto; se invece il capannone vi interessa davvero, potete anche pretendere l’esecuzione del contratto (ossia che proceda la vendita), salvo i tempi e la praticità, oppure la risoluzione con risarcimento dei danni secondo le regole generali, se il danno subito è superiore alla doppia caparra.\n\nDue cose da verificare subito:\n- Nel preliminare, la caparra è esplicitamente indicata come “confirmatoria” (tipica) o come “a titolo di penitenza” con diritto di recesso? Nel secondo caso il meccanismo cambia: chi recede perde o restituisce il doppio come corrispettivo del recesso, non come sanzione per inadempimento (art. 1386 c.c.).\n- Se l’inadempimento del venditore è grave, valutate se l’esecuzione forzata della vendita sia percorribile: dipende dalle condizioni del contratto e dalla sua effettiva praticabilità.\n\nProssimi passi concreti: conservate tutta la documentazione (contratto, bonifico, comunicazioni), e prima di rispondere a qualsiasi proposta del venditore, fatevi dare un parere dal vostro legale/avvocato con il testo del preliminare in mano, per capire se conviene la doppia caparra, l’esecuzione o la risoluzione con danni.\n\nSe mi dite come è scritta la clausola di caparra nel vostro contratto, posso essere più preciso.",
+     "visibile": "Se il venditore si tira indietro, potete chiedere il doppio della caparra: 40.000 euro, perché la caparra confirmatoria funziona così: chi ha ricevuto la caparra e non adempie deve restituire il doppio di quella ricevuta (art. 1385 c.c.).\n\nC'è una scelta importante da fare: la doppia caparra è un'alternativa, non un'aggiunta. Se la caparra era pensata come garanzia dell'acquisto, recedere e incassare il doppio vi tiene fuori dal contratto; se invece il capannone vi interessa davvero, potete anche pretendere l'esecuzione del contratto (ossia che proceda la vendita), salvo i tempi e la praticità, oppure la risoluzione con risarcimento dei danni secondo le regole generali, se il danno subito è superiore alla doppia caparra.\n\nDue cose da verificare subito:\n- Nel preliminare, la caparra è esplicitamente indicata come «confirmatoria» (tipica) o come «a titolo di penitenza» con diritto di recesso? Nel secondo caso il meccanismo cambia: chi recede perde o restituisce il doppio come corrispettivo del recesso, non come sanzione per inadempimento (art. 1386 c.c.).\n- Se l'inadempimento del venditore è grave, valutate se l'esecuzione forzata della vendita sia percorribile: dipende dalle condizioni del contratto e dalla sua effettiva praticabilità.\n\nProssimi passi concreti: conservate tutta la documentazione (contratto, bonifico, comunicazioni), e prima di rispondere a qualsiasi proposta del venditore, fatevi dare un parere dal vostro legale/avvocato con il testo del preliminare in mano, per capire se conviene la doppia caparra, l'esecuzione o la risoluzione con danni.\n\nSe mi dite come è scritta la clausola di caparra nel vostro contratto, posso essere più preciso.\n\nFonti: art. 1385 c.c.; art. 1386 c.c.",
+     "latenza_s": 48.6,
+     "primo_token_s": 13.5,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1422: «» → «Fonti:art.1385c.c.;art.1386c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-penale-eccessiva",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "ce7705b4-aa00-49a4-b40b-491c399e7931",
+   "turni": [
+    {
+     "utente": "Nel contratto di fornitura c'è una penale di 50.000 euro per il ritardo, ma l'ordine vale 20.000. Il cliente la pretende tutta. Si può ridurre?",
+     "streamato": "Sì, c’è una possibilità concreta, ma non è automatica: il giudice può ridurre la penale “equamente” quando l’obbligazione principale è stata eseguita in parte oppure quando l’ammontare della penale è **manifestamente eccessivo** rispetto all’interesse del creditore all’adempimento (art. 1384 c.c.). Nel tuo caso il rapporto 50.000 di penale su 20.000 di valore dell’ordine (250%) è un elemento che pesa a favore della riduzione: è proprio il tipo di squilibrio che la norma mira a correggere.\n\nAttenzione però a due punti che incidono sulla forza della tua posizione:\n\n- **La riduzione non spetta di diritto, ma va chiesta.** Il cliente che pretende l’intero importo ha ragione finché non intervenga il giudice: tu non puoi unilateralmente trattenere o pagare in parte. Se il cliente agisce, è nella fase di giudizio che il giudice valuta l’eccesso e riduce l’importo.\n- **Conta l’interesse effettivo, non solo il rapporto matematico.** Il giudice guarda al danno reale che il ritardo ha causato al cliente. Se il ritardo gli ha generato danni maggiori o una perdita concreta (es. blocco di una sua produzione, risarcimenti a sua volta dovuti a terzi), la penale potrebbe reggere anche se alta. Se invece non c’è un danno sproporzionato al valore dell’ordine, la riduzione è più probabile.\n\nCosa fare adesso:\n1. **Verifica il testo esatto della clausola**: indica se la penale è a favore tuo o a favore del cliente, se è per ogni giorno di ritardo o una tantum, e se c’è un tetto massimo. Questo cambia molto la valutazione.\n2. **Documenta l’entità reale del ritardo** e le cause (concordate, forza maggiore, ecc.): una causa che ti esonera o riduce l’imputabilità indebolisce la pretesa del cliente.\n3. **Valuta un tentativo di accordo**: proporre un importo ridotto in via stragiudiziale, motivato sull’eccesso, è spesso più veloce ed economico del giudizio, soprattutto se il cliente non ha un danno documentato.\n\nSe mi dici che cosa ha causato il ritardo e quanto è lungo, e se il cliente ha subito un danno concreto, posso ragionare su quale posizione di forza hai e come impostare la trattativa o la richiesta di riduzione in giudizio.",
+     "visibile": "Sì, c'è una possibilità concreta, ma non è automatica: il giudice può ridurre la penale «equamente» quando l'obbligazione principale è stata eseguita in parte oppure quando l'ammontare della penale è manifestamente eccessivo rispetto all'interesse del creditore all'adempimento (art. 1384 c.c.). Nel tuo caso il rapporto 50.000 di penale su 20.000 di valore dell'ordine (250%) è un elemento che pesa a favore della riduzione: è proprio il tipo di squilibrio che la norma mira a correggere.\n\nAttenzione però a due punti che incidono sulla forza della tua posizione:\n\n- La riduzione non spetta di diritto, ma va chiesta. Il cliente che pretende l'intero importo ha ragione finché non intervenga il giudice: tu non puoi unilateralmente trattenere o pagare in parte. Se il cliente agisce, è nella fase di giudizio che il giudice valuta l'eccesso e riduce l'importo.\n- Conta l'interesse effettivo, non solo il rapporto matematico. Il giudice guarda al danno reale che il ritardo ha causato al cliente. Se il ritardo gli ha generato danni maggiori o una perdita concreta (es. blocco di una sua produzione, risarcimenti a sua volta dovuti a terzi), la penale potrebbe reggere anche se alta. Se invece non c'è un danno sproporzionato al valore dell'ordine, la riduzione è più probabile.\n\nCosa fare adesso:\n1. Verifica il testo esatto della clausola: indica se la penale è a favore tuo o a favore del cliente, se è per ogni giorno di ritardo o una tantum, e se c'è un tetto massimo. Questo cambia molto la valutazione.\n2. Documenta l'entità reale del ritardo e le cause (concordate, forza maggiore, ecc.): una causa che ti esonera o riduce l'imputabilità indebolisce la pretesa del cliente.\n3. Valuta un tentativo di accordo: proporre un importo ridotto in via stragiudiziale, motivato sull'eccesso, è spesso più veloce ed economico del giudizio, soprattutto se il cliente non ha un danno documentato.\n\nSe mi dici che cosa ha causato il ritardo e quanto è lungo, e se il cliente ha subito un danno concreto, posso ragionare su quale posizione di forza hai e come impostare la trattativa o la richiesta di riduzione in giudizio.\n\nFonti: art. 1384 c.c.",
+     "latenza_s": 92.6,
+     "primo_token_s": 19.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1764: «» → «Fonti:art.1384c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 92.6s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-impugnare-decisione-srl",
+   "ripetizione": 3,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "ffc5e64f-94dc-4585-b216-72685e1a05ad",
+   "turni": [
+    {
+     "utente": "Nella nostra srl i soci di maggioranza hanno approvato una decisione che secondo me viola lo statuto. Entro quanto posso impugnarla?",
+     "streamato": "La regola generale è che una decisione dei soci presa in violazione di legge o dello statuto può essere impugnata entro 90 giorni dalla sua trascrizione nel libro delle decisioni (art. 2479-ter c.c.). Questo termine vale per i soci che non hanno consentito alla decisione, per gli amministratori e per il collegio sindacale.\n\nAttenzione però a due punti che possono allungare o modificare il termine:\n- Se la decisione ha un oggetto illecito o impossibile, o è stata presa in assenza assoluta di informazione, l’impugnazione può essere proposta da chiunque vi abbia interesse entro 3 anni dalla trascrizione (art. 2479-ter c.c.).\n- Se la modifica dell’oggetto sociale prevede attività impossibili o illecite, l’impugnazione non ha limite di tempo (art. 2479-ter c.c.).\n\nPer il tuo caso (violazione dello statuto), il termine di riferimento è quindi di norma i 90 giorni dalla trascrizione. Ti consiglio di verificare subito in quale data la decisione è stata iscritta nel libro delle decisioni, perché il conteggio parte da lì, e di valutare con un legale la natura esatta della violazione per capire se rientri nell’eccezione dei 3 anni.\n\nSe vuoi, posso aiutarti a preparare una bozza di istanza o a strutturare la contestazione.",
+     "visibile": "La regola generale è che una decisione dei soci presa in violazione di legge o dello statuto può essere impugnata entro 90 giorni dalla sua trascrizione nel libro delle decisioni (art. 2479-ter c.c.). Questo termine vale per i soci che non hanno consentito alla decisione, per gli amministratori e per il collegio sindacale.\n\nAttenzione però a due punti che possono allungare o modificare il termine:\n- Se la decisione ha un oggetto illecito o impossibile, o è stata presa in assenza assoluta di informazione, l'impugnazione può essere proposta da chiunque vi abbia interesse entro 3 anni dalla trascrizione (art. 2479-ter c.c.).\n- Se la modifica dell'oggetto sociale prevede attività impossibili o illecite, l'impugnazione non ha limite di tempo (art. 2479-ter c.c.).\n\nPer il tuo caso (violazione dello statuto), il termine di riferimento è quindi di norma i 90 giorni dalla trascrizione. Ti consiglio di verificare subito in quale data la decisione è stata iscritta nel libro delle decisioni, perché il conteggio parte da lì, e di valutare con un legale la natura esatta della violazione per capire se rientri nell'eccezione dei 3 anni.\n\nSe vuoi, posso aiutarti a preparare una bozza di istanza o a strutturare la contestazione.\n\nFonti: art. 2479 c.c.; art. 2479-ter c.c.",
+     "latenza_s": 44.7,
+     "primo_token_s": 7.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1028: «» → «Fonti:art.2479c.c.;art.2479-terc.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-appalto-solidale",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "7cfa63ec-57ed-4b2a-a45c-e27cc86504fe",
+   "turni": [
+    {
+     "utente": "Abbiamo affidato dei lavori a una ditta in appalto e ora un suo operaio chiede a noi gli stipendi arretrati. Rispondiamo noi?",
+     "streamato": "No, di norma non rispondete voi. Il rapporto di lavoro esiste tra l’operaio e la ditta appaltatrice: gli stipendi arretrati sono un debito dell’appaltatore verso il dipendente. Il committente (vostra azienda) non è il datore di lavoro e non ha l’obbligo diretto di pagare i salari.\n\nTuttavia, c’è un punto fondamentale da verificare subito: **l’art. 1676 c.c.** (Diritti degli ausiliari dell’appaltatore verso il committente). Questa norma prevede che chi ha prestato attività per eseguire l’opera possa proporre un’azione diretta contro il committente, **ma solo fino alla concorrenza del debito che il committente ha verso l’appaltatore**. In pratica:\n*   Se dovete ancora denaro all’appaltatore per i lavori in corso o non ancora saldati, l’operaio potrebbe chiedere a voi quelle somme, trattenendole per sè stesso.\n*   Se il debito verso l’appaltatore è già azzerato o non esiste, l’azione diretta non può prosperare contro di voi.\n\n**Cosa fare subito:**\n1.  **Non ammettere alcun debito** nei confronti dell’operaio. Rispondete per iscritto (PEC o raccomandata) che il rapporto di lavoro è con la ditta appaltatrice e che la vostra posizione è quella di committente.\n2.  **Verificate il vostro debito verso l’appaltatore**: quanti importi sono ancora insoluti nei suoi confronti? Questo è il massimale entro cui potreste essere esposti all’azione diretta.\n3.  **Coinvolgete il legale**: prima di inviare qualsiasi comunicazione, fate revisionare le clausole del contratto di appalto e la cronologia dei pagamenti. Se il contratto prevede garanzie, penali o obblighi di copertura INPS/IVA, questo cambia la dinamica.\n\nLa chiave è capire se avete ancora “carta” (debiti) verso l’appaltatore. Se sì, il rischio esiste; se no, l’operaio deve agire direttamente contro di lui.",
+     "visibile": "No, di norma non rispondete voi. Il rapporto di lavoro esiste tra l'operaio e la ditta appaltatrice: gli stipendi arretrati sono un debito dell'appaltatore verso il dipendente. Il committente (vostra azienda) non è il datore di lavoro e non ha l'obbligo diretto di pagare i salari.\n\nTuttavia, c'è un punto fondamentale da verificare subito: l'art. 1676 c.c. (Diritti degli ausiliari dell'appaltatore verso il committente). Questa norma prevede che chi ha prestato attività per eseguire l'opera possa proporre un'azione diretta contro il committente, ma solo fino alla concorrenza del debito che il committente ha verso l'appaltatore. In pratica:\n- Se dovete ancora denaro all'appaltatore per i lavori in corso o non ancora saldati, l'operaio potrebbe chiedere a voi quelle somme, trattenendole per sè stesso.\n- Se il debito verso l'appaltatore è già azzerato o non esiste, l'azione diretta non può prosperare contro di voi.\n\nCosa fare subito:\n1. Non ammettere alcun debito nei confronti dell'operaio. Rispondete per iscritto (PEC o raccomandata) che il rapporto di lavoro è con la ditta appaltatrice e che la vostra posizione è quella di committente.\n2. Verificate il vostro debito verso l'appaltatore: quanti importi sono ancora insoluti nei suoi confronti? Questo è il massimale entro cui potreste essere esposti all'azione diretta.\n3. Coinvolgete il legale: prima di inviare qualsiasi comunicazione, fate revisionare le clausole del contratto di appalto e la cronologia dei pagamenti. Se il contratto prevede garanzie, penali o obblighi di copertura INPS/IVA, questo cambia la dinamica.\n\nLa chiave è capire se avete ancora «carta» (debiti) verso l'appaltatore. Se sì, il rischio esiste; se no, l'operaio deve agire direttamente contro di lui.\n\nFonti: art. 1676 c.c.",
+     "latenza_s": 112.8,
+     "primo_token_s": 50.4,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1474: «» → «Fonti:art.1676c.c.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: responsabilità solidale"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: entro due anni dalla fine dell'appalto"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 112.8s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 50.4s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-orario-massimo",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "7d33499d-79c9-4107-83e1-882441c7c1a4",
+   "turni": [
+    {
+     "utente": "Un nostro dipendente fa spesso straordinari. C'è un limite massimo di ore settimanali per legge?",
+     "streamato": "Sì, esiste un limite: la durata media dell'orario di lavoro, comprese le ore straordinarie, non può superare le 48 ore settimanali (D.Lgs 66/2003, art. 4).\n\nC'è però una sfumatura importante: il limite si calcola come MEDIA su un periodo più lungo, non sul singolo venerdì \"pesante\". La media va calcolata su un periodo non superiore a 4 mesi (o fino a 6/12 mesi se il vostro CCNL lo prevede per ragioni organizzative). Quindi un mese con molti straordinari può essere \"compensato\" da mesi più leggeri, purché la media non superi le 48 ore (D.Lgs 66/2003, art. 4).\n\nIn pratica:\n- Un singolo giorno con 6-7 ore di straordinario non è illegittimo di per sé.\n- Il problema nasce se gli straordinari diventano costanti e la media su 4 mesi va oltre le 48 ore: lì ci sono rischi (sanzioni, e per il dipendente anche profili di sicurezza/turn-over).\n\nPer essere preciso nel tuo caso serve una cosa: qual è il CCNL applicato (o il settore)? perché il contratto può alzare il periodo di calcolo a 6 o 12 mesi e prevedere limiti specifici sugli straordinari mensili. Me lo dici e ti dico se la situazione è sostenibile o se conviene redistribuire il carico prima che diventi un rischio.",
+     "visibile": "Sì, esiste un limite: la durata media dell'orario di lavoro, comprese le ore straordinarie, non può superare le 48 ore settimanali (D.Lgs 66/2003, art. 4).\n\nC'è però una sfumatura importante: il limite si calcola come MEDIA su un periodo più lungo, non sul singolo venerdì \"pesante\". La media va calcolata su un periodo non superiore a 4 mesi (o fino a 6/12 mesi se il vostro CCNL lo prevede per ragioni organizzative). Quindi un mese con molti straordinari può essere \"compensato\" da mesi più leggeri, purché la media non superi le 48 ore (D.Lgs 66/2003, art. 4).\n\nIn pratica:\n- Un singolo giorno con 6-7 ore di straordinario non è illegittimo di per sé.\n- Il problema nasce se gli straordinari diventano costanti e la media su 4 mesi va oltre le 48 ore: lì ci sono rischi (sanzioni, e per il dipendente anche profili di sicurezza/turn-over).\n\nPer essere preciso nel tuo caso serve una cosa: qual è il CCNL applicato (o il settore)? perché il contratto può alzare il periodo di calcolo a 6 o 12 mesi e prevedere limiti specifici sugli straordinari mensili. Me lo dici e ti dico se la situazione è sostenibile o se conviene redistribuire il carico prima che diventi un rischio.\n\nFonti: D.Lgs 66/2003, art. 4.",
+     "latenza_s": 52.6,
+     "primo_token_s": 26.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 966: «» → «Fonti:D.Lgs66/2003,art.4.»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 26.1s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-ferie-in-busta",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "a61d1c24-3d5c-4540-8594-fa3b908d6f0a",
+   "turni": [
+    {
+     "utente": "Un dipendente preferisce farsi pagare le ferie invece di prenderle. Possiamo liquidargliele in busta paga?",
+     "streamato": "Di norma no: le ferie vanno godute, non convertite in denaro. Il periodo di ferie retribuito è un diritto del lavoratore, che non può essere scambiato con un semplice bonifico o una voce in busta al posto del riposo (la legge prevede espressamente il diritto a un periodo annuale di ferie retribuito, non una facoltà di liquidarlo).\n\nAttenzione ai rischi concreti:\n- Se liquidi le ferie in busta al posto del godimento, la manovra è di solito considerata inefficace e contestabile: il lavoratore può chiedere comunque il riposo, e l'azienda rischia sanzioni e contenzioso.\n- L'unica eccezione riconosciuta è la liquidazione di un conguaglio di ferie non godute al momento della cessazione del rapporto (dimissioni, licenziamento, scadenza), quando il rapporto si chiude e il diritto al riposo non può più essere esercitato. Non vale “nel mezzo” del rapporto in corso.\n\nCosa fare in pratica:\n- Spiega al dipendente che le ferie vanno pianificate e godute: trova con lui date compatibili con l'attività (puoi scegliere il momento, tenendo conto delle esigenze dell'impresa e del suo interesse, come previsto dalla norma).\n- Se il problema è la copertura in quel periodo, organizza il turnover o le coperture invece di liquidare.\n- Se in futuro il rapporto si chiude, lì sì, le ferie residue non fruite vanno liquidate (a titolo di conguaglio), ma sempre al momento della cessazione, non prima.\n\nSe la situazione è ricorrente o coinvolge più persone, posso aiutarti a strutturare un piano ferie semplice e in regola.",
+     "visibile": "Di norma no: le ferie vanno godute, non convertite in denaro. Il periodo di ferie retribuito è un diritto del lavoratore, che non può essere scambiato con un semplice bonifico o una voce in busta al posto del riposo (la legge prevede espressamente il diritto a un periodo annuale di ferie retribuito, non una facoltà di liquidarlo).\n\nAttenzione ai rischi concreti:\n- Se liquidi le ferie in busta al posto del godimento, la manovra è di solito considerata inefficace e contestabile: il lavoratore può chiedere comunque il riposo, e l'azienda rischia sanzioni e contenzioso.\n- L'unica eccezione riconosciuta è la liquidazione di un conguaglio di ferie non godute al momento della cessazione del rapporto (dimissioni, licenziamento, scadenza), quando il rapporto si chiude e il diritto al riposo non può più essere esercitato. Non vale «nel mezzo» del rapporto in corso.\n\nCosa fare in pratica:\n- Spiega al dipendente che le ferie vanno pianificate e godute: trova con lui date compatibili con l'attività (puoi scegliere il momento, tenendo conto delle esigenze dell'impresa e del suo interesse, come previsto dalla norma).\n- Se il problema è la copertura in quel periodo, organizza il turnover o le coperture invece di liquidare.\n- Se in futuro il rapporto si chiude, lì sì, le ferie residue non fruite vanno liquidate (a titolo di conguaglio), ma sempre al momento della cessazione, non prima.\n\nSe la situazione è ricorrente o coinvolge più persone, posso aiutarti a strutturare un piano ferie semplice e in regola.",
+     "latenza_s": 79.7,
+     "primo_token_s": 23.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: minimo di quattro settimane"
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 23.0s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-giusta-causa",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "fc10f0c2-7470-4638-b6af-73a5d10b01b7",
+   "turni": [
+    {
+     "utente": "Ho scoperto che un dipendente ha rubato materiale dal magazzino. Posso licenziarlo in tronco, senza preavviso?",
+     "streamato": "La risposta breve è: no, \"licenziare in tronco\" per un furto non esiste automaticamente. In Italia il licenziamento disciplinare (con giusta causa) è legittimo solo se il fatto è tale da configurare una \"causa grave\" e la procedura è corretta; un furto di materiale d'azienda, se provato e di entità significativa, può rientrare in questa categoria, ma il giudice può valutare caso per caso in base alla gravità del danno, alla posizione del dipendente, al precedente e alle circostanze. Il rischio concreto è che il licenziamento venga dichiarato illegittimo, con condanna al risarcimento e, in alcuni casi, al reintegro.\n\nPrima di procedere, verifica: (1) che il furto sia accertato (referto, video, ammissione, constatazione formale); (2) che non ci siano state contestazioni disciplinari precedenti che debbano essere considerate; (3) il CCNL applicato e la procedura di contestazione scritta, che è obbligatoria.\n\nSe vuoi, possiamo ragionare insieme sulla strategia: licenziamento disciplinare, messa alla prova, o altra opzione, in base ai fatti che hai a disposizione.",
+     "visibile": "La risposta breve è: no, \"licenziare in tronco\" per un furto non esiste automaticamente. In Italia il licenziamento disciplinare (con giusta causa) è legittimo solo se il fatto è tale da configurare una \"causa grave\" e la procedura è corretta; un furto di materiale d'azienda, se provato e di entità significativa, può rientrare in questa categoria, ma il giudice può valutare caso per caso in base alla gravità del danno, alla posizione del dipendente, al precedente e alle circostanze. Il rischio concreto è che il licenziamento venga dichiarato illegittimo, con condanna al risarcimento e, in alcuni casi, al reintegro.\n\nPrima di procedere, verifica: (1) che il furto sia accertato (referto, video, ammissione, constatazione formale); (2) che non ci siano state contestazioni disciplinari precedenti che debbano essere considerate; (3) il CCNL applicato e la procedura di contestazione scritta, che è obbligatoria.\n\nSe vuoi, possiamo ragionare insieme sulla strategia: licenziamento disciplinare, messa alla prova, o altra opzione, in base ai fatti che hai a disposizione.",
+     "latenza_s": 85.8,
+     "primo_token_s": 29.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: senza preavviso"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 29.8s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-patto-non-concorrenza",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "ef90b4de-1a74-46a6-868e-72229e6c3184",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare ai dipendenti un patto di non concorrenza per dopo che se ne vanno, senza pagargli niente. Va bene?",
+     "streamato": "Non è una buona idea così come l’hai formulata: il rischio concreto è che la clausola risulti inefficace, e quindi non ti protegga affatto.\n\nLa legge italiana ammette la non concorrenza post-cessione, ma la rende valida solo se compaiono tre condizioni insieme (tutte e tre, non bastano due):\n- il vincolo deve essere limitato nel tempo, nel luogo e nel tipo di attività (cioè mirato a proteggere un interesse concreto dell’azienda, tipo i clienti o i segreti industriali che quel dipendente conosce),\n- il dipendente deve avere avuto accesso a quel “nucleo” di informazioni (un commesso ordinario non ha gli stessi vincoli di un venditore senior),\n- e soprattutto deve esserci un INDENNIZZO a favore del dipendente, il cui ammontare e modalità lo fissa il CCNL applicato: non puoi decidere tu di non pagarne niente.\n\nSe ometti l’indennizzo, o lo metti troppo basso rispetto a quanto prevede il tuo CCNL, la clausola è di norma annullabile o del tutto inefficace: il dipendente, se vuole, può andarsene e lavorare da un concorrente senza conseguenze, e tu non avresti più alcun argomento per oppurti.\n\nIn pratica, prima di far firmare a chiunque:\n1. verifica qual è il CCNL che applichi, perché lì c’è l’ammontare minimo/standard dell’indennizzo e spesso anche le condizioni di durata e ambito (varia molto da settore a settore, quindi non posso darti una cifra senza sapere il tuo contratto);\n2. calcola per ogni persona se vale davvero la pena: ha senso solo per chi realmente ha accesso a clienti strategici o know-how sensibile, non per tutto lo staff;\n3. fallo redigere da un consulente del lavoro o da un legale specializzato, che la customizza ruolo per ruolo: una clausola identica per tutti è la versione più debole.\n\nSe mi dici il CCNL che usi e il ruolo tipico dei dipendenti a cui vorresti applicarla (venditori? tecnici? management?), posso ragionare meglio su durata, ambito e ordine di grandezza dell’indennizzo che il contratto collettivo prevede in quel caso.",
+     "visibile": "Non è una buona idea così come l'hai formulata: il rischio concreto è che la clausola risulti inefficace, e quindi non ti protegga affatto.\n\nLa legge italiana ammette la non concorrenza post-cessione, ma la rende valida solo se compaiono tre condizioni insieme (tutte e tre, non bastano due):\n- il vincolo deve essere limitato nel tempo, nel luogo e nel tipo di attività (cioè mirato a proteggere un interesse concreto dell'azienda, tipo i clienti o i segreti industriali che quel dipendente conosce),\n- il dipendente deve avere avuto accesso a quel «nucleo» di informazioni (un commesso ordinario non ha gli stessi vincoli di un venditore senior),\n- e soprattutto deve esserci un INDENNIZZO a favore del dipendente, il cui ammontare e modalità lo fissa il CCNL applicato: non puoi decidere tu di non pagarne niente.\n\nSe ometti l'indennizzo, o lo metti troppo basso rispetto a quanto prevede il tuo CCNL, la clausola è di norma annullabile o del tutto inefficace: il dipendente, se vuole, può andarsene e lavorare da un concorrente senza conseguenze, e tu non avresti più alcun argomento per oppurti.\n\nIn pratica, prima di far firmare a chiunque:\n1. verifica qual è il CCNL che applichi, perché lì c'è l'ammontare minimo/standard dell'indennizzo e spesso anche le condizioni di durata e ambito (varia molto da settore a settore, quindi non posso darti una cifra senza sapere il tuo contratto);\n2. calcola per ogni persona se vale davvero la pena: ha senso solo per chi realmente ha accesso a clienti strategici o know-how sensibile, non per tutto lo staff;\n3. fallo redigere da un consulente del lavoro o da un legale specializzato, che la customizza ruolo per ruolo: una clausola identica per tutti è la versione più debole.\n\nSe mi dici il CCNL che usi e il ruolo tipico dei dipendenti a cui vorresti applicarla (venditori? tecnici? management?), posso ragionare meglio su durata, ambito e ordine di grandezza dell'indennizzo che il contratto collettivo prevede in quel caso.",
+     "latenza_s": 74.9,
+     "primo_token_s": 26.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: nullo senza corrispettivo"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: durata massima tre anni (cinque per i dirigenti)"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 26.9s > 20s"
+     ]
+    }
+   }
+  }
+ ]
+}

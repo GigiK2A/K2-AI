@@ -1,0 +1,2125 @@
+{
+ "meta": {
+  "data": "2026-10-15T15:09:42.837325+00:00",
+  "base_url": "http://127.0.0.1:8123/api/kbot",
+  "modello": "qwen locale (test) via shim k2a-kbot · senza pacchetto (appaiato)",
+  "commit": "e64829f",
+  "file_casi": "casi_held_out_2.json",
+  "ripetizioni": 3,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "7e06f0eb-b837-456c-bf22-e68e1e2ebe4b",
+   "061af871-84f3-452f-9de8-4dc2358c3a28",
+   "eb6318f3-29f3-4768-b59f-ae26c648c0fd",
+   "5835f028-88c0-46d0-b81d-75722621839a",
+   "3d8b55c1-af27-4637-8665-e3a60a753213",
+   "dd08ad01-2cd9-405f-834c-5c1d3a03a9f1",
+   "2e759aec-da0b-4cc2-a36a-8c76b9ae0e1a",
+   "ef5d186e-17f8-4c8f-9d55-36b8a3052866",
+   "f4e51052-c18a-4d25-9cb1-bda5e5c90c82",
+   "baa441c1-3f8e-4416-884d-82beee2b78bf",
+   "48248829-6266-4a46-a4b5-678d2afcc1fa",
+   "fbf8012c-95b9-4c44-8ec1-10dbe5afe65b",
+   "577eda58-6da8-4c4c-88ac-50682adfe247",
+   "57d5281b-29aa-4262-9eb2-68f546a06310",
+   "2b2cfa22-2220-4323-a681-2ce408f56850",
+   "5197e5c1-afa8-4d49-abe2-d73176b4fd91",
+   "4cde2078-96d0-416f-ace2-4b620a1290e2",
+   "d24cf544-01a9-47d4-a281-ac7e7dfec712",
+   "006ca6f0-f49a-40c0-8460-157d551bef93",
+   "382309cc-cefd-4bce-9c9c-aa40376d0f61",
+   "f957290c-fe6e-43bd-81d7-de052d0d1e32",
+   "247b68b1-f6eb-442a-bda9-3f01dfa08fec",
+   "81ce72c5-e84c-4bba-8072-7a66931e6260",
+   "251f3223-0688-4100-8310-50fb11277900"
+  ],
+  "rivalutato_il": "2026-10-15T15:10:32.654379+00:00",
+  "rivalutato_da": "abl-senza-ho2-3rip-2026-10-15.json",
+  "commit_rivalutazione": "e64829f"
+ },
+ "riepilogo": {
+  "esecuzioni": 24,
+  "ripetizioni": 3,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 8,
+    "generici_ok": 60,
+    "generici_tot": 64,
+    "specifici_ok": 11,
+    "specifici_tot": 24,
+    "casi_tutte_attese": 0,
+    "casi_senza_difetti_generici": 4
+   },
+   {
+    "ripetizione": 2,
+    "casi": 8,
+    "generici_ok": 58,
+    "generici_tot": 64,
+    "specifici_ok": 12,
+    "specifici_tot": 24,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 3,
+    "casi": 8,
+    "generici_ok": 61,
+    "generici_tot": 64,
+    "specifici_ok": 14,
+    "specifici_tot": 24,
+    "casi_tutte_attese": 3,
+    "casi_senza_difetti_generici": 5
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     11,
+     12,
+     14
+    ],
+    "media": 12.33,
+    "sd": 1.53
+   },
+   "generici_ok": {
+    "valori": [
+     60,
+     58,
+     61
+    ],
+    "media": 59.67,
+    "sd": 1.53
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     0,
+     1,
+     3
+    ],
+    "media": 1.33,
+    "sd": 1.53
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     4,
+     2,
+     5
+    ],
+    "media": 3.67,
+    "sd": 1.53
+   }
+  },
+  "controlli_instabili": [
+   {
+    "caso": "h2-cessione-quote-srl",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "h2-cessione-quote-srl",
+    "controllo": "specifici.fatti_presenti",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h2-difetti-gravi-capannone",
+    "controllo": "specifici.fatti_presenti",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h2-patto-concorrenza-imprese",
+    "controllo": "specifici.fatti_alternativi",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "h2-patto-concorrenza-imprese",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h2-ricorso-accertamento",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h2-ricorso-accertamento",
+    "controllo": "specifici.fatti_presenti",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h2-ricorso-accertamento",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "h2-risarcimento-illecito",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h2-risarcimento-illecito",
+    "controllo": "specifici.fatti_presenti",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "h2-risarcimento-illecito",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h2-ritenuta-acconto",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h2-ritenuta-acconto",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 2,
+    "su": 3
+   }
+  ],
+  "casi": 24,
+  "casi_senza_difetti_generici": 11,
+  "casi_con_attese_specifiche": 24,
+  "casi_con_attese_tutte_rispettate": 4,
+  "controlli_generici": "179/192",
+  "controlli_specifici": "37/72",
+  "per_controllo": {
+   "generici.frasi_integre": "24/24",
+   "generici.nessun_errore_di_stream": "24/24",
+   "generici.nessun_testo_del_critico": "24/24",
+   "generici.nessuna_autocorrezione": "24/24",
+   "generici.nessuna_fuga_prompt": "24/24",
+   "generici.nessuna_lingua_estranea": "24/24",
+   "generici.risposta_non_vuota": "24/24",
+   "generici.testo_letto_uguale_finale": "11/24",
+   "specifici.fatti_alternativi": "5/15",
+   "specifici.fatti_presenti": "8/24",
+   "specifici.nessuna_affermazione_errata": "15/15",
+   "specifici.rinvio_al_professionista": "9/18"
+  },
+  "latenza_s": {
+   "mediana": 77.85,
+   "p90": 149.0,
+   "max": 185.9
+  },
+  "primo_token_s": {
+   "mediana": 6.199999999999999,
+   "p90": 10.9,
+   "max": 32.6
+  }
+ },
+ "risultati": [
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 1,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "7e06f0eb-b837-456c-bf22-e68e1e2ebe4b",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "La regola di base è questa: la ritenuta d'acconto sulle prestazioni di lavoro autonomo si applica in generale, ma dipende da due fattori: se il consulente ha un’attività abituale e il suo regime fiscale (forfettario o ordinario).\n\nSe il consulente è **forfettario** (regime semplificato) o se la prestazione è isolata/non abituale, **NON dovete trattenere** la ritenuta: gli pagate l’intero importo di 2.000 euro e chiedete la fattura.\n\nSe invece il consulente è in **regime ordinario** e la prestazione è abituale, **DEVETE trattenere** il 20%.\nIn questo caso:\n*   Ritenuta da trattenere: 2.000 x 20% = 400 €\n*   Importo netto da versare al consulente: 1.600 €\n*   I 400 € tenuti da voi vanno versati all’Agenzia delle Entrate (modello F24) entro il 16 del mese successivo a quello in cui avete versato la parcella.\n\nCosa verificare subito:\n1.  Chiedete al consulente se è nel **regime forfettario**. Di norma, nella fattura dovrebbe risultare la dicitura \"Operazione assoggetta a ritenuta d'acconto\" o il contrario, oppure una specifica esonero.\n2.  Verificate che sulla fattura non ci sia il codice fiscale e, nel caso si debba trattenere, che ci sia la dicitura \"Ritenuta d'acconto ai sensi di legge\".\n\nSe non siete certi del suo regime, la domanda da fargli è: \"Sei nel regime forfettario? Devo applicare la ritenuta del 20%?\" La risposta vi chiarisce immediatamente l’operazione da fare.",
+     "visibile": "La regola di base è questa: la ritenuta d'acconto sulle prestazioni di lavoro autonomo si applica in generale, ma dipende da due fattori: se il consulente ha un'attività abituale e il suo regime fiscale (forfettario o ordinario).\n\nSe il consulente è forfettario (regime semplificato) o se la prestazione è isolata/non abituale, NON dovete trattenere la ritenuta: gli pagate l'intero importo di 2.000 euro e chiedete la fattura.\n\nSe invece il consulente è in regime ordinario e la prestazione è abituale, DEVETE trattenere il 20%.\nIn questo caso:\n- Ritenuta da trattenere: 2.000 x 20% = 400 €\n- Importo netto da versare al consulente: 1.600 €\n- I 400 € tenuti da voi vanno versati all'Agenzia delle Entrate (modello F24) entro il termine previsto dalla normativao la parcella.\n\nCosa verificare subito:\n1. Chiedete al consulente se è nel regime forfettario. Di norma, nella fattura dovrebbe risultare la dicitura \"Operazione assoggetta a ritenuta d'acconto\" o il contrario, oppure una specifica esonero.\n2. Verificate che sulla fattura non ci sia il codice fiscale e, nel caso si debba trattenere, che ci sia la dicitura \"Ritenuta d'acconto ai sensi di legge\".\n\nSe non siete certi del suo regime, la domanda da fargli è: \"Sei nel regime forfettario? Devo applicare la ritenuta del 20%?\" La risposta vi chiarisce immediatamente l'operazione da fare.",
+     "latenza_s": 97.4,
+     "primo_token_s": 7.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 602: «16delmesesuccessivoaquelloincuiavetevers» → «termineprevistodallanormativaolaparcella»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 97.4s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-cessione-quote-srl",
+   "ripetizione": 1,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "061af871-84f3-452f-9de8-4dc2358c3a28",
+   "turni": [
+    {
+     "utente": "Un socio vuole vendere la sua quota della srl a un terzo. Come si fa formalmente e cosa dobbiamo depositare?",
+     "streamato": "La cessione di una quota di srl a un terzo (non socio) è disciplinata dallo Statuto: prima di tutto verifica se la tua srl prevede un diritto di prelazione a favore degli altri soci o del legale rappresentante, o un diritto/obbligo di riacquisto. Se non c’è nulla, la cessione può avvenire liberamente, ma va fatta con atto scritto, generalmente con atto pubblico o scrittura privata autenticata.\n\nI passi pratici:\n1. **Verifica lo Statuto**: cerca le clausole su cessione quote, prelazione e riacquisto. È il punto che cambia tutto.\n2. **Accordo tra cedente e terzo**: prezzo, condizioni, data di perfezione.\n3. **Comunicazione/consenso degli altri soci** (se previsto dallo Statuto, es. diritto di prelazione): spesso serve una formale comunicazione con indicazione di prezzo e condizioni, e un termine per esercitare la prelazione.\n4. **Atto di cessione**: atto pubblico o scrittura privata autenticata.\n5. **Aggiornamento dell’atto costitutivo e del registro dei soci**: l’atto va inserito negli atti sociali e il libro soci aggiornato.\n6. **Comunicazione al Registro Imprese**: va depositata la variazione dell’atto costitutivo (che riflette la nuova composizione delle quote) tramite il notaio o un intermediario abilitato, su visure.it o direttamente al Registro Imprese.\n7. **Aspetti fiscali**: la cessione è soggetta a plusvalenza per il cedente (con regime specifico) e eventuali imposte di registro/bolli sull’atto: qui serve il commercialista per il calcolo e la dichiarazione.\n\n**Cosa depositare al Registro Imprese**: l’atto di cessione (o la scrittura privata autenticata) e l’atto modificativo dell’atto costitutivo che aggiorni la composizione del capitale e la lista dei soci.\n\nCosa mi puoi dire sullo Statuto della vostra srl? C’è una clausola di prelazione? Questo cambia la procedura e i tempi.",
+     "visibile": "La cessione di una quota di srl a un terzo (non socio) è disciplinata dallo Statuto: prima di tutto verifica se la tua srl prevede un diritto di prelazione a favore degli altri soci o del legale rappresentante, o un diritto/obbligo di riacquisto. Se non c'è nulla, la cessione può avvenire liberamente, ma va fatta con atto scritto, generalmente con atto pubblico o scrittura privata autenticata.\n\nI passi pratici:\n1. Verifica lo Statuto: cerca le clausole su cessione quote, prelazione e riacquisto. È il punto che cambia tutto.\n2. Accordo tra cedente e terzo: prezzo, condizioni, data di perfezione.\n3. Comunicazione/consenso degli altri soci (se previsto dallo Statuto, es. diritto di prelazione): spesso serve una formale comunicazione con indicazione di prezzo e condizioni, e un termine per esercitare la prelazione.\n4. Atto di cessione: atto pubblico o scrittura privata autenticata.\n5. Aggiornamento dell'atto costitutivo e del registro dei soci: l'atto va inserito negli atti sociali e il libro soci aggiornato.\n6. Comunicazione al Registro Imprese: va depositata la variazione dell'atto costitutivo (che riflette la nuova composizione delle quote) tramite il notaio o un intermediario abilitato, su visure.it o direttamente al Registro Imprese.\n7. Aspetti fiscali: la cessione è soggetta a plusvalenza per il cedente (con regime specifico) e eventuali imposte di registro/bolli sull'atto: qui serve il commercialista per il calcolo e la dichiarazione.\n\nCosa depositare al Registro Imprese: l'atto di cessione (o la scrittura privata autenticata) e l'atto modificativo dell'atto costitutivo che aggiorni la composizione del capitale e la lista dei soci.\n\nCosa mi puoi dire sullo Statuto della vostra srl? C'è una clausola di prelazione? Questo cambia la procedura e i tempi.",
+     "latenza_s": 67.5,
+     "primo_token_s": 2.5,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: deposito al registro delle imprese entro 30 giorni"
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-approvazione-bilancio-srl",
+   "ripetizione": 1,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "eb6318f3-29f3-4768-b59f-ae26c648c0fd",
+   "turni": [
+    {
+     "utente": "Entro quando dobbiamo approvare il bilancio della nostra srl dopo la chiusura dell'esercizio?",
+     "streamato": "In generale, l’assemblea che approva il bilancio deve tenersi entro 120 giorni dalla chiusura dell’esercizio, quindi se chiudi al 31/12 hai tempo fino al 30/4. Se invece il bilancio è stato predisposto in forma abbreviata e la srl non ha obblighi specifici in deroga, il termine resta lo stesso; eventuali clausole statutarie più favorevoli possono solo anticipare, non posticipare, la scadenza.\n\nSe il vostro esercizio non chiude a fine anno o avete previsto nello statuto una data diversa per l’assemblea ordinaria, fatemi sapere: così vi confermo il termine esatto e vi dico anche quando scade il deposito in Camera di Commercio.",
+     "visibile": "In generale, l'assemblea che approva il bilancio deve tenersi entro il termine previsto dalla normativa, quindi se chiudi al 31/12 hai tempo fino al 30/4. Se invece il bilancio è stato predisposto in forma abbreviata e la srl non ha obblighi specifici in deroga, il termine resta lo stesso; eventuali clausole statutarie più favorevoli possono solo anticipare, non posticipare, la scadenza.\n\nSe il vostro esercizio non chiude a fine anno o avete previsto nello statuto una data diversa per l'assemblea ordinaria, fatemi sapere: così vi confermo il termine esatto e vi dico anche quando scade il deposito in Camera di Commercio (verifica la scadenza/soglia esatta sulla fonte ufficiale o nel report).",
+     "latenza_s": 62.0,
+     "primo_token_s": 9.5,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 58: «120giornidallachiusuradell'esercizio,qui» → «iltermineprevistodallanormativa,quindise»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: 120 giorni dalla chiusura"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: maggior termine (180 giorni) con le condizioni di legge"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-vizi-compravendita",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "5835f028-88c0-46d0-b81d-75722621839a",
+   "turni": [
+    {
+     "utente": "Abbiamo comprato un macchinario da un'impresa e dopo un mese ha un difetto. Entro quanto dobbiamo contestarlo al venditore?",
+     "streamato": "La domanda giusta non è solo “entro quanto”, ma “cosa state vendendo/comprando” e “qual è il difetto”: cambia termine e strategia se è una cessione di azienda (con il macchinario), se è una vendita di singolo bene usato, e se il difetto è nascosto o visibile.\n\nIn generale, per un bene usato venduto da un’impresa a un’impresa (non a un consumatore), la norma di riferimento è il codice civile, che disciplina le tutele per vizio del bene: il compratore deve contestare il vizio entro un termine ragionevole dalla scoperta (per i beni di per sé deperibili, il termine è più stretto). Il termine massimo di decadenza per i beni di per sé deperibili, o con breve durata di vita, è di 6 mesi dalla consegna; per gli altri beni non esiste un termine fisso ma si ragiona su “termine ragionevole dalla scoperta” e sulla prescrizione ordinaria (in genere 10 anni, salvo casi particolari). Questo è un quadro generale: il termine concreto dipende dalla natura del bene e dal momento in cui il difetto è diventato conoscibile.\n\nDetto questo, con un mese di utilizzo un difetto che si manifesta ora è normalmente contestabile, ma il rischio è che il venditore sostenga che il difetto era già noto o visibile, o che il problema sia normale usura. Per questo, prima di inviare la contestazione, dovresti fare due cose:\n\n1) Verifica se il contratto di vendita prevede un termine specifico di contestazione (a volte i contratti prevedono termini più brevi o clausole di verifica del bene);\n2) Documenta subito il difetto con foto/video, data di manifestazione, eventuale perizia tecnica, e conserva tutte le comunicazioni con il venditore.\n\nSe il difetto è grave e il contratto non ha clausole strane, ti consiglierei di contestare per iscritto (PEC o raccomandata) entro pochi giorni dalla scoperta, chiedendo chiaramente se chiedi riparazione, sostituzione, riduzione del prezzo o risoluzione del contratto: è la tua richiesta a far partire l’orologio sul venditore. Se invece il difetto è dubbio o il contratto ha clausole complesse, fermati e prima di scrivere parlane con un legale: una contestazione mal formulata può indebolire la posizione.\n\nSe mi dici se la vendita era di un singolo macchinario usato, di un complesso di beni, o se fa parte di una cessione d’azienda, posso essere più preciso sul termine e sulla strategia.",
+     "visibile": "La domanda giusta non è solo «entro quanto», ma «cosa state vendendo/comprando» e «qual è il difetto»: cambia termine e strategia se è una cessione di azienda (con il macchinario), se è una vendita di singolo bene usato, e se il difetto è nascosto o visibile.\n\nIn generale, per un bene usato venduto da un'impresa a un'impresa (non a un consumatore), la norma di riferimento è il codice civile, che disciplina le tutele per vizio del bene: il compratore deve contestare il vizio entro un termine ragionevole dalla scoperta (per i beni di per sé deperibili, il termine è più stretto). Il termine massimo di decadenza per i beni di per sé deperibili, o con breve durata di vita, è quello previsto dalla normativa; per gli altri beni non esiste un termine fisso ma si ragiona su «termine ragionevole dalla scoperta» e sulla prescrizione ordinaria (in genere 10 anni, salvo casi particolari). Questo è un quadro generale: il termine concreto dipende dalla natura del bene e dal momento in cui il difetto è diventato conoscibile.\n\nDetto questo, con un mese di utilizzo un difetto che si manifesta ora è normalmente contestabile, ma il rischio è che il venditore sostenga che il difetto era già noto o visibile, o che il problema sia normale usura. Per questo, prima di inviare la contestazione, dovresti fare due cose:\n\n1) Verifica se il contratto di vendita prevede un termine specifico di contestazione (a volte i contratti prevedono termini più brevi o clausole di verifica del bene);\n2) Documenta subito il difetto con foto/video, data di manifestazione, eventuale perizia tecnica, e conserva tutte le comunicazioni con il venditore.\n\nSe il difetto è grave e il contratto non ha clausole strane, ti consiglierei di contestare per iscritto (PEC o raccomandata) entro pochi giorni dalla scoperta, chiedendo chiaramente se chiedi riparazione, sostituzione, riduzione del prezzo o risoluzione del contratto: è la tua richiesta a far partire l'orologio sul venditore. Se invece il difetto è dubbio o il contratto ha clausole complesse, fermati e prima di scrivere parlane con un legale: una contestazione mal formulata può indebolire la posizione.\n\nSe mi dici se la vendita era di un singolo macchinario usato, di un complesso di beni, o se fa parte di una cessione d'azienda, posso essere più preciso sul termine e sulla strategia.",
+     "latenza_s": 149.0,
+     "primo_token_s": 1.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 558: «di6mesidallaconsegna;perglialtribeninone» → «quelloprevistodallanormativa;perglialtri»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: denuncia entro 8 giorni dalla scoperta"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: azione in un anno dalla consegna"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 149.0s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-risarcimento-illecito",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "3d8b55c1-af27-4637-8665-e3a60a753213",
+   "turni": [
+    {
+     "utente": "Un'altra impresa ci ha causato un danno con un comportamento illecito due anni fa. Siamo ancora in tempo per chiedere il risarcimento?",
+     "streamato": "Capire se siete ancora in tempo dipende da due fattori distinti che spesso vengono confusi: la prescrizione (il termine entro cui si può agire in giudizio) e la decadenza (il termine entro cui si deve esercitare un diritto). In generale, l'azione di risarcimento del danno da illecito civile si prescrive in 10 anni dalla data in cui si è verificato il fatto, ma in presenza di comportamenti specifici (come concorrenza sleale o violazioni contrattuali) la prescrizione può essere più breve.\n\nPer dirvi con certezza se siete ancora nel termine e quale termine si applica al vostro caso concreto, ho bisogno di capire la natura esatta del comportamento che vi ha causato il danno.\n\nIl fatto che non ci siano ancora comunicazioni o contenziosi in corso con l’altra impresa è già un segnale positivo: se l'azione è soggetta a prescrizione, il tempo scorre, ma finché non si supera il termine legale, il diritto non si perde automaticamente; la vera criticità si verifica solo quando si eccede il termine o quando si è in presenza di una decadenza per mancata presentazione di un reclamo formale entro un termine brevissimo.\n\nQuale tipo di comportamento illecito ha messo in atto l'altra impresa? Ad esempio:\n1. Vi ha sottratto clienti o fornito informazioni riservate (concorrenza sleale)?\n2. Ha violato un contratto di fornitura o partnership che vi legava (danno contrattuale)?\n3. Ha utilizzato in modo non autorizzato il vostro marchio o una vostra invenzione (proprietà intellettuale)?\n\nLa risposta a questa domanda cambia drasticamente il termine a cui fare riferimento e i requisiti formali che dovrete rispettare per non perdere il diritto al risarcimento.",
+     "visibile": "Capire se siete ancora in tempo dipende da due fattori distinti che spesso vengono confusi: la prescrizione (il termine entro cui si può agire in giudizio) e la decadenza (il termine entro cui si deve esercitare un diritto). In generale, l'azione di risarcimento del danno da illecito civile si prescrive nel termine previsto dalla normativa, ma in presenza di comportamenti specifici (come concorrenza sleale o violazioni contrattuali) la prescrizione può essere più breve.\n\nPer dirvi con certezza se siete ancora nel termine e quale termine si applica al vostro caso concreto, ho bisogno di capire la natura esatta del comportamento che vi ha causato il danno.\n\nIl fatto che non ci siano ancora comunicazioni o contenziosi in corso con l'altra impresa è già un segnale positivo: se l'azione è soggetta a prescrizione, il tempo scorre, ma finché non si supera il termine legale, il diritto non si perde automaticamente; la vera criticità si verifica solo quando si eccede il termine o quando si è in presenza di una decadenza per mancata presentazione di un reclamo formale entro un termine brevissimo.\n\nQuale tipo di comportamento illecito ha messo in atto l'altra impresa? Ad esempio:\n1. Vi ha sottratto clienti o fornito informazioni riservate (concorrenza sleale)?\n2. Ha violato un contratto di fornitura o partnership che vi legava (danno contrattuale)?\n3. Ha utilizzato in modo non autorizzato il vostro marchio o una vostra invenzione (proprietà intellettuale)?\n\nLa risposta a questa domanda cambia drasticamente il termine a cui fare riferimento e i requisiti formali che dovrete rispettare per non perdere il diritto al risarcimento.",
+     "latenza_s": 69.9,
+     "primo_token_s": 2.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 255: «in10annidalladataincuisièverificatoilfat» → «neltermineprevistodallanormativa,mainpre»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: prescrizione in cinque anni"
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ricorso-accertamento",
+   "ripetizione": 1,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "dd08ad01-2cd9-405f-834c-5c1d3a03a9f1",
+   "turni": [
+    {
+     "utente": "Ci è arrivato un avviso di accertamento dall'Agenzia delle Entrate. Entro quanto possiamo fare ricorso?",
+     "streamato": "La questione dei termini di ricorso è delicata: la risposta dipende da quale tipo di avviso vi è stato notificato, perché i termini cambiano sensibilmente a seconda della natura dell'atto.\n\nAvvisi di accertamento \"ordinari\" (ad esempio su redditi o IVA) e avvisi di accertamento liquidativi (ad esempio in materia di ritenute) hanno termini di decadenza e di proponibilità diversi, così come le comunicazioni di contestazione o i cartelli di pagamento. Il termine è generalmente breve e decorre dalla notifica (o dalla ricezione della PEC, se notificata in via digitale): non si tratta di un conteggio generico, ma di una scadenza precisa fissata dal codice di procedura civile e dalla normativa tributaria, con differenze anche tra ricorso al giudice ordinario e al giudice tributario.\n\nPer essere precisi senza rischiare di darvi un termine sbagliato: che tipo di avviso vi è stato notificato (accertamento su redditi/IVA, accertamento liquidativo su ritenute, cartello di pagamento, oppure altro)? E in quale data è avvenuta la notifica o la ricezione tramite PEC?\n\nCon questi due dati vi posso indicare il termine corretto e i prossimi passi. Nel frattempo, una prudenza fondamentale: conservate integra la ricevuta di notifica o la PEC di ricezione, perché la data esatta è l'unico punto di partenza valido per calcolare la scadenza.",
+     "visibile": "La questione dei termini di ricorso è delicata: la risposta dipende da quale tipo di avviso vi è stato notificato, perché i termini cambiano sensibilmente a seconda della natura dell'atto.\n\nAvvisi di accertamento \"ordinari\" (ad esempio su redditi o IVA) e avvisi di accertamento liquidativi (ad esempio in materia di ritenute) hanno termini di decadenza e di proponibilità diversi, così come le comunicazioni di contestazione o i cartelli di pagamento. Il termine è generalmente breve e decorre dalla notifica (o dalla ricezione della PEC, se notificata in via digitale): non si tratta di un conteggio generico, ma di una scadenza precisa fissata dal codice di procedura civile e dalla normativa tributaria, con differenze anche tra ricorso al giudice ordinario e al giudice tributario.\n\nPer essere precisi senza rischiare di darvi un termine sbagliato: che tipo di avviso vi è stato notificato (accertamento su redditi/IVA, accertamento liquidativo su ritenute, cartello di pagamento, oppure altro)? E in quale data è avvenuta la notifica o la ricezione tramite PEC?\n\nCon questi due dati vi posso indicare il termine corretto e i prossimi passi. Nel frattempo, una prudenza fondamentale: conservate integra la ricevuta di notifica o la PEC di ricezione, perché la data esatta è l'unico punto di partenza valido per calcolare la scadenza.",
+     "latenza_s": 103.4,
+     "primo_token_s": 8.3,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: 60 giorni dalla notifica"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 103.4s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-difetti-gravi-capannone",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "2e759aec-da0b-4cc2-a36a-8c76b9ae0e1a",
+   "turni": [
+    {
+     "utente": "Il capannone che ci ha costruito un'impresa ha dei difetti gravi comparsi dopo cinque anni. Possiamo pretendere qualcosa dall'impresa?",
+     "streamato": "Sì, in linea di principio potete pretendere qualcosa: per le opere edilizie esistono garanzie legali a tutela del committente anche a distanza di tempo, ma tutto dipende da due fattori: la natura precisa dei “difetti gravi” e il tipo di contratto firmato con l’impresa.\n\nPrima di valutare quali azioni sono concretamente percorribili, vi chiedo di chiarire: i difetti che sono comparsi dopo cinque anni riguardano un problema strutturale (es. cedimenti, infiltrazioni che minano la solidità) oppure sono guasti funzionali o di finitura (es. guaine, infissi, impianti)? E il contratto era un classico appalto “chiavi in mano” o un altro tipo di accordo?",
+     "visibile": "Sì, in linea di principio potete pretendere qualcosa: per le opere edilizie esistono garanzie legali a tutela del committente anche a distanza di tempo, ma tutto dipende da due fattori: la natura precisa dei «difetti gravi» e il tipo di contratto firmato con l'impresa.\n\nPrima di valutare quali azioni sono concretamente percorribili, vi chiedo di chiarire: i difetti che sono comparsi dopo cinque anni riguardano un problema strutturale (es. cedimenti, infiltrazioni che minano la solidità) oppure sono guasti funzionali o di finitura (es. guaine, infissi, impianti)? E il contratto era un classico appalto «chiavi in mano» o un altro tipo di accordo?",
+     "latenza_s": 90.4,
+     "primo_token_s": 3.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: responsabilità per dieci anni dal compimento"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: denuncia entro un anno dalla scoperta"
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 90.4s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-patto-concorrenza-imprese",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "ef5d186e-17f8-4c8f-9d55-36b8a3052866",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare a un nostro distributore un impegno a non farci concorrenza per 8 anni. Regge?",
+     "streamato": "Non reggerebbe quasi certamente. In Italia gli accordi tra imprese (o tra produttore e distributore) che contengono un divieto di concorrenza di durata così lunga sono di norma considerati invalidi se vanno oltre il limite massimo di un anno, salvo eccezioni molto specifiche (come cessioni d’azienda con particolari condizioni) che nel vostro caso di distribuzione non sembrano applicabili.\n\nIn pratica, se scriveteci un impegno a non concorrenza di 8 anni, un tribunale lo annullerebbe e potreste persino perdere il vantaggio dell’accordo, perché il distributore potrebbe contestarlo e chiedere risarcimento se il vincolo gli crea danni.\n\nSe volete proteggere il rapporto commerciale, la strada giusta è:\n1. Ridurre il vincolo a un massimo di 12 mesi, con una descrizione precisa di prodotti, territorio e durata.\n2. Valutare se il divieto è davvero necessario: a volte un buon accordo di distribuzione con esclusiva, obblighi di quantità e clausole di uscita è più efficace di un divieto.\n3. Consultare un avvocato specializzato in diritto della concorrenza per redigere la clausola in modo conforme, perché ogni parola conta.\n\nSe volete, posso aiutarvi a ragionare su quale tipo di vincolo è più adatto al vostro modello di distribuzione (esclusiva, quantità minime, durata, territorio) prima di passare alla bozza contrattuale.",
+     "visibile": "Non reggerebbe quasi certamente. In Italia gli accordi tra imprese (o tra produttore e distributore) che contengono un divieto di concorrenza di durata così lunga sono di norma considerati invalidi se vanno oltre il limite massimo di un anno, salvo eccezioni molto specifiche (come cessioni d'azienda con particolari condizioni) che nel vostro caso di distribuzione non sembrano applicabili.\n\nIn pratica, se scriveteci un impegno a non concorrenza di 8 anni, un tribunale lo annullerebbe e potreste persino perdere il vantaggio dell'accordo, perché il distributore potrebbe contestarlo e chiedere risarcimento se il vincolo gli crea danni.\n\nSe volete proteggere il rapporto commerciale, la strada giusta è:\n1. Ridurre il vincolo a un massimo di 12 mesi, con una descrizione precisa di prodotti, territorio e durata.\n2. Valutare se il divieto è davvero necessario: a volte un buon accordo di distribuzione con esclusiva, obblighi di quantità e clausole di uscita è più efficace di un divieto.\n3. Consultare un avvocato specializzato in diritto della concorrenza per redigere la clausola in modo conforme, perché ogni parola conta.\n\nSe volete, posso aiutarvi a ragionare su quale tipo di vincolo è più adatto al vostro modello di distribuzione (esclusiva, quantità minime, durata, territorio) prima di passare alla bozza contrattuale.",
+     "latenza_s": 58.7,
+     "primo_token_s": 3.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: durata massima cinque anni"
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 2,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "f4e51052-c18a-4d25-9cb1-bda5e5c90c82",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, nel caso di un professionista con partita IVA a cui paghi una parcella da 2.000 euro, di norma devi trattenere la ritenuta d’acconto.\n\nIn linea generale l’aliquota per le prestazioni di lavoro autonomo è del 20%, quindi su 2.000 euro la ritenuta sarebbe 400 euro: a lui pagheresti 1.600 euro e verserai 400 euro all’Agenzia delle Entrate entro il 16 del mese successivo al pagamento.\n\nAttenzione però: se il professionista ti ha comunicato l’opt-out (cioè ha scelto di non essere soggetto a ritenuta d’acconto) e te ne ha dato comunicazione scritta, tu non devi trattenere nulla. Prima di pagare, chiedi se ha esercitato l’opt-out: in quel caso la trattenuta non è dovuta e lui è tenuto a versare le imposte in regime di pagamento diretto.\n\nIn sintesi:\n- Senza opt-out: tratteni il 20% (400 su 2.000).\n- Con opt-out: non trattenere, ma conserva la sua comunicazione.\n\nIl pagamento va sempre tracciabile (bonifico) e la ritenuta va registrata in contabilità e versata con il modello F24.",
+     "visibile": "Sì, nel caso di un professionista con partita IVA a cui paghi una parcella da 2.000 euro, di norma devi trattenere la ritenuta d'acconto.\n\nIn linea generale l'aliquota per le prestazioni di lavoro autonomo è del 20%, quindi su 2.000 euro la ritenuta sarebbe 400 euro: a lui pagheresti 1.600 euro e verserai 400 euro all'Agenzia delle Entrate entro il termine previsto dalla normativa.\n\nAttenzione però: se il professionista ti ha comunicato l'opt-out (cioè ha scelto di non essere soggetto a ritenuta d'acconto) e te ne ha dato comunicazione scritta, tu non devi trattenere nulla. Prima di pagare, chiedi se ha esercitato l'opt-out: in quel caso la trattenuta non è dovuta e lui è tenuto a versare le imposte in regime di pagamento diretto.\n\nIn sintesi:\n- Senza opt-out: tratteni il 20% (400 su 2.000).\n- Con opt-out: non trattenere, ma conserva la sua comunicazione.\n\nIl pagamento va sempre tracciabile (bonifico) e la ritenuta va registrata in contabilità e versata con il modello F24 (verifica la scadenza/soglia esatta sulla fonte ufficiale o nel report).",
+     "latenza_s": 90.1,
+     "primo_token_s": 32.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 290: «16delmesesuccessivoalpagamento.Attenzion» → «termineprevistodallanormativa.Attenzione»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 90.1s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 32.6s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-cessione-quote-srl",
+   "ripetizione": 2,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "baa441c1-3f8e-4416-884d-82beee2b78bf",
+   "turni": [
+    {
+     "utente": "Un socio vuole vendere la sua quota della srl a un terzo. Come si fa formalmente e cosa dobbiamo depositare?",
+     "streamato": "La vendita di una quota di SRL a un terzo (soggetto esterno alla società) si fa tramite un contratto di cessione di quote, che va autenticato da un notaio. A differenza di una S.p.A., qui la quota non è un titolo negoziabile in borsa, quindi la formalità notarile è obbligatoria per l’efficacia della trasferimento e per l’iscrizione al Registro Imprese.\n\nAttenzione però a un punto strategico decisivo prima di procedere: la SRL è una società “a responsabilità limitata” ma con caratteristiche di personalità, e il Codice Civile prevede due vincoli fondamentali che potrebbero bloccare o rallentare l’operazione:\n\n1. **Diritto di prelazione degli altri soci**: di norma, gli altri soci (e in alcuni casi la stessa società) hanno diritto di acquistare la quota alle stesse condizioni entro un termine fisso (di solito 60 giorni dalla ricezione della proposta). Se non volete esercitare la prelazione, dovete esserne consapevoli e documentare che siete stati debitamente informati.\n2. **Patto di non concorrenza / clausole statutari**: verificiamo se lo Statuto o il Patto Sociale contengono clausole specifiche (veto del socio uscente, obbligo di cedere solo ad altri soci, approvazione unanime, ecc.) che potrebbero modificare la procedura o richiedere un’assemblea straordinaria prima della cessione.\n\n**Cosa serve concretamente:**\n- Verifica preliminare dello Statuto e del Patto Sociale per clausole speciali.\n- Contratto di cessione di quote tra socio venditore e terzo acquirente.\n- Atto notarile di autenticazione.\n- Eventuale deliberazione assembleare (se prevista dallo Statuto o se la società deve essere informata/formalmente approvata).\n- Aggiornamento del Libro Soci e comunicazione al Registro Imprese (tramite notaio).\n\nPrima di fissare il notaio, rispondimi a questa domanda: **gli altri soci (o la società) hanno un diritto di prelazione sulla quota, e c’è una clausola statutaria che regola specificamente la cessione a terzi?** Se non lo sapete, ditemi se avete il testo dello Statuto o del Patto Sociale disponibile: senza questo, non posso indicarvi con certezza i passaggi esatti né i tempi.",
+     "visibile": "La vendita di una quota di SRL a un terzo (soggetto esterno alla società) si fa tramite un contratto di cessione di quote, che va autenticato da un notaio. A differenza di una S.p.A., qui la quota non è un titolo negoziabile in borsa, quindi la formalità notarile è obbligatoria per l'efficacia della trasferimento e per l'iscrizione al Registro Imprese.\n\nAttenzione però a un punto strategico decisivo prima di procedere: la SRL è una società «a responsabilità limitata» ma con caratteristiche di personalità, e il Codice Civile prevede due vincoli fondamentali che potrebbero bloccare o rallentare l'operazione:\n\n1. Diritto di prelazione degli altri soci: di norma, gli altri soci (e in alcuni casi la stessa società) hanno diritto di acquistare la quota alle stesse condizioni entro un termine fisso (di solito nel termine previsto dalla normativa). Se non volete esercitare la prelazione, dovete esserne consapevoli e documentare che siete stati debitamente informati.\n2. Patto di non concorrenza / clausole statutari: verificiamo se lo Statuto o il Patto Sociale contengono clausole specifiche (veto del socio uscente, obbligo di cedere solo ad altri soci, approvazione unanime, ecc.) che potrebbero modificare la procedura o richiedere un'assemblea straordinaria prima della cessione.\n\nCosa serve concretamente:\n- Verifica preliminare dello Statuto e del Patto Sociale per clausole speciali.\n- Contratto di cessione di quote tra socio venditore e terzo acquirente.\n- Atto notarile di autenticazione.\n- Eventuale deliberazione assembleare (se prevista dallo Statuto o se la società deve essere informata/formalmente approvata).\n- Aggiornamento del Libro Soci e comunicazione al Registro Imprese (tramite notaio).\n\nPrima di fissare il notaio, rispondimi a questa domanda: gli altri soci (o la società) hanno un diritto di prelazione sulla quota, e c'è una clausola statutaria che regola specificamente la cessione a terzi? Se non lo sapete, ditemi se avete il testo dello Statuto o del Patto Sociale disponibile: senza questo, non posso indicarvi con certezza i passaggi esatti né i tempi.",
+     "latenza_s": 91.8,
+     "primo_token_s": 2.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 681: «60giornidallaricezionedellaproposta).Sen» → «neltermineprevistodallanormativa).Senonv»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: deposito al registro delle imprese entro 30 giorni"
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 91.8s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-approvazione-bilancio-srl",
+   "ripetizione": 2,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "48248829-6266-4a46-a4b5-678d2afcc1fa",
+   "turni": [
+    {
+     "utente": "Entro quando dobbiamo approvare il bilancio della nostra srl dopo la chiusura dell'esercizio?",
+     "streamato": "In generale, la legge prevede che il bilancio d’esercizio della SRL vada approvato entro 120 giorni dalla chiusura dell’esercizio (quindi, per l’esercizio al 31/12, entro il 30 aprile dell’anno successivo); il deposito, che è un passaggio separato, va poi fatto in Camera di Commercio entro i 120 giorni successivi all’approvazione. Questo è il termine di norma, ma ci sono casi in cui la durata dell’assemblea e altre previsioni possono variare: le confermi anche tu che l’esercizio sia chiuso al 31/12 (non a data diversa)? Se mi dici il mese di chiusura e se ci sono soci o patti che potrebbero imporre tempistiche diverse, posso essere più preciso sul vostro caso concreto.",
+     "visibile": "In generale, la legge prevede che il bilancio d'esercizio della SRL vada approvato entro il termine previsto dalla normativa (quindi, per l'esercizio al 31/12, entro il 30 aprile dell'anno successivo); il deposito, che è un passaggio separato, va poi fatto in Camera di Commercio entro i nel termine previsto dalla normativa. Questo è il termine di norma, ma ci sono casi in cui la durata dell'assemblea e altre previsioni possono variare: le confermi anche tu che l'esercizio sia chiuso al 31/12 (non a data diversa)? Se mi dici il mese di chiusura e se ci sono soci o patti che potrebbero imporre tempistiche diverse, posso essere più preciso sul vostro caso concreto (verifica la scadenza/soglia esatta sulla fonte ufficiale o nel report).",
+     "latenza_s": 54.6,
+     "primo_token_s": 10.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 75: «120giornidallachiusuradell'esercizio(qui» → «iltermineprevistodallanormativa(quindi,p»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: 120 giorni dalla chiusura"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: maggior termine (180 giorni) con le condizioni di legge"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-vizi-compravendita",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "fbf8012c-95b9-4c44-8ec1-10dbe5afe65b",
+   "turni": [
+    {
+     "utente": "Abbiamo comprato un macchinario da un'impresa e dopo un mese ha un difetto. Entro quanto dobbiamo contestarlo al venditore?",
+     "streamato": "La domanda giusta non è “entro quando si può”, ma “entro quanto DEVI agire per non perdere il diritto”. Nel caso di acquisto di un’azienda (e non di un semplice macchinario da un privato), la normativa italiana prevede che i vizi occulti debbano essere contestati **entro un termine ragionevole** dalla loro scoperta, e comunque non oltre un limite massimo di legge che varia a seconda del tipo di bene e del contesto contrattuale.\n\nPer un macchinario industriale, il termine massimo è generalmente **2 anni dalla consegna** (o dalla messa a disposizione), ma la contestazione va fatta **subito dopo aver scoperto il difetto**, senza dilazioni non giustificate. “Dopo un mese” è quindi un timing critico: se il difetto era già visibile o prevedibile al momento della consegna, il venditore potrebbe opporsi; se è emerso nell’uso normale, sei nel periodo giusto per agire.\n\n**Attenzione però**: se nel contratto di cessione d’azienda c’erano clausole specifiche (garanzie, patti di non regresso, obblighi di ispezione, termini di contestazione più brevi), quelle valgono e possono accorciare i tuoi tempi. Verifica subito:\n1. Il contratto di cessione d’azienda e le eventuali appendici tecniche;\n2. Se il macchinario era oggetto di una garanzia specifica (fornitore o venditore);\n3. Se c’era un obbligo di ispezione preliminare a tuo carico.\n\n**Cosa fare ora**:\n- Documenta il difetto con foto, video, data esatta, descrizione tecnica e, se possibile, un parere di un tecnico indipendente.\n- Invia **immediatamente** una comunicazione scritta (PEC o raccomandata A/R) al venditore, specificando: data di scoperta, descrizione del difetto, richiesta di intervento/rimedio e riservatezza di ogni diritto. Non attendere il “termine massimo”: la giurisprudenza premia chi agisce tempestivamente.\n- Conserva tutti i documenti: contratto, fatture, manuale d’uso, eventuali certificati.\n\nSe il difetto è grave e non risolvibile, potresti chiedere la risoluzione del contratto o un abbattimento del prezzo, ma dipende dall’entità del problema e dalle clausole contrattuali. Questa è una zona dove conviene farsi assistere da un legale specializzato in compravendite d’azienda, soprattutto se gli importi in gioco sono significativi.\n\nVuoi che ti aiuti a strutturare la lettera di contestazione?",
+     "visibile": "La domanda cruciale è quanto tempo hai per agire per non perdere il diritto, e questo dipende fortemente dalla natura dell'acquisto e dalle clausole contrattuali.\n\nC'è una distinzione importante:\n1. Se hai acquistato un'azienda (o ramo d'azienda): la legge (il codice civile applicabile per analogia o clausole specifiche) impone la contestazione entro un termine ragionevole dalla scoperta, ma i contratti di cessione spesso contengono clausole di non regresso o termini molto più brevi. In questo caso, il contratto prevale quasi sempre sulla legge.\n2. Se hai acquistato un macchinario (compravendita semplice): il termine per denunciare i vizi è nel termine previsto dalla normativa (prescrizione), ma la contestazione va fatta immediatamente dopo la scoperta. Essere nel termine previsto dalla normativa, a meno che il difetto non fosse evidente o dipendente da un uso scorretto.\n\nPrima di inviare qualsiasi comunicazione, verifica assolutamente:\n- Il contratto firmato: ci sono clausole di garanzia? Termini di contestazione specifici? Patti di non regresso?\n- La fattura: indica se si tratta di acquisto di bene o di cessione d'azienda.\n\nAzioni conservative immediate:\n1. Non rispondere a caldo e non inviare diffide legali finché non hai letto il contratto.\n2. Documenta il difetto: foto, video, data, descrizione tecnica dettagliata.\n3. Se possibile, fai una perizia preliminare da un tecnico indipendente per capire l'origine (difetto di fabbricazione vs uso scorretto).\n4. Solo dopo aver verificato le clausole contrattuali, valuta se inviare una PEC o raccomandata di contestazione formale.\n\nSe i fatti sono complessi (es. ambiguità su cosa sia stato venduto: azienda o bene singolo), è fortemente consigliabile un parere legale preliminare prima di agire, per non incappare in decadenza per tardività a causa di una clausola contrattuale restrittiva.",
+     "latenza_s": 185.9,
+     "primo_token_s": 2.4,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 9: «giustanonè\"entroquandosipuò\",ma\"entroqua» → «crucialeèquantotempohaiperagirepernonper»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: denuncia entro 8 giorni dalla scoperta"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: azione in un anno dalla consegna"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 185.9s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-risarcimento-illecito",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "577eda58-6da8-4c4c-88ac-50682adfe247",
+   "turni": [
+    {
+     "utente": "Un'altra impresa ci ha causato un danno con un comportamento illecito due anni fa. Siamo ancora in tempo per chiedere il risarcimento?",
+     "streamato": "Sì, in linea di massima sei ancora in tempo, ma attenzione: i termini per agire dipendono dalla natura del danno. In caso di fatto illecito (responsabilità extracontrattuale), la prescrizione è di 5 anni dalla data del fatto, quindi a 2 anni sei ampiamente nel termine. Se invece il danno deriva da un contratto tra le parti, il termine è di 10 anni (oppure 5 anni per i contratti di prestazione d’opera professionale). In entrambi i casi, il conteggio parte dal giorno in cui il fatto si è verificato, non da quando hai scoperto il danno.\n\nIl vero nodo non è solo il tempo, ma la prova. A 2 anni di distanza, i rischi concreti sono: (1) trovare ancora traccia scritta dell’evento (email, fatture, contratti, verbali, report); (2) dimostrare il nesso di causalità tra il comportamento illecito e il danno economico subito; (3) quantificare in modo solido l’importo del danno (utile perso, extra costi, danno all’immagine).\n\nLa prossima cosa da fare è verificare cosa hai ancora in archivio su quell’episodio. Hai documenti, comunicazioni o prove che attestino il comportamento illecito e il danno subito? Se sì, ti posso aiutare a impostare il percorso di richiesta (raccomandata/PEC o mediazione), se no ti indico cosa ricostruire.",
+     "visibile": "Sì, in linea di massima sei ancora in tempo, ma attenzione: i termini per agire dipendono dalla natura del danno. In caso di fatto illecito (responsabilità extracontrattuale), la prescrizione è quello previsto dalla normativa, quindi a 2 anni sei ampiamente nel termine. Se invece il danno deriva da un contratto tra le parti, il termine preciso previsto dalla normativa (oppure 5 anni per i contratti di prestazione d'opera professionale). In entrambi i casi, il conteggio parte dal giorno in cui il fatto si è verificato, non da quando hai scoperto il danno.\n\nIl vero nodo non è solo il tempo, ma la prova. A 2 anni di distanza, i rischi concreti sono: (1) trovare ancora traccia scritta dell'evento (email, fatture, contratti, verbali, report); (2) dimostrare il nesso di causalità tra il comportamento illecito e il danno economico subito; (3) quantificare in modo solido l'importo del danno (utile perso, extra costi, danno all'immagine).\n\nLa prossima cosa da fare è verificare cosa hai ancora in archivio su quell'episodio. Hai documenti, comunicazioni o prove che attestino il comportamento illecito e il danno subito? Se sì, ti posso aiutare a impostare il percorso di richiesta (raccomandata/PEC o mediazione), se no ti indico cosa ricostruire.",
+     "latenza_s": 46.4,
+     "primo_token_s": 11.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 164: «di5annidalladatadelfatto,quindia2annisei» → «quelloprevistodallanormativa,quindia2ann»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ricorso-accertamento",
+   "ripetizione": 2,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "57d5281b-29aa-4262-9eb2-68f546a06310",
+   "turni": [
+    {
+     "utente": "Ci è arrivato un avviso di accertamento dall'Agenzia delle Entrate. Entro quanto possiamo fare ricorso?",
+     "streamato": "La prima cosa da fare è verificare che l’avviso non arrivi a una scadenza già in corso e valutare la sua fondatezza: prima di decidere se fare ricorso, serve capire se l’accertamento contiene errori di calcolo, di qualificazione o di interpretazione.\n\nLa risposta alla tua domanda:\n- Di norma, il ricorso va presentato all’Ufficio delle Entrate (non al giudice) entro 60 giorni dalla notifica dell’avviso.\n- Se invece la notifica è avvenuta in forma cartacea o tramite raccomandata, il termine è 90 giorni.\n- Il termine è perentorio: se lo perdi, l’avviso diventa definitivo e diventa più difficile contestarlo.\n\nQuello che conta davvero non è solo “quando”, ma “se vale la pena” e “cosa si può contestare”. Un avvocato tributarista può aiutarti a:\n1. Verificare la correttezza dell’avviso (calcoli, base imponibile, aliquote, detrazioni).\n2. Valutare se ci sono vizi formali (notifica, motivazione, competenza).\n3. Decidere se conviene pagare, fare ricorso, oppure proporre una conciliazione.\n\nSe vuoi, incolla qui (anonimizzando i dati sensibili) un estratto dell’avviso o dimmi:\n- La data esatta di notifica (e come: PEC, raccomandata, posta elettronica certificata).\n- L’anno d’imposta contestato.\n- L’importo dell’accertamento.\n- Se hai già risposto o presentato istanza di rettifica.\n\nCon quei dettagli posso dirti con maggiore precisione la scadenza e se il ricorso ha senso.",
+     "visibile": "La prima cosa da fare è verificare che l'avviso non arrivi a una scadenza già in corso e valutare la sua fondatezza: prima di decidere se fare ricorso, serve capire se l'accertamento contiene errori di calcolo, di qualificazione o di interpretazione.\n\nLa risposta alla tua domanda:\n- Di norma, il ricorso va presentato all'Ufficio delle Entrate (non al giudice) entro il termine previsto dalla normativa.\n- Se invece la notifica è avvenuta in forma cartacea o tramite raccomandata, il termine è 90 giorni.\n- Il termine è perentorio: se lo perdi, l'avviso diventa definitivo e diventa più difficile contestarlo.\n\nQuello che conta davvero non è solo «quando», ma «se vale la pena» e «cosa si può contestare». Un avvocato tributarista può aiutarti a:\n1. Verificare la correttezza dell'avviso (calcoli, base imponibile, aliquote, detrazioni).\n2. Valutare se ci sono vizi formali (notifica, motivazione, competenza).\n3. Decidere se conviene pagare, fare ricorso, oppure proporre una conciliazione.\n\nSe vuoi, incolla qui (anonimizzando i dati sensibili) un estratto dell'avviso o dimmi:\n- La data esatta di notifica (e come: PEC, raccomandata, posta elettronica certificata).\n- L'anno d'imposta contestato.\n- L'importo dell'accertamento.\n- Se hai già risposto o presentato istanza di rettifica.\n\nCon quei dettagli posso dirti con maggiore precisione la scadenza e se il ricorso ha senso.",
+     "latenza_s": 78.9,
+     "primo_token_s": 10.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 306: «60giornidallanotificadell'avviso.Seinvec» → «iltermineprevistodallanormativa.Seinvece»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: 60 giorni dalla notifica"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-difetti-gravi-capannone",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "2b2cfa22-2220-4323-a681-2ce408f56850",
+   "turni": [
+    {
+     "utente": "Il capannone che ci ha costruito un'impresa ha dei difetti gravi comparsi dopo cinque anni. Possiamo pretendere qualcosa dall'impresa?",
+     "streamato": "Sì, in linea di principio potete pretendere qualcosa: per le costruzioni la legge riconosce garanzie e responsabilità del costruttore anche a distanza di anni, soprattutto per difetti “gravi” o strutturali, con tempistiche più lunghe rispetto ai beni comuni.\n\nLa domanda chiave, però, non è tanto “se” si può chiedere qualcosa, ma “quanta”: dipende molto da cosa sono esattamente questi difetti, da quando sono comparsi e da come sono stati gestiti in questi 5 anni.\n\nPer capire se la vostra posizione è solida e cosa potete realisticamente ottenere, ho bisogno di un’informazione fondamentale:\n\n**Qual è la natura dei difetti?**\n1. **Difetti strutturali/importanti** (es. cedimenti, fessurazioni gravi, infiltrazioni d’acqua importanti, problemi alle fondazioni, coperture che non reggono)\n2. **Difetti estetici o di finitura** (es. spaccature superficiali, imperfezioni di tinteggiatura, piccoli problemi di installazione)\n3. **Difetti misti**, con elementi sia strutturali sia di finitura\n\nQuesto cambia radicalmente la strategia e le tempistiche applicabili.",
+     "visibile": "Sì, in linea di principio potete pretendere qualcosa: per le costruzioni la legge riconosce garanzie e responsabilità del costruttore anche a distanza di anni, soprattutto per difetti «gravi» o strutturali, con tempistiche più lunghe rispetto ai beni comuni.\n\nLa domanda chiave, però, non è tanto «se» si può chiedere qualcosa, ma «quanta»: dipende molto da cosa sono esattamente questi difetti, da quando sono comparsi e da come sono stati gestiti in questi 5 anni.\n\nPer capire se la vostra posizione è solida e cosa potete realisticamente ottenere, ho bisogno di un'informazione fondamentale:\n\nQual è la natura dei difetti?\n1. Difetti strutturali/importanti (es. cedimenti, fessurazioni gravi, infiltrazioni d'acqua importanti, problemi alle fondazioni, coperture che non reggono)\n2. Difetti estetici o di finitura (es. spaccature superficiali, imperfezioni di tinteggiatura, piccoli problemi di installazione)\n3. Difetti misti, con elementi sia strutturali sia di finitura\n\nQuesto cambia radicalmente la strategia e le tempistiche applicabili.",
+     "latenza_s": 63.4,
+     "primo_token_s": 9.5,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: responsabilità per dieci anni dal compimento"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: denuncia entro un anno dalla scoperta"
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-patto-concorrenza-imprese",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "5197e5c1-afa8-4d49-abe2-d73176b4fd91",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare a un nostro distributore un impegno a non farci concorrenza per 8 anni. Regge?",
+     "streamato": "La risposta breve è: no, 8 anni quasi certamente non regge.\n\nNel diritto della concorrenza, gli impegni di non concorrenza (o clausole di non concorrenza) devono essere ragionevoli per durata, ambito geografico e ambito merceologico. Una durata di 8 anni è considerata molto lunga e molto probabilmente eccede il limite di ragionevolezza. La giurisprudenza italiana, in linea con i principi europei, tende a ritenere ammissibili clausole di durata di pochi anni (di solito 1-3, al massimo 5 in casi specifici) perché devono servire a proteggere un interesse legittimo dell’azienda (come il know-how, la clientela o i segreti commerciali) e non a escludere ingiustificatamente la concorrenza.\n\nSe la clausola supera questi limiti, c’è il rischio concreto che venga dichiarata inefficace dal giudice o, nel caso di una controversia, che il tribunale la riduca o annulli. Inoltre, in base ai principi di diritto della concorrenza e antitrust, un accordo che impedisce, restringe o falsa in modo significativo la concorrenza può essere considerato illegittimo e sanzionabile.\n\nPer tutelare davvero il vostro interesse senza correre il rischio di una clausola inefficace, è consigliabile:\n1. Ridurre la durata a un periodo ragionevole (1-3 anni).\n2. Limitare l’ambito geografico (es. solo le zone dove operate effettivamente o dove il distributore ha accesso a informazioni sensibili).\n3. Limitare l’ambito merceologico (es. solo i prodotti/servizi a cui aveva accesso grazie alla collaborazione).\n\nSe il distributore ha accesso a informazioni commerciali riservate, la protezione può essere rafforzata con un patto di riservatezza (NDA), che ha regole di durata diverse e più flessibili rispetto alla non concorrenza.\n\nSe volete, posso aiutarvi a redigere una clausola che sia robusta, ragionevole e più facilmente accettabile dal distributore.",
+     "visibile": "La risposta breve è: no, 8 anni quasi certamente non regge.\n\nNel diritto della concorrenza, gli impegni di non concorrenza (o clausole di non concorrenza) devono essere ragionevoli per durata, ambito geografico e ambito merceologico. Una durata di 8 anni è considerata molto lunga e molto probabilmente eccede il limite di ragionevolezza. La giurisprudenza italiana, in linea con i principi europei, tende a ritenere ammissibili clausole di durata di pochi anni (di solito 1-3, al massimo 5 in casi specifici) perché devono servire a proteggere un interesse legittimo dell'azienda (come il know-how, la clientela o i segreti commerciali) e non a escludere ingiustificatamente la concorrenza.\n\nSe la clausola supera questi limiti, c'è il rischio concreto che venga dichiarata inefficace dal giudice o, nel caso di una controversia, che il tribunale la riduca o annulli. Inoltre, in base ai principi di diritto della concorrenza e antitrust, un accordo che impedisce, restringe o falsa in modo significativo la concorrenza può essere considerato illegittimo e sanzionabile.\n\nPer tutelare davvero il vostro interesse senza correre il rischio di una clausola inefficace, è consigliabile:\n1. Ridurre la durata a un periodo ragionevole (1-3 anni).\n2. Limitare l'ambito geografico (es. solo le zone dove operate effettivamente o dove il distributore ha accesso a informazioni sensibili).\n3. Limitare l'ambito merceologico (es. solo i prodotti/servizi a cui aveva accesso grazie alla collaborazione).\n\nSe il distributore ha accesso a informazioni commerciali riservate, la protezione può essere rafforzata con un patto di riservatezza (NDA), che ha regole di durata diverse e più flessibili rispetto alla non concorrenza.\n\nSe volete, posso aiutarvi a redigere una clausola che sia robusta, ragionevole e più facilmente accettabile dal distributore.",
+     "latenza_s": 76.8,
+     "primo_token_s": 3.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: durata massima cinque anni"
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 3,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "4cde2078-96d0-416f-ace2-4b620a1290e2",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, in generale dovete applicare la ritenuta d’acconto al vostro consulente con P.IVA: trattandosi di un pagamento a titolo di ricompensa per prestazioni professionali, la ritenuta è dovuta come imposta sostitutiva IRPEF, a meno che il professionista non applichi il regime forfettario con esonero (in quel caso vi rilascia una dichiarazione e voi non trattenete nulla).\n\nLa domanda decisiva è una sola: il vostro consulente è nel regime forfettario con dichiarazione di esonero, oppure in regime ordinario (o comunque non in esonero)? Se non la sapete, chiedetele se vi invia la dichiarazione prevista dal D.P.R. 600/73; senza quel documento, la ritenuta la trattenete.\n\nQuanto vale la ritenuta? Se dovete applicarla, l'aliquota è quella prevista dalla normativa sui compensi a persone fisiche: non è il 20% né il 15% generico che a volte si sente, ma un valore preciso fissato per legge. Non ve la indico a memoria: per evitare di dare una cifra errata, verificatela al momento sul sito dell'Agenzia delle Entrate o con il vostro commercialista, perché in passato è cambiata e oggi l'aliquota applicabile è quella corrente.\n\nIn pratica: controllate se c'è la dichiarazione di esonero (in quel caso, niente ritenuta); se non c'è, applicate l'aliquota corrente, registrate la ritenuta in un documento di trattenuta e riversatela all'Erario con la dichiarazione periodica prevista (modello F24). Il vostro commercialista vi conferma l'aliquota esatta e la scadenza di versamento.",
+     "visibile": "Sì, in generale dovete applicare la ritenuta d'acconto al vostro consulente con P.IVA: trattandosi di un pagamento a titolo di ricompensa per prestazioni professionali, la ritenuta è dovuta come imposta sostitutiva IRPEF, a meno che il professionista non applichi il regime forfettario con esonero (in quel caso vi rilascia una dichiarazione e voi non trattenete nulla).\n\nLa domanda decisiva è una sola: il vostro consulente è nel regime forfettario con dichiarazione di esonero, oppure in regime ordinario (o comunque non in esonero)? Se non la sapete, chiedetele se vi invia la dichiarazione prevista dal D.P.R. 600/73; senza quel documento, la ritenuta la trattenete.\n\nQuanto vale la ritenuta? Se dovete applicarla, l'aliquota è quella prevista dalla normativa sui compensi a persone fisiche: non è il 20% né il 15% generico che a volte si sente, ma un valore preciso fissato per legge. Non ve la indico a memoria: per evitare di dare una cifra errata, verificatela al momento sul sito dell'Agenzia delle Entrate o con il vostro commercialista, perché in passato è cambiata e oggi l'aliquota applicabile è quella corrente.\n\nIn pratica: controllate se c'è la dichiarazione di esonero (in quel caso, niente ritenuta); se non c'è, applicate l'aliquota corrente, registrate la ritenuta in un documento di trattenuta e riversatela all'Erario con la dichiarazione periodica prevista (modello F24). Il vostro commercialista vi conferma l'aliquota esatta e la scadenza di versamento.",
+     "latenza_s": 81.3,
+     "primo_token_s": 8.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-cessione-quote-srl",
+   "ripetizione": 3,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "d24cf544-01a9-47d4-a281-ac7e7dfec712",
+   "turni": [
+    {
+     "utente": "Un socio vuole vendere la sua quota della srl a un terzo. Come si fa formalmente e cosa dobbiamo depositare?",
+     "streamato": "La cessione di quote di SRL tra soci e verso terzi è disciplinata dal Codice Civile. In generale, il socio cedente ha la facoltà di cedere la propria quota a un soggetto esterno, ma lo statuto sociale può prevedere clausole restrittive (come il diritto di prelazione per gli altri soci).\n\n**Cosa fare formalmente:**\n1. **Rogito notarile:** La cessione di quote di SRL a un terzo va sempre formalizzata con atto pubblico notarile. Il notaio verifica la regolarità della società, l’identità delle parti, la situazione patrimoniale e gli eventuali patti di prelazione.\n2. **Aggiornamento dei registri:** Dopo il rogito, i verbali di assemblea e il libro soci devono essere aggiornati con le nuove generalità del socio e il valore delle quote trasferite.\n3. **Comunicazione al registro imprese:** L’atto deve essere trascritto presso il Registro delle Imprese (Camere di Commercio) per essere opponibile ai terzi.\n\n**Cosa depositare:**\n- Il contratto di cessione (atto pubblico) va depositato presso la Camera di Commercio.\n- Gli atti sociali (statuto, verbali di nomina cariche, ecc.) vanno conservati e aggiornati internamente.\n- Se la cessione comporta una variazione del capitale o degli utili, vanno aggiornati i prospetti contabili.\n\n**Attenzione ai rischi:**\n- **Prelazione degli altri soci:** Controlla subito lo statuto. Se esiste un diritto di prelazione, devi comunicarlo formalmente agli altri soci specificando prezzo e condizioni, e dar loro un termine (di norma 30 giorni) per esercitarlo.\n- **Vincoli di legge o contrattuali:** Se il socio cedente ha contratti pendenti, fideiussioni o garanzie personali, la cessione può essere soggetta a obblighi di informativa o consenso.\n\nSe vuoi, posso aiutarti a verificare se il vostro statuto contiene clausole di prelazione o altre limitazioni. Hai copia dello statuto aggiornato?",
+     "visibile": "La cessione di quote di SRL tra soci e verso terzi è disciplinata dal Codice Civile. In generale, il socio cedente ha la facoltà di cedere la propria quota a un soggetto esterno, ma lo statuto sociale può prevedere clausole restrittive (come il diritto di prelazione per gli altri soci).\n\nCosa fare formalmente:\n1. Rogito notarile: La cessione di quote di SRL a un terzo va sempre formalizzata con atto pubblico notarile. Il notaio verifica la regolarità della società, l'identità delle parti, la situazione patrimoniale e gli eventuali patti di prelazione.\n2. Aggiornamento dei registri: Dopo il rogito, i verbali di assemblea e il libro soci devono essere aggiornati con le nuove generalità del socio e il valore delle quote trasferite.\n3. Comunicazione al registro imprese: L'atto deve essere trascritto presso il Registro delle Imprese (Camere di Commercio) per essere opponibile ai terzi.\n\nCosa depositare:\n- Il contratto di cessione (atto pubblico) va depositato presso la Camera di Commercio.\n- Gli atti sociali (statuto, verbali di nomina cariche, ecc.) vanno conservati e aggiornati internamente.\n- Se la cessione comporta una variazione del capitale o degli utili, vanno aggiornati i prospetti contabili.\n\nAttenzione ai rischi:\n- Prelazione degli altri soci: Controlla subito lo statuto. Se esiste un diritto di prelazione, devi comunicarlo formalmente agli altri soci specificando prezzo e condizioni, e dar loro un termine (di norma 30 giorni) per esercitarlo.\n- Vincoli di legge o contrattuali: Se il socio cedente ha contratti pendenti, fideiussioni o garanzie personali, la cessione può essere soggetta a obblighi di informativa o consenso.\n\nSe vuoi, posso aiutarti a verificare se il vostro statuto contiene clausole di prelazione o altre limitazioni. Hai copia dello statuto aggiornato?",
+     "latenza_s": 86.3,
+     "primo_token_s": 2.3,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-approvazione-bilancio-srl",
+   "ripetizione": 3,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "006ca6f0-f49a-40c0-8460-157d551bef93",
+   "turni": [
+    {
+     "utente": "Entro quando dobbiamo approvare il bilancio della nostra srl dopo la chiusura dell'esercizio?",
+     "streamato": "Di norma, lo statuto della tua SRL deve prevedere l’approvazione del bilancio entro 120 giorni dalla chiusura dell’esercizio (quindi, se chiudi al 31/12, entro il 30 aprile dell’anno successivo); nello statuto può essere prevista una durata diversa, che può essere anche più lunga.\n\nCosa verificare:\n- Controlla il tuo statuto (sezione sull’assemblea e i termini di approvazione) perché quella è la regola vincolante per te.\n- Se il bilancio va depositato (SRL sotto determinate soglie può usare lo schema abbreviato/micro, ma la tempistica di approvazione resta quella statutaria), ricordati che il deposito segue l’approvazione, secondo i termini previsti dalla normativa civilistica.\n- Se il bilancio non è approvato nei tempi, gli amministratori possono essere chiamati a rispondere per negligenza.\n\nSe mi dici la data di chiusura e cosa prevede il tuo statuto, ti confermo la scadenza esatta.",
+     "visibile": "Di norma, lo statuto della tua SRL deve prevedere l'approvazione del bilancio entro il termine previsto dalla normativa (quindi, se chiudi al 31/12, entro il 30 aprile dell'anno successivo); nello statuto può essere prevista una durata diversa, che può essere anche più lunga.\n\nCosa verificare:\n- Controlla il tuo statuto (sezione sull'assemblea e i termini di approvazione) perché quella è la regola vincolante per te.\n- Se il bilancio va depositato (SRL sotto determinate soglie può usare lo schema abbreviato/micro, ma la tempistica di approvazione resta quella statutaria), ricordati che il deposito segue l'approvazione, secondo i termini previsti dalla normativa civilistica.\n- Se il bilancio non è approvato nei tempi, gli amministratori possono essere chiamati a rispondere per negligenza.\n\nSe mi dici la data di chiusura e cosa prevede il tuo statuto, ti confermo la scadenza esatta.",
+     "latenza_s": 55.0,
+     "primo_token_s": 8.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 71: «120giornidallachiusuradell'esercizio(qui» → «iltermineprevistodallanormativa(quindi,s»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: 120 giorni dalla chiusura"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: maggior termine (180 giorni) con le condizioni di legge"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-vizi-compravendita",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "382309cc-cefd-4bce-9c9c-aa40376d0f61",
+   "turni": [
+    {
+     "utente": "Abbiamo comprato un macchinario da un'impresa e dopo un mese ha un difetto. Entro quanto dobbiamo contestarlo al venditore?",
+     "streamato": "La regola di riferimento è il Codice Civile (disciplina dei vizi della vendita): il difetto va denunciato al venditore entro il termine “breve” fissato dalla legge per le verifiche possibili, che in pratica è indicato in dieci giorni dalla scoperta del vizio (non dalla consegna).\n\nDetto questo, attenzione a due punti che nel vostro caso contano molto:\n\n- Il termine di dieci giorni decorre dalla SCOPERTA del difetto, non dalla data di acquisto. Quindi se il problema è emerso ora, a un mese dall’acquisto, la contestazione va inviata immediatamente, non a fine mese.\n- Dieci giorni è il termine di legge in assenza di diversa pattuizione: se sul contratto o sulla fattura c’è una clausola diversa (es. “denuncia entro 15 giorni”) o una garanzia commerciale più lunga, quella prevale e può anche essere a vostro favore.\n\nCosa fare subito: inviate la contestazione per iscritto con tracciabilità (PEC o raccomandata, meglio entrambi se il venditore ha una PEC) e conservate prova del difetto (foto, video, eventuale perizia o intervento tecnico), perché se il venditore contesta la fondatezza della denuncia la prova è essenziale. Nel testo indicate che il vizio era già presente al momento della vendita e richiedete la riparazione o la sostituzione (e, se il difetto è grave, la risoluzione del contratto o la riduzione del prezzo).\n\nSe mi confermate quando esattamente avete scoperto il difetto e se sul contratto c’è una clausola sulla garanzia, vi dico se siete ancora nei termini e come impostare al meglio la richiesta.",
+     "visibile": "La regola di riferimento è il Codice Civile (disciplina dei vizi della vendita): il difetto va denunciato al venditore entro il termine «breve» fissato dalla legge per le verifiche possibili, che in pratica è indicato nel termine previsto dalla normativa (non dalla consegna).\n\nDetto questo, attenzione a due punti che nel vostro caso contano molto:\n\n- Il termine preciso previsto dalla normativa decorre dalla SCOPERTA del difetto, non dalla data di acquisto. Quindi se il problema è emerso ora, nel termine previsto dalla normativa, la contestazione va inviata immediatamente, non a fine mese.\n- Dieci giorni è il termine di legge in assenza di diversa pattuizione: se sul contratto o sulla fattura c'è una clausola diversa (es. «denuncia entro il termine previsto dalla normativa») o una garanzia commerciale più lunga, quella prevale e può anche essere a vostro favore.\n\nCosa fare subito: inviate la contestazione per iscritto con tracciabilità (PEC o raccomandata, meglio entrambi se il venditore ha una PEC) e conservate prova del difetto (foto, video, eventuale perizia o intervento tecnico), perché se il venditore contesta la fondatezza della denuncia la prova è essenziale. Nel testo indicate che il vizio era già presente al momento della vendita e richiedete la riparazione o la sostituzione (e, se il difetto è grave, la risoluzione del contratto o la riduzione del prezzo).\n\nSe mi confermate quando esattamente avete scoperto il difetto e se sul contratto c'è una clausola sulla garanzia, vi dico se siete ancora nei termini e come impostare al meglio la richiesta.",
+     "latenza_s": 73.9,
+     "primo_token_s": 5.3,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 183: «indiecigiornidallascopertadelvizio(nonda» → «neltermineprevistodallanormativa(nondall»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: denuncia entro 8 giorni dalla scoperta"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: azione in un anno dalla consegna"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-risarcimento-illecito",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "f957290c-fe6e-43bd-81d7-de052d0d1e32",
+   "turni": [
+    {
+     "utente": "Un'altra impresa ci ha causato un danno con un comportamento illecito due anni fa. Siamo ancora in tempo per chiedere il risarcimento?",
+     "streamato": "La risposta breve è: molto probabilmente sì, ma dipende da un dettaglio fondamentale che distingue il tuo caso.\n\nLa regola generale è che la richiesta di risarcimento per un illecito si prescrive dopo 5 anni, quindi a due anni sei ampiamente nel tempo.\n\nPerò c'è un'eccezione importante: se il danno è nato da un contratto che vi legava con quell'impresa (ad esempio un contratto di fornitura, appalto o servizi), il termine per chiedere il risarcimento è di 2 anni, contati dalla data in cui hai avuto o avresti dovuto avere consapevolezza del danno. In questo caso, essendo passati proprio due anni, sei sul filo della scadenza: la priorità assoluta sarebbe verificare la data esatta in cui è scattato il conteggio, perché un giorno di ritardo può farla cadere nella prescrizione.\n\nPer darti una risposta precisa su quale termine si applica al tuo caso, ho bisogno di capire una cosa:\nil comportamento illecito è avvenuto nell'ambito di un contratto che vi legava con quell'impresa (come un fornitore o un cliente), o si tratta di una situazione senza un rapporto contrattuale preesistente (ad esempio un danno a un bene, una diffamazione, un atto di concorrenza sleale)?",
+     "visibile": "La risposta breve è: molto probabilmente sì, ma dipende da un dettaglio fondamentale che distingue il tuo caso.\n\nLa regola generale è che la richiesta di risarcimento per un illecito si prescrive dopo 5 anni, quindi a due anni sei ampiamente nel tempo.\n\nPerò c'è un'eccezione importante: se il danno è nato da un contratto che vi legava con quell'impresa (ad esempio un contratto di fornitura, appalto o servizi), il termine per chiedere il risarcimento è di 2 anni, contati dalla data in cui hai avuto o avresti dovuto avere consapevolezza del danno. In questo caso, essendo passati proprio due anni, sei sul filo della scadenza: la priorità assoluta sarebbe verificare la data esatta in cui è scattato il conteggio, perché un giorno di ritardo può farla cadere nella prescrizione.\n\nPer darti una risposta precisa su quale termine si applica al tuo caso, ho bisogno di capire una cosa:\nil comportamento illecito è avvenuto nell'ambito di un contratto che vi legava con quell'impresa (come un fornitore o un cliente), o si tratta di una situazione senza un rapporto contrattuale preesistente (ad esempio un danno a un bene, una diffamazione, un atto di concorrenza sleale)?",
+     "latenza_s": 63.5,
+     "primo_token_s": 2.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-ricorso-accertamento",
+   "ripetizione": 3,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "247b68b1-f6eb-442a-bda9-3f01dfa08fec",
+   "turni": [
+    {
+     "utente": "Ci è arrivato un avviso di accertamento dall'Agenzia delle Entrate. Entro quanto possiamo fare ricorso?",
+     "streamato": "La risposta breve è: **60 giorni** dalla data in cui l’avviso ti è stato consegnato o messo a disposizione (su accessoweb, se in formato telematico). Il termine è perentorio: se scade, perdi la possibilità di impugnare.\n\nEcco come ragionare su questo dato nel tuo caso concreto:\n\n1.  **Controlla la data di notifica.** Non contare dalla data di *emissione* (che è quella che spesso compare in alto a sinistra del documento, con il numero di protocollo), ma dalla data di **effettiva notifica** o **messa a disposizione**. Se l’avviso è stato notificato via PEC, contano i giorni dalla ricezione. Se è su accessoweb, i 60 giorni partono dal momento in cui lo hai scaricato o è diventato visibile (anche se in realtà, per gli avvisi telematici, la giurisprudenza ha chiarito che il termine decorre dalla messa a disposizione, ma è prudente agire subito).\n2.  **Il ricorso va presentato alla Corte di Giustizia Tributaria di primo grado** competente per il tuo luogo di residenza o sede legale. Non alla Commissione Tributaria Provinciale (la vecchia denominazione), ma alla Corte di Giustizia Tributaria.\n3.  **Cosa fare subito (nelle prossime 24-48 ore):**\n    *   Verifica la data esatta di notifica.\n    *   Calcola la data di scadenza (60 giorni successivi).\n    *   Inoltra un’**istanza di riesame** all’Agenzia delle Entrate (ufficio che ha emesso l’avviso). Questo è un passo facoltativo ma strategico: puoi provare a risolvere la questione senza andare in tribunale. **Attenzione:** presentare l’istanza di riesame **NON sospende** il termine dei 60 giorni per il ricorso. Devi quindi monitorare le scadenze: se non risolvi entro 60 giorni, devi comunque presentare ricorso (o puoi farlo prima).\n    *   Se l’importo è significativo o le ragioni sono complesse, è fortemente consigliabile coinvolgere un commercialista o un avvocato tributario: la tecnica di impugnazione (motivi del ricorso, istanza di sospensione, cauzione se necessaria) può fare la differenza.\n\n**Rischio principale:** confondere la data di emissione con quella di notifica, o pensare che l’istanza di riesame blocchi i tempi del ricorso.\n\n**Prossimi passi:**\n1.  Individua la data di notifica.\n2.  Decidi se tentare l’istanza di riesame (più rapida, ma meno vincolante per l’Agenzia) o procedere direttamente con il ricorso.\n3.  Se l’importo è rilevante, consulta subito un professionista del diritto tributario.\n\nSe mi dici **quando hai ricevuto l’avviso** e **l’importo indicato**, posso aiutarti a verificare se sei ancora nei termini e a valutare la complessità della situazione.",
+     "visibile": "La risposta breve è: nel termine previsto dalla normativa messo a disposizione (su accessoweb, se in formato telematico). Il termine è perentorio: se scade, perdi la possibilità di impugnare.\n\nEcco come ragionare su questo dato nel tuo caso concreto:\n\n1. Controlla la data di notifica. Non contare dalla data di *emissione* (che è quella che spesso compare in alto a sinistra del documento, con il numero di protocollo), ma dalla data di effettiva notifica o messa a disposizione. Se l'avviso è stato notificato via PEC, contano i giorni dalla ricezione. Se è su accessoweb, i 60 giorni partono dal momento in cui lo hai scaricato o è diventato visibile (anche se in realtà, per gli avvisi telematici, la giurisprudenza ha chiarito che il termine decorre dalla messa a disposizione, ma è prudente agire subito).\n2. Il ricorso va presentato alla Corte di Giustizia Tributaria di primo grado competente per il tuo luogo di residenza o sede legale. Non alla Commissione Tributaria Provinciale (la vecchia denominazione), ma alla Corte di Giustizia Tributaria.\n3. Cosa fare subito (nelle prossime 24-48 ore):\n - Verifica la data esatta di notifica.\n - Calcola la data di scadenza (nel termine previsto dalla normativa).\n - Inoltra un'istanza di riesame all'Agenzia delle Entrate (ufficio che ha emesso l'avviso). Questo è un passo facoltativo ma strategico: puoi provare a risolvere la questione senza andare in tribunale. Attenzione: presentare l'istanza di riesame NON sospende il termine preciso previsto dalla normativa per il ricorso. Devi quindi monitorare le scadenze: se non risolvi entro il termine previsto dalla normativa, devi comunque presentare ricorso (o puoi farlo prima).\n - Se l'importo è significativo o le ragioni sono complesse, è fortemente consigliabile coinvolgere un commercialista o un avvocato tributario: la tecnica di impugnazione (motivi del ricorso, istanza di sospensione, cauzione se necessaria) può fare la differenza.\n\nRischio principale: confondere la data di emissione con quella di notifica, o pensare che l'istanza di riesame blocchi i tempi del ricorso.\n\nProssimi passi:\n1. Individua la data di notifica.\n2. Decidi se tentare l'istanza di riesame (più rapida, ma meno vincolante per l'Agenzia) o procedere direttamente con il ricorso.\n3. Se l'importo è rilevante, consulta subito un professionista del diritto tributario.\n\nSe mi dici quando hai ricevuto l'avviso e l'importo indicato, posso aiutarti a verificare se sei ancora nei termini e a valutare la complessità della situazione.",
+     "latenza_s": 130.0,
+     "primo_token_s": 7.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 17: «60giornidalladataincuil'avvisotièstatoco» → «neltermineprevistodallanormativamessoadi»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 130.0s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-difetti-gravi-capannone",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "81ce72c5-e84c-4bba-8072-7a66931e6260",
+   "turni": [
+    {
+     "utente": "Il capannone che ci ha costruito un'impresa ha dei difetti gravi comparsi dopo cinque anni. Possiamo pretendere qualcosa dall'impresa?",
+     "streamato": "Sì, in linea di massima potete pretendere qualcosa, e avete un’arma forte: la legge (disciplina dei vizi dell’opera nel Codice Civile) prevede che per le costruzioni il periodo di garanzia per i vizi che compromettono la stabilità o la sicurezza dell’opera è lungo (10 anni), molto superiore alla garanzia ordinaria di 2 anni per altri vizi. Cinque anni quindi state perfettamente dentro il termine.\n\nPerò attenzione: non è automatico. Per agire con successo servono tre condizioni:\n- il difetto deve esistere al momento della consegna (anche se si manifesta dopo): qui è il nodo, perché a 5 anni di distanza dovreste provare che non è un deterioramento normale o un uso scorretto, ma un vizio originario (es. errori di progetto, materiali scadenti, esecuzione difettosa);\n- la notifica: il vizio va denunciato all’impresa in modo formale e tempestivo (PEC o raccomandata con ricevuta di ritorno), perché il silenzio può far decorrere i termini;\n- l’accertamento tecnico: servirà una perizia (CTU o perizia di parte) che individui cause, responsabilità e danni — è il documento che chiude il ragionamento su “a chi imputarlo”.\n\nLe alternative concrete, dall’impattante alla leggera: chiedere il risarcimento del danno (riparazione + eventuali danni derivanti, come il fermo dell’attività), oppure la riduzione del prezzo, oppure in casi estremi la risoluzione. La scelta dipende dall’entità dei difetti e dalla convenienza.\n\nCosa cambia la strategia: i difetti sono strutturali/sicurezza (es. crepe portanti, infiltrazioni gravi) oppure di finitura? Se sono strutturali, il periodo decennale e la responsabilità dell’impresa (e dell’eventuale progettista) si rafforzano parecchio; se sono di finitura, il termine potrebbe essere più corto e la prova più difficile.\n\nIn una riga: prima di anything else, inviate subito la PEC di messa in mora con elenco fotografico dei vizi, e incaricate un ingegnere per la perizia. Il resto (pretese economiche, controparti — impresa, progettista, forse anche la cassa depositi) si costruisce su quello.\n\nDimmi che tipo di difetti sono (strutturali, impianti, finiture) e se il contratto prevede clausole sulla garanzia, così ti dico se la posizione è solida o da raffinare.",
+     "visibile": "Sì, in linea di massima potete pretendere qualcosa, e avete un'arma forte: la legge (disciplina dei vizi dell'opera nel Codice Civile) prevede che per le costruzioni il periodo di garanzia per i vizi che compromettono la stabilità o la sicurezza dell'opera è lungo (10 anni), molto superiore alla garanzia ordinaria di 2 anni per altri vizi. Cinque anni quindi state perfettamente dentro il termine.\n\nPerò attenzione: non è automatico. Per agire con successo servono tre condizioni:\n- il difetto deve esistere al momento della consegna (anche se si manifesta dopo): qui è il nodo, perché a 5 anni di distanza dovreste provare che non è un deterioramento normale o un uso scorretto, ma un vizio originario (es. errori di progetto, materiali scadenti, esecuzione difettosa);\n- la notifica: il vizio va denunciato all'impresa in modo formale e tempestivo (PEC o raccomandata con ricevuta di ritorno), perché il silenzio può far decorrere i termini;\n- l'accertamento tecnico: servirà una perizia (CTU o perizia di parte) che individui cause, responsabilità e danni — è il documento che chiude il ragionamento su «a chi imputarlo».\n\nLe alternative concrete, dall'impattante alla leggera: chiedere il risarcimento del danno (riparazione + eventuali danni derivanti, come il fermo dell'attività), oppure la riduzione del prezzo, oppure in casi estremi la risoluzione. La scelta dipende dall'entità dei difetti e dalla convenienza.\n\nCosa cambia la strategia: i difetti sono strutturali/sicurezza (es. crepe portanti, infiltrazioni gravi) oppure di finitura? Se sono strutturali, il periodo decennale e la responsabilità dell'impresa (e dell'eventuale progettista) si rafforzano parecchio; se sono di finitura, il termine potrebbe essere più corto e la prova più difficile.\n\nIn una riga: prima di anything else, inviate subito la PEC di messa in mora con elenco fotografico dei vizi, e incaricate un ingegnere per la perizia. Il resto (pretese economiche, controparti — impresa, progettista, forse anche la cassa depositi) si costruisce su quello.\n\nDimmi che tipo di difetti sono (strutturali, impianti, finiture) e se il contratto prevede clausole sulla garanzia, così ti dico se la posizione è solida o da raffinare.",
+     "latenza_s": 149.6,
+     "primo_token_s": 8.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: denuncia entro un anno dalla scoperta"
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 149.6s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-patto-concorrenza-imprese",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "251f3223-0688-4100-8310-50fb11277900",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare a un nostro distributore un impegno a non farci concorrenza per 8 anni. Regge?",
+     "streamato": "La domanda giusta non è “regge” ma “quante anni e in cosa è proporzionato”, perché la clausola di non concorrenza con un distributore non è un patto tra soci: è un vincolo alla libertà di impresa del distributore, che vale solo se è strettamente necessario a proteggere un interesse legittimo tuo (es. rete clienti, know-how, investimenti su quel canale) e resta ragionevole in durata, ambito geografico e prodotti.\n\nOtto anni, di regola, è un orizzonte molto lungo per questo tipo di vincolo: più la durata è alta, più diventa facile che un giudice la consideri eccessiva e la annulli, o comunque non la applichi integralmente. In pratica, la durata “sicura” varia molto per settore, forza contrattuale del distributore, tipo di rete e investimenti, ma raramente arriva a 8 anni senza un motivo molto forte documentato.\n\nPrima di impostarla, ti chiedo una cosa decisiva: che tipo di interesse concreto state cercando di proteggere con questi 8 anni — stai bloccando un concorrente diretto che usa una tua formula/prodotto, o vuoi semplicemente blindare il canale per non essere scavalcato? Questo cambia molto sia la durata realistica sia il rischio di invalidità della clausola.",
+     "visibile": "La domanda giusta non è «regge» ma «quante anni e in cosa è proporzionato», perché la clausola di non concorrenza con un distributore non è un patto tra soci: è un vincolo alla libertà di impresa del distributore, che vale solo se è strettamente necessario a proteggere un interesse legittimo tuo (es. rete clienti, know-how, investimenti su quel canale) e resta ragionevole in durata, ambito geografico e prodotti.\n\nOtto anni, di regola, è un orizzonte molto lungo per questo tipo di vincolo: più la durata è alta, più diventa facile che un giudice la consideri eccessiva e la annulli, o comunque non la applichi integralmente. In pratica, la durata «sicura» varia molto per settore, forza contrattuale del distributore, tipo di rete e investimenti, ma raramente arriva a 8 anni senza un motivo molto forte documentato.\n\nPrima di impostarla, ti chiedo una cosa decisiva: che tipo di interesse concreto state cercando di proteggere con questi 8 anni — stai bloccando un concorrente diretto che usa una tua formula/prodotto, o vuoi semplicemente blindare il canale per non essere scavalcato? Questo cambia molto sia la durata realistica sia il rischio di invalidità della clausola.",
+     "latenza_s": 70.1,
+     "primo_token_s": 0.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: durata massima cinque anni"
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: forma scritta o riduzione a cinque anni"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  }
+ ]
+}
