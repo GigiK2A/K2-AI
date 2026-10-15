@@ -48,6 +48,7 @@ MAX_CHARS_TOTALE = int(os.getenv("KBOT_NORME_MAX_CHARS", "7500"))
 # il budget degli altri: si taglia a una frase e si segna «[…]».
 MAX_CHARS_COMMA = int(os.getenv("KBOT_NORME_MAX_CHARS_COMMA", "650"))
 _TIMEOUT_PROPOSTA = float(os.getenv("KBOT_NORME_TIMEOUT_PROPOSTA", "25"))
+_TEMPERATURA = float(os.getenv("KBOT_NORME_TEMPERATURA", "0"))
 
 
 def abilitato() -> bool:
@@ -262,11 +263,22 @@ dopo prima ancora sempre mai molto poco tutto tutti ogni altro altra altri altre
 poi subito entro oggi ieri domani anno anni mese mesi giorno giorni""".split())
 
 
+_CHITCHAT = re.compile(r"^\s*(?:ciao|salve|buongiorno|buonasera|grazie|ok|va bene|perfetto|capito|certo|si|sì|no|"
+                       r"come stai|tutto bene|a presto|arrivederci)\b[^.?!]{0,40}[.?!]*\s*$", re.I)
+
+
 def serve_evidenza(testo: str, contesto: str = "") -> bool:
+    """Si prova a recuperare la norma per OGNI messaggio sostanziale; è la chiamata corta al modello a dire se
+    c'è una norma (lista vuota se non c'è). Un tempo il gate era un elenco di parole chiave di ambito
+    normativo: scritto guardando i casi di sviluppo, su 8 domande mai viste ne mancava 2 («macchinario»,
+    «capannone», «difetto»…) e il pacchetto non partiva. Un elenco di parole è fragile per costruzione;
+    qui si scartano solo le chiacchiere e i messaggi troppo corti. KBOT_NORME_GATE=parole ripristina l'elenco."""
     t = (testo or "").strip()
-    if len(t) < 15:
+    if len(t) < 25 or len(t.split()) < 4:
         return False
-    return bool(_AMBITO.search(t) or _AMBITO.search(contesto or "") and len(t) < 80)
+    if os.getenv("KBOT_NORME_GATE", "") == "parole":
+        return bool(_AMBITO.search(t) or _AMBITO.search(contesto or "") and len(t) < 80)
+    return not _CHITCHAT.match(t)
 
 
 def _parole_chiave(testo: str) -> list[str]:
@@ -331,7 +343,9 @@ _SISTEMA_PROPOSTA = (
     "non dell'articolo, scrivi la norma senza articolo ('D.Lgs. 276/2003'): il sistema cercherà l'articolo "
     "dentro la norma.\n"
     "'parole': da 3 a 6 parole italiane tecniche che compaiono nel testo di legge pertinente (sostantivi e "
-    "verbi giuridici, niente articoli o preposizioni)."
+    "verbi giuridici, niente articoli o preposizioni).\n"
+    "Se il quesito NON riguarda norme di legge (strategia, marketing, organizzazione, tecnica, calcoli) o è una "
+    "chiacchiera, rispondi {\"norme\":[],\"parole\":[]}."
 )
 
 
@@ -353,8 +367,20 @@ def proponi(client, modello: str, quesito: str, contesto: str = "") -> tuple[lis
         utente = f"QUESITO:\n{quesito.strip()[:1200]}"
         if contesto.strip():
             utente = f"CONTESTO (messaggi precedenti dell'utente):\n{contesto.strip()[-900:]}\n\n" + utente
-        r = client.messages.create(model=modello, max_tokens=320, system=_SISTEMA_PROPOSTA,
-                                   messages=[{"role": "user", "content": utente}], timeout=_TIMEOUT_PROPOSTA)
+        # temperatura 0: la scelta degli articoli deve essere RIPRODUCIBILE. Con una temperatura alta lo stesso
+        # quesito dava articoli diversi a ogni esecuzione (misurato il 15/10/2026), e questo rumore copriva
+        # l'effetto di ogni modifica al recupero. L'SDK attuale NON ha il parametro `temperature` (TypeError:
+        # la proposta falliva sempre, in silenzio, per il fail-open): si passa da extra_body, e se l'API lo
+        # rifiuta (alcuni modelli non accettano la temperatura) si riprova una volta senza.
+        base = dict(model=modello, max_tokens=320, system=_SISTEMA_PROPOSTA,
+                    messages=[{"role": "user", "content": utente}], timeout=_TIMEOUT_PROPOSTA)
+        try:
+            r = client.messages.create(**base, extra_body={"temperature": _TEMPERATURA})
+        except Exception as e:
+            if isinstance(e, TypeError) or getattr(e, "status_code", None) in (400, 422):
+                r = client.messages.create(**base)
+            else:
+                raise
         out = "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
         v = _json_tollerante(out)
         if not v:

@@ -191,6 +191,23 @@ def test_senza_ambito_normativo_nessuna_chiamata(corpus):
             def create(**_k):
                 raise AssertionError("il modello non va chiamato per una chiacchiera")
     assert E.costruisci("ciao, come stai oggi? tutto bene da te", "", _Boom, "m") is None
+    assert E.costruisci("grazie mille", "", _Boom, "m") is None
+    assert E.costruisci("ok va bene", "", _Boom, "m") is None
+
+
+def test_il_gate_non_dipende_da_un_elenco_di_parole(corpus):
+    """Due domande mai viste durante lo sviluppo («macchinario», «capannone», «difetto») non contenevano nessuna
+    delle parole dell'elenco e il pacchetto non partiva."""
+    for q in ("Abbiamo comprato un macchinario da un'impresa e dopo un mese ha un difetto. Entro quanto dobbiamo contestarlo?",
+              "Il capannone che ci ha costruito un'impresa ha dei difetti gravi comparsi dopo cinque anni. Possiamo pretendere qualcosa?"):
+        assert E.serve_evidenza(q)
+    assert not E.serve_evidenza("ciao")
+    assert not E.serve_evidenza("ok grazie ci sentiamo")
+
+
+def test_se_il_modello_non_trova_norme_il_pacchetto_e_vuoto(corpus):
+    assert E.costruisci("Come imposto una campagna di email marketing per i nostri clienti storici?", "",
+                        _client([], []), "m") is None
 
 
 def test_fail_open_se_il_modello_va_in_errore(corpus):
@@ -344,3 +361,62 @@ def test_affini_e_ricerca_norma_spegnibili(corpus, monkeypatch):
     p = E.costruisci("impugnare la decisione dei soci e gli stipendi dell'appalto", "",
                      _client(["D.Lgs. 276/2003", "art. 2479 c.c."], ["appalto", "solidale", "impugnare", "decisioni", "soci"]), "m")
     assert p is None or all(f.articolo not in ("29", "2479-ter") for f in p.fonti)
+
+
+# ── mappa temi: punto di estensione (vuota di proposito, da validare con un professionista) ───────
+def test_la_mappa_distribuita_e_vuota_e_ben_formata():
+    import json
+    d = json.load(open(E._MAPPA_PATH, encoding="utf-8"))
+    assert d["temi"] == [] and "validato_da" in d["schema"]
+
+
+def test_una_voce_della_mappa_porta_i_riferimenti_senza_il_modello(corpus, monkeypatch, tmp_path):
+    mappa = tmp_path / "mappa.json"
+    mappa.write_text(json.dumps({"temi": [{"id": "recesso-socio-srl", "trigger": ["socio .{0,40}(esce|uscire|recedere)"],
+                                           "riferimenti": ["art. 2473 c.c."], "validato_da": "test"}]}), encoding="utf-8")
+    monkeypatch.setattr(E, "_MAPPA_PATH", mappa)
+    E._mappa.cache_clear()
+    try:
+        class _Boom:
+            class messages:
+                @staticmethod
+                def create(**_k):
+                    raise RuntimeError("il modello non risponde")
+        p = E.costruisci("Il mio socio vuole uscire dalla srl, cosa dobbiamo fare adesso?", "", _Boom, "m")
+        assert p is not None and p.fonti[0].sigla == "art. 2473 c.c." and p.fonti[0].origine == "mappa"
+        assert E.riferimenti_da_mappa("parliamo di marketing") == []
+    finally:
+        E._mappa.cache_clear()
+
+
+def _sdk_severo(rifiuta_temperatura=False, visti=None):
+    """Client finto con la STESSA firma dell'SDK Anthropic reale: nessun `temperature`, c'è `extra_body`. Un
+    argomento sconosciuto fa fallire il test (un client che accetta qualunque cosa nascondeva il difetto)."""
+    class _M:
+        def create(self, *, model, max_tokens, messages, system=None, timeout=None, extra_body=None):
+            if visti is not None:
+                visti.append(extra_body)
+            if rifiuta_temperatura and extra_body and "temperature" in extra_body:
+                err = RuntimeError("temperature not supported")
+                err.status_code = 400
+                raise err
+            return NS(content=[NS(type="text", text=json.dumps({"norme": ["art. 2473 c.c."], "parole": ["recesso"]}))])
+    return NS(messages=_M())
+
+
+def test_la_proposta_passa_la_temperatura_zero_da_extra_body_con_la_firma_vera_dell_sdk(corpus):
+    visti = []
+    rif, parole = E.proponi(_sdk_severo(visti=visti), "m", "il socio vuole recedere dalla srl", "")
+    assert visti == [{"temperature": 0.0}] and [r["articolo"] for r in rif] == ["2473"]
+
+
+def test_se_l_api_rifiuta_la_temperatura_si_riprova_senza(corpus):
+    visti = []
+    rif, _ = E.proponi(_sdk_severo(rifiuta_temperatura=True, visti=visti), "m", "il socio vuole recedere dalla srl", "")
+    assert visti == [{"temperature": 0.0}, None] and [r["articolo"] for r in rif] == ["2473"]
+
+
+def test_tutti_i_client_finti_dei_test_usano_la_firma_dell_sdk(corpus):
+    # il pacchetto completo, con il client severo, deve produrre fonti: se la firma sbagliasse, sarebbe vuoto
+    p = E.costruisci("Il socio della srl vuole recedere: quanto tempo per liquidare la quota?", "", _sdk_severo(), "m")
+    assert p is not None and p.fonti[0].sigla == "art. 2473 c.c."

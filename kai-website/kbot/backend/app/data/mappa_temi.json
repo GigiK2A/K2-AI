@@ -1,0 +1,5 @@
+{
+ "descrizione": "MAPPA TEMI → NORME della chat K-BOT. Punto di estensione del pacchetto normativo (lib/norme_evidence.py): quando un trigger compare nel messaggio dell'utente, i riferimenti elencati entrano nel pacchetto SENZA passare dal filtro di pertinenza e senza dipendere da ciò che il modello ricorda. È il modo di portare nel sistema conoscenza curata e verificata. VUOTA di proposito: ogni voce è un contenuto legale che si replica su ogni utente e deve essere validata da un professionista prima di entrare (campo 'validato_da'); una voce sbagliata si ripete su tutti. Non si scrivono voci guardando i casi di valutazione del banco di prova: lo falserebbero.",
+ "schema": {"id": "nome breve del tema", "trigger": ["regex italiane, case-insensitive"], "riferimenti": ["art. 2473 c.c.", "D.Lgs. 231/2002 art. 4"], "note": "avvertenze per chi mantiene la mappa", "validato_da": "nome del professionista", "validato_il": "AAAA-MM-GG"},
+ "temi": []
+}
