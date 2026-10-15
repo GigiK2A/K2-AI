@@ -81,6 +81,7 @@ def valuta(caso: dict, ultimo: dict, budget: dict) -> dict:
         "nessuna_lingua_estranea": C.nessuna_lingua_estranea(testo),
         "frasi_integre": C.frasi_integre(testo),
         "nessuna_autocorrezione": C.nessuna_autocorrezione(testo),
+        "nessun_testo_del_critico": C.nessun_testo_del_critico(testo),
         "nessuna_fuga_prompt": C.nessuna_fuga_prompt(testo),
         "testo_letto_uguale_finale": C.testo_letto_uguale_finale(ultimo.get("streamato"), testo),
         "nessun_errore_di_stream": C.nessun_errore_di_stream(ultimo.get("errori"), ultimo.get("eccezione")),

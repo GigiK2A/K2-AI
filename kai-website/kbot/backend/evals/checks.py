@@ -35,8 +35,16 @@ _FRASE_ROTTA = [
 ]
 
 _AUTOCORREZIONE = re.compile(
-    r"(?:^|[.!?]\s+|\n)\s*(?:Aspetta|Correzione|Mi correggo|Anzi|Ops|Scusa,? (?:ho sbagliato|errore))\b\s*[:,.!]",
+    r"(?:^|[.!?]\s+|\n)\s*(?:Aspetta|Correzione|Mi correggo|Anzi|Ops|Scusa,? (?:ho sbagliato|errore))\b\s*[:,.!]"
+    r"|\bNo\s*[\u2014\u2013-]+\s*correggo\b|\bcorreggo con certezza\b",
     re.I)
+
+# Commento interno del critico di qualità finito nel testo per l'utente (visto in produzione il
+# 15/10/2026: «La bozza contiene una diagnosi assertiva… Ecco la versione corretta e prudente»).
+_TESTO_DEL_CRITICO = re.compile(
+    r"\bLa bozza (?:contiene|presenta|è|risulta)\b|\bEcco la versione (?:corretta|riveduta|prudente)\b|"
+    r"\bversione corretta e prudente\b|\bdiagnosi assertiva\b|\bpremature_summary\b|"
+    r"\bdepth_mismatch\b|\bdrastic_actions\b|\bassertive_diagnosis\b", re.I)
 
 _FUGA_PROMPT = re.compile(
     r"REGOLE FISSE|NON NEGOZIABILI|FASE COMPRENSIONE|CONSULENZA_SUMMARY|DIAGNOSI_STATO|"
@@ -82,6 +90,11 @@ def nessuna_autocorrezione(testo: str):
     return (m is None), (f"«{_norm(m.group(0))}»" if m else "")
 
 
+def nessun_testo_del_critico(testo: str):
+    m = _TESTO_DEL_CRITICO.search(testo or "")
+    return (m is None), (f"«{m.group(0)}»" if m else "")
+
+
 def nessuna_fuga_prompt(testo: str):
     m = _FUGA_PROMPT.search(testo or "")
     return (m is None), (f"«{m.group(0)}»" if m else "")
@@ -125,7 +138,8 @@ def entro_budget(valore: float | None, budget: float, etichetta: str):
 
 
 GENERICI = ("risposta_non_vuota", "nessuna_lingua_estranea", "frasi_integre",
-            "nessuna_autocorrezione", "nessuna_fuga_prompt", "testo_letto_uguale_finale",
+            "nessuna_autocorrezione", "nessun_testo_del_critico", "nessuna_fuga_prompt",
+            "testo_letto_uguale_finale",
             "nessun_errore_di_stream")
 
 

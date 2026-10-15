@@ -28,20 +28,21 @@
    "7dcf47f2-f218-411c-9173-23a582274011",
    "67ff9e1d-4097-4682-81f9-3952b39c63c7"
   ],
-  "rivalutato_il": "2026-10-15T10:32:46.545033+00:00",
+  "rivalutato_il": "2026-10-15T10:58:32.488390+00:00",
   "rivalutato_da": "base-2026-10-15.json",
-  "commit_rivalutazione": "36eb819"
+  "commit_rivalutazione": "7938d67"
  },
  "riepilogo": {
   "casi": 17,
   "casi_senza_difetti_generici": 14,
   "casi_con_attese_specifiche": 17,
   "casi_con_attese_tutte_rispettate": 5,
-  "controlli_generici": "114/119",
+  "controlli_generici": "131/136",
   "controlli_specifici": "24/45",
   "per_controllo": {
    "generici.frasi_integre": "15/17",
    "generici.nessun_errore_di_stream": "17/17",
+   "generici.nessun_testo_del_critico": "17/17",
    "generici.nessuna_autocorrezione": "17/17",
    "generici.nessuna_fuga_prompt": "17/17",
    "generici.nessuna_lingua_estranea": "17/17",
@@ -97,6 +98,10 @@
       ""
      ],
      "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
       true,
       ""
      ],
@@ -174,6 +179,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -241,6 +250,10 @@
       ""
      ],
      "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
       true,
       ""
      ],
@@ -318,6 +331,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -392,6 +409,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -459,6 +480,10 @@
       "…mine per opporvi al decreto è di nel termine previsto dalla normativa (il 22 settembre + 40 giorni,…"
      ],
      "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
       true,
       ""
      ],
@@ -540,6 +565,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -611,6 +640,10 @@
       ""
      ],
      "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
       true,
       ""
      ],
@@ -692,6 +725,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -759,6 +796,10 @@
       ""
      ],
      "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
       true,
       ""
      ],
@@ -840,6 +881,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -911,6 +956,10 @@
       ""
      ],
      "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
       true,
       ""
      ],
@@ -988,6 +1037,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -1059,6 +1112,10 @@
       ""
      ],
      "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
       true,
       ""
      ],
@@ -1198,6 +1255,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -1268,6 +1329,10 @@
       true,
       ""
      ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
      "nessuna_fuga_prompt": [
       true,
       ""
@@ -1331,6 +1396,10 @@
       ""
      ],
      "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
       true,
       ""
      ],

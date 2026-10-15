@@ -245,7 +245,7 @@
     "nessuno": [
      {
       "nome": "limite sbagliato",
-      "re": "(limite|soglia|massimo)[^.]{0,40}(1\\.000|2\\.000|3\\.000|500)\\s*(€|euro)"
+      "re": "(limite|soglia|massimo)[^.]{0,90}(1\\.000|2\\.000|3\\.000|500)\\s*(€|euro)"
      },
      {
       "nome": "dice che 1.500 non si può",

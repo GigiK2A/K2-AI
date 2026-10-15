@@ -237,3 +237,22 @@ def test_bilancio_indice_corretto_ma_senza_pfn_ebitda():
              "L'EBITDA (380k) copre circa il 20% del debito in un anno.")
     r = _specifici("bil-indici", reale)
     assert r["fatti_alternativi"] and not r["fatti_presenti"]
+
+
+# ── lacune trovate rilanciando il banco dopo il deploy (15/10/2026) ──────────────────────────
+def test_commento_del_critico_nel_testo_per_l_utente():
+    reale = ("La bozza contiene una diagnosi assertiva (affermazione di fatto che le clausole creino squilibrio) "
+             "senza aver verificato l'effettiva applicabilità al caso.\n\nEcco la versione corretta e prudente:\n\n"
+             "\"Non è consigliabile firmare il contratto così com'è\"")
+    assert not C.nessun_testo_del_critico(reale)[0]
+    assert C.nessun_testo_del_critico("Non è consigliabile firmare così: le clausole vanno approvate per iscritto.")[0]
+    # una frase normale che usa «bozza» non è il commento del critico
+    assert C.nessun_testo_del_critico("Mandami la bozza del contratto e la guardo.")[0]
+
+
+def test_contanti_3000_con_autocorrezione_e_bocciato():
+    reale = ("No, non puoi: dal 30 settembre 2022 il limite di pagamento in contanti a un fornitore è 3.000 euro? "
+             "Attenzione: ... No — correggo con certezza: la normativa vigente ha fissato a 3.000 euro il limite.")
+    r = _specifici("fis-contanti", reale)
+    assert not r["nessuna_affermazione_errata"] and not r["fatti_presenti"]
+    assert not C.nessuna_autocorrezione(reale)[0]
