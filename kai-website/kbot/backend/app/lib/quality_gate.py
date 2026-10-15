@@ -84,6 +84,44 @@ _CRITIC_SYSTEM = (
 )
 
 
+# Il modello locale, invece del solo testo corretto, a volte scrive nel campo `rewrite` anche il
+# PROPRIO GIUDIZIO sulla bozza («La bozza contiene una diagnosi assertiva… Ecco la versione
+# corretta e prudente: "…"») e review() lo metteva così com'era davanti all'utente (visto in
+# produzione il 15/10/2026). Il commento del critico non deve MAI arrivare al cliente.
+_COMMENTO_CRITICO = re.compile(
+    r"\bLa bozza (?:contiene|presenta|è|risulta)\b|\bEcco la versione (?:corretta|riveduta|prudente)\b|"
+    r"\bversione corretta e prudente\b|"
+    r"\b(?:premature_summary|assertive_diagnosis|drastic_actions|depth_mismatch)\b", re.I)
+_VIRGOLETTE_APERTURA = "\"\u00ab\u201c"
+_VIRGOLETTE_CHIUSURA = "\"\u00bb\u201d"
+
+
+def _ripulisci_rewrite(rewrite: str) -> Optional[str]:
+    """Il testo corretto SENZA il commento del critico, o None se il commento non si separa.
+
+    1. nessun marcatore → invariato;
+    2. c'è «Ecco la versione …:» → si tiene ciò che segue (e si tolgono le virgolette che lo
+       racchiudono);
+    3. altrimenti si scartano i paragrafi che contengono un marcatore;
+    4. se un marcatore resta, o non resta nulla → None (il chiamante tiene la bozza originale:
+       meglio un testo non corretto che un commento interno davanti al cliente)."""
+    t = (rewrite or "").strip()
+    if not t:
+        return None
+    if not _COMMENTO_CRITICO.search(t):
+        return t
+    m = re.search(r"Ecco la versione[^\n:]*:\s*", t, re.I)
+    if m:
+        t = t[m.end():].strip()
+    else:
+        t = "\n\n".join(p for p in re.split(r"\n\s*\n", t) if not _COMMENTO_CRITICO.search(p)).strip()
+    if len(t) >= 2 and t[0] in _VIRGOLETTE_APERTURA and t[-1] in _VIRGOLETTE_CHIUSURA:
+        t = t[1:-1].strip()
+    if not t or _COMMENTO_CRITICO.search(t):
+        return None
+    return t
+
+
 def _parse_verdict(text: str) -> Optional[dict]:
     t = (text or "").strip()
     start, end = t.find("{"), t.rfind("}")
@@ -153,7 +191,14 @@ def review(client, model: str, merged_messages: list, raw_text: str,
         if not flags:
             return raw_text
         log.info("quality_gate: intervento %s", ",".join(flags))
-        text = str(v.get("rewrite") or "").strip() or raw_text
+        rewrite_grezzo = str(v.get("rewrite") or "").strip()
+        rewrite = _ripulisci_rewrite(rewrite_grezzo)
+        if rewrite_grezzo and rewrite is None:
+            log.warning("quality_gate: rewrite con il commento del critico non ripulibile → "
+                        "scartato, resta la bozza")
+        elif rewrite_grezzo and rewrite != rewrite_grezzo:
+            log.info("quality_gate: rewrite ripulito dal commento del critico")
+        text = rewrite or raw_text
         if v.get("premature_summary"):
             # enforcement deterministico: MAI un summary con ipotesi aperte,
             # qualunque cosa contenga il rewrite.
