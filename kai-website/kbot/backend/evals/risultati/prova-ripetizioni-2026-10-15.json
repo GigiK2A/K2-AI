@@ -1,0 +1,622 @@
+{
+ "meta": {
+  "data": "2026-10-15T11:04:08.161437+00:00",
+  "base_url": "https://www.k2-ai.it/api/kbot",
+  "modello": "qwen locale (test) via shim k2a-kbot",
+  "commit": "c87e743",
+  "file_casi": "casi.json",
+  "ripetizioni": 3,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "60262f5d-69f4-4063-9d69-e3367e0b8fc4",
+   "a227fe1a-3d4a-4635-aaea-d3365cc81394",
+   "560bfa4c-25d8-4cea-bbe2-1529755e76a3",
+   "0228d631-84a4-42bd-940e-ae5326d695db",
+   "93cbec05-743e-42c3-9038-6473c5489ee2",
+   "b6afbc80-380a-4035-84fc-ae0df8c0d66a"
+  ]
+ },
+ "riepilogo": {
+  "esecuzioni": 6,
+  "ripetizioni": 3,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 2,
+    "generici_ok": 14,
+    "generici_tot": 16,
+    "specifici_ok": 6,
+    "specifici_tot": 6,
+    "casi_tutte_attese": 2,
+    "casi_senza_difetti_generici": 1
+   },
+   {
+    "ripetizione": 2,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 6,
+    "specifici_tot": 6,
+    "casi_tutte_attese": 2,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 3,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 5,
+    "specifici_tot": 6,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     6,
+     6,
+     5
+    ],
+    "media": 5.67,
+    "sd": 0.58
+   },
+   "generici_ok": {
+    "valori": [
+     14,
+     16,
+     16
+    ],
+    "media": 15.33,
+    "sd": 1.15
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     2,
+     2,
+     1
+    ],
+    "media": 1.67,
+    "sd": 0.58
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     1,
+     2,
+     2
+    ],
+    "media": 1.67,
+    "sd": 0.58
+   }
+  },
+  "controlli_instabili": [
+   {
+    "caso": "fis-contanti",
+    "controllo": "generici.frasi_integre",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "fis-contanti",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "fis-contanti",
+    "controllo": "specifici.fatti_presenti",
+    "ok": 2,
+    "su": 3
+   }
+  ],
+  "casi": 6,
+  "casi_senza_difetti_generici": 5,
+  "casi_con_attese_specifiche": 6,
+  "casi_con_attese_tutte_rispettate": 5,
+  "controlli_generici": "46/48",
+  "controlli_specifici": "17/18",
+  "per_controllo": {
+   "generici.frasi_integre": "5/6",
+   "generici.nessun_errore_di_stream": "6/6",
+   "generici.nessun_testo_del_critico": "6/6",
+   "generici.nessuna_autocorrezione": "6/6",
+   "generici.nessuna_fuga_prompt": "6/6",
+   "generici.nessuna_lingua_estranea": "6/6",
+   "generici.risposta_non_vuota": "6/6",
+   "generici.testo_letto_uguale_finale": "5/6",
+   "specifici.fatti_alternativi": "3/3",
+   "specifici.fatti_presenti": "5/6",
+   "specifici.nessuna_affermazione_errata": "6/6",
+   "specifici.non_spinge_vendita": "3/3"
+  },
+  "latenza_s": {
+   "mediana": 22.3,
+   "p90": 35.6,
+   "max": 35.6
+  },
+  "primo_token_s": {
+   "mediana": 4.05,
+   "p90": 10.8,
+   "max": 10.8
+  }
+ },
+ "risultati": [
+  {
+   "id": "fis-contanti",
+   "ripetizione": 1,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "60262f5d-69f4-4063-9d69-e3367e0b8fc4",
+   "turni": [
+    {
+     "utente": "Domanda veloce: posso pagare in contanti un fornitore 1.500 euro per una piccola fornitura?",
+     "streamato": "No, con 1.500 euro non puoi: la soglia massima per i pagamenti in contanti tra imprese (e per acquisti da un fornitore) è di 5.000 euro solo se si tratta di persona fisica che paga a persona fisica; tra soggetti con partita IVA (o per acquisti da un'impresa) il limite è 1.000 euro. Quindi, per una fornitura a un fornitore con P.IVA, il pagamento in contanti oltre 1.000 € non è ammissibile e va tracciato (bonifico, assegno, carta) anche per le tue registrazioni e per la regolarità dell'operazione.\n\nDue verifiche rapide da fare:\n- Il fornitore ha partita IVA? Se sì, sei sicuro nella fattispecie sopra: bonifico o altro strumento tracciabile.\n- Se invece fosse una persona fisica senza P.IVA, il limite di 5.000 € potrebbe valere, ma resta opportuno conservare ricevuta o documento.\n\nCosa fare ora: passa a bonifico (meglio con causale e riferimento fattura) e tieni tutto documentato: è la cosa che ti tutela sia fiscalmente sia in caso di contestazioni.\n\nSe vuoi, dimmi il tipo di fornitore e se ha P.IVA, ti confermo la soglia giusta al caso.",
+     "visibile": "No, con 1.500 euro non puoi: la soglia massima per i pagamenti in contanti tra imprese (e per acquisti da un fornitore) è di 5.000 euro solo se si tratta di persona fisica che paga a persona fisica; tra soggetti con partita IVA (o per acquisti da un'impresa) il limite è un importo previsto dalla normativa. Quindi, per una fornitura a un fornitore con P.IVA, il pagamento in contanti oltre 1.000 € non è ammissibile e va tracciato (bonifico, assegno, carta) anche per le tue registrazioni e per la regolarità dell'operazione.\n\nDue verifiche rapide da fare:\n- Il fornitore ha partita IVA? Se sì, sei sicuro nella fattispecie sopra: bonifico o altro strumento tracciabile.\n- Se invece fosse una persona fisica senza P.IVA, il limite di un importo previsto dalla normativa potrebbe valere, ma resta opportuno conservare ricevuta o documento.\n\nCosa fare ora: passa a bonifico (meglio con causale e riferimento fattura) e tieni tutto documentato: è la cosa che ti tutela sia fiscalmente sia in caso di contestazioni.\n\nSe vuoi, dimmi il tipo di fornitore e se ha P.IVA, ti confermo la soglia giusta al caso.",
+     "latenza_s": 30.8,
+     "primo_token_s": 10.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      false,
+      "…fisica senza P.IVA, il limite di un importo previsto dalla normativa potrebbe valere, ma resta opp…"
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 220: «1.000euro.Quindi,perunafornituraaunforni» → «unimportoprevistodallanormativa.Quindi,p»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "sic-dvr",
+   "ripetizione": 1,
+   "dominio": "sicurezza-lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "a227fe1a-3d4a-4635-aaea-d3365cc81394",
+   "turni": [
+    {
+     "utente": "Ho una piccola officina con 4 dipendenti. Devo per forza fare il documento di valutazione dei rischi o basta un'autocertificazione?",
+     "streamato": "Ciao. Prima di tutto una precisazione importante: il “documento di valutazione dei rischi” (DVR) NON è un’autocertificazione e non è sostituibile da una dichiarazione di conformità o da un documento compilato a regola d’arte senza analisi reale. È un documento tecnico che obbliga il datore di lavoro, anche con pochi dipendenti, a valutare i rischi e adottare misure di prevenzione.\n\nDetto questo, la normativa prevede un’agevolazione per le microimprese: puoi appoggiarti a un “documento tipo” elaborato da un’associazione di categoria o da un ente pubblico, adattandolo alla tua specifica realtà. In pratica, non devi redigere da zero un documento complesso, ma devi comunque personalizzarlo e applicarlo al tuo contesto (officina, tipo di lavori, attrezzature, presenza di sostanze chimiche, ecc.).\n\nSe sei in una situazione molto semplice (ad esempio solo un meccanico e un apprendista, nessun rischio specifico rilevante), la valutazione può essere molto sintetica, ma deve esistere e deve essere aggiornata quando cambiano i processi o le attrezzature.\n\nCosa fare subito:\n1. Verifica se la tua associazione di categoria (Confindustria, CNA, Confartigianato, ecc.) o un ente accreditato offre un documento tipo per le officine meccaniche.\n2. Adatta quel documento alla tua officina: elenca i rischi specifici (es. tagli, schiacciamenti, vapori di vernice, rumore, movimentazione carichi) e le misure di prevenzione già adottate o da adottare.\n3. Fai firmare il documento da te (datore di lavoro) e, se presente, dal medico competente e dal RSPP (Responsabile del Servizio di Prevenzione e Protezione, che in microimprese può essere anche un consulente esterno).\n\nSe vuoi, posso aiutarti a capire quali sono i rischi principali in un’officina con 4 dipendenti e come strutturare la valutazione in modo pratico e rapido.",
+     "visibile": "Ciao. Prima di tutto una precisazione importante: il «documento di valutazione dei rischi» (DVR) NON è un'autocertificazione e non è sostituibile da una dichiarazione di conformità o da un documento compilato a regola d'arte senza analisi reale. È un documento tecnico che obbliga il datore di lavoro, anche con pochi dipendenti, a valutare i rischi e adottare misure di prevenzione.\n\nDetto questo, la normativa prevede un'agevolazione per le microimprese: puoi appoggiarti a un «documento tipo» elaborato da un'associazione di categoria o da un ente pubblico, adattandolo alla tua specifica realtà. In pratica, non devi redigere da zero un documento complesso, ma devi comunque personalizzarlo e applicarlo al tuo contesto (officina, tipo di lavori, attrezzature, presenza di sostanze chimiche, ecc.).\n\nSe sei in una situazione molto semplice (ad esempio solo un meccanico e un apprendista, nessun rischio specifico rilevante), la valutazione può essere molto sintetica, ma deve esistere e deve essere aggiornata quando cambiano i processi o le attrezzature.\n\nCosa fare subito:\n1. Verifica se la tua associazione di categoria (Confindustria, CNA, Confartigianato, ecc.) o un ente accreditato offre un documento tipo per le officine meccaniche.\n2. Adatta quel documento alla tua officina: elenca i rischi specifici (es. tagli, schiacciamenti, vapori di vernice, rumore, movimentazione carichi) e le misure di prevenzione già adottate o da adottare.\n3. Fai firmare il documento da te (datore di lavoro) e, se presente, dal medico competente e dal RSPP (Responsabile del Servizio di Prevenzione e Protezione, che in microimprese può essere anche un consulente esterno).\n\nSe vuoi, posso aiutarti a capire quali sono i rischi principali in un'officina con 4 dipendenti e come strutturare la valutazione in modo pratico e rapido.",
+     "latenza_s": 35.6,
+     "primo_token_s": 7.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "fis-contanti",
+   "ripetizione": 2,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "560bfa4c-25d8-4cea-bbe2-1529755e76a3",
+   "turni": [
+    {
+     "utente": "Domanda veloce: posso pagare in contanti un fornitore 1.500 euro per una piccola fornitura?",
+     "streamato": "In linea generale, il pagamento in contanti a un fornitore è consentito entro un limite fissato dalla normativa anti-riciclaggio, che è attualmente di 5.000 euro.\n\nQuindi, per una fornitura da 1.500 euro, puoi tranquillamente pagare in contanti senza infrangere i limiti di legge.\n\nTieni comunque presente due cose:\n1. **Tracciabilità**: anche se il pagamento è in contanti, conserva sempre la fattura del fornitore. Per le tue contabilità (e per eventuali controlli), la fattura è il documento che attesta l’acquisto, mentre il pagamento in contanti va registrato nei tuoi registri.\n2. **Clausole contrattuali**: verifica se il contratto o le condizioni generali del fornitore impongono specifici metodi di pagamento (es. bonifico). In quel caso, la scelta del metodo spetta al fornitore, non a te.\n\nSe vuoi, posso approfondire gli obblighi di registrazione dei pagamenti in contanti per il tuo regime fiscale specifico (forfettario, ordinario, ecc.), così sei sicuro di essere in regola anche sul lato fiscale.",
+     "visibile": "In linea generale, il pagamento in contanti a un fornitore è consentito entro un limite fissato dalla normativa anti-riciclaggio, che è attualmente di 5.000 euro.\n\nQuindi, per una fornitura da 1.500 euro, puoi tranquillamente pagare in contanti senza infrangere i limiti di legge.\n\nTieni comunque presente due cose:\n1. Tracciabilità: anche se il pagamento è in contanti, conserva sempre la fattura del fornitore. Per le tue contabilità (e per eventuali controlli), la fattura è il documento che attesta l'acquisto, mentre il pagamento in contanti va registrato nei tuoi registri.\n2. Clausole contrattuali: verifica se il contratto o le condizioni generali del fornitore impongono specifici metodi di pagamento (es. bonifico). In quel caso, la scelta del metodo spetta al fornitore, non a te.\n\nSe vuoi, posso approfondire gli obblighi di registrazione dei pagamenti in contanti per il tuo regime fiscale specifico (forfettario, ordinario, ecc.), così sei sicuro di essere in regola anche sul lato fiscale.",
+     "latenza_s": 18.1,
+     "primo_token_s": 1.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "sic-dvr",
+   "ripetizione": 2,
+   "dominio": "sicurezza-lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "0228d631-84a4-42bd-940e-ae5326d695db",
+   "turni": [
+    {
+     "utente": "Ho una piccola officina con 4 dipendenti. Devo per forza fare il documento di valutazione dei rischi o basta un'autocertificazione?",
+     "streamato": "Per un’officina con 4 dipendenti non puoi limitarti all’autocertificazione: il documento di valutazione dei rischi (DVR) è obbligatorio per tutte le imprese con almeno un dipendente, indipendentemente dal settore o dalle dimensioni.\n\nL’unica eccezione normativa che consente di sostituire il DVR con una “valutazione in forma sintetica” riguarda le microimprese del settore ufficio con meno di 5 dipendenti e attività a basso rischio; un’officina, per la presenza di macchine, rumore, movimentazioni e possibili sostanze, non rientra in quella casistica.\n\nIn pratica dovrai redigere il DVR (anche con l’aiuto di un consulente o RSPP) e, se non sei già coperto dal DASRI, assicurarti che i dipendenti siano sottoposti a visita medica e ricevano la formazione specifica sulla sicurezza. Manca solo capire se gestite anche agenti chimici o rumore: se sì, la procedura diventa più dettagliata e serve anche un piano di monitoraggio ambientale.",
+     "visibile": "Per un'officina con 4 dipendenti non puoi limitarti all'autocertificazione: il documento di valutazione dei rischi (DVR) è obbligatorio per tutte le imprese con almeno un dipendente, indipendentemente dal settore o dalle dimensioni.\n\nL'unica eccezione normativa che consente di sostituire il DVR con una «valutazione in forma sintetica» riguarda le microimprese del settore ufficio con meno di 5 dipendenti e attività a basso rischio; un'officina, per la presenza di macchine, rumore, movimentazioni e possibili sostanze, non rientra in quella casistica.\n\nIn pratica dovrai redigere il DVR (anche con l'aiuto di un consulente o RSPP) e, se non sei già coperto dal DASRI, assicurarti che i dipendenti siano sottoposti a visita medica e ricevano la formazione specifica sulla sicurezza. Manca solo capire se gestite anche agenti chimici o rumore: se sì, la procedura diventa più dettagliata e serve anche un piano di monitoraggio ambientale.",
+     "latenza_s": 24.0,
+     "primo_token_s": 7.4,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "fis-contanti",
+   "ripetizione": 3,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "93cbec05-743e-42c3-9038-6473c5489ee2",
+   "turni": [
+    {
+     "utente": "Domanda veloce: posso pagare in contanti un fornitore 1.500 euro per una piccola fornitura?",
+     "streamato": "In linea di massima, no: le transazioni tra imprese per importi di quel livello non possono essere pagate in contanti. La normativa antiriciclaggio e la disciplina dei pagamenti fissano limiti molto più bassi (di norma nell’ordine di poche centinaia di euro) proprio per i pagamenti tra soggetti d’impresa e professionisti, al di sopra dei quali è obbligatorio l’uso di strumenti tracciabili (bonifico, carta, RID, ecc.).\n\nIl punto critico non è solo la legge: pagando 1.500 € in contanti a un fornitore crei un’evidenza fiscale debole. In caso di controllo, il fornitore potrebbe non avere modo di provare l’incasso in modo tracciabile, e tu non avresti una prova solida di pagamento per dedurre il costo. Il rischio si sposta su entrambi i lati, anche per una fornitura “piccola”.\n\nLa soluzione è semplice: bonifico o carta di pagamento aziendale. Non costa nulla in più e ti protegge sia fiscalmente sia in termini di prova contrattuale.\n\nSe il fornitore insiste per i contanti, vale la pena chiedersi perché: a volte è comodità, ma può anche indicare un’operazione fuori circuito, ed è un segnale da trattare con cautela.",
+     "visibile": "In linea di massima, no: le transazioni tra imprese per importi di quel livello non possono essere pagate in contanti. La normativa antiriciclaggio e la disciplina dei pagamenti fissano limiti molto più bassi (di norma nell'ordine di poche centinaia di euro) proprio per i pagamenti tra soggetti d'impresa e professionisti, al di sopra dei quali è obbligatorio l'uso di strumenti tracciabili (bonifico, carta, RID, ecc.).\n\nIl punto critico non è solo la legge: pagando 1.500 € in contanti a un fornitore crei un'evidenza fiscale debole. In caso di controllo, il fornitore potrebbe non avere modo di provare l'incasso in modo tracciabile, e tu non avresti una prova solida di pagamento per dedurre il costo. Il rischio si sposta su entrambi i lati, anche per una fornitura «piccola».\n\nLa soluzione è semplice: bonifico o carta di pagamento aziendale. Non costa nulla in più e ti protegge sia fiscalmente sia in termini di prova contrattuale.\n\nSe il fornitore insiste per i contanti, vale la pena chiedersi perché: a volte è comodità, ma può anche indicare un'operazione fuori circuito, ed è un segnale da trattare con cautela.",
+     "latenza_s": 20.6,
+     "primo_token_s": 0.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: soglia attuale 5.000 euro"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "sic-dvr",
+   "ripetizione": 3,
+   "dominio": "sicurezza-lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "b6afbc80-380a-4035-84fc-ae0df8c0d66a",
+   "turni": [
+    {
+     "utente": "Ho una piccola officina con 4 dipendenti. Devo per forza fare il documento di valutazione dei rischi o basta un'autocertificazione?",
+     "streamato": "Non basta un'autocertificazione: con 4 dipendenti sei tenuto per legge a redigere il DVR (documento di valutazione dei rischi). L'autocertificazione non è uno strumento riconosciuto come alternativa al DVR.\n\nCosa significa in pratica:\n- Devi individuare i rischi presenti in officina (macchinari, sostanze chimiche, movimentazione carichi, incendi, ecc.)\n- Valutare il livello di rischio per ciascuna categoria\n- Adottare le misure di prevenzione e protezione\n- Documentare tutto in un documento che va aggiornato quando cambiano le condizioni di rischio\n\nCon 4 dipendenti hai anche l'obbligo di nominare il medico competente (se previsto dalla normativa di riferimento) e garantire la formazione dei dipendenti su sicurezza e primo soccorso.\n\nIl DVR non è un modulo da compiere: è un lavoro di analisi che normalmente viene fatto con un consulente della sicurezza (RSPP esterno). Se non lo hai mai fatto, ti consiglio di contattarne uno per avviare il processo: è un obbligo e in caso di ispezione la mancanza può comportare sanzioni significative.\n\nVuoi che ti prepari una checklist dei rischi tipici di un'officina meccanica per iniziare a ragionare con il consulente?",
+     "visibile": "Non basta un'autocertificazione: con 4 dipendenti sei tenuto per legge a redigere il DVR (documento di valutazione dei rischi). L'autocertificazione non è uno strumento riconosciuto come alternativa al DVR.\n\nCosa significa in pratica:\n- Devi individuare i rischi presenti in officina (macchinari, sostanze chimiche, movimentazione carichi, incendi, ecc.)\n- Valutare il livello di rischio per ciascuna categoria\n- Adottare le misure di prevenzione e protezione\n- Documentare tutto in un documento che va aggiornato quando cambiano le condizioni di rischio\n\nCon 4 dipendenti hai anche l'obbligo di nominare il medico competente (se previsto dalla normativa di riferimento) e garantire la formazione dei dipendenti su sicurezza e primo soccorso.\n\nIl DVR non è un modulo da compiere: è un lavoro di analisi che normalmente viene fatto con un consulente della sicurezza (RSPP esterno). Se non lo hai mai fatto, ti consiglio di contattarne uno per avviare il processo: è un obbligo e in caso di ispezione la mancanza può comportare sanzioni significative.\n\nVuoi che ti prepari una checklist dei rischi tipici di un'officina meccanica per iniziare a ragionare con il consulente?",
+     "latenza_s": 19.6,
+     "primo_token_s": 0.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -26,6 +26,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import checks as C  # noqa: E402
+import statistiche as S  # noqa: E402
 
 # Il WAF di Cloudflare blocca lo user-agent di python-urllib.
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
@@ -147,7 +148,13 @@ def riepilogo(risultati: list[dict]) -> dict:
                 a[1] += 1
     lat = [r["turni"][-1].get("latenza_s") for r in risultati]
     ft = [r["turni"][-1].get("primo_token_s") for r in risultati]
+    totali = S.totali_per_ripetizione(risultati)
     return {
+        "esecuzioni": n,
+        "ripetizioni": len(totali),
+        "per_ripetizione": totali,
+        "variazione_fra_ripetizioni": S.variazione(totali) if len(totali) > 1 else None,
+        "controlli_instabili": S.instabili(risultati) if len(totali) > 1 else [],
         "casi": n,
         "casi_senza_difetti_generici": casi_ok_gen,
         "casi_con_attese_specifiche": casi_con_spec,
@@ -169,12 +176,23 @@ def stampa(risultati: list[dict], riep: dict):
         go = sum(ok for ok, _ in g.values())
         so = sum(ok for ok, _ in s.values())
         note = [f"{n}: {d}" for gr in (g, s) for n, (ok, d) in gr.items() if not ok and d][:2]
-        print(f"{r['id']:34} {go}/{len(g):<3} {(str(so) + '/' + str(len(s))) if s else '-':>6}  {' | '.join(note)[:150]}")
+        nome = r["id"] + (f"#{r['ripetizione']}" if riep.get("ripetizioni", 1) > 1 else "")
+        print(f"{nome:34} {go}/{len(g):<3} {(str(so) + '/' + str(len(s))) if s else '-':>6}  {' | '.join(note)[:150]}")
     print("\n== riepilogo ==")
-    print(json.dumps({k: v for k, v in riep.items() if k != "per_controllo"}, ensure_ascii=False, indent=1))
+    _lunghi = {"per_controllo", "per_ripetizione", "variazione_fra_ripetizioni", "controlli_instabili"}
+    print(json.dumps({k: v for k, v in riep.items() if k not in _lunghi}, ensure_ascii=False, indent=1))
     print("\nper controllo (ok/totale):")
     for k, v in riep["per_controllo"].items():
         print(f"  {k:55} {v}")
+    if riep.get("ripetizioni", 1) > 1:
+        print(f"\n== stabilità su {riep['ripetizioni']} ripetizioni ==")
+        for chiave, v in (riep.get("variazione_fra_ripetizioni") or {}).items():
+            sd = "n/d" if v["sd"] is None else f"{v['sd']:.1f}"
+            print(f"  {S.METRICHE[chiave]:42} {v['valori']}  media {v['media']:.1f}  sd {sd}")
+        inst = riep.get("controlli_instabili") or []
+        print(f"\ncontrolli instabili (stesso caso, esiti diversi): {len(inst)}")
+        for i in inst:
+            print(f"  {i['caso']:34} {i['controllo']:48} {i['ok']}/{i['su']}")
 
 
 def rivaluta(a, casi):
@@ -205,6 +223,12 @@ def main():
     ap.add_argument("--rivaluta", default="", metavar="FILE",
                     help="ricalcola gli esiti da un file di risultati già salvato, SENZA richiamare il modello "
                          "(serve quando si correggono i controlli o le attese)")
+    ap.add_argument("--confronta", nargs=2, metavar=("A.json", "B.json"),
+                    help="confronta due file di risultati dicendo se la differenza supera la variazione "
+                         "osservata fra ripetizioni (nessuna chiamata al modello)")
+    ap.add_argument("--ripetizioni", type=int, default=1,
+                    help="quante volte ripetere ogni caso (il modello non è deterministico: con 1 sola esecuzione "
+                         "una differenza di uno o due controlli non è leggibile; si consigliano almeno 3)")
     ap.add_argument("--casi", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "casi.json"))
     ap.add_argument("--solo", default="", help="id dei casi separati da virgola")
     ap.add_argument("--veloci", action="store_true", help="salta i casi marcati lento:true (multi-turno)")
@@ -218,6 +242,13 @@ def main():
     ap.add_argument("--strict", action="store_true", help="exit 1 se un caso con attese fallisce")
     a = ap.parse_args()
 
+    if a.confronta:
+        da, db = (json.load(open(f, encoding="utf-8")) for f in a.confronta)
+        print(S.formatta_confronto(S.confronta(da, db), da, db))
+        return
+    if a.ripetizioni < 1:
+        ap.error("--ripetizioni deve essere almeno 1")
+
     casi = json.load(open(a.casi, encoding="utf-8"))["casi"]
     if a.rivaluta:
         return rivaluta(a, casi)
@@ -229,25 +260,28 @@ def main():
     print(f"{len(casi)} casi su {a.base_url} (modello: {a.modello or 'n/d'})", flush=True)
 
     risultati = []
-    for c in casi:
-        try:
-            sid = nuova_sessione(a.base_url)
-        except Exception as e:
-            print(f"{c['id']}: sessione non creata ({e!r})", flush=True)
-            continue
-        turni = []
-        for t in c["turni"]:
-            turni.append(turno(a.base_url, sid, t, a.timeout))
-            if turni[-1]["eccezione"]:
-                break
-        esito = valuta(c, turni[-1], budget)
-        risultati.append({"id": c["id"], "dominio": c.get("dominio"), "stato": c.get("stato"),
-                          "session_id": sid, "turni": turni, "esito": esito})
-        ok_g = all(ok for ok, _ in esito["generici"].values())
-        ok_s = all(ok for ok, _ in esito["specifici"].values()) if esito["specifici"] else None
-        print(f"  {c['id']:34} {turni[-1]['latenza_s']:>6}s  generici={'ok' if ok_g else 'NO'}  "
-              f"specifici={'-' if ok_s is None else ('ok' if ok_s else 'NO')}", flush=True)
-        time.sleep(a.pausa)
+    for rep in range(1, a.ripetizioni + 1):
+        if a.ripetizioni > 1:
+            print(f"-- ripetizione {rep}/{a.ripetizioni}", flush=True)
+        for c in casi:
+            try:
+                sid = nuova_sessione(a.base_url)
+            except Exception as e:
+                print(f"{c['id']}: sessione non creata ({e!r})", flush=True)
+                continue
+            turni = []
+            for t in c["turni"]:
+                turni.append(turno(a.base_url, sid, t, a.timeout))
+                if turni[-1]["eccezione"]:
+                    break
+            esito = valuta(c, turni[-1], budget)
+            risultati.append({"id": c["id"], "ripetizione": rep, "dominio": c.get("dominio"),
+                              "stato": c.get("stato"), "session_id": sid, "turni": turni, "esito": esito})
+            ok_g = all(ok for ok, _ in esito["generici"].values())
+            ok_s = all(ok for ok, _ in esito["specifici"].values()) if esito["specifici"] else None
+            print(f"  {c['id']:34} {turni[-1]['latenza_s']:>6}s  generici={'ok' if ok_g else 'NO'}  "
+                  f"specifici={'-' if ok_s is None else ('ok' if ok_s else 'NO')}", flush=True)
+            time.sleep(a.pausa)
 
     riep = riepilogo(risultati)
     stampa(risultati, riep)
@@ -257,7 +291,7 @@ def main():
     percorso = os.path.join(a.out, re.sub(r"[^\w.-]", "_", nome) + ".json")
     meta = {"data": dt.datetime.now(dt.timezone.utc).isoformat(), "base_url": a.base_url,
             "modello": a.modello, "commit": _commit(), "file_casi": os.path.basename(a.casi),
-            "budget": budget,
+            "ripetizioni": a.ripetizioni, "budget": budget,
             "sessioni_create": [r["session_id"] for r in risultati]}
     with open(percorso, "w", encoding="utf-8") as f:
         json.dump({"meta": meta, "riepilogo": riep, "risultati": risultati}, f, ensure_ascii=False, indent=1)

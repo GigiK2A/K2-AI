@@ -12,8 +12,15 @@ python3 evals/run_eval.py --base-url https://www.k2-ai.it/api/kbot \
     --modello "nome del modello provato" --etichetta base-AAAA-MM-GG
 ```
 
-Opzioni utili: `--solo id1,id2` · `--veloci` (salta i casi multi-turno) · `--budget-latenza 90`
-· `--budget-primo-token 20` · `--strict` (exit 1 se un caso con attese fallisce).
+Opzioni utili: `--solo id1,id2` · `--veloci` (salta i casi multi-turno) · `--ripetizioni N` ·
+`--budget-latenza 90` · `--budget-primo-token 20` · `--strict` (exit 1 se un caso con attese fallisce)
+· `--rivaluta FILE` (ricalcola gli esiti da un file salvato, senza richiamare il modello) ·
+`--confronta A.json B.json` (vedi sotto).
+
+**Il modello non è deterministico: usa almeno `--ripetizioni 3`.** Con una sola esecuzione per caso
+una differenza di uno o due controlli fra due file non dice niente: il 15/10/2026 lo stesso caso
+sul limite del contante è andato bene in un'esecuzione e male in quella dopo, e su 3 ripetizioni
+il fatto atteso (5.000 €) c'era 2 volte su 3.
 
 Solo libreria standard, nessuna dipendenza. Il base URL è **obbligatorio**: ogni caso crea
 sessioni anonime e consuma il modello vero, quindi non si parte mai contro la produzione per
@@ -25,8 +32,10 @@ testo streamato e finale di ogni turno).
 **Generici** (ogni risposta):
 `risposta_non_vuota` · `nessuna_lingua_estranea` (ideogrammi) · `frasi_integre` (artefatti delle
 guardie, «di nel termine previsto…») · `nessuna_autocorrezione` («Aspetta: …») ·
-`nessuna_fuga_prompt` · `testo_letto_uguale_finale` (quello letto in streaming = quello che
-resta) · `nessun_errore_di_stream`.
+`nessun_testo_del_critico` (il commento interno del critico di qualità non deve arrivare al
+cliente) · `nessuna_fuga_prompt` · `testo_letto_uguale_finale` (quello letto in streaming = quello
+che resta; le differenze solo di forma, come apostrofi e grassetto, non contano) ·
+`nessun_errore_di_stream`.
 
 **Specifici** (dal caso, `attese`): `tutti` (fatti che devono esserci), `una_di` (almeno
 un'alternativa), `nessuno` (affermazioni note come sbagliate), `escalation`
@@ -65,9 +74,20 @@ come unica fonte.
 
 ## Confrontare modelli o versioni
 
-Stesso comando con `--modello` e `--etichetta` diversi, poi confronta `riepilogo` nei due file
-(`controlli_specifici`, `per_controllo`, latenze). Le attese specifiche sono lo stesso metro
-per tutti: serve a rispondere a «quale modello regge il ruolo?» con dati e non a impressione.
+Stesso comando con `--modello`, `--etichetta` e `--ripetizioni 3` (o più) diversi, poi:
+
+```bash
+python3 evals/run_eval.py --confronta evals/risultati/A.json evals/risultati/B.json
+```
+
+Per ogni metrica mostra media e deviazione standard fra le ripetizioni di ciascun file, la
+differenza, e dice se **supera la variazione osservata** (soglia: 2 deviazioni standard) o è
+**non distinguibile dal rumore**. Con una sola ripetizione per parte rifiuta di dare un verdetto
+(«variazione non misurabile»). Elenca anche i **controlli instabili**: quelli che sullo stesso
+caso passano in alcune ripetizioni e falliscono in altre. Le attese specifiche sono lo stesso
+metro per tutti: serve a rispondere a «quale modello regge il ruolo?» con dati e non a impressione.
+
+Con poche ripetizioni la soglia è indicativa, non un test statistico.
 
 ## Pulizia
 
@@ -84,3 +104,5 @@ di date.
 - `rinvio_al_professionista` riconosce la parola, non la sua pertinenza.
 - Un solo turno per caso (tranne i multi-turno): non valuta la conduzione di un'intera
   consulenza.
+- Quando si correggono i controlli o le attese, vanno rivalutati TUTTI i file da confrontare
+  con `--rivaluta`, altrimenti il confronto non è alla pari.
