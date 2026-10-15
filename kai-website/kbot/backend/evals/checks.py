@@ -117,6 +117,9 @@ def testo_letto_uguale_finale(streamato: str, finale: str):
     """Quello che l'utente legge in streaming deve essere quello che resta. Le differenze solo
     di forma (apostrofi, grassetto, spazi) non contano: conta se una CIFRA, una frase o un
     termine cambiano sotto gli occhi di chi legge."""
+    # L'elenco «Fonti: …» che il codice aggiunge in coda alla risposta è un'AGGIUNTA, non un testo che cambia
+    # sotto gli occhi di chi legge: non conta come divergenza.
+    finale = re.sub(r"\n+Fonti:[^\n]*\s*$", "", finale or "")
     a, b = _senza_forma(streamato), _senza_forma(finale)
     if a == b:
         return True, ""

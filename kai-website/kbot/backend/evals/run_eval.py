@@ -251,6 +251,13 @@ def main():
 
     casi = json.load(open(a.casi, encoding="utf-8"))["casi"]
     if a.rivaluta:
+        # i risultati possono venire da uno qualsiasi degli insiemi (sviluppo, held-out…): senza --casi
+        # esplicito si caricano le definizioni da TUTTI i file casi*.json
+        if a.casi == ap.get_default("casi"):
+            import glob
+            casi = []
+            for fn in sorted(glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "casi*.json"))):
+                casi += json.load(open(fn, encoding="utf-8"))["casi"]
         return rivaluta(a, casi)
     if not a.base_url:
         ap.error("--base-url è obbligatorio (salvo con --rivaluta)")

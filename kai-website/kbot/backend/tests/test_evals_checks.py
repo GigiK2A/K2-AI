@@ -256,3 +256,10 @@ def test_contanti_3000_con_autocorrezione_e_bocciato():
     r = _specifici("fis-contanti", reale)
     assert not r["nessuna_affermazione_errata"] and not r["fatti_presenti"]
     assert not C.nessuna_autocorrezione(reale)[0]
+
+
+def test_l_elenco_delle_fonti_in_coda_non_e_una_divergenza():
+    assert C.testo_letto_uguale_finale("Il rimborso è entro 180 giorni (art. 2473 c.c.).",
+                                      "Il rimborso è entro 180 giorni (art. 2473 c.c.).\n\nFonti: art. 2473 c.c.")[0]
+    # ma una frase che cambia sì
+    assert not C.testo_letto_uguale_finale("entro 72 ore dalla conoscenza", "entro il termine previsto dalla normativa\n\nFonti: x")[0]
