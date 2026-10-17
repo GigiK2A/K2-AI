@@ -99,6 +99,30 @@ let engine8eProcess = null;
 const ENGINE_8E_PORT = Number(process.env.ENGINE_8E_PORT || 8800);
 const ENGINE_8E_DIR = process.env.ENGINE_8E_DIR || path.join(__dirname, 'engine-8e');
 
+// Supervisione dei processi figli (backend K-BOT Python, motore 8e, Next standalone). Prima un figlio che
+// moriva restava morto: /api/health rispondeva 200, Railway non vedeva nulla e la chat dava 502 fino al
+// deploy successivo (riprodotto in locale: kill -9 del backend → 502 per sempre). Ora si riavvia con
+// backoff (1,2,4… max 30 s); dopo CHILD_MAX_CRASHES crash ravvicinati il processo esce con 1 e lascia
+// fare a Railway (restartPolicy on_failure). Un figlio che ha vissuto >60 s azzera il conteggio.
+const SUPERVISED = {};
+const CHILD_MAX_CRASHES = Number(process.env.CHILD_MAX_CRASHES || 5);
+function markChildStart(name) {
+  const st = SUPERVISED[name] || (SUPERVISED[name] = { crashes: 0 });
+  st.startedAt = Date.now();
+}
+function onChildExit(name, start, code, signal) {
+  const st = SUPERVISED[name] || (SUPERVISED[name] = { crashes: 0, startedAt: Date.now() });
+  const livedMs = Date.now() - st.startedAt;
+  st.crashes = livedMs > 60_000 ? 1 : st.crashes + 1;
+  if (st.crashes >= CHILD_MAX_CRASHES) {
+    console.error(`[supervisor] ${name}: ${st.crashes} crash ravvicinati (code=${code} signal=${signal}) → esco per farmi riavviare dalla piattaforma`);
+    process.exit(1);
+  }
+  const waitMs = Math.min(30_000, 1000 * 2 ** (st.crashes - 1));
+  console.error(`[supervisor] ${name} uscito (code=${code} signal=${signal}) dopo ${Math.round(livedMs / 1000)}s: riavvio fra ${waitMs / 1000}s (crash ravvicinati: ${st.crashes})`);
+  setTimeout(start, waitMs);
+}
+
 function startKbotPythonBackend() {
   if (!fs.existsSync(path.join(KBOT_PYTHON_DIR, 'app', 'main.py'))) {
     console.warn(`Python backend not found at ${KBOT_PYTHON_DIR}; skipping spawn.`);
@@ -113,9 +137,11 @@ function startKbotPythonBackend() {
       stdio: ['ignore', 'inherit', 'inherit'],
     },
   );
+  markChildStart('kbot-python');
   kbotPythonProcess.on('exit', (code, signal) => {
     kbotPythonProcess = null;
     console.error(`K-BOT Python backend exited code=${code ?? 'null'} signal=${signal ?? 'null'}`);
+    onChildExit('kbot-python', startKbotPythonBackend, code, signal);
   });
   console.log(`K-BOT Python backend spawning on 127.0.0.1:${KBOT_PYTHON_PORT}`);
 }
@@ -134,9 +160,11 @@ function startEngine8e() {
       stdio: ['ignore', 'inherit', 'inherit'],
     },
   );
+  markChildStart('engine-8e');
   engine8eProcess.on('exit', (code, signal) => {
     engine8eProcess = null;
     console.error(`8e engine exited code=${code ?? 'null'} signal=${signal ?? 'null'}`);
+    onChildExit('engine-8e', startEngine8e, code, signal);
   });
   console.log(`8e engine spawning on 127.0.0.1:${ENGINE_8E_PORT}`);
 }
@@ -197,9 +225,11 @@ function startKbotStandalone() {
     stdio: ['ignore', 'inherit', 'inherit'],
   });
 
+  markChildStart('kbot-standalone');
   kbotProcess.on('exit', (code, signal) => {
     kbotProcess = null;
     console.error(`K-BOT standalone exited with code ${code ?? 'null'} signal ${signal ?? 'null'}`);
+    onChildExit('kbot-standalone', startKbotStandalone, code, signal);
   });
 }
 
@@ -2598,12 +2628,21 @@ const server = http.createServer((req, res) => {
 
   // Health check — unauthenticated, cheap, used by Railway / uptime monitors.
   if (rawPath === '/api/health' || rawPath === '/healthz') {
-    sendJson(res, 200, {
-      ok: true,
+    // Un figlio avviato e ora assente (in attesa del riavvio) rende il servizio NON sano: 503, così un
+    // monitor esterno lo vede; la pagina "/" usata dal deploy di Railway non cambia.
+    const children = {
+      'kbot-python': kbotPythonProcess ? 'up' : (SUPERVISED['kbot-python'] ? 'down' : 'absent'),
+      'engine-8e': engine8eProcess ? 'up' : (SUPERVISED['engine-8e'] ? 'down' : 'absent'),
+      'kbot-standalone': kbotProcess ? 'up' : (SUPERVISED['kbot-standalone'] ? 'down' : 'absent'),
+    };
+    const healthy = !Object.values(children).includes('down');
+    sendJson(res, healthy ? 200 : 503, {
+      ok: healthy,
       service: 'kai-website',
       ts: new Date().toISOString(),
       uptime_s: Math.round(process.uptime()),
       sentry: Boolean((process.env.SENTRY_DSN || '').trim()),
+      children,
     });
     return;
   }
