@@ -5,9 +5,15 @@ Mirror of api/kbot/message.ts in the site.
 from __future__ import annotations
 
 import asyncio
+import contextvars
+import functools
 import json
 import logging
+import os
 import re as _re
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import aclosing
 from typing import List, Optional
 
 import anthropic
@@ -470,12 +476,13 @@ async def post_message(
 
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=1)
     system_prompt += await _blocco_norme(client, last_user_text, _recent_ctx)
     try:
         # web_search abilitato: il modello cerca DAVVERO quando l'utente lo chiede, invece
         # di promettere una ricerca che non fa. L'helper gestisce pause_turn + fallback.
-        result = web_search.create_with_web_search(
+        result = await _off_loop(
+            web_search.create_with_web_search,
             client,
             model=ANTHROPIC_MODEL,
             # max_tokens generoso: serve per i report finali. 1200 era ok per
@@ -498,7 +505,7 @@ async def post_message(
         block.text for block in result.content if getattr(block, "type", "") == "text"
     )
     # Finalize CONDIVISA (stessa catena del path streaming): forced-summary + quality gate.
-    raw_text = _postprocess_turn(client, system_prompt, history, merged_messages, raw_text, collected)
+    raw_text = await _off_loop(_postprocess_turn, client, system_prompt, history, merged_messages, raw_text, collected)
     usage = getattr(result, "usage", None)
     user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected)
     _persist_diagnosi(collected, diagnosi)
@@ -656,6 +663,57 @@ def _persist_assistant_turn(
     return user_visible, summary, updated
 
 
+# Le chiamate al modello (client Anthropic SINCRONO), il post-processing (forced-summary, quality gate)
+# e la scrittura su Supabase sono bloccanti: dentro una funzione async fermavano l'event loop di TUTTI
+# gli utenti per tutta la durata dell'attesa (misurato con un LLM finto: un modello appeso congelava
+# backend e /health per 357 s; con primo token a 20 s quattro chat si mettevano in fila). Qui girano in
+# un pool dedicato — più largo di quello di default (≈12 thread) — con il contesto copiato, così i
+# ContextVar (pacchetto normativo per le guardie) restano visibili nel thread.
+_POOL = ThreadPoolExecutor(max_workers=int(os.getenv("KBOT_BLOCKING_THREADS", "64")),
+                           thread_name_prefix="kbot-blocking")
+
+
+async def _off_loop(fn, *args, **kwargs):
+    ctx = contextvars.copy_context()
+    return await asyncio.get_running_loop().run_in_executor(
+        _POOL, functools.partial(ctx.run, fn, *args, **kwargs))
+
+
+async def _stream_off_loop(client, stream_kwargs: dict):
+    """Itera lo stream sincrono dell'SDK in un thread e lo rende come generatore asincrono di
+    ("chunk", testo) e, in coda, ("final", messaggio). Gli errori dell'SDK sono rilanciati qui, nel
+    loop, così i `except anthropic.*` del chiamante restano validi. Alla chiusura (anche per client
+    disconnesso) il thread viene fermato al chunk successivo."""
+    loop = asyncio.get_running_loop()
+    q: asyncio.Queue = asyncio.Queue()
+    stop = threading.Event()
+
+    def pump():
+        try:
+            with client.messages.stream(**stream_kwargs) as stream:
+                for chunk in stream.text_stream:
+                    if stop.is_set():
+                        return
+                    loop.call_soon_threadsafe(q.put_nowait, ("chunk", chunk))
+                final = stream.get_final_message()
+            loop.call_soon_threadsafe(q.put_nowait, ("final", final))
+        except BaseException as e:  # noqa: BLE001 — rilanciata nel consumatore
+            loop.call_soon_threadsafe(q.put_nowait, ("error", e))
+
+    ctx = contextvars.copy_context()
+    loop.run_in_executor(_POOL, functools.partial(ctx.run, pump))
+    try:
+        while True:
+            kind, payload = await q.get()
+            if kind == "error":
+                raise payload
+            yield kind, payload
+            if kind == "final":
+                return
+    finally:
+        stop.set()
+
+
 async def _blocco_norme(client, last_user_text: str, recent_ctx: str) -> str:
     """EVIDENCE PACK NORMATIVO: recupera dal corpus il testo di legge pertinente PRIMA della risposta e
     lo rende disponibile alle guardie a valle (citazioni consentite, numeri fondati). Fail-open: senza
@@ -686,7 +744,7 @@ async def post_message_stream(
     user: Optional[AuthUser] = Depends(optional_user),
 ):
     session, merged_messages, collected, system_prompt, history, skills = await _prepare_turn(body, user)
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=1)
     # Testi per il grounding proattivo (calcolati qui, eseguito DOPO l'heartbeat).
     _users_for_ground = [str(m.get("content") or "") for m in merged_messages
                          if isinstance(m, dict) and m.get("role") == "user"]
@@ -743,8 +801,13 @@ async def post_message_stream(
                 if tools:
                     stream_kwargs["tools"] = tools
                 # Anthropic SDK sync streaming context manager — iterate token deltas.
-                with client.messages.stream(**stream_kwargs) as stream:
-                    for text_chunk in stream.text_stream:
+                final = None
+                async with aclosing(_stream_off_loop(client, stream_kwargs)) as _flusso:
+                    async for _kind, _payload in _flusso:
+                        if _kind == "final":
+                            final = _payload
+                            break
+                        text_chunk = _payload
                         if await request.is_disconnected():
                             log.info("kbot stream: client disconnected mid-response")
                             return
@@ -754,12 +817,11 @@ async def post_message_stream(
                         visible_chunk = scrub.feed(text_chunk)
                         if visible_chunk:
                             yield _sse({"delta": visible_chunk})
-                    final = stream.get_final_message()
                 usage = getattr(final, "usage", None)
                 # Claude ha chiamato web_search? esegui la ricerca OpenAI e continua.
                 if not tools or getattr(final, "stop_reason", None) != "tool_use" or rounds >= max_rounds:
                     break
-                tool_results = web_search.execute_tool_uses(final.content)
+                tool_results = await _off_loop(web_search.execute_tool_uses, final.content)
                 if not tool_results:
                     break
                 messages = [
@@ -788,7 +850,7 @@ async def post_message_stream(
 
         raw_text = "".join(raw_buffer)
         # Finalize CONDIVISA coi due path: forced-summary + quality gate (vedi _postprocess_turn).
-        raw_text = _postprocess_turn(client, system_prompt, messages, merged_messages, raw_text, collected)
+        raw_text = await _off_loop(_postprocess_turn, client, system_prompt, messages, merged_messages, raw_text, collected)
         _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
         track_server(
             distinct_id=body.sessionId,
@@ -805,8 +867,8 @@ async def post_message_stream(
             },
         )
         try:
-            user_visible, summary, updated = _persist_assistant_turn(
-                session, body.sessionId, merged_messages, collected, raw_text, skills
+            user_visible, summary, updated = await _off_loop(
+                _persist_assistant_turn, session, body.sessionId, merged_messages, collected, raw_text, skills
             )
         except Exception:
             log.exception("Failed to persist streamed assistant turn")
