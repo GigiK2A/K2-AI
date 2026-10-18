@@ -59,8 +59,8 @@ export default async function handler(req: any, res: any) {
         },
       ],
       payment_method_types: ['card'],
-      success_url: `${siteUrl}/k-bot.html?paid=1&cs={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/k-bot.html?cancelled=1`,
+      success_url: `${siteUrl}/k-bot/grazie?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/k-bot?cancelled=1`,
     })
 
     if (!checkoutSession.url) return sendJson(res, 500, { error: 'Stripe non ha restituito checkout URL' })
