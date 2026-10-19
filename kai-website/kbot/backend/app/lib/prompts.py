@@ -587,11 +587,13 @@ def strip_summary_block(text: str) -> str:
 
 def extract_diagnosi(text: str) -> Optional[dict]:
     """Stato diagnostico emesso dal bot nel blocco DIAGNOSI_STATO (ipotesi + dato mancante)."""
-    return signals.extract_block_tolerant("DIAGNOSI_STATO", signals.DIAGNOSI_RE, text)
+    return (signals.extract_block_tolerant("DIAGNOSI_STATO", signals.DIAGNOSI_RE, text)
+            or signals.extract_diagnosi_nuda(text))
 
 
 def strip_diagnosi_block(text: str) -> str:
-    return signals.strip_block_tolerant("DIAGNOSI_STATO", signals.DIAGNOSI_RE, text)
+    return signals.strip_diagnosi_nuda(
+        signals.strip_block_tolerant("DIAGNOSI_STATO", signals.DIAGNOSI_RE, text))
 
 
 def _delegalize(match: "re.Match") -> str:

@@ -293,7 +293,21 @@ LEGAL_ARTICLE_RE = re.compile(
 # ad accumularsi lato server per il post-processing). Un piccolo holdback gestisce i
 # marker spezzati tra chunk.
 _STREAM_MARKERS = ("CONSULENZA_SUMMARY", "DIAGNOSI_STATO")
-_HOLDBACK = max(len(m) for m in _STREAM_MARKERS) - 1
+_HOLDBACK = max(max(len(m) for m in _STREAM_MARKERS) - 1, 24)
+
+# Il modello a volte emette lo stato diagnostico SENZA i marcatori (JSON nudo, a volte dentro un blocco
+# ```json, a volte troncato): visto in produzione il 19/10/2026, finiva in chat come
+# «...{"fase":"esplorazione","ipotesi":[{"t":...». La firma è la chiave «fase» come primo campo dell'oggetto.
+_DIAG_NUDA = re.compile(r'(?:```(?:json)?[ \t]*\n?[ \t]*)?\{\s*"fase"\s*:')
+
+
+def _primo_marker(t: str) -> int:
+    """Indice del primo marcatore macchina in `t` (stringa o JSON diagnostico nudo), -1 se assente."""
+    cand = [i for i in (t.find(m) for m in _STREAM_MARKERS) if i != -1]
+    m = _DIAG_NUDA.search(t)
+    if m:
+        cand.append(m.start())
+    return min(cand, default=-1)
 
 
 class StreamScrubber:
@@ -309,8 +323,7 @@ class StreamScrubber:
         if self._stopped or not chunk:
             return ""
         self._pending += chunk
-        idx = min((i for i in (self._pending.find(m) for m in _STREAM_MARKERS) if i != -1),
-                  default=-1)
+        idx = _primo_marker(self._pending)
         if idx != -1:
             out = self._pending[:idx].rstrip()
             self._pending, self._stopped = "", True
@@ -325,7 +338,7 @@ class StreamScrubber:
         if self._stopped:
             return ""
         out, self._pending = self._pending, ""
-        idx = min((i for i in (out.find(m) for m in _STREAM_MARKERS) if i != -1), default=-1)
+        idx = _primo_marker(out)
         return out[:idx].rstrip() if idx != -1 else out
 
 
@@ -425,6 +438,31 @@ def strip_block_tolerant(marker: str, regex: re.Pattern, text: str) -> str:
     if marker in t:  # backstop assoluto: via le righe residue col marker
         t = "\n".join(l for l in t.split("\n") if marker not in l)
     return t.strip()
+
+
+def strip_diagnosi_nuda(text: str) -> str:
+    """Toglie lo stato diagnostico emesso SENZA marcatori (JSON nudo o in un blocco ```json, anche troncato):
+    dalla firma `{"fase":` alla fine del testo. Rete di sicurezza dopo `strip_block_tolerant`."""
+    t = text or ""
+    m = _DIAG_NUDA.search(t)
+    return t[:m.start()].rstrip() if m else t
+
+
+def extract_diagnosi_nuda(text: str) -> Optional[dict]:
+    """Lo stato diagnostico emesso senza marcatori, se il JSON è completo; altrimenti None."""
+    t = text or ""
+    m = _DIAG_NUDA.search(t)
+    if not m:
+        return None
+    raw = t[m.start():]
+    s, e = raw.find("{"), raw.rfind("}")
+    if s < 0 or e <= s:
+        return None
+    try:
+        v = json.loads(raw[s:e + 1])
+    except json.JSONDecodeError:
+        return None
+    return v if isinstance(v, dict) and "fase" in v else None
 
 
 def is_ready_declared(text: str) -> bool:
