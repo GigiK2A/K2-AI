@@ -1,5 +1,193 @@
 {
- "descrizione": "MAPPA TEMI → NORME della chat K-BOT. Punto di estensione del pacchetto normativo (lib/norme_evidence.py): quando un trigger compare nel messaggio dell'utente, i riferimenti elencati entrano nel pacchetto SENZA passare dal filtro di pertinenza e senza dipendere da ciò che il modello ricorda. È il modo di portare nel sistema conoscenza curata e verificata. VUOTA di proposito: ogni voce è un contenuto legale che si replica su ogni utente e deve essere validata da un professionista prima di entrare (campo 'validato_da'); una voce sbagliata si ripete su tutti. Non si scrivono voci guardando i casi di valutazione del banco di prova: lo falserebbero.",
- "schema": {"id": "nome breve del tema", "trigger": ["regex italiane, case-insensitive"], "riferimenti": ["art. 2473 c.c.", "D.Lgs. 231/2002 art. 4"], "note": "avvertenze per chi mantiene la mappa", "validato_da": "nome del professionista", "validato_il": "AAAA-MM-GG"},
- "temi": []
+ "descrizione": "MAPPA TEMI → NORME della chat K-BOT. Punto di estensione del pacchetto normativo (lib/norme_evidence.py): quando un trigger compare nel messaggio dell'utente, i riferimenti elencati entrano nel pacchetto SENZA passare dal filtro di pertinenza e senza dipendere da ciò che il modello ricorda. Ogni voce è un contenuto legale che si replica su ogni utente e DEVE essere validata da un professionista: una voce con 'validato_da' vuoto è una BOZZA e viene caricata solo con KBOT_MAPPA_BOZZE=1 (misure e prove locali); in produzione restano inattive finché 'validato_da' non è compilato. Una voce sceglie QUALE articolo recuperare: il testo viene sempre dal corpus, mai scritto qui. Non si scrivono voci guardando i casi di valutazione del banco di prova: lo falserebbero (le voci del 19/10/2026 sono scelte per importanza generale, ma i temi del lavoro e dei contratti coincidono con alcuni casi del banco: le misure su quei casi non sono indipendenti).",
+ "schema": {
+  "id": "nome breve del tema",
+  "trigger": [
+   "regex italiane, case-insensitive"
+  ],
+  "riferimenti": [
+   "art. 2473 c.c.",
+   "D.Lgs. 231/2002 art. 4"
+  ],
+  "note": "avvertenze per chi mantiene la mappa",
+  "validato_da": "nome del professionista (vuoto = bozza, inattiva senza KBOT_MAPPA_BOZZE=1)",
+  "validato_il": "AAAA-MM-GG",
+  "stato": "bozza | validata"
+ },
+ "temi": [
+  {
+   "id": "procedimento-disciplinare",
+   "trigger": [
+    "\\b(contestazion\\w+|procediment\\w+|sanzion\\w+|provvediment\\w+|richiam\\w+)\\s+disciplinar\\w*",
+    "licenziament\\w+\\s+disciplinar\\w*",
+    "lettera di contestazione",
+    "contestazione degli addebiti"
+   ],
+   "riferimenti": [
+    "L. 300/1970 art. 7"
+   ],
+   "note": "L'art. 7 dello Statuto NON è nel corpus al 19/10/2026 (della L. 300/1970 c'è solo l'art. 1): la voce si attiva da sola quando il testo viene aggiunto.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "controllo-a-distanza",
+   "trigger": [
+    "\\btelecamer\\w+",
+    "videosorveglian\\w+",
+    "impiant\\w+\\s+audiovisiv\\w+",
+    "geolocalizz\\w+",
+    "controllo a distanza"
+   ],
+   "riferimenti": [
+    "L. 300/1970 art. 4"
+   ],
+   "note": "Come sopra: art. 4 Statuto assente dal corpus al 19/10/2026.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "licenziamento",
+   "trigger": [
+    "\\blicenziament\\w+",
+    "\\blicenziare\\b",
+    "giusta causa",
+    "giustificato motivo"
+   ],
+   "riferimenti": [
+    "art. 2118 c.c.",
+    "art. 2119 c.c.",
+    "L. 604/1966 art. 3"
+   ],
+   "note": "La L. 604/1966 non è nel corpus al 19/10/2026 (0 articoli): resta attiva solo la parte del codice civile. Le tutele (reintegra/indennità) dipendono dalla data di assunzione e dalle dimensioni aziendali: NON mappate, serve il professionista.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "periodo-di-prova",
+   "trigger": [
+    "periodo di prova",
+    "patto di prova",
+    "assunzione in prova"
+   ],
+   "riferimenti": [
+    "art. 2096 c.c."
+   ],
+   "note": "",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "mansioni",
+   "trigger": [
+    "demansion\\w+",
+    "mansioni inferiori",
+    "cambio (di )?mansioni",
+    "\\bius variandi\\b|\\bjus variandi\\b"
+   ],
+   "riferimenti": [
+    "art. 2103 c.c."
+   ],
+   "note": "",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "patto-di-non-concorrenza",
+   "trigger": [
+    "patto di non concorrenza"
+   ],
+   "riferimenti": [
+    "art. 2125 c.c.",
+    "art. 2557 c.c."
+   ],
+   "note": "2125 = lavoratore subordinato; 2557 = cedente dell'azienda. Il contesto decide quale vale.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "clausole-vessatorie",
+   "trigger": [
+    "clausol\\w+\\s+vessator\\w+",
+    "approvazion\\w+\\s+specific\\w+",
+    "condizioni generali di contratto"
+   ],
+   "riferimenti": [
+    "art. 1341 c.c.",
+    "art. 1342 c.c."
+   ],
+   "note": "Il regime cambia se la controparte è un consumatore (Codice del consumo): non mappato.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "clausola-penale",
+   "trigger": [
+    "\\bclausola penale\\b",
+    "\\bpenal[ei]\\s+(per|in caso di)\\s+(ritardo|inadempiment\\w+)",
+    "\\bpenale\\s+(pari al|contrattual\\w+)"
+   ],
+   "riferimenti": [
+    "art. 1382 c.c.",
+    "art. 1384 c.c."
+   ],
+   "note": "Trigger volutamente stretti: «penale» da solo vale anche per il diritto penale.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "caparra",
+   "trigger": [
+    "\\bcaparr\\w+"
+   ],
+   "riferimenti": [
+    "art. 1385 c.c."
+   ],
+   "note": "",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "risoluzione-per-inadempimento",
+   "trigger": [
+    "clausola risolutiva( espressa)?",
+    "risoluzione (del contratto )?per inadempiment\\w+"
+   ],
+   "riferimenti": [
+    "art. 1453 c.c.",
+    "art. 1455 c.c.",
+    "art. 1456 c.c."
+   ],
+   "note": "",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  },
+  {
+   "id": "vizi-e-garanzia",
+   "trigger": [
+    "vizi (della cosa|dell'opera)",
+    "garanzia per i vizi",
+    "difformit\\w+ dell'opera"
+   ],
+   "riferimenti": [
+    "art. 1490 c.c.",
+    "art. 1495 c.c.",
+    "art. 1667 c.c."
+   ],
+   "note": "",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
+  }
+ ]
 }

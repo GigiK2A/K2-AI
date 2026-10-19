@@ -364,10 +364,19 @@ def test_affini_e_ricerca_norma_spegnibili(corpus, monkeypatch):
 
 
 # ── mappa temi: punto di estensione (vuota di proposito, da validare con un professionista) ───────
-def test_la_mappa_distribuita_e_vuota_e_ben_formata():
+def test_la_mappa_distribuita_non_ha_voci_attive_e_ben_formata(monkeypatch):
+    """Le voci distribuite sono BOZZE (nessun professionista le ha validate): in produzione, senza
+    KBOT_MAPPA_BOZZE=1, la mappa attiva è vuota. Quando una voce viene validata, questo test va aggiornato."""
     import json
     d = json.load(open(E._MAPPA_PATH, encoding="utf-8"))
-    assert d["temi"] == [] and "validato_da" in d["schema"]
+    assert "validato_da" in d["schema"]
+    assert all(not (t.get("validato_da") or "").strip() for t in d["temi"]), "una voce validata: aggiorna il test"
+    monkeypatch.delenv("KBOT_MAPPA_BOZZE", raising=False)
+    E._mappa.cache_clear()
+    try:
+        assert E._mappa() == []
+    finally:
+        E._mappa.cache_clear()
 
 
 def test_una_voce_della_mappa_porta_i_riferimenti_senza_il_modello(corpus, monkeypatch, tmp_path):

@@ -1,0 +1,646 @@
+{
+ "meta": {
+  "data": "2026-10-19T10:39:24.294740+00:00",
+  "base_url": "http://127.0.0.1:8149/api/kbot",
+  "modello": "",
+  "commit": "5857c22",
+  "file_casi": "casi_held_out.json",
+  "ripetizioni": 3,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "1946b9c1-adbb-4196-a0d6-ebd0329596f2",
+   "fbebbb00-8d56-4a53-9455-d2f2e9b2b59b",
+   "13d539f9-a6bf-4774-adc7-328e159940dd",
+   "e5adbc74-1bd1-4b3c-9a22-2751890f592a",
+   "9e95bdde-1e0a-4847-868c-5a1d8079865f",
+   "c9cd0dbc-4297-4cab-90c3-207841d6d163"
+  ]
+ },
+ "riepilogo": {
+  "esecuzioni": 6,
+  "ripetizioni": 3,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 7,
+    "specifici_tot": 8,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 2,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 6,
+    "specifici_tot": 8,
+    "casi_tutte_attese": 0,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 3,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 6,
+    "specifici_tot": 8,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     7,
+     6,
+     6
+    ],
+    "media": 6.33,
+    "sd": 0.58
+   },
+   "generici_ok": {
+    "valori": [
+     16,
+     16,
+     16
+    ],
+    "media": 16.0,
+    "sd": 0.0
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     1,
+     0,
+     1
+    ],
+    "media": 0.67,
+    "sd": 0.58
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     2,
+     2,
+     2
+    ],
+    "media": 2.0,
+    "sd": 0.0
+   }
+  },
+  "controlli_instabili": [
+   {
+    "caso": "ho-caparra",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "ho-patto-non-concorrenza",
+    "controllo": "specifici.fatti_alternativi",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "ho-patto-non-concorrenza",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 1,
+    "su": 3
+   }
+  ],
+  "casi": 6,
+  "casi_senza_difetti_generici": 6,
+  "casi_con_attese_specifiche": 6,
+  "casi_con_attese_tutte_rispettate": 2,
+  "controlli_generici": "48/48",
+  "controlli_specifici": "19/24",
+  "per_controllo": {
+   "generici.frasi_integre": "6/6",
+   "generici.nessun_errore_di_stream": "6/6",
+   "generici.nessun_testo_del_critico": "6/6",
+   "generici.nessuna_autocorrezione": "6/6",
+   "generici.nessuna_fuga_prompt": "6/6",
+   "generici.nessuna_lingua_estranea": "6/6",
+   "generici.risposta_non_vuota": "6/6",
+   "generici.testo_letto_uguale_finale": "6/6",
+   "specifici.fatti_alternativi": "5/6",
+   "specifici.fatti_presenti": "6/6",
+   "specifici.nessuna_affermazione_errata": "6/6",
+   "specifici.rinvio_al_professionista": "2/6"
+  },
+  "latenza_s": {
+   "mediana": 39.0,
+   "p90": 47.6,
+   "max": 47.6
+  },
+  "primo_token_s": {
+   "mediana": 7.949999999999999,
+   "p90": 23.2,
+   "max": 23.2
+  }
+ },
+ "risultati": [
+  {
+   "id": "ho-caparra",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "1946b9c1-adbb-4196-a0d6-ebd0329596f2",
+   "turni": [
+    {
+     "utente": "Abbiamo firmato un preliminare per comprare un capannone e versato 20.000 euro come caparra. Se il venditore si tira indietro, cosa possiamo chiedere?",
+     "streamato": "Ciao. Il fatto che abbiate già firmato il preliminare e versato la caparra è importante perché cambia completamente le carte in gioco: non state più solo \"valutando\", ma avete un vincolo contrattuale serio.\n\nLa prima cosa da capire è il tipo di caparra: quella \"confirmatoria\" (la più comune, che garantisce l'esecuzione del contratto) o quella \"penitenziale\" (che dà a una o entrambe le parti il diritto di recedere perdendo o rimborsando il doppio). Se il venditore si tira indietro, il rimedio che potete attivare dipende da quale delle due avete firmato e da cosa prevede esattamente il documento.\n\nPer darti una risposta precisa e capire quali sono i passi concreti che potete fare (dal semplice richiamo all'adempimento fino alla richiesta di esecuzione o risarcimento), ho bisogno di verificare una cosa: nel preliminare, la caparra è descritta come \"confirmatoria\" o è presente una clausola che parla di \"diritto di recesso\" o \"caparra penitenziale\"?",
+     "visibile": "Ciao. Il fatto che abbiate già firmato il preliminare e versato la caparra è importante perché cambia completamente le carte in gioco: non state più solo \"valutando\", ma avete un vincolo contrattuale serio.\n\nLa prima cosa da capire è il tipo di caparra: quella \"confirmatoria\" (la più comune, che garantisce l'esecuzione del contratto) o quella \"penitenziale\" (che dà a una o entrambe le parti il diritto di recedere perdendo o rimborsando il doppio). Se il venditore si tira indietro, il rimedio che potete attivare dipende da quale delle due avete firmato e da cosa prevede esattamente il documento.\n\nPer darti una risposta precisa e capire quali sono i passi concreti che potete fare (dal semplice richiamo all'adempimento fino alla richiesta di esecuzione o risarcimento), ho bisogno di verificare una cosa: nel preliminare, la caparra è descritta come \"confirmatoria\" o è presente una clausola che parla di \"diritto di recesso\" o \"caparra penitenziale\"?",
+     "latenza_s": 42.1,
+     "primo_token_s": 23.2,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 23.2s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-patto-non-concorrenza",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "fbebbb00-8d56-4a53-9455-d2f2e9b2b59b",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare ai dipendenti un patto di non concorrenza per dopo che se ne vanno, senza pagargli niente. Va bene?",
+     "streamato": "No, così com'è strutturato non va bene: il patto di non concorrenza post-cessione è nullo se non prevede un corrispettivo a favore del dipendente (art. 2125 c.c.). In pratica, senza una cifra (mensile o una tantum) che tu versi a lui, la clausola non regge: firmarla non bloccherebbe davvero l’ex dipendente e, peggio, creerebbe una fonte di contestazione.\n\nPer essere valida servono tre condizioni:\n- Atto scritto (basta una lettera o una clausola nel contratto/contratto di lavoro);\n- Corrispettivo a favore del prestatore;\n- Limiti ragionevoli di oggetto, tempo e luogo. La durata massima è 5 anni per i dirigenti, 3 anni per gli altri (art. 2125 c.c.): un vincolo più ampio o più lungo viene ridotto d’ufficio a questi limiti, non è automatico che valga quello pattuito.\n\nCose da verificare prima di procedere:\n- A quali dipendenti lo applichi: il patto ha senso solo per chi ha accesso a clienti, segreti industriali, know-how. Per ruoli operativi è difficile sostenerlo e può essere considerato eccessivo.\n- Quanto vale il corrispettivo: non esiste una soglia legale di legge, si valuta di volta in volta sulla base di rischio, ruolo, durata e ambito geografico. Un importo troppo basso è un rischio di nullità; uno troppo alto è un costo evitabile.\n- Ambito: meglio limitare a settori/clienti/zone specifici, non “non puoi lavorare nel tuo settore”.\n\nSe vuoi, posso ragionare su: (1) se per i tuoi ruoli ha davvero senso, (2) come calibrare durata/ambito/corrispettivo per un profilo tipo, (3) la formula contrattuale da inserire. Dimmi a quali posizioni lo applicheresti e cosa vuoi proteggere (clienti, tecnologia, informazioni).",
+     "visibile": "No, così com'è strutturato non va bene: il patto di non concorrenza post-cessione è nullo se non prevede un corrispettivo a favore del dipendente (art. 2125 c.c.). In pratica, senza una cifra (mensile o una tantum) che tu versi a lui, la clausola non regge: firmarla non bloccherebbe davvero l'ex dipendente e, peggio, creerebbe una fonte di contestazione.\n\nPer essere valida servono tre condizioni:\n- Atto scritto (basta una lettera o una clausola nel contratto/contratto di lavoro);\n- Corrispettivo a favore del prestatore;\n- Limiti ragionevoli di oggetto, tempo e luogo. La durata massima è 5 anni per i dirigenti, 3 anni per gli altri (art. 2125 c.c.): un vincolo più ampio o più lungo viene ridotto d'ufficio a questi limiti, non è automatico che valga quello pattuito.\n\nCose da verificare prima di procedere:\n- A quali dipendenti lo applichi: il patto ha senso solo per chi ha accesso a clienti, segreti industriali, know-how. Per ruoli operativi è difficile sostenerlo e può essere considerato eccessivo.\n- Quanto vale il corrispettivo: non esiste una soglia legale di legge, si valuta di volta in volta sulla base di rischio, ruolo, durata e ambito geografico. Un importo troppo basso è un rischio di nullità; uno troppo alto è un costo evitabile.\n- Ambito: meglio limitare a settori/clienti/zone specifici, non «non puoi lavorare nel tuo settore».\n\nSe vuoi, posso ragionare su: (1) se per i tuoi ruoli ha davvero senso, (2) come calibrare durata/ambito/corrispettivo per un profilo tipo, (3) la formula contrattuale da inserire. Dimmi a quali posizioni lo applicheresti e cosa vuoi proteggere (clienti, tecnologia, informazioni).\n\nFonti: art. 2125 c.c.",
+     "latenza_s": 47.6,
+     "primo_token_s": 16.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-caparra",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "13d539f9-a6bf-4774-adc7-328e159940dd",
+   "turni": [
+    {
+     "utente": "Abbiamo firmato un preliminare per comprare un capannone e versato 20.000 euro come caparra. Se il venditore si tira indietro, cosa possiamo chiedere?",
+     "streamato": "Se il venditore si tira indietro (cioè non va al rogito senza giustificato motivo), il punto chiave è capire quale tipo di caparra avete previsto nel preliminare, perché cambia la risposta:\n\n1. Caparra confirmatoria (la più comune): se la parte che l'ha ricevuta (il venditore) è inadempiente, tu puoi recedere dal contratto ed esigere il doppio della caparra, quindi in questo caso 40.000 euro (art. 1385 c.c.).\n2. Caparra penitenziale: la caparra funziona solo come corrispettivo del recesso e il recedente deve restituire il doppio di quella ricevuta (art. 1386 c.c.).\n\nC'è un'alternativa: puoi anche non recedere e chiedere l'esecuzione forzata del contratto (che il venditore venda) oppure la risoluzione con il risarcimento del danno secondo le regole generali — questa opzione può convenirti se il danno supererebbe la somma raddoppiata, ma è più complessa da provare.\n\nCosa verificare subito: leggi il preliminare e guarda come è descritta la caparra (le clausole di solito dicono \"caparra confirmatoria\" o \"caparra penitenziale\" — se non c'è nulla di esplicito, si presume confirmatoria). Questa distinzione è decisiva per capire quanto puoi pretendere.\n\nSe vuoi, mandami le clausole del preliminare (o anche solo la frase che parla della caparra) e ti dico con precisione cosa ti conviene fare e come impostare la richiesta al venditore.",
+     "visibile": "Se il venditore si tira indietro (cioè non va al rogito senza giustificato motivo), il punto chiave è capire quale tipo di caparra avete previsto nel preliminare, perché cambia la risposta:\n\n1. Caparra confirmatoria (la più comune): se la parte che l'ha ricevuta (il venditore) è inadempiente, tu puoi recedere dal contratto ed esigere il doppio della caparra, quindi in questo caso 40.000 euro (art. 1385 c.c.).\n2. Caparra penitenziale: la caparra funziona solo come corrispettivo del recesso e il recedente deve restituire il doppio di quella ricevuta (art. 1386 c.c.).\n\nC'è un'alternativa: puoi anche non recedere e chiedere l'esecuzione forzata del contratto (che il venditore venda) oppure la risoluzione con il risarcimento del danno secondo le regole generali — questa opzione può convenirti se il danno supererebbe la somma raddoppiata, ma è più complessa da provare.\n\nCosa verificare subito: leggi il preliminare e guarda come è descritta la caparra (le clausole di solito dicono \"caparra confirmatoria\" o \"caparra penitenziale\" — se non c'è nulla di esplicito, si presume confirmatoria). Questa distinzione è decisiva per capire quanto puoi pretendere.\n\nSe vuoi, mandami le clausole del preliminare (o anche solo la frase che parla della caparra) e ti dico con precisione cosa ti conviene fare e come impostare la richiesta al venditore.\n\nFonti: art. 1385 c.c.; art. 1386 c.c.",
+     "latenza_s": 36.4,
+     "primo_token_s": 11.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-patto-non-concorrenza",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "e5adbc74-1bd1-4b3c-9a22-2751890f592a",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare ai dipendenti un patto di non concorrenza per dopo che se ne vanno, senza pagargli niente. Va bene?",
+     "streamato": "No, così com'è non va: il patto di non concorrenza post-cessione, se non prevede un corrispettivo a favore del dipendente, è nullo (art. 2125 c.c.). In pratica, la firma lo lascerebbe vuoto e inattuabile, e avreste speso tempo e rischio per niente.\n\nIn più, perché abbia valore deve essere: in forma scritta, limitato a determinati limiti di oggetto, tempo e luogo, e con una durata massima di 5 anni per i dirigenti e 3 anni per gli altri (art. 2125 c.c.).\n\nIl vero nodo non è il \"come farlo\", ma capire a chi serve davvero: di norma ha senso solo per chi ha accesso a clientela, know-how strategico o informazioni sensibili (es. un venditore chiave, un tecnico senior). Per la maggior parte dei ruoli, il vincolo non è né necessario né sostenibile economicamente.\n\nDue domande rapide per orientarti: a quali ruoli/posizionei penserete di applicarlo, e che tipo di attività svolgono (accesso a clienti, segreti industriali, portfolio)? Così capisco se il patto è la soluzione giusta o se conviene ragionare su alternative (patti parziali, riservatezza, clausole di uscita).",
+     "visibile": "No, così com'è non va: il patto di non concorrenza post-cessione, se non prevede un corrispettivo a favore del dipendente, è nullo (art. 2125 c.c.). In pratica, la firma lo lascerebbe vuoto e inattuabile, e avreste speso tempo e rischio per niente.\n\nIn più, perché abbia valore deve essere: in forma scritta, limitato a determinati limiti di oggetto, tempo e luogo, e con una durata massima di 5 anni per i dirigenti e 3 anni per gli altri (art. 2125 c.c.).\n\nIl vero nodo non è il \"come farlo\", ma capire a chi serve davvero: di norma ha senso solo per chi ha accesso a clientela, know-how strategico o informazioni sensibili (es. un venditore chiave, un tecnico senior). Per la maggior parte dei ruoli, il vincolo non è né necessario né sostenibile economicamente.\n\nDue domande rapide per orientarti: a quali ruoli/posizionei penserete di applicarlo, e che tipo di attività svolgono (accesso a clienti, segreti industriali, portfolio)? Così capisco se il patto è la soluzione giusta o se conviene ragionare su alternative (patti parziali, riservatezza, clausole di uscita).\n\nFonti: art. 2125 c.c.",
+     "latenza_s": 26.1,
+     "primo_token_s": 4.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-caparra",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "9e95bdde-1e0a-4847-868c-5a1d8079865f",
+   "turni": [
+    {
+     "utente": "Abbiamo firmato un preliminare per comprare un capannone e versato 20.000 euro come caparra. Se il venditore si tira indietro, cosa possiamo chiedere?",
+     "streamato": "Se il venditore si tira indietro, hai due strade principali, da scegliere al momento della contestazione:\n\n1. **Recedere e richiedere il doppio della caparra**: se i 20.000 euro erano una caparra confirmatoria (la forma più comune nei preliminari immobiliari), puoi recedere dal contratto e pretendere la restituzione del doppio, cioè 40.000 euro. È la via più semplice e immediata (art. 1385 c.c.).\n\n2. **Obbligare l’adempimento o chiedere la risoluzione con risarcimento**: se il capannone ti interessa davvero e il doppio della caparra non copre il danno che subisci (ad esempio perché i prezzi del mercato sono saliti, o avevi già pianificato l’investimento), puoi chiedere o l’esecuzione forzata del contratto (far rispettare la vendita) oppure la risoluzione del contratto con risarcimento del danno completo, secondo le norme generali. In questo caso il risarcimento non è limitato al doppio, ma va provato.\n\nCosa verificare prima di muoverti:\n- Che nel preliminare la somma di 20.000 euro sia espressamente definita come **caparra confirmatoria** (non penitenziale: se fosse penitenziale, il doppio sarebbe solo il corrispettivo del diritto di recesso, art. 1386 c.c., e la tua posizione sarebbe più debole).\n- Come il venditore si “sta tirando indietro”: è una dichiarazione scritta di rinuncia, o è un semplice silenzio/rinvio? Questo cambia l’urgenza e le prove da raccogliere.\n\nProssimi passi: conserva ogni comunicazione scritta (PEC, email), evita di negoziare a voce, e prima di inviare la diffida fai verificare la clausola di caparra e la congruità delle somme con un avvocato o un notaio — la scelta tra doppio e risarcimento va fatta con cognizione del danno effettivo, non d’istinto.\n\nSe mi dici come è formulata la clausola sul preliminare (o mi incolli il testo relativo) e se il venditore ha già comunicato qualcosa per iscritto, ti aiuto a capire quale strada è più conveniente nel tuo caso.",
+     "visibile": "Se il venditore si tira indietro, hai due strade principali, da scegliere al momento della contestazione:\n\n1. Recedere e richiedere il doppio della caparra: se i 20.000 euro erano una caparra confirmatoria (la forma più comune nei preliminari immobiliari), puoi recedere dal contratto e pretendere la restituzione del doppio, cioè 40.000 euro. È la via più semplice e immediata (art. 1385 c.c.).\n\n2. Obbligare l'adempimento o chiedere la risoluzione con risarcimento: se il capannone ti interessa davvero e il doppio della caparra non copre il danno che subisci (ad esempio perché i prezzi del mercato sono saliti, o avevi già pianificato l'investimento), puoi chiedere o l'esecuzione forzata del contratto (far rispettare la vendita) oppure la risoluzione del contratto con risarcimento del danno completo, secondo le norme generali. In questo caso il risarcimento non è limitato al doppio, ma va provato.\n\nCosa verificare prima di muoverti:\n- Che nel preliminare la somma di 20.000 euro sia espressamente definita come caparra confirmatoria (non penitenziale: se fosse penitenziale, il doppio sarebbe solo il corrispettivo del diritto di recesso, art. 1386 c.c., e la tua posizione sarebbe più debole).\n- Come il venditore si «sta tirando indietro»: è una dichiarazione scritta di rinuncia, o è un semplice silenzio/rinvio? Questo cambia l'urgenza e le prove da raccogliere.\n\nProssimi passi: conserva ogni comunicazione scritta (PEC, email), evita di negoziare a voce, e prima di inviare la diffida fai verificare la clausola di caparra e la congruità delle somme con un avvocato o un notaio — la scelta tra doppio e risarcimento va fatta con cognizione del danno effettivo, non d'istinto.\n\nSe mi dici come è formulata la clausola sul preliminare (o mi incolli il testo relativo) e se il venditore ha già comunicato qualcosa per iscritto, ti aiuto a capire quale strada è più conveniente nel tuo caso.\n\nFonti: art. 1385 c.c.; art. 1386 c.c.",
+     "latenza_s": 41.6,
+     "primo_token_s": 4.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "ho-patto-non-concorrenza",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "c9cd0dbc-4297-4cab-90c3-207841d6d163",
+   "turni": [
+    {
+     "utente": "Vogliamo far firmare ai dipendenti un patto di non concorrenza per dopo che se ne vanno, senza pagargli niente. Va bene?",
+     "streamato": "No, così com'è pensato è nullo. La legge italiana (art. 2125 c.c.) dice chiaramente che il patto di non concorrenza post-contrattuale è nullo se non è pattuito un corrispettivo a favore del dipendente, oltre che se non è scritto e se non ha limiti ragionevoli di oggetto, tempo e luogo. Quindi l'assenza del compenso non è un \"dettaglio da negoziare\": è un vizio che rende il vincolo inattaccabile e inutilizzabile in caso di lite.\n\nDetto questo, prima di spendere energie (e soldi) sul patto, vale la pena capire il problema reale che state cercando di risolvere. Di solito quando si vuole blindare l'uscita di un dipendente il rischio concreto è che porti via: (a) la lista clienti e le relazioni commerciali, (b) segreti tecnici o Know-how, (c) il team stesso. Per il punto (a) e (c) il patto di non concorrenza non è sempre lo strumento più efficace, e per il (b) esistono tutele diverse (obbligo di confidenzialità, che può essere a titolo gratuito e non scade col contratto, più la normativa sul segreto aziendale).\n\nLa domanda chiave per orientarci: si tratta di un dipendente/ruolo specifico che ha accesso a clienti strategici o a informazioni sensibili, o l'intenzione è di imporre il vincolo in modo generale a tutti o a un'intera area?",
+     "visibile": "No, così com'è pensato è nullo. La legge italiana (art. 2125 c.c.) dice chiaramente che il patto di non concorrenza post-contrattuale è nullo se non è pattuito un corrispettivo a favore del dipendente, oltre che se non è scritto e se non ha limiti ragionevoli di oggetto, tempo e luogo. Quindi l'assenza del compenso non è un \"dettaglio da negoziare\": è un vizio che rende il vincolo inattaccabile e inutilizzabile in caso di lite.\n\nDetto questo, prima di spendere energie (e soldi) sul patto, vale la pena capire il problema reale che state cercando di risolvere. Di solito quando si vuole blindare l'uscita di un dipendente il rischio concreto è che porti via: (a) la lista clienti e le relazioni commerciali, (b) segreti tecnici o Know-how, (c) il team stesso. Per il punto (a) e (c) il patto di non concorrenza non è sempre lo strumento più efficace, e per il (b) esistono tutele diverse (obbligo di confidenzialità, che può essere a titolo gratuito e non scade col contratto, più la normativa sul segreto aziendale).\n\nLa domanda chiave per orientarci: si tratta di un dipendente/ruolo specifico che ha accesso a clienti strategici o a informazioni sensibili, o l'intenzione è di imporre il vincolo in modo generale a tutti o a un'intera area?\n\nFonti: art. 2125 c.c.",
+     "latenza_s": 30.5,
+     "primo_token_s": 4.2,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: durata massima tre anni (cinque per i dirigenti)"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,853 @@
+{
+ "meta": {
+  "data": "2026-10-19T10:36:13.666164+00:00",
+  "base_url": "http://127.0.0.1:8150/api/kbot",
+  "modello": "",
+  "commit": "5857c22",
+  "file_casi": "casi.json",
+  "ripetizioni": 3,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "81a92c47-a90c-4bbb-ada9-d10c60754c6b",
+   "43856d4d-34b1-4e86-b4ff-34a7a2b8d157",
+   "c181451b-2cca-49ed-a997-9c2df502db4a",
+   "550de6a6-1de8-453b-ba42-22bcc211037c",
+   "3df5f6a1-c904-4184-bc53-65207e3ae933",
+   "51869f16-815a-438a-8a4c-84f3c24f9140",
+   "b93a8f89-6ac1-4785-82b9-82c59d86db4d",
+   "d5677815-0ad9-49b1-b0f2-98a9eb672daf",
+   "a689b938-70f7-474d-b288-8681af8bb775"
+  ],
+  "rivalutato_il": "2026-10-19T10:40:01.181312+00:00",
+  "rivalutato_da": "mappa-on-dev-2026-10-19.json",
+  "commit_rivalutazione": "5857c22"
+ },
+ "riepilogo": {
+  "esecuzioni": 9,
+  "ripetizioni": 3,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 3,
+    "generici_ok": 23,
+    "generici_tot": 24,
+    "specifici_ok": 6,
+    "specifici_tot": 8,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 2,
+    "casi": 3,
+    "generici_ok": 24,
+    "generici_tot": 24,
+    "specifici_ok": 4,
+    "specifici_tot": 8,
+    "casi_tutte_attese": 0,
+    "casi_senza_difetti_generici": 3
+   },
+   {
+    "ripetizione": 3,
+    "casi": 3,
+    "generici_ok": 24,
+    "generici_tot": 24,
+    "specifici_ok": 5,
+    "specifici_tot": 8,
+    "casi_tutte_attese": 0,
+    "casi_senza_difetti_generici": 3
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     6,
+     4,
+     5
+    ],
+    "media": 5.0,
+    "sd": 1.0
+   },
+   "generici_ok": {
+    "valori": [
+     23,
+     24,
+     24
+    ],
+    "media": 23.67,
+    "sd": 0.58
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     1,
+     0,
+     0
+    ],
+    "media": 0.33,
+    "sd": 0.58
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     2,
+     3,
+     3
+    ],
+    "media": 2.67,
+    "sd": 0.58
+   }
+  },
+  "controlli_instabili": [
+   {
+    "caso": "lav-impugnazione-licenziamento",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "lav-prova-impiegato",
+    "controllo": "specifici.fatti_presenti",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "lav-telecamere",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 2,
+    "su": 3
+   }
+  ],
+  "casi": 9,
+  "casi_senza_difetti_generici": 8,
+  "casi_con_attese_specifiche": 9,
+  "casi_con_attese_tutte_rispettate": 1,
+  "controlli_generici": "71/72",
+  "controlli_specifici": "15/24",
+  "per_controllo": {
+   "generici.frasi_integre": "9/9",
+   "generici.nessun_errore_di_stream": "9/9",
+   "generici.nessun_testo_del_critico": "9/9",
+   "generici.nessuna_autocorrezione": "9/9",
+   "generici.nessuna_fuga_prompt": "9/9",
+   "generici.nessuna_lingua_estranea": "9/9",
+   "generici.risposta_non_vuota": "9/9",
+   "generici.testo_letto_uguale_finale": "8/9",
+   "specifici.fatti_presenti": "1/9",
+   "specifici.nessuna_affermazione_errata": "6/6",
+   "specifici.non_spinge_vendita": "3/3",
+   "specifici.rinvio_al_professionista": "5/6"
+  },
+  "latenza_s": {
+   "mediana": 28.0,
+   "p90": 100.5,
+   "max": 100.5
+  },
+  "primo_token_s": {
+   "mediana": 5.9,
+   "p90": 22.7,
+   "max": 22.7
+  }
+ },
+ "risultati": [
+  {
+   "id": "lav-prova-impiegato",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "81a92c47-a90c-4bbb-ada9-d10c60754c6b",
+   "turni": [
+    {
+     "utente": "Sto assumendo un impiegato a tempo indeterminato. Quanto può durare al massimo il periodo di prova?",
+     "streamato": "Per un dipendente a tempo indeterminato il periodo di prova non ha un massimo unico fissato dal codice civile: dipende dal contratto collettivo nazionale di lavoro applicato al tuo settore.\n\nIn generale, molti CCNL per il personale amministrativo/impiegatizio (es. Commercio, Terziario, Confcommercio, Logistica, Trasporti) indicano durata tra 1 e 6 mesi, ma esistono anche differenze tra categorie e aree geografiche.\n\nIn pratica, devi verificare:\n- il CCNL che si applica alla tua azienda;\n- la categoria economica e il livello del dipendente;\n- se ci sono eventuali clausole contrattuali aziendali o accordi locali.\n\nIl patto di prova deve risultare da atto scritto (art. 2096 c.c.), e durante la prova entrambe le parti possono recedere senza preavviso o indennità, salvo che la prova sia stabilita per un tempo minimo necessario.\n\nSe mi dici quale CCNL si applica (o il settore di attività della tua azienda), posso aiutarti a individuare la durata prevista con maggiore precisione.",
+     "visibile": "Per un dipendente a tempo indeterminato il periodo di prova non ha un massimo unico fissato dal codice civile: dipende dal contratto collettivo nazionale di lavoro applicato al tuo settore.\n\nIn generale, molti CCNL per il personale amministrativo/impiegatizio (es. Commercio, Terziario, Confcommercio, Logistica, Trasporti) indicano durata tra 1 e 6 mesi, ma esistono anche differenze tra categorie e aree geografiche.\n\nIn pratica, devi verificare:\n- il CCNL che si applica alla tua azienda;\n- la categoria economica e il livello del dipendente;\n- se ci sono eventuali clausole contrattuali aziendali o accordi locali.\n\nIl patto di prova deve risultare da atto scritto (art. 2096 c.c.), e durante la prova entrambe le parti possono recedere senza preavviso o indennità, salvo che la prova sia stabilita per un tempo minimo necessario.\n\nSe mi dici quale CCNL si applica (o il settore di attività della tua azienda), posso aiutarti a individuare la durata prevista con maggiore precisione.\n\nFonti: art. 2096 c.c.",
+     "latenza_s": 22.7,
+     "primo_token_s": 11.3,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "lav-impugnazione-licenziamento",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-secondaria",
+   "session_id": "43856d4d-34b1-4e86-b4ff-34a7a2b8d157",
+   "turni": [
+    {
+     "utente": "Ho licenziato un dipendente il mese scorso e ora il suo avvocato mi ha scritto per impugnare il licenziamento. Siamo una srl con 22 dipendenti. Cosa devo fare e che tempi ha lui?",
+     "streamato": "Capisco la situazione: una SRL con 22 dipendenti, licenziamento dello scorso mese, e ora arriva l’impugnazione da parte del dipendente tramite il suo avvocato.\n\nPrima di tutto, tranquillo: la ricezione di una diffida o di un’atto di impugnazione **non significa automaticamente che il licenziamento sia illegittimo**. Significa che il lavoratore ha scelto di contestarlo e di attivarsi legalmente. Il tuo obbligo ora non è “difenderti subito” in modo impulsivo, ma **verificare la solidità del licenziamento che hai emesso** e gestire la comunicazione con prudenza.\n\n### Cosa devi fare subito (prime 48-72 ore)\n\n1.  **Congela la comunicazione**: non rispondere a caldo, non inviare email o messaggi con toni difensivi o minacciosi. Qualsiasi cosa scrivi ora può diventare prova nel procedimento.\n2.  **Raccogli la documentazione**: prepara in un fascicolo separato:\n    *   La lettera di licenziamento (causale specifica).\n    *   Il verbale di contestazione (se era un licenziamento disciplinare).\n    *   Le eventuali precedenti contestazioni disciplinari.\n    *   Il contratto di lavoro e il CCNL applicato.\n    *   Eventuali report di performance, email o documenti che giustifichano la causale.\n3.  **Verifica la causale**: la causa più comune di successo nei ricorsi è la **mancata specificità** della causale o l’**insussistenza dei fatti**. Chiediti: la causale era sufficientemente dettagliata? I fatti erano oggettivi e documentati?\n4.  **Valuta il termine per rispondere**: se l’avvocato ha inviato una diffida (PEC o raccomandata), di norma c’è un termine breve (7-10 giorni) per rispondere, ma spesso è tattico. Se invece è già stato depositato un **atto di citazione** o una **domanda di conciliazione** presso la Commissione di conciliazione/Arbitrato, i tempi processuali sono diversi. **Distinguere tra diffida e atto giudiziario è fondamentale.**\n\n### I tempi ha lui?\n\nSì, e sono perentori:\n*   **Se è una diffida pre-giudiziale**: i tempi dipendono da ciò che chiede la lettera (di solito 7-15 giorni per rispondere).\n*   **Se ha già avviato il giudizio** (o la conciliazione obbligatoria): il termine per impugnare il licenziamento è **180 giorni** dalla data della contestazione (per i licenziamenti individuali). Essendo passato un mese, ha ancora ampiamente margine.\n\n### Il rischio principale\n\nIn una SRL con 22 dipendenti, il licenziamento è soggetto alla **legge Fornero** (L. 92/2012) e, se si tratta di licenziamento disciplinare, alla normativa sul licenziamento per giusta causa/giustificato motivo oggettivo o soggettivo. La giurisprudenza è severa sulla **specificità della contestazione** e sulla **proporzionalità della sanzione**.\n\n### Prossimo passo concreto\n\n**Non rispondere da solo.** Porta l’atto ricevuto (diffida, PEC, o notifica di citazione) e il fascicolo del licenziamento al tuo **avvocato specializzato in diritto del lavoro** o al **consulente del lavoro** che gestisce le tue buste paga. Loro devono:\n1.  Verificare la natura dell’atto (diffida o atto processuale).\n2.  Valutare la solidità della causale emessa.\n3.  Redigere la risposta o la memoria difensiva nei tempi giusti.\n\n**Cosa potrebbe cambiare la mia analisi:** sapere se si tratta di un licenziamento **disciplinare** (per illecito del dipendente) o **non disciplinare** (per ragioni organizzative/efficienza) e se il licenziamento è stato impugnato con una **diffida** o con un **atto già depositato** in tribunale/commissione. Se mi dici quale dei due è, posso guidarti meglio sulla strategia di risposta.",
+     "visibile": "Capisco la situazione: una SRL con 22 dipendenti, licenziamento dello scorso mese, e ora arriva l'impugnazione da parte del dipendente tramite il suo avvocato.\n\nPrima di tutto, tranquillo: la ricezione di una diffida o di un'atto di impugnazione non significa automaticamente che il licenziamento sia illegittimo. Significa che il lavoratore ha scelto di contestarlo e di attivarsi legalmente. Il tuo obbligo ora non è «difenderti subito» in modo impulsivo, ma verificare la solidità del licenziamento che hai emesso e gestire la comunicazione con prudenza.\n\nCosa devi fare subito (prime 48-72 ore)\n\n1. Congela la comunicazione: non rispondere a caldo, non inviare email o messaggi con toni difensivi o minacciosi. Qualsiasi cosa scrivi ora può diventare prova nel procedimento.\n2. Raccogli la documentazione: prepara in un fascicolo separato:\n - La lettera di licenziamento (causale specifica).\n - Il verbale di contestazione (se era un licenziamento disciplinare).\n - Le eventuali precedenti contestazioni disciplinari.\n - Il contratto di lavoro e il CCNL applicato.\n - Eventuali report di performance, email o documenti che giustifichano la causale.\n3. Verifica la causale: la causa più comune di successo nei ricorsi è la mancata specificità della causale o l'insussistenza dei fatti. Chiediti: la causale era sufficientemente dettagliata? I fatti erano oggettivi e documentati?\n4. Valuta il termine per rispondere: se l'avvocato ha inviato una diffida (PEC o raccomandata), di norma c'è un termine breve (7-10 giorni) per rispondere, ma spesso è tattico. Se invece è già stato depositato un atto di citazione o una domanda di conciliazione presso la Commissione di conciliazione/Arbitrato, i tempi processuali sono diversi. Distinguere tra diffida e atto giudiziario è fondamentale.\n\nI tempi ha lui?\n\nSì, e sono perentori:\n- Se è una diffida pre-giudiziale: i tempi dipendono da ciò che chiede la lettera (di solito 7-15 giorni per rispondere).\n- Se ha già avviato il giudizio (o la conciliazione obbligatoria): il termine per impugnare il licenziamento è nel termine previsto dalla normativa (per i licenziamenti individuali). Essendo passato un mese, ha ancora ampiamente margine.\n\nIl rischio principale\n\nIn una SRL con 22 dipendenti, il licenziamento è soggetto alla legge Fornero (L. 92/2012) e, se si tratta di licenziamento disciplinare, alla normativa sul licenziamento per giusta causa/giustificato motivo oggettivo o soggettivo. La giurisprudenza è severa sulla specificità della contestazione e sulla proporzionalità della sanzione.\n\nProssimo passo concreto\n\nNon rispondere da solo. Porta l'atto ricevuto (diffida, PEC, o notifica di citazione) e il fascicolo del licenziamento al tuo avvocato specializzato in diritto del lavoro o al consulente del lavoro che gestisce le tue buste paga. Loro devono:\n1. Verificare la natura dell'atto (diffida o atto processuale).\n2. Valutare la solidità della causale emessa.\n3. Redigere la risposta o la memoria difensiva nei tempi giusti.\n\nCosa potrebbe cambiare la mia analisi: sapere se si tratta di un licenziamento disciplinare (per illecito del dipendente) o non disciplinare (per ragioni organizzative/efficienza) e se il licenziamento è stato impugnato con una diffida o con un atto già depositato in tribunale/commissione. Se mi dici quale dei due è, posso guidarti meglio sulla strategia di risposta.",
+     "latenza_s": 100.5,
+     "primo_token_s": 22.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1730: «180giornidalladatadellacontestazione(per» → «neltermineprevistodallanormativa(perilic»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: 60 giorni per impugnare, 180 giorni per l'azione"
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 100.5s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 22.7s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "lav-telecamere",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "c181451b-2cca-49ed-a997-9c2df502db4a",
+   "turni": [
+    {
+     "utente": "Voglio mettere delle telecamere nel magazzino perché spariscono materiali. Ho 12 dipendenti. Posso farlo da solo?",
+     "streamato": "Capisco la preoccupazione: con 12 dipendenti e materiali che spariscono, l’impulso è installare subito le telecamere come soluzione. Prima però conviene chiarire se la telecamera è davvero il passo giusto o se stai rischiando di trattare un sintomo (e di entrare in un conflitto con i dipendenti che può peggiorare il clima e la produttività).\n\nLa tua proposta (“metto le telecamere”) è un’ipotesi da validare: il problema reale potrebbe essere organizzativo (accesso non controllato, inventari poco frequenti, procedure carenti) e in quel caso la telecamera risolve poco o nulla. Inoltre, installare telecamere coinvolge la normativa sulla tutela dei lavoratori e del trattamento dati: si può fare, ma non “da soli” in senso legale: serve valutare se la sorveglianza è proporzionata, come e dove posizionarla, se serve informativa ai dipendenti e al rappresentante dei lavoratori, e se servono accorgimenti per non inquadrare aree vietate (spogliatoi, bagni, mense).\n\nLa domanda che cambia tutto: **le “sparizioni” avvengono in modo sistematico (stesso materiale, stesso turno, stessa area) o sono saltuarie?** Se sono sistematiche, probabilmente c’è un accesso o una procedura da bloccare, e la telecamera può servire come deterrente e prova; se sono sparse, prima vale la pena rafforzare inventari e controllo accessi, che costano meno e creano meno frizione.\n\nSe mi dici questo, ti dico subito se la telecamera è la mossa giusta o se conviene partire da altro.",
+     "visibile": "Capisco la preoccupazione: con 12 dipendenti e materiali che spariscono, l'impulso è installare subito le telecamere come soluzione. Prima però conviene chiarire se la telecamera è davvero il passo giusto o se stai rischiando di trattare un sintomo (e di entrare in un conflitto con i dipendenti che può peggiorare il clima e la produttività).\n\nLa tua proposta («metto le telecamere») è un'ipotesi da validare: il problema reale potrebbe essere organizzativo (accesso non controllato, inventari poco frequenti, procedure carenti) e in quel caso la telecamera risolve poco o nulla. Inoltre, installare telecamere coinvolge la normativa sulla tutela dei lavoratori e del trattamento dati: si può fare, ma non «da soli» in senso legale: serve valutare se la sorveglianza è proporzionata, come e dove posizionarla, se serve informativa ai dipendenti e al rappresentante dei lavoratori, e se servono accorgimenti per non inquadrare aree vietate (spogliatoi, bagni, mense).\n\nLa domanda che cambia tutto: le «sparizioni» avvengono in modo sistematico (stesso materiale, stesso turno, stessa area) o sono saltuarie? Se sono sistematiche, probabilmente c'è un accesso o una procedura da bloccare, e la telecamera può servire come deterrente e prova; se sono sparse, prima vale la pena rafforzare inventari e controllo accessi, che costano meno e creano meno frizione.\n\nSe mi dici questo, ti dico subito se la telecamera è la mossa giusta o se conviene partire da altro.",
+     "latenza_s": 38.3,
+     "primo_token_s": 5.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: accordo (non solo comunicazione) con i sindacati, autorizzazione in mancanza di accordo"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "lav-prova-impiegato",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "550de6a6-1de8-453b-ba42-22bcc211037c",
+   "turni": [
+    {
+     "utente": "Sto assumendo un impiegato a tempo indeterminato. Quanto può durare al massimo il periodo di prova?",
+     "streamato": "La durata massima del periodo di prova non è fissata da un limite unico di legge, ma dipende dal Contratto Collettivo Nazionale del Lavoro (CCNL) applicato al tuo settore.\n\nIl Codice Civile stabilisce solo che il patto di prova deve risultare da un atto scritto e che, durante tale periodo, entrambe le parti possono recedere senza obbligo di preavviso o indennità (art. 2096 c.c.). Tuttavia, la durata specifica, così come le eventuali eccezioni al divieto di recesso anticipato, sono regolate dalle norme corporative, ovvero dal CCNL di riferimento.\n\nPer conoscere la durata massima esatta nel tuo caso concreto, devi verificare il CCNL applicabile alla tua attività. Ad esempio, il CCNL Commercio e Terziario, quello per il Metalmeccanico o quello per la Pubblica Amministrazione prevedono tutti durate diverse, che variano anche in base al livello di inquadramento del dipendente.\n\nSe non sai quale CCNL si applica, puoi identificarlo in base al codice ATECO della tua azienda e al settore di attività specifico.",
+     "visibile": "La durata massima del periodo di prova non è fissata da un limite unico di legge, ma dipende dal Contratto Collettivo Nazionale del Lavoro (CCNL) applicato al tuo settore.\n\nIl Codice Civile stabilisce solo che il patto di prova deve risultare da un atto scritto e che, durante tale periodo, entrambe le parti possono recedere senza obbligo di preavviso o indennità (art. 2096 c.c.). Tuttavia, la durata specifica, così come le eventuali eccezioni al divieto di recesso anticipato, sono regolate dalle norme corporative, ovvero dal CCNL di riferimento.\n\nPer conoscere la durata massima esatta nel tuo caso concreto, devi verificare il CCNL applicabile alla tua attività. Ad esempio, il CCNL Commercio e Terziario, quello per il Metalmeccanico o quello per la Pubblica Amministrazione prevedono tutti durate diverse, che variano anche in base al livello di inquadramento del dipendente.\n\nSe non sai quale CCNL si applica, puoi identificarlo in base al codice ATECO della tua azienda e al settore di attività specifico.\n\nFonti: art. 2096 c.c.",
+     "latenza_s": 20.1,
+     "primo_token_s": 3.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: massimo di legge: sei mesi"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "lav-impugnazione-licenziamento",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-secondaria",
+   "session_id": "3df5f6a1-c904-4184-bc53-65207e3ae933",
+   "turni": [
+    {
+     "utente": "Ho licenziato un dipendente il mese scorso e ora il suo avvocato mi ha scritto per impugnare il licenziamento. Siamo una srl con 22 dipendenti. Cosa devo fare e che tempi ha lui?",
+     "streamato": "Ciao, capisco la preoccupazione: una contestazione scritta da un avvocato cambia lo stato della questione rispetto a un semplice malumore. Prima di darti i passi, ho bisogno di capire una cosa fondamentale, perché su quella si gioca tutto il resto.\n\nQuando il dipendente ha ricevuto il licenziamento, e in quale forma è stato comunicato (lettera, PEC, consegna a mano con consegna del provvedimento)? E soprattutto: qual è il motivo che hai indicato nel licenziamento, è un motivo disciplinare (es. comportamento grave) o un motivo oggettivo/organizzativo (es. riduzione di attività, inefficienza, necessità aziendale)?\n\nQuesto non è un dettaglio: determina il tipo di licenziamento in gioco (per giusta causa, per giustificato motivo oggettivo o soggettivo), i carichi di prova che ricadono su di te, e soprattutto i tempi e le tutele che l'ex dipendente può invocare. Aspetto questa risposta per ragionare sul resto — e intanto, prima regola: conserva subito la lettera di licenziamento, la documentazione che l'ha causato (richiami, rapporti, note di servizio) e tutta la comunicazione ricevuta dall'avvocato, senza cancellare nulla.",
+     "visibile": "Ciao, capisco la preoccupazione: una contestazione scritta da un avvocato cambia lo stato della questione rispetto a un semplice malumore. Prima di darti i passi, ho bisogno di capire una cosa fondamentale, perché su quella si gioca tutto il resto.\n\nQuando il dipendente ha ricevuto il licenziamento, e in quale forma è stato comunicato (lettera, PEC, consegna a mano con consegna del provvedimento)? E soprattutto: qual è il motivo che hai indicato nel licenziamento, è un motivo disciplinare (es. comportamento grave) o un motivo oggettivo/organizzativo (es. riduzione di attività, inefficienza, necessità aziendale)?\n\nQuesto non è un dettaglio: determina il tipo di licenziamento in gioco (per giusta causa, per giustificato motivo oggettivo o soggettivo), i carichi di prova che ricadono su di te, e soprattutto i tempi e le tutele che l'ex dipendente può invocare. Aspetto questa risposta per ragionare sul resto — e intanto, prima regola: conserva subito la lettera di licenziamento, la documentazione che l'ha causato (richiami, rapporti, note di servizio) e tutta la comunicazione ricevuta dall'avvocato, senza cancellare nulla.",
+     "latenza_s": 31.2,
+     "primo_token_s": 7.3,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: 60 giorni per impugnare, 180 giorni per l'azione"
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "lav-telecamere",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "51869f16-815a-438a-8a4c-84f3c24f9140",
+   "turni": [
+    {
+     "utente": "Voglio mettere delle telecamere nel magazzino perché spariscono materiali. Ho 12 dipendenti. Posso farlo da solo?",
+     "streamato": "Sì, puoi installare telecamere nel magazzino da solo: è un’area aziendale a accesso limitato, non c’è l’obbligo di consenso formale dei dipendenti come in alcuni altri contesti, ma devi rispettare alcune regole.\n\nObblighi minimi:\n- Installa un cartello ben visibile all’ingresso con l’avviso di videosorveglianza e i riferimenti del titolare\n- Limita le riprese al magazzino e alle aree strettamente necessarie (niente spazi di pausa, servizi, cambi)\n- Conserva le immagini per un periodo ragionevole (di norma alcuni giorni, non mesi)\n- Nomina un responsabile dell’accesso alle registrazioni\n- Registra tutto nel Registro dei trattamenti\n\nIl punto critico: se i dipendenti usano quel magazzino anche per pause, spostamenti o attività fuori orario, la sorveglianza diventa più delicata e potrebbero servire avvisi mirati. Con 12 persone e un’area solo operativa, il rischio è basso, ma la trasparenza è fondamentale per non creare problemi in caso di contestazione.\n\nSe vuoi, posso prepararti il cartello modello e la voce da inserire nel registro.",
+     "visibile": "Sì, puoi installare telecamere nel magazzino da solo: è un'area aziendale a accesso limitato, non c'è l'obbligo di consenso formale dei dipendenti come in alcuni altri contesti, ma devi rispettare alcune regole.\n\nObblighi minimi:\n- Installa un cartello ben visibile all'ingresso con l'avviso di videosorveglianza e i riferimenti del titolare\n- Limita le riprese al magazzino e alle aree strettamente necessarie (niente spazi di pausa, servizi, cambi)\n- Conserva le immagini per un periodo ragionevole (di norma alcuni giorni, non mesi)\n- Nomina un responsabile dell'accesso alle registrazioni\n- Registra tutto nel Registro dei trattamenti\n\nIl punto critico: se i dipendenti usano quel magazzino anche per pause, spostamenti o attività fuori orario, la sorveglianza diventa più delicata e potrebbero servire avvisi mirati. Con 12 persone e un'area solo operativa, il rischio è basso, ma la trasparenza è fondamentale per non creare problemi in caso di contestazione.\n\nSe vuoi, posso prepararti il cartello modello e la voce da inserire nel registro.",
+     "latenza_s": 28.0,
+     "primo_token_s": 6.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: accordo (non solo comunicazione) con i sindacati, autorizzazione in mancanza di accordo"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "lav-prova-impiegato",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "b93a8f89-6ac1-4785-82b9-82c59d86db4d",
+   "turni": [
+    {
+     "utente": "Sto assumendo un impiegato a tempo indeterminato. Quanto può durare al massimo il periodo di prova?",
+     "streamato": "La durata massima del periodo di prova non è fissata per legge in modo generico, ma dipende dal contratto collettivo (CCNL) applicato al tuo settore e, in alcuni casi, dalla qualifica della posizione. In base al codice civile (art. 2096 c.c.), il patto di prova deve risultare da atto scritto e, salvo diversa disposizione del CCNL, la legge non stabilisce un tetto massimo assoluto valido per tutti: è il contratto di categoria a definirlo.\n\nPer darti la risposta esatta:\n1. Quale CCNL applica la tua azienda (es. Commercio, Metalmeccanico, Trasporti, Studi Professionali, ecc.)?\n2. Qual è la qualifica/funzione specifica del nuovo dipendente?\n\nUna volta individuati questi due elementi, potrò indicarti la durata massima prevista dalla norma collettiva applicabile. Tieni presente che, durante la prova, puoi recedere dal contratto senza preavviso né indennità, a meno che il CCNL non preveda un termine minimo di prova non recedibile.",
+     "visibile": "La durata massima del periodo di prova non è fissata per legge in modo generico, ma dipende dal contratto collettivo (CCNL) applicato al tuo settore e, in alcuni casi, dalla qualifica della posizione. In base al codice civile (art. 2096 c.c.), il patto di prova deve risultare da atto scritto e, salvo diversa disposizione del CCNL, la legge non stabilisce un tetto massimo assoluto valido per tutti: è il contratto di categoria a definirlo.\n\nPer darti la risposta esatta:\n1. Quale CCNL applica la tua azienda (es. Commercio, Metalmeccanico, Trasporti, Studi Professionali, ecc.)?\n2. Qual è la qualifica/funzione specifica del nuovo dipendente?\n\nUna volta individuati questi due elementi, potrò indicarti la durata massima prevista dalla norma collettiva applicabile. Tieni presente che, durante la prova, puoi recedere dal contratto senza preavviso né indennità, a meno che il CCNL non preveda un termine minimo di prova non recedibile.\n\nFonti: art. 2096 c.c.",
+     "latenza_s": 20.6,
+     "primo_token_s": 3.5,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: massimo di legge: sei mesi"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "lav-impugnazione-licenziamento",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-secondaria",
+   "session_id": "d5677815-0ad9-49b1-b0f2-98a9eb672daf",
+   "turni": [
+    {
+     "utente": "Ho licenziato un dipendente il mese scorso e ora il suo avvocato mi ha scritto per impugnare il licenziamento. Siamo una srl con 22 dipendenti. Cosa devo fare e che tempi ha lui?",
+     "streamato": "Capisco la preoccupazione: una contestazione scritta da un avvocato cambia la fase, da “possibile dissidio” a contenzioso vero e proprio, e i tempi stretti riguardano soprattutto te (le difese), non tanto lui.\n\nPrima di darti i passi, una domanda che discrimina tutto il resto: **il licenziamento è individuale (con motivazione) o per motivi oggettivi/organizzativi, e che tipo di inquadramento aveva il dipendente (part-time, a termine, tempo indeterminato, periodo di prova)?**\n\nIl motivo di fondo (giusta causa, giustificato motivo oggettivo, disciplinare) e l’inquadramento determinano sia la forza della sua azione sia cosa devi verificare subito nei documenti che hai in mano.",
+     "visibile": "Capisco la preoccupazione: una contestazione scritta da un avvocato cambia la fase, da «possibile dissidio» a contenzioso vero e proprio, e i tempi stretti riguardano soprattutto te (le difese), non tanto lui.\n\nPrima di darti i passi, una domanda che discrimina tutto il resto: il licenziamento è individuale (con motivazione) o per motivi oggettivi/organizzativi, e che tipo di inquadramento aveva il dipendente (part-time, a termine, tempo indeterminato, periodo di prova)?\n\nIl motivo di fondo (giusta causa, giustificato motivo oggettivo, disciplinare) e l'inquadramento determinano sia la forza della sua azione sia cosa devi verificare subito nei documenti che hai in mano.",
+     "latenza_s": 22.1,
+     "primo_token_s": 5.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: 60 giorni per impugnare, 180 giorni per l'azione"
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "lav-telecamere",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "a689b938-70f7-474d-b288-8681af8bb775",
+   "turni": [
+    {
+     "utente": "Voglio mettere delle telecamere nel magazzino perché spariscono materiali. Ho 12 dipendenti. Posso farlo da solo?",
+     "streamato": "Sì, puoi installarle da solo, ma “da solo” in questo contesto ha due significi: tecnico e legale. Tecnicamente sì (acquisto, montaggio, configurazione); giuridicamente no: le telecamere che riprendono dipendenti o aree di lavoro sono un trattamento di dati personali e, se il problema sono i materiali che spariscono, l’installazione “a tappeto” rischia di non essere la soluzione più efficace né la meno rischiosa in caso di contestazioni.\n\nPrima di procedere, una domanda che cambia tutto: **le telecamere riprendono anche le persone (dipendenti che passano, si fermano, entrano in zone riservate come spogliatoi o mensa), oppure solo l’ingresso/uscita del magazzino e le aree dove si depositano i materiali?**\n\nLa risposta decide se sei nella configurazione più sicura (solo punti di transito e scaffali, niente persone riconoscibili) o se devi mettere in piedi un’impostazione più strutturata (informare i lavoratori, valutare se serve l’autorizzazione del RSU o del sindacato nel tuo CCNL, limitare la visione e la conservazione dei video).\n\nMI ATTENGO A QUESTO: non ti sto dicendo che non puoi farlo; ti sto dicendo che la modalità d’installazione e cosa riprendi determinano il rischio legale e la solidità di ciò che farai se dovessi poi usare le immagini in un’eventuale contestazione a un dipendente.\n\nDIMMI: le telecamere riprendono le persone o solo i punti di transito/le zone di stoccaggio? E da quanto tempo hai i “materiali che spariscono” — è un fenomeno recente o è già un pattern che noti da mesi?",
+     "visibile": "Sì, puoi installarle da solo, ma «da solo» in questo contesto ha due significi: tecnico e legale. Tecnicamente sì (acquisto, montaggio, configurazione); giuridicamente no: le telecamere che riprendono dipendenti o aree di lavoro sono un trattamento di dati personali e, se il problema sono i materiali che spariscono, l'installazione «a tappeto» rischia di non essere la soluzione più efficace né la meno rischiosa in caso di contestazioni.\n\nPrima di procedere, una domanda che cambia tutto: le telecamere riprendono anche le persone (dipendenti che passano, si fermano, entrano in zone riservate come spogliatoi o mensa), oppure solo l'ingresso/uscita del magazzino e le aree dove si depositano i materiali?\n\nLa risposta decide se sei nella configurazione più sicura (solo punti di transito e scaffali, niente persone riconoscibili) o se devi mettere in piedi un'impostazione più strutturata (informare i lavoratori, valutare se serve l'autorizzazione del RSU o del sindacato nel tuo CCNL, limitare la visione e la conservazione dei video).\n\nMI ATTENGO A QUESTO: non ti sto dicendo che non puoi farlo; ti sto dicendo che la modalità d'installazione e cosa riprendi determinano il rischio legale e la solidità di ciò che farai se dovessi poi usare le immagini in un'eventuale contestazione a un dipendente.\n\nDIMMI: le telecamere riprendono le persone o solo i punti di transito/le zone di stoccaggio? E da quanto tempo hai i «materiali che spariscono» — è un fenomeno recente o è già un pattern che noti da mesi?",
+     "latenza_s": 55.7,
+     "primo_token_s": 5.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: accordo (non solo comunicazione) con i sindacati"
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  }
+ ]
+}

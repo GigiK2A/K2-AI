@@ -314,7 +314,11 @@ def _mappa() -> list[dict]:
         d = json.load(open(_MAPPA_PATH, encoding="utf-8"))
         voci = d.get("temi", []) if isinstance(d, dict) else d
         out = []
+        bozze = os.getenv("KBOT_MAPPA_BOZZE", "0") == "1"
         for v in voci:
+            # una voce senza professionista che l'abbia validata è una BOZZA: inattiva in produzione
+            if isinstance(v, dict) and not (v.get("validato_da") or "").strip() and not bozze:
+                continue
             if isinstance(v, dict) and v.get("trigger") and v.get("riferimenti"):
                 out.append({"id": v.get("id", ""), "trigger": [re.compile(t, re.I) for t in v["trigger"]],
                             "riferimenti": list(v["riferimenti"])})

@@ -1,0 +1,226 @@
+{
+ "meta": {
+  "data": "2026-10-17T13:46:34.370659+00:00",
+  "base_url": "http://127.0.0.1:8142/api/kbot",
+  "modello": "",
+  "commit": "6b2a639",
+  "file_casi": "casi_held_out_2.json",
+  "ripetizioni": 1,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "59e02081-f96a-4e8e-bd61-3d8676f0e270",
+   "27c5ae38-0255-41a7-bd4c-cce1f8918c0d"
+  ]
+ },
+ "riepilogo": {
+  "esecuzioni": 2,
+  "ripetizioni": 1,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 6,
+    "specifici_tot": 6,
+    "casi_tutte_attese": 2,
+    "casi_senza_difetti_generici": 2
+   }
+  ],
+  "variazione_fra_ripetizioni": null,
+  "controlli_instabili": [],
+  "casi": 2,
+  "casi_senza_difetti_generici": 2,
+  "casi_con_attese_specifiche": 2,
+  "casi_con_attese_tutte_rispettate": 2,
+  "controlli_generici": "16/16",
+  "controlli_specifici": "6/6",
+  "per_controllo": {
+   "generici.frasi_integre": "2/2",
+   "generici.nessun_errore_di_stream": "2/2",
+   "generici.nessun_testo_del_critico": "2/2",
+   "generici.nessuna_autocorrezione": "2/2",
+   "generici.nessuna_fuga_prompt": "2/2",
+   "generici.nessuna_lingua_estranea": "2/2",
+   "generici.risposta_non_vuota": "2/2",
+   "generici.testo_letto_uguale_finale": "2/2",
+   "specifici.fatti_alternativi": "1/1",
+   "specifici.fatti_presenti": "2/2",
+   "specifici.nessuna_affermazione_errata": "1/1",
+   "specifici.rinvio_al_professionista": "2/2"
+  },
+  "latenza_s": {
+   "mediana": 46.3,
+   "p90": 49.3,
+   "max": 49.3
+  },
+  "primo_token_s": {
+   "mediana": 16.5,
+   "p90": 24.7,
+   "max": 24.7
+  }
+ },
+ "risultati": [
+  {
+   "id": "h2-ritenuta-acconto",
+   "ripetizione": 1,
+   "dominio": "fisco",
+   "stato": "fonte-verificata",
+   "session_id": "59e02081-f96a-4e8e-bd61-3d8676f0e270",
+   "turni": [
+    {
+     "utente": "Paghiamo un consulente con partita IVA, 2.000 euro di parcella. Dobbiamo trattenere la ritenuta d'acconto? Di quanto?",
+     "streamato": "Sì, nella situazione che descrivi la ritenuta va operata.\n\nQuando un’impresa o un professionista paga una parcella a un consulente con partita IVA, il pagatore (ovvero il soggetto che corrisponde il compenso) ha l’obbligo di trattenere la ritenuta d’acconto alla fonte, ai sensi dell’art. 25 del D.P.R. 600/1973.\n\nNel caso concreto:\n*   **Importo lordo:** 2.000 €\n*   **Aliquota di ritenuta:** 20% (come da art. 25, D.P.R. 600/1973)\n*   **Importo della ritenuta da trattenere:** 400 € (2.000 × 20%)\n*   **Importo netto da versare al consulente:** 1.600 €\n\n**Cosa devi fare in pratica:**\n1.  **Sulla fattura:** Il consulente deve indicare sulla fattura l’aliquota di ritenuta (20%) e l’importo trattenuto.\n2.  **Pagamento:** Versi i 1.600 € netti al consulente.\n3.  **Versamento allo Stato:** I 400 € trattenuti non sono tuoi: devi versarli all’Agenzia delle Entrate (modello F24) entro il giorno 20 del mese successivo a quello del pagamento.\n4.  **Dichiarazione:** A fine anno, dovrai presentare il modello RED (dichiarazione dei sostituti d’imposta) indicando le ritenute operate.\n\n**Eccezione importante:**\nLa ritenuta **non** si opera se il consulente, prima di essere pagato, ti comunica per iscritto di essere in regime forfettario (ai sensi della Legge Forfettaria) oppure se rientra in altre esenzioni specifiche. In quel caso, paghi l’importo pieno di 2.000 € senza trattenere nulla. Verifica quindi se il tuo consulente è in regime forfettario: se lo è, non tratteni; se è in regime ordinario, tratteni il 20%.",
+     "visibile": "Sì, nella situazione che descrivi la ritenuta va operata.\n\nQuando un'impresa o un professionista paga una parcella a un consulente con partita IVA, il pagatore (ovvero il soggetto che corrisponde il compenso) ha l'obbligo di trattenere la ritenuta d'acconto alla fonte, ai sensi dell'art. 25 del D.P.R. 600/1973.\n\nNel caso concreto:\n- Importo lordo: 2.000 €\n- Aliquota di ritenuta: 20% (come da art. 25, D.P.R. 600/1973)\n- Importo della ritenuta da trattenere: 400 € (2.000 × 20%)\n- Importo netto da versare al consulente: 1.600 €\n\nCosa devi fare in pratica:\n1. Sulla fattura: Il consulente deve indicare sulla fattura l'aliquota di ritenuta (20%) e l'importo trattenuto.\n2. Pagamento: Versi i 1.600 € netti al consulente.\n3. Versamento allo Stato: I 400 € trattenuti non sono tuoi: devi versarli all'Agenzia delle Entrate (modello F24) entro il giorno 20 del mese successivo a quello del pagamento.\n4. Dichiarazione: A fine anno, dovrai presentare il modello RED (dichiarazione dei sostituti d'imposta) indicando le ritenute operate.\n\nEccezione importante:\nLa ritenuta non si opera se il consulente, prima di essere pagato, ti comunica per iscritto di essere in regime forfettario (ai sensi della Legge Forfettaria) oppure se rientra in altre esenzioni specifiche. In quel caso, paghi l'importo pieno di 2.000 € senza trattenere nulla. Verifica quindi se il tuo consulente è in regime forfettario: se lo è, non tratteni; se è in regime ordinario, tratteni il 20%.\n\nFonti: D.P.R. 600/1973, art. 25.",
+     "latenza_s": 49.3,
+     "primo_token_s": 24.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "nessuna_affermazione_errata": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 24.7s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h2-cessione-quote-srl",
+   "ripetizione": 1,
+   "dominio": "societario",
+   "stato": "fonte-verificata",
+   "session_id": "27c5ae38-0255-41a7-bd4c-cce1f8918c0d",
+   "turni": [
+    {
+     "utente": "Un socio vuole vendere la sua quota della srl a un terzo. Come si fa formalmente e cosa dobbiamo depositare?",
+     "streamato": "Per formalizzare la cessione di una quota di SRL a un terzo, il passaggio fondamentale è il **contratto di cessione**, che deve essere stipulato con atto pubblico o scrittura privata autenticata (a seconda di ciò che prevede l'atto costitutivo; in assenza di clausole diverse, la regola generale ammette la scrittura privata, ma la forma autenticata offre maggiore sicurezza e facilita i passaggi successivi). L'atto deve contenere l'identificazione delle parti, il prezzo, la data e le eventuali clausole di garanzia.\n\nUna volta firmato, il passaggio non è efficace verso la società fino alla **dichiarazione di accettazione** da parte della società (o degli amministratori) del trasferimento, che deve essere inserita nel libro dei soci. Senza questa accettazione, la cessione vale solo tra cedente e cessionario, ma non nei confronti della SRL.\n\nSul piano della pubblicità, il nuovo socio (o gli amministratori) deve **depositare** presso il Registro delle Imprese della sede sociale:\n1. L'atto di trasferimento (se in forma autenticata) o la dichiarazione di variazione della compagine sociale.\n2. La dichiarazione contenente le generalità complete del nuovo socio (nome, cognome, data e luogo di nascita, domicilio, cittadinanza).\nQuesto deposito deve avvenire **entro 30 giorni** dall'iscrizione nel libro dei soci, a cura del notaio (se c'è autenticazione) o degli amministratori, per aggiornare la situazione visiva della società (art. 2470 c.c.).\n\nAttenzione a due rischi:\n- **Diritto di prelazione**: controlla se lo statuto prevede un diritto di prelazione per gli altri soci o per la società stessa. Se sì, devi comunicargli il prezzo e le condizioni della cessione e attendere la loro rinuncia formale prima di procedere con il terzo, altrimenti la cessione può essere annullata.\n- **Obblighi fiscali e contributivi**: il cedente potrebbe essere responsabile solidale per i versamenti soci ancora dovuti per un triennio dopo l'iscrizione del trasferimento (art. 2472 c.c.).\n\nPassi successivi concreti:\n1. Verifica lo statuto per clausole di prelazione o limiti alla trasferibilità.\n2. Avvia il prezzario della quota (spesso serve una perizia o un accordo tra le parti) e prepara il contratto.\n3. Coinvolgi il notaio o il commercialista per l'autenticazione, l'accettazione e il deposito entro i termini.\n\nSe lo statuto ha clausole complesse sulla cessione (es. obbligo di cedere prima agli altri soci, formule di calcolo del prezzo), il rischio di invalidità è alto: in quel caso vale la pena un parere strutturato sul caso specifico.",
+     "visibile": "Per formalizzare la cessione di una quota di SRL a un terzo, il passaggio fondamentale è il contratto di cessione, che deve essere stipulato con atto pubblico o scrittura privata autenticata (a seconda di ciò che prevede l'atto costitutivo; in assenza di clausole diverse, la regola generale ammette la scrittura privata, ma la forma autenticata offre maggiore sicurezza e facilita i passaggi successivi). L'atto deve contenere l'identificazione delle parti, il prezzo, la data e le eventuali clausole di garanzia.\n\nUna volta firmato, il passaggio non è efficace verso la società fino alla dichiarazione di accettazione da parte della società (o degli amministratori) del trasferimento, che deve essere inserita nel libro dei soci. Senza questa accettazione, la cessione vale solo tra cedente e cessionario, ma non nei confronti della SRL.\n\nSul piano della pubblicità, il nuovo socio (o gli amministratori) deve depositare presso il Registro delle Imprese della sede sociale:\n1. L'atto di trasferimento (se in forma autenticata) o la dichiarazione di variazione della compagine sociale.\n2. La dichiarazione contenente le generalità complete del nuovo socio (nome, cognome, data e luogo di nascita, domicilio, cittadinanza).\nQuesto deposito deve avvenire entro 30 giorni dall'iscrizione nel libro dei soci, a cura del notaio (se c'è autenticazione) o degli amministratori, per aggiornare la situazione visiva della società (art. 2470 c.c.).\n\nAttenzione a due rischi:\n- Diritto di prelazione: controlla se lo statuto prevede un diritto di prelazione per gli altri soci o per la società stessa. Se sì, devi comunicargli il prezzo e le condizioni della cessione e attendere la loro rinuncia formale prima di procedere con il terzo, altrimenti la cessione può essere annullata.\n- Obblighi fiscali e contributivi: il cedente potrebbe essere responsabile solidale per i versamenti soci ancora dovuti per un triennio dopo l'iscrizione del trasferimento (art. 2472 c.c.).\n\nPassi successivi concreti:\n1. Verifica lo statuto per clausole di prelazione o limiti alla trasferibilità.\n2. Avvia il prezzario della quota (spesso serve una perizia o un accordo tra le parti) e prepara il contratto.\n3. Coinvolgi il notaio o il commercialista per l'autenticazione, l'accettazione e il deposito entro i termini.\n\nSe lo statuto ha clausole complesse sulla cessione (es. obbligo di cedere prima agli altri soci, formule di calcolo del prezzo), il rischio di invalidità è alto: in quel caso vale la pena un parere strutturato sul caso specifico.\n\nFonti: art. 2470 c.c.; art. 2472 c.c.",
+     "latenza_s": 43.3,
+     "primo_token_s": 8.3,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  }
+ ]
+}
