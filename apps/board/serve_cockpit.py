@@ -31,4 +31,9 @@ if __name__ == "__main__":
         import threading
         from autonomy_loop import main as _autonomy
         threading.Thread(target=_autonomy, daemon=True, name="autonomy").start()
+    # Controllo esterno del sito K2-AI (sito, backend K-BOT, motore 8e, modello): avvisa su Telegram
+    # quando qualcosa non risponde. Leggero (solo GET), spegnibile con SITE_WATCHDOG=0.
+    if os.environ.get("SITE_WATCHDOG", "1") != "0":
+        from aios import site_watchdog
+        site_watchdog.start_thread()
     uvicorn.run(app, host=host, port=port)
