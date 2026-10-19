@@ -75,6 +75,13 @@ def main() -> None:
     except Exception:
         pass
 
+    # I chunk degli allegati (RAG) stanno in una tabella Supabase con filtri veri: il finto in memoria non li sa
+    # filtrare e il backend ripiegava sul taglio a 18.000 caratteri, un percorso diverso da quello di produzione.
+    import app.lib.rag as rag                                     # noqa: E402
+    _chunk_mem: dict = {}
+    rag.persist_chunks = lambda rows: [_chunk_mem.setdefault(r["session_id"], []).append(r) for r in rows] and None
+    rag.fetch_chunks = lambda sid, limit=500: list(_chunk_mem.get(str(sid), []))[:limit]
+
     import uvicorn                                               # noqa: E402
     from app.main import app                                     # noqa: E402
     print(f"K-BOT locale su :{a.porta} | evidenza={a.evidenza} | modello={a.modello} | corpus={a.corpus}", flush=True)

@@ -822,12 +822,36 @@ def _norm_art(a: str) -> str:
     return re.sub(r"[^0-9a-z]", "", str(a or "").lower())
 
 
+# TESTO DELL'UTENTE (messaggi + documenti che ha caricato): i numeri e le citazioni che LUI ha scritto non sono
+# «numeri a memoria del modello». Misurato il 19/10/2026: le guardie sostituivano con «nella misura prevista dalla
+# normativa» la penale del 30% e del 40% scritta nel contratto dell'utente, il «3 giorni» della sua lettera di
+# contestazione, il «120 giorni» del suo contratto. Qui si tiene l'insieme di ciò che ha scritto l'utente nel turno.
+_testo_utente: contextvars.ContextVar = contextvars.ContextVar("kbot_testo_utente", default=None)
+
+
+def imposta_testo_utente(testo: Optional[str]) -> None:
+    if not testo:
+        _testo_utente.set(None)
+        return
+    norm = re.sub(r"\s+", " ", testo).lower()
+    _testo_utente.set((coppie_nel_testo(testo), numeri_nel_testo(testo), norm))
+
+
+def testo_utente_corrente():
+    return _testo_utente.get()
+
+
 def citazione_consentita(span: str) -> bool:
     """Una citazione come «art. 2473 c.c.» o «art. 4 D.Lgs. 231/2002» è consentita solo se quell'articolo
     sta nel pacchetto del turno: la regola del 17 luglio («niente numeri di articolo, esistenza ≠
     pertinenza») resta, con l'eccezione delle fonti che il sistema ha recuperato e fatto leggere."""
     p = pacchetto_corrente()
-    if not p or not span:
+    if not span:
+        return False
+    u = _testo_utente.get()
+    if u and re.sub(r"\s+", " ", span).strip().lower() in u[2]:
+        return True                                   # la citazione l'ha scritta l'utente (messaggio o documento)
+    if not p:
         return False
     s = re.sub(r"\s+", " ", span)
     ma = re.search(r"art\w*\.?\s*(\d+[\w\-‑–]*)", s, re.I)
@@ -848,14 +872,14 @@ def citazione_consentita(span: str) -> bool:
 def numero_fondato(span: str) -> bool:
     """True se i numeri di un'espressione di scadenza/soglia («entro 40 giorni», «5.000 euro») compaiono
     nel testo di legge recuperato per questo turno, con la stessa unità quando c'è."""
-    p = pacchetto_corrente()
-    if not p or not span:
+    p, u = pacchetto_corrente(), _testo_utente.get()
+    if not span or (not p and not u):
         return False
     coppie = coppie_nel_testo(span)
     if coppie:
-        return all(c in p.coppie for c in coppie)
+        return all((p and c in p.coppie) or (u and c in u[0]) for c in coppie)
     nums = numeri_nel_testo(span)
-    return bool(nums) and all(n in p.numeri for n in nums)
+    return bool(nums) and all((p and n in p.numeri) or (u and n in u[1]) for n in nums)
 
 
 def aggiungi_fonti(testo: str) -> str:

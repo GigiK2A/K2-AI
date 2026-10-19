@@ -28,6 +28,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
+from ..lib import crisi, avvisi_input
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -186,6 +187,9 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
     # OUTPUT QUALITY ENGINE (ultimo miglio, review "AI Proof"): l'utente non vede mai
     # HTML/template/placeholder/artefatti tecnici/tipografia sporca. Fail-open.
     visible = output_quality.polish(visible)
+    # Numeri verdi (800/803) scritti dal modello e non dall'utente: fonte sconosciuta, si tolgono (lib/crisi).
+    _u = norme_evidence.testo_utente_corrente()
+    visible = crisi.sanifica_numeri(visible, _u[2] if _u else "")
     if summary and _interview_gate_active(merged_messages):
         summary = None
         if len((visible or "").strip()) < 5:
@@ -475,9 +479,24 @@ async def post_message(
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS,
                                max_chars_last_user=MAX_LAST_USER_CHARS)
 
+    # Crisi personale: risposta fissa e verificata, il modello non viene chiamato.
+    if crisi.rileva(last_user_text):
+        _visible, _upd = await _chiudi_crisi(session, body.sessionId, merged_messages, collected, skills)
+        return {"message": _visible, "summary": None, "nextAction": "continue",
+                "session": sessions.public_session(_upd)}
+
+    avvisi: list[str] = []
+    _tagliato = avvisi_input.testo_tagliato(len(last_user_text), MAX_LAST_USER_CHARS)
+    if _tagliato:
+        system_prompt += _tagliato[0]
+        avvisi.append(_tagliato[1])
+    if session_for_prompt.get("_avviso_copertura"):
+        avvisi.append(session_for_prompt["_avviso_copertura"])
+
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=1)
+    _imposta_testo_utente(merged_messages, collected)
     system_prompt += await _blocco_norme(client, last_user_text, _recent_ctx)
     _scheda_fut = _avvia_scheda(client, collected, merged_messages)
     try:
@@ -508,6 +527,7 @@ async def post_message(
     )
     # Finalize CONDIVISA (stessa catena del path streaming): forced-summary + quality gate.
     raw_text = await _off_loop(_postprocess_turn, client, system_prompt, history, merged_messages, raw_text, collected)
+    raw_text = avvisi_input.aggiungi(raw_text, avvisi)
     usage = getattr(result, "usage", None)
     user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected)
     _persist_diagnosi(collected, diagnosi)
@@ -613,10 +633,19 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     history = compact_messages(merged_messages, MAX_HISTORY_MESSAGES, MAX_MESSAGE_CHARS,
                                max_chars_last_user=MAX_LAST_USER_CHARS)
 
+    # Avvisi «non ho letto tutto»: testo incollato oltre il tetto e allegati letti solo in parte.
+    avvisi: list[str] = []
+    _tagliato = avvisi_input.testo_tagliato(len(last_user_text), MAX_LAST_USER_CHARS)
+    if _tagliato:
+        system_prompt += _tagliato[0]
+        avvisi.append(_tagliato[1])
+    if session_for_prompt.get("_avviso_copertura"):
+        avvisi.append(session_for_prompt["_avviso_copertura"])
+
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
 
-    return session, merged_messages, collected, system_prompt, history, skills
+    return session, merged_messages, collected, system_prompt, history, skills, avvisi
 
 
 def _persist_assistant_turn(
@@ -717,6 +746,25 @@ async def _stream_off_loop(client, stream_kwargs: dict):
         stop.set()
 
 
+def _imposta_testo_utente(merged_messages: list, collected: dict) -> None:
+    """I numeri e le citazioni che l'UTENTE ha scritto (messaggi e documenti caricati) non sono «a memoria del
+    modello»: le guardie sulle scadenze/soglie/articoli non devono cancellarli (vedi norme_evidence)."""
+    parti = [str(m.get("content") or "") for m in merged_messages
+             if isinstance(m, dict) and m.get("role") == "user"]
+    for f in (collected.get("uploaded_files") or [])[-5:]:
+        parti.append(str(f.get("extractedText") or f.get("extractedSummary") or ""))
+    norme_evidence.imposta_testo_utente("\n".join(p for p in parti if p))
+
+
+async def _chiudi_crisi(session: dict, session_id: str, merged_messages: list, collected: dict,
+                        skills: list) -> tuple[str, dict]:
+    """Turno di crisi personale: risposta FISSA, nessuna chiamata al modello (vedi lib/crisi)."""
+    log.warning("kbot: messaggio di crisi personale → risposta fissa, modello non chiamato")
+    visible, _summary, updated = await _off_loop(
+        _persist_assistant_turn, session, session_id, merged_messages, collected, crisi.RISPOSTA_FISSA, skills)
+    return visible, updated
+
+
 class _SchedaJob:
     """Estrazione in corso + quanti messaggi utente copre (per segnare «letto» solo se riesce)."""
     def __init__(self, fut, n_user: int):
@@ -787,7 +835,19 @@ async def post_message_stream(
     body: MessageBody,
     user: Optional[AuthUser] = Depends(optional_user),
 ):
-    session, merged_messages, collected, system_prompt, history, skills = await _prepare_turn(body, user)
+    session, merged_messages, collected, system_prompt, history, skills, avvisi = await _prepare_turn(body, user)
+    _ultimo_utente = next((str(m.get("content") or "") for m in reversed(merged_messages)
+                           if isinstance(m, dict) and m.get("role") == "user"), "")
+    if crisi.rileva(_ultimo_utente):
+        async def event_crisi():
+            yield ": ok\n\n"
+            _visible, _upd = await _chiudi_crisi(session, body.sessionId, merged_messages, collected, skills)
+            yield _sse({"delta": _visible})
+            yield _sse({"done": True, "message": _visible, "summary": None, "nextAction": "continue",
+                        "session": sessions.public_session(_upd)})
+        return StreamingResponse(event_crisi(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache, no-transform", "Connection": "keep-alive",
+                                          "X-Accel-Buffering": "no"})
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=1)
     _scheda_fut = _avvia_scheda(client, collected, merged_messages)
     # Testi per il grounding proattivo (calcolati qui, eseguito DOPO l'heartbeat).
@@ -817,6 +877,7 @@ async def post_message_stream(
                 yield ": search-done\n\n"   # commento SSE: tiene vivo lo stream, il client lo ignora
         except Exception:
             log.warning("grounding proattivo fallito (fail-open)", exc_info=True)
+        _imposta_testo_utente(merged_messages, collected)
         _norme = await _blocco_norme(client, _last_user_text, _recent_user_text)
         if _norme:
             sys_prompt += _norme
@@ -916,6 +977,10 @@ async def post_message_stream(
                 "diagnosi_tracked": bool(signals.DIAGNOSI_RE.search(raw_text)),
             },
         )
+        if avvisi:
+            _coda = avvisi_input.aggiungi("", avvisi)
+            raw_text = raw_text.rstrip() + _coda
+            yield _sse({"delta": _coda})              # il testo mostrato in diretta resta uguale a quello finale
         await _chiudi_scheda(_scheda_fut, collected)
         try:
             user_visible, summary, updated = await _off_loop(

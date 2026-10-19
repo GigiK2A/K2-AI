@@ -185,6 +185,15 @@ class _FakeStream:
     def __iter__(self):
         return iter(self._events)
 
+    # Interfaccia ad alto livello dello stream dell'SDK, usata da /message/stream (text_stream + messaggio finale).
+    @property
+    def text_stream(self):
+        return iter([self._events[-1].delta.text])
+
+    def get_final_message(self):
+        from types import SimpleNamespace as NS
+        return NS(stop_reason="end_turn", usage=NS(input_tokens=1, output_tokens=1), content=[])
+
 
 
 def _chiamate_chat():

@@ -83,8 +83,10 @@ def sanitize(text: str) -> str:
     # sistema ha RECUPERATO dal corpus e messo nel prompt di questo turno (norme_evidence). Il testo
     # di legge è nel contesto: la pertinenza non dipende dalla memoria del modello. Tutto il resto
     # (articolo non recuperato, CCNL, ecc.) viene de-specificato come prima.
+    # Restano anche le citazioni che ha scritto l'UTENTE (nel messaggio o in un documento caricato): non sono
+    # «a memoria del modello» (misurato il 19/10/2026: venivano de-specificate anche quelle).
     pk = norme_evidence.pacchetto_corrente()
-    if pk is not None and pk.fonti:
+    if (pk is not None and pk.fonti) or norme_evidence.testo_utente_corrente():
         return ripara_elisioni(signals.LEGAL_ARTICLE_RE.sub(
             lambda m: m.group(0) if norme_evidence.citazione_consentita(m.group(0)) else _delegalize(m), text))
 
