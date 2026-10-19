@@ -6,10 +6,9 @@ import pytest
 
 from app.lib import norme_evidence as N
 
-# Articoli che al 19/10/2026 NON sono nel corpus (dello Statuto c'è solo l'art. 1, la L. 604/1966 non c'è):
-# la mappa li nomina comunque, e si attivano da soli quando il testo viene aggiunto. Se il corpus viene
-# completato questo test fallisce e ricorda di togliere l'avviso dalle note.
-ASSENTI_NEL_CORPUS = {"L. 300/1970 art. 7", "L. 300/1970 art. 4", "L. 604/1966 art. 3"}
+# Articoli nominati dalla mappa e NON recuperabili. Vuoto dal 19/10/2026: Statuto dei lavoratori e L. 604/1966
+# (assenti dal corpus canonico) sono nel supplemento, scaricati dall'API ufficiale Normattiva.
+ASSENTI_NEL_CORPUS: set = set()
 
 
 @pytest.fixture(autouse=True)
@@ -83,7 +82,7 @@ def test_nessun_falso_positivo_su_temi_diversi(testo, monkeypatch):
     assert [v["id"] for v in N._mappa() if any(t.search(testo) for t in v["trigger"])] == [], testo
 
 
-def test_gli_articoli_nominati_esistono_nel_corpus_tranne_quelli_noti():
+def test_gli_articoli_nominati_dalla_mappa_si_recuperano_tutti():
     if not N.disponibile():
         pytest.skip("corpus non disponibile")
     assenti = set()

@@ -57,7 +57,7 @@ def _db_path() -> Optional[Path]:
 # volume (che richiederebbe accesso al release canonico). find_by_estremi interroga PRIMA
 # il corpus principale, POI il supplemento. Quando il corpus canonico verrà ri-seedato col
 # completo, il supplemento diventa ridondante (nessun doppio: si ferma al primo hit).
-_SUPP_PATH = Path(__file__).resolve().parent.parent / "data" / "normattiva_supplement.db"
+_SUPP_PATH = Path(os.environ.get("NORMATTIVA_SUPPLEMENT_PATH") or (Path(__file__).resolve().parent.parent / "data" / "normattiva_supplement.db"))
 
 
 def _supp_path() -> Optional[Path]:

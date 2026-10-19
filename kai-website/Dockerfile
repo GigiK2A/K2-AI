@@ -119,6 +119,10 @@ COPY k2a-8e/assets ./engine-8e/assets
 # i binder deterministici (advisor/finance/§E budget/mep/agevolazioni) li importano a runtime
 # via sys.path. Senza questa COPY → ModuleNotFoundError quando un boost prova a generare.
 COPY k2a-8e/vendor ./engine-8e/vendor
+# Supplemento al corpus Normattiva (norme che il corpus canonico non ha: L. 633/1941, Statuto dei lavoratori,
+# L. 604/1966…). Senza questa riga la chat (che legge il corpus da engine-8e) non le vede: verificato in produzione
+# il 19/10/2026 (/app/engine-8e/data assente). Il servizio k2-ai-8e le ha perché copia tutta la cartella.
+COPY k2a-8e/data ./engine-8e/data
 
 # -------- Install Node runtime dependencies for server.js --------
 COPY package*.json ./

@@ -1,0 +1,845 @@
+{
+ "meta": {
+  "data": "2026-10-19T11:14:09.420430+00:00",
+  "base_url": "http://127.0.0.1:8151/api/kbot",
+  "modello": "",
+  "commit": "e0039f2",
+  "file_casi": "casi_held_out_3.json",
+  "ripetizioni": 3,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "a1732f18-3861-49d6-9500-adf63aa236bd",
+   "7ac91c79-0e2d-4b1e-9998-a251e91c92c7",
+   "92e50811-8f46-4fcc-8fbb-98eb572c6ff7",
+   "acec4196-24bb-4828-aa43-b3f963e164c1",
+   "8eed8718-8492-48e7-a6b4-6f93831a5b4f",
+   "05a0b6a4-a42f-47a1-9b53-4b8bc5fb4bc3",
+   "40b68e5f-e222-4626-adb9-58437146547b",
+   "e0272353-ed5f-4560-b4b0-5f674ba63248",
+   "5fe1b6c9-a91f-474d-9852-aff47badc585"
+  ],
+  "rivalutato_il": "2026-10-19T11:14:31.858038+00:00",
+  "rivalutato_da": "stat-A-senza-testi-2026-10-19.json",
+  "commit_rivalutazione": "e0039f2"
+ },
+ "riepilogo": {
+  "esecuzioni": 9,
+  "ripetizioni": 3,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 3,
+    "generici_ok": 23,
+    "generici_tot": 24,
+    "specifici_ok": 4,
+    "specifici_tot": 6,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 2,
+    "casi": 3,
+    "generici_ok": 22,
+    "generici_tot": 24,
+    "specifici_ok": 1,
+    "specifici_tot": 6,
+    "casi_tutte_attese": 0,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 3,
+    "casi": 3,
+    "generici_ok": 23,
+    "generici_tot": 24,
+    "specifici_ok": 3,
+    "specifici_tot": 6,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     4,
+     1,
+     3
+    ],
+    "media": 2.67,
+    "sd": 1.53
+   },
+   "generici_ok": {
+    "valori": [
+     23,
+     22,
+     23
+    ],
+    "media": 22.67,
+    "sd": 0.58
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     1,
+     0,
+     1
+    ],
+    "media": 0.67,
+    "sd": 0.58
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     2,
+     2,
+     2
+    ],
+    "media": 2.0,
+    "sd": 0.0
+   }
+  },
+  "controlli_instabili": [
+   {
+    "caso": "h3-contestazione-cinque-giorni",
+    "controllo": "generici.frasi_integre",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "h3-contestazione-cinque-giorni",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 1,
+    "su": 3
+   },
+   {
+    "caso": "h3-contestazione-cinque-giorni",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "h3-licenziamento-a-voce",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "h3-licenziamento-a-voce",
+    "controllo": "specifici.fatti_presenti",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "h3-multa-quattro-ore",
+    "controllo": "specifici.rinvio_al_professionista",
+    "ok": 1,
+    "su": 3
+   }
+  ],
+  "casi": 9,
+  "casi_senza_difetti_generici": 6,
+  "casi_con_attese_specifiche": 9,
+  "casi_con_attese_tutte_rispettate": 2,
+  "controlli_generici": "68/72",
+  "controlli_specifici": "8/18",
+  "per_controllo": {
+   "generici.frasi_integre": "8/9",
+   "generici.nessun_errore_di_stream": "9/9",
+   "generici.nessun_testo_del_critico": "9/9",
+   "generici.nessuna_autocorrezione": "9/9",
+   "generici.nessuna_fuga_prompt": "9/9",
+   "generici.nessuna_lingua_estranea": "9/9",
+   "generici.risposta_non_vuota": "9/9",
+   "generici.testo_letto_uguale_finale": "6/9",
+   "specifici.fatti_presenti": "2/9",
+   "specifici.rinvio_al_professionista": "6/9"
+  },
+  "latenza_s": {
+   "mediana": 70.9,
+   "p90": 105.9,
+   "max": 105.9
+  },
+  "primo_token_s": {
+   "mediana": 13.1,
+   "p90": 42.0,
+   "max": 42.0
+  }
+ },
+ "risultati": [
+  {
+   "id": "h3-contestazione-cinque-giorni",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "a1732f18-3861-49d6-9500-adf63aa236bd",
+   "turni": [
+    {
+     "utente": "Il mio datore di lavoro mi ha mandato questa lettera di contestazione disciplinare: «Spett.le Sig. Marco Bianchi, Perugia, 3 marzo 2026. OGGETTO: contestazione disciplinare. Le contestiamo che in data 20 febbraio 2026 Ella si è assentata dal posto di lavoro senza autorizzazione dalle 10.00 alle 14.00 e ha utilizzato il telefono aziendale per scopi personali. Ella potrà presentare le proprie giustificazioni entro 3 giorni dal ricevimento della presente. Decorso tale termine verrà applicata la sanzione del licenziamento senza preavviso. Il datore di lavoro, Rossi Meccanica S.r.l.». La lettera è corretta? Posso essere licenziato così?",
+     "streamato": "La risposta breve è no: non puoi essere licenziato automaticamente così. La lettera contiene errori procedurali sostanziali che ti tutelano, e non corrisponde alla procedura corretta per un licenziamento disciplinare.\n\nVediamo i punti critici:\n\n1.  **Il termine per le tue difese è troppo breve.** La legge prevede che tu abbia un termine \"ragionevole\" per presentare le tue giustificazioni. Tre giorni sono generalmente considerati insufficienti dalla giurisprudenza per preparare una difesa adeguata, soprattutto se devi raccogliere prove o testimoni. Questo vizio procedurale può rendere il licenziamento invalido.\n2.  **La sanzione è sproporzionata.** Il licenziamento senza preavviso è la sanzione massima. Per una singola assenza di 4 ore (anche se non autorizzata) e l'uso personale del telefono, i tribunali ritengono quasi sempre che la sanzione sia sproporzionata rispetto alla gravità della condotta, salvo che si tratti di una recidiva plurima e documentata in un periodo molto breve. In assenza di precedenti, una sanzione più lieve (avverenza, multa, sospensione) sarebbe stata adeguata.\n3.  **La procedura non è corretta.** La lettera non segue il rito delle contestazioni disciplinari previsto dal tuo CCNL (Contratto Collettivo Nazionale di Lavoro), che stabilisce i tempi esatti per la contestazione e le tue difese. La ditta non può inventarsi termini più brevi di quelli legali o contrattuali.\n\n**Cosa fare subito (azioni immediate):**\n\n1.  **Non rispondere per iscritto in modo arrabbiato o difensivo in questi giorni.** La calma è la tua arma.\n2.  **Prepara le tue giustificazioni per iscritto** entro il termine indicato nella lettera (anche se breve, meglio presentarle prima della scadenza per non dare loro un pretesto). Spiega brevemente i motivi dell'assenza (se c'erano) e contestualizza l'uso del telefono (se fu occasionale). Firma \"per letta e per conoscenza\" sulla ricevuta della lettera se te la consegnano a mano, indicando la data.\n3.  **Raccogli le prove a tuo favore:** se c'era un motivo valido per l'assenza (es. urgenza familiare, problema tecnico del badge), o se l'uso del telefono era minimo/occasionale, documentalo.\n4.  **Contatta subito un sindacato o un consulente del lavoro.** Questa è la mossa più importante. Con una lettera così, hai ottime possibilità di vittoria in un'eventuale causa per licenziamento illegittimo, perché la procedura è viziata e la sanzione sproporzionata.\n\n**Cosa potrebbe cambiare la situazione:**\nSe hai già ricevuto altre sanzioni disciplinari nel recente passato per condotte simili, la ditta potrebbe sostenere che questa è la \"goccia che fa traboccare il vaso\". In quel caso, la sproporzione è più difficile da dimostrare, ma il vizio procedurale sui 3 giorni resterebbe comunque un punto a tuo favore.\n\nVuoi che ti aiuti a stendere una bozza di risposta difensiva da inviare entro i 3 giorni?",
+     "visibile": "La risposta breve è no: non puoi essere licenziato automaticamente così. La lettera contiene errori procedurali sostanziali che ti tutelano, e non corrisponde alla procedura corretta per un licenziamento disciplinare.\n\nVediamo i punti critici:\n\n1. Il termine per le tue difese è troppo breve. La legge prevede che tu abbia un termine \"ragionevole\" per presentare le tue giustificazioni. Tre giorni sono generalmente considerati insufficienti dalla giurisprudenza per preparare una difesa adeguata, soprattutto se devi raccogliere prove o testimoni. Questo vizio procedurale può rendere il licenziamento invalido.\n2. La sanzione è sproporzionata. Il licenziamento senza preavviso è la sanzione massima. Per una singola assenza di 4 ore (anche se non autorizzata) e l'uso personale del telefono, i tribunali ritengono quasi sempre che la sanzione sia sproporzionata rispetto alla gravità della condotta, salvo che si tratti di una recidiva plurima e documentata in un periodo molto breve. In assenza di precedenti, una sanzione più lieve (avverenza, multa, sospensione) sarebbe stata adeguata.\n3. La procedura non è corretta. La lettera non segue il rito delle contestazioni disciplinari previsto dal tuo CCNL (Contratto Collettivo Nazionale di Lavoro), che stabilisce i tempi esatti per la contestazione e le tue difese. La ditta non può inventarsi termini più brevi di quelli legali o contrattuali.\n\nCosa fare subito (azioni immediate):\n\n1. Non rispondere per iscritto in modo arrabbiato o difensivo in questi giorni. La calma è la tua arma.\n2. Prepara le tue giustificazioni per iscritto entro il termine indicato nella lettera (anche se breve, meglio presentarle prima della scadenza per non dare loro un pretesto). Spiega brevemente i motivi dell'assenza (se c'erano) e contestualizza l'uso del telefono (se fu occasionale). Firma \"per letta e per conoscenza\" sulla ricevuta della lettera se te la consegnano a mano, indicando la data.\n3. Raccogli le prove a tuo favore: se c'era un motivo valido per l'assenza (es. urgenza familiare, problema tecnico del badge), o se l'uso del telefono era minimo/occasionale, documentalo.\n4. Contatta subito un sindacato o un consulente del lavoro. Questa è la mossa più importante. Con una lettera così, hai ottime possibilità di vittoria in un'eventuale causa per licenziamento illegittimo, perché la procedura è viziata e la sanzione sproporzionata.\n\nCosa potrebbe cambiare la situazione:\nSe hai già ricevuto altre sanzioni disciplinari nel recente passato per condotte simili, la ditta potrebbe sostenere che questa è la \"goccia che fa traboccare il vaso\". In quel caso, la sproporzione è più difficile da dimostrare, ma il vizio procedurale sui 3 giorni resterebbe comunque un punto a tuo favore.\n\nVuoi che ti aiuti a stendere una bozza di risposta difensiva da inviare entro i 3 giorni?",
+     "latenza_s": 105.9,
+     "primo_token_s": 42.0,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: il provvedimento disciplinare non può essere applicato prima di cinque giorni dalla contestazione scritta"
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 105.9s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 42.0s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h3-multa-quattro-ore",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "7ac91c79-0e2d-4b1e-9998-a251e91c92c7",
+   "turni": [
+    {
+     "utente": "Il mio titolare mi ha applicato una multa pari a un'intera giornata di stipendio per un ritardo. Può farlo?",
+     "streamato": "In generale, no: il datore di lavoro non può trattenere o ridurre lo stipendio come “multa” per un ritardo. Il rapporto di lavoro è disciplinato dal Codice Civile e dalle norme sul lavoro (e dal CCNL applicato), che non riconoscono al datore la facoltà di irrogare sanzioni pecuniarie dirette sulla retribuzione: lo stipendio è la controprestazione del lavoro svolto e non può essere punitivamente decurtato per un errore disciplinare.\n\nCiò che il datore può fare, nei limiti di legge e del CCNL, è applicare sanzioni disciplinari non pecuniarie (richiamo scritto, sospensione dal lavoro e dalla retribuzione per uno o due giorni) previste dal contratto collettivo, seguendo la procedura prevista (comunicazione scritta degli addebiti, facoltà di replica, ecc.). La sospensione, per esempio, comporta comunque il mantenimento dei contributi e non è un “taglio” arbitrario.\n\nPer il tuo caso specifico:\n- Verifica il CCNL applicato: le sanzioni e le loro durate sono stabilite lì, e non il datore.\n- Chiedi per iscritto (email/PEC) la motivazione della trattenuta e il riferimento normativo o contrattuale che ne giustifica l’entità: se è un “taglio” pari a una giornata, è quasi certamente illegittimo.\n- Conserva la busta paga e qualsiasi comunicazione.\n- Se la trattenuta è confermata, puoi contestarla in busta e, se necessario, rivolgerti a un sindacato, a un avvocato del lavoro o all’Ispettorato del Lavoro per chiedere la restituzione della somma indebitamente trattenuta.\n\nCosa potrebbe farmi cambiare parere: se il CCNL applicato prevede espressamente una sanzione pecuniaria (molto raro) o se la “multa” è in realtà una trattenuta concordata e documentata per un danno oggettivo alla proprietà aziendale (diverso dal semplice ritardo), la valutazione cambia. Ma un ritardo, di per sé, non giustifica una trattenuta della retribuzione.",
+     "visibile": "In generale, no: il datore di lavoro non può trattenere o ridurre lo stipendio come «multa» per un ritardo. Il rapporto di lavoro è disciplinato dal Codice Civile e dalle norme sul lavoro (e dal CCNL applicato), che non riconoscono al datore la facoltà di irrogare sanzioni pecuniarie dirette sulla retribuzione: lo stipendio è la controprestazione del lavoro svolto e non può essere punitivamente decurtato per un errore disciplinare.\n\nCiò che il datore può fare, nei limiti di legge e del CCNL, è applicare sanzioni disciplinari non pecuniarie (richiamo scritto, sospensione dal lavoro e dalla retribuzione per uno o due giorni) previste dal contratto collettivo, seguendo la procedura prevista (comunicazione scritta degli addebiti, facoltà di replica, ecc.). La sospensione, per esempio, comporta comunque il mantenimento dei contributi e non è un «taglio» arbitrario.\n\nPer il tuo caso specifico:\n- Verifica il CCNL applicato: le sanzioni e le loro durate sono stabilite lì, e non il datore.\n- Chiedi per iscritto (email/PEC) la motivazione della trattenuta e il riferimento normativo o contrattuale che ne giustifica l'entità: se è un «taglio» pari a una giornata, è quasi certamente illegittimo.\n- Conserva la busta paga e qualsiasi comunicazione.\n- Se la trattenuta è confermata, puoi contestarla in busta e, se necessario, rivolgerti a un sindacato, a un avvocato del lavoro o all'Ispettorato del Lavoro per chiedere la restituzione della somma indebitamente trattenuta.\n\nCosa potrebbe farmi cambiare parere: se il CCNL applicato prevede espressamente una sanzione pecuniaria (molto raro) o se la «multa» è in realtà una trattenuta concordata e documentata per un danno oggettivo alla proprietà aziendale (diverso dal semplice ritardo), la valutazione cambia. Ma un ritardo, di per sé, non giustifica una trattenuta della retribuzione.",
+     "latenza_s": 70.9,
+     "primo_token_s": 5.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: la multa non può superare quattro ore della retribuzione base"
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h3-licenziamento-a-voce",
+   "ripetizione": 1,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "92e50811-8f46-4fcc-8fbb-98eb572c6ff7",
+   "turni": [
+    {
+     "utente": "Il mio datore di lavoro mi ha detto a voce che sono licenziato, ma non mi ha dato nessuna lettera. Il licenziamento è valido?",
+     "streamato": "No, un licenziamento comunicato solo a voce non è valido. In Italia la rescissione del rapporto di lavoro da parte del datore deve essere comunicata per iscritto (di norma a mezzo PEC o raccomandata), indicando le ragioni del recesso: senza quella comunicazione scritta non si può considerare il rapporto risolto.\n\nQuello che puoi fare subito, in ordine:\n\n1.Continua a presentarti sul lavoro come di solito: non assentarti, perché potresti essere contestato per insubordinazione.\n2. Sollecita per iscritto (anche una semplice email) la formale comunicazione di licenziamento, dichiarando di non averla ricevuta e chiedendo le ragioni.\n3. Non firmare nulla a caldo (accordi, dimissioni, transazioni) senza averne compreso le conseguenze: firmare un documento di \"dimissioni\" o \"accordo\" cancellerebbe il tuo diritto a contestare il licenziamento.\n4. Se la situazione si complica (messa in disponibilità, sospensione dello stipendio), consulta un sindacato o un avvocato giuslavorista prima di rispondere.\n\nCosa potrebbe farmi cambiare raccomandazione: se il datore produce una lettera di licenziamento con data certa e motivazioni, o se ti viene formalmente sospeso il rapporto — lì cambiano i passi e i termini per eventuali impugnazioni.",
+     "visibile": "In linea generale, in Italia il licenziamento del datore di lavoro è inefficace se non è stato comunicato per iscritto (raccomandata A/R o PEC) indicando le ragioni del recesso. Tuttavia, è fondamentale verificare che non siano state inviate comunicazioni formali (es. raccomandata o PEC) di cui potresti non essere ancora a conoscenza o che potrebbero essere state consegnate a terzi.\n\nConsiglio prudenziale:\n1. Continua a presentarti regolarmente sul lavoro.\n2. Inoltra una comunicazione scritta (anche email) al datore, dichiarando di non aver ricevuto alcun preavviso o licenziamento e chiedendo conferma scritta della situazione, senza firmare nulla in attesa di chiarimenti.\n3. Evita di firmare documenti di dimissioni o transazioni senza averne compreso le conseguenze giuridiche.\n4. Se la situazione non si risolve con la comunicazione scritta o ricevi una lettera formale, consulta immediatamente un sindacato o un avvocato per valutare i termini di impugnazione.\n\nPer darti indicazioni più precise, potresti verificare se hai ricevuto raccomandate o PEC in questi ultimi giorni?",
+     "latenza_s": 70.3,
+     "primo_token_s": 6.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 0: «No,unlicenziamentocomunicatosoloavocenon» → «Inlineagenerale,inItaliaillicenziamentod»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h3-contestazione-cinque-giorni",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "acec4196-24bb-4828-aa43-b3f963e164c1",
+   "turni": [
+    {
+     "utente": "Il mio datore di lavoro mi ha mandato questa lettera di contestazione disciplinare: «Spett.le Sig. Marco Bianchi, Perugia, 3 marzo 2026. OGGETTO: contestazione disciplinare. Le contestiamo che in data 20 febbraio 2026 Ella si è assentata dal posto di lavoro senza autorizzazione dalle 10.00 alle 14.00 e ha utilizzato il telefono aziendale per scopi personali. Ella potrà presentare le proprie giustificazioni entro 3 giorni dal ricevimento della presente. Decorso tale termine verrà applicata la sanzione del licenziamento senza preavviso. Il datore di lavoro, Rossi Meccanica S.r.l.». La lettera è corretta? Posso essere licenziato così?",
+     "streamato": "Capisco la preoccupazione: una lettera che chiude con «licenziamento senza preavviso» spaventa, ma non significa che il licenziamento sia già legittimo. Prima di valutare se puoi essere licenziato così, devo capire due cose che cambiano totalmente il quadro.\n\nPrima di tutto, la sanzione del licenziamento per un'assenza di 4 ore e l'uso personale del telefono aziendale è sproporzionata in quasi tutti i casi: il licenziamento disciplinare (per giusta causa) si riserva alle violazioni particolarmente gravi, e una singola assenza di alcune ore, salvo che si tratti di un'attività a rischio o con effetti immediati sul lavoro, difficilmente giustifica l'licenziamento immediato. Qui però il punto critico non è solo la gravità: è il rispetto delle procedure. La legge e la giurisprudenza richiedono che prima della sanzione ci sia stata la contestazione e che al lavoratore sia dato un tempo adeguato per giustificarsi — e che le giustificazioni vengano effettivamente valutate prima di decidere. Il fatto che la lettera dica «decorso il termine verrà applicata la sanzione» è un punto debole importante a tuo favore: fa sembrare la decisione già presa, prima ancora che tu ti sia difeso.\n\nPer darti un'idea concreta di quanta forza hai e di cosa fare in questi 3 giorni, mi serve un dato preciso:\n\nQuante assenze non autorizzate hai avuto negli ultimi 12 mesi, e hai mai avuto altre contestazioni o sanzioni in passato (anche verbali)?\n\nQuesto cambia tutto: se è l'unico episodio della tua carriera in quell'azienda, la sproporzione della sanzione è molto più evidente e la tua posizione è più solida; se invece c'è una storia di assenze ripetute, il datore potrebbe avere basi diverse.",
+     "visibile": "Capisco la preoccupazione: una lettera che chiude con «licenziamento senza preavviso» spaventa, ma non significa che il licenziamento sia già legittimo. Prima di valutare se puoi essere licenziato così, devo capire due cose che cambiano totalmente il quadro.\n\nPrima di tutto, la sanzione del licenziamento per un'assenza di un importo previsto dalla normativa ore e l'uso personale del telefono aziendale è sproporzionata in quasi tutti i casi: il licenziamento disciplinare (per giusta causa) si riserva alle violazioni particolarmente gravi, e una singola assenza di alcune ore, salvo che si tratti di un'attività a rischio o con effetti immediati sul lavoro, difficilmente giustifica l'licenziamento immediato. Qui però il punto critico non è solo la gravità: è il rispetto delle procedure. La legge e la giurisprudenza richiedono che prima della sanzione ci sia stata la contestazione e che al lavoratore sia dato un tempo adeguato per giustificarsi — e che le giustificazioni vengano effettivamente valutate prima di decidere. Il fatto che la lettera dica «decorso il termine verrà applicata la sanzione» è un punto debole importante a tuo favore: fa sembrare la decisione già presa, prima ancora che tu ti sia difeso.\n\nPer darti un'idea concreta di quanta forza hai e di cosa fare in questi 3 giorni, mi serve un dato preciso:\n\nQuante assenze non autorizzate hai avuto negli ultimi 12 mesi, e hai mai avuto altre contestazioni o sanzioni in passato (anche verbali)?\n\nQuesto cambia tutto: se è l'unico episodio della tua carriera in quell'azienda, la sproporzione della sanzione è molto più evidente e la tua posizione è più solida; se invece c'è una storia di assenze ripetute, il datore potrebbe avere basi diverse (verifica la scadenza/soglia esatta sulla fonte ufficiale o nel report).",
+     "latenza_s": 48.6,
+     "primo_token_s": 10.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      false,
+      "…licenziamento per un'assenza di un importo previsto dalla normativa ore e l'uso personale del tel…"
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 275: «4oreel'usopersonaledeltelefonoaziendaleè» → «unimportoprevistodallanormativaoreel'uso»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: il provvedimento disciplinare non può essere applicato prima di cinque giorni dalla contestazione scritta"
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h3-multa-quattro-ore",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "8eed8718-8492-48e7-a6b4-6f93831a5b4f",
+   "turni": [
+    {
+     "utente": "Il mio titolare mi ha applicato una multa pari a un'intera giornata di stipendio per un ritardo. Può farlo?",
+     "streamato": "Capisco la preoccupazione, ma prima di dire se è “lecito” o meno, serve capire due cose che cambiano completamente la risposta.\n\nQuando hai subìto il ritardo, esisteva già un regolamento aziendale o un codice disciplinare scritto, condiviso con te, in cui era prevista esplicitamente la decurtazione di un giorno di stipendio per il ritardo?\n\nQuesto è il punto chiave: in Italia, le sanzioni economiche (come tagli alla retribuzione) non possono essere introdotte “al volo” dal datore di lavoro. Devono essere previste in una norma contrattuale (CCNL, contratto collettivo aziendale) o in un regolamento aziendale valido, che tu avresti dovuto conoscere in anticipo. Senza questa base formale, la multa è molto probabilmente illegittima.\n\nDimmi se c’era un documento del genere e, se sì, se conteneva proprio questa sanzione.",
+     "visibile": "Capisco la preoccupazione, ma prima di dire se è «lecito» o meno, serve capire due cose che cambiano completamente la risposta.\n\nQuando hai subìto il ritardo, esisteva già un regolamento aziendale o un codice disciplinare scritto, condiviso con te, in cui era prevista esplicitamente la decurtazione di un giorno di stipendio per il ritardo?\n\nQuesto è il punto chiave: in Italia, le sanzioni economiche (come tagli alla retribuzione) non possono essere introdotte «al volo» dal datore di lavoro. Devono essere previste in una norma contrattuale (CCNL, contratto collettivo aziendale) o in un regolamento aziendale valido, che tu avresti dovuto conoscere in anticipo. Senza questa base formale, la multa è molto probabilmente illegittima.\n\nDimmi se c'era un documento del genere e, se sì, se conteneva proprio questa sanzione.",
+     "latenza_s": 33.0,
+     "primo_token_s": 12.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: la multa non può superare quattro ore della retribuzione base"
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h3-licenziamento-a-voce",
+   "ripetizione": 2,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "05a0b6a4-a42f-47a1-9b53-4b8bc5fb4bc3",
+   "turni": [
+    {
+     "utente": "Il mio datore di lavoro mi ha detto a voce che sono licenziato, ma non mi ha dato nessuna lettera. Il licenziamento è valido?",
+     "streamato": "No, un licenziamento valido richiede una comunicazione scritta (lettera, PEC o raccomandata) che specifichi in modo chiaro i motivi o l’addebito. La sola dichiarazione a voce, senza alcun atto scritto, non produce effetti giuridici: il rapporto di lavoro si considera ancora in corso e devi continuare a presentarti al lavoro e a svolgere le tue mansioni regolarmente.\n\nIl rischio principale qui è che il datore di lavoro cerchi di “costringerti” a dimetterti o a firmare qualcosa sotto pressione, o che in futuro arrivi una lettera retrodatata o motivata in modo generico per coprire il terreno. Per proteggerti subito, ti consiglio di:\n\n1. **Scrivere una email o una PEC** al datore (o all’HR) in cui prendi atto della comunicazione verbale, chiedi formalmente la comunicazione scritta con i motivi e dichiari che, in mancanza, continuerai a prestare servizio. Questo crea una prova certa del fatto e della data.\n2. **Non firmare** alcuna dimissione, rinuncia a diritti o transizione finché non hai parlato con un consulente del lavoro o un sindacato.\n3. **Verificare** se nel frattempo la tua posizione è stata “bloccata” (accessi revocati, turni rimossi): se succede, è un segnale che stanno cercando di indurti a dimetterti, e va documentato.\n\nSe vuoi, posso aiutarti a redigere il testo esatto da mandare via PEC/email.",
+     "visibile": "No, un licenziamento valido richiede una comunicazione scritta (lettera, PEC o raccomandata) che specifichi in modo chiaro i motivi o l'addebito. La sola dichiarazione a voce, senza alcun atto scritto, non produce effetti giuridici: il rapporto di lavoro si considera ancora in corso e devi continuare a presentarti al lavoro e a svolgere le tue mansioni regolarmente.\n\nIl rischio principale qui è che il datore di lavoro cerchi di «costringerti» a dimetterti o a firmare qualcosa sotto pressione, o che in futuro arrivi una lettera retrodatata o motivata in modo generico per coprire il terreno. Per proteggerti subito, ti consiglio di:\n\n1. Scrivere una email o una PEC al datore (o all'HR) in cui prendi atto della comunicazione verbale, chiedi formalmente la comunicazione scritta con i motivi e dichiari che, in mancanza, continuerai a prestare servizio. Questo crea una prova certa del fatto e della data.\n2. Non firmare alcuna dimissione, rinuncia a diritti o transizione finché non hai parlato con un consulente del lavoro o un sindacato.\n3. Verificare se nel frattempo la tua posizione è stata «bloccata» (accessi revocati, turni rimossi): se succede, è un segnale che stanno cercando di indurti a dimetterti, e va documentato.\n\nSe vuoi, posso aiutarti a redigere il testo esatto da mandare via PEC/email.",
+     "latenza_s": 83.4,
+     "primo_token_s": 29.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: il licenziamento va comunicato per iscritto"
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 29.7s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h3-contestazione-cinque-giorni",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "40b68e5f-e222-4626-adb9-58437146547b",
+   "turni": [
+    {
+     "utente": "Il mio datore di lavoro mi ha mandato questa lettera di contestazione disciplinare: «Spett.le Sig. Marco Bianchi, Perugia, 3 marzo 2026. OGGETTO: contestazione disciplinare. Le contestiamo che in data 20 febbraio 2026 Ella si è assentata dal posto di lavoro senza autorizzazione dalle 10.00 alle 14.00 e ha utilizzato il telefono aziendale per scopi personali. Ella potrà presentare le proprie giustificazioni entro 3 giorni dal ricevimento della presente. Decorso tale termine verrà applicata la sanzione del licenziamento senza preavviso. Il datore di lavoro, Rossi Meccanica S.r.l.». La lettera è corretta? Posso essere licenziato così?",
+     "streamato": "Ciao Marco, capisco la preoccupazione. Prima di tutto, calma: il fatto che la lettera dica \"licenziamento\" non significa che sia già deciso o che sia automaticamente valido. È una fase di preavviso (contestazione), non un licenziamento eseguito.\n\nLa risposta breve alla tua domanda \"Posso essere licenziato così?\" è: **non così, e non automaticamente**. Il datore non può licenziarti di colpo per una singola assenza di 4 ore (salvo casi eccezionali e rarissimi, che qui non sembrano). La procedura che stanno seguendo è quella corretta della \"contestazione\", ma il **contenuto** e la **sanzione** proposta vanno analizzati.\n\nAnalizziamo i punti critici della lettera:\n\n1.  **La Sanzione è Sproporzionata?** Per una singola assenza di 4 ore senza autorizzazione, la sanzione tipica è l'avvertimento o la multa. Il licenziamento per giusta causa (o disciplinare) per un singolo episodio di questo tipo è molto raro e giudicato sproporzionato dalla giurisprudenza, a meno che non ci siano precedenti disciplinari gravi e ripetuti che dimostrino una recidivita o una palese volontà di danneggiare l'azienda.\n2.  **La Motivazione è Specifica?** La lettera cita due fatti: assenza non autorizzata e uso personale del telefono. Sono due fatti distinti. Se li uniscono per giustificare un licenziamento, la difesa si fa più difficile. Hai usato il telefono per gestire un'urgenza personale? Per parlare con un familiare? Questo è rilevante.\n3.  **I Termini?** Ti danno 3 giorni per giustificarti. È un termine standard, ma verifica la data di ricevimento. Il conteggio parte dal giorno successivo al ricevimento.\n\n**COSA FARE SUBITO (Nella prossimi 24-48 ore):**\n\n1.  **NON rispondere a caldo.** Non mandare email o messaggi vocali emotivi.\n2.  **Prepara una risposta scritta formale (PEC o raccomandata A/R)** entro il termine dei 3 giorni. Anche se non hai documenti da allegare subito, devi rispondere per iscritto per \"cercare\" la difesa.\n3.  **Raccogli i fatti:**\n    *   Perché sei uscito? (Urgenza medica? Impegno familiare inatteso? Errata percezione di un permesso già concordato?)\n    *   A chi hai detto che uscivi? (Un collega? Il capo di fatto?)\n    *   Come è stato usato il telefono? (Chiamata breve? Navigazione? Messaggi?)\n4.  **Contatta un sindacato o un avvocato giuslavorista.** Questa è la cosa più importante. Anche se pensi di aver fatto un errore, la sproporzionalità della sanzione è il tuo principale scudo legale. Il licenziamento per una singola assenza di 4 ore, in assenza di gravi precedenti, ha alta probabilità di essere dichiarato **ingiustificato** in sede di conciliazione o giudizio, con diritto a indennità risarcitoria.\n\n**La domanda chiave che devi porti ora (e che serve per costruire la difesa):**\n**Avevi mai ricevuto contestazioni disciplinari prima di questa, e se sì, quando e per cosa? E, soprattutto, perché sei uscito dal lavoro quel giorno: c'era una ragione impellente e non comunicabile prima, o è stato un errore organizzativo?**\n\nQuesta informazione cambia radicalmente la forza della tua difesa: un'assenza per un'imprevista emergenza medica o familiare ha un peso diverso rispetto a un'assenza per \"comodità\" o dimenticanza.",
+     "visibile": "Ciao Marco, capisco la preoccupazione. Prima di tutto, calma: il fatto che la lettera dica \"licenziamento\" non significa che sia già deciso o che sia automaticamente valido. È una fase di preavviso (contestazione), non un licenziamento eseguito.\n\nLa risposta breve alla tua domanda \"Posso essere licenziato così?\" è: non così, e non automaticamente. Il datore non può licenziarti di colpo per una singola assenza di 4 ore (salvo casi eccezionali e rarissimi, che qui non sembrano). La procedura che stanno seguendo è quella corretta della \"contestazione\", ma il contenuto e la sanzione proposta vanno analizzati.\n\nAnalizziamo i punti critici della lettera:\n\n1. La Sanzione è Sproporzionata? Per una singola assenza di 4 ore senza autorizzazione, la sanzione tipica è l'avvertimento o la multa. Il licenziamento per giusta causa (o disciplinare) per un singolo episodio di questo tipo è molto raro e giudicato sproporzionato dalla giurisprudenza, a meno che non ci siano precedenti disciplinari gravi e ripetuti che dimostrino una recidivita o una palese volontà di danneggiare l'azienda.\n2. La Motivazione è Specifica? La lettera cita due fatti: assenza non autorizzata e uso personale del telefono. Sono due fatti distinti. Se li uniscono per giustificare un licenziamento, la difesa si fa più difficile. Hai usato il telefono per gestire un'urgenza personale? Per parlare con un familiare? Questo è rilevante.\n3. I Termini? Ti danno 3 giorni per giustificarti. È un termine standard, ma verifica la data di ricevimento. Il conteggio parte dal giorno successivo al ricevimento.\n\nCOSA FARE SUBITO (Nella prossimi 24-48 ore):\n\n1. NON rispondere a caldo. Non mandare email o messaggi vocali emotivi.\n2. Prepara una risposta scritta formale (PEC o raccomandata A/R) entro il termine preciso previsto dalla normativa. Anche se non hai documenti da allegare subito, devi rispondere per iscritto per \"cercare\" la difesa.\n3. Raccogli i fatti:\n - Perché sei uscito? (Urgenza medica? Impegno familiare inatteso? Errata percezione di un permesso già concordato?)\n - A chi hai detto che uscivi? (Un collega? Il capo di fatto?)\n - Come è stato usato il telefono? (Chiamata breve? Navigazione? Messaggi?)\n4. Contatta un sindacato o un avvocato giuslavorista. Questa è la cosa più importante. Anche se pensi di aver fatto un errore, la sproporzionalità della sanzione è il tuo principale scudo legale. Il licenziamento per una singola assenza di 4 ore, in assenza di gravi precedenti, ha alta probabilità di essere dichiarato ingiustificato in sede di conciliazione o giudizio, con diritto a indennità risarcitoria.\n\nLa domanda chiave che devi porti ora (e che serve per costruire la difesa):\nAvevi mai ricevuto contestazioni disciplinari prima di questa, e se sì, quando e per cosa? E, soprattutto, perché sei uscito dal lavoro quel giorno: c'era una ragione impellente e non comunicabile prima, o è stato un errore organizzativo?\n\nQuesta informazione cambia radicalmente la forza della tua difesa: un'assenza per un'imprevista emergenza medica o familiare ha un peso diverso rispetto a un'assenza per \"comodità\" o dimenticanza.",
+     "latenza_s": 91.6,
+     "primo_token_s": 19.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1498: «dei3giorni.Anchesenonhaidocumentidaalleg» → «precisoprevistodallanormativa.Anchesenon»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: il provvedimento disciplinare non può essere applicato prima di cinque giorni dalla contestazione scritta"
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 91.6s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h3-multa-quattro-ore",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "e0272353-ed5f-4560-b4b0-5f674ba63248",
+   "turni": [
+    {
+     "utente": "Il mio titolare mi ha applicato una multa pari a un'intera giornata di stipendio per un ritardo. Può farlo?",
+     "streamato": "Capisco la frustrazione: una sanzione pari a un giorno intero di stipendio per un ritardo è un importo molto pesante. Prima di dirti se è lecito o meno, mi serve capire una cosa fondamentale che cambia completamente la risposta.\n\nQuesta \"multa\" è stata applicata come **trattenuta diretta dallo stipendio** (ovvero ti hanno tolto i soldi dal cedolino) o è stata formalizzata come una **sanzione disciplinare** separata (ad esempio una multa pecuniaria prevista dal regolamento interno o dal CCNL, pagata a parte o a carico della Cassa Sanità/Penalità)?\n\nQuesta distinzione è cruciale perché:\n1. Se è una trattenuta dallo stipendio, la giurisprudenza italiana è molto rigida: lo stipendio è una prestazione fondamentale e le trattenute per multe disciplinari sono ammesse solo in casi molto specifici e con importi simbolici, mai per un intero giorno.\n2. Se è una multa disciplinare separata, la legittimità dipende esclusivamente da cosa dice il tuo Contratto Collettivo Nazionale di Lavoro (CCNL) o dal regolamento aziendale: se non è previsto esplicitamente un importo così alto per un ritardo, è quasi certamente illegittima.\n\nQuale dei due casi si è verificato e, se ti va di dirlo, quale settore di lavoro copre il tuo CCNL?",
+     "visibile": "Capisco la frustrazione: una sanzione pari a un giorno intero di stipendio per un ritardo è un importo molto pesante. Prima di dirti se è lecito o meno, mi serve capire una cosa fondamentale che cambia completamente la risposta.\n\nQuesta \"multa\" è stata applicata come trattenuta diretta dallo stipendio (ovvero ti hanno tolto i soldi dal cedolino) o è stata formalizzata come una sanzione disciplinare separata (ad esempio una multa pecuniaria prevista dal regolamento interno o dal CCNL, pagata a parte o a carico della Cassa Sanità/Penalità)?\n\nQuesta distinzione è cruciale perché:\n1. Se è una trattenuta dallo stipendio, la giurisprudenza italiana è molto rigida: lo stipendio è una prestazione fondamentale e le trattenute per multe disciplinari sono ammesse solo in casi molto specifici e con importi simbolici, mai per un intero giorno.\n2. Se è una multa disciplinare separata, la legittimità dipende esclusivamente da cosa dice il tuo Contratto Collettivo Nazionale di Lavoro (CCNL) o dal regolamento aziendale: se non è previsto esplicitamente un importo così alto per un ritardo, è quasi certamente illegittima.\n\nQuale dei due casi si è verificato e, se ti va di dirlo, quale settore di lavoro copre il tuo CCNL?",
+     "latenza_s": 39.3,
+     "primo_token_s": 13.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      false,
+      "manca: la multa non può superare quattro ore della retribuzione base"
+     ],
+     "rinvio_al_professionista": [
+      false,
+      "non rinvia a un professionista"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "h3-licenziamento-a-voce",
+   "ripetizione": 3,
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "session_id": "5fe1b6c9-a91f-474d-9852-aff47badc585",
+   "turni": [
+    {
+     "utente": "Il mio datore di lavoro mi ha detto a voce che sono licenziato, ma non mi ha dato nessuna lettera. Il licenziamento è valido?",
+     "streamato": "No, così com’è, non è valido: in Italia il licenziamento individuale deve essere comunicato per iscritto (raccomandata A/R, PEC o consegna a mano con ricevuta), e senza la comunicazione scritta manca l’atto che rende efficace la dismissione. Il discorso a voce da solo non produce l’effetto giuridico del licenziamento: formalmente, il rapporto di lavoro continua.\n\nCosa fare subito:\n1. Continua a presentarti al lavoro come se nulla fosse: se il datore ti impedisce fisicamente l’accesso, segnalalo per iscritto (PEC o email) chiedendo accesso e documentazione del motivo. Questo preserva la prova che stai adempiendo al tuo obbligo e che il rapporto, formalmente, è in corso.\n2. Non firmare nulla (dimissioni, accordi transattivi, rinunce) finché non hai chiarito la situazione e, se serve, consultato un legale o il sindacato: firmare spontaneamente trasformerebbe un licenziamento nullo/inefficace in dimissioni, con conseguenze molto diverse.\n3. Richiedi per iscritto la comunicazione scritta del licenziamento, con le motivazioni: se la producono, lì si vedono se le cause sono valide (giusta causa o giustificato motivo) e si attivano le tutele; se non la producono, resta un fatto da contestare.\n\nIl punto critico: se la comunicazione scritta arriva con motivazioni che non reggono (o senza motivazioni), il licenziamento è annullabile o invalido, e hai diritto a tutela (rimessione in servizio o indennità, a seconda dei casi e della dimensione dell’azienda). I tempi per contestare sono stretti, quindi non aspettare: se la situazione si sblocca con una lettera, coinvolgi subito un sindacato o un avvocato giuslavorista.\n\nHai ricevuto, oltre al discorso a voce, altre comunicazioni (anche informali, come un’email o un messaggio) in cui ti chiedono di non presentarti o di consegnare il badge?",
+     "visibile": "No, così com'è, non è valido: in Italia il licenziamento individuale deve essere comunicato per iscritto (raccomandata A/R, PEC o consegna a mano con ricevuta), e senza la comunicazione scritta manca l'atto che rende efficace la dismissione. Il discorso a voce da solo non produce l'effetto giuridico del licenziamento: formalmente, il rapporto di lavoro continua.\n\nCosa fare subito:\n1. Continua a presentarti al lavoro come se nulla fosse: se il datore ti impedisce fisicamente l'accesso, segnalalo per iscritto (PEC o email) chiedendo accesso e documentazione del motivo. Questo preserva la prova che stai adempiendo al tuo obbligo e che il rapporto, formalmente, è in corso.\n2. Non firmare nulla (dimissioni, accordi transattivi, rinunce) finché non hai chiarito la situazione e, se serve, consultato un legale o il sindacato: firmare spontaneamente trasformerebbe un licenziamento nullo/inefficace in dimissioni, con conseguenze molto diverse.\n3. Richiedi per iscritto la comunicazione scritta del licenziamento, con le motivazioni: se la producono, lì si vedono se le cause sono valide (giusta causa o giustificato motivo) e si attivano le tutele; se non la producono, resta un fatto da contestare.\n\nIl punto critico: se la comunicazione scritta arriva con motivazioni che non reggono (o senza motivazioni), il licenziamento è annullabile o invalido, e hai diritto a tutela (rimessione in servizio o indennità, a seconda dei casi e della dimensione dell'azienda). I tempi per contestare sono stretti, quindi non aspettare: se la situazione si sblocca con una lettera, coinvolgi subito un sindacato o un avvocato giuslavorista.\n\nHai ricevuto, oltre al discorso a voce, altre comunicazioni (anche informali, come un'email o un messaggio) in cui ti chiedono di non presentarti o di consegnare il badge?",
+     "latenza_s": 89.1,
+     "primo_token_s": 29.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "rinvio_al_professionista": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 29.9s > 20s"
+     ]
+    }
+   }
+  }
+ ]
+}

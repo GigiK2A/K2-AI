@@ -1,0 +1,87 @@
+{
+ "descrizione": "Terzo insieme HELD-OUT del banco K-BOT (19/10/2026): tre casi sui testi aggiunti al supplemento (Statuto dei lavoratori, L. 604/1966). I fatti attesi sono presi dal testo vigente scaricato dall'API ufficiale Normattiva. Scritti DOPO aver scoperto che il corpus non aveva quegli articoli: servono a misurare il recupero dei testi aggiunti, non sono indipendenti dal lavoro che li ha aggiunti. Nessun caso è validato da un professionista.",
+ "casi": [
+  {
+   "id": "h3-contestazione-cinque-giorni",
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Il mio datore di lavoro mi ha mandato questa lettera di contestazione disciplinare: «Spett.le Sig. Marco Bianchi, Perugia, 3 marzo 2026. OGGETTO: contestazione disciplinare. Le contestiamo che in data 20 febbraio 2026 Ella si è assentata dal posto di lavoro senza autorizzazione dalle 10.00 alle 14.00 e ha utilizzato il telefono aziendale per scopi personali. Ella potrà presentare le proprie giustificazioni entro 3 giorni dal ricevimento della presente. Decorso tale termine verrà applicata la sanzione del licenziamento senza preavviso. Il datore di lavoro, Rossi Meccanica S.r.l.». La lettera è corretta? Posso essere licenziato così?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "il provvedimento disciplinare non può essere applicato prima di cinque giorni dalla contestazione scritta",
+      "re": "(5|cinque) giorni"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "L. 300/1970 art. 7",
+     "verifica": "supplemento Normattiva (testo vigente scaricato dall'API ufficiale il 2026-10-19), letto dopo il caricamento",
+     "estratto": "i provvedimenti disciplinari più gravi del rimprovero verbale, non possono essere applicati prima che siano trascorsi cinque giorni dalla contestazione per iscritto del fatto che vi ha dato causa"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-3"
+  },
+  {
+   "id": "h3-multa-quattro-ore",
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Il mio titolare mi ha applicato una multa pari a un'intera giornata di stipendio per un ritardo. Può farlo?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "la multa non può superare quattro ore della retribuzione base",
+      "re": "(quattro|4) ore"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "L. 300/1970 art. 7",
+     "verifica": "supplemento Normattiva (testo vigente scaricato dall'API ufficiale il 2026-10-19), letto dopo il caricamento",
+     "estratto": "la multa non può essere disposta per un importo superiore a quattro ore della retribuzione base e la sospensione dal servizio e dalla retribuzione per più di dieci giorni"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-3"
+  },
+  {
+   "id": "h3-licenziamento-a-voce",
+   "dominio": "lavoro",
+   "stato": "fonte-verificata",
+   "turni": [
+    "Il mio datore di lavoro mi ha detto a voce che sono licenziato, ma non mi ha dato nessuna lettera. Il licenziamento è valido?"
+   ],
+   "attese": {
+    "tutti": [
+     {
+      "nome": "il licenziamento va comunicato per iscritto",
+      "re": "per iscritto|forma scritta|in forma scritta"
+     },
+     {
+      "nome": "senza forma scritta è inefficace",
+      "re": "inefficace|privo di effett|non produce effett|non è valido|non e valido"
+     }
+    ],
+    "escalation": "consigliata"
+   },
+   "fonti": [
+    {
+     "riferimento": "L. 604/1966 art. 2",
+     "verifica": "supplemento Normattiva (testo vigente scaricato dall'API ufficiale il 2026-10-19), letto dopo il caricamento",
+     "estratto": "Il datore di lavoro deve comunicare per iscritto il licenziamento al prestatore di lavoro [...] Il licenziamento intimato senza l'osservanza delle disposizioni di cui ai commi 1 e 2 è inefficace"
+    }
+   ],
+   "validato_da": null,
+   "insieme": "held-out-3"
+  }
+ ]
+}

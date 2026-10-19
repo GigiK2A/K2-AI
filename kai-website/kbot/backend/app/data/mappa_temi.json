@@ -26,7 +26,7 @@
    "riferimenti": [
     "L. 300/1970 art. 7"
    ],
-   "note": "L'art. 7 dello Statuto NON è nel corpus al 19/10/2026 (della L. 300/1970 c'è solo l'art. 1): la voce si attiva da sola quando il testo viene aggiunto.",
+   "note": "L'art. 7 dello Statuto era assente dal corpus: aggiunto il 19/10/2026 al supplemento (k2a-8e/data/normattiva_supplement.db) dall'API ufficiale Normattiva, testo vigente con le note (sentenza C. cost. 204/1982 inclusa).",
    "validato_da": "",
    "validato_il": "",
    "stato": "bozza"
@@ -43,7 +43,7 @@
    "riferimenti": [
     "L. 300/1970 art. 4"
    ],
-   "note": "Come sopra: art. 4 Statuto assente dal corpus al 19/10/2026.",
+   "note": "L'art. 4 dello Statuto era assente dal corpus: aggiunto il 19/10/2026 al supplemento (API ufficiale Normattiva, testo vigente). Il testo contiene l'autorizzazione dell'Ispettorato e i rinvii al Codice privacy: da far leggere al professionista.",
    "validato_da": "",
    "validato_il": "",
    "stato": "bozza"
@@ -61,7 +61,7 @@
     "art. 2119 c.c.",
     "L. 604/1966 art. 3"
    ],
-   "note": "La L. 604/1966 non è nel corpus al 19/10/2026 (0 articoli): resta attiva solo la parte del codice civile. Le tutele (reintegra/indennità) dipendono dalla data di assunzione e dalle dimensioni aziendali: NON mappate, serve il professionista.",
+   "note": "La L. 604/1966 era assente dal corpus: aggiunta il 19/10/2026 al supplemento (API ufficiale Normattiva, testo vigente). Le tutele (reintegra/indennità) dipendono dalla data di assunzione e dalle dimensioni aziendali (L. 300/1970 art. 18 per i vecchi assunti, D.Lgs. 23/2015 per i nuovi): NON mappate, serve il professionista.",
    "validato_da": "",
    "validato_il": "",
    "stato": "bozza"

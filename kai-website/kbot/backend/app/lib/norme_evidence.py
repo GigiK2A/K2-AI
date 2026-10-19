@@ -401,7 +401,7 @@ def proponi(client, modello: str, quesito: str, contesto: str = "") -> tuple[lis
 # ═══ 5 · recupero e lettura per commi ══════════════════════════════════════════════════════
 _NOTE = re.compile(r"-{5,}\s*AGGIORNAMENTO", re.I)
 _RIF_NOTA = re.compile(r"\(\(\s*\d+\s*\)\)|(?<=[.;:])\s*\(\d{1,3}\)(?=\s)")
-_RUBRICA = re.compile(r"Art\.\s*[\w\-]+\s*\.?\s*\(([^)]{3,90})\)")
+_RUBRICA = re.compile(r"Art\.\s*[\w\-]+(?:\s+—[^\n]*)?\s*\.?\s*\(([^)]{3,90})\)")
 _SUFFISSI = r"(?:-(?:bis|ter|quater|quinquies|sexies|septies|octies|novies|decies))?"
 _COMMA = re.compile(r"(?:(?<=\s)|^)(\d{1,2}" + _SUFFISSI + r")\.\s+(?=[A-ZÀÈÉÌÒÙ«\"(])")
 _DECORRENZA = re.compile(r"\b(a decorrere dal|a partire dal|dal 1°|dal \d{1,2} (?:gennaio|febbraio|marzo|aprile|maggio|"

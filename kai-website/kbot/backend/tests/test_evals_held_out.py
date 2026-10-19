@@ -15,7 +15,7 @@ def _carica(nome):
     return {c["id"]: c for c in json.load(open(os.path.join(_DIR, nome), encoding="utf-8"))["casi"]}
 
 
-_CASI = {**_carica("casi_held_out.json"), **_carica("casi_held_out_2.json")}
+_CASI = {**_carica("casi_held_out.json"), **_carica("casi_held_out_2.json"), **_carica("casi_held_out_3.json")}
 
 
 def _ok(cid, testo):
@@ -26,6 +26,15 @@ def _ok(cid, testo):
 
 # (id, risposta giusta, risposta sbagliata)
 COPPIE = [
+    ("h3-contestazione-cinque-giorni",
+     "Il termine di 3 giorni è troppo breve: l'art. 7 dello Statuto dei lavoratori impone almeno cinque giorni dalla contestazione scritta prima di applicare qualsiasi sanzione. Fatti assistere da un avvocato giuslavorista o dal sindacato.",
+     "Il termine di 3 giorni per le giustificazioni è sufficiente, ma il licenziamento senza preavviso per quattro ore di assenza sembra sproporzionato."),
+    ("h3-multa-quattro-ore",
+     "No: la multa non può superare quattro ore della retribuzione base (art. 7 Statuto dei lavoratori). Parlane con un avvocato o con il sindacato.",
+     "Sì, una giornata di stipendio è una multa possibile se la prevede il contratto collettivo."),
+    ("h3-licenziamento-a-voce",
+     "No: il licenziamento va comunicato per iscritto, altrimenti è inefficace (L. 604/1966, art. 2). Rivolgiti a un avvocato giuslavorista.",
+     "Il licenziamento orale è valido, ma puoi chiedere i motivi entro quindici giorni."),
     ("ho-caparra", "Se il venditore è inadempiente puoi recedere ed esigere il doppio della caparra versata. Fatti seguire da un avvocato.",
      "Se il venditore si tira indietro puoi chiedere solo la restituzione della caparra."),
     ("ho-penale-eccessiva", "Il giudice può ridurre equamente la penale se è manifestamente eccessiva. Sentite un avvocato.",

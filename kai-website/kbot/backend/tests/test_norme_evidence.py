@@ -459,3 +459,10 @@ def test_avviso_solo_sulle_cifre_del_comma_nominato_dalla_nota():
     corpo, _ = E._ripulisci(grezzo)
     avv = E.vigenza_avviso(grezzo, corpo)
     assert "«20 per cento»" in avv and "«15 per cento»" in avv and "1 per cento" not in avv.replace("15 per cento", "").replace("20 per cento", "")
+
+
+def test_la_rubrica_si_legge_anche_nel_formato_con_il_titolo_della_norma():
+    # formato AKN moderno e supplemento: «# Art. 7 — Legge\n\n(Sanzioni disciplinari)» (prima la rubrica restava vuota)
+    assert E._RUBRICA.search("# Art. 7 — Legge\n\n(Sanzioni disciplinari)\n\nLe norme...").group(1) == "Sanzioni disciplinari"
+    assert E._RUBRICA.search("# Art. 2118 Codice Civile Art. 2118. (Recesso dal contratto a tempo indeterminato). Ciascuno")
+    assert E._RUBRICA.search("# Art. 3 — Decreto Legislativo\n\n(Licenziamento per giustificato motivo)\n\n1.").group(1).startswith("Licenziamento")
