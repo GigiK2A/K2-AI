@@ -829,12 +829,58 @@ def _norm_art(a: str) -> str:
 _testo_utente: contextvars.ContextVar = contextvars.ContextVar("kbot_testo_utente", default=None)
 
 
+_MESI = {m: i for i, m in enumerate(("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+                                     "settembre", "ottobre", "novembre", "dicembre"), 1)}
+_RE_DATA_NUM = re.compile(r"(?<![\d/])(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})(?![\d/])")
+_RE_DATA_TXT = re.compile(r"\b(\d{1,2})\s+(" + "|".join(_MESI) + r")\s+(\d{4})\b", re.I)
+
+
+def _date_nel_testo(testo: str) -> list:
+    import datetime as _dt
+    out = []
+    for g, m, a in [(x.group(1), x.group(2), x.group(3)) for x in _RE_DATA_NUM.finditer(testo)] + \
+                   [(x.group(1), _MESI[x.group(2).lower()], x.group(3)) for x in _RE_DATA_TXT.finditer(testo)]:
+        try:
+            d = _dt.date(int(a), int(m), int(g))
+        except ValueError:
+            continue
+        if d not in out:
+            out.append(d)
+    return out[:12]
+
+
+def durate_dalle_date(testo: str) -> set:
+    """Le durate che si ricavano dalle date scritte dall'utente (es. 14/04/2026 → 14/06/2026 = 61 giorni, 2 mesi):
+    sono numeri CALCOLATI dai suoi dati, non numeri a memoria del modello. Si tollera ±1 giorno e l'arrotondamento
+    a 10 giorni / ai mesi interi, perché il modello dice «60 giorni» per 61. Misurato il 19/10/2026: la guardia
+    sostituiva con «il termine previsto dalla normativa» anche questa durata."""
+    date = _date_nel_testo(testo or "")
+    out: set = set()
+    for i in range(len(date)):
+        for j in range(i + 1, len(date)):
+            giorni = abs((date[j] - date[i]).days)
+            if giorni == 0:
+                continue
+            for g in {giorni - 1, giorni, giorni + 1, round(giorni / 10) * 10, round(giorni / 30.44) * 30}:
+                if g > 0:
+                    out.add((g, "gio"))
+            mesi = round(giorni / 30.44)
+            if mesi >= 1:
+                out.add((mesi, "mes"))
+            if giorni >= 7:
+                out.add((round(giorni / 7), "set"))
+            if giorni >= 365:
+                out.add((round(giorni / 365.25), "ann"))
+    return out
+
+
 def imposta_testo_utente(testo: Optional[str]) -> None:
     if not testo:
         _testo_utente.set(None)
         return
     norm = re.sub(r"\s+", " ", testo).lower()
-    _testo_utente.set((coppie_nel_testo(testo), numeri_nel_testo(testo), norm))
+    coppie = set(coppie_nel_testo(testo)) | durate_dalle_date(testo)
+    _testo_utente.set((coppie, numeri_nel_testo(testo), norm))
 
 
 def testo_utente_corrente():
