@@ -8,7 +8,7 @@ from typing import List, Optional
 from ..settings import CHAT_SYSTEM_MAX_CHARS
 from .skills import load_skill_bundle
 from . import profile as profile_mod
-from . import rag, signals, strategy_alternatives, client_profile, privacy_case, scheda_cliente, avvisi_input
+from . import rag, signals, strategy_alternatives, client_profile, privacy_case, scheda_cliente, avvisi_input, indici_e_bozze
 
 REPORT_TYPES_OVERVIEW = """TIPI DI ANALISI / REPORT che puoi produrre (K-BOT PREMIUM = SOLO analisi e report, NON proporre automazioni o implementazioni software):
 - Analisi di bilancio / salute finanziaria e bancabilità (flussi di cassa, margini, indici, solvibilità)
@@ -349,6 +349,10 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
     profile_context = profile_mod.render_block(session.get("_profilo"))
     # SCHEDA DEL CLIENTE: i fatti detti dall'utente in QUESTA conversazione (oltre la finestra di 12 messaggi).
     profile_context += scheda_cliente.render_block(collected.get("scheda_cliente"))
+    # Glossario degli indici e regola delle bozze: solo quando l'ultimo messaggio (o i due precedenti dell'utente) li richiama.
+    _recenti = [str(m.get("content") or "") for m in (session.get("messages") or [])
+                if isinstance(m, dict) and m.get("role") == "user"][-3:]
+    profile_context += indici_e_bozze.blocchi(" \n".join(_recenti))
 
     base_prompt = f"""Sei K-BOT, il consulente AI di K2-AI per PMI, professionisti e partite IVA italiane.
 Copri i temi d'impresa a 360°: legale, finanza, fisco, organizzazione, HR, marketing, strategia, operations, gestione quotidiana. Il tuo obiettivo è essere il punto di riferimento dell'imprenditore: un consulente sempre disponibile che aiuta a capire i problemi e a decidere — e che SOLO QUANDO SERVE produce un'analisi professionale approfondita (report premium). PRINCIPIO GUIDA: prima consulente, poi generatore di report.

@@ -1,0 +1,593 @@
+{
+ "meta": {
+  "data": "2026-10-19T14:37:41.017365+00:00",
+  "base_url": "http://127.0.0.1:8171/api/kbot",
+  "modello": "",
+  "commit": "0d0d826",
+  "file_casi": "casi.json",
+  "ripetizioni": 3,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "931cb296-2c03-45e4-8514-a44834d8ad6b",
+   "00bbdb50-1110-4962-87d3-d8aa79355533",
+   "76871179-6f49-4e71-a948-eb0288692dc0",
+   "78b1080c-76d6-4c5e-86f1-2972a4ecad86",
+   "0b5655b0-62f4-4bde-a66a-a35101e3c4b2",
+   "7bbf37ed-8b5c-4396-956e-9be372ed2550"
+  ],
+  "rivalutato_il": "2026-10-19T14:40:45.139576+00:00",
+  "rivalutato_da": "indici-new-2026-10-19.json",
+  "commit_rivalutazione": "0d0d826"
+ },
+ "riepilogo": {
+  "esecuzioni": 6,
+  "ripetizioni": 3,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 4,
+    "specifici_tot": 5,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 2,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 4,
+    "specifici_tot": 5,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 3,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 4,
+    "specifici_tot": 5,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     4,
+     4,
+     4
+    ],
+    "media": 4.0,
+    "sd": 0.0
+   },
+   "generici_ok": {
+    "valori": [
+     16,
+     16,
+     16
+    ],
+    "media": 16.0,
+    "sd": 0.0
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     1,
+     1,
+     1
+    ],
+    "media": 1.0,
+    "sd": 0.0
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     2,
+     2,
+     2
+    ],
+    "media": 2.0,
+    "sd": 0.0
+   }
+  },
+  "controlli_instabili": [],
+  "casi": 6,
+  "casi_senza_difetti_generici": 6,
+  "casi_con_attese_specifiche": 6,
+  "casi_con_attese_tutte_rispettate": 3,
+  "controlli_generici": "48/48",
+  "controlli_specifici": "12/15",
+  "per_controllo": {
+   "generici.frasi_integre": "6/6",
+   "generici.nessun_errore_di_stream": "6/6",
+   "generici.nessun_testo_del_critico": "6/6",
+   "generici.nessuna_autocorrezione": "6/6",
+   "generici.nessuna_fuga_prompt": "6/6",
+   "generici.nessuna_lingua_estranea": "6/6",
+   "generici.risposta_non_vuota": "6/6",
+   "generici.testo_letto_uguale_finale": "6/6",
+   "specifici.fatti_alternativi": "3/6",
+   "specifici.fatti_presenti": "6/6",
+   "specifici.non_spinge_vendita": "3/3"
+  },
+  "latenza_s": {
+   "mediana": 44.7,
+   "p90": 99.6,
+   "max": 99.6
+  },
+  "primo_token_s": {
+   "mediana": 6.65,
+   "p90": 33.9,
+   "max": 33.9
+  }
+ },
+ "risultati": [
+  {
+   "id": "contr-interessi-mora",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "931cb296-2c03-45e4-8514-a44834d8ad6b",
+   "turni": [
+    {
+     "utente": "Un'azienda cliente non ci paga da 8 mesi una fattura di 3.000 euro. Che interessi posso chiedere?",
+     "streamato": "Sì, puoi chiedere gli interessi: la fattura è scaduta da 8 mesi e, tra imprese, gli interessi moratori corrono automaticamente dal giorno dopo la scadenza, senza bisogno di solleciti o messa in mora (art. 4 D.Lgs. 231/2002).\n\nCosa puoi pretendere concretamente:\n- Interessi legali di mora: la misura si aggira al di sopra del 5% annuo (il tasso legale di base è il 5%, ma gli interessi moratori tra imprese seguono un tasso di riferimento più alto, pubblicato semestralmente dal MEF sulla Gazzetta Ufficiale). Per l'importo esatto di questi 8 mesi va verificato il tasso di riferimento in vigore per i due semestri coperti dal ritardo.\n- Indennizzo forfettario di 40 euro a titolo di risarcimento delle spese di recupero, dovuto senza messa in mora (art. 6 D.Lgs. 231/2002), più la prova di eventuali costi aggiuntivi sostenuti per sollecitare il pagamento.\n\nCosa fare nei prossimi passi:\n1. Inviare al cliente un sollecito scritto (PEC o raccomandata) in cui chiedi il saldo di 3.000 euro, gli interessi di mora maturati e l'indennizzo di 40 euro, con un termine per pagare (ad esempio 10-15 giorni).\n2. Se non paga, valuta un esperimento di negoziazione o la diffida; se l'importo lo giustifica, anche il recupero stragiudiziale (es. avvio di procedura monitoria) o l'eventuale iscrizione al registro degli inadempienti, sempre verificando la corretta documentazione del rapporto.\n3. Verifica che la fattura e il contratto rispettino la disciplina sui tempi di pagamento: se nel contratto c'era un termine pattuito oltre i 60 giorni, doveva essere espresso per iscritto e non gravemente iniquo (art. 4, comma 3 D.Lgs. 231/2002), altrimenti si applica di norma il termine di 30 giorni dal ricevimento della fattura.\n\nConsiglio: prima di inviare il sollecito, ricostruisci con precisione la data di scadenza (30 giorni dal ricevimento o il termine pattuito nel contratto) e il tasso di riferimento SEMESTRALE in vigore nel periodo del ritardo, così da quantificare esattamente gli interessi da chiedere: un importo calcolato bene dà più forza al sollecito.",
+     "visibile": "Sì, puoi chiedere gli interessi: la fattura è scaduta da 8 mesi e, tra imprese, gli interessi moratori corrono automaticamente dal giorno dopo la scadenza, senza bisogno di solleciti o messa in mora (art. 4 D.Lgs. 231/2002).\n\nCosa puoi pretendere concretamente:\n- Interessi legali di mora: la misura si aggira al di sopra del 5% annuo (il tasso legale di base è il 5%, ma gli interessi moratori tra imprese seguono un tasso di riferimento più alto, pubblicato semestralmente dal MEF sulla Gazzetta Ufficiale). Per l'importo esatto di questi 8 mesi va verificato il tasso di riferimento in vigore per i due semestri coperti dal ritardo.\n- Indennizzo forfettario di 40 euro a titolo di risarcimento delle spese di recupero, dovuto senza messa in mora (art. 6 D.Lgs. 231/2002), più la prova di eventuali costi aggiuntivi sostenuti per sollecitare il pagamento.\n\nCosa fare nei prossimi passi:\n1. Inviare al cliente un sollecito scritto (PEC o raccomandata) in cui chiedi il saldo di 3.000 euro, gli interessi di mora maturati e l'indennizzo di 40 euro, con un termine per pagare (ad esempio 10-15 giorni).\n2. Se non paga, valuta un esperimento di negoziazione o la diffida; se l'importo lo giustifica, anche il recupero stragiudiziale (es. avvio di procedura monitoria) o l'eventuale iscrizione al registro degli inadempienti, sempre verificando la corretta documentazione del rapporto.\n3. Verifica che la fattura e il contratto rispettino la disciplina sui tempi di pagamento: se nel contratto c'era un termine pattuito oltre i 60 giorni, doveva essere espresso per iscritto e non gravemente iniquo (art. 4, comma 3 D.Lgs. 231/2002), altrimenti si applica di norma il termine di 30 giorni dal ricevimento della fattura.\n\nConsiglio: prima di inviare il sollecito, ricostruisci con precisione la data di scadenza (30 giorni dal ricevimento o il termine pattuito nel contratto) e il tasso di riferimento SEMESTRALE in vigore nel periodo del ritardo, così da quantificare esattamente gli interessi da chiedere: un importo calcolato bene dà più forza al sollecito.\n\nFonti: D.Lgs 231/2002, art. 4; D.Lgs 231/2002, art. 6.",
+     "latenza_s": 80.1,
+     "primo_token_s": 33.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: tasso BCE + 8 punti"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 33.9s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "bil-indici",
+   "ripetizione": 1,
+   "dominio": "bilancio",
+   "stato": "calcolo",
+   "session_id": "00bbdb50-1110-4962-87d3-d8aa79355533",
+   "turni": [
+    {
+     "utente": "Ti do i numeri del nostro bilancio 2025: ricavi 4.200.000 euro, EBITDA 380.000, utile netto 90.000, patrimonio netto 600.000, debiti finanziari verso banche 1.900.000, liquidità in cassa 250.000. Senza passare dal commercialista: com'è messa l'azienda? La banca può farci altro credito?",
+     "streamato": "Prima di tutto, una precisazione importante che cambia il quadro: la liquidità in cassa non è \"in conto corrente\", ma fisicamente in cassa. Questo è un dettaglio critico per la banca e per la tua capacità di reagire alle urgenze, perché i soldi in cassa sono immobilizzati e non immediatamente disponibili per coprire gli scostamenti di cassa o le spese imprevise se non li sposti.\n\nDetto questo, i numeri che mi hai dato raccontano una situazione di **stress finanziario elevato**, ma non necessariamente di crisi irreversibile. Vediamo i punti chiave:\n\n1.  **Leva finanziaria molto alta**: I debiti finanziari (1,9 milioni) sono 3,17 volte il patrimonio netto (600k). In gergo bancario, una leva così alta (D/E > 3) è spesso una \"red flag\" che limita la capacità di ottenere nuovi crediti senza garanzie aggiuntive o peggiorare i tassi.\n2.  **Posizione Finanziaria Neta (PFN) molto negativa**: PFN = Debiti finanziari - Disponibilità liquide = 1.900.000 - 250.000 = **1.650.000 euro di debito netto**. La banca guarda prima di tutto a questo: quanta liquidità \"netta\" serve per rimborsare il debito?\n3.  **Copertura del debito con l'EBITDA**: PFN / EBITDA = 1.650.000 / 380.000 ≈ **4,34 anni**. Significa che, se l'EBITDA rimanesse costante e tutto l'utile operativo andasse a rimborsare il debito netto, ci vorrebbero 4,34 anni. Per una PMI, è un valore alto: la banca valuta di solito positivamente un rapporto sotto 2,5-3,0.\n4.  **Marginalità**: L'EBITDA margin è 380.000 / 4.200.000 ≈ **9,05%**. È un margine operativo lordo basso, tipico di settori con poca leva su prezzo o alta incidenza di costi variabili/fissi. Non c'è un \"cuscinetto\" ampio se i ricavi calano o i costi salgono.\n\n**La banca può farvi altro credito?**\nMolto probabilmente **difficilmente** in condizioni favorevoli, e con molta probabilità richiederà:\n*   Riduzione del debito esistente.\n*   Garanzie reali (ipoteche, pegni su macchinari o crediti) o fideiussione di soci/familiari.\n*   Un piano di ammortamento più rapido.\n*   Maggiori tassi di interesse per compensare il rischio.\n\nIl collo di bottiglia non è tanto il fatturato (4,2M è un buon volume), ma la **struttura patrimoniale** e la **bassa liquidità netta**.\n\n**Domanda chiave per capire se c'è margine di manovra:**\nHai indicato la liquidità in \"cassa\". Quale è la situazione dei **crediti verso clienti** (DSO) e dei **debiti verso fornitori**?\n*   Se i clienti pagano tardi (DSO alto), hai un fabbisogno di capitale circolante nascosto.\n*   Se i fornitori ti danno 60-90 giorni, stai finanziando parte del tuo debito bancario con loro, il che è sostenibile solo se la catena non si inceppa.\n\nQuesta informazione (DSO e DPO) cambia radicalmente la risposta: se hai crediti fermi da 90+ giorni, il problema è incasso; se i fornitori pagano a 30 giorni, il problema è la struttura del debito.\n\nDimmi: **qual è il tempo medio di incasso dei clienti e quello di pagamento ai fornitori?**",
+     "visibile": "Prima di tutto, una precisazione importante che cambia il quadro: la liquidità in cassa non è \"in conto corrente\", ma fisicamente in cassa. Questo è un dettaglio critico per la banca e per la tua capacità di reagire alle urgenze, perché i soldi in cassa sono immobilizzati e non immediatamente disponibili per coprire gli scostamenti di cassa o le spese imprevise se non li sposti.\n\nDetto questo, i numeri che mi hai dato raccontano una situazione di stress finanziario elevato, ma non necessariamente di crisi irreversibile. Vediamo i punti chiave:\n\n1. Leva finanziaria molto alta: I debiti finanziari (1,9 milioni) sono 3,17 volte il patrimonio netto (600k). In gergo bancario, una leva così alta (D/E > 3) è spesso una \"red flag\" che limita la capacità di ottenere nuovi crediti senza garanzie aggiuntive o peggiorare i tassi.\n2. Posizione Finanziaria Neta (PFN) molto negativa: PFN = Debiti finanziari - Disponibilità liquide = 1.900.000 - 250.000 = 1.650.000 euro di debito netto. La banca guarda prima di tutto a questo: quanta liquidità \"netta\" serve per rimborsare il debito?\n3. Copertura del debito con l'EBITDA: PFN / EBITDA = 1.650.000 / 380.000 ≈ 4,34 anni. Significa che, se l'EBITDA rimanesse costante e tutto l'utile operativo andasse a rimborsare il debito netto, ci vorrebbero 4,34 anni. Per una PMI, è un valore alto: la banca valuta di solito positivamente un rapporto sotto 2,5-3,0.\n4. Marginalità: L'EBITDA margin è 380.000 / 4.200.000 ≈ 9,05%. È un margine operativo lordo basso, tipico di settori con poca leva su prezzo o alta incidenza di costi variabili/fissi. Non c'è un \"cuscinetto\" ampio se i ricavi calano o i costi salgono.\n\nLa banca può farvi altro credito?\nMolto probabilmente difficilmente in condizioni favorevoli, e con molta probabilità richiederà:\n- Riduzione del debito esistente.\n- Garanzie reali (ipoteche, pegni su macchinari o crediti) o fideiussione di soci/familiari.\n- Un piano di ammortamento più rapido.\n- Maggiori tassi di interesse per compensare il rischio.\n\nIl collo di bottiglia non è tanto il fatturato (4,2M è un buon volume), ma la struttura patrimoniale e la bassa liquidità netta.\n\nDomanda chiave per capire se c'è margine di manovra:\nHai indicato la liquidità in \"cassa\". Quale è la situazione dei crediti verso clienti (DSO) e dei debiti verso fornitori?\n- Se i clienti pagano tardi (DSO alto), hai un fabbisogno di capitale circolante nascosto.\n- Se i fornitori ti danno 60-90 giorni, stai finanziando parte del tuo debito bancario con loro, il che è sostenibile solo se la catena non si inceppa.\n\nQuesta informazione (DSO e DPO) cambia radicalmente la risposta: se hai crediti fermi da 90+ giorni, il problema è incasso; se i fornitori pagano a 30 giorni, il problema è la struttura del debito.\n\nDimmi: qual è il tempo medio di incasso dei clienti e quello di pagamento ai fornitori?",
+     "latenza_s": 99.6,
+     "primo_token_s": 19.4,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      false,
+      "latenza 99.6s > 90s"
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "contr-interessi-mora",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "76871179-6f49-4e71-a948-eb0288692dc0",
+   "turni": [
+    {
+     "utente": "Un'azienda cliente non ci paga da 8 mesi una fattura di 3.000 euro. Che interessi posso chiedere?",
+     "streamato": "Puoi chiedere gli interessi moratori di legge: in generale scattano automaticamente dal giorno dopo la scadenza del termine di pagamento, senza bisogno di una formale diffida. Per le transazioni tra imprese, il termine massimo ordinario è di 30 giorni dalla ricezione della fattura (o della richiesta di pagamento equivalente); se nel contratto c’è un termine pattuito superiore, deve essere espresso e provato per iscritto, e se supera i 60 giorni deve anche non essere gravemente iniquo per il creditore (D.Lgs 231/2002, art. 4).\n\nIn pratica, per i tuoi 3.000 euro in ritardo da 8 mesi, hai diritto a:\n\n1. **Interessi moratori** al tasso legale di mora, che decorre dal giorno dopo la scadenza del termine (30 giorni se non c’è pattuizione diversa) (D.Lgs 231/2002, art. 4 e 5). Il saggio è quello pubblicato per semestre; per un calcolo preciso va verificato il tasso vigente nella Gazzetta Ufficiale al momento del ritardo.\n2. **Indennizzo forfettario di 40 euro** per le spese di recupero del credito, senza bisogno di prova del danno maggiore (D.Lgs 231/2002, art. 6).\n3. Eventuali **spese accessorie** (es. costo di un legale o di una società di recupero) se provi un danno superiore al forfettario.\n\nPassi successivi consigliati:\n\n- **Verifica la data di scadenza** della fattura e, se presente, il termine di pagamento pattuito nel contratto.\n- **Calcola gli interessi** dal giorno dopo la scadenza alla data del pagamento effettivo o al momento della proposta di pagamento bonario.\n- **Invia un sollecito formale** (meglio PEC o raccomandata) in cui chiedi il capitale, gli interessi e l’indennizzo di 40 euro, riservandoti ogni azione per il recupero.\n- Se non ottieni risposta, valuta una **mediazione obbligatoria** (ove applicabile) o un’azione giudiziale per il recupero del credito: con 3.000 euro più interessi e spese, il rito del pagamento ingiuntivo può essere efficiente.\n\nSe mi dici la data esatta di emissione della fattura e se nel contratto c’è un termine di pagamento pattuito diverso da 30 giorni, posso aiutarti a stimare più precisamente la base di calcolo per gli interessi.",
+     "visibile": "Puoi chiedere gli interessi moratori di legge: in generale scattano automaticamente dal giorno dopo la scadenza del termine di pagamento, senza bisogno di una formale diffida. Per le transazioni tra imprese, il termine massimo ordinario è di 30 giorni dalla ricezione della fattura (o della richiesta di pagamento equivalente); se nel contratto c'è un termine pattuito superiore, deve essere espresso e provato per iscritto, e se supera i 60 giorni deve anche non essere gravemente iniquo per il creditore (D.Lgs 231/2002, art. 4).\n\nIn pratica, per i tuoi 3.000 euro in ritardo da 8 mesi, hai diritto a:\n\n1. Interessi moratori al tasso legale di mora, che decorre dal giorno dopo la scadenza del termine (30 giorni se non c'è pattuizione diversa) (D.Lgs 231/2002, art. 4 e 5). Il saggio è quello pubblicato per semestre; per un calcolo preciso va verificato il tasso vigente nella Gazzetta Ufficiale al momento del ritardo.\n2. Indennizzo forfettario di 40 euro per le spese di recupero del credito, senza bisogno di prova del danno maggiore (D.Lgs 231/2002, art. 6).\n3. Eventuali spese accessorie (es. costo di un legale o di una società di recupero) se provi un danno superiore al forfettario.\n\nPassi successivi consigliati:\n\n- Verifica la data di scadenza della fattura e, se presente, il termine di pagamento pattuito nel contratto.\n- Calcola gli interessi dal giorno dopo la scadenza alla data del pagamento effettivo o al momento della proposta di pagamento bonario.\n- Invia un sollecito formale (meglio PEC o raccomandata) in cui chiedi il capitale, gli interessi e l'indennizzo di 40 euro, riservandoti ogni azione per il recupero.\n- Se non ottieni risposta, valuta una mediazione obbligatoria (ove applicabile) o un'azione giudiziale per il recupero del credito: con 3.000 euro più interessi e spese, il rito del pagamento ingiuntivo può essere efficiente.\n\nSe mi dici la data esatta di emissione della fattura e se nel contratto c'è un termine di pagamento pattuito diverso da 30 giorni, posso aiutarti a stimare più precisamente la base di calcolo per gli interessi.\n\nFonti: D.Lgs 231/2002, art. 4; D.Lgs 231/2002, art. 6.",
+     "latenza_s": 46.7,
+     "primo_token_s": 6.4,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: tasso BCE + 8 punti"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "bil-indici",
+   "ripetizione": 2,
+   "dominio": "bilancio",
+   "stato": "calcolo",
+   "session_id": "78b1080c-76d6-4c5e-86f1-2972a4ecad86",
+   "turni": [
+    {
+     "utente": "Ti do i numeri del nostro bilancio 2025: ricavi 4.200.000 euro, EBITDA 380.000, utile netto 90.000, patrimonio netto 600.000, debiti finanziari verso banche 1.900.000, liquidità in cassa 250.000. Senza passare dal commercialista: com'è messa l'azienda? La banca può farci altro credito?",
+     "streamato": "Con questi numeri la risposta breve è: l'azienda genera cassa, ma il rapporto debito/banca è quello che ti preoccupa davvero.\n\nIndici chiave:\n- EBITDA margin: 380.000 / 4.200.000 ≈ 9% (margine operativo modesto)\n- PFN: 1.900.000 − 250.000 = 1.650.000\n- PFN/EBITDA: 1.650.000 / 380.000 ≈ 4,3 anni di EBITDA per ripagare il debito netto\n- Leva finanziaria: 1.900.000 / 600.000 ≈ 3,2 (debito ben oltre il patrimonio)\n- Copertura oneri finanziari: dipende dagli interessi, ma l'EBITDA copre solo ~380k di costi/rischio\n\nPer la banca: un PFN/EBITDA intorno a 4,3 e una leva 3,2 non sono valori che facilitano nuovo credito, soprattutto se i covenants non lo consentono e se il margine resta sotto il 10%. Non è un \"no\" automatico, ma aspettati condizioni stringenti: garanzia, tasso più alto, o richiesta di ridurre il debito.\n\nPrima di dire \"la banca può o non può\", serve una cosa che cambia tutto:\nQuali sono i covenants attuali nel contratto di fido/credito (rapporto PFN/EBITDA massimo, indebitamento minimo, DSO, margini) e quanto resta di fido disponibile oggi? Se li superi, il problema non è chiedere più, è che potresti violare le condizioni già oggi.",
+     "visibile": "Con questi numeri la risposta breve è: l'azienda genera cassa, ma il rapporto debito/banca è quello che ti preoccupa davvero.\n\nIndici chiave:\n- EBITDA margin: 380.000 / 4.200.000 ≈ 9% (margine operativo modesto)\n- PFN: 1.900.000 − 250.000 = 1.650.000\n- PFN/EBITDA: 1.650.000 / 380.000 ≈ 4,3 anni di EBITDA per ripagare il debito netto\n- Leva finanziaria: 1.900.000 / 600.000 ≈ 3,2 (debito ben oltre il patrimonio)\n- Copertura oneri finanziari: dipende dagli interessi, ma l'EBITDA copre solo ~380k di costi/rischio\n\nPer la banca: un PFN/EBITDA intorno a 4,3 e una leva 3,2 non sono valori che facilitano nuovo credito, soprattutto se i covenants non lo consentono e se il margine resta sotto il 10%. Non è un \"no\" automatico, ma aspettati condizioni stringenti: garanzia, tasso più alto, o richiesta di ridurre il debito.\n\nPrima di dire \"la banca può o non può\", serve una cosa che cambia tutto:\nQuali sono i covenants attuali nel contratto di fido/credito (rapporto PFN/EBITDA massimo, indebitamento minimo, DSO, margini) e quanto resta di fido disponibile oggi? Se li superi, il problema non è chiedere più, è che potresti violare le condizioni già oggi.",
+     "latenza_s": 33.1,
+     "primo_token_s": 6.5,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "contr-interessi-mora",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "0b5655b0-62f4-4bde-a66a-a35101e3c4b2",
+   "turni": [
+    {
+     "utente": "Un'azienda cliente non ci paga da 8 mesi una fattura di 3.000 euro. Che interessi posso chiedere?",
+     "streamato": "Puoi chiedere gli interessi di mora, che maturano automaticamente dal giorno successivo alla scadenza del termine di pagamento (non serve farli “maturare” con una diffida). Nel B2B il termine di pagamento base è di 30 giorni dalla ricezione della fattura (art. 4 D.Lgs 231/2002), salvo che nel contratto sia previsto un termine maggiore, espressamente scritto e non “gravemente iniquo” (oltre 60 giorni va pattuito espressamente per iscritto).\n\nSul tasso: la norma prevede che gli interessi moratori siano determinati nella misura degli interessi legali di mora, oppure secondo un tasso concordato nel contratto entro i limiti di legge (art. 5 D.Lgs 231/2002). In pratica, se non c’è patto diverso, il riferimento è il tasso legale (art. 1284 c.c., che di norma viene aggiornato annualmente con decreto ministeriale: il valore esatto dipende dall’anno in corso, da verificare sul bollettino ufficiale).\n\nIn più, indipendentemente dagli interessi, puoi chiedere:\n- un importo forfettario di 40 euro a titolo di risarcimento del danno da recupero del credito (art. 6 D.Lgs 231/2002);\n- il rimborso dei costi effettivamente sostenuti per il recupero (es. spese di agenzia/avvocato, se le hai sostenute e puoi dimostrarle), oltre i 40 euro.\n\nPrima di chiedere qualsiasi cifra, verifica due cose:\n1) la scadenza effettiva del pagamento scritta sulla fattura o nel contratto (se non c’è, vale i 30 giorni);\n2) se nel contratto c’è una clausola sul tasso di mora diverso dal legale.\n\nVuoi che ti prepari il calcolo preciso degli interessi e il testo di una diffida formale (PEC) con la richiesta? Per farlo mi servono: data di emissione della fattura, termine di pagamento pattuito, se il cliente è una PA o una normale impresa, e se hai già inviato solleciti.",
+     "visibile": "Puoi chiedere gli interessi di mora, che maturano automaticamente dal giorno successivo alla scadenza del termine di pagamento (non serve farli «maturare» con una diffida). Nel B2B il termine di pagamento base è di 30 giorni dalla ricezione della fattura (art. 4 D.Lgs 231/2002), salvo che nel contratto sia previsto un termine maggiore, espressamente scritto e non «gravemente iniquo» (oltre 60 giorni va pattuito espressamente per iscritto).\n\nSul tasso: la norma prevede che gli interessi moratori siano determinati nella misura degli interessi legali di mora, oppure secondo un tasso concordato nel contratto entro i limiti di legge (art. 5 D.Lgs 231/2002). In pratica, se non c'è patto diverso, il riferimento è il tasso legale (art. 1284 c.c., che di norma viene aggiornato annualmente con decreto ministeriale: il valore esatto dipende dall'anno in corso, da verificare sul bollettino ufficiale).\n\nIn più, indipendentemente dagli interessi, puoi chiedere:\n- un importo forfettario di 40 euro a titolo di risarcimento del danno da recupero del credito (art. 6 D.Lgs 231/2002);\n- il rimborso dei costi effettivamente sostenuti per il recupero (es. spese di agenzia/avvocato, se le hai sostenute e puoi dimostrarle), oltre i 40 euro.\n\nPrima di chiedere qualsiasi cifra, verifica due cose:\n1) la scadenza effettiva del pagamento scritta sulla fattura o nel contratto (se non c'è, vale i 30 giorni);\n2) se nel contratto c'è una clausola sul tasso di mora diverso dal legale.\n\nVuoi che ti prepari il calcolo preciso degli interessi e il testo di una diffida formale (PEC) con la richiesta? Per farlo mi servono: data di emissione della fattura, termine di pagamento pattuito, se il cliente è una PA o una normale impresa, e se hai già inviato solleciti.\n\nFonti: D.Lgs 231/2002, art. 4; D.Lgs 231/2002, art. 5; D.Lgs 231/2002, art. 6; art. 1284 c.c.",
+     "latenza_s": 36.7,
+     "primo_token_s": 5.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: tasso BCE + 8 punti"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "bil-indici",
+   "ripetizione": 3,
+   "dominio": "bilancio",
+   "stato": "calcolo",
+   "session_id": "7bbf37ed-8b5c-4396-956e-9be372ed2550",
+   "turni": [
+    {
+     "utente": "Ti do i numeri del nostro bilancio 2025: ricavi 4.200.000 euro, EBITDA 380.000, utile netto 90.000, patrimonio netto 600.000, debiti finanziari verso banche 1.900.000, liquidità in cassa 250.000. Senza passare dal commercialista: com'è messa l'azienda? La banca può farci altro credito?",
+     "streamato": "Ti rispondo subito con i numeri che hai dato: la situazione è fragile, e su un nuovo fido la banca avrebbe molte perplessità.\n\nI tre indici chiave:\n- Leva finanziaria: 1,9M / 600k = circa 3,2. La banca guarda proprio questo rapporto: è alto, significa che il debito vale più di tre volte il patrimonio. In genere si considera prudente stare sotto 1-1,5, qui siamo ben oltre.\n- Posizione finanziaria netta: 1,9M - 250k = 1,65M di debiti netti.\n- PFN/EBITDA: 1,65M / 380k = circa 4,3. Sono gli anni di EBITDA che servirebbero a ripagare il debito netto: per una PMI è un livello che una banca non apprezza.\n\nMargine EBITDA: 380k / 4,2M = circa 9%, che da solo non è allarmante. Il problema non è la redditività, è il debito: anche se l'azienda genera un utile, è troppo indebitata rispetto alla propria dimensione patrimoniale.\n\nSu \"può farci altro credito\": in base a questi numeri, da sola la banca probabilmente direbbe di no o al massimo offrirti condizioni molto restrittive (garanzie personali, tassi più alti, fido ridotto). Non è un rifiuto automatico, ma è il punto debole da trattare.\n\nPer capire se la posizione è davvero così critica o se c'è margine, mi serve un dato: dei 2,15M di crediti verso clienti (se ne hai) e dei debiti verso fornitori, quali sono le scadenze? In pratica: quanta liquidità ti serve nei prossimi 3 mesi per pagare stipendi, fornitori e rate bancarie? Questo distingue una crisi di cassa da una struttura di debito semplicemente troppo alta.",
+     "visibile": "Ti rispondo subito con i numeri che hai dato: la situazione è fragile, e su un nuovo fido la banca avrebbe molte perplessità.\n\nI tre indici chiave:\n- Leva finanziaria: 1,9M / 600k = circa 3,2. La banca guarda proprio questo rapporto: è alto, significa che il debito vale più di tre volte il patrimonio. In genere si considera prudente stare sotto 1-1,5, qui siamo ben oltre.\n- Posizione finanziaria netta: 1,9M - 250k = 1,65M di debiti netti.\n- PFN/EBITDA: 1,65M / 380k = circa 4,3. Sono gli anni di EBITDA che servirebbero a ripagare il debito netto: per una PMI è un livello che una banca non apprezza.\n\nMargine EBITDA: 380k / 4,2M = circa 9%, che da solo non è allarmante. Il problema non è la redditività, è il debito: anche se l'azienda genera un utile, è troppo indebitata rispetto alla propria dimensione patrimoniale.\n\nSu \"può farci altro credito\": in base a questi numeri, da sola la banca probabilmente direbbe di no o al massimo offrirti condizioni molto restrittive (garanzie personali, tassi più alti, fido ridotto). Non è un rifiuto automatico, ma è il punto debole da trattare.\n\nPer capire se la posizione è davvero così critica o se c'è margine, mi serve un dato: dei 2,15M di crediti verso clienti (se ne hai) e dei debiti verso fornitori, quali sono le scadenze? In pratica: quanta liquidità ti serve nei prossimi 3 mesi per pagare stipendi, fornitori e rate bancarie? Questo distingue una crisi di cassa da una struttura di debito semplicemente troppo alta.",
+     "latenza_s": 42.7,
+     "primo_token_s": 6.8,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  }
+ ]
+}

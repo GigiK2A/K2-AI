@@ -1,0 +1,603 @@
+{
+ "meta": {
+  "data": "2026-10-19T14:48:46.941957+00:00",
+  "base_url": "http://127.0.0.1:8173/api/kbot",
+  "modello": "",
+  "commit": "0d0d826",
+  "file_casi": "casi.json",
+  "ripetizioni": 3,
+  "budget": {
+   "latenza": 90.0,
+   "primo_token": 20.0
+  },
+  "sessioni_create": [
+   "e9f6a370-eb59-45fa-825d-30a6894658ba",
+   "18ecb643-b3ac-4c77-b968-eae8c57c2270",
+   "e7606a86-a64d-4103-b9e7-93bde119d7f0",
+   "667d9e64-d026-4fa5-84dd-a06dae1837ca",
+   "d2f6975d-9c69-40b3-9626-521619fdf8c9",
+   "9435ca0e-2e5b-4bb9-ab4c-8e472c0fb0ad"
+  ]
+ },
+ "riepilogo": {
+  "esecuzioni": 6,
+  "ripetizioni": 3,
+  "per_ripetizione": [
+   {
+    "ripetizione": 1,
+    "casi": 2,
+    "generici_ok": 15,
+    "generici_tot": 16,
+    "specifici_ok": 4,
+    "specifici_tot": 5,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 1
+   },
+   {
+    "ripetizione": 2,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 4,
+    "specifici_tot": 5,
+    "casi_tutte_attese": 1,
+    "casi_senza_difetti_generici": 2
+   },
+   {
+    "ripetizione": 3,
+    "casi": 2,
+    "generici_ok": 16,
+    "generici_tot": 16,
+    "specifici_ok": 5,
+    "specifici_tot": 5,
+    "casi_tutte_attese": 2,
+    "casi_senza_difetti_generici": 2
+   }
+  ],
+  "variazione_fra_ripetizioni": {
+   "specifici_ok": {
+    "valori": [
+     4,
+     4,
+     5
+    ],
+    "media": 4.33,
+    "sd": 0.58
+   },
+   "generici_ok": {
+    "valori": [
+     15,
+     16,
+     16
+    ],
+    "media": 15.67,
+    "sd": 0.58
+   },
+   "casi_tutte_attese": {
+    "valori": [
+     1,
+     1,
+     2
+    ],
+    "media": 1.33,
+    "sd": 0.58
+   },
+   "casi_senza_difetti_generici": {
+    "valori": [
+     1,
+     2,
+     2
+    ],
+    "media": 1.67,
+    "sd": 0.58
+   }
+  },
+  "controlli_instabili": [
+   {
+    "caso": "contr-interessi-mora",
+    "controllo": "generici.testo_letto_uguale_finale",
+    "ok": 2,
+    "su": 3
+   },
+   {
+    "caso": "contr-interessi-mora",
+    "controllo": "specifici.fatti_alternativi",
+    "ok": 1,
+    "su": 3
+   }
+  ],
+  "casi": 6,
+  "casi_senza_difetti_generici": 5,
+  "casi_con_attese_specifiche": 6,
+  "casi_con_attese_tutte_rispettate": 4,
+  "controlli_generici": "47/48",
+  "controlli_specifici": "13/15",
+  "per_controllo": {
+   "generici.frasi_integre": "6/6",
+   "generici.nessun_errore_di_stream": "6/6",
+   "generici.nessun_testo_del_critico": "6/6",
+   "generici.nessuna_autocorrezione": "6/6",
+   "generici.nessuna_fuga_prompt": "6/6",
+   "generici.nessuna_lingua_estranea": "6/6",
+   "generici.risposta_non_vuota": "6/6",
+   "generici.testo_letto_uguale_finale": "5/6",
+   "specifici.fatti_alternativi": "4/6",
+   "specifici.fatti_presenti": "6/6",
+   "specifici.non_spinge_vendita": "3/3"
+  },
+  "latenza_s": {
+   "mediana": 40.15,
+   "p90": 57.1,
+   "max": 57.1
+  },
+  "primo_token_s": {
+   "mediana": 5.0,
+   "p90": 26.4,
+   "max": 26.4
+  }
+ },
+ "risultati": [
+  {
+   "id": "contr-interessi-mora",
+   "ripetizione": 1,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "e9f6a370-eb59-45fa-825d-30a6894658ba",
+   "turni": [
+    {
+     "utente": "Un'azienda cliente non ci paga da 8 mesi una fattura di 3.000 euro. Che interessi posso chiedere?",
+     "streamato": "Sulla base delle fonti disponibili, la risposta è chiara:\n\n1. **Interessi di mora**: Decorrono automaticamente dal giorno successivo alla scadenza del pagamento, senza che sia necessaria la costituzione in mora (D.Lgs 231/2002, art. 4, comma 1).\n2. **Tasso applicabile**: Il tasso è quello degli interessi legali. Il saggio base è del 5% annuo, ma può essere modificato annualmente dal Ministero dell'Economia in base al rendimento medio dei titoli di Stato e all'inflazione (art. 1284 c.c.).\n3. **Compensazione forfettaria**: Hai diritto anche a un importo fisso di 40 euro a titolo di risarcimento del danno, senza bisogno di dimostrare costi specifici di recupero (D.Lgs 231/2002, art. 6, comma 2).\n\n**In pratica per 8 mesi di ritardo su 3.000 €:**\n- Interessi: 3.000 x 5% x (8/12) = **100 €** (approssimativo, da verificare il tasso esatto vigente per il semestre di riferimento).\n- Più i **40 €** di compensazione forfettaria.\n- Totale stimato: **circa 140 €**.\n\n**Cosa fare subito:**\n1. Invia una diffida formale (PEC o raccomandata) chiedendo il pagamento del capitale + interessi maturati + i 40 €.\n2. Specifica il termine ultimo (es. 15 giorni).\n3. Se non rispondono, valuta il ricorso al Giudice di Pace (per importi fino a 5.000 €) o l’affidamento a un recupero crediti.\n\n⚠️ *Nota: il tasso esatto degli interessi legali può variare ogni semestre. Verifica il valore vigente per il periodo specifico sul sito del Ministero o con il tuo commercialista.*\n\n---",
+     "visibile": "Sulla base delle fonti disponibili, la risposta è chiara:\n\n1. Interessi di mora: Decorrono automaticamente dal giorno successivo alla scadenza del pagamento, senza che sia necessaria la costituzione in mora (D.Lgs 231/2002, art. 4, comma 1).\n2. Tasso applicabile: Il tasso è quello degli interessi legali. Il saggio base è del 5% annuo, ma può essere modificato annualmente dal Ministero dell'Economia in base al rendimento medio dei titoli di Stato e all'inflazione (art. 1284 c.c.).\n3. Compensazione forfettaria: Hai diritto anche a un importo fisso di 40 euro a titolo di risarcimento del danno, senza bisogno di dimostrare costi specifici di recupero (D.Lgs 231/2002, art. 6, comma 2).\n\nIn pratica per 8 mesi di ritardo su 3.000 €:\n- Interessi: 3.000 x 5% x (8/12) = 100 € (approssimativo, da verificare il tasso esatto vigente per il semestre di riferimento).\n- Più i 40 € di compensazione forfettaria.\n- Totale stimato: circa 140 €.\n\nCosa fare subito:\n1. Invia una diffida formale (PEC o raccomandata) chiedendo il pagamento del capitale + interessi maturati + i 40 €.\n2. Specifica il termine ultimo (es. 15 giorni).\n3. Se non rispondono, valuta il ricorso al Giudice di Pace (per importi fino a 5.000 €) o l'affidamento a un recupero crediti.\n\n⚠️ *Nota: il tasso esatto degli interessi legali può variare ogni semestre. Verifica il valore vigente per il periodo specifico sul sito del Ministero o con il tuo commercialista.*\n\nFonti: D.Lgs 231/2002, art. 4; D.Lgs 231/2002, art. 6; art. 1284 c.c.",
+     "latenza_s": 41.8,
+     "primo_token_s": 19.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      false,
+      "diverge dal carattere 1186: «---» → «»"
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: tasso BCE + 8 punti"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "bil-indici",
+   "ripetizione": 1,
+   "dominio": "bilancio",
+   "stato": "calcolo",
+   "session_id": "18ecb643-b3ac-4c77-b968-eae8c57c2270",
+   "turni": [
+    {
+     "utente": "Ti do i numeri del nostro bilancio 2025: ricavi 4.200.000 euro, EBITDA 380.000, utile netto 90.000, patrimonio netto 600.000, debiti finanziari verso banche 1.900.000, liquidità in cassa 250.000. Senza passare dal commercialista: com'è messa l'azienda? La banca può farci altro credito?",
+     "streamato": "Con questi numeri l’azienda ha un margine operativo decente, ma una struttura finanziaria molto stretta. Calcoliamo subito i punti chiave:\n\n- PFN (posizione finanziaria netta) = 1.900.000 - 250.000 = **1.650.000 euro**\n- PFN/EBITDA = 1.650.000 / 380.000 ≈ **4,3 anni** di margine operativo lordo per ripagare il debito netto\n- Leva finanziaria = 1.900.000 / 600.000 ≈ **3,2 volte** il patrimonio netto\n\nQuesti livelli di indebitamento netto sono elevati: la banca guarderebbe con cautela a nuove linee di credito, perché il rapporto PFN/EBITDA sopra 3-4 è generalmente considerato un segnale di rischio creditizio significativo, e la leva su patrimonio è alta.\n\nLa possibilità di ottenere altro credito dipende però da alcuni elementi che questi dati da soli non raccontano:\n1. La **copertura degli oneri finanziari**: quanti interessi paghi annualmente? Se l’EBITDA copre gli oneri con un margine ampio, la banca vede una capacità di servizio del debito.\n2. La **qualità dei flussi**: i ricavi sono stabili o volatile? I crediti verso clienti sono incassati in tempo?\n3. La **garantia e la struttura del debito esistente**: ci sono fidi, ipoteche, o il rapporto è prevalentemente a breve termine?\n4. La **solidità dei clienti** e la ricorrenza del fatturato.\n\nIn sintesi: con un PFN/EBITDA a 4,3 e una leva a 3,2, non direi che la banca *non* potrebbe concedere altro credito, ma sarebbe molto selettiva e probabilmente chiederbbe garanzie aggiuntive, un piano di rientro del debito, o condizioni più stringenti. La leva operativa è buona (EBITDA margin ~9%), quindi c’è sostanza aziendale, ma la struttura patrimoniale è il limite principale.\n\nSe mi dici anche l’importo annuo degli oneri finanziari (interessi passivi) e la scadenza media dei debiti verso banche, posso affinare la valutazione sulla capacità di servizio del debito e dare un quadro più preciso su cosa la banca potrebbe accettare.",
+     "visibile": "Con questi numeri l'azienda ha un margine operativo decente, ma una struttura finanziaria molto stretta. Calcoliamo subito i punti chiave:\n\n- PFN (posizione finanziaria netta) = 1.900.000 - 250.000 = 1.650.000 euro\n- PFN/EBITDA = 1.650.000 / 380.000 ≈ 4,3 anni di margine operativo lordo per ripagare il debito netto\n- Leva finanziaria = 1.900.000 / 600.000 ≈ 3,2 volte il patrimonio netto\n\nQuesti livelli di indebitamento netto sono elevati: la banca guarderebbe con cautela a nuove linee di credito, perché il rapporto PFN/EBITDA sopra 3-4 è generalmente considerato un segnale di rischio creditizio significativo, e la leva su patrimonio è alta.\n\nLa possibilità di ottenere altro credito dipende però da alcuni elementi che questi dati da soli non raccontano:\n1. La copertura degli oneri finanziari: quanti interessi paghi annualmente? Se l'EBITDA copre gli oneri con un margine ampio, la banca vede una capacità di servizio del debito.\n2. La qualità dei flussi: i ricavi sono stabili o volatile? I crediti verso clienti sono incassati in tempo?\n3. La garantia e la struttura del debito esistente: ci sono fidi, ipoteche, o il rapporto è prevalentemente a breve termine?\n4. La solidità dei clienti e la ricorrenza del fatturato.\n\nIn sintesi: con un PFN/EBITDA a 4,3 e una leva a 3,2, non direi che la banca *non* potrebbe concedere altro credito, ma sarebbe molto selettiva e probabilmente chiederbbe garanzie aggiuntive, un piano di rientro del debito, o condizioni più stringenti. La leva operativa è buona (EBITDA margin ~9%), quindi c'è sostanza aziendale, ma la struttura patrimoniale è il limite principale.\n\nSe mi dici anche l'importo annuo degli oneri finanziari (interessi passivi) e la scadenza media dei debiti verso banche, posso affinare la valutazione sulla capacità di servizio del debito e dare un quadro più preciso su cosa la banca potrebbe accettare.",
+     "latenza_s": 57.1,
+     "primo_token_s": 26.4,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      false,
+      "primo token 26.4s > 20s"
+     ]
+    }
+   }
+  },
+  {
+   "id": "contr-interessi-mora",
+   "ripetizione": 2,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "e7606a86-a64d-4103-b9e7-93bde119d7f0",
+   "turni": [
+    {
+     "utente": "Un'azienda cliente non ci paga da 8 mesi una fattura di 3.000 euro. Che interessi posso chiedere?",
+     "streamato": "Posso darti una risposta precisa: hai tre elementi da sommare sul capitale di 3.000 euro, tutti previsti dalla normativa sui ritardi di pagamento nelle transazioni commerciali (D.Lgs 231/2002).\n\n1. Interessi moratori: maturano senza bisogno di costituzione in mora, dal giorno dopo la scadenza del termine di pagamento (D.Lgs 231/2002, art. 4). Se non avete pattuito un tasso diverso, si applica il saggio legale di mora (art. 1284 c.c. e art. 5 del decreto): la misura esatta va verificata sulla Gazzetta Ufficiale del semestre in cui è maturato il ritardo, perché varia a gennaio e a luglio.\n\n2. Indennizzo forfettario per il recupero del credito: 40 euro a titolo di risarcimento, senza costituzione in mora, con facoltà di provare il maggior danno (D.Lgs 231/2002, art. 6).\n\n3. Se vuoi, puoi anche chiedere il rimborso dei costi effettivamente sostenuti per il recupero (attori, diffide, ecc.), se li hai avuti.\n\nCosa fare subito: verifica la data esatta di scadenza sulla fattura (i termini massimi sono 30 giorni dalla ricezione, salvo patto scritto diverso fino a 60 giorni, art. 4), poi invia una diffida di pagamento che quantifichi capitale + interessi + i 40 euro: è il passaggio che “congelà” le richieste e accelera l’incasso, e se serve poi a giudizio è la prova che hai agito.\n\nSe il cliente è una Pubblica Amministrazione o un’impresa con obblighi di trasparenza, i termini possono essere raddoppiati (art. 4): mi dici che tipo di azienda è? Lo segnalo perché cambia il conteggio degli interessi.",
+     "visibile": "Posso darti una risposta precisa: hai tre elementi da sommare sul capitale di 3.000 euro, tutti previsti dalla normativa sui ritardi di pagamento nelle transazioni commerciali (D.Lgs 231/2002).\n\n1. Interessi moratori: maturano senza bisogno di costituzione in mora, dal giorno dopo la scadenza del termine di pagamento (D.Lgs 231/2002, art. 4). Se non avete pattuito un tasso diverso, si applica il saggio legale di mora (art. 1284 c.c. e art. 5 del decreto): la misura esatta va verificata sulla Gazzetta Ufficiale del semestre in cui è maturato il ritardo, perché varia a gennaio e a luglio.\n\n2. Indennizzo forfettario per il recupero del credito: 40 euro a titolo di risarcimento, senza costituzione in mora, con facoltà di provare il maggior danno (D.Lgs 231/2002, art. 6).\n\n3. Se vuoi, puoi anche chiedere il rimborso dei costi effettivamente sostenuti per il recupero (attori, diffide, ecc.), se li hai avuti.\n\nCosa fare subito: verifica la data esatta di scadenza sulla fattura (i termini massimi sono 30 giorni dalla ricezione, salvo patto scritto diverso fino a 60 giorni, art. 4), poi invia una diffida di pagamento che quantifichi capitale + interessi + i 40 euro: è il passaggio che «congelà» le richieste e accelera l'incasso, e se serve poi a giudizio è la prova che hai agito.\n\nSe il cliente è una Pubblica Amministrazione o un'impresa con obblighi di trasparenza, i termini possono essere raddoppiati (art. 4): mi dici che tipo di azienda è? Lo segnalo perché cambia il conteggio degli interessi.\n\nFonti: D.Lgs 231/2002, art. 4; D.Lgs 231/2002, art. 5; D.Lgs 231/2002, art. 6; art. 1284 c.c.",
+     "latenza_s": 30.3,
+     "primo_token_s": 4.9,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      false,
+      "nessuna alternativa per: tasso BCE + 8 punti"
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "bil-indici",
+   "ripetizione": 2,
+   "dominio": "bilancio",
+   "stato": "calcolo",
+   "session_id": "667d9e64-d026-4fa5-84dd-a06dae1837ca",
+   "turni": [
+    {
+     "utente": "Ti do i numeri del nostro bilancio 2025: ricavi 4.200.000 euro, EBITDA 380.000, utile netto 90.000, patrimonio netto 600.000, debiti finanziari verso banche 1.900.000, liquidità in cassa 250.000. Senza passare dal commercialista: com'è messa l'azienda? La banca può farci altro credito?",
+     "streamato": "Ragioniamo subito sui dati che mi hai dato, perché la risposta alla tua seconda domanda (la banca) dipende quasi interamente da un indice che possiamo calcolare ora.\n\n**Il punto che la banca guarda prima di tutto: PFN/EBITDA**\nLa posizione finanziaria netta (PFN) è il debito bancario meno la liquidità: 1.900.000 − 250.000 = 1.650.000 euro.\nDividendo per l’EBITDA (380.000), ottieni: 1.650.000 / 380.000 ≈ 4,3.\nSignificato: servirebbero circa 4,3 anni di margine operativo lordo al livello attuale per riassorbire il debito netto. Per una banca, un rapporto sopra 3 è generalmente un segnale di tensione: non è un “no” automatico, ma è un livello in cui il credito aggiuntivo si concede con cautela, garanzie e tassi penalizzanti, o viene rifiutato se il trend è in peggioramento.\n\n**I numeri che sostengono (o indeboliscono) questa lettura**\n- Margine EBITDA: 380.000 / 4.200.000 ≈ 9%. Non è un margine debole, ma non è ampio: significa che c’è poco cuscinetto se i costi salgono o i ricavi calano.\n- Patrimonio netto a 600.000 contro debiti finanziari da 1.900.000: la leva finanziaria (debito/PN) è circa 3,2. Le banche tendono a preferire leve più contenute; qui il rischio di credito è sostanzioso.\n- Copertura degli oneri finanziari: non posso calcolarla perché non mi hai dato il costo del debito (gli oneri finanziari dell’esercizio). Senza quel dato, non so quanto l’utile “respira” rispetto agli interessi: 90.000 di utile netto su 1,9 milioni di debito lascia poco margine se gli interessi sono a 4-5% (solo interessi potrebbero essere tra 76.000 e 95.000, cioè quasi tutto l’utile).\n\n**Quindi, la banca può darvi altro credito?**\nNon è una domanda a cui si può rispondere sì/no con questi soli dati, ma la direzione è chiara: con PFN/EBITDA a 4,3 e leva a 3,2, la posizione di partenza è debole. La decisione dipenderà da tre cose che non ho ancora: (1) il trend degli ultimi 2-3 anni (il debito sta crescendo o scendendo?), (2) gli oneri finanziari effettivi e se ci sono state morosità o rinegoziazioni, (3) le garanzie a disposizione e il rating interno che la banca vi attribuisce.\n\nUna domanda che cambia davvero la valutazione: **il debito a 1,9 milioni è stabile, sta crescendo o è in via di rimborso rispetto all’anno scorso?** E quanti sono gli oneri finanziari dell’ultimo esercizio (il costo degli interessi che pagate alla banca)?\n\nQuesti due dati mi dicono se siete in un ciclo di deleveraging (caso in cui un nuovo credito è più plausibile) o in un ciclo di indebitamento crescente (caso in cui la banca guarderà soprattutto a garanzie e piano di rientro).",
+     "visibile": "Ragioniamo subito sui dati che mi hai dato, perché la risposta alla tua seconda domanda (la banca) dipende quasi interamente da un indice che possiamo calcolare ora.\n\nIl punto che la banca guarda prima di tutto: PFN/EBITDA\nLa posizione finanziaria netta (PFN) è il debito bancario meno la liquidità: 1.900.000 − 250.000 = 1.650.000 euro.\nDividendo per l'EBITDA (380.000), ottieni: 1.650.000 / 380.000 ≈ 4,3.\nSignificato: servirebbero circa 4,3 anni di margine operativo lordo al livello attuale per riassorbire il debito netto. Per una banca, un rapporto sopra 3 è generalmente un segnale di tensione: non è un «no» automatico, ma è un livello in cui il credito aggiuntivo si concede con cautela, garanzie e tassi penalizzanti, o viene rifiutato se il trend è in peggioramento.\n\nI numeri che sostengono (o indeboliscono) questa lettura\n- Margine EBITDA: 380.000 / 4.200.000 ≈ 9%. Non è un margine debole, ma non è ampio: significa che c'è poco cuscinetto se i costi salgono o i ricavi calano.\n- Patrimonio netto a 600.000 contro debiti finanziari da 1.900.000: la leva finanziaria (debito/PN) è circa 3,2. Le banche tendono a preferire leve più contenute; qui il rischio di credito è sostanzioso.\n- Copertura degli oneri finanziari: non posso calcolarla perché non mi hai dato il costo del debito (gli oneri finanziari dell'esercizio). Senza quel dato, non so quanto l'utile «respira» rispetto agli interessi: 90.000 di utile netto su 1,9 milioni di debito lascia poco margine se gli interessi sono a 4-5% (solo interessi potrebbero essere tra 76.000 e 95.000, cioè quasi tutto l'utile).\n\nQuindi, la banca può darvi altro credito?\nNon è una domanda a cui si può rispondere sì/no con questi soli dati, ma la direzione è chiara: con PFN/EBITDA a 4,3 e leva a 3,2, la posizione di partenza è debole. La decisione dipenderà da tre cose che non ho ancora: (1) il trend degli ultimi 2-3 anni (il debito sta crescendo o scendendo?), (2) gli oneri finanziari effettivi e se ci sono state morosità o rinegoziazioni, (3) le garanzie a disposizione e il rating interno che la banca vi attribuisce.\n\nUna domanda che cambia davvero la valutazione: il debito a 1,9 milioni è stabile, sta crescendo o è in via di rimborso rispetto all'anno scorso? E quanti sono gli oneri finanziari dell'ultimo esercizio (il costo degli interessi che pagate alla banca)?\n\nQuesti due dati mi dicono se siete in un ciclo di deleveraging (caso in cui un nuovo credito è più plausibile) o in un ciclo di indebitamento crescente (caso in cui la banca guarderà soprattutto a garanzie e piano di rientro).",
+     "latenza_s": 45.6,
+     "primo_token_s": 1.7,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "contr-interessi-mora",
+   "ripetizione": 3,
+   "dominio": "contratti",
+   "stato": "fonte-verificata",
+   "session_id": "d2f6975d-9c69-40b3-9626-521619fdf8c9",
+   "turni": [
+    {
+     "utente": "Un'azienda cliente non ci paga da 8 mesi una fattura di 3.000 euro. Che interessi posso chiedere?",
+     "streamato": "Sul piano strettamente risarcitorio hai due leve, e conviene usarle entrambe perché sono cumulative:\n\n1. **Interessi di mora** sul capitale di 3.000 €, che corrono senza che tu debba farne richiesta, dal giorno successivo alla scadenza del termine di pagamento (D.Lgs 231/2002, art. 4). La misura di riferimento è il tasso di riferimento semestrale (D.Lgs 231/2002, art. 5), pubblicato dal MEF in Gazzetta: è il tasso di base al quale va sommato lo spread che la BCE fissa periodicamente (di norma 8 punti, ma la cifra esatta dello spread va verificata sulla pubblicazione BCE/Mef in vigore nel semestre del ritardo, perché cambia). Quindi il tasso applicabile non lo deduco io: lo prendi dalla tabella MEF per il semestre in cui è scaduta la fattura.\n2. **Forfettario di 40 €** a titolo di risarcimento, dovuto automaticamente senza costituzione in mora, più la prova del maggior danno se lo hai (es. costi di recupero) (D.Lgs 231/2002, art. 6).\n\nQuello che ti serve per quantificare: la data esatta di scadenza della fattura (o del termine pattuito, se il contratto prevedeva un termine diverso) e il semestre in cui è maturato il ritardo, così applichi il tasso MEF corretto.\n\nPrima di partire col conteggio però una cosa conta più degli interessi: con 8 mesi di ritardo su 3.000 €, gli interessi saranno una cifra di pochi centinaia di euro al massimo, quindi il vero valore non è tanto il risarcimento quanto **ottenere il pagamento**. Vuoi che ti dica come impostare la richiesta formale (con la contestuale contestazione degli interessi e del forfettario) in modo che tenga anche come prova in caso di eventuale contenzioso?",
+     "visibile": "Sul piano strettamente risarcitorio hai due leve, e conviene usarle entrambe perché sono cumulative:\n\n1. Interessi di mora sul capitale di 3.000 €, che corrono senza che tu debba farne richiesta, dal giorno successivo alla scadenza del termine di pagamento (D.Lgs 231/2002, art. 4). La misura di riferimento è il tasso di riferimento semestrale (D.Lgs 231/2002, art. 5), pubblicato dal MEF in Gazzetta: è il tasso di base al quale va sommato lo spread che la BCE fissa periodicamente (di norma 8 punti, ma la cifra esatta dello spread va verificata sulla pubblicazione BCE/Mef in vigore nel semestre del ritardo, perché cambia). Quindi il tasso applicabile non lo deduco io: lo prendi dalla tabella MEF per il semestre in cui è scaduta la fattura.\n2. Forfettario di 40 € a titolo di risarcimento, dovuto automaticamente senza costituzione in mora, più la prova del maggior danno se lo hai (es. costi di recupero) (D.Lgs 231/2002, art. 6).\n\nQuello che ti serve per quantificare: la data esatta di scadenza della fattura (o del termine pattuito, se il contratto prevedeva un termine diverso) e il semestre in cui è maturato il ritardo, così applichi il tasso MEF corretto.\n\nPrima di partire col conteggio però una cosa conta più degli interessi: con 8 mesi di ritardo su 3.000 €, gli interessi saranno una cifra di pochi centinaia di euro al massimo, quindi il vero valore non è tanto il risarcimento quanto ottenere il pagamento. Vuoi che ti dica come impostare la richiesta formale (con la contestuale contestazione degli interessi e del forfettario) in modo che tenga anche come prova in caso di eventuale contenzioso?\n\nFonti: D.Lgs 231/2002, art. 4; D.Lgs 231/2002, art. 5; D.Lgs 231/2002, art. 6.",
+     "latenza_s": 34.4,
+     "primo_token_s": 5.1,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "bil-indici",
+   "ripetizione": 3,
+   "dominio": "bilancio",
+   "stato": "calcolo",
+   "session_id": "9435ca0e-2e5b-4bb9-ab4c-8e472c0fb0ad",
+   "turni": [
+    {
+     "utente": "Ti do i numeri del nostro bilancio 2025: ricavi 4.200.000 euro, EBITDA 380.000, utile netto 90.000, patrimonio netto 600.000, debiti finanziari verso banche 1.900.000, liquidità in cassa 250.000. Senza passare dal commercialista: com'è messa l'azienda? La banca può farci altro credito?",
+     "streamato": "Ho tutto ciò che serve per una prima lettura: i dati che mi hai dato bastano a calcolare gli indici che la banca guarda, senza inventare nulla.\n\nParto dai numeri, mostrando i passaggi:\n\nPFN (posizione finanziaria netta) = debiti bancari − liquidità = 1.900.000 − 250.000 = 1.650.000 euro.\nPFN/EBITDA = 1.650.000 / 380.000 = circa 4,3 anni di margine operativo lordo serviti a ripagare il debito netto.\n\nSu due punti sono netto, su altri due devo essere onesto perché cambierebbero la risposta:\n\n1. Copertura degli oneri finanziari: con l'EBITDA a 380.000 la banca guarda che il debito non \"mangia\" il margine, e qui il quadro è solido a prescindere dai tassi: anche con un onere finanziario alto, il rapporto EBITDA/debito non è critico. Questo è il dato più rassicurante.\n2. Solidità patrimoniale: il patrimonio netto è 600.000 contro un debito bancario di 1.900.000, quindi la leva finanziaria (debiti/PN) è circa 3,2. Non è \"in rosso\", ma è una struttura dove il debito pesa molto sul capitale proprio: se i margini scendono, la banca sente il rischio prima del titolare.\n3. Dove devo fermarmi: non mi hai dato gli oneri finanziari effettivi (quanti interessi paghi) né il fatturato in trend (l'EBITDA è in crescita o in calo?). Questi due dati spostano la risposta da \"la banca può concedere\" a \"la banca ti rinegoziona\".\n\nLa domanda che cambia davvero le prossime 24-72 ore non è \"quanta liquidità ci serve\", ma questa:\n\nQuali sono gli oneri finanziari annui che stai effettivamente pagando oggi, e qual è il contratto/fido attuale (importo, scadenza, garanzie, cessione del crediti o pegno) — perché da lì si capisce se la banca ha margine per allargare o se devi prima ridimensionare il debito esistente.\n\nSe mi dai questi due elementi (interessi annui + condizioni del fido attuale), ti dico con più precisione se c'è spazio per un nuovo credito o se conviene rinegoziare.",
+     "visibile": "Ho tutto ciò che serve per una prima lettura: i dati che mi hai dato bastano a calcolare gli indici che la banca guarda, senza inventare nulla.\n\nParto dai numeri, mostrando i passaggi:\n\nPFN (posizione finanziaria netta) = debiti bancari − liquidità = 1.900.000 − 250.000 = 1.650.000 euro.\nPFN/EBITDA = 1.650.000 / 380.000 = circa 4,3 anni di margine operativo lordo serviti a ripagare il debito netto.\n\nSu due punti sono netto, su altri due devo essere onesto perché cambierebbero la risposta:\n\n1. Copertura degli oneri finanziari: con l'EBITDA a 380.000 la banca guarda che il debito non \"mangia\" il margine, e qui il quadro è solido a prescindere dai tassi: anche con un onere finanziario alto, il rapporto EBITDA/debito non è critico. Questo è il dato più rassicurante.\n2. Solidità patrimoniale: il patrimonio netto è 600.000 contro un debito bancario di 1.900.000, quindi la leva finanziaria (debiti/PN) è circa 3,2. Non è \"in rosso\", ma è una struttura dove il debito pesa molto sul capitale proprio: se i margini scendono, la banca sente il rischio prima del titolare.\n3. Dove devo fermarmi: non mi hai dato gli oneri finanziari effettivi (quanti interessi paghi) né il fatturato in trend (l'EBITDA è in crescita o in calo?). Questi due dati spostano la risposta da \"la banca può concedere\" a \"la banca ti rinegoziona\".\n\nLa domanda che cambia davvero le prossime 24-72 ore non è \"quanta liquidità ci serve\", ma questa:\n\nQuali sono gli oneri finanziari annui che stai effettivamente pagando oggi, e qual è il contratto/fido attuale (importo, scadenza, garanzie, cessione del crediti o pegno) — perché da lì si capisce se la banca ha margine per allargare o se devi prima ridimensionare il debito esistente.\n\nSe mi dai questi due elementi (interessi annui + condizioni del fido attuale), ti dico con più precisione se c'è spazio per un nuovo credito o se conviene rinegoziare.",
+     "latenza_s": 38.5,
+     "primo_token_s": 1.6,
+     "errori": [],
+     "eccezione": null,
+     "completato": true
+    }
+   ],
+   "esito": {
+    "generici": {
+     "risposta_non_vuota": [
+      true,
+      ""
+     ],
+     "nessuna_lingua_estranea": [
+      true,
+      ""
+     ],
+     "frasi_integre": [
+      true,
+      ""
+     ],
+     "nessuna_autocorrezione": [
+      true,
+      ""
+     ],
+     "nessun_testo_del_critico": [
+      true,
+      ""
+     ],
+     "nessuna_fuga_prompt": [
+      true,
+      ""
+     ],
+     "testo_letto_uguale_finale": [
+      true,
+      ""
+     ],
+     "nessun_errore_di_stream": [
+      true,
+      ""
+     ]
+    },
+    "specifici": {
+     "fatti_presenti": [
+      true,
+      ""
+     ],
+     "fatti_alternativi": [
+      true,
+      ""
+     ],
+     "non_spinge_vendita": [
+      true,
+      ""
+     ]
+    },
+    "prestazioni": {
+     "latenza_entro_budget": [
+      true,
+      ""
+     ],
+     "primo_token_entro_budget": [
+      true,
+      ""
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -188,6 +188,26 @@
    "validato_da": "",
    "validato_il": "",
    "stato": "bozza"
+  },
+  {
+   "id": "ritardo-pagamento-transazioni-commerciali",
+   "trigger": [
+    "(?:fattur\\w+|credit\\w+|pagament\\w+)[^.?!\\n]{0,60}(?:non\\s+(?:è\\s+stat\\w+\\s+)?(?:ci\\s+|mi\\s+)?(?:pag\\w+|saldat\\w+)|scadut\\w+|in\\s+ritardo|insolut\\w+)",
+    "\\bcliente\\s+moros\\w+|\\bmoros[oi]\\b",
+    "interessi\\s+(?:di\\s+)?mora|interessi\\s+moratori",
+    "ritard\\w+\\s+(?:nei|di|del)\\s+pagament\\w+",
+    "\\bdiffid\\w+\\b[^.?!\\n]{0,60}pagament\\w+",
+    "non\\s+(?:ci\\s+|mi\\s+)?pag(?:a|ano|ato)\\b"
+   ],
+   "riferimenti": [
+    "D.Lgs. 231/2002 art. 4",
+    "D.Lgs. 231/2002 art. 5",
+    "D.Lgs. 231/2002 art. 6"
+   ],
+   "note": "Tra imprese (e verso la P.A.) valgono gli interessi di mora delle transazioni commerciali, non il solo tasso legale: misurato il 19/10/2026 che il bot, davanti a una fattura non pagata, citava art. 1219/1224 c.c. Il regime cambia per i consumatori: non mappato. Il testo viene sempre dal corpus.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "bozza"
   }
  ]
 }

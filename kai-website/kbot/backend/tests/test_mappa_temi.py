@@ -65,6 +65,10 @@ def test_ogni_voce_ha_i_campi_e_i_riferimenti_si_leggono():
     ("Ho versato una caparra confirmatoria", "caparra"),
     ("Voglio la risoluzione per inadempimento", "risoluzione-per-inadempimento"),
     ("Ci sono vizi della cosa venduta", "vizi-e-garanzia"),
+    ("Un cliente non mi paga una fattura da 8 mesi", "ritardo-pagamento-transazioni-commerciali"),
+    ("La fattura è scaduta da tre mesi e il cliente non paga", "ritardo-pagamento-transazioni-commerciali"),
+    ("Che interessi di mora posso chiedere?", "ritardo-pagamento-transazioni-commerciali"),
+    ("Scrivimi una diffida per il pagamento della fattura", "ritardo-pagamento-transazioni-commerciali"),
 ])
 def test_i_trigger_scattano(testo, tema, monkeypatch):
     monkeypatch.setenv("KBOT_MAPPA_BOZZE", "1")
@@ -76,6 +80,7 @@ def test_i_trigger_scattano(testo, tema, monkeypatch):
     "Rischio una condanna in sede penale per questo fatto?", "Ho una causa di diritto penale in corso",
     "Come funziona la fase di prova di un software?", "Vorrei un consiglio sul marketing", "Quanto costa un ricorso al TAR?",
     "Devo pagare l'IVA trimestrale?", "Come calcolo la ritenuta d'acconto?",
+    "Devo pagare l'IVA entro il 16 del mese?", "Quanto costa una fattura elettronica?", "Come emetto una fattura a un cliente estero?",
 ])
 def test_nessun_falso_positivo_su_temi_diversi(testo, monkeypatch):
     monkeypatch.setenv("KBOT_MAPPA_BOZZE", "1")
