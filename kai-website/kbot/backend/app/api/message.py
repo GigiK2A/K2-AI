@@ -27,6 +27,7 @@ from ..lib.auth import AuthUser, optional_user
 from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
+from ..lib import scheda_cliente
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -478,6 +479,7 @@ async def post_message(
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=1)
     system_prompt += await _blocco_norme(client, last_user_text, _recent_ctx)
+    _scheda_fut = _avvia_scheda(client, collected, merged_messages)
     try:
         # web_search abilitato: il modello cerca DAVVERO quando l'utente lo chiede, invece
         # di promettere una ricerca che non fa. L'helper gestisce pause_turn + fallback.
@@ -526,6 +528,7 @@ async def post_message(
         },
     )
 
+    await _chiudi_scheda(_scheda_fut, collected)
     # Persist updated state.
     updated_messages = sessions.append_messages(
         {**session, "messages": merged_messages},
@@ -714,6 +717,47 @@ async def _stream_off_loop(client, stream_kwargs: dict):
         stop.set()
 
 
+class _SchedaJob:
+    """Estrazione in corso + quanti messaggi utente copre (per segnare «letto» solo se riesce)."""
+    def __init__(self, fut, n_user: int):
+        self.fut, self.n_user = fut, n_user
+
+
+def _avvia_scheda(client, collected: dict, merged_messages: list):
+    """SCHEDA DEL CLIENTE: estrae i fatti dei messaggi NON ANCORA LETTI IN PARALLELO alla risposta, così non
+    allunga l'attesa dell'utente; il risultato si raccoglie prima di salvare il turno (`_chiudi_scheda`).
+    Di norma è solo il messaggio corrente; se un'estrazione precedente è fallita o è andata in timeout, i suoi
+    messaggi vengono ripresi qui (al massimo gli ultimi 4), così i fatti non si perdono per sempre."""
+    if os.getenv("KBOT_SCHEDA_CLIENTE", "1") == "0":
+        return None
+    users = [str(m.get("content") or "") for m in merged_messages
+             if isinstance(m, dict) and m.get("role") == "user"]
+    if not users:
+        return None
+    letti = min(int(collected.get("scheda_cliente_turno") or 0), len(users) - 1)
+    daleggere = users[max(letti, len(users) - 4):]
+    testo = users[-1] if len(daleggere) == 1 else "\n---\n".join(daleggere)
+    ultimo_assistente = next((str(m.get("content") or "") for m in reversed(merged_messages)
+                              if isinstance(m, dict) and m.get("role") == "assistant"), "")
+    return _SchedaJob(asyncio.ensure_future(_off_loop(
+        scheda_cliente.aggiorna_ok, client, ANTHROPIC_MODEL, collected.get("scheda_cliente"),
+        testo, ultimo_assistente, len(users), "\n".join(users))), len(users))
+
+
+async def _chiudi_scheda(job, collected: dict, attesa: float = 30.0) -> None:
+    """Mette la scheda aggiornata in `collected` (che il chiamante sta per salvare). Fail-open: se l'estrazione
+    non è pronta o è fallita, la scheda resta quella di prima e il turno NON risulta letto (si riprova)."""
+    if job is None:
+        return
+    try:
+        scheda, ok = await asyncio.wait_for(asyncio.shield(job.fut), timeout=attesa)
+        collected["scheda_cliente"] = scheda
+        if ok:
+            collected["scheda_cliente_turno"] = job.n_user
+    except Exception:
+        log.warning("scheda_cliente: non pronta, resta quella del turno precedente", exc_info=True)
+
+
 async def _blocco_norme(client, last_user_text: str, recent_ctx: str) -> str:
     """EVIDENCE PACK NORMATIVO: recupera dal corpus il testo di legge pertinente PRIMA della risposta e
     lo rende disponibile alle guardie a valle (citazioni consentite, numeri fondati). Fail-open: senza
@@ -745,6 +789,7 @@ async def post_message_stream(
 ):
     session, merged_messages, collected, system_prompt, history, skills = await _prepare_turn(body, user)
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=1)
+    _scheda_fut = _avvia_scheda(client, collected, merged_messages)
     # Testi per il grounding proattivo (calcolati qui, eseguito DOPO l'heartbeat).
     _users_for_ground = [str(m.get("content") or "") for m in merged_messages
                          if isinstance(m, dict) and m.get("role") == "user"]
@@ -818,6 +863,11 @@ async def post_message_stream(
                         if visible_chunk:
                             yield _sse({"delta": visible_chunk})
                 usage = getattr(final, "usage", None)
+                # Telemetria dell'arresto: una risposta tagliata (max_tokens, limite di contesto del server
+                # del modello) è indistinguibile da una breve se non si registra il motivo.
+                log.info("kbot stream: stop_reason=%s tokens_in=%s tokens_out=%s",
+                         getattr(final, "stop_reason", None),
+                         getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None))
                 # Claude ha chiamato web_search? esegui la ricerca OpenAI e continua.
                 if not tools or getattr(final, "stop_reason", None) != "tool_use" or rounds >= max_rounds:
                     break
@@ -866,6 +916,7 @@ async def post_message_stream(
                 "diagnosi_tracked": bool(signals.DIAGNOSI_RE.search(raw_text)),
             },
         )
+        await _chiudi_scheda(_scheda_fut, collected)
         try:
             user_visible, summary, updated = await _off_loop(
                 _persist_assistant_turn, session, body.sessionId, merged_messages, collected, raw_text, skills

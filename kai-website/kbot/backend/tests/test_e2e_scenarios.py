@@ -186,6 +186,14 @@ class _FakeStream:
         return iter(self._events)
 
 
+
+def _chiamate_chat():
+    """Le chiamate al modello della CHAT: esclude l'estrazione dei fatti (scheda del cliente), che gira in
+    parallelo e può finire per ultima."""
+    return [c for c in FakeAnthropic.captured_calls
+            if not str(c.get("system", "")).startswith("Estrai dal MESSAGGIO")]
+
+
 class FakeAnthropic:
     canned_text: str = "Va bene, procedo con l'analisi richiesta."
     captured_calls: List[dict] = []
@@ -631,7 +639,7 @@ def test_message_endpoint_sends_file_text_to_claude(client, fake_anthropic):
 
     # Verify the system prompt sent to Claude actually contained the file text.
     assert FakeAnthropic.captured_calls, "Claude was never called"
-    last_call = FakeAnthropic.captured_calls[-1]
+    last_call = _chiamate_chat()[-1]
     sys_prompt = last_call.get("system", "")
     assert "MARKER_BILANCIO_XYZ" in sys_prompt, "file text didn't reach Claude"
     # max_tokens generoso, must be >= 4000 (was 1200 bug)
@@ -676,7 +684,7 @@ def test_long_conversation_compacted_history_sent_to_claude(client, fake_anthrop
         assert r.status_code == 200
 
     # Last call's `messages` (history) should be ≤ MAX_HISTORY_MESSAGES (12).
-    last = FakeAnthropic.captured_calls[-1]
+    last = _chiamate_chat()[-1]
     hist = last["messages"]
     assert len(hist) <= 12, f"history not capped: {len(hist)}"
     # La STORIA resta compattata a 900 caratteri per messaggio; l'ULTIMO messaggio dell'utente

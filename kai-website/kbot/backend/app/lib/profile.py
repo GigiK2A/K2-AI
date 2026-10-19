@@ -90,6 +90,9 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
 
     coll = session.get("collected_data") or session.get("collected") or {}
     extracted = coll.get("extractedData") or {}
+    # fatti detti in chat (scheda del cliente): senza questo il profilo si riempiva solo da summary/report
+    from .scheda_cliente import piatta as _piatta
+    scheda_flat = _piatta(coll.get("scheda_cliente"))
 
     # ── anagrafica: dai campi già estratti (summary + autofill), l'ultimo vince ──
     for pkey, sources in (
@@ -99,8 +102,9 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
         ("dipendenti", ("n_dipendenti", "dipendenti")),
         ("fatturato", ("fatturato", "fatturato_ultimo_anno")),
         ("clienti_principali", ("clienti_principali",)),
+        ("citta", ("citta",)),
     ):
-        for src in (coll, extracted, coll.get("deliverable_inputs") or {}):
+        for src in (coll, extracted, coll.get("deliverable_inputs") or {}, scheda_flat):
             for k in sources:
                 v = _clean(src.get(k)) if isinstance(src, dict) else None
                 if v and ana.get(pkey) != v:
@@ -110,6 +114,18 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
             else:
                 continue
             break
+
+    # ── altri fatti stabili detti in chat (soci, quote, clienti, date…): l'ultimo valore vince ──
+    fatti = dict(p.get("fatti") or {})
+    _gia = {"ragione_sociale", "settore", "forma_giuridica", "dipendenti", "fatturato", "citta"}
+    for k, v in scheda_flat.items():
+        if k in _gia or not _clean(v):
+            continue
+        if fatti.get(k) != v:
+            fatti[k] = v
+            changed = True
+    while len(fatti) > 25:
+        fatti.pop(next(iter(fatti)))
 
     # ── contesto operativo: problemi/obiettivi dalle sintesi (dedupe) ──
     problemi = list(ctx.get("problemi") or [])
@@ -131,6 +147,8 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
 
     if ana:
         p["anagrafica"] = ana
+    if fatti:
+        p["fatti"] = fatti
     if ctx.get("problemi") or ctx.get("obiettivi"):
         p["contesto"] = ctx
     if storico:
@@ -215,6 +233,10 @@ def render_block(profile: Optional[dict]) -> str:
     if ana:
         parts.append("Anagrafica: " + "; ".join(
             f"{_ANAGRAFICA_LABELS.get(k, k.replace('_', ' '))}: {v}" for k, v in ana.items()))
+    fatti = profile.get("fatti") or {}
+    if fatti:
+        parts.append("Fatti noti dalle conversazioni: " + "; ".join(
+            f"{k.replace('_', ' ')}: {v}" for k, v in list(fatti.items())[-15:]))
     ctx = profile.get("contesto") or {}
     if ctx.get("problemi"):
         parts.append("Problemi/temi già trattati: " + " | ".join(ctx["problemi"][-5:]))
