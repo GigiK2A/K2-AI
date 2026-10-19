@@ -147,11 +147,15 @@ def _compact_history(merged_messages: list, max_turns: int = 6, max_chars: int =
 
 
 def review(client, model: str, merged_messages: list, raw_text: str,
-           user_procedi: bool = False) -> str:
+           user_procedi: bool = False, bozza_richiesta: bool = False) -> str:
     """Ritorna il testo del turno, eventualmente corretto dal critico. FAIL-OPEN.
     user_procedi=True: l'utente ha ORDINATO il report (trigger esplicito) → il flag
     premature_summary è disattivato (criticare la prematurità contraddirebbe l'ordine;
-    eval-100: il gate strippava il summary appena forzato dall'enforcement procedi)."""
+    eval-100: il gate strippava il summary appena forzato dall'enforcement procedi).
+    bozza_richiesta=True: l'utente ha chiesto ESPLICITAMENTE un testo (lettera, diffida, mail): il flag drastic_actions
+    è disattivato, altrimenti il critico sostituiva la lettera richiesta con consigli di cautela («verifica prima di
+    inviare», misurato il 19/10/2026: 2 lettere su 8 perse così). La cautela resta nelle righe che il bot scrive DOPO la
+    bozza (regola delle bozze). KBOT_GATE_BOZZE=0 ripristina il vecchio comportamento."""
     if not ENABLED or not (raw_text or "").strip():
         return raw_text
     if not _TRIGGER_RE.search(raw_text):
@@ -186,6 +190,9 @@ def review(client, model: str, merged_messages: list, raw_text: str,
         if v.get("premature_summary") is True and user_procedi:
             log.info("quality_gate: premature_summary IGNORATO (trigger procedi esplicito dell'utente)")
             v["premature_summary"] = False
+        if v.get("drastic_actions") is True and bozza_richiesta and os.environ.get("KBOT_GATE_BOZZE", "1") != "0":
+            log.info("quality_gate: drastic_actions IGNORATO (l'utente ha chiesto la bozza)")
+            v["drastic_actions"] = False
         flags = [k for k in ("premature_summary", "assertive_diagnosis",
                              "drastic_actions", "depth_mismatch") if v.get(k) is True]
         if not flags:

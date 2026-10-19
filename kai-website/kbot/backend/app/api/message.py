@@ -28,7 +28,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import crisi, avvisi_input
+from ..lib import crisi, avvisi_input, verifica_bozze
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -236,8 +236,11 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
                                      merged_messages, collected)
     _last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
                        if isinstance(m, dict) and m.get("role") == "user"), "")
+    # Bozza richiesta ma assente (il modello fa una domanda invece di scriverla): seconda chiamata esplicita.
+    raw_text = verifica_bozze.assicura(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, _last_user)
     raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text,
-                                   user_procedi=bool(signals.PROCEDI_HARD_RE.search(_last_user)))
+                                   user_procedi=bool(signals.PROCEDI_HARD_RE.search(_last_user)),
+                                   bozza_richiesta=verifica_bozze.richiesta_bozza(_last_user))
     return raw_text
 
 
