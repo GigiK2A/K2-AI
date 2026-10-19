@@ -67,6 +67,8 @@ def main() -> None:
     import app.lib.sessions as sess                              # noqa: E402
     sa.get_admin_client = lambda: fake
     sess.get_admin_client = lambda: fake
+    import app.lib.storage as stor                               # noqa: E402
+    stor.get_admin_client = lambda: fake
     try:
         import app.api.upload as up                              # noqa: E402
         up.get_admin_client = lambda: fake

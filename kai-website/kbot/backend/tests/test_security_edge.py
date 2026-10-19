@@ -60,6 +60,9 @@ class _FakeStorageBucket:
     def get_public_url(self, path):
         return f"https://fake.supabase.co/storage/{path}"
 
+    def create_signed_url(self, path, expires_in):
+        return {"signedURL": f"https://fake.supabase.co/storage/sign/{path}?token=fake&exp={expires_in}"}
+
 
 class _FakeStorage:
     def __init__(self):
@@ -290,10 +293,11 @@ def test_upload_handles_hostile_filename(client, bad_name):
     # SANITIZZAZIONE DEL PATH (no escape dalla dir di sessione). Le estensioni non
     # ammesse (.exe/.sh…) sono rifiutate a monte con 415 → vedi test dedicato.
     sid = _make_session(client)
-    data = b"hello"
+    # PDF minimo ma VALIDO: l'upload controlla i magic bytes (un ".pdf" che non lo è → 415, giusto).
+    data = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n"
     r = client.post("/api/kbot/upload", json={
         "session_id": sid,
-        "files": [{"name": bad_name, "type": "text/plain",
+        "files": [{"name": bad_name, "type": "application/pdf",
                    "size": len(data), "base64": _b64(data)}],
     })
     # MUST not 500; MUST not write outside session directory. (type text/plain →
@@ -417,8 +421,8 @@ def test_upload_zero_bytes(client):
         "files": [{"name": "empty.pdf", "type": "application/pdf",
                    "size": 0, "base64": ""}],
     })
-    # Empty file: should still respond cleanly (200 with method=none, or 4xx).
-    assert r.status_code in (200, 400, 422), r.text
+    # Empty file: risposta pulita (200 con method=none, oppure 4xx; 415 = "non è un PDF", giusto).
+    assert r.status_code in (200, 400, 415, 422), r.text
 
 
 def test_upload_mime_spoof_html_as_pdf(client):
@@ -430,9 +434,12 @@ def test_upload_mime_spoof_html_as_pdf(client):
         "files": [{"name": "evil.pdf", "type": "application/pdf",
                    "size": len(html), "base64": _b64(html)}],
     })
+    # Il controllo dei magic bytes rifiuta a monte un ".pdf" che è HTML (415): più forte del vecchio
+    # comportamento (200 con extractionMethod "none"), e va bene così.
+    if r.status_code == 415:
+        return
     assert r.status_code == 200
     f = r.json()["files"][0]
-    # Should fall through to "none" (pdfplumber rejects, no text decode for app/pdf)
     assert f["extractionMethod"] in ("none", "claude-vision"), f
 
 

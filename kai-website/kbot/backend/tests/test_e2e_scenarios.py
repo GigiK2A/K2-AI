@@ -52,6 +52,10 @@ class _FakeStorageBucket:
     def get_public_url(self, path):
         return f"https://fake.supabase.co/storage/{path}"
 
+    def create_signed_url(self, path, expires_in):
+        # app/lib/storage.py serve i file via URL firmato a scadenza (bucket privati)
+        return {"signedURL": f"https://fake.supabase.co/storage/sign/{path}?token=fake&exp={expires_in}"}
+
 
 class _FakeStorage:
     def __init__(self):
@@ -201,6 +205,7 @@ def fake_db(monkeypatch):
     monkeypatch.setattr("app.lib.supabase_admin.get_admin_client", lambda: fake)
     monkeypatch.setattr("app.lib.sessions.get_admin_client", lambda: fake)
     monkeypatch.setattr("app.api.upload.get_admin_client", lambda: fake)
+    monkeypatch.setattr("app.lib.storage.get_admin_client", lambda: fake)   # serve gli URL firmati dei report
     # Reset bucket-ready cache so _ensure_bucket runs against fake.
     monkeypatch.setattr("app.api.upload._BUCKET_READY", False, raising=False)
     return fake
