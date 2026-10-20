@@ -44,7 +44,7 @@ const REPORT_SUGGESTIONS = [
 ];
 
 const WELCOME_MESSAGE =
-  "Ciao, sono K-BOT, il tuo pre-consulente per le questioni legali, fiscali, del lavoro e di bilancio. Raccontami il caso con i numeri che hai: importi, date, quanti dipendenti. Posso leggere i tuoi documenti, citare le norme in vigore e prepararti una bozza di lettera da far rivedere al tuo professionista.\n\nPrivacy: la conversazione viene elaborata da un modello di intelligenza artificiale. Dettagli su /privacy.html.";
+  "K-BOT è un pre-consulente per le questioni legali, fiscali, del lavoro e di bilancio. Non sostituisce il tuo professionista: le bozze vanno fatte rivedere prima di agire.\n\nPrivacy: la conversazione viene elaborata da un modello di intelligenza artificiale. Dettagli su /privacy.html.";
 
 function LoginFirstScreen() {
   return (
@@ -901,8 +901,34 @@ export default function HomePage() {
 
         <main className="scroll-premium flex-1 overflow-y-auto px-4 pb-6 pt-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+            {activeConversation.messages.every((m) => m.ts === 0) && !loading && (
+              <div className="py-8">
+                <h2 className="font-doc text-2xl font-semibold">Apri la pratica</h2>
+                <p className="mt-2 max-w-xl text-[15px] leading-7 text-[var(--text-soft)]">
+                  Raccontami il caso con i numeri che hai: importi, date, quanti dipendenti. Leggo i tuoi documenti,
+                  cito le norme in vigore e preparo una bozza da far rivedere al tuo professionista.
+                </p>
+                <p className="mb-2 mt-8 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">Per esempio</p>
+                <ul className="max-w-xl divide-y divide-[var(--line)] border-y border-[var(--line)]">
+                  {REPORT_SUGGESTIONS.map((q) => (
+                    <li key={q}>
+                      <button
+                        type="button"
+                        onClick={() => setComposer(q + ": ")}
+                        className="flex w-full items-center justify-between py-3 text-left text-[15px] hover:text-[var(--teal)]"
+                      >
+                        {q} <span aria-hidden className="text-[var(--text-muted)]">→</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-6 max-w-xl text-xs leading-5 text-[var(--text-muted)]">
+                  {WELCOME_MESSAGE.replace("\n\n", " ")}
+                </p>
+              </div>
+            )}
             <AnimatePresence>
-              {activeConversation.messages.map((m, idx) => (
+              {activeConversation.messages.map((m, idx) => m.ts === 0 ? null : (
                 <MessageBubble
                   key={m.id}
                   message={{ ...m, hasPaid }}
@@ -939,12 +965,6 @@ export default function HomePage() {
                 onExpired={() => setRateLimitUntil(null)}
               />
             )}
-            {activeConversation.messages.length <= 2 && (
-              <p className="px-4 text-center text-xs text-[var(--text-muted)]">
-                Le tue pratiche restano salvate sul tuo account. K-BOT è una pre-consulenza:
-                prima di agire fai rivedere le bozze al tuo professionista.
-              </p>
-            )}
             {/* Flusso ufficiale: quando il bot ha raccolto abbastanza (boost
                 instradato), UN bottone genera il report. Niente form da riempire:
                 gli input 8e sono auto-compilati dalla conversazione e dai file. */}
@@ -973,7 +993,7 @@ export default function HomePage() {
                 // eslint-disable-next-line react-hooks/purity
                 (rateLimitUntil !== null && rateLimitUntil > Date.now())
               }
-              suggestions={REPORT_SUGGESTIONS}
+              suggestions={[]}
               onPickFiles={handleFilePick}
               files={pendingFiles}
               uploadingFiles={uploadingFiles}

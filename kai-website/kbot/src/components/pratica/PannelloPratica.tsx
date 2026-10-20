@@ -123,10 +123,10 @@ export function PannelloPratica({
           (bozza ? (
             <>
               <div className="mb-3 flex items-center gap-2">
-                <p className="flex-1 font-medium">Documento in preparazione</p>
-                <span className="rounded-md bg-[var(--warn-bg)] px-2 py-0.5 text-xs text-[var(--warn-text)]">Da verificare</span>
+                <p className="font-doc flex-1 text-base font-semibold">Documento in preparazione</p>
+                <span className="border border-[var(--warn-text)] px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--warn-text)]">Da verificare</span>
               </div>
-              <article className="whitespace-pre-wrap rounded-lg border border-[var(--line)] bg-[var(--bg-1)] p-4 text-[14px] leading-7">
+              <article className="font-doc whitespace-pre-wrap border border-[var(--line)] bg-white p-6 text-[15px] leading-8 text-[#1d2128] shadow-[2px_2px_0_var(--line)]">
                 {bozza}
               </article>
               <p className="mt-3 text-xs text-[var(--text-muted)]">

@@ -194,7 +194,7 @@ export function Composer({
   ];
 
   return (
-    <div className="sticky bottom-0 mt-4 border-t border-[var(--line)] bg-[var(--bg-0)]/95 pt-3 backdrop-blur">
+    <div className="sticky bottom-0 mt-4 bg-[var(--bg-1)] pb-3 pt-3">
       {activeContext.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--bg-1)] px-2 py-1.5">
           <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
@@ -205,7 +205,7 @@ export function Composer({
               key={ctx.key}
               className="inline-flex max-w-[220px] items-center gap-1 rounded-full border border-[var(--teal)]/40 bg-[var(--teal-soft)] px-2 py-0.5 text-xs text-[var(--text-soft)]"
             >
-              <span aria-hidden>{ctx.kind === "file" ? "📎" : "🌐"}</span>
+              <span aria-hidden>{ctx.kind === "file" ? "Doc" : "Sito"}</span>
               <span className="truncate">{ctx.label}</span>
               {onRemoveContext && (
                 <button
@@ -275,7 +275,7 @@ export function Composer({
         </div>
       )}
 
-      <div className="k2-panel rounded-2xl p-2">
+      <div className="rounded-lg border border-[var(--line-strong)] bg-[var(--bg-1)] p-2">
         {(files.length > 0 || uploadingFiles.length > 0) && (
           <div className="mb-2 flex flex-wrap gap-2 px-1">
             {files.map((f) => {
@@ -321,7 +321,7 @@ export function Composer({
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder="Descrivi il caso o allega un documento"
-          className="k2-focus max-h-[170px] w-full resize-none rounded-xl border border-transparent bg-transparent px-3 py-2 text-sm leading-6"
+          className="max-h-[170px] w-full resize-none bg-transparent px-3 py-2 text-[15px] leading-6 outline-none placeholder:text-[var(--text-muted)]"
         />
         <div className="mt-2 flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
@@ -342,7 +342,7 @@ export function Composer({
               onClick={() => fileRef.current?.click()}
               title="Allega file"
               aria-label="Allega file"
-              className="rounded-lg border border-[var(--line)] p-2 text-[var(--text-soft)] hover:border-[var(--line-strong)]"
+              className="rounded-md p-2 text-[var(--text-soft)] hover:bg-[var(--bg-2)]"
             >
               <Paperclip size={15} />
             </button>
@@ -353,8 +353,8 @@ export function Composer({
                 title="Analizza un URL"
                 aria-label="Analizza un URL"
                 aria-pressed={urlMode}
-                className={`rounded-lg border p-2 text-[var(--text-soft)] hover:border-[var(--line-strong)] ${
-                  urlMode ? "border-[var(--teal)] text-[var(--teal)]" : "border-[var(--line)]"
+                className={`rounded-md p-2 text-[var(--text-soft)] hover:bg-[var(--bg-2)] ${
+                  urlMode ? "text-[var(--teal)]" : ""
                 }`}
               >
                 <Globe size={15} />
@@ -373,10 +373,8 @@ export function Composer({
                     : "Dettatura vocale (it-IT)"
                   : "Voce non supportata in questo browser"
               }
-              className={`rounded-lg border p-2 text-[var(--text-soft)] hover:border-[var(--line-strong)] disabled:cursor-not-allowed disabled:opacity-40 ${
-                recording
-                  ? "k2-mic-recording border-red-500/60 text-red-400"
-                  : "border-[var(--line)]"
+              className={`rounded-md p-2 text-[var(--text-soft)] hover:bg-[var(--bg-2)] disabled:cursor-not-allowed disabled:opacity-40 ${
+                recording ? "k2-mic-recording text-red-500" : ""
               }`}
             >
               {recording ? <Mic size={15} /> : voiceSupported ? <Mic size={15} /> : <MicOff size={15} />}
@@ -387,9 +385,9 @@ export function Composer({
             onClick={() => onSubmit()}
             disabled={disabled || !value.trim()}
             aria-label="Invia messaggio"
-            className="rounded-xl bg-[var(--teal)] p-2 text-[var(--on-accent)] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--text-main)] px-4 py-2 text-sm font-medium text-[var(--bg-1)] disabled:opacity-40"
           >
-            <ArrowUp size={16} />
+            Invia <ArrowUp size={14} />
           </button>
         </div>
       </div>

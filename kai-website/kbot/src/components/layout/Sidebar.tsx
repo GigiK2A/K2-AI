@@ -40,7 +40,7 @@ export function Sidebar({
         }
       >
         <div className="flex items-center justify-between px-2 py-1">
-          <p className="text-base font-semibold tracking-tight">K-BOT</p>
+          <p className="font-doc text-lg font-semibold tracking-tight">K-BOT</p>
           <button onClick={onClose} className="rounded-md p-1.5 text-[var(--text-soft)] lg:hidden" aria-label="Chiudi il menu">
             <X size={16} />
           </button>

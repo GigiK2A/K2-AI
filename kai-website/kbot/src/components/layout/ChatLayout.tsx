@@ -25,7 +25,7 @@ export function ChatLayoutHeader({
         <Menu size={18} />
       </button>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{titolo}</p>
+        <p className="font-doc truncate text-base font-semibold">{titolo}</p>
         {sottotitolo && <p className="truncate text-xs text-[var(--text-muted)]">{sottotitolo}</p>}
       </div>
       <button

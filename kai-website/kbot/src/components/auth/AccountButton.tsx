@@ -19,7 +19,7 @@ export function AccountButton({ compact = false }: { compact?: boolean }) {
       title={`Esci da ${label}`}
     >
       {compact ? <UserCircle2 size={16} /> : <LogOut size={13} />}
-      <span>{compact ? "Account" : "Esci"}</span>
+      <span className={compact ? "" : "hidden sm:inline"}>{compact ? "Account" : "Esci"}</span>
     </button>
   );
 }

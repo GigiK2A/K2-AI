@@ -10,7 +10,7 @@ interface LoadingStateProps {
   reportProgress?: { stage: string; progress: number } | null;
 }
 
-export function LoadingState({ text = "K2-AI sta ragionando...", reportProgress = null }: LoadingStateProps) {
+export function LoadingState({ text = "K-BOT sta leggendo il caso…", reportProgress = null }: LoadingStateProps) {
   const live = !!reportProgress;
   const [elapsed, setElapsed] = useState(0);
 
@@ -27,30 +27,11 @@ export function LoadingState({ text = "K2-AI sta ragionando...", reportProgress 
   return (
     <AnimatePresence mode="wait">
       {!live ? (
-        <motion.div
-          key="thinking"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="k2-panel max-w-2xl rounded-2xl p-4"
-        >
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-[var(--text-soft)]">{text}</p>
-            {elapsed >= 3 && (
-              <span className="text-xs tabular-nums text-[var(--text-soft)] opacity-70">{elapsed}s</span>
-            )}
-          </div>
-          <div className="mt-3 flex gap-2">
-            {[0, 1, 2].map((i) => (
-              <motion.span
-                key={i}
-                animate={{ opacity: [0.25, 1, 0.25] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15 }}
-                className="h-2 w-2 rounded-full bg-[var(--teal)]"
-              />
-            ))}
-          </div>
+        <motion.div key="thinking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-1">
+          <p className="text-sm text-[var(--text-soft)]">
+            {text}
+            {elapsed >= 3 && <span className="ml-2 tabular-nums text-[var(--text-muted)]">{elapsed}s</span>}
+          </p>
         </motion.div>
       ) : (
         <motion.div
@@ -58,7 +39,7 @@ export function LoadingState({ text = "K2-AI sta ragionando...", reportProgress 
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="k2-panel max-w-2xl rounded-2xl p-5"
+          className="max-w-2xl rounded-lg border border-[var(--line)] bg-[var(--bg-1)] p-5"
         >
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold text-[var(--text-main)]">Generazione report in corso</p>

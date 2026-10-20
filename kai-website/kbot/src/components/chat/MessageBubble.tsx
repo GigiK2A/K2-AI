@@ -67,11 +67,14 @@ export function MessageBubble({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={isBot ? "mr-auto w-full max-w-3xl" : "ml-auto max-w-xl"}
+      className="w-full max-w-3xl"
     >
-      <div className={isBot ? "py-1" : "rounded-2xl bg-[var(--bg-2)] px-4 py-3"}>
+      <div className={isBot ? "py-1" : "border-l-2 border-[var(--text-main)] pl-4"}>
+        <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
+          {isBot ? "Risposta di K-BOT" : "La tua richiesta"}
+        </p>
 
-        <p className="whitespace-pre-wrap text-[15px] leading-7 text-[var(--text-main)]">
+        <p className={"whitespace-pre-wrap text-[15px] leading-7 text-[var(--text-main)]" + (isBot && onOpenDraft ? " line-clamp-5" : "")}>
           {renderWithCitations(message.content)}
         </p>
 

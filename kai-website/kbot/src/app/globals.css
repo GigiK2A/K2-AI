@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --bg-0: #f6f7f9;
-  --bg-1: #ffffff;
-  --bg-2: #eef0f4;
-  --line: rgba(15, 23, 42, 0.09);
-  --line-strong: rgba(15, 23, 42, 0.18);
-  --text-main: #0f172a;
-  --text-soft: #475569;
-  --text-muted: #64748b;
-  --teal: #0f766e;
-  --teal-soft: rgba(15, 118, 110, 0.1);
+  --bg-0: #f3f0e9;
+  --bg-1: #fdfcf9;
+  --bg-2: #ebe7dd;
+  --line: rgba(40, 32, 20, 0.12);
+  --line-strong: rgba(40, 32, 20, 0.28);
+  --text-main: #1d2128;
+  --text-soft: #4d5058;
+  --text-muted: #77736a;
+  --teal: #1f4d3a;
+  --teal-soft: rgba(31, 77, 58, 0.09);
   --on-accent: #ffffff;
   --warn-bg: #fef3c7;
   --warn-text: #92400e;
@@ -20,17 +20,17 @@
 }
 
 [data-theme="dark"] {
-  --bg-0: #0b0d11;
-  --bg-1: #12151b;
-  --bg-2: #1a1e26;
+  --bg-0: #14130f;
+  --bg-1: #1b1a15;
+  --bg-2: #24221b;
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.18);
   --text-main: #f1f5f9;
   --text-soft: #aab2bf;
   --text-muted: #7f8998;
-  --teal: #2dd4bf;
-  --teal-soft: rgba(45, 212, 191, 0.14);
-  --on-accent: #04201d;
+  --teal: #8fc7a8;
+  --teal-soft: rgba(143, 199, 168, 0.14);
+  --on-accent: #10231a;
   --warn-bg: rgba(250, 204, 21, 0.16);
   --warn-text: #fde68a;
   --ok-bg: rgba(74, 222, 128, 0.16);
@@ -44,6 +44,10 @@ body {
   background: var(--bg-0);
   color: var(--text-main);
   font-family: Inter, Geist, "SF Pro Text", "SF Pro Display", sans-serif;
+}
+
+.font-doc {
+  font-family: "Source Serif 4", Charter, Georgia, "Times New Roman", serif;
 }
 
 * {
