@@ -10,7 +10,6 @@
     "assun(?:zion|ere|to|t[ai])\\w*",
     "apprendist\\w+",
     "periodo di prova",
-    "\\bferie\\b",
     "\\btfr\\b|trattamento di fine rapporto",
     "\\bccnl\\b|contratto collettivo",
     "buste? paga|busta paga",
@@ -24,8 +23,8 @@
     "liquidazione (?:di chi|del dipendente|dei dipendenti)|buonuscita",
     "contestazione (?:scritta|disciplinare)|provvediment\\w+ disciplinar\\w+|richiamo scritto",
     "trasferiment\\w+ (?:in|ad|presso) (?:un')?altra sede|trasferire (?:il|un) dipendente",
-    "ferie forzat\\w+|ore di straordinar\\w+",
-    "demansionament\\w+"
+    "demansionament\\w+",
+    "(?:concedere|concedo|concedi|concedono|negare|nego|negato|approvare|rifiutare|richiesta di|giorni di|monte)\\s+(?:le\\s+)?ferie|ferie\\s+(?:forzat\\w+|maturat\\w+|non\\s+godut\\w+|arretrat\\w+|residu\\w+|obbligator\\w+|ad\\s+agosto)|ore di straordinar\\w+"
    ],
    "skill": [
     "diritto-del-lavoro-italiano",
@@ -39,7 +38,8 @@
     "ritardo|in ritardo|assenz\\w+|assente",
     "dipendent\\w+",
     "lavorator\\w+",
-    "mansioni|demansion\\w+"
+    "mansioni|demansion\\w+",
+    "\\bferie\\b"
    ]
   },
   {
@@ -310,6 +310,31 @@
     "diritto-italiano",
     "analisi-bilancio-pmi"
    ]
+  },
+  {
+   "id": "informatica",
+   "descrizione": "Problemi informatici di una PMI: server, rete, disco, stampanti, Wi-Fi, backup, antivirus, gestionale che si blocca",
+   "trigger": [
+    "\\bserver\\b|\\bnas\\b|windows server|active directory",
+    "\\bdisco\\b|\\bssd\\b|\\braid\\b|\\bsmart\\b|disco (?:al )?100|archiviazione",
+    "\\bantivirus\\b|\\bransomware\\b|\\bfirewall\\b|\\bvpn\\b",
+    "\\bwi-?fi\\b|rete aziendale|\\bswitch\\b|\\brouter\\b|cavo di rete|\\bping\\b|\\bgateway\\b",
+    "stampante|coda di stampa",
+    "file condivis\\w+|cartell\\w+ condivis\\w+|condivisione di rete",
+    "\\bbackup\\b|copia di sicurezza|ripristin\\w+ (?:dei )?(?:file|dati)",
+    "(?:gestionale|programma|software|excel|outlook|pc|computer|sistema)\\s+(?:\\w+\\s+){0,2}(?:si\\s+blocca|si\\s+pianta|va\\s+in\\s+crash|è\\s+lent\\w+|rallent\\w+|non\\s+si\\s+apre|si\\s+chiude\\s+da\\s+solo)"
+   ],
+   "debole": [
+    "\\blent\\w+|rallent\\w+|\\bscatta\\w*|si blocca|si pianta",
+    "\\bpc\\b|computer|portatile",
+    "tecnico|assistenza informatica",
+    "\\bposta\\b|\\be-?mail\\b|\\bmail\\b",
+    "utenti|dipendenti|contemporaneamente"
+   ],
+   "skill": [
+    "diagnostica-it-pmi"
+   ],
+   "note": "Nuova skill creata il 20/10/2026 dopo l'audit: non esisteva una skill di diagnostica informatica (test 03: ping su 127.0.0.1, antivirus spento, SMART «Buono» come prova)."
   }
  ]
 }

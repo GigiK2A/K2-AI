@@ -96,3 +96,12 @@ def test_il_prompt_chiede_di_rifare_i_calcoli_solo_nei_turni_di_ricontrollo():
     assert "RICONTROLLARE la tua risposta precedente" in _prompt("Ricontrolla i calcoli, mi sembrano sbagliati.")
     assert "RICONTROLLARE la tua risposta precedente" not in _prompt("E se il computer costasse 400 euro?")
     assert "non generarne" in _prompt("Ricontrolla i calcoli").lower() or "NON è una richiesta di report" in _prompt("Ricontrolla i calcoli")
+
+
+def test_il_ricontrollo_chiede_di_ritirare_i_dati_senza_fonte():
+    assert "RITIRALO esplicitamente" in _prompt("Ricontrolla i calcoli, mi sembrano sbagliati.")
+
+
+def test_le_istruzioni_sulle_fonti_vietano_di_difendere_cifre_senza_fonte():
+    from app.lib import norme_evidence as N
+    assert "non difenderla" in N._ISTRUZIONI and "senza fonte" in N._ISTRUZIONI

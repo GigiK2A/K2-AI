@@ -1,5 +1,5 @@
 {
- "descrizione": "Casi per il router delle skill. «dev»: le domande vere dell'utente del 20/10/2026 (usate per diagnosticare). «held_out_1»: scritte il 20/10/2026 PRIMA di toccare i trigger; dopo la prima misura diventano diagnostiche. Atteso [] = nessuna skill di tema (solo quella di metodo). «held_out_2»: scritto da me e quindi CONTAMINATO (le regole ricalcano quelle frasi). «held_out_3»: 40 domande scritte da un agente che non ha visto il router, misurate UNA volta prima di ogni modifica. «held_out_3» è diventato diagnostico dopo la prima misura (32/40). «held_out_4»: seconda serie di 40 scritta da un altro agente (lessico molto colloquiale), misurata UNA volta prima di modificare ancora.",
+ "descrizione": "Casi per il router delle skill. «dev»: le domande vere dell'utente del 20/10/2026 (usate per diagnosticare). «held_out_1»: scritte il 20/10/2026 PRIMA di toccare i trigger; dopo la prima misura diventano diagnostiche. Atteso [] = nessuna skill di tema (solo quella di metodo). «held_out_2»: scritto da me e quindi CONTAMINATO (le regole ricalcano quelle frasi). «held_out_3»: 40 domande scritte da un agente che non ha visto il router, misurate UNA volta prima di ogni modifica. «held_out_3» è diventato diagnostico dopo la prima misura (32/40). «held_out_4»: seconda serie di 40 scritta da un altro agente (lessico molto colloquiale), misurata UNA volta prima di modificare ancora. Dal 20/10/2026 esiste il tema «informatica»: le domande su server, rete, stampanti, backup ecc. attendono la skill diagnostica-it-pmi; le altre domande non giuridiche restano senza skill di tema. «held_out_4» è diventato diagnostico. «held_out_5»: 40 domande (16 informatiche) scritte da un agente che non aveva visto il router, misurate UNA volta prima di modificare.",
  "dev": [
   [
    "Abbiamo comprato un computer da 2.500 euro per l'azienda. Conviene scaricarlo tutto subito oppure ammortizzarlo negli anni? Come funziona?",
@@ -15,7 +15,9 @@
   ],
   [
    "Da qualche giorno il nostro server aziendale è molto lento, soprattutto quando più dipendenti lavorano contemporaneamente. Prima di chiamare un tecnico vorrei capire da cosa può dipendere e cosa possiamo controllare da soli.",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Un nostro dipendente arriva spesso in ritardo, anche di 20-30 minuti, e nonostante glielo abbiamo già fatto presente continua a farlo. Possiamo trattenergli dei soldi dallo stipendio o fargli una contestazione scritta?",
@@ -135,15 +137,21 @@
   ],
   [
    "Il server aziendale è lentissimo quando lavoriamo in cinque contemporaneamente",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "La stampante in ufficio non stampa più dal PC di Marco",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Il wifi in magazzino cade continuamente",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Mi scrivi una mail di auguri per i clienti?",
@@ -257,15 +265,21 @@
   ],
   [
    "Come impostare un backup automatico dei file aziendali?",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Il gestionale si blocca quando emetto le fatture, cosa può essere?",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Che differenza c'è tra un SSD e un disco meccanico per il nostro server?",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Mi consigli come motivare i dipendenti dopo un periodo difficile?",
@@ -455,15 +469,21 @@
   ],
   [
    "Il server si blocca ogni mattina verso le 9, riparte solo se lo spengo e lo riaccendo. Da dove parto?",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "La stampante dell'ufficio dice offline ma è accesa e il cavo è attaccato, come la sistemo?",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Il gestionale si pianta quando provo a stampare una fattura, il programma si chiude da solo.",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Mi scrivi una mail gentile ma ferma per sollecitare un preventivo che aspetto da due settimane?",
@@ -483,7 +503,9 @@
   ],
   [
    "Il wifi in sala riunioni cade quando siamo in più di sei collegati. Serve un access point nuovo?",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "Come faccio a impostare la firma automatica nelle mail aziendali con logo e numero di telefono?",
@@ -709,10 +731,236 @@
   ],
   [
    "il mio excel si blocca quando metto le formule sulla colonna delle fatture, come lo sistemo",
-   []
+   [
+    "diagnostica-it-pmi"
+   ]
   ],
   [
    "quanti giorni ci vogliono più o meno per andare da perugia a milano in treno con una fermata",
+   []
+  ]
+ ],
+ "held_out_5": [
+  [
+   "Il computer della contabilità ci mette dieci minuti ad accendersi e poi quando apro Excel si pianta tutto",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Da stamattina non riesco più ad aprire la cartella condivisa dove teniamo i preventivi, dice che non ho i permessi ma ieri andava",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Mi è comparso un messaggio che dice disco quasi pieno sul server, che cosa devo cancellare senza fare danni?",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Il Wi-Fi in sala riunioni va e viene, durante le videochiamate con i clienti si blocca tutto",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "La stampante grande del corridoio dice che c'è un lavoro in coda ma non stampa niente, ho già provato a spegnerla e riaccenderla",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Non mi arrivano più le mail da stamattina, quelle che mando invece partono. Può essere la casella piena?",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Non so se il salvataggio dei dati notturno funzioni davvero, la spia sull'apparecchio è rossa da settimane",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Mi è uscita una finestra che dice che il virus è stato trovato e di chiamare un numero, cosa faccio?",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Il programma delle fatture e delle bolle si chiude da solo appena provo a stampare il documento",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Ho dimenticato la parola d'accesso del mio computer dopo le ferie, come faccio a rientrare senza perdere i file?",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Windows continua a chiedermi di riavviare per gli aggiornamenti e quando lo faccio ci mette un'ora, posso rimandare?",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Da casa non riesco a collegarmi al computer dell'ufficio, ieri sera funzionava benissimo",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Il cellulare aziendale non scarica più la posta dell'ufficio da quando ho cambiato la password",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Il pc di mio collega va lentissimo e la ventola fa un rumore strano, secondo me è pieno di roba inutile",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Quando salvo un documento sul disco di rete mi dice che il file è bloccato da un altro utente ma nessuno lo sta usando",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Internet in negozio non funziona e la lucina sul modem lampeggia arancione, i clienti aspettano alla cassa",
+   [
+    "diagnostica-it-pmi"
+   ]
+  ],
+  [
+   "Un cliente non ha pagato la fattura di marzo, posso detrarre l'IVA che ho già versato?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Ho comprato un furgone usato per l'attività, in quanti anni lo posso ammortizzare e quanto ne deduco?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Le cene con i clienti si possono scaricare dalle tasse? Mi hanno detto solo una parte",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Ho sbagliato l'importo su una fattura emessa il mese scorso, come la rimedio senza pagare più imposte del dovuto?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Un dipendente è stato assente per malattia dieci giorni senza avvisare, posso contestargli qualcosa?",
+   [
+    "diritto-del-lavoro-italiano"
+   ]
+  ],
+  [
+   "Voglio assumere un ragazzo per sei mesi in prova, che cosa devo prevedere nel contratto?",
+   [
+    "diritto-del-lavoro-italiano"
+   ]
+  ],
+  [
+   "Una collaboratrice arriva sempre in ritardo di venti minuti, posso trattenerle i soldi dalla busta paga?",
+   [
+    "diritto-del-lavoro-italiano"
+   ]
+  ],
+  [
+   "Se a un operaio non concedo le ferie che chiede per agosto, sono nei guai?",
+   [
+    "diritto-del-lavoro-italiano"
+   ]
+  ],
+  [
+   "Il fornitore di imballaggi mi vuole aumentare i prezzi a metà anno ma nel nostro accordo non c'è scritto niente, può farlo?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Voglio smettere di lavorare con un cliente che mi ha fatto firmare un accordo annuale, ci sono penali se me ne vado prima?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Il cliente dopo la firma mi chiede lavori in più rispetto al preventivo, devo farli gratis?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Un'azienda che mi deve 8.000 euro per una fornitura non risponde più al telefono né alle mail, che passi devo fare?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Il cliente mi ha dato un assegno e poi è tornato indietro senza copertura, cosa posso fare adesso?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Conviene mandare subito un avvocato a chi ritarda da tre mesi o prima un sollecito scritto?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Posso mettere una telecamera nel magazzino che inquadra anche gli operai mentre lavorano?",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "Vorrei controllare cosa fanno i miei impiegati su internet durante l'orario, è permesso guardare la cronologia?",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "Un cliente mi ha chiesto di cancellare tutti i suoi dati dai nostri archivi, sono obbligato a farlo subito?",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "Come posso organizzare i turni dei miei cinque dipendenti in modo che nessuno resti scoperto il sabato?",
+   []
+  ],
+  [
+   "Mi aiuti a scrivere un testo breve per il volantino della nostra nuova linea di prodotti, tono simpatico?",
+   []
+  ],
+  [
+   "Che titolo darei a un post su Instagram per promuovere gli sconti d'autunno del mio negozio?",
+   []
+  ],
+  [
+   "Come faccio a spiegare con calma a un collega che il suo modo di preparare la fattura grafica del progetto non va bene?",
+   []
+  ],
+  [
+   "Quanti anni ha il sistema solare e perché Plutone non è più un pianeta?",
+   []
+  ],
+  [
+   "Che consigli hai per organizzare meglio le riunioni del lunedì, ci perdiamo sempre in chiacchiere e la mail di riepilogo non la legge nessuno",
    []
   ]
  ]

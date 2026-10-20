@@ -38,7 +38,7 @@ def test_errore_del_modello_fail_open():
 def test_i_temi_del_modello_valgono_solo_se_le_parole_non_trovano_nulla():
     assert R.skill_per_tema(["se compro un furgone quanto scarico dalle tasse"], ["lavoro"]) == ["diritto-del-lavoro-italiano", "diritto-italiano"]   # il modello
     assert R.skill_per_tema(["ho un avviso di accertamento"], ["lavoro"]) == ["fiscale-tributario-italiano"]          # le parole vincono
-    assert R.skill_per_tema(["il wifi cade"], []) == []
+    assert R.skill_per_tema(["mi scrivi una mail di auguri per i clienti?"], []) == []
 
 
 def test_resolve_usa_il_tema_scelto_dal_modello():

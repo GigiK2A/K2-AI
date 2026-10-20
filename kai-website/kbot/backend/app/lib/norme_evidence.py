@@ -378,7 +378,12 @@ _SISTEMA_PROPOSTA = (
     "ammortamento, deducibilità, detraibilità, sanzioni, interessi) le ha: indica le norme che li fissano, "
     "anche se la domanda è «calcolami…» o «ricontrolla i calcoli» (in tal caso guarda il contesto). Esempi: "
     "ammortamento di un bene → 'D.P.R. 917/1986 art. 102'; aliquota IRES → 'D.P.R. 917/1986 art. 77'; "
-    "detrazione dell'IVA sugli acquisti → 'D.P.R. 633/1972 art. 19'."
+    "detrazione dell'IVA sugli acquisti → 'D.P.R. 633/1972 art. 19'.\n"
+    "RICHIAMI FREQUENTI (norme che servono spesso e che di solito si dimenticano; segnalati dal test del 20/10/2026, "
+    "da far validare a un professionista): stare in giudizio senza avvocato, decreto ingiuntivo «in proprio», giudice di "
+    "pace → 'art. 82 c.p.c.' oltre agli articoli sul procedimento; il cliente che recede da un incarico professionale o "
+    "di progettazione → 'art. 2237 c.c.'; il committente che recede da un appalto o da un'opera → 'art. 1671 c.c.'; "
+    "interessi di mora fra imprese → 'D.Lgs. 231/2002 art. 4' e 'D.Lgs. 231/2002 art. 5'."
 )
 
 
@@ -764,6 +769,9 @@ _ISTRUZIONI = (
     "(«a decorrere dal…»); il comma 1 può riportare ancora il testo storico.\n"
     "- Dove compare «Modifiche successive al testo», quelle cifre prevalgono su quelle del testo; se non sei sicuro "
     "di quale sia vigente, dì che la cifra va verificata.\n"
+    "- Se in un turno precedente hai dato una cifra, una soglia o un'interpretazione che NON sta in queste fonti e non "
+    "l'ha detta l'utente, non difenderla: ritirala dicendo che era un'ipotesi senza fonte, o sostituiscila con quella "
+    "delle fonti. Se hai ammesso di non avere una fonte, la conclusione che ne dipendeva non resta in piedi.\n"
     "- Se un passaggio non riguarda il caso, ignoralo senza citarlo. Se le fonti non coprono il punto, dillo e "
     "indirizza al professionista invece di inventare.\n"
     "- Il testo può non essere aggiornato all'ultima modifica: per scadenze e importi che pesano sulla decisione "

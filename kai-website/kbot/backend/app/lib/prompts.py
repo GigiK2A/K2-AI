@@ -75,11 +75,16 @@ _DOMANDA_AMPIA = re.compile(r"clausol|risch|pericol|controll|verific|analizz|ria
 
 def build_system_prompt_v2(skill_names: List[str], session: dict,
                            required_fields_hint: str = "") -> str:
+    # Le sezioni delle skill che entrano nel prompt si scelgono sulle ultime domande dell'utente (vedi lib/skills).
+    _query_skill = " ".join(
+        str(_m.get("content") or "") for _m in (session.get("messages") or [])[-6:]
+        if isinstance(_m, dict) and _m.get("role") == "user")[-1500:]
     skill_content = load_skill_bundle(
         skill_names,
         max_total_chars=CHAT_SYSTEM_MAX_CHARS,
         max_per_skill_chars=5500,
         include_references=False,
+        query=_query_skill,
     )
 
     collected = session.get("collected_data") or {}
@@ -347,7 +352,10 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
                 "formule (aliquote, soglie, coefficienti: solo quelli presenti nelle fonti o detti dall'utente; se un "
                 "valore non c'è, dillo); (3) dì chiaramente quali cifre erano sbagliate o incoerenti e perché; "
                 "(4) dai la versione corretta. Se i dati bastano, non rispondere con domande: chiedi solo ciò che "
-                "manca davvero e intanto mostra il calcolo con le ipotesi dichiarate.\n")
+                "manca davvero e intanto mostra il calcolo con le ipotesi dichiarate. (5) Se in un turno precedente hai "
+                "usato una cifra, una soglia o un dato che non vengono né dall'utente né dalle fonti (es. «un progetto di 100 "
+                "ore», «una soglia di 10.000 euro»), RITIRALO esplicitamente: non difendere una conclusione che si "
+                "reggeva su quel dato, e rifai il ragionamento senza di esso, dicendo cosa serve per concluderlo.\n")
         else:
             context_interpretation = ""
     except Exception:

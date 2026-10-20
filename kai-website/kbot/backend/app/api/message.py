@@ -29,7 +29,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import crisi, avvisi_input, verifica_bozze, skill_router, eco_guard
+from ..lib import crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -207,6 +207,11 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
                        "approfondire per primo?")
     # In coda, le fonti del pacchetto normativo che la risposta ha davvero citato: lo fa il codice,
     # quindi la fonte c'è anche quando il modello non la scrive.
+    # IVA inclusa detta dall'utente e risposta che applica l'aliquota all'importo lordo: nota con i valori giusti.
+    _nota_iva = iva_guard.nota([str(m.get("content") or "") for m in (merged_messages or [])
+                                if isinstance(m, dict) and m.get("role") == "user"], visible)
+    if _nota_iva:
+        visible = visible.rstrip() + _nota_iva
     visible = norme_evidence.aggiungi_fonti(visible)
     return visible, summary, diagnosi
 
@@ -238,6 +243,8 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
                        if isinstance(m, dict) and m.get("role") == "user"), "")
     # La risposta non può essere il messaggio dell'utente ripetuto (vedi lib/eco_guard).
     raw_text = eco_guard.assicura(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, _last_user)
+    # Risposta interrotta a metà frase (il modello emette la fine-turno da solo): una sola continuazione.
+    raw_text = taglio_guard.completa(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text)
     raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text,
                                      merged_messages, collected)
     # Bozza richiesta ma assente (il modello fa una domanda invece di scriverla): seconda chiamata esplicita.
