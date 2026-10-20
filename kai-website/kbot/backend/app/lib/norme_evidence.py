@@ -197,6 +197,27 @@ def numeri_nel_testo(testo: str) -> set[int]:
     return out
 
 
+# Importi in euro: «516,46 euro», «2.500 €», «euro 5.000». Prima gli importi si verificavano come numeri nudi: «300 €»
+# risultava fondato perché «300» compariva per caso altrove nel pacchetto, e i decimali (516,46) non erano registrati.
+_NUM_IMPORTO = r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?"
+_RE_IMPORTO = re.compile(r"(?:(?:€|\beuro\b|\beur\b)\s*(?P<a>" + _NUM_IMPORTO + r")|(?P<b>" + _NUM_IMPORTO +
+                         r")\s*(?:€|\beuro\b|\beur\b))", re.I)
+
+
+def _norm_importo(tok: str) -> str:
+    """'2.500' → '2500', '516,46' → '516.46', '2.000,00' → '2000'."""
+    t = tok.strip().replace(".", "")
+    if "," in t:
+        intero, dec = t.split(",", 1)
+        dec = dec.rstrip("0")
+        return intero + ("." + dec if dec else "")
+    return t
+
+
+def importi_nel_testo(testo: str) -> set[str]:
+    return {_norm_importo(m.group("a") or m.group("b")) for m in _RE_IMPORTO.finditer(testo or "")}
+
+
 def coppie_nel_testo(testo: str) -> set[tuple[int, str]]:
     out: set[tuple[int, str]] = set()
     for m in _RE_COPPIA.finditer(testo or ""):
@@ -228,6 +249,7 @@ class Pacchetto:
     fonti: list[Fonte] = field(default_factory=list)
     numeri: set[int] = field(default_factory=set)
     coppie: set[tuple[int, str]] = field(default_factory=set)
+    importi: set[str] = field(default_factory=set)
 
 
 _CORRENTE: contextvars.ContextVar[Optional[Pacchetto]] = contextvars.ContextVar("norme_pacchetto", default=None)
@@ -811,7 +833,8 @@ def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> O
             return None
         blocco = costruisci_blocco(fonti)
         corpo = " ".join(f.testo + " " + f.note for f in fonti)
-        return Pacchetto(testo=blocco, fonti=fonti, numeri=numeri_nel_testo(corpo), coppie=coppie_nel_testo(corpo))
+        return Pacchetto(testo=blocco, fonti=fonti, numeri=numeri_nel_testo(corpo), coppie=coppie_nel_testo(corpo),
+                        importi=importi_nel_testo(corpo))
     except Exception:
         log.warning("norme_evidence: costruzione del pacchetto fallita (fail-open)", exc_info=True)
         return None
@@ -880,7 +903,7 @@ def imposta_testo_utente(testo: Optional[str]) -> None:
         return
     norm = re.sub(r"\s+", " ", testo).lower()
     coppie = set(coppie_nel_testo(testo)) | durate_dalle_date(testo)
-    _testo_utente.set((coppie, numeri_nel_testo(testo), norm))
+    _testo_utente.set((coppie, numeri_nel_testo(testo), norm, importi_nel_testo(testo)))
 
 
 def testo_utente_corrente():
@@ -921,6 +944,9 @@ def numero_fondato(span: str) -> bool:
     p, u = pacchetto_corrente(), _testo_utente.get()
     if not span or (not p and not u):
         return False
+    importi = importi_nel_testo(span)
+    if importi:                      # un importo in euro si verifica come importo (non come numero nudo)
+        return all((p and i in p.importi) or (u and len(u) > 3 and i in u[3]) for i in importi)
     coppie = coppie_nel_testo(span)
     if coppie:
         return all((p and c in p.coppie) or (u and c in u[0]) for c in coppie)

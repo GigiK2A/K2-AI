@@ -17,6 +17,9 @@ DA_TOCCARE = [
     ("Il licenziamento va impugnato entro 60 giorni dalla comunicazione.", "60 giorni"),
     ("La soglia del regime forfettario è di 85.000 euro.", "85.000"),
     ("La sanzione per omessa comunicazione è di 500 euro.", "500 euro"),
+    # 20/10/2026: soglia di costo unitario inventata dal modello su un computer (art. 102 c.5 TUIR dice 516,46)
+    ("Per i beni strumentali il cui costo unitario è pari o inferiore a 2.000 euro puoi dedurre tutto subito.", "2.000"),
+    ("I beni strumentali con un valore unitario fino a 300 € possono essere dedotti integralmente.", "300"),
 ]
 
 # ── numeri di business / dati utente / scadenze commerciali → INVARIATI ───────────────────
@@ -29,6 +32,8 @@ NON_TOCCARE = [
     "Ho 5 dipendenti e fatturo 800.000 euro.",
     "Ti conviene un budget di 20.000 euro per il sito.",
     "Per una campagna social servono almeno 2-3 mesi di test.",
+    "Il prezzo unitario del tuo prodotto è inferiore a 50 euro, quindi il margine è basso.",
+    "Il computer costa 2.500 euro: con l'ammortamento in 5 anni sono 500 euro l'anno.",
 ]
 
 
@@ -151,3 +156,50 @@ def test_la_grammatica_non_cambia_la_politica():
     out = dg.sanitize("Il licenziamento va impugnato entro 60 giorni dalla comunicazione.")
     assert "entro il termine previsto dalla normativa" in out
     assert "60 giorni" not in out
+
+
+def test_la_soglia_di_costo_unitario_vera_resta_se_e_nel_testo_di_legge(monkeypatch):
+    """Se il numero sta nel pacchetto normativo del turno (516,46 dell'art. 102 c.5) la frase non si tocca."""
+    monkeypatch.setattr(dg.norme_evidence, "numero_fondato", lambda span: "516,46" in span)
+    giusta = "Per i beni il cui costo unitario non è superiore a 516,46 euro la deduzione è integrale (ammortamento escluso)."
+    sbagliata = "Per i beni il cui costo unitario non è superiore a 2.000 euro la deduzione è integrale."
+    assert "516,46" in dg.sanitize(giusta)
+    assert "2.000" not in dg.sanitize(sbagliata)
+
+
+def _con_pacchetto(testo_legge, testo_utente=""):
+    from app.lib import norme_evidence as N
+    N.imposta(N.Pacchetto(testo=testo_legge, numeri=N.numeri_nel_testo(testo_legge), coppie=N.coppie_nel_testo(testo_legge),
+                          importi=N.importi_nel_testo(testo_legge)))
+    N.imposta_testo_utente(testo_utente or None)
+
+
+def test_un_importo_si_verifica_come_importo_non_come_numero_nudo():
+    """«300 €» non è fondato solo perché «300» compare in un altro punto del pacchetto (20/10/2026)."""
+    from app.lib import norme_evidence as N
+    try:
+        _con_pacchetto("comma 5: per i beni il cui costo unitario non è superiore a 516,46 euro è consentita la deduzione "
+                       "integrale. Art. 300 del codice; entro 300 giorni.")
+        assert N.numero_fondato("516,46 euro") and N.numero_fondato("€ 516,46")
+        assert not N.numero_fondato("300 €") and not N.numero_fondato("2.000 euro")
+        san = dg.sanitize("Per ammortamento: la soglia di 300 € è superata, quindi ammortizzi.")
+        assert "300" not in san
+        assert "516,46" in dg.sanitize("Per l'ammortamento la soglia di 516,46 euro non è superata.")
+    finally:
+        N.imposta(None)
+        N.imposta_testo_utente(None)
+
+
+def test_un_importo_detto_dall_utente_resta():
+    from app.lib import norme_evidence as N
+    try:
+        N.imposta(None)
+        N.imposta_testo_utente("Abbiamo comprato un computer da 2.500 euro")
+        assert N.numero_fondato("oltre 2.500 euro") and not N.numero_fondato("oltre 3.000 euro")
+    finally:
+        N.imposta_testo_utente(None)
+
+
+def test_importi_normalizzati():
+    from app.lib import norme_evidence as N
+    assert N.importi_nel_testo("516,46 euro; € 2.500; 2.000,00 €; euro 5.000,50; 300 €") == {"516.46", "2500", "2000", "5000.5", "300"}

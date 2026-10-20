@@ -267,7 +267,7 @@ def resolve_skills_for_session(session: dict) -> List[str]:
             from . import skill_router
             _utente = [m["content"] for m in (session.get("messages") or [])
                        if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str)]
-            skills = skill_router.skill_per_tema(_utente)
+            skills = skill_router.skill_per_tema(_utente, (collected.get("tema_llm") or {}).get("temi"))
         except ImportError:        # modulo caricato fuori dal pacchetto (alcuni test): resta l'instradamento storico
             skills = []
     if not skills:

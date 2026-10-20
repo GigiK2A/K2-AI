@@ -38,7 +38,8 @@ _LEGAL_CTX = re.compile(
     r"normativ\w+|decreto|obblig\w+|sanzion\w+|multa|ammenda|forfettari\w+|"
     r"registrazion\w+|protocoll\w+|raccomandat\w+|\bpec\b|camera di commercio|"
     r"registro imprese|\bdurc\b|libro unico|cedolino|buste? paga|\btfr\b|"
-    r"ferie|permessi rol|apprendistat\w+|cassa integrazione|naspi|congedo)\b",
+    r"ferie|permessi rol|apprendistat\w+|cassa integrazione|naspi|congedo|"
+    r"ammortament\w+|ammortizz\w+|deduc\w+|dedu\w+|detrai\w+|detraz\w+|beni? strumental\w+|cespit\w+)\b",
     re.I,
 )
 
@@ -82,6 +83,17 @@ _THRESHOLD = re.compile(
     r"(?P<pre>\b(?:soglia|limite|tetto|plafond|massimale|franchigia|sanzion\w+|multa|ammenda)\b"
     r"[^.,;:!?\n]{0,40}?(?:di|da|fino a|pari a|è(?: di)?|:)\s*)"
     r"€?\s*\d[\d.]*(?:[.\s]\d{3})*(?:,\d+)?(?:\s*(?:mila|mln|milion\w+|k))?(?:\s*(?:€|euro|eur\b))?",
+    re.I,
+)
+
+# ── Soglia di costo UNITARIO di un bene («costo unitario pari o inferiore a 2.000 euro») ──────────────
+# Misurato il 20/10/2026: sull'acquisto di un computer il modello ha scritto «fino a 300 €» e «2.000 euro» (la soglia
+# vera, art. 102 c.5 TUIR, è 516,46) senza la parola «soglia», quindi _THRESHOLD non scattava. Qui solo la forma
+# «costo/valore unitario … N euro», che è sempre una soglia di legge o un dato dell'utente (quest'ultimo è fondato).
+_THRESHOLD_UNIT = re.compile(
+    r"(?P<pre>\b(?:costo|valore|prezzo|importo)\s+unitari\w+(?:\s+del\s+bene)?"
+    r"[^.,;:!?\n]{0,30}?(?:pari\s+o\s+inferiore\s+a|non\s+superiore\s+a|inferiore\s+a|superiore\s+a|fino\s+a|oltre|sopra|di|a)\s*)"
+    r"€?\s*\d[\d.]*(?:[.\s]\d{3})*(?:,\d+)?(?:\s*(?:mila|k))?(?:\s*(?:€|euro|eur\b))?",
     re.I,
 )
 
@@ -151,13 +163,14 @@ def sanitize(text: str) -> str:
         return text
     has_ctx = bool(_LEGAL_CTX.search(text))       # gate per scadenze/soglie (forme ambigue)
     has_rate = bool(_RATE.search(text))            # tassi/more/penali: già di per sé legali
-    if not has_rate and not (has_ctx and (_DEADLINE.search(text) or _THRESHOLD.search(text))):
+    if not has_rate and not (has_ctx and (_DEADLINE.search(text) or _THRESHOLD.search(text) or _THRESHOLD_UNIT.search(text))):
         return text  # niente da fare → numeri di business intatti
 
     out = text
     if has_ctx:
         out = _DEADLINE.sub(_soften_deadline, out)     # 'entro 3 giorni' va disambiguato dal contesto
         out = _THRESHOLD.sub(_soften_threshold, out)
+        out = _THRESHOLD_UNIT.sub(_soften_threshold, out)
     out = _RATE.sub(_soften_rate, out)                 # 'tasso legale + 8 punti' è auto-contestualizzato
     # de-duplica le ripetizioni della stessa frase soft-ata (dalla 2ª in poi → variante leggera)
     _seen = {"n": 0}

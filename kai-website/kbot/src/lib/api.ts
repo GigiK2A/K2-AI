@@ -679,6 +679,22 @@ export async function listConversations(authToken: string): Promise<RemoteConver
   return (data.conversations as RemoteConversation[]) ?? [];
 }
 
+/** Titolo breve (2-5 parole) per una conversazione, dal suo primo messaggio. Non scrive nulla sul server. */
+export async function generateConversationTitle(text: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/kbot/title`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text.slice(0, 4000) }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.title === "string" && data.title.trim() ? data.title.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createRemoteConversation(
   authToken: string,
   payload: { title?: string; mode?: Mode; kbotSessionId?: string | null },

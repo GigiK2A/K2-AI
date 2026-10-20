@@ -1,15 +1,6 @@
 {
  "descrizione": "INSTRADAMENTO DELLE SKILL per tema (lib/skill_router.py). Quando un tema compare nei messaggi dell'utente, le skill elencate entrano nel prompt della chat insieme alla skill di metodo (diagnosi-ai-operativa-pmi), al posto di quelle del vecchio «pillar» AI (che mandava recruiting-pipeline per «periodo di prova» e contabilità per «cliente che non paga»). Ogni skill deve esistere in lib/skills (c'è un test). La mappa decide QUALE conoscenza curata viene caricata, non scrive contenuto legale: va comunque rivista da chi conosce le skill.",
- "schema": {
-  "id": "tema",
-  "descrizione": "a cosa serve",
-  "trigger": [
-   "regex italiane, case-insensitive"
-  ],
-  "skill": [
-   "nome cartella in lib/skills"
-  ]
- },
+ "schema": "trigger = parole FORTI (una basta per accendere il tema); debole = parole AMBIGUE (servono almeno 3 diverse, nello stesso gruppo di messaggi recenti). Un singolo «dipendenti», «fattura», «progetto» non accende nulla.",
  "temi": [
   {
    "id": "lavoro",
@@ -17,7 +8,6 @@
    "trigger": [
     "licenzi\\w*",
     "assun(?:zion|ere|to|t[ai])\\w*",
-    "dipendent\\w+",
     "apprendist\\w+",
     "periodo di prova",
     "\\bferie\\b",
@@ -26,12 +16,30 @@
     "buste? paga|busta paga",
     "straordinar\\w+",
     "disciplinar\\w+",
-    "demansion\\w+|mansioni",
     "giusta causa|giustificato motivo",
-    "lavorator\\w+"
+    "stipendi\\w+|retribuzion\\w+",
+    "dimission\\w+|si è dimess\\w+|preavviso",
+    "incinta|maternit\\w+|gravidanza",
+    "\\bmalattia\\b",
+    "liquidazione (?:di chi|del dipendente|dei dipendenti)|buonuscita",
+    "contestazione (?:scritta|disciplinare)|provvediment\\w+ disciplinar\\w+|richiamo scritto",
+    "trasferiment\\w+ (?:in|ad|presso) (?:un')?altra sede|trasferire (?:il|un) dipendente",
+    "ferie forzat\\w+|ore di straordinar\\w+",
+    "demansionament\\w+"
    ],
    "skill": [
+    "diritto-del-lavoro-italiano",
     "diritto-italiano"
+   ],
+   "debole": [
+    "trattenut\\w+|trattenere|trattenergli",
+    "permess\\w+",
+    "visite? mediche",
+    "magazzinier\\w+|operai\\w*",
+    "ritardo|in ritardo|assenz\\w+|assente",
+    "dipendent\\w+",
+    "lavorator\\w+",
+    "mansioni|demansion\\w+"
    ]
   },
   {
@@ -46,12 +54,19 @@
     "data breach|violazione dei dati",
     "informativa\\b",
     "\\bdpo\\b|trattamento dei dati",
-    "\\bcookie\\b"
+    "\\bcookie\\b",
+    "controll\\w+ (?:le |la |i |il |delle |dei |della )?(?:e-?mail|posta|pc|computer|telefon\\w+|navigazione|internet)",
+    "monitorag\\w+",
+    "impronta digitale|biometric\\w+|riconoscimento facciale",
+    "rilevazion\\w+ (?:delle )?presenz\\w+|badge",
+    "(?:legg\\w+|apr\\w+|access\\w+|consult\\w+) (?:a )?(?:le |la |l')?(?:e-?mail|mail|posta|account)",
+    "cancell\\w+ (?:tutti )?(?:i )?(?:suoi |loro |miei )?dati|diritto all'oblio|diritto di accesso|dati (?:personali|dei clienti)|\\bdati\\b.{0,25}(?:cancellare|eliminare)"
    ],
    "skill": [
     "it-law-privacy-ai",
     "diritto-italiano"
-   ]
+   ],
+   "debole": []
   },
   {
    "id": "sicurezza-lavoro",
@@ -63,11 +78,19 @@
     "\\bduvri\\b",
     "infortun\\w+",
     "formazione (?:obbligatoria )?(?:sulla )?sicurezza",
-    "\\bdpi\\b|dispositivi di protezione"
+    "\\bdpi\\b|dispositivi di protezione",
+    "si è fatt\\w+ male|infortun\\w+|incidente sul lavoro|ferit\\w+",
+    "antincendio|primo soccorso|addett\\w+ (?:alla|al) (?:sicurezza|emergenz\\w+)",
+    "corso (?:di )?sicurezza|visita medica del lavoro|medico competente",
+    "\\bpos\\b|cantiere|ponteggi\\w*|lavori in quota",
+    "si è (?:tagliat|ferit|schiacciat|bruciat)\\w+|tagliat\\w+ (?:una |la )?(?:mano|dito)|\\binail\\b|denuncia d'infortunio|pronto soccorso"
    ],
    "skill": [
     "sicurezza-lavoro",
     "consulente-sicurezza-lavoro"
+   ],
+   "debole": [
+    "operai\\w*|macchinari\\w*|sega|carrello"
    ]
   },
   {
@@ -75,7 +98,6 @@
    "descrizione": "Fisco e tributi",
    "trigger": [
     "\\biva\\b",
-    "imposta\\w*|imposte",
     "accertament\\w+",
     "ritenut\\w+",
     "\\bf24\\b",
@@ -85,28 +107,51 @@
     "cartella (?:esattoriale|di pagamento)|\\bagenzia (?:delle entrate|entrate|riscossione)\\b",
     "contenzioso tributario|ricorso (?:tributario|alla corte)",
     "forfettari\\w+|regime forfettario",
-    "fattura elettronica"
+    "\\bimpost[ae]\\b|\\bimposta\\w* (?:di|sul|sulla|sui)\\b",
+    "ammortament\\w+|ammortizz\\w+|\\bammorti\\w+",
+    "dedu\\w*|deduzion\\w+|deducibil\\w+|detra\\w+|detrazion\\w+",
+    "beni? strumental\\w+|cespit\\w+",
+    "nota di credito|nota di debito",
+    "\\bacconti?\\b.*(?:imposte|iva|irpef|ires|irap)|(?:imposte|iva|irpef|ires|irap).*\\bacconti?\\b",
+    "rateizz\\w+",
+    "regime (?:ordinario|forfettario|semplificato)",
+    "\\bleasing\\b|noleggio a lungo termine",
+    "scaricar\\w+ (?:\\w+ )?(?:le |i |il |la |lo |tutto )?(?:spes\\w+|cost\\w+|fattur\\w+|acquist\\w+)|scaricarl\\w+|scaricare tutto",
+    "fattura elettronica|sdi\\b|registrazione (?:della )?fattura|\\bliquidazione iva\\b|\\bversamento iva\\b",
+    "spese di rappresentanza|auto aziendale|carburante|\\bcena\\b|\\bpranzo\\b|scaricar\\w+ (?:al |il )?\\d",
+    "\\bdeducibil\\w*|\\bdeduc\\w+"
    ],
    "skill": [
     "fiscale-tributario-italiano"
+   ],
+   "debole": [
+    "spes[ae]|costi?",
+    "acquist\\w+|compr\\w+",
+    "scadenz\\w+",
+    "fattur\\w+",
+    "commercialista"
    ]
   },
   {
    "id": "bilancio-finanza",
    "descrizione": "Bilancio, indici e finanza d'impresa",
    "trigger": [
-    "bilanci\\w+",
     "\\bebitda\\b|\\bpfn\\b|\\bdso\\b",
     "indici? di bilancio|leva finanziaria",
-    "liquidit\\w+|cash ?flow|flusso di cassa",
     "debiti (?:finanziari|verso banche|bancari)",
     "\\brating\\b|merito creditizio|fido bancario",
     "conto economico|stato patrimoniale",
-    "margin\\w+ operativ\\w+|redditivit\\w+"
+    "margin\\w+ operativ\\w+|redditivit\\w+",
+    "cash ?flow|flusso di cassa",
+    "a bilancio|stato patrimoniale|bilancio (?:d'esercizio|di esercizio|abbreviato)|nota integrativa"
    ],
    "skill": [
     "analisi-bilancio-pmi",
     "contabilita-bilancio"
+   ],
+   "debole": [
+    "liquidit\\w+",
+    "bilanci\\w+"
    ]
   },
   {
@@ -114,36 +159,61 @@
    "descrizione": "Società, quote, soci, amministratori",
    "trigger": [
     "\\bs\\.?r\\.?l\\.?\\b|società a responsabilità limitata",
-    "\\bquote\\b|cessione (?:di|delle) quote",
-    "\\bsoci\\w*",
-    "assemble\\w+",
-    "amministrator\\w+",
     "statuto\\b|patti? parasociali",
     "recesso del socio|esclusione del socio",
-    "\\bs\\.?p\\.?a\\.?\\b"
+    "\\bs\\.?p\\.?a\\.?\\b",
+    "cessione (?:di|delle|della) (?:\\w+ )?quot\\w+|\\bquote (?:di|della|societari\\w+)",
+    "uscire dalla società|socio (?:che )?(?:esce|recede)|liquid\\w+ (?:la )?(?:sua )?(?:parte|quota)",
+    "in minoranza|maggioranza (?:dei soci|assembleare|qualificata)|\\bsoci\\b.*\\bdecisioni\\b",
+    "compenso (?:da |dell')?amministrator\\w+|amministratore unico|consiglio di amministrazione",
+    "unanimit\\w+|quorum|delibera\\w*|sede legale|capitale sociale|\\bsoci\\b.{0,40}\\d+ ?%"
    ],
    "skill": [
     "diritto-societario-italiano"
+   ],
+   "debole": [
+    "\\bsoci\\w*",
+    "assemble\\w+",
+    "amministrator\\w+",
+    "società",
+    "\\bquote?\\b"
    ]
   },
   {
    "id": "contratti",
    "descrizione": "Contratti commerciali e clausole",
    "trigger": [
-    "contratt\\w+",
     "clausol\\w+",
     "\\bpenale\\b|clausola penale",
     "caparr\\w+",
-    "inadempiment\\w+|risoluzione",
-    "fornitur\\w+|appalto privato|subappalto",
-    "locazion\\w+|affitto",
     "fideiussion\\w+",
     "non concorrenza",
-    "vizi (?:della cosa|dell'opera)|garanzia per i vizi"
+    "vizi (?:della cosa|dell'opera)|garanzia per i vizi",
+    "contratto (?:di|di )?(?:manutenzione|fornitura|appalto|noleggio|locazione|agenzia|distribuzione|consulenza)",
+    "inadempiment\\w+|risoluzione del contratto|inadempien\\w+",
+    "subappalt\\w+|appalto privato",
+    "locazion\\w+",
+    "reced\\w+|recesso|disdett\\w+|disdire",
+    "riservatezza|\\bnda\\b|accordo di non divulgazione",
+    "preventivo.{0,40}accettat\\w+|accettat\\w+.{0,40}preventivo|vale come contratto|accordo (?:scritto|verbale)",
+    "pattuit\\w+|come pattuito|quanto concordato",
+    "vizi|difformit\\w+|collaudo|garanzia",
+    "senza (?:pagare|compenso|corrispettivo)|a lavoro (?:già )?iniziato|variant\\w+ (?:in corso d'opera|del progetto)|modifica unilaterale|a metà contratto|aument\\w+ (?:i )?prezz\\w+|specifiche (?:del|di) (?:lavoro|progetto|contratto)"
    ],
    "skill": [
     "diritto-italiano",
     "review-contract"
+   ],
+   "debole": [
+    "contratt\\w+",
+    "consegn\\w+",
+    "modific\\w+",
+    "gratuit\\w+|gratis",
+    "pretend\\w+",
+    "obbligat\\w+|obbligo",
+    "fornitor\\w+|cliente|clienti",
+    "progett\\w+",
+    "merce|ordine"
    ]
   },
   {
@@ -157,10 +227,20 @@
     "\\bdiffid\\w+",
     "solleciti?\\b",
     "interessi di mora|interessi moratori",
-    "recupero (?:del )?credit\\w+|credito insoluto"
+    "recupero (?:del )?credit\\w+|credito insoluto",
+    "non vuole pagare|non vogliono pagare|rifiuta di pagare|non ha pagato|non hanno pagato|non paga\\w*",
+    "\\b(?:ci|mi) (?:deve|devono) (?:ancora )?(?:\\d|circa|oltre)",
+    "ultima rata|rata non pagata|rate non pagate",
+    "credit\\w+ (?:scadut\\w+|insolut\\w+)",
+    "pagher\\w+ a rate|piano di rientro|dilazion\\w+|pagamento a rate|a rate"
    ],
    "skill": [
     "diritto-italiano"
+   ],
+   "debole": [
+    "non risponde\\w*|irreperibil\\w+",
+    "fattur\\w+",
+    "cliente|clienti"
    ]
   },
   {

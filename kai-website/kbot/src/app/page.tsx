@@ -23,6 +23,7 @@ import {
   updateRemoteConversation,
   deleteRemoteConversation,
   removeContextItem,
+  generateConversationTitle,
   fetchFollowUps,
   exchangeToken,
   RateLimitError,
@@ -133,6 +134,9 @@ export default function HomePage() {
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
   const [pdfProgress, setPdfProgress] = useState<{ stage: string; progress: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const creazioniRemote = useRef<Map<string, Promise<string | null>>>(new Map());
+  const sessioneCorrenteRef = useRef<string | null>(null);
+  const conversazioniRef = useRef<Conversation[]>([]);
 
   // Track kbot_open once the chat surface mounts for an authenticated user.
   useEffect(() => {
@@ -223,6 +227,12 @@ export default function HomePage() {
      conversazione attiva è ancora stub (solo welcome), la cronologia backend viene
      mappata dentro. Copre anonimi (nessun lazy-load esisteva) e loggati al refresh
      (il lazy-load scattava solo al click in sidebar, non sulla conv attiva). */
+  useEffect(() => {
+    sessioneCorrenteRef.current = kbotSession?.id ?? null;
+  }, [kbotSession?.id]);
+  useEffect(() => {
+    conversazioniRef.current = conversations;
+  }, [conversations]);
   const kbotSessionMsgCount = kbotSession?.messages?.length ?? 0;
   const kbotSessionId = kbotSession?.id ?? null;
   useEffect(() => {
@@ -364,29 +374,24 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversation.id]);
 
-  /* Bind backend session id back to the active conversation once known. */
+  /* Collega l'id della sessione del backend alla pratica attiva (e alla conversazione remota, se c'è già).
+     Si legge dalla copia aggiornata (ref), non da un flag impostato dentro l'aggiornamento di stato: quello può
+     eseguirsi in ritardo e la pratica restava senza sessione, quindi dopo un ricaricamento compariva vuota. */
   useEffect(() => {
     if (!kbotSession?.id) return;
-    let remoteIdToSync: string | null | undefined;
-    // Syncing local state with an external system (backend session id from
-    // the kbot API), which is exactly the documented "OK" case for setState
-    // inside an effect.
+    const conv = conversazioniRef.current.find((c) => c.id === activeConversation.id);
+    if (!conv || conv.kbotSessionId === kbotSession.id) return;
+    const remoteId = conv.remoteId;
+    const sid = kbotSession.id;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== activeConversation.id || c.kbotSessionId === kbotSession.id) return c;
-        remoteIdToSync = c.remoteId;
-        return { ...c, kbotSessionId: kbotSession.id };
-      }),
+      prev.map((c) => (c.id === activeConversation.id && c.kbotSessionId !== sid ? { ...c, kbotSessionId: sid } : c)),
     );
-    if (remoteIdToSync && isSignedIn) {
+    if (remoteId && isSignedIn) {
       void (async () => {
         try {
           const token = await getToken();
-          if (token)
-            await updateRemoteConversation(token, remoteIdToSync!, {
-              kbotSessionId: kbotSession.id,
-            });
+          if (token) await updateRemoteConversation(token, remoteId, { kbotSessionId: sid });
         } catch {
           /* ignore */
         }
@@ -401,30 +406,85 @@ export default function HomePage() {
     );
   }
 
-  /** Imposta titolo conv se ancora generico ("Nuova pratica" / "Nuova pratica"). */
-  function maybeSetTitle(label: string) {
-    const clean = label.trim().replace(/\s+/g, " ").slice(0, 48);
-    if (!clean) return;
-    let updatedRemoteId: string | null | undefined;
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== activeConversation.id) return c;
-        const isGeneric = !c.title || /^Nuova (chat|conversazione|pratica)$/i.test(c.title);
-        if (!isGeneric) return c;
-        updatedRemoteId = c.remoteId;
-        return { ...c, title: clean };
-      }),
-    );
-    if (updatedRemoteId && isSignedIn) {
-      void (async () => {
+  /** Titolo provvisorio: le prime parole significative (mai la frase tagliata). Poi lo sostituisce quello del modello. */
+  function titoloProvvisorio(testo: string): string {
+    const stop = /^(a|ad|al|alla|che|ci|come|con|da|di|e|è|ho|ha|abbiamo|il|la|le|lo|i|gli|in|un|una|uno|per|posso|possiamo|mi|ma|non|se|si|su|nel|nella|del|della|dei|delle|vorrei|devo|dobbiamo)$/i;
+    const frase = testo.replace(/\s+/g, " ").trim().split(/[.?!](?:\s|$)|\n/)[0];
+    const parole = frase.split(" ").filter((p) => p && !stop.test(p.replace(/[.,]/g, ""))).slice(0, 4).join(" ");
+    const t = (parole || frase).slice(0, 48).trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+  }
+
+  /** Crea la pratica sul server se non c'è ancora (la prima pratica di un utente nuovo nasceva solo in locale e dopo
+   *  un ricaricamento spariva dalla lista). Una sola creazione per pratica anche con chiamate ravvicinate. */
+  function assicuraConversazioneRemota(conv: Conversation, titolo: string): Promise<string | null> {
+    if (conv.remoteId) return Promise.resolve(conv.remoteId);
+    if (!isSignedIn) return Promise.resolve(null);
+    let creazione = creazioniRemote.current.get(conv.id);
+    if (!creazione) {
+      creazione = (async () => {
         try {
           const token = await getToken();
-          if (token) await updateRemoteConversation(token, updatedRemoteId!, { title: clean });
+          if (!token) return null;
+          const remote = await createRemoteConversation(token, {
+            title: titolo,
+            mode,
+            kbotSessionId: conv.kbotSessionId ?? sessioneCorrenteRef.current,
+          });
+          setConversations((prev) =>
+            prev.map((c) => (c.id === conv.id ? { ...c, remoteId: remote.id, id: remote.id } : c)),
+          );
+          setActiveId((prev) => (prev === conv.id ? remote.id : prev));
+          // La sessione del backend può essere nata mentre la pratica si creava: collegala ora.
+          const sid = sessioneCorrenteRef.current;
+          if (sid && sid !== (conv.kbotSessionId ?? null)) {
+            try { await updateRemoteConversation(token, remote.id, { kbotSessionId: sid }); } catch { /* ignore */ }
+          }
+          return remote.id;
+        } catch {
+          return null;
+        }
+      })();
+      creazioniRemote.current.set(conv.id, creazione);
+    }
+    return creazione;
+  }
+
+  /** Imposta il titolo della pratica se ancora generico: subito uno provvisorio, poi (una sola volta) quello breve
+   *  generato dal backend. Entrambi salvati sulla conversazione remota. Le pratiche già titolate non si toccano. */
+  function maybeSetTitle(label: string, titolaConModello = false) {
+    const clean = titoloProvvisorio(label);
+    if (!clean) return;
+    const conv = conversations.find((c) => c.id === activeConversation.id);
+    if (!conv || (conv.title && !/^Nuova (chat|conversazione|pratica)$/i.test(conv.title))) return;
+    const convId = conv.id;
+    setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, title: clean } : c)));
+    const salva = async (titolo: string) => {
+      const remoteId = await assicuraConversazioneRemota(conv, titolo);
+      if (!remoteId) return null;
+      if (titolo !== clean) {
+        try {
+          const token = await getToken();
+          if (token) await updateRemoteConversation(token, remoteId, { title: titolo });
         } catch {
           /* ignore */
         }
-      })();
-    }
+      }
+      return remoteId;
+    };
+    const dopoCreazione = salva(clean);
+    if (!titolaConModello) return;
+    void (async () => {
+      const [titolo, remoteId] = await Promise.all([generateConversationTitle(label), dopoCreazione]);
+      if (!titolo) return;
+      // Sostituisce solo il provvisorio: se nel frattempo l'utente ha rinominato, vince l'utente.
+      const attuale = conversazioniRef.current.find((c) => c.id === convId || c.id === remoteId);
+      if (!attuale || attuale.title !== clean) return;
+      setConversations((prev) =>
+        prev.map((c) => (c.id === attuale.id ? { ...c, title: titolo } : c)),
+      );
+      await salva(titolo);
+    })();
   }
 
   function handleRenameConversation(convId: string, nextTitle: string) {
@@ -652,7 +712,7 @@ export default function HomePage() {
     const currentMessages = [...activeConversation.messages, userMessage, stubMessage];
     updateMessages(currentMessages);
     // Auto-title: prime parole del 1° messaggio utente (se conv ancora generica).
-    maybeSetTitle(promptInput);
+    maybeSetTitle(promptInput, true);
 
     const prompt = promptInput;
     track("kbot_message_sent", { length: prompt.length, mode });

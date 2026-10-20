@@ -1,0 +1,719 @@
+{
+ "descrizione": "Casi per il router delle skill. «dev»: le domande vere dell'utente del 20/10/2026 (usate per diagnosticare). «held_out_1»: scritte il 20/10/2026 PRIMA di toccare i trigger; dopo la prima misura diventano diagnostiche. Atteso [] = nessuna skill di tema (solo quella di metodo). «held_out_2»: scritto da me e quindi CONTAMINATO (le regole ricalcano quelle frasi). «held_out_3»: 40 domande scritte da un agente che non ha visto il router, misurate UNA volta prima di ogni modifica. «held_out_3» è diventato diagnostico dopo la prima misura (32/40). «held_out_4»: seconda serie di 40 scritta da un altro agente (lessico molto colloquiale), misurata UNA volta prima di modificare ancora.",
+ "dev": [
+  [
+   "Abbiamo comprato un computer da 2.500 euro per l'azienda. Conviene scaricarlo tutto subito oppure ammortizzarlo negli anni? Come funziona?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Abbiamo consegnato un progetto a un cliente più di un mese fa. Ora ci chiede delle modifiche e pretende che le facciamo gratuitamente. Siamo obbligati? Come ci conviene comportarci?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Da qualche giorno il nostro server aziendale è molto lento, soprattutto quando più dipendenti lavorano contemporaneamente. Prima di chiamare un tecnico vorrei capire da cosa può dipendere e cosa possiamo controllare da soli.",
+   []
+  ],
+  [
+   "Un nostro dipendente arriva spesso in ritardo, anche di 20-30 minuti, e nonostante glielo abbiamo già fatto presente continua a farlo. Possiamo trattenergli dei soldi dallo stipendio o fargli una contestazione scritta?",
+   [
+    "diritto-italiano"
+   ]
+  ]
+ ],
+ "held_out_1": [
+  [
+   "Abbiamo acquistato un macchinario da 40 mila euro, come lo mettiamo a bilancio e quanto possiamo detrarre?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Il commercialista dice che l'IVA di questo trimestre va versata entro il 16: se arrivo tardi cosa rischio?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Posso scaricare le spese del pranzo con i clienti?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Ho comprato un furgone per l'attività, in quanti anni lo ammortizzo?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Abbiamo emesso una nota di credito sbagliata, come si corregge la fattura?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Una dipendente è incinta e il contratto a termine scade tra due mesi, cosa succede?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Posso mandare in ferie forzate tutti i dipendenti ad agosto?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Un collaboratore si è dimesso senza preavviso, possiamo trattenergli qualcosa dall'ultima busta paga?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Quante ore di straordinario possiamo far fare ai magazzinieri?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Il fornitore ci ha consegnato la merce con due settimane di ritardo, possiamo chiedere una penale?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Il cliente vuole disdire il contratto di manutenzione prima della scadenza, può farlo?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Un subappaltatore non ha rispettato quanto pattuito, come ci tuteliamo?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Ci hanno chiesto di firmare un accordo di riservatezza, cosa controllo prima di firmare?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Un cliente ci deve 12 mila euro da quattro mesi e non risponde più alle email",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Come funziona un decreto ingiuntivo e quanto costa?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Un operaio si è fatto male con la sega, cosa dobbiamo fare subito?",
+   [
+    "sicurezza-lavoro"
+   ]
+  ],
+  [
+   "Posso controllare le email dei dipendenti?",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "Il mio socio vuole uscire dalla società, come si liquida la sua parte?",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "Il server aziendale è lentissimo quando lavoriamo in cinque contemporaneamente",
+   []
+  ],
+  [
+   "La stampante in ufficio non stampa più dal PC di Marco",
+   []
+  ],
+  [
+   "Il wifi in magazzino cade continuamente",
+   []
+  ],
+  [
+   "Mi scrivi una mail di auguri per i clienti?",
+   []
+  ],
+  [
+   "Come organizzo meglio il lavoro dei miei dipendenti in produzione?",
+   []
+  ],
+  [
+   "Quanto costa in media un sito web per un'azienda come la nostra?",
+   []
+  ]
+ ],
+ "held_out_2": [
+  [
+   "Quanto posso detrarre dell'IVA sull'acquisto dell'auto aziendale?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Il leasing di un'auto conviene rispetto all'acquisto per dedurre i costi?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Mi è arrivata una cartella da pagare, posso rateizzare?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Come si calcolano gli acconti delle imposte di novembre?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Siamo in regime forfettario, quando devo passare al regime ordinario?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Un dipendente ha esaurito i giorni di malattia, cosa possiamo fare?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Come si calcola la liquidazione di chi lascia l'azienda?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Posso licenziare chi rifiuta il trasferimento in un'altra sede?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Dobbiamo pagare i permessi per le visite mediche dei dipendenti?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Il cliente contesta la qualità del lavoro e non vuole pagare l'ultima rata",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Ci hanno mandato un preventivo e noi lo abbiamo accettato via email: vale come contratto?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Possiamo recedere da un contratto di noleggio di una macchina prima della fine?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Siamo tre soci e uno non partecipa più alle decisioni, come lo mettiamo in minoranza?",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "Posso pagarmi un compenso da amministratore della mia srl?",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "Chi deve fare il corso antincendio in azienda e ogni quanto?",
+   [
+    "sicurezza-lavoro"
+   ]
+  ],
+  [
+   "Possiamo mettere un sistema che registra gli orari d'ingresso con l'impronta digitale?",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "Come impostare un backup automatico dei file aziendali?",
+   []
+  ],
+  [
+   "Il gestionale si blocca quando emetto le fatture, cosa può essere?",
+   []
+  ],
+  [
+   "Che differenza c'è tra un SSD e un disco meccanico per il nostro server?",
+   []
+  ],
+  [
+   "Mi consigli come motivare i dipendenti dopo un periodo difficile?",
+   []
+  ]
+ ],
+ "held_out_3": [
+  [
+   "Ho comprato un furgone a 28.000 euro più IVA, posso detrarre tutta l'IVA o c'è un limite?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Quanto devo ammortizzare all'anno un macchinario da 40mila euro? In che aliquota rientra?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "La cena con un cliente la posso scaricare al 100% o solo in parte?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Ho emesso una fattura elettronica con l'importo sbagliato, devo fare nota di credito o posso rifarla?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Siamo una srl, ad aprile con il regime forfettario del socio cambia qualcosa per l'acconto IRES?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Il carburante dell'auto aziendale usata anche per uso personale quanto è deducibile?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "Un dipendente sta a casa in malattia da 10 giorni, devo pagargli io i primi giorni o lo fa l'INPS?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Posso licenziare un operaio che è arrivato in ritardo 5 volte questo mese? Cosa devo fare prima?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Una collaboratrice mi chiede le ferie ad agosto ma sono già in due a casa. Posso dirle di no?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Quanto costa assumere un apprendista di 20 anni? Ci sono sgravi?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Nella busta paga di marzo mi hanno scritto 14 ore di straordinario ma ne ho fatte 22, come faccio a farle correggere?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Il mio magazziniere non rispetta gli orari e risponde male ai colleghi, come gli faccio una contestazione scritta valida?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Un cliente mi chiede di cambiare le specifiche a lavoro già iniziato ma senza pagare di più. Cosa dice il contratto di solito?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Nel contratto con il fornitore c'è una penale di 500 euro al giorno di ritardo, è esagerata? Si può ridurre?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Posso recedere da un contratto di manutenzione annuale dopo 4 mesi? Mi hanno detto che c'è un preavviso di 90 giorni.",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Mi è arrivato un contratto da firmare con una clausola di esclusiva, cosa devo guardare prima di firmare?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Il fornitore ha aumentato i prezzi del 15% a metà contratto con una semplice mail, può farlo?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Un cliente mi deve 12.000 euro da otto mesi e non risponde più alle mail, che faccio?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Quando conviene mandare un decreto ingiuntivo e quanto costa per un credito di 3.500 euro?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Il cliente dice che pagherà a rate ma non vuole firmare niente. Mi conviene accettare?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Abbiamo un cliente fallito che ci deve 20mila euro, possiamo ancora recuperare qualcosa?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "Un socio vuole uscire dalla società e vendere la sua quota, gli altri soci possono bloccarlo?",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "L'amministratore unico può prendersi un compenso senza una delibera dei soci?",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "Siamo in tre soci al 33% ciascuno, per cambiare la sede legale serve l'unanimità?",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "Un operaio si è tagliato una mano con la sega ieri, cosa devo fare adesso e entro quanto tempo?",
+   [
+    "sicurezza-lavoro"
+   ]
+  ],
+  [
+   "Siamo in 12 in officina, serve per forza il DVR? E chi lo deve scrivere?",
+   [
+    "sicurezza-lavoro"
+   ]
+  ],
+  [
+   "La formazione sulla sicurezza dei neoassunti va fatta prima che inizino o entro qualche mese?",
+   [
+    "sicurezza-lavoro"
+   ]
+  ],
+  [
+   "Voglio mettere due telecamere in magazzino, devo chiedere qualcosa al sindacato o all'ispettorato?",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "Posso leggere le mail dell'account aziendale di un dipendente che se n'è andato?",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "Un cliente mi ha chiesto di cancellare tutti i suoi dati dal gestionale. Sono obbligato a farlo?",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "Il server si blocca ogni mattina verso le 9, riparte solo se lo spengo e lo riaccendo. Da dove parto?",
+   []
+  ],
+  [
+   "La stampante dell'ufficio dice offline ma è accesa e il cavo è attaccato, come la sistemo?",
+   []
+  ],
+  [
+   "Il gestionale si pianta quando provo a stampare una fattura, il programma si chiude da solo.",
+   []
+  ],
+  [
+   "Mi scrivi una mail gentile ma ferma per sollecitare un preventivo che aspetto da due settimane?",
+   []
+  ],
+  [
+   "Aiutami a scrivere un annuncio per cercare un tornitore, vorrei che suonasse serio ma non freddo.",
+   []
+  ],
+  [
+   "Come organizzo i turni dei miei dipendenti in modo che nessuno resti scoperto il sabato?",
+   []
+  ],
+  [
+   "Che post posso fare su LinkedIn per far conoscere il nuovo progetto di ristrutturazione che abbiamo finito?",
+   []
+  ],
+  [
+   "Il wifi in sala riunioni cade quando siamo in più di sei collegati. Serve un access point nuovo?",
+   []
+  ],
+  [
+   "Come faccio a impostare la firma automatica nelle mail aziendali con logo e numero di telefono?",
+   []
+  ],
+  [
+   "Ho una riunione col cliente domani per presentare il progetto: mi dai una scaletta di 10 minuti?",
+   []
+  ]
+ ],
+ "held_out_4": [
+  [
+   "se compro un furgone nuovo per l'azienda quanto posso scaricare dalle tasse",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "il commercialista dice che l'iva sulla cena col cliente non la recupero, ma è vero?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "ho dimenticato di mandare la fattura a un cliente a marzo adesso cosa rischio",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "il computer che ho preso a dicembre lo posso mettere tutto nei costi di quest'anno o devo spalmarlo",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "ho pagato in ritardo gli acconti e mi è arrivata una cartella, si può mettere a posto con meno sanzioni?",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "un cliente estero mi deve pagare, la fattura la faccio con iva o senza",
+   [
+    "fiscale-tributario-italiano"
+   ]
+  ],
+  [
+   "un mio operaio sta a casa da 3 settimane col certificato, per quanto tempo devo tenergli il posto",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "voglio cacciare una ragazza che arriva sempre tardi e risponde male ai clienti, come faccio senza finire in tribunale",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "un dipendente mi chiede 15 giorni di ferie di fila ad agosto ma siamo in pochi posso dire di no",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "se assumo un ragazzo in prova per due mesi poi lo posso mandare via quando voglio",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "mi hanno dato la busta paga ma mancano gli straordinari di giugno che faccio?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "il magazziniere ha litigato col collega e gli ha dato uno spintone, posso sospenderlo senza paga",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "un cliente grosso mi ha mandato il suo contratto da firmare ma ci sono cose scritte in piccolo che non mi convincono",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "ho firmato con un fornitore per un anno ma adesso vorrei uscirne prima, posso andarmene senza pagare niente",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "nel preventivo accettato c'era scritto un prezzo e adesso il cliente vuole aggiungere lavori senza pagarli, come mi tutelo",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "c'è una cosa nel contratto che dice che se consegno tardi pago tot al giorno, è legale?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "il fornitore mi ha alzato i prezzi a metà anno dicendo che è cambiato tutto, può farlo?",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "c'è un cliente che mi deve 8mila euro da otto mesi e non risponde più al telefono",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "mando solleciti e lui dice sempre che paga la settimana prossima, quando è il momento di muoversi seriamente",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "mi ha dato un assegno e non aveva i soldi sul conto, adesso che posso fare",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "quel cliente è fallito e io avevo fatture aperte, i soldi li vedo ancora o li do per persi",
+   [
+    "diritto-italiano"
+   ]
+  ],
+  [
+   "io e mio socio non andiamo più d'accordo e lui vuole uscire dalla ditta, come si fa con la sua parte",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "l'amministratore ha preso decisioni grosse senza dirci niente a noi soci, possiamo fare qualcosa",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "voglio far entrare un nuovo socio con il 10% senza stravolgere tutto, cosa serve fare dal notaio",
+   [
+    "diritto-societario-italiano"
+   ]
+  ],
+  [
+   "un ragazzo si è fatto male alla mano con la pressa, cosa devo fare subito",
+   [
+    "sicurezza-lavoro"
+   ]
+  ],
+  [
+   "i corsi per i miei operai sono scaduti da un po', rischio qualcosa se arriva un controllo",
+   [
+    "sicurezza-lavoro"
+   ]
+  ],
+  [
+   "siamo in 4 in ufficio, devo fare per forza quel documento sui rischi o è roba solo per le fabbriche",
+   [
+    "sicurezza-lavoro"
+   ]
+  ],
+  [
+   "posso mettere una telecamera nel reparto per vedere chi perde tempo",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "posso guardare cosa fanno i dipendenti sul pc e che siti aprono durante l'orario",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "ho la lista dei clienti con numeri e mail su un foglio condiviso con tutti, va bene o è un problema",
+   [
+    "it-law-privacy-ai"
+   ]
+  ],
+  [
+   "come faccio a far arrivare le mail dell'ufficio anche sul telefono senza impazzire",
+   []
+  ],
+  [
+   "mi scrivi due righe simpatiche per dire ai dipendenti che venerdì si chiude prima",
+   []
+  ],
+  [
+   "la fattura del mio sito web è lunghissima, come faccio a trovare sul pdf solo la parola totale",
+   []
+  ],
+  [
+   "il contratto di quel calciatore è stato record, quanto guadagna all'anno secondo te",
+   []
+  ],
+  [
+   "come organizzo meglio il progetto del nuovo gestionale con 3 persone e poco tempo",
+   []
+  ],
+  [
+   "che post posso fare su instagram per attirare più clienti nel mio negozio di biciclette",
+   []
+  ],
+  [
+   "perché la tassa sul sole nei videogiochi ti fa perdere sempre vita, boh mi spieghi",
+   []
+  ],
+  [
+   "come si fa a far andare d'accordo due dipendenti che non si sopportano e rendono male in squadra",
+   []
+  ],
+  [
+   "il mio excel si blocca quando metto le formule sulla colonna delle fatture, come lo sistemo",
+   []
+  ],
+  [
+   "quanti giorni ci vogliono più o meno per andare da perugia a milano in treno con una fermata",
+   []
+  ]
+ ]
+}

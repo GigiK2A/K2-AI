@@ -5,20 +5,40 @@ state. Tutte le rotte richiedono JWT Supabase valido.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from ..lib.auth import AuthUser, require_user
+from ..lib import titoli
+from ..lib.auth import AuthUser, optional_user, require_user
+from ..lib.limiter import limiter
 from ..lib.supabase_admin import get_admin_client
 
 router = APIRouter()
 log = logging.getLogger(__name__)
 
 TABLE = "kbot_conversations"
+
+
+class TitleBody(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+
+
+@router.post("/title")
+@limiter.limit("30/minute")
+async def generate_title(request: Request, body: TitleBody, user: Optional[AuthUser] = Depends(optional_user)):
+    """Titolo breve (2-5 parole) per una conversazione, dal primo messaggio. Non scrive nulla: lo salva il client
+    con PATCH sulla conversazione. Mai in errore: sul fallimento del modello torna la riserva deterministica."""
+    import anthropic
+    from ..settings import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+    if not ANTHROPIC_API_KEY:
+        return {"title": titoli.titolo_di_riserva(body.text)}
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=0)
+    return {"title": await asyncio.to_thread(titoli.genera, client, ANTHROPIC_MODEL, body.text)}
 
 
 def _is_missing_table_error(exc: Exception) -> bool:

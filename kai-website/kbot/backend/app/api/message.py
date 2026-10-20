@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import functools
+import hashlib
 import json
 import logging
 import os
@@ -28,7 +29,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import crisi, avvisi_input, verifica_bozze
+from ..lib import crisi, avvisi_input, verifica_bozze, skill_router
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -422,6 +423,29 @@ async def _required_fields_hint(collected: dict) -> str:
         consulenza_ricca=consulenza_ricca or still_diagnosing)
 
 
+async def _tema_modello(collected: dict, merged_messages: list, last_user_text: str) -> dict:
+    """Secondo livello dell'instradamento skill: se le parole non riconoscono nessun tema, lo sceglie il modello
+    (una chiamata corta, una volta per messaggio, risultato conservato nella sessione). Fail-open."""
+    try:
+        if not skill_router.llm_attivo() or collected.get("service_id") or crisi.rileva(last_user_text or ""):
+            return collected      # (crisi personale: risposta fissa, nessuna chiamata al modello)
+        utente = [m["content"] for m in merged_messages
+                  if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str)]
+        if skill_router.punteggi(utente) or len((last_user_text or "").strip()) < 25 or not ANTHROPIC_API_KEY:
+            return collected
+        chiave = hashlib.sha1((last_user_text or "").encode("utf-8")).hexdigest()[:12]
+        if (collected.get("tema_llm") or {}).get("h") == chiave:
+            return collected
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=0)
+        temi = await _off_loop(skill_router.temi_con_modello, client, ANTHROPIC_MODEL, last_user_text)
+        collected = dict(collected)
+        collected["tema_llm"] = {"h": chiave, "temi": temi}
+        log.info("skill_router: tema scelto dal modello: %s", temi or "nessuno")
+    except Exception:
+        log.warning("skill_router: secondo livello non disponibile (fail-open)", exc_info=True)
+    return collected
+
+
 @router.post("/message")
 @limiter.limit("30/minute")
 async def post_message(
@@ -451,6 +475,7 @@ async def post_message(
     collected = await _auto_fetch_urls(last_user_text, collected)
     # Consenso/HOLD alla generazione (sticky): l'utente comanda.
     _update_report_hold(collected, last_user_text)
+    collected = await _tema_modello(collected, merged_messages, last_user_text)
 
     # Persist forced skills (UI may toggle them on/off) into collected_data.
     if body.forcedSkills is not None:
@@ -624,6 +649,7 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     collected = await _auto_fetch_urls(last_user_text, collected)
     # Consenso/HOLD alla generazione (sticky): l'utente comanda.
     _update_report_hold(collected, last_user_text)
+    collected = await _tema_modello(collected, merged_messages, last_user_text)
 
     session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages,
                           "_profilo": profile_lib.load(session.get("user_id"))}
