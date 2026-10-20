@@ -261,6 +261,16 @@ def resolve_skills_for_session(session: dict) -> List[str]:
         # specialistiche, altrimenti caricherebbe solo la BASE_SKILL.
         skills = boost_skills(raw_service)
     if not skills:
+        # Instradamento PER TEMA (diritto del lavoro, fisco, societario…): le skill del vecchio «pillar» AI non
+        # coprivano le domande di un pre-consulente (vedi lib/skill_router).
+        try:
+            from . import skill_router
+            _utente = [m["content"] for m in (session.get("messages") or [])
+                       if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str)]
+            skills = skill_router.skill_per_tema(_utente)
+        except ImportError:        # modulo caricato fuori dal pacchetto (alcuni test): resta l'instradamento storico
+            skills = []
+    if not skills:
         # service_id assente o boost non mappato: deduci il pillar dalla
         # conversazione, così le skill vengono comunque caricate.
         inferred = infer_service_id_from_session(session)

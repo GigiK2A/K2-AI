@@ -1,0 +1,235 @@
+{
+ "descrizione": "INSTRADAMENTO DELLE SKILL per tema (lib/skill_router.py). Quando un tema compare nei messaggi dell'utente, le skill elencate entrano nel prompt della chat insieme alla skill di metodo (diagnosi-ai-operativa-pmi), al posto di quelle del vecchio «pillar» AI (che mandava recruiting-pipeline per «periodo di prova» e contabilità per «cliente che non paga»). Ogni skill deve esistere in lib/skills (c'è un test). La mappa decide QUALE conoscenza curata viene caricata, non scrive contenuto legale: va comunque rivista da chi conosce le skill.",
+ "schema": {
+  "id": "tema",
+  "descrizione": "a cosa serve",
+  "trigger": [
+   "regex italiane, case-insensitive"
+  ],
+  "skill": [
+   "nome cartella in lib/skills"
+  ]
+ },
+ "temi": [
+  {
+   "id": "lavoro",
+   "descrizione": "Lavoro dipendente: assunzioni, licenziamenti, prova, TFR, CCNL, disciplina",
+   "trigger": [
+    "licenzi\\w*",
+    "assun(?:zion|ere|to|t[ai])\\w*",
+    "dipendent\\w+",
+    "apprendist\\w+",
+    "periodo di prova",
+    "\\bferie\\b",
+    "\\btfr\\b|trattamento di fine rapporto",
+    "\\bccnl\\b|contratto collettivo",
+    "buste? paga|busta paga",
+    "straordinar\\w+",
+    "disciplinar\\w+",
+    "demansion\\w+|mansioni",
+    "giusta causa|giustificato motivo",
+    "lavorator\\w+"
+   ],
+   "skill": [
+    "diritto-italiano"
+   ]
+  },
+  {
+   "id": "controllo-lavoratori-privacy",
+   "descrizione": "Controllo a distanza dei lavoratori, videosorveglianza, dati personali",
+   "trigger": [
+    "telecamer\\w+|videosorveglian\\w+",
+    "controllo a distanza",
+    "geolocalizz\\w+",
+    "\\bgdpr\\b|privacy",
+    "dati personali",
+    "data breach|violazione dei dati",
+    "informativa\\b",
+    "\\bdpo\\b|trattamento dei dati",
+    "\\bcookie\\b"
+   ],
+   "skill": [
+    "it-law-privacy-ai",
+    "diritto-italiano"
+   ]
+  },
+  {
+   "id": "sicurezza-lavoro",
+   "descrizione": "Sicurezza sul lavoro D.Lgs. 81/2008",
+   "trigger": [
+    "\\bdvr\\b|documento di valutazione dei rischi",
+    "sicurezza (?:sul|nel) lavoro",
+    "\\brspp\\b|\\brls\\b|preposto",
+    "\\bduvri\\b",
+    "infortun\\w+",
+    "formazione (?:obbligatoria )?(?:sulla )?sicurezza",
+    "\\bdpi\\b|dispositivi di protezione"
+   ],
+   "skill": [
+    "sicurezza-lavoro",
+    "consulente-sicurezza-lavoro"
+   ]
+  },
+  {
+   "id": "fisco",
+   "descrizione": "Fisco e tributi",
+   "trigger": [
+    "\\biva\\b",
+    "imposta\\w*|imposte",
+    "accertament\\w+",
+    "ritenut\\w+",
+    "\\bf24\\b",
+    "ravvedimento",
+    "dichiarazion\\w+ (?:dei redditi|iva)|\\bredditi\\b",
+    "\\bires\\b|\\birap\\b|\\birpef\\b",
+    "cartella (?:esattoriale|di pagamento)|\\bagenzia (?:delle entrate|entrate|riscossione)\\b",
+    "contenzioso tributario|ricorso (?:tributario|alla corte)",
+    "forfettari\\w+|regime forfettario",
+    "fattura elettronica"
+   ],
+   "skill": [
+    "fiscale-tributario-italiano"
+   ]
+  },
+  {
+   "id": "bilancio-finanza",
+   "descrizione": "Bilancio, indici e finanza d'impresa",
+   "trigger": [
+    "bilanci\\w+",
+    "\\bebitda\\b|\\bpfn\\b|\\bdso\\b",
+    "indici? di bilancio|leva finanziaria",
+    "liquidit\\w+|cash ?flow|flusso di cassa",
+    "debiti (?:finanziari|verso banche|bancari)",
+    "\\brating\\b|merito creditizio|fido bancario",
+    "conto economico|stato patrimoniale",
+    "margin\\w+ operativ\\w+|redditivit\\w+"
+   ],
+   "skill": [
+    "analisi-bilancio-pmi",
+    "contabilita-bilancio"
+   ]
+  },
+  {
+   "id": "societario",
+   "descrizione": "Società, quote, soci, amministratori",
+   "trigger": [
+    "\\bs\\.?r\\.?l\\.?\\b|società a responsabilità limitata",
+    "\\bquote\\b|cessione (?:di|delle) quote",
+    "\\bsoci\\w*",
+    "assemble\\w+",
+    "amministrator\\w+",
+    "statuto\\b|patti? parasociali",
+    "recesso del socio|esclusione del socio",
+    "\\bs\\.?p\\.?a\\.?\\b"
+   ],
+   "skill": [
+    "diritto-societario-italiano"
+   ]
+  },
+  {
+   "id": "contratti",
+   "descrizione": "Contratti commerciali e clausole",
+   "trigger": [
+    "contratt\\w+",
+    "clausol\\w+",
+    "\\bpenale\\b|clausola penale",
+    "caparr\\w+",
+    "inadempiment\\w+|risoluzione",
+    "fornitur\\w+|appalto privato|subappalto",
+    "locazion\\w+|affitto",
+    "fideiussion\\w+",
+    "non concorrenza",
+    "vizi (?:della cosa|dell'opera)|garanzia per i vizi"
+   ],
+   "skill": [
+    "diritto-italiano",
+    "review-contract"
+   ]
+  },
+  {
+   "id": "recupero-crediti",
+   "descrizione": "Crediti non pagati, solleciti, decreto ingiuntivo",
+   "trigger": [
+    "non (?:ci |mi )?pag\\w+",
+    "fattur\\w+ (?:non pagat\\w+|scadut\\w+|insolut\\w+)",
+    "moros\\w+",
+    "decreto ingiuntivo",
+    "\\bdiffid\\w+",
+    "solleciti?\\b",
+    "interessi di mora|interessi moratori",
+    "recupero (?:del )?credit\\w+|credito insoluto"
+   ],
+   "skill": [
+    "diritto-italiano"
+   ]
+  },
+  {
+   "id": "antiriciclaggio",
+   "descrizione": "Antiriciclaggio e titolare effettivo",
+   "trigger": [
+    "antiriciclaggio|riciclaggio",
+    "titolare effettivo",
+    "limite (?:del )?contant\\w+|pagamenti? in contanti|contanti"
+   ],
+   "skill": [
+    "titolare-effettivo-antiriciclaggio"
+   ]
+  },
+  {
+   "id": "agevolazioni",
+   "descrizione": "Bandi, agevolazioni e crediti d'imposta",
+   "trigger": [
+    "\\bband[oi]\\b",
+    "agevolazion\\w+",
+    "credito d'imposta|crediti d'imposta",
+    "fondo perduto|contributo a fondo",
+    "transizione 5\\.0|industria 4\\.0|iperammortamento",
+    "\\bde minimis\\b",
+    "\\bsabatini\\b|\\bsimest\\b"
+   ],
+   "skill": [
+    "matching-bandi-agevolazioni",
+    "flusso-agevolazioni-pmi"
+   ]
+  },
+  {
+   "id": "appalti-pubblici",
+   "descrizione": "Appalti pubblici",
+   "trigger": [
+    "appalt\\w+ pubblic\\w+|gare? d'appalto|\\bgara\\b",
+    "codice (?:dei contratti|appalti)",
+    "\\banac\\b|\\bmepa\\b|stazione appaltante"
+   ],
+   "skill": [
+    "appalti-pubblici-d-lgs-36-2023"
+   ]
+  },
+  {
+   "id": "compliance-231",
+   "descrizione": "Modello 231 e responsabilità dell'ente",
+   "trigger": [
+    "modello (?:organizzativo )?231|d\\.?\\s?lgs\\.? ?231/2001",
+    "organismo di vigilanza|\\bodv\\b",
+    "responsabilit\\w+ amministrativ\\w+ (?:dell')?ent\\w+"
+   ],
+   "skill": [
+    "orchestratore-compliance"
+   ]
+  },
+  {
+   "id": "crisi-impresa",
+   "descrizione": "Crisi d'impresa e insolvenza",
+   "trigger": [
+    "crisi d'impresa|crisi aziendale",
+    "insolvenz\\w+",
+    "composizione negoziata",
+    "concordato|liquidazione giudiziale|fallimento",
+    "sovraindebitamento"
+   ],
+   "skill": [
+    "diritto-italiano",
+    "analisi-bilancio-pmi"
+   ]
+  }
+ ]
+}
