@@ -13,6 +13,7 @@ import logging
 import os
 import re as _re
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import aclosing
 from typing import List, Optional
@@ -29,7 +30,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard
+from ..lib import crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -108,6 +109,9 @@ class MessageBody(BaseModel):
     message: Optional[str] = None
     messages: Optional[List[dict]] = None
     forcedSkills: Optional[List[str]] = Field(default=None, alias="forced_skills")
+    # Modalità di ricerca scelta dall'utente nell'interfaccia: «force» = «Cerca sul web» acceso per questo messaggio;
+    # assente/«auto» = decide il sistema (comportamento di sempre). Il backend non la cambia mai.
+    webSearch: Optional[str] = Field(default=None, alias="web_search")
 
     class Config:
         populate_by_name = True
@@ -188,11 +192,19 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
         normalize_assistant_reply(strip_summary_block(strip_diagnosi_block(raw_text)))))))
     # OUTPUT QUALITY ENGINE (ultimo miglio, review "AI Proof"): l'utente non vede mai
     # HTML/template/placeholder/artefatti tecnici/tipografia sporca. Fail-open.
-    visible = output_quality.polish(visible)
+    _v_protetto, _mappa_doc = documento.proteggi(visible)       # i marcatori del documento non devono essere «puliti»
+    visible = documento.ripristina(output_quality.polish(_v_protetto), _mappa_doc)
     visible = impegni_guard.sanitize(visible)       # niente rimborsi/risarcimenti promessi dal bot
     # Numeri verdi (800/803) scritti dal modello e non dall'utente: fonte sconosciuta, si tolgono (lib/crisi).
     _u = norme_evidence.testo_utente_corrente()
     visible = crisi.sanifica_numeri(visible, _u[2] if _u else "")
+    # Una richiesta di DOCUMENTO TESTUALE (PEC, lettera, registro, verbale…) la risolve la chat con il documento in un blocco
+    # a parte: non deve anche aprire il generatore dei report (test 07/08 del 20/10/2026: «Genera il report · ControlBoost»
+    # per un registro dei data breach).
+    _ultimo_u = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
+                      if isinstance(m, dict) and m.get("role") == "user"), "")
+    if summary and documento.richiesta_documento(_ultimo_u):
+        summary = None
     if summary and _interview_gate_active(merged_messages):
         summary = None
         if len((visible or "").strip()) < 5:
@@ -249,9 +261,14 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
                                      merged_messages, collected)
     # Bozza richiesta ma assente (il modello fa una domanda invece di scriverla): seconda chiamata esplicita.
     raw_text = verifica_bozze.assicura(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, _last_user)
-    raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text,
-                                   user_procedi=bool(signals.PROCEDI_HARD_RE.search(_last_user)),
-                                   bozza_richiesta=verifica_bozze.richiesta_bozza(_last_user))
+    # Il critico di qualità valuta il flusso della consulenza (riepilogo prematuro, azioni drastiche, promesse), non il testo di
+    # un documento richiesto: su una PEC o un registro costava fino a 51 s di «verifica» (misurato il 20/10/2026) e, riscrivendo,
+    # rischiava di rovinare il documento. Per un documento richiesto e presente non gira.
+    _documento_richiesto = bool(documento.richiesta_documento(_last_user) and documento.ultimo_documento(raw_text))
+    if not _documento_richiesto:
+        raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text,
+                                       user_procedi=bool(signals.PROCEDI_HARD_RE.search(_last_user)),
+                                       bozza_richiesta=verifica_bozze.richiesta_bozza(_last_user))
     return raw_text
 
 
@@ -375,6 +392,15 @@ def _recompute_boost(collected: dict, merged_messages: list, summary: Optional[d
                  _rb.get("top"), _rb.get("score"), _rb.get("confident"), _rb.get("scores"))
         _explicit = _catalog.suggest_boost(_base, explicit_only=True, user_text=_utext)
         _current = collected.get("boost_suggerito")
+        _default = getattr(_catalog, "_BOOST_DEFAULT", None)
+        # Nessuna corrispondenza e routing non sicuro: il catalogo risponderebbe col predefinito (ControlBoost, «cruscotto
+        # direzionale»), che per un incidente GDPR o una PEC non c'entra nulla. Meglio NESSUN boost che uno sbagliato:
+        # un boost di ripiego rimasto da un turno precedente si toglie (20/10/2026).
+        if _explicit is None and not _rb.get("confident"):
+            if _current and _current == _default:
+                collected.pop("boost_suggerito", None)
+                collected.pop("boost_suggerito_label", None)
+            return
         if _explicit is not None:
             collected["boost_suggerito"] = _explicit["id"]
             collected["boost_suggerito_label"] = _explicit.get("label")
@@ -432,7 +458,8 @@ async def _required_fields_hint(collected: dict) -> str:
         consulenza_ricca=consulenza_ricca or still_diagnosing)
 
 
-async def _tema_modello(collected: dict, merged_messages: list, last_user_text: str) -> dict:
+async def _tema_modello(collected: dict, merged_messages: list, last_user_text: str,
+                        cron: Optional[perf.Cronometro] = None) -> dict:
     """Secondo livello dell'instradamento skill: se le parole non riconoscono nessun tema, lo sceglie il modello
     (una chiamata corta, una volta per messaggio, risultato conservato nella sessione). Fail-open."""
     try:
@@ -446,6 +473,8 @@ async def _tema_modello(collected: dict, merged_messages: list, last_user_text: 
         if (collected.get("tema_llm") or {}).get("h") == chiave:
             return collected
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=0)
+        if cron is not None:
+            client = perf.ClientContato(client, cron)
         temi = await _off_loop(skill_router.temi_con_modello, client, ANTHROPIC_MODEL, last_user_text)
         collected = dict(collected)
         collected["tema_llm"] = {"h": chiave, "temi": temi}
@@ -637,7 +666,7 @@ async def post_message(
 # ---------------------------------------------------------------------------
 
 
-async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
+async def _prepare_turn(body: MessageBody, user: Optional[AuthUser], cron: Optional[perf.Cronometro] = None):
     """Shared setup: load session, append user msg, fetch URLs, build prompt."""
     session = sessions.get_session(body.sessionId)
     if not session:
@@ -658,7 +687,7 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser]):
     collected = await _auto_fetch_urls(last_user_text, collected)
     # Consenso/HOLD alla generazione (sticky): l'utente comanda.
     _update_report_hold(collected, last_user_text)
-    collected = await _tema_modello(collected, merged_messages, last_user_text)
+    collected = await _tema_modello(collected, merged_messages, last_user_text, cron)
 
     session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages,
                           "_profilo": profile_lib.load(session.get("user_id"))}
@@ -846,6 +875,16 @@ async def _chiudi_scheda(job, collected: dict, attesa: float = 30.0) -> None:
         log.warning("scheda_cliente: non pronta, resta quella del turno precedente", exc_info=True)
 
 
+async def _pacchetto_norme(client, last_user_text: str, recent_ctx: str):
+    """Il pacchetto normativo per il turno (o None). Nessun effetto sul ContextVar: così si può eseguire in parallelo con altro
+    (un asyncio.Task lavora su una COPIA del contesto, quindi `imposta` va chiamato da chi lo ha atteso)."""
+    try:
+        return await asyncio.to_thread(norme_evidence.costruisci, last_user_text, recent_ctx, client, ANTHROPIC_MODEL)
+    except Exception:
+        log.warning("norme_evidence: errore nel recupero (fail-open)", exc_info=True)
+        return None
+
+
 async def _blocco_norme(client, last_user_text: str, recent_ctx: str) -> str:
     """EVIDENCE PACK NORMATIVO: recupera dal corpus il testo di legge pertinente PRIMA della risposta e
     lo rende disponibile alle guardie a valle (citazioni consentite, numeri fondati). Fail-open: senza
@@ -875,7 +914,9 @@ async def post_message_stream(
     body: MessageBody,
     user: Optional[AuthUser] = Depends(optional_user),
 ):
-    session, merged_messages, collected, system_prompt, history, skills, avvisi = await _prepare_turn(body, user)
+    cron = perf.Cronometro()
+    session, merged_messages, collected, system_prompt, history, skills, avvisi = await _prepare_turn(body, user, cron)
+    cron.segna("preparato")
     _ultimo_utente = next((str(m.get("content") or "") for m in reversed(merged_messages)
                            if isinstance(m, dict) and m.get("role") == "user"), "")
     if crisi.rileva(_ultimo_utente):
@@ -888,7 +929,7 @@ async def post_message_stream(
         return StreamingResponse(event_crisi(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache, no-transform", "Connection": "keep-alive",
                                           "X-Accel-Buffering": "no"})
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=1)
+    client = perf.ClientContato(anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, max_retries=1), cron)
     _scheda_fut = _avvia_scheda(client, collected, merged_messages)
     # Testi per il grounding proattivo (calcolati qui, eseguito DOPO l'heartbeat).
     _users_for_ground = [str(m.get("content") or "") for m in merged_messages
@@ -909,19 +950,44 @@ async def post_message_stream(
         # esplicita), il SERVER cerca ORA (OpenAI) e inietta i risultati nel prompt.
         # Best-effort in thread, fail-open; gira dopo l'heartbeat → niente 524.
         sys_prompt = system_prompt
+        _imposta_testo_utente(merged_messages, collected)
+        # FONTI IN PARALLELO: la ricerca web proattiva (OpenAI) e il recupero delle norme (una chiamata al modello) sono
+        # indipendenti, ma partivano UNA DOPO L'ALTRA prima del primo token. Ora partono insieme e si attende il più lento;
+        # nel frattempo lo stream resta vivo con commenti SSE (il client li ignora).
+        yield _sse({"fase": "fonti"})
+        web_search.inizia_turno()
+        _forza_ricerca = (body.webSearch or "").lower() == "force"
+        _t_ground = asyncio.ensure_future(asyncio.to_thread(
+            fact_grounding.ground_block, _last_user_text, _recent_user_text, _forza_ricerca))
+        _t_norme = asyncio.ensure_future(_pacchetto_norme(client, _last_user_text, _recent_user_text))
+        while not (_t_ground.done() and _t_norme.done()):
+            await asyncio.wait({_t_ground, _t_norme}, timeout=4.0)
+            yield ": fonti\n\n"
+        _gb = None
         try:
-            _gb = await asyncio.to_thread(
-                fact_grounding.ground_block, _last_user_text, _recent_user_text)
+            _gb = _t_ground.result()
             if _gb:
                 sys_prompt += _gb
-                yield ": search-done\n\n"   # commento SSE: tiene vivo lo stream, il client lo ignora
         except Exception:
             log.warning("grounding proattivo fallito (fail-open)", exc_info=True)
-        _imposta_testo_utente(merged_messages, collected)
-        _norme = await _blocco_norme(client, _last_user_text, _recent_user_text)
-        if _norme:
-            sys_prompt += _norme
-            yield ": norme-ok\n\n"            # commento SSE: tiene vivo lo stream, il client lo ignora
+        if _forza_ricerca:
+            if _gb:
+                sys_prompt += ("\nL'UTENTE HA CHIESTO ESPLICITAMENTE UNA RICERCA SUL WEB: i risultati sono qui sopra. Basa la "
+                               "risposta su quei risultati e dì quali fonti hai usato; non limitarti a un solo link e non "
+                               "inventare indirizzi.\n")
+            else:
+                # La ricerca richiesta non è partita o non ha dato risultati: lo si dice, non si finge.
+                avvisi.append("Hai chiesto di cercare sul web, ma la ricerca non è disponibile in questo momento"
+                              if not web_search.enabled() else
+                              "Hai chiesto di cercare sul web, ma la ricerca non ha restituito risultati utili: la risposta "
+                              "si basa solo sulle fonti normative del sistema")
+        norme_evidence.imposta(None)
+        _pk = _t_norme.result()
+        if _pk:
+            norme_evidence.imposta(_pk)
+            sys_prompt += _pk.testo
+            log.info("norme_evidence: %d fonti nel prompt (%s)", len(_pk.fonti), "; ".join(f.sigla for f in _pk.fonti))
+        cron.segna("fonti")
         raw_buffer: list[str] = []
         usage = None
         # Scrubber dello stream (bug UX "continua a ragionare e poi cambia messaggio"):
@@ -944,8 +1010,10 @@ async def post_message_stream(
                     messages=messages,
                     timeout=120.0,
                 )
-                if tools:
+                if tools and rounds < max_rounds:
                     stream_kwargs["tools"] = tools
+                # (dopo l'ultimo giro di ricerca NON si offrono più gli strumenti: prima il ciclo si interrompeva al 5° giro
+                #  con il modello che stava ancora chiamando la ricerca, e la risposta restava a metà frase)
                 # Anthropic SDK sync streaming context manager — iterate token deltas.
                 final = None
                 async with aclosing(_stream_off_loop(client, stream_kwargs)) as _flusso:
@@ -960,6 +1028,10 @@ async def post_message_stream(
                         if not text_chunk:
                             continue
                         raw_buffer.append(text_chunk)
+                        if "primo_token" not in cron.marche:
+                            cron.segna("primo_token")
+                            yield _sse({"fase": "generazione"})
+                        cron.marche["ultimo_token"] = round(time.monotonic() - cron.t0, 3)
                         visible_chunk = scrub.feed(text_chunk)
                         if visible_chunk:
                             yield _sse({"delta": visible_chunk})
@@ -1000,8 +1072,13 @@ async def post_message_stream(
             yield _sse({"delta": _tail})
 
         raw_text = "".join(raw_buffer)
+        cron.segna("ultimo_token")
+        cron.aggiungi_uso(usage)
+        yield _sse({"fase": "verifica"})                       # evento reale: da qui girano guardie, bozze e quality gate
         # Finalize CONDIVISA coi due path: forced-summary + quality gate (vedi _postprocess_turn).
         raw_text = await _off_loop(_postprocess_turn, client, system_prompt, messages, merged_messages, raw_text, collected)
+        raw_text = web_search.aggiungi_fonti_web(raw_text)
+        cron.segna("verificato")
         _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
         track_server(
             distinct_id=body.sessionId,
@@ -1031,6 +1108,8 @@ async def post_message_stream(
             yield _sse({"error": "Errore salvataggio risposta."})
             return
 
+        cron.segna("salvato")
+        log.info("kbot timing: %s", cron.riga())
         yield _sse(
             {
                 "done": True,
@@ -1038,6 +1117,7 @@ async def post_message_stream(
                 "summary": summary,
                 "nextAction": "show_summary" if summary else "continue",
                 "session": sessions.public_session(updated),
+                "timing": cron.riepilogo(),
             }
         )
 

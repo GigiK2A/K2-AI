@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, Download, FileText, Globe, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Copy, Download, FileText, Globe, Loader2, RotateCcw, X } from "lucide-react";
 import type { AnalyzedUrl, UploadedFile } from "@/lib/api";
+import type { StatoDocumento } from "@/lib/documento";
 
 export type SchedaPratica = "bozza" | "documenti" | "fatti" | "fonti";
 
@@ -38,11 +39,34 @@ function etichettaFatto(chiave: string): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
+export type DocumentoPannello = {
+  titolo: string;
+  testo: string;
+  stato: StatoDocumento;
+  /** Versione mostrata (1-based) e numero di versioni dello stesso documento. */
+  versione: number;
+  versioni: number;
+  /** Testo dell'ultimo tentativo interrotto, mostrato finché il nuovo non produce un documento. */
+  errore?: string;
+  /** Il documento viene dalla vecchia euristica (messaggi senza marcatori). */
+  legacy?: boolean;
+};
+
+const ETICHETTA_STATO: Record<StatoDocumento, string> = {
+  preparazione: "Preparo il documento…",
+  scrittura: "In scrittura…",
+  verifica: "Controllo il testo…",
+  pronto: "Bozza pronta · da verificare",
+  errore: "Interrotto",
+};
+
 export function PannelloPratica({
   scheda,
   onScheda,
-  bozza,
-  onScaricaWord,
+  documento,
+  onVersione,
+  onRiprova,
+  onScarica,
   fatti,
   fonti,
   competenze,
@@ -53,8 +77,12 @@ export function PannelloPratica({
 }: {
   scheda: SchedaPratica;
   onScheda: (s: SchedaPratica) => void;
-  bozza: string | null;
-  onScaricaWord?: () => Promise<void>;
+  documento: DocumentoPannello | null;
+  /** -1 = versione precedente, +1 = successiva. */
+  onVersione?: (delta: number) => void;
+  onRiprova?: () => void;
+  /** Scarica il documento mostrato nel formato scelto. L'esportazione è un passo a parte: il testo è già leggibile. */
+  onScarica?: (formato: "docx" | "pdf") => Promise<void>;
   fatti: Record<string, string>;
   fonti: string[];
   competenze: string[];
@@ -66,18 +94,38 @@ export function PannelloPratica({
 }) {
   const [copiato, setCopiato] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
+  const [esportando, setEsportando] = useState<"docx" | "pdf" | null>(null);
+  const finePagina = useRef<HTMLDivElement>(null);
   const nFatti = Object.keys(fatti).length;
   const conteggi: Record<SchedaPratica, number> = {
-    bozza: bozza ? 1 : 0,
+    bozza: documento ? 1 : 0,
     documenti: documenti.length + siti.length,
     fatti: nFatti,
     fonti: fonti.length,
   };
 
-  async function copia() {
-    if (!bozza) return;
+  // Mentre il documento si scrive il testo resta in vista: si scorre in fondo a ogni aggiornamento.
+  useEffect(() => {
+    if (documento?.stato === "scrittura") finePagina.current?.scrollIntoView({ block: "end" });
+  }, [documento?.testo, documento?.stato]);
+
+  async function esporta(formato: "docx" | "pdf") {
+    if (!onScarica || esportando) return;
+    setErrore(null);
+    setEsportando(formato);
     try {
-      await navigator.clipboard.writeText(bozza);
+      await onScarica(formato);
+    } catch (e) {
+      setErrore(e instanceof Error ? e.message : "Esportazione non riuscita. Il testo resta qui: riprova.");
+    } finally {
+      setEsportando(null);
+    }
+  }
+
+  async function copia() {
+    if (!documento?.testo) return;
+    try {
+      await navigator.clipboard.writeText(documento.testo);
       setCopiato(true);
       setTimeout(() => setCopiato(false), 1800);
     } catch {
@@ -120,22 +168,68 @@ export function PannelloPratica({
 
       <div className="scroll-premium min-h-0 flex-1 overflow-y-auto p-4 text-sm leading-6">
         {scheda === "bozza" &&
-          (bozza ? (
+          (documento ? (
             <>
-              <div className="mb-3 flex items-center gap-2">
-                <p className="font-doc flex-1 text-base font-semibold">Documento in preparazione</p>
-                <span className="border border-[var(--warn-text)] px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--warn-text)]">Da verificare</span>
+              <div className="mb-3 flex items-start gap-2">
+                <p className="font-doc flex-1 text-base font-semibold">{documento.titolo}</p>
+                <span
+                  className={
+                    "inline-flex items-center gap-1.5 border px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.1em] " +
+                    (documento.stato === "pronto"
+                      ? "border-[var(--warn-text)] text-[var(--warn-text)]"
+                      : documento.stato === "errore"
+                        ? "border-red-600 text-red-700"
+                        : "border-[var(--line-strong)] text-[var(--text-soft)]")
+                  }
+                  role="status"
+                  aria-live="polite"
+                >
+                  {(documento.stato === "preparazione" || documento.stato === "verifica") && <Loader2 size={11} className="animate-spin" />}
+                  {documento.stato === "scrittura" && <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--teal)]" />}
+                  {esportando ? "Preparo il file…" : ETICHETTA_STATO[documento.stato]}
+                </span>
               </div>
-              <article className="font-doc whitespace-pre-wrap border border-[var(--line)] bg-white p-6 text-[15px] leading-8 text-[#1d2128] shadow-[2px_2px_0_var(--line)]">
-                {bozza}
-              </article>
-              <p className="mt-3 text-xs text-[var(--text-muted)]">
-                Controlla date, importi e nomi prima di inviare. Per modificarla chiedi in chat.
-              </p>
+              {documento.versioni > 1 && (
+                <div className="mb-3 flex items-center gap-2 text-xs text-[var(--text-soft)]">
+                  <button onClick={() => onVersione?.(-1)} disabled={documento.versione <= 1} className="rounded p-1 hover:bg-[var(--bg-2)] disabled:opacity-30" aria-label="Versione precedente">
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span>Versione {documento.versione} di {documento.versioni}</span>
+                  <button onClick={() => onVersione?.(1)} disabled={documento.versione >= documento.versioni} className="rounded p-1 hover:bg-[var(--bg-2)] disabled:opacity-30" aria-label="Versione successiva">
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+              {documento.stato === "errore" && (
+                <div className="mb-3 border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                  <p>{documento.errore || "La generazione si è interrotta."} Il testo già scritto è qui sotto: non è andato perso.</p>
+                  {onRiprova && (
+                    <button onClick={onRiprova} className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-red-400 bg-white px-2.5 py-1 font-medium hover:bg-red-100">
+                      <RotateCcw size={12} /> Riprova
+                    </button>
+                  )}
+                </div>
+              )}
+              {documento.testo ? (
+                <article className="font-doc whitespace-pre-wrap border border-[var(--line)] bg-white p-6 text-[15px] leading-8 text-[#1d2128] shadow-[2px_2px_0_var(--line)]">
+                  {documento.testo}
+                  {documento.stato === "scrittura" && <span className="ml-0.5 inline-block w-[2px] animate-pulse bg-[#1d2128]" style={{ height: "1.1em", verticalAlign: "text-bottom" }} aria-hidden />}
+                </article>
+              ) : (
+                <div className="flex items-center gap-2 border border-dashed border-[var(--line-strong)] p-6 text-sm text-[var(--text-soft)]">
+                  <Loader2 size={14} className="animate-spin" /> Il testo comparirà qui mentre viene scritto.
+                </div>
+              )}
+              <div ref={finePagina} />
+              {documento.stato === "pronto" && (
+                <p className="mt-3 text-xs text-[var(--text-muted)]">
+                  È una bozza: controlla date, importi e nomi prima di inviare e, se la posta in gioco è alta, falla rivedere dal tuo professionista. Per modificarla chiedilo in chat.
+                </p>
+              )}
             </>
           ) : (
             <Vuoto icona={<FileText size={18} />} titolo="Nessuna bozza, per ora">
-              Quando chiedi una lettera, una diffida o una comunicazione, il testo compare qui.
+              Quando chiedi una lettera, una PEC, un registro o un verbale, il testo compare qui mentre viene scritto.
             </Vuoto>
           ))}
 
@@ -208,24 +302,34 @@ export function PannelloPratica({
             )}
           </>
         )}
-        {errore && <p className="mt-3 text-xs text-[var(--warn-text)]">{errore}</p>}
       </div>
 
-      {scheda === "bozza" && bozza && (
-        <div className="flex gap-2 border-t border-[var(--line)] px-4 py-3">
-          {onScaricaWord && (
-            <button
-              onClick={() => { setErrore(null); onScaricaWord().catch((e: unknown) => setErrore(e instanceof Error ? e.message : "Download non riuscito.")); }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--teal)] px-3 py-2 text-sm font-medium text-[var(--on-accent)] hover:opacity-90"
-            >
-              <Download size={14} /> Scarica Word
-            </button>
+      {scheda === "bozza" && documento && documento.testo && (documento.stato === "pronto" || documento.stato === "errore") && (
+        <div className="flex flex-wrap gap-2 border-t border-[var(--line)] px-4 py-3">
+          {onScarica && (
+            <>
+              <button
+                onClick={() => void esporta("docx")}
+                disabled={Boolean(esportando) || documento.stato === "errore"}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--teal)] px-3 py-2 text-sm font-medium text-[var(--on-accent)] hover:opacity-90 disabled:opacity-50"
+              >
+                {esportando === "docx" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Scarica Word
+              </button>
+              <button
+                onClick={() => void esporta("pdf")}
+                disabled={Boolean(esportando) || documento.stato === "errore"}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-strong)] px-3 py-2 text-sm hover:border-[var(--teal)] disabled:opacity-50"
+              >
+                {esportando === "pdf" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Scarica PDF
+              </button>
+            </>
           )}
           <button onClick={copia} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-strong)] px-3 py-2 text-sm hover:border-[var(--teal)]">
             <Copy size={14} /> {copiato ? "Copiato" : "Copia testo"}
           </button>
         </div>
       )}
+      {errore && scheda === "bozza" && <p className="px-4 pb-3 text-xs text-[var(--warn-text)]">{errore}</p>}
     </section>
   );
 }

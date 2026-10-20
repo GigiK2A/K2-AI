@@ -8,9 +8,18 @@ interface LoadingStateProps {
   /** Quando passato (SSE reale), mostra la progress della generazione report.
    *  Se null, mostriamo lo stato onesto "sta ragionando" col tempo trascorso. */
   reportProgress?: { stage: string; progress: number } | null;
+  /** Fase REALE del turno (evento del server): sostituisce il testo generico. */
+  fase?: "fonti" | "generazione" | "verifica";
 }
 
-export function LoadingState({ text = "K-BOT sta leggendo il caso…", reportProgress = null }: LoadingStateProps) {
+const TESTO_FASE: Record<string, string> = {
+  fonti: "Cerco le fonti normative…",
+  generazione: "Sto scrivendo…",
+  verifica: "Controllo il testo prima di mostrartelo…",
+};
+
+export function LoadingState({ text = "K-BOT sta leggendo il caso…", reportProgress = null, fase }: LoadingStateProps) {
+  const testoMostrato = fase ? TESTO_FASE[fase] ?? text : text;
   const live = !!reportProgress;
   const [elapsed, setElapsed] = useState(0);
 
@@ -29,7 +38,7 @@ export function LoadingState({ text = "K-BOT sta leggendo il caso…", reportPro
       {!live ? (
         <motion.div key="thinking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-1">
           <p className="text-sm text-[var(--text-soft)]">
-            {text}
+            {testoMostrato}
             {elapsed >= 3 && <span className="ml-2 tabular-nums text-[var(--text-muted)]">{elapsed}s</span>}
           </p>
         </motion.div>

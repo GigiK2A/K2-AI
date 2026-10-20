@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Globe, Loader2, Mic, MicOff, Paperclip, X } from "lucide-react";
+import { ArrowUp, Globe, Loader2, Mic, MicOff, Paperclip, Search, X } from "lucide-react";
 import { UploadedFile, AnalyzedUrl } from "@/lib/api";
 
 const URL_RE = /https?:\/\/[^\s<>"']{6,}/i;
@@ -54,7 +54,12 @@ export function Composer({
   fetchingUrl,
   analyzedUrls = [],
   onRemoveContext,
+  ricercaWeb = false,
+  onToggleRicercaWeb,
 }: {
+  /** «Cerca sul web» acceso: ogni messaggio parte con una ricerca vera e la risposta riporta le fonti consultate. */
+  ricercaWeb?: boolean;
+  onToggleRicercaWeb?: () => void;
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
@@ -346,12 +351,27 @@ export function Composer({
             >
               <Paperclip size={15} />
             </button>
+            {onToggleRicercaWeb && (
+              <button
+                type="button"
+                onClick={onToggleRicercaWeb}
+                title={ricercaWeb ? "Ricerca sul web accesa: ogni messaggio cerca online e cita le fonti. Clicca per spegnerla" : "Cerca sul web: accendi per far cercare online le informazioni aggiornate"}
+                aria-label="Cerca sul web"
+                aria-pressed={ricercaWeb}
+                className={`inline-flex items-center gap-1.5 rounded-md p-2 text-xs hover:bg-[var(--bg-2)] ${
+                  ricercaWeb ? "bg-[var(--teal-soft)] font-medium text-[var(--teal)]" : "text-[var(--text-soft)]"
+                }`}
+              >
+                <Search size={15} />
+                {ricercaWeb && <span>Cerca sul web</span>}
+              </button>
+            )}
             {onFetchUrl && (
               <button
                 type="button"
                 onClick={() => setUrlMode((v) => !v)}
-                title="Analizza un URL"
-                aria-label="Analizza un URL"
+                title="Analizza una pagina: incolla un link e la leggo (non è una ricerca)"
+                aria-label="Analizza una pagina da un link"
                 aria-pressed={urlMode}
                 className={`rounded-md p-2 text-[var(--text-soft)] hover:bg-[var(--bg-2)] ${
                   urlMode ? "text-[var(--teal)]" : ""

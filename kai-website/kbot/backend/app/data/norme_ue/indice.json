@@ -1,0 +1,51 @@
+{
+ "descrizione": "Norme dell'Unione europea che il corpus Normattiva (solo diritto italiano) non contiene. Il testo è COPIATO dalla fonte ufficiale (campo «fonte»), mai scritto a mano. Una voce entra nel pacchetto normativo quando il messaggio dell'utente combacia con uno dei trigger. Da far validare a un professionista come tutte le voci che scelgono QUALE norma consultare.",
+ "voci": [
+  {
+   "id": "gdpr-data-breach",
+   "trigger": [
+    "data\\s*breach",
+    "violazion\\w+\\s+(?:dei\\s+)?dati(?:\\s+personali)?",
+    "incident\\w*[^.\\n]{0,60}dati\\s+personali",
+    "dati\\s+personali[^.\\n]{0,80}(?:inviat\\w+|spedit\\w+|persi|persa|smarrit\\w+|diffus\\w+|divulgat\\w+|pubblicat\\w+|per\\s+errore|accidental\\w+)",
+    "(?:inviat\\w+|spedit\\w+|mandat\\w+)[^.\\n]{0,60}per\\s+errore[^.\\n]{0,80}(?:dati|clienti|elenco|excel|file)",
+    "notific\\w+[^.\\n]{0,40}garante",
+    "garante\\s+(?:per\\s+la\\s+protezione\\s+dei\\s+dati|privacy)",
+    "\\b72\\s*ore\\b[^.\\n]{0,40}(?:garante|notific)"
+   ],
+   "fonti": [
+    {
+     "file": "gdpr_art_33.txt",
+     "citazione": "Regolamento (UE) 2016/679, art. 33",
+     "sigla": "GDPR art. 33",
+     "articolo": "33",
+     "rubrica": "Notifica di una violazione dei dati personali all'autorità di controllo"
+    },
+    {
+     "file": "gdpr_art_34.txt",
+     "citazione": "Regolamento (UE) 2016/679, art. 34",
+     "sigla": "GDPR art. 34",
+     "articolo": "34",
+     "rubrica": "Comunicazione di una violazione dei dati personali all'interessato"
+    },
+    {
+     "file": "gdpr_art_4_n12.txt",
+     "citazione": "Regolamento (UE) 2016/679, art. 4, n. 12",
+     "sigla": "GDPR art. 4 n. 12",
+     "articolo": "4",
+     "rubrica": "Definizione di «violazione dei dati personali»"
+    }
+   ],
+   "escludi_proposte": [
+    {
+     "numero": "196",
+     "anno": 2003,
+     "motivo": "Il Codice privacy italiano (D.Lgs. 196/2003) ha articoli su ricerca medica/statistica (110, 110-bis, 111) che il modello proponeva per un incidente di invio errato di un file: rumore. Se l'utente cita un articolo del Codice, resta."
+    }
+   ]
+  }
+ ],
+ "fonte": "Regolamento (UE) 2016/679 (GDPR), testo italiano ufficiale dell'Ufficio delle pubblicazioni dell'Unione europea (CELEX 32016R0679), scaricato il 2026-10-20",
+ "scaricato_il": "2026-10-20",
+ "validato_da": ""
+}

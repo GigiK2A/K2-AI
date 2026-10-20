@@ -2,9 +2,10 @@
 
 import { Fragment } from "react";
 import { motion } from "framer-motion";
-import { FileText } from "lucide-react";
+import { FileText, RotateCcw } from "lucide-react";
 import { ChatMessage } from "@/types/chat";
 import { prettyTime } from "@/lib/utils";
+import { fuoriDalDocumento } from "@/lib/documento";
 
 const CITATION_RE = /\(pag\.\s*(\d+)\)/gi;
 
@@ -49,10 +50,16 @@ export function MessageBubble({
   onDownloadXlsx,
   onFollowUp,
   onOpenDraft,
+  docInfo,
+  onRetry,
 }: {
   message: ChatMessage;
   /** Se presente, sotto la risposta compare «Apri la bozza» (il messaggio contiene un documento). */
   onOpenDraft?: () => void;
+  /** Il documento contenuto nel messaggio: la chat mostra solo la conversazione, il documento sta nel pannello. */
+  docInfo?: { titolo: string; stato: "scrittura" | "pronto" | "interrotto"; legacy: boolean };
+  /** Riprende un turno interrotto senza perdere il testo già scritto. */
+  onRetry?: () => void;
   onCheckout?: () => Promise<void>;
   onGeneratePdf?: () => Promise<void>;
   onDownloadXlsx?: () => Promise<void>;
@@ -62,6 +69,10 @@ export function MessageBubble({
   messageIndex?: number;
 }) {
   const isBot = message.role === "assistant";
+  // La chat mostra la CONVERSAZIONE; il documento (blocco <<<DOCUMENTO…>>>) sta nel pannello e qui resta solo un rimando.
+  const testo = isBot ? fuoriDalDocumento(message.content) : message.content;
+  // Risposta ancora vuota (lo stato di attesa lo mostra la riga «sto scrivendo…»): niente riquadro vuoto con l'etichetta sola.
+  if (isBot && !testo && !docInfo && !message.errore && !(message.attachments && message.attachments.length)) return null;
 
   return (
     <motion.div
@@ -74,9 +85,11 @@ export function MessageBubble({
           {isBot ? "Risposta di K-BOT" : "La tua richiesta"}
         </p>
 
-        <p className={"whitespace-pre-wrap text-[15px] leading-7 text-[var(--text-main)]" + (isBot && onOpenDraft ? " line-clamp-5" : "")}>
-          {renderWithCitations(message.content)}
-        </p>
+        {testo && (
+          <p className={"whitespace-pre-wrap text-[15px] leading-7 text-[var(--text-main)]" + (isBot && onOpenDraft && docInfo?.legacy ? " line-clamp-5" : "")}>
+            {renderWithCitations(testo)}
+          </p>
+        )}
 
         {message.attachments && message.attachments.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -176,10 +189,30 @@ export function MessageBubble({
           <button
             type="button"
             onClick={onOpenDraft}
-            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--line-strong)] bg-[var(--bg-1)] px-3 py-2 text-sm font-medium hover:border-[var(--teal)]"
+            className="mt-3 flex w-full max-w-md items-center gap-3 rounded-lg border border-[var(--line-strong)] bg-[var(--bg-1)] px-3 py-2.5 text-left hover:border-[var(--teal)]"
           >
-            <FileText size={15} /> Apri la bozza
+            <FileText size={18} className="shrink-0 text-[var(--text-soft)]" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{docInfo?.titolo ?? "Bozza"}</span>
+              <span className="block text-xs text-[var(--text-muted)]">
+                {docInfo?.stato === "scrittura" ? "In scrittura… si apre nel pannello"
+                  : docInfo?.stato === "interrotto" ? "Interrotto · apri per vedere il testo scritto"
+                  : "Bozza pronta · da verificare"}
+              </span>
+            </span>
+            {docInfo?.stato === "scrittura" && <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--teal)]" />}
           </button>
+        )}
+
+        {isBot && message.errore && (
+          <div className="mt-3 border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+            <p>{message.errore} {testo || docInfo ? "Quello che era già stato scritto è qui sopra, non è andato perso." : ""}</p>
+            {onRetry && (
+              <button type="button" onClick={onRetry} className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-red-400 bg-white px-2.5 py-1 text-xs font-medium hover:bg-red-100">
+                <RotateCcw size={12} /> Riprova
+              </button>
+            )}
+          </div>
         )}
 
         {message.ts > 0 && <p className="mt-2 text-xs text-[var(--text-muted)]">{prettyTime(message.ts)}</p>}

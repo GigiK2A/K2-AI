@@ -38,6 +38,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from . import norme_ue
+
 log = logging.getLogger(__name__)
 
 # ── configurazione ───────────────────────────────────────────────────────────────────────
@@ -383,7 +385,10 @@ _SISTEMA_PROPOSTA = (
     "da far validare a un professionista): stare in giudizio senza avvocato, decreto ingiuntivo «in proprio», giudice di "
     "pace → 'art. 82 c.p.c.' oltre agli articoli sul procedimento; il cliente che recede da un incarico professionale o "
     "di progettazione → 'art. 2237 c.c.'; il committente che recede da un appalto o da un'opera → 'art. 1671 c.c.'; "
-    "interessi di mora fra imprese → 'D.Lgs. 231/2002 art. 4' e 'D.Lgs. 231/2002 art. 5'."
+    "interessi di mora fra imprese → 'D.Lgs. 231/2002 art. 4' e 'D.Lgs. 231/2002 art. 5'; sospendere il pagamento per "
+    "inadempimento o difetti della controparte → 'art. 1460 c.c.'; difetti di un'opera o di un software su commessa → 'art. 1667 c.c.' "
+    "e 'art. 1668 c.c.'; qualificare il contratto (appalto, contratto d'opera, vendita) → 'art. 1655 c.c.' e 'art. 2222 c.c.'; "
+    "mediazione obbligatoria → 'D.Lgs. 28/2010 art. 5'."
 )
 
 
@@ -800,6 +805,7 @@ def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> O
         return None
     try:
         testo_tot = f"{contesto}\n{quesito}"
+        fonti_ue = norme_ue.fonti_ue(testo_tot, Fonte)       # norme UE che il corpus Normattiva non ha (es. GDPR)
         parole = _parole_chiave(quesito)
         candidati: list[tuple[dict, str]] = [(r, "utente") for r in riferimenti_da_testo(testo_tot)]
         candidati += [(r, "mappa") for r in riferimenti_da_mappa(testo_tot)]
@@ -816,7 +822,7 @@ def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> O
         con_art = [(r, o) for r, o in uniche if r.get("articolo")][:MAX_RIFERIMENTI + 3]
         senza_art = [(r, o) for r, o in uniche if not r.get("articolo")][:2]
         budget = MAX_CHARS_ARTICOLO
-        if not con_art and not senza_art:
+        if not con_art and not senza_art and not fonti_ue:
             return None
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
             dirette = list(ex.map(lambda ro: recupera(ro[0], parole, ro[1], budget, quesito), con_art))
@@ -830,8 +836,11 @@ def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> O
         fonti: list[Fonte] = []
         totale = 0
         visti_f: set[tuple] = set()
+        escluse = norme_ue.escluse(testo_tot)                  # (numero, anno) da non proporre quando una norma UE regge il caso
         for f in dirette + extra:
             if f is None or (f.origine in ("proposta", "affine", "norma") and not _pertinente(f, parole)):
+                continue
+            if f.origine != "utente" and (str(f.numero), f.anno) in escluse:
                 continue
             chiave = (f.numero, f.anno, _norm_art(f.articolo))
             if chiave in visti_f:
@@ -843,6 +852,7 @@ def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> O
             totale += len(f.testo)
             if len(fonti) >= MAX_RIFERIMENTI:
                 break
+        fonti = fonti_ue + fonti
         if not fonti:
             return None
         blocco = costruisci_blocco(fonti)

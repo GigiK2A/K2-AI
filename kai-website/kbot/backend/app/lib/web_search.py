@@ -14,6 +14,7 @@ nemmeno dichiarato → chat/generazione funzionano come prima, senza ricerca.
 """
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 from typing import Any, Optional
@@ -71,6 +72,37 @@ SYSTEM_HINT = (
 
 _MAX_QUERY_CHARS = 600
 
+# FONTI REALMENTE CONSULTATE nel turno: ogni ricerca registra qui le URL che ha restituito (la lista è creata dal chiamante e
+# condivisa con i thread, che ne ricevono una copia del contesto ma lo stesso oggetto lista). A fine turno il codice — non il
+# modello — le riporta in coda alla risposta: «cita le fonti» affidato al modello non è una garanzia.
+_FONTI_TURNO: contextvars.ContextVar = contextvars.ContextVar("kbot_fonti_web", default=None)
+
+
+def inizia_turno() -> None:
+    _FONTI_TURNO.set([])
+
+
+def _registra(cites: list) -> None:
+    lista = _FONTI_TURNO.get()
+    if lista is None:
+        return
+    for c in cites:
+        if c.get("url") and all(c["url"] != x["url"] for x in lista):
+            lista.append(c)
+
+
+def fonti_turno() -> list:
+    return list(_FONTI_TURNO.get() or [])
+
+
+def aggiungi_fonti_web(testo: str, massimo: int = 6) -> str:
+    """In coda alla risposta, le fonti web che le ricerche del turno hanno davvero restituito."""
+    fonti = fonti_turno()
+    if not fonti or not testo or "Fonti web consultate" in testo:
+        return testo
+    righe = "\n".join(f"- {(f.get('title') or f['url'])[:90]}: {f['url']}" for f in fonti[:massimo])
+    return testo.rstrip() + "\n\nFonti web consultate:\n" + righe
+
 
 def _extract_citations(resp: Any) -> list[dict]:
     """URL citate dalla risposta OpenAI Responses: output[].content[].annotations[]
@@ -118,6 +150,7 @@ def run_openai_search(query: str) -> str:
         )
         text = (getattr(resp, "output_text", "") or "").strip()
         cites = _extract_citations(resp)
+        _registra(cites)
         if cites:
             fonti = "\n".join(f"- {c['title'] or c['url']}: {c['url']}" for c in cites)
             text = f"{text}\n\nFonti:\n{fonti}" if text else f"Fonti:\n{fonti}"

@@ -7,7 +7,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Composer } from "@/components/chat/Composer";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
-import { PannelloPratica, eBozza, estraiFonti, type SchedaPratica } from "@/components/pratica/PannelloPratica";
+import { PannelloPratica, eBozza, estraiFonti, type DocumentoPannello, type SchedaPratica } from "@/components/pratica/PannelloPratica";
+import { estraiDocumenti, richiestaDocumento, type BloccoDocumento, type StatoDocumento } from "@/lib/documento";
 import { ReportGenerator } from "@/components/report/ReportGenerator";
 import {
   streamMessage,
@@ -114,6 +115,18 @@ export default function HomePage() {
   const [scheda, setScheda] = useState<SchedaPratica>("bozza");
   const [pannelloAperto, setPannelloAperto] = useState(false);
   const [fatti, setFatti] = useState<Record<string, string>>({});
+  const [versioneSel, setVersioneSel] = useState<number | null>(null);
+  // «Cerca sul web»: preferenza dell'UTENTE, salvata nel browser; il sistema non la cambia mai da solo.
+  const [ricercaWeb, setRicercaWeb] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { try { setRicercaWeb(localStorage.getItem("kbot.web_search") === "1"); } catch { /* ignore */ } }, []);
+  function toggleRicercaWeb() {
+    setRicercaWeb((v) => {
+      const next = !v;
+      try { localStorage.setItem("kbot.web_search", next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  }
   const [loading, setLoading] = useState(false);
   const [composer, setComposer] = useState("");
   const [usedSkills, setUsedSkills] = useState<string[]>([]);
@@ -683,6 +696,7 @@ export default function HomePage() {
           role: "assistant",
           content: `Non riesco ad analizzare l'URL: ${err instanceof Error ? err.message : "errore sconosciuto"}.`,
           ts: Date.now(),
+          local: true,
         };
         // Updater funzionale: appende ai messaggi CORRENTI, non a uno snapshot stantio.
         setConversations((prev) =>
@@ -695,7 +709,9 @@ export default function HomePage() {
     [activeConversation.messages, ensureSession, fetchingUrl, getToken, mode],
   );
 
-  async function handleSubmit(overrideText?: string) {
+  /** `riprovaStubId`: ripresa di un turno interrotto — si riusano la domanda e la risposta già nella chat (il testo già
+   *  prodotto resta visibile finché il nuovo tentativo non produce qualcosa) invece di duplicare il messaggio. */
+  async function handleSubmit(overrideText?: string, riprovaStubId?: string) {
     const promptInput = (overrideText ?? composer).trim();
     if (!promptInput || loading) return;
     if (rateLimitUntil && rateLimitUntil > Date.now()) return;
@@ -710,45 +726,46 @@ export default function HomePage() {
       attachments: pendingFiles,
     };
     const stubMessage: ChatMessage = {
-      id: uid("msg"),
+      id: riprovaStubId ?? uid("msg"),
       role: "assistant",
       content: "",
       ts: Date.now(),
     };
-    const currentMessages = [...activeConversation.messages, userMessage, stubMessage];
-    updateMessages(currentMessages);
-    // Auto-title: prime parole del 1° messaggio utente (se conv ancora generica).
-    maybeSetTitle(promptInput, true);
-
+    // Aggiorna il messaggio della risposta mentre il testo arriva. Definita FUORI dal try: serve anche nel catch per conservare
+    // il testo già prodotto se il turno si interrompe.
+    const patchStub = (patch: Partial<ChatMessage>) => {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeConversation.id
+            ? { ...c, messages: c.messages.map((m) => (m.id === stubMessage.id ? { ...m, ...patch } : m)) }
+            : c,
+        ),
+      );
+    };
+    if (riprovaStubId) {
+      patchStub({ errore: undefined, fase: undefined });
+    } else {
+      updateMessages([...activeConversation.messages, userMessage, stubMessage]);
+      // Auto-title: prime parole del 1° messaggio utente (se conv ancora generica).
+      maybeSetTitle(promptInput, true);
+      track("kbot_message_sent", { length: promptInput.length, mode });
+      setComposer("");
+      setPendingFiles([]);
+    }
     const prompt = promptInput;
-    track("kbot_message_sent", { length: prompt.length, mode });
-    setComposer("");
-    setPendingFiles([]);
+    let streamed = "";
 
     try {
       const session = await ensureSession({ mode });
       const token = await getToken();
-      // Live-update the stub message as deltas stream in.
-      const patchStub = (patch: Partial<ChatMessage>) => {
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === activeConversation.id
-              ? {
-                  ...c,
-                  messages: c.messages.map((m) =>
-                    m.id === stubMessage.id ? { ...m, ...patch } : m,
-                  ),
-                }
-              : c,
-          ),
-        );
-      };
-
-      let streamed = "";
       let finalMessage = "";
       await streamMessage(session.id, prompt, {
         authToken: token,
         forcedSkills: forcedSkills.length ? forcedSkills : undefined,
+        webSearch: ricercaWeb ? "force" : undefined,
+        onFase: (f) => {
+          if (f === "fonti" || f === "generazione" || f === "verifica") patchStub({ fase: f });
+        },
         onDelta: (chunk) => {
           streamed += chunk;
           patchStub({ content: streamed, sessionId: session.id });
@@ -772,6 +789,8 @@ export default function HomePage() {
             content: res.message,
             reportReady: res.nextAction === "show_summary",
             sessionId: session.id,
+            fase: undefined,
+            errore: undefined,
           });
         },
       });
@@ -796,13 +815,24 @@ export default function HomePage() {
       if (e instanceof RateLimitError) {
         setRateLimitUntil(Date.now() + e.retryAfter * 1000);
         setError("");
+        if (!riprovaStubId) updateMessages(activeConversation.messages);
       } else {
-        setError(e instanceof Error ? e.message : "Errore imprevisto");
+        const msg = e instanceof Error ? e.message : "Errore imprevisto";
+        setError("");
+        // Il testo già prodotto NON si butta: resta nella chat e nel pannello, con l'errore e «Riprova».
+        patchStub({ content: streamed, errore: msg, fase: undefined });
       }
-      updateMessages(activeConversation.messages);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function riprova() {
+    const idx = [...activeConversation.messages].map((m, i) => ({ m, i })).reverse().find((x) => x.m.role === "assistant" && x.m.errore);
+    if (!idx) return;
+    const domanda = [...activeConversation.messages.slice(0, idx.i)].reverse().find((m) => m.role === "user");
+    if (!domanda) return;
+    await handleSubmit(domanda.content, idx.m.id);
   }
 
   function handleFollowUpClick(text: string) {
@@ -852,15 +882,58 @@ export default function HomePage() {
     }
   }
 
-  // Contenuti della pratica (pannello a destra): bozza, documenti, fonti. I fatti arrivano dal backend.
-  const bozzaIdx = (() => {
-    for (let i = activeConversation.messages.length - 1; i >= 0; i--) {
-      const m = activeConversation.messages[i];
-      if (m.role === "assistant" && m.ts > 0 && eBozza(m.content)) return i;
-    }
-    return -1;
-  })();
-  const bozza = bozzaIdx >= 0 ? activeConversation.messages[bozzaIdx].content.replace(/\n+Fonti:[^\n]*$/i, "").trim() : null;
+  // Contenuti della pratica (pannello a destra): documento, documenti caricati, fonti. I fatti arrivano dal backend.
+  // IL DOCUMENTO è un blocco a parte dentro il messaggio del bot (marcatori <<<DOCUMENTO…>>>): si legge anche a metà stream.
+  const docs: { msgIdx: number; docIdx: number | undefined; blocco: BloccoDocumento; legacy: boolean }[] = [];
+  activeConversation.messages.forEach((m, i) => {
+    if (m.role !== "assistant" || m.ts <= 0) return;
+    const blocchi = estraiDocumenti(m.content);
+    if (blocchi.length) blocchi.forEach((b, k) => docs.push({ msgIdx: i, docIdx: k, blocco: b, legacy: false }));
+    else if (eBozza(m.content))
+      docs.push({ msgIdx: i, docIdx: undefined, legacy: true,
+        blocco: { titolo: "Bozza", testo: m.content.replace(/\n+Fonti:[^\n]*$/i, "").trim(), completo: true } });
+  });
+  const ultimoIdx = activeConversation.messages.length - 1;
+  const ultimoMsg = activeConversation.messages[ultimoIdx];
+  const inCorso = loading && ultimoMsg?.role === "assistant" && !ultimoMsg.errore;
+  const ultimoUtente = [...activeConversation.messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const richiestaDoc = richiestaDocumento(ultimoUtente);
+  const selIdx = versioneSel !== null && versioneSel < docs.length ? versioneSel : docs.length - 1;
+  const sel = selIdx >= 0 ? docs[selIdx] : null;
+  const norm = (t: string) => t.trim().toLowerCase();
+  const stessiTitolo = sel ? docs.map((d, i) => ({ d, i })).filter((x) => norm(x.d.blocco.titolo) === norm(sel.blocco.titolo)) : [];
+  const docDelTurno = Boolean(sel && sel.msgIdx === ultimoIdx && selIdx === docs.length - 1);
+  // STATI REALI (nessun avanzamento a tempo): preparazione = richiesta inviata e nessun testo; scrittura = il blocco è aperto e
+  // arrivano token; verifica = evento «verifica» del server (o blocco chiuso con il turno ancora aperto); pronto/errore a fine turno.
+  let statoDoc: StatoDocumento | null = null;
+  if (sel) {
+    if (docDelTurno && ultimoMsg?.errore) statoDoc = "errore";
+    else if (docDelTurno && inCorso) statoDoc = ultimoMsg.fase === "verifica" || sel.blocco.completo ? "verifica" : "scrittura";
+    else if (!sel.blocco.completo && !sel.legacy) statoDoc = "errore";            // stream chiuso senza il marcatore di fine
+    else statoDoc = "pronto";
+  }
+  const preparando = inCorso && richiestaDoc && !(sel && sel.msgIdx === ultimoIdx);
+  const erroreSenzaDoc = Boolean(ultimoMsg?.errore) && richiestaDoc && !(sel && sel.msgIdx === ultimoIdx);
+  const documento: DocumentoPannello | null = preparando
+    ? { titolo: sel?.blocco.titolo ?? "Documento", testo: "", stato: "preparazione", versione: stessiTitolo.length + 1, versioni: stessiTitolo.length + 1 }
+    : erroreSenzaDoc
+      ? { titolo: "Documento", testo: "", stato: "errore", versione: 1, versioni: 1, errore: ultimoMsg?.errore }
+      : sel && statoDoc
+        ? { titolo: sel.blocco.titolo, testo: sel.blocco.testo, stato: statoDoc, legacy: sel.legacy,
+            versione: stessiTitolo.findIndex((x) => x.i === selIdx) + 1, versioni: stessiTitolo.length,
+            errore: statoDoc === "errore" ? (ultimoMsg?.errore ?? "La generazione si è interrotta.") : undefined }
+        : null;
+  // Nuova versione scritta: si torna a mostrare l'ultima.
+  const nDocumenti = docs.length;
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setVersioneSel(null); }, [nDocumenti, activeConversation.id]);
+  // Appena parte un documento il pannello passa alla scheda giusta (su telefono resta a discrezione dell'utente).
+  const docInLavorazione = preparando || statoDoc === "scrittura";
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (docInLavorazione) setScheda("bozza"); }, [docInLavorazione]);
+  /** Posizione nel backend: i messaggi del server non comprendono il benvenuto né i messaggi solo locali. */
+  const indiceBackend = (idx: number) =>
+    activeConversation.messages.slice(0, idx).filter((m) => m.ts > 0 && !m.local).length;
   const fonti = estraiFonti(activeConversation.messages.filter((m) => m.role === "assistant").map((m) => m.content));
   const documentiPratica = (() => {
     const viste = new Map<string, UploadedFile>();
@@ -869,20 +942,31 @@ export default function HomePage() {
     return [...viste.values()];
   })();
 
-  async function scaricaBozzaWord() {
+  async function scaricaDocumento(formato: "docx" | "pdf") {
     const sid = activeConversation.kbotSessionId ?? kbotSession?.id;
-    if (!sid || bozzaIdx < 1) throw new Error("La bozza non è ancora salvata: riprova tra un momento.");
+    if (!sid || !sel) throw new Error("Il documento non è ancora salvato: riprova tra un momento.");
     const token = await getToken();
-    // Il backend conta i messaggi senza il benvenuto locale (indice 0 qui).
-    await downloadMessageExport(sid, "docx", { messageIndex: bozzaIdx - 1, authToken: token ?? null });
+    await downloadMessageExport(sid, formato, {
+      messageIndex: indiceBackend(sel.msgIdx),
+      documentIndex: sel.docIdx,
+      authToken: token ?? null,
+    });
+  }
+
+  function cambiaVersione(delta: number) {
+    const pos = stessiTitolo.findIndex((x) => x.i === selIdx);
+    const next = stessiTitolo[pos + delta];
+    if (next) setVersioneSel(next.i);
   }
 
   const pannello = (
     <PannelloPratica
       scheda={scheda}
       onScheda={setScheda}
-      bozza={bozza}
-      onScaricaWord={bozza ? scaricaBozzaWord : undefined}
+      documento={documento}
+      onVersione={cambiaVersione}
+      onRiprova={() => { void riprova(); }}
+      onScarica={scaricaDocumento}
       fatti={fatti}
       fonti={fonti}
       competenze={usedSkills}
@@ -961,7 +1045,7 @@ export default function HomePage() {
           sottotitolo={loading ? "K-BOT sta lavorando…" : undefined}
           onOpenSidebar={() => setSidebarOpen(true)}
           onOpenPannello={() => setPannelloAperto(true)}
-          schedeConContenuto={(bozza ? 1 : 0) + (documentiPratica.length + analyzedUrls.length > 0 ? 1 : 0) + (Object.keys(fatti).length > 0 ? 1 : 0) + (fonti.length > 0 ? 1 : 0)}
+          schedeConContenuto={(documento ? 1 : 0) + (documentiPratica.length + analyzedUrls.length > 0 ? 1 : 0) + (Object.keys(fatti).length > 0 ? 1 : 0) + (fonti.length > 0 ? 1 : 0)}
           isSignedIn={isSignedIn}
         />
 
@@ -1014,13 +1098,20 @@ export default function HomePage() {
                     }
                   }}
                   onFollowUp={handleFollowUpClick}
-                  onOpenDraft={idx === bozzaIdx ? () => { setScheda("bozza"); setPannelloAperto(true); } : undefined}
+                  onOpenDraft={docs.some((d) => d.msgIdx === idx) ? () => { setVersioneSel(null); setScheda("bozza"); setPannelloAperto(true); } : undefined}
+                  docInfo={(() => {
+                    const d = [...docs].reverse().find((x) => x.msgIdx === idx);
+                    if (!d) return undefined;
+                    const stato = idx === ultimoIdx && inCorso ? "scrittura" : d.blocco.completo || d.legacy ? "pronto" : "interrotto";
+                    return { titolo: d.blocco.titolo, stato: stato as "scrittura" | "pronto" | "interrotto", legacy: d.legacy };
+                  })()}
+                  onRetry={m.errore ? () => { void riprova(); } : undefined}
                   getAuthToken={getToken}
                   messageIndex={idx}
                 />
               ))}
             </AnimatePresence>
-            {loading && <LoadingState reportProgress={pdfProgress} />}
+            {loading && <LoadingState reportProgress={pdfProgress} fase={ultimoMsg?.fase} />}
             {/* Date.now() in render is a deliberate snapshot — the banner's
                 onExpired callback nulls rateLimitUntil so subsequent renders
                 will drop the banner. */}
@@ -1064,6 +1155,8 @@ export default function HomePage() {
               files={pendingFiles}
               uploadingFiles={uploadingFiles}
               onFetchUrl={handleFetchUrl}
+              ricercaWeb={ricercaWeb}
+              onToggleRicercaWeb={toggleRicercaWeb}
               fetchingUrl={fetchingUrl}
               analyzedUrls={analyzedUrls}
               onRemoveContext={handleRemoveContext}

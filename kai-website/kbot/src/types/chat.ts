@@ -25,6 +25,12 @@ export type ChatMessage = {
   hasPaid?: boolean;
   /** Cached follow-up question suggestions (3 chips) for long assistant reports. */
   followUps?: string[];
+  /** Fase reale del turno in corso (evento del server); assente a turno concluso. */
+  fase?: "fonti" | "generazione" | "verifica";
+  /** Messaggio d'errore se il turno si è interrotto: il testo già prodotto resta e si può riprovare. */
+  errore?: string;
+  /** Messaggio creato solo nel browser (non salvato dal server): non conta nell'indice dei messaggi del backend. */
+  local?: boolean;
 };
 
 export type Conversation = {

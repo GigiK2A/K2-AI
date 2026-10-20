@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from ..lib import sessions
+from ..lib import sessions, documento
 from ..lib.auth import AuthUser, optional_user, verify_internal_key
 from ..lib.pdf_renderer import _html_to_pdf_bytes  # reuse Playwright path
 from ..lib.xlsx_renderer import render_xlsx
@@ -34,6 +34,8 @@ class RenderBody(BaseModel):
     sessionId: str = Field(..., alias="session_id")
     messageIndex: Optional[int] = Field(default=None, alias="message_index")
     messageId: Optional[str] = Field(default=None, alias="message_id")
+    # Quale documento del messaggio esportare (0 = il primo); assente = l'ultimo (la versione più recente).
+    documentIndex: Optional[int] = Field(default=None, alias="document_index")
 
     class Config:
         populate_by_name = True
@@ -62,9 +64,28 @@ def _pick_message(session: dict, body: RenderBody) -> dict:
     raise HTTPException(status_code=404, detail="no assistant message to export")
 
 
-def _filename(session_id: str, ext: str) -> str:
+def _filename(session_id: str, ext: str, titolo: Optional[str] = None) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    if titolo:
+        slug = re.sub(r"[^a-z0-9]+", "-", titolo.lower()).strip("-")[:48]
+        if slug:
+            return f"{slug}-{stamp}.{ext}"
     return f"k2ai-report-{session_id[:8]}-{stamp}.{ext}"
+
+
+def _documento_del_messaggio(content: str, indice: Optional[int]):
+    """(titolo, testo) del blocco-documento da esportare, o None se il messaggio non ne ha. Il documento si esporta SENZA
+    la conversazione intorno (spiegazioni, note) e senza intestazioni del sistema: una PEC a un terzo non porta il logo di
+    K2-AI né «Report operativo»."""
+    blocchi = documento.estrai(content)
+    blocchi = [b for b in blocchi if b["testo"].strip()]
+    if not blocchi:
+        return None
+    try:
+        b = blocchi[indice] if indice is not None else blocchi[-1]
+    except IndexError:
+        raise HTTPException(status_code=400, detail="document_index out of range")
+    return b["titolo"], b["testo"]
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +178,14 @@ def _wrap_html(md_body: str, session_id: str) -> str:
     return _HTML_DOC.format(date=today, body=_markdown_to_html(md_body), sid=session_id[:8])
 
 
+_HTML_DOC_PULITO = (_HTML_DOC.split("<div class=\"header\">")[0].replace("<title>K2-AI report</title>", "<title>{titolo}</title>")
+                    + "{body}\n</body></html>")
+
+
+def _wrap_html_documento(testo: str, titolo: str) -> str:
+    return _HTML_DOC_PULITO.format(titolo=html.escape(titolo or "Documento"), body=_markdown_to_html(testo))
+
+
 def _run_pdf(html_str: str) -> bytes:
     """ReportLab è sync, niente più asyncio wrapper."""
     return _html_to_pdf_bytes(html_str)
@@ -173,14 +202,18 @@ def render_message_pdf(body: RenderBody, user: Optional[AuthUser] = Depends(opti
     if not content:
         raise HTTPException(status_code=400, detail="empty message")
 
-    html_str = _wrap_html(content, body.sessionId)
+    doc = _documento_del_messaggio(content, body.documentIndex)
+    if doc:
+        html_str = _wrap_html_documento(doc[1], doc[0])
+    else:
+        html_str = _wrap_html(content, body.sessionId)
     try:
         pdf_bytes = _run_pdf(html_str)
     except Exception:
         log.exception("PDF render failed")
         raise HTTPException(status_code=500, detail="PDF render failed")
 
-    filename = _filename(body.sessionId, "pdf")
+    filename = _filename(body.sessionId, "pdf", doc[0] if doc else None)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -210,26 +243,30 @@ def render_message_docx(body: RenderBody, user: Optional[AuthUser] = Depends(opt
     style.font.name = "Calibri"
     style.font.size = Pt(11)
 
-    # Header note.
-    today = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-    p = doc.add_paragraph()
-    run = p.add_run(f"K2-AI — Report operativo · {today}")
-    run.italic = True
-    run.font.size = Pt(9)
+    documento_blocco = _documento_del_messaggio(content, body.documentIndex)
+    if documento_blocco:
+        _markdown_to_docx(doc, documento_blocco[1])        # solo il documento, pulito
+    else:
+        # Header note.
+        today = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+        p = doc.add_paragraph()
+        run = p.add_run(f"K2-AI — Report operativo · {today}")
+        run.italic = True
+        run.font.size = Pt(9)
 
-    _markdown_to_docx(doc, content)
+        _markdown_to_docx(doc, content)
 
-    p = doc.add_paragraph()
-    run = p.add_run(
-        f"K2A S.R.L.S. · P.IVA IT03655920548 · k2-ai.it · Sessione {body.sessionId[:8]}"
-    )
-    run.italic = True
-    run.font.size = Pt(8)
+        p = doc.add_paragraph()
+        run = p.add_run(
+            f"K2A S.R.L.S. · P.IVA IT03655920548 · k2-ai.it · Sessione {body.sessionId[:8]}"
+        )
+        run.italic = True
+        run.font.size = Pt(8)
 
     buf = io.BytesIO()
     doc.save(buf)
     data = buf.getvalue()
-    filename = _filename(body.sessionId, "docx")
+    filename = _filename(body.sessionId, "docx", documento_blocco[0] if documento_blocco else None)
     return Response(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",

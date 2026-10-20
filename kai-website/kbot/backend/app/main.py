@@ -52,6 +52,7 @@ app.add_middleware(
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
+    expose_headers=["Content-Disposition"],     # il nome del file esportato deve essere leggibile dal browser anche da un'altra origine
     allow_headers=["*"],
 )
 

@@ -60,7 +60,10 @@
     "impronta digitale|biometric\\w+|riconoscimento facciale",
     "rilevazion\\w+ (?:delle )?presenz\\w+|badge",
     "(?:legg\\w+|apr\\w+|access\\w+|consult\\w+) (?:a )?(?:le |la |l')?(?:e-?mail|mail|posta|account)",
-    "cancell\\w+ (?:tutti )?(?:i )?(?:suoi |loro |miei )?dati|diritto all'oblio|diritto di accesso|dati (?:personali|dei clienti)|\\bdati\\b.{0,25}(?:cancellare|eliminare)"
+    "cancell\\w+ (?:tutti )?(?:i )?(?:suoi |loro |miei )?dati|diritto all'oblio|diritto di accesso|dati (?:personali|dei clienti)|\\bdati\\b.{0,25}(?:cancellare|eliminare)",
+    "\\bgarante\\b[^.\\n]{0,40}(?:dati|privacy|protezione)|notific\\w+[^.\\n]{0,40}\\bgarante\\b",
+    "(?:inviat\\w+|mandat\\w+|spedit\\w+)[^.\\n]{0,60}per errore[^.\\n]{0,80}(?:dati|clienti|elenco|excel|file)",
+    "incident\\w+[^.\\n]{0,60}(?:dati|clienti|file)|registro\\s+(?:interno\\s+)?(?:delle\\s+)?violazion\\w+"
    ],
    "skill": [
     "it-law-privacy-ai",

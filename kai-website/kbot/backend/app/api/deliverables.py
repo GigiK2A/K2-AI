@@ -144,11 +144,24 @@ def _session_company(session: dict) -> Optional[str]:
     l'ha estratta dal bilancio."""
     collected = session.get("collected_data") or session.get("collected") or {}
     extracted = collected.get("extractedData") or {}
+    # 1) ciò che l'UTENTE ha detto in chat (scheda del cliente, con citazione verificata): prima non si leggeva, quindi
+    #    «DemoTech S.r.l.» scritto in chat non arrivava al generatore (test GDPR del 20/10/2026)
+    scheda = collected.get("scheda_cliente") or {}
+    for k in ("ragione_sociale", "denominazione", "nome_azienda", "azienda"):
+        v = (scheda.get(k) or {}).get("valore") if isinstance(scheda.get(k), dict) else None
+        if isinstance(v, str) and v.strip():
+            return v.strip()
     for src in (collected, extracted):
         for k in ("ragione_sociale", "companyName", "businessName", "clientName", "azienda"):
             v = src.get(k)
             if isinstance(v, str) and v.strip():
                 return v.strip()
+    # 3) profilo dell'azienda salvato nell'account («Dati azienda»)
+    prof = session.get("_profilo") or {}
+    for k in ("ragione_sociale", "denominazione"):
+        v = (prof.get("azienda") or prof).get(k) if isinstance(prof, dict) else None
+        if isinstance(v, str) and v.strip():
+            return v.strip()
     return None
 
 

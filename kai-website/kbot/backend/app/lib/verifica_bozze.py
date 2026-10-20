@@ -17,6 +17,7 @@ import os
 import re
 from typing import Optional
 
+from . import documento
 from .indici_e_bozze import _GATE_BOZZA, REGOLA_BOZZE
 
 log = logging.getLogger(__name__)
@@ -37,12 +38,15 @@ ISTRUZIONE = (
 
 
 def richiesta_bozza(ultimo_utente: str) -> bool:
-    return bool(_GATE_BOZZA.search(ultimo_utente or ""))
+    return bool(_GATE_BOZZA.search(ultimo_utente or "")) or documento.richiesta_documento(ultimo_utente)
 
 
 def contiene_bozza(testo: str) -> bool:
     """True se il testo ha i segnali di una lettera/contratto/verbale scritto (non solo domande o commenti)."""
     t = testo or ""
+    d = documento.ultimo_documento(t)
+    if d and len(d["testo"]) >= 150:
+        return True                                   # blocco-documento con un testo vero
     n = sum(1 for m in _MARCATORI if re.search(m, t, re.I))
     return n >= 2 or (n >= 1 and len(t) >= 700)
 

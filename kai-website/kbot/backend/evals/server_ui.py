@@ -50,6 +50,59 @@ import app.lib.rag as rag
 _ch = {}
 rag.persist_chunks = lambda rows: [_ch.setdefault(r["session_id"], []).append(r) for r in rows] and None
 rag.fetch_chunks = lambda sid, limit=500: list(_ch.get(str(sid), []))[:limit]
+# Modello FINTO che scrive lentamente (UI_LLM_FINTO=1): permette di provare nel browser lo streaming del documento, le fasi,
+# l'errore a metà testo e la ripresa con codice di backend VERO (marcatori, guardie, esportazione).
+if os.environ.get("UI_LLM_FINTO") == "1":
+    import time, anthropic, httpx
+    from types import SimpleNamespace as NS
+    _intro = "Ecco la PEC, pronta da rivedere. Il valore dell'accettazione tramite SDI non prova da solo la regolare esecuzione."
+    _doc1 = ("Oggetto: contestazione della fattura n. [numero] del [data]\n\nSpett.le DemoSoft S.r.l.,\n\n"
+             "con la presente contestiamo le difformità del software gestionale consegnato rispetto a quanto previsto dal contratto "
+             "firmato il [data del contratto]. Le funzionalità indicate nell'allegato tecnico non risultano conformi e i difetti "
+             "riscontrati impediscono l'uso ordinario del programma.\n\nSospendiamo il pagamento della parte contestata fino alla "
+             "regolarizzazione, ferma restando la disponibilità a saldare quanto non contestato.\n\nDistinti saluti\n[tuo nome e ruolo]")
+    _doc2 = _doc1.replace("firmato il [data del contratto]", "firmato il 12 marzo 2026") + "\n\nAllegato: elenco dei difetti."
+    _note = "Controlla il numero della fattura e la data del contratto; il termine per denunciare i vizi ha eccezioni."
+    _stato = {"interrompi": 0}
+
+    class _Flusso:
+        def __init__(self, testo, errore_dopo=None): self.t, self.err = testo, errore_dopo
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        @property
+        def text_stream(self):
+            for i in range(0, len(self.t), 14):
+                time.sleep(0.07)
+                yield self.t[i:i + 14]
+                if self.err and i >= self.err:
+                    raise anthropic.APIConnectionError(request=httpx.Request("POST", "http://x"))
+        def get_final_message(self): return NS(stop_reason="end_turn", usage=NS(input_tokens=1000, output_tokens=300), content=[])
+
+    class _Msg:
+        def create(self, **k):
+            sis = str(k.get("system", ""))
+            if sis.startswith("Estrai dal MESSAGGIO"): t = '{"fatti": []}'
+            elif "indicizzatore giuridico" in sis: t = '{"norme":[],"parole":[]}'
+            elif sis.startswith("Dai un titolo breve"): t = "Contestazione software"
+            elif sis.startswith("Classifica la domanda"): t = '{"temi": []}'
+            else: t = "Ok."
+            return NS(content=[NS(type="text", text=t)], usage=NS(input_tokens=10, output_tokens=5))
+        def stream(self, **k):
+            ultimo = str(k["messages"][-1]["content"]).lower()
+            if "versione 2" in ultimo or "aggiorna" in ultimo:
+                return _Flusso(f"Ho aggiornato la PEC con la data del contratto.\n\n<<<DOCUMENTO: PEC di contestazione>>>\n{_doc2}\n<<<FINE DOCUMENTO>>>\n\n{_note}")
+            if "interrompi" in ultimo and _stato["interrompi"] == 0:
+                _stato["interrompi"] += 1
+                return _Flusso(f"{_intro}\n\n<<<DOCUMENTO: PEC di contestazione>>>\n{_doc1}\n<<<FINE DOCUMENTO>>>", errore_dopo=330)
+            if "pec" in ultimo or "registro" in ultimo or "documento" in ultimo:
+                return _Flusso(f"{_intro}\n\n<<<DOCUMENTO: PEC di contestazione>>>\n{_doc1}\n<<<FINE DOCUMENTO>>>\n\n{_note}")
+            return _Flusso("Va bene: dimmi pure i dettagli del caso e ti rispondo punto per punto.")
+
+    class _ClienteFinto:
+        def __init__(self, *a, **k): self.messages = _Msg()
+    anthropic.Anthropic = _ClienteFinto
+    import app.api.message as _am
+    _am.anthropic.Anthropic = _ClienteFinto
 from app.main import app
 from app.lib.auth import AuthUser, optional_user, require_user
 UTENTE = "00000000-0000-4000-8000-000000000001"

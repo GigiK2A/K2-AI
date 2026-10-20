@@ -133,12 +133,20 @@ def research_query(user_text: str, context_text: str = "") -> str | None:
     return None
 
 
-def ground_block(user_text: str, context_text: str = "") -> str | None:
+def ground_block(user_text: str, context_text: str = "", forza: bool = False) -> str | None:
     """Blocco di grounding da iniettare nel prompt, o None se non serve / ricerca non
-    disponibile. best-effort: qualunque errore → None (fail-open, prosegue col prompt)."""
-    if not _enabled():
-        return None
-    q = research_query(user_text, context_text)
+    disponibile. best-effort: qualunque errore → None (fail-open, prosegue col prompt).
+
+    `forza=True`: l'UTENTE ha acceso «Cerca sul web» per questo messaggio — si cerca SEMPRE (query dalla sua domanda, mai da un
+    URL scelto dal modello), indipendentemente dalle parole che contiene; si rispetta comunque la ricerca spenta del servizio."""
+    if forza:
+        if not web_search.enabled():
+            return None
+        q = _query(user_text) if len((user_text or "").strip()) >= 4 else None
+    else:
+        if not _enabled():
+            return None
+        q = research_query(user_text, context_text)
     if not q:
         return None
     try:

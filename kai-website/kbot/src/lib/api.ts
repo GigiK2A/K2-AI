@@ -67,6 +67,8 @@ export interface AnalyzedUrl {
 }
 
 export interface SendMessageResult {
+  /** Tempi per fase misurati dal server (preparazione, fonti, primo token, generazione, verifica, totale) e chiamate al modello. */
+  timing?: Record<string, number | null>;
   message: string;
   summary: Record<string, unknown> | null;
   nextAction: "show_summary" | "continue" | string;
@@ -305,6 +307,8 @@ export async function fetchFollowUps(
  * ----------------------------------------------------------------- */
 
 export interface StreamCallbacks {
+  /** Fase REALE del turno (evento del server): «fonti», «generazione», «verifica». Niente avanzamenti finti. */
+  onFase?: (fase: string) => void;
   onDelta: (chunk: string) => void;
   onDone: (result: SendMessageResult) => void;
   onError?: (error: string) => void;
@@ -320,7 +324,9 @@ export interface StreamCallbacks {
 export async function streamMessage(
   sessionId: string,
   message: string,
-  opts: { serviceId?: string; authToken?: string | null; forcedSkills?: string[] } & StreamCallbacks,
+  opts: { serviceId?: string; authToken?: string | null; forcedSkills?: string[];
+          /** «force» = l'utente ha acceso «Cerca sul web»: il backend cerca sempre e riporta le fonti. Assente = decide il sistema. */
+          webSearch?: "force" } & StreamCallbacks,
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/api/kbot/message/stream`, {
     method: "POST",
@@ -330,6 +336,7 @@ export async function streamMessage(
       service_id: opts.serviceId,
       message,
       forced_skills: opts.forcedSkills,
+      web_search: opts.webSearch,
     }),
     signal: opts.signal,
   });
@@ -377,7 +384,13 @@ export async function streamMessage(
           summary?: Record<string, unknown> | null;
           nextAction?: string;
           session?: KbotSession;
+          fase?: string;
+          timing?: Record<string, number | null>;
         };
+        if (typeof evt.fase === "string") {
+          opts.onFase?.(evt.fase);
+          continue;
+        }
         if (evt.error) {
           sawError = evt.error;
           opts.onError?.(evt.error);
@@ -392,6 +405,7 @@ export async function streamMessage(
             summary: evt.summary ?? null,
             nextAction: evt.nextAction ?? "continue",
             session: evt.session,
+            timing: evt.timing,
           };
         }
       } catch {
@@ -418,7 +432,7 @@ export type MessageExportFormat = "pdf" | "docx";
 export async function downloadMessageExport(
   sessionId: string,
   format: MessageExportFormat,
-  opts: { messageIndex?: number; messageId?: string; authToken?: string | null } = {},
+  opts: { messageIndex?: number; messageId?: string; documentIndex?: number; authToken?: string | null } = {},
 ): Promise<void> {
   const endpoint = format === "pdf" ? "render-message-pdf" : "render-message-docx";
   const res = await fetch(`${API_BASE}/api/kbot/${endpoint}`, {
@@ -428,6 +442,7 @@ export async function downloadMessageExport(
       session_id: sessionId,
       message_index: opts.messageIndex,
       message_id: opts.messageId,
+      document_index: opts.documentIndex,
     }),
   });
   if (!res.ok) await parseErr(res, "Errore export");

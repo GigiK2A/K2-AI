@@ -112,6 +112,34 @@ def _sezioni(name: str):
     return intro, unita
 
 
+@lru_cache(maxsize=512)
+def _sezioni_references(name: str) -> list:
+    """[(titolo, testo)] delle sezioni dei file in references/: in chat non venivano MAI caricate (99 skill rimandano a
+    «leggi la reference pertinente», ma entravano solo i primi 5500 caratteri di SKILL.md)."""
+    cartella = _skill_root(name) / "references"
+    if not cartella.is_dir():
+        return []
+    out = []
+    for f in sorted(cartella.glob("*.md")):
+        try:
+            t = f.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        t = re.sub(r"\A---\s*\n.*?\n---\s*\n", "", t, count=1, flags=re.S)
+        for b in [x for x in re.split(r"(?m)^(?=## )", t) if x.strip().startswith("## ")]:
+            titolo = b.splitlines()[0].lstrip("# ").strip()
+            if len(b) <= _MAX_UNITA:
+                out.append((f"{f.stem} / {titolo}", b.strip()))
+                continue
+            for k, x in enumerate([y for y in re.split(r"(?m)^(?=### )", b) if y.strip()]):
+                out.append((f"{f.stem} / {titolo}" if k == 0 else f"{f.stem} / {titolo} / {x.splitlines()[0].lstrip('# ').strip()}",
+                            x.strip() if k == 0 else f"## {titolo} (segue)\n\n{x.strip()}"))
+    return out
+
+
+_SOGLIA_REFERENCE = 3     # stem in comune con la domanda perché una sezione di reference entri nel prompt
+
+
 def load_skill_pertinente(name: str, query: str, max_chars: int) -> Optional[str]:
     """Introduzione + le sezioni della skill più vicine a `query`, in ordine di lettura, entro `max_chars`.
     Se la skill sta già nel limite, o `query` non assomiglia a nessuna sezione, si comporta come il vecchio taglio
@@ -122,9 +150,9 @@ def load_skill_pertinente(name: str, query: str, max_chars: int) -> Optional[str
     intro, unita = dati
     intro = intro[:900].rstrip()
     corpo_intero = "\n\n".join(x for x in [intro] + [u[1] for u in unita] if x)
-    if len(corpo_intero) <= max_chars:
-        return corpo_intero
     q = _stem_set(query)
+    if len(corpo_intero) <= max_chars:
+        return _con_references(name, q, corpo_intero, max_chars)
     punteggi = []
     for i, (titolo, testo) in enumerate(unita):
         if not q:
@@ -148,8 +176,24 @@ def load_skill_pertinente(name: str, query: str, max_chars: int) -> Optional[str
             usati = budget
             break
     corpo = "\n\n".join(x for x in [intro] + [unita[i][1] for i in sorted(prese)] if x)
-    if len(corpo) > max_chars:
-        corpo = corpo[: max_chars - 1].rstrip() + "…"
+    return _con_references(name, q, corpo, max_chars)
+
+
+def _con_references(name: str, q: set, corpo: str, max_chars: int) -> str:
+    """`corpo` più, nel budget che avanza, le sezioni delle reference più vicine alla domanda (soglia minima di somiglianza)."""
+    corpo = corpo if len(corpo) <= max_chars else corpo[: max_chars - 1].rstrip() + "…"
+    margine = max_chars - len(corpo) - 2
+    if not q or margine < 600:
+        return corpo
+    candidati = []
+    for titolo, testo in _sezioni_references(name):
+        punteggio = 3 * len(q & _stem_set(titolo)) + len(q & _stem_set(testo))
+        if len(q & _stem_set(testo)) >= _SOGLIA_REFERENCE or len(q & _stem_set(titolo)) >= 2:
+            candidati.append((punteggio, titolo, testo))
+    for _, titolo, testo in sorted(candidati, key=lambda x: -x[0]):
+        if len(testo) + 2 <= margine:
+            corpo += "\n\n" + testo
+            margine -= len(testo) + 2
     return corpo
 
 

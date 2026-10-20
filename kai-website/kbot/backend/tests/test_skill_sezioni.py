@@ -57,3 +57,23 @@ def test_il_prompt_della_chat_porta_le_sezioni_giuste():
     msgs = [{"role": "user", "content": "SRL, computer da 2.500 euro a ottobre: come funziona l'ammortamento e quanta IRES risparmio?"}]
     p = build_system_prompt_v2([FISC], {"messages": msgs, "collected_data": {}})
     assert "Primo anno: quota ridotta al 50%" in p
+
+
+def test_le_reference_pertinenti_entrano_nel_budget_che_avanza():
+    """La skill privacy (1,9 KB) rimanda a gdpr-privacy.md: in chat le reference non entravano mai."""
+    t = load_skill_pertinente("it-law-privacy-ai", "violazione dei dati personali notifica al Garante 72 ore data breach", CAP)
+    assert len(t) <= CAP
+    assert "Violazione dei dati personali (data breach): come ragionare" in t        # sezione di SKILL.md
+    assert "Data Breach & Notification" in t                                           # sezione della reference
+    altro = load_skill_pertinente("it-law-privacy-ai", "telecamere nel reparto", CAP)
+    assert "Data Breach & Notification" not in altro
+
+
+def test_la_guida_sul_data_breach_distingue_i_tre_livelli_di_rischio():
+    t = load_skill_pertinente("it-law-privacy-ai", "data breach notifica rischio", CAP)
+    for frase in ("improbabile", "Rischio basso", "non è «rischio improbabile»", "documentata", "72 ore", "elevato"):
+        assert frase.lower() in t.lower(), frase
+
+
+def test_una_skill_senza_reference_non_cambia():
+    assert load_skill_pertinente("diagnostica-it-pmi", "disco al 100%", CAP) == load_skill_pertinente("diagnostica-it-pmi", "disco al 100%", CAP)

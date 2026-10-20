@@ -18,6 +18,8 @@ from __future__ import annotations
 import os
 import re
 
+from . import documento
+
 _GATE_INDICI = re.compile(
     r"\b(pfn|posizione finanziaria|ebitda|ebit\b|dso|giorni (medi )?di incasso|indic[ei]( di bilancio)?|"
     r"leva finanziaria|copertura (degli )?oneri|capitale circolante|margine operativo|rapporto debiti|"
@@ -65,6 +67,8 @@ def blocchi(testo_recente: str) -> str:
     out = ""
     if os.getenv("KBOT_GLOSSARIO_INDICI", "1") != "0" and _GATE_INDICI.search(t):
         out += GLOSSARIO
-    if os.getenv("KBOT_REGOLA_BOZZE", "1") != "0" and _GATE_BOZZA.search(t):
+    if os.getenv("KBOT_REGOLA_BOZZE", "1") != "0" and (_GATE_BOZZA.search(t) or documento.richiesta_documento(t)):
         out += REGOLA_BOZZE
+        if os.getenv("KBOT_DOCUMENTO_SEPARATO", "1") != "0":
+            out += "\n" + documento.REGOLA + "\n"
     return out
