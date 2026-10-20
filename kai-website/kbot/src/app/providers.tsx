@@ -37,6 +37,8 @@ type AppContextValue = {
   kbotSession: KbotSession | null;
   ensureSession: (opts?: { mode?: Mode; serviceId?: string; adopt?: string; tagPillar?: string | null }) => Promise<KbotSession>;
   resetSession: () => void;
+  /** Rilegge dal backend la sessione corrente (messaggi inclusi): lo stato tenuto qui può essere vecchio. */
+  refreshSession: () => Promise<void>;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -217,6 +219,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
     [getToken, kbotSession, persistSessionId],
   );
 
+  /* Ritorno da un'altra pagina dell'app (es. la dashboard): il provider tiene la sessione ma con lo stato di quando è
+     stata creata o adottata, senza i messaggi dei turni successivi. La si rilegge dal backend così la UI può
+     re-idratare la cronologia (segnalato il 20/10/2026: tornando dalla dashboard la chat spariva). */
+  const refreshSession = useCallback(async () => {
+    const id = kbotSession?.id;
+    if (!id) return;
+    try {
+      const token = await getToken();
+      const real = await getSession(id, token);
+      if (real?.id === id) setKbotSession(real);
+    } catch {
+      /* errore di rete: resta lo stato attuale */
+    }
+  }, [getToken, kbotSession?.id]);
+
   const resetSession = useCallback(() => {
     setKbotSession(null);
     persistSessionId(null);
@@ -265,6 +282,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       kbotSession,
       ensureSession,
       resetSession,
+      refreshSession,
     };
   }, [
     ensureSession,
@@ -272,6 +290,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     kbotSession,
     loading,
     resetSession,
+    refreshSession,
     resetPassword,
     updatePassword,
     session,

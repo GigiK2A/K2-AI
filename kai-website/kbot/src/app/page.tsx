@@ -108,7 +108,7 @@ function LoginFirstScreen() {
 }
 
 export default function HomePage() {
-  const { loading: authLoading, getToken, isSignedIn, hasPaid, ensureSession, resetSession, kbotSession } =
+  const { loading: authLoading, getToken, isSignedIn, hasPaid, ensureSession, resetSession, refreshSession, kbotSession } =
     useKbotAuth();
 
   const [mode, setMode] = useState<Mode>("report");
@@ -167,6 +167,14 @@ export default function HomePage() {
         if (!token) return;
         const remote = await listConversations(token);
         if (cancelled || remote.length === 0) return;
+        // La chat in corso (sessione viva o salvata) può non avere ancora una conversazione remota: la prima chat
+        // non ne crea una. Se la si sostituisse con l'elenco remoto, tornando dalla dashboard sparirebbe.
+        let sessioneInCorso: string | null = kbotSession?.id ?? null;
+        if (!sessioneInCorso) {
+          try { sessioneInCorso = window.localStorage.getItem("kbot.session_id"); } catch { sessioneInCorso = null; }
+        }
+        const tenereLocale = !!sessioneInCorso && !remote.some((r) => r.kbotSessionId === sessioneInCorso);
+        const localeId = (conversations.find((c) => !c.remoteId) ?? conversations[0]).id;
         const mapped: Conversation[] = remote.map((r) => ({
           id: r.id,
           remoteId: r.id,
@@ -175,8 +183,16 @@ export default function HomePage() {
           kbotSessionId: r.kbotSessionId,
           messages: [{ id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 }],
         }));
-        setConversations(mapped);
-        setActiveId(mapped[0].id);
+        if (tenereLocale) {
+          setConversations((prev) => {
+            const locale = prev.find((c) => c.id === localeId) ?? prev[0];
+            return [locale, ...mapped.filter((m) => m.id !== locale.id)];
+          });
+          setActiveId(localeId);
+        } else {
+          setConversations(mapped);
+          setActiveId(mapped[0].id);
+        }
       } catch {
         /* anon o errore di rete: lasciamo la conv locale */
       } finally {
@@ -193,6 +209,9 @@ export default function HomePage() {
      salvata, la ripristiniamo SUBITO — senza aspettare il primo messaggio — così la
      cronologia (persistita dal backend su Supabase) riappare dopo il refresh. */
   useEffect(() => {
+    // Ritorno da un'altra pagina (dashboard): la sessione c'è già nel provider ma può essere «vecchia» → la si rilegge,
+    // così il re-idrata sotto riporta i messaggi. Al primo caricamento (nessuna sessione) vale il ramo localStorage.
+    if (!authLoading && kbotSession?.id) { void refreshSession(); return; }
     if (authLoading || kbotSession?.id) return;
     let stored: string | null = null;
     try { stored = window.localStorage.getItem("kbot.session_id"); } catch { stored = null; }
@@ -231,6 +250,15 @@ export default function HomePage() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbotSessionId, kbotSessionMsgCount]);
+
+  /* Le skill usate stanno nella sessione del backend (extractedData.used_skills): dopo un refresh o il ritorno dalla
+     dashboard lo stato locale è vuoto e il pannello diceva «in attesa del primo turno» a conversazione avviata. */
+  useEffect(() => {
+    const us = (kbotSession?.extractedData as { used_skills?: string[] } | undefined)?.used_skills;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (Array.isArray(us) && us.length > 0 && usedSkills.length === 0) setUsedSkills(us);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kbotSession?.id, kbotSession?.extractedData]);
 
   /* Cross-bot bridge: when arriving from suite-ai widget with ?continue=<id>,
      adopt that session id instead of creating a new one. Also picks up the
@@ -318,8 +346,13 @@ export default function HomePage() {
       resetSession();
       void ensureSession({ mode: activeConversation.mode, adopt: convSid });
     } else if (!convSid && liveSid) {
-      // New conv with no backend session yet — drop any stale one.
-      resetSession();
+      // Sessione viva che nessuna conversazione possiede: è il caso del RITORNO dalla dashboard (la pagina si
+      // rimonta con una conversazione nuova, ma il provider ha ancora la sessione). Prima la si azzerava sempre:
+      // la chat spariva (segnalato il 20/10/2026). Ora resta: l'effetto «Bind» qui sotto la lega a questa
+      // conversazione e la cronologia si re-idrata. Si scarta solo se appartiene a UN'ALTRA conversazione
+      // (altrimenti il messaggio successivo finirebbe nella chat sbagliata).
+      const posseduta = conversations.some((c) => c.id !== activeConversation.id && c.kbotSessionId === liveSid);
+      if (posseduta) resetSession();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversation.id]);
