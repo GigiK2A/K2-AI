@@ -1,14 +1,11 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { PanelLeftClose, Plus } from "lucide-react";
-import { Conversation, Mode } from "@/types/chat";
-import { AIStatusIndicator } from "@/components/ui/AIStatusIndicator";
-import { ModeSwitcher } from "@/components/chat/ModeSwitcher";
+import { Plus, UserRound, X } from "lucide-react";
+import Link from "next/link";
+import { Conversation } from "@/types/chat";
 import { ConversationList } from "@/components/layout/ConversationList";
 
+/** Elenco delle pratiche. Su computer sta sempre a sinistra, su telefono è un menu a scomparsa. */
 export function Sidebar({
   open,
-  mode,
-  onMode,
   conversations,
   activeId,
   onSelect,
@@ -18,8 +15,6 @@ export function Sidebar({
   onClose,
 }: {
   open: boolean;
-  mode: Mode;
-  onMode: (m: Mode) => void;
   conversations: Conversation[];
   activeId: string;
   onSelect: (id: string) => void;
@@ -29,48 +24,53 @@ export function Sidebar({
   onClose: () => void;
 }) {
   return (
-    <AnimatePresence>
+    <>
       {open && (
-        <motion.aside
-          initial={{ x: -30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -20, opacity: 0 }}
-          className="k2-panel fixed inset-y-0 left-0 z-40 w-[290px] border-r p-4 lg:static lg:block"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xl font-semibold tracking-tight">K2 AI</p>
-              <AIStatusIndicator online label="Stato AI: Online" />
-            </div>
-            <button onClick={onClose} className="rounded-lg border border-[var(--line)] p-2 lg:hidden">
-              <PanelLeftClose size={16} />
-            </button>
-          </div>
-
-          <div className="mt-6 space-y-5">
-            <div>
-              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Modalita</p>
-              <ModeSwitcher mode={mode} onChange={onMode} />
-            </div>
-
-            <div>
-              <button onClick={onNew} className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--line)] px-3 py-2 text-sm hover:border-[var(--line-strong)]">
-                <Plus size={15} /> Nuova chat
-              </button>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Cronologia</p>
-              <ConversationList conversations={conversations} activeId={activeId} onSelect={onSelect} onDelete={onDelete} onRename={onRename} />
-            </div>
-          </div>
-
-          <div className="absolute inset-x-4 bottom-4 rounded-xl border border-[var(--line)] p-3 text-xs text-[var(--text-soft)]">
-            <p className="font-medium text-[var(--text-main)]">Account K2-AI</p>
-            <p>Consulenza enterprise attiva</p>
-          </div>
-        </motion.aside>
+        <div
+          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
       )}
-    </AnimatePresence>
+      <aside
+        aria-label="Pratiche"
+        className={
+          "fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col border-r border-[var(--line)] bg-[var(--bg-2)] p-3 transition-transform lg:static lg:w-[240px] lg:translate-x-0 " +
+          (open ? "translate-x-0" : "-translate-x-full")
+        }
+      >
+        <div className="flex items-center justify-between px-2 py-1">
+          <p className="text-base font-semibold tracking-tight">K-BOT</p>
+          <button onClick={onClose} className="rounded-md p-1.5 text-[var(--text-soft)] lg:hidden" aria-label="Chiudi il menu">
+            <X size={16} />
+          </button>
+        </div>
+
+        <button
+          onClick={() => { onNew(); onClose(); }}
+          className="mt-3 flex w-full items-center gap-2 rounded-lg border border-[var(--line-strong)] bg-[var(--bg-1)] px-3 py-2 text-sm font-medium hover:border-[var(--teal)]"
+        >
+          <Plus size={15} /> Nuova pratica
+        </button>
+
+        <p className="mb-1 mt-5 px-3 text-xs text-[var(--text-muted)]">Le tue pratiche</p>
+        <div className="scroll-premium min-h-0 flex-1 overflow-y-auto">
+          <ConversationList
+            conversations={conversations}
+            activeId={activeId}
+            onSelect={(id) => { onSelect(id); onClose(); }}
+            onDelete={onDelete}
+            onRename={onRename}
+          />
+        </div>
+
+        <Link
+          href="/dashboard"
+          className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--text-soft)] hover:bg-[var(--bg-1)]"
+        >
+          <UserRound size={15} /> Account e crediti
+        </Link>
+      </aside>
+    </>
   );
 }

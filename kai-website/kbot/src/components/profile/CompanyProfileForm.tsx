@@ -74,13 +74,13 @@ export default function CompanyProfileForm({ compact, onSaved, secondaryLabel, o
   };
 
   if (loading && isSignedIn) {
-    return <div className="text-sm text-[#6b7280]">Caricamento dati azienda…</div>;
+    return <div className="text-sm text-[var(--text-muted)]">Caricamento dati azienda…</div>;
   }
 
   return (
     <div>
       {!compact && (
-        <p className="mb-4 text-sm text-[#9ca3af]">
+        <p className="mb-4 text-sm text-[var(--text-soft)]">
           Inseriscili una volta: verranno usati in ogni consulenza, senza doverli
           riscrivere in ogni chat. Puoi lasciarne alcuni vuoti e completarli dopo.
         </p>
@@ -88,13 +88,13 @@ export default function CompanyProfileForm({ compact, onSaved, secondaryLabel, o
       <div className={`grid gap-3 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
         {FIELDS.map((f) => (
           <label key={f.key} className="flex flex-col gap-1 text-sm">
-            <span className="text-[#9ca3af]">{f.label}</span>
+            <span className="text-[var(--text-soft)]">{f.label}</span>
             <input
               type="text"
               value={values[f.key] ?? ""}
               placeholder={f.placeholder}
               onChange={(e) => set(f.key, e.target.value)}
-              className="rounded-lg border border-[#1f2937] bg-[#0a0a0a] px-3 py-2 text-white outline-none focus:border-[var(--teal)]"
+              className="rounded-lg border border-[var(--line)] bg-[var(--bg-1)] px-3 py-2 text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
             />
           </label>
         ))}
@@ -105,7 +105,7 @@ export default function CompanyProfileForm({ compact, onSaved, secondaryLabel, o
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-black disabled:opacity-60"
+          className="rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)] disabled:opacity-60"
         >
           {saving ? "Salvataggio…" : "Salva dati azienda"}
         </button>
@@ -113,7 +113,7 @@ export default function CompanyProfileForm({ compact, onSaved, secondaryLabel, o
           <button
             type="button"
             onClick={onSecondary}
-            className="rounded-lg border border-[#1f2937] px-4 py-2 text-sm text-[#9ca3af] hover:text-white"
+            className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm text-[var(--text-soft)] hover:text-[var(--text-main)]"
           >
             {secondaryLabel}
           </button>

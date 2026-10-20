@@ -8,15 +8,15 @@ const KEY = "kbot.theme";
 
 function applyTheme(t: Theme) {
   if (typeof document === "undefined") return;
-  if (t === "light") {
-    document.documentElement.setAttribute("data-theme", "light");
+  if (t === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
   } else {
     document.documentElement.removeAttribute("data-theme");
   }
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   // Hydration-safe init: read localStorage on mount only, then apply theme.
@@ -25,8 +25,8 @@ export function ThemeToggle({ className }: { className?: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     try {
-      const stored = (localStorage.getItem(KEY) as Theme | null) ?? "dark";
-      const initial: Theme = stored === "light" ? "light" : "dark";
+      const stored = (localStorage.getItem(KEY) as Theme | null) ?? "light";
+      const initial: Theme = stored === "dark" ? "dark" : "light";
       setTheme(initial);
       applyTheme(initial);
     } catch {

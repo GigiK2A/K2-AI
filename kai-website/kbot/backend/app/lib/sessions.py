@@ -236,6 +236,8 @@ def public_session(session: dict) -> dict:
         "mode": collected.get("mode") or "report",
         "messages": session.get("messages") or [],
         "extractedData": collected.get("extractedData") or {},
+        "schedaCliente": {k: v.get("valore") for k, v in (collected.get("scheda_cliente") or {}).items()
+                          if isinstance(v, dict) and v.get("valore")},
         "summary": collected.get("summary"),
         "recommendedServiceId": collected.get("recommendedServiceId"),
         "recommendedServiceName": collected.get("recommendedServiceName"),

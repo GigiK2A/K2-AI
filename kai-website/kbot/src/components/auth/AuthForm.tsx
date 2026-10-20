@@ -70,31 +70,31 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-[#1f1f1f] bg-[#050505] p-6 shadow-2xl shadow-black/30">
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-[var(--line)] bg-[var(--bg-0)] p-6 shadow-sm">
       <div className="space-y-4">
         {isRegister && (
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-[#6b7280]">Nome</span>
+              <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Nome</span>
               <input
                 type="text"
                 value={firstName}
                 onChange={(event) => setFirstName(event.target.value)}
                 autoComplete="given-name"
                 required
-                className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+                className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
                 placeholder="Nome"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-[#6b7280]">Cognome</span>
+              <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Cognome</span>
               <input
                 type="text"
                 value={lastName}
                 onChange={(event) => setLastName(event.target.value)}
                 autoComplete="family-name"
                 required
-                className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+                className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
                 placeholder="Cognome"
               />
             </label>
@@ -102,14 +102,14 @@ export function AuthForm({ mode }: AuthFormProps) {
         )}
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[#6b7280]">Email</span>
+          <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Email</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
             required
-            className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+            className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
             placeholder="nome@azienda.it"
           />
         </label>
@@ -117,25 +117,25 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isRegister && (
           <>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-[#6b7280]">Settore di lavoro</span>
+              <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Settore di lavoro</span>
               <input
                 type="text"
                 value={workSector}
                 onChange={(event) => setWorkSector(event.target.value)}
                 required
-                className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+                className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
                 placeholder="Es. edilizia, hospitality, consulenza, real estate"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-[#6b7280]">Ragione sociale <span className="font-normal text-[#4b5563]">(opzionale)</span></span>
+              <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Ragione sociale <span className="font-normal text-[var(--text-muted)]">(opzionale)</span></span>
               <input
                 type="text"
                 value={companyName}
                 onChange={(event) => setCompanyName(event.target.value)}
                 autoComplete="organization"
-                className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+                className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
                 placeholder="Nome azienda o studio"
               />
             </label>
@@ -143,7 +143,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         )}
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[#6b7280]">Password</span>
+          <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Password</span>
           <input
             type="password"
             value={password}
@@ -151,7 +151,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             autoComplete={isRegister ? "new-password" : "current-password"}
             required
             minLength={6}
-            className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+            className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
             placeholder="Minimo 6 caratteri"
           />
         </label>
@@ -159,7 +159,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isRegister && (
           <>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-[#6b7280]">Conferma password</span>
+              <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Conferma password</span>
               <input
                 type="password"
                 value={confirmPassword}
@@ -167,23 +167,23 @@ export function AuthForm({ mode }: AuthFormProps) {
                 autoComplete="new-password"
                 required
                 minLength={6}
-                className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+                className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
                 placeholder="Ripeti la password"
               />
             </label>
 
-            <div className="space-y-3 rounded-xl border border-[#1f1f1f] bg-[#090909] p-4 text-xs text-[#9ca3af]">
+            <div className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--bg-2)] p-4 text-xs text-[var(--text-soft)]">
               <label className="flex gap-3">
                 <input
                   type="checkbox"
                   checked={privacyAccepted}
                   onChange={(event) => setPrivacyAccepted(event.target.checked)}
                   required
-                  className="mt-0.5 h-4 w-4 accent-[#14b8a6]"
+                  className="mt-0.5 h-4 w-4 accent-[var(--teal)]"
                 />
                 <span>
                   Ho letto e accetto l&apos;informativa privacy e autorizzo il trattamento dei dati necessari alla gestione dell&apos;account e dei report.{" "}
-                  <a href="/privacy.html" target="_blank" rel="noreferrer" className="font-semibold text-[#14b8a6]">
+                  <a href="/privacy.html" target="_blank" rel="noreferrer" className="font-semibold text-[var(--teal)]">
                     Privacy
                   </a>
                 </span>
@@ -195,11 +195,11 @@ export function AuthForm({ mode }: AuthFormProps) {
                   checked={termsAccepted}
                   onChange={(event) => setTermsAccepted(event.target.checked)}
                   required
-                  className="mt-0.5 h-4 w-4 accent-[#14b8a6]"
+                  className="mt-0.5 h-4 w-4 accent-[var(--teal)]"
                 />
                 <span>
                   Accetto termini e condizioni di utilizzo del servizio K2-AI.{" "}
-                  <a href="/note-legali.html" target="_blank" rel="noreferrer" className="font-semibold text-[#14b8a6]">
+                  <a href="/note-legali.html" target="_blank" rel="noreferrer" className="font-semibold text-[var(--teal)]">
                     Termini
                   </a>
                 </span>
@@ -210,7 +210,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                   type="checkbox"
                   checked={marketingAccepted}
                   onChange={(event) => setMarketingAccepted(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-[#14b8a6]"
+                  className="mt-0.5 h-4 w-4 accent-[var(--teal)]"
                 />
                 <span>Acconsento a ricevere comunicazioni operative e aggiornamenti commerciali. Posso revocare il consenso in qualsiasi momento.</span>
               </label>
@@ -224,30 +224,30 @@ export function AuthForm({ mode }: AuthFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-[#14b8a6] px-4 py-3 text-sm font-bold text-black transition hover:bg-[#2dd4bf] disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-[var(--teal)] px-4 py-3 text-sm font-bold text-[var(--on-accent)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Attendi..." : isRegister ? "Crea account" : "Accedi"}
         </button>
       </div>
 
-      <div className="mt-5 border-t border-[#1f1f1f] pt-4 text-center text-xs text-[#6b7280]">
+      <div className="mt-5 border-t border-[var(--line)] pt-4 text-center text-xs text-[var(--text-muted)]">
         {isRegister ? (
           <p>
             Hai già un account?{" "}
-            <Link href="/sign-in" className="font-semibold text-[#14b8a6]">
+            <Link href="/sign-in" className="font-semibold text-[var(--teal)]">
               Accedi
             </Link>
           </p>
         ) : (
           <div className="space-y-2">
             <p>
-              <Link href="/forgot-password" className="font-semibold text-[#14b8a6]">
+              <Link href="/forgot-password" className="font-semibold text-[var(--teal)]">
                 Password dimenticata?
               </Link>
             </p>
             <p>
               Non hai un account?{" "}
-              <Link href="/sign-up" className="font-semibold text-[#14b8a6]">
+              <Link href="/sign-up" className="font-semibold text-[var(--teal)]">
                 Registrati
               </Link>
             </p>

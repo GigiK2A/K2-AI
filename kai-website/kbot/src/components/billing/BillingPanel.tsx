@@ -56,19 +56,19 @@ export default function BillingPanel() {
   const plan = data?.plan ?? "free";
 
   return (
-    <section className="rounded-2xl border border-[#111] bg-[#0a0a0a] p-6 text-white">
+    <section className="rounded-2xl border border-[var(--line)] bg-[var(--bg-1)] p-6 text-[var(--text-main)]">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">Abbonamento &amp; crediti</h2>
-        <span className="rounded-full border border-[#1d7d70] px-3 py-1 text-xs text-[#2a9d8f]">
+        <span className="rounded-full border border-[var(--teal)] px-3 py-1 text-xs text-[#2a9d8f]">
           {data?.label ?? "Free"}
         </span>
       </div>
 
       <div className="mt-4 flex items-baseline gap-2">
         <span className="text-3xl font-bold tabular-nums">{data?.crediti ?? 0}</span>
-        <span className="text-sm text-[#6b7280]">crediti disponibili</span>
+        <span className="text-sm text-[var(--text-muted)]">crediti disponibili</span>
         {data && data.crediti_mese > 0 && (
-          <span className="ml-auto text-xs text-[#6b7280]">
+          <span className="ml-auto text-xs text-[var(--text-muted)]">
             {data.crediti_mese}/mese · −{data.sconto_boost_pct}% sui Boost
           </span>
         )}
@@ -82,48 +82,48 @@ export default function BillingPanel() {
           <button
             disabled={busy !== null}
             onClick={() => go(() => getToken().then((t) => startSubscriptionCheckout("pro", t!)), "pro")}
-            className="rounded-xl border border-[#1d7d70] bg-[#0d2420] p-4 text-left transition hover:bg-[#103029] disabled:opacity-50"
+            className="rounded-xl border border-[var(--teal)] bg-[var(--teal-soft)] p-4 text-left transition hover:bg-[var(--bg-2)] disabled:opacity-50"
           >
             <div className="font-semibold">Pro · 49€/mese</div>
-            <div className="text-xs text-[#6b7280]">50 crediti/mese · −10% sui Boost</div>
+            <div className="text-xs text-[var(--text-muted)]">50 crediti/mese · −10% sui Boost</div>
           </button>
           <button
             disabled={busy !== null}
             onClick={() => go(() => getToken().then((t) => startSubscriptionCheckout("business", t!)), "business")}
-            className="rounded-xl border border-[#2a9d8f] bg-[#0d2420] p-4 text-left transition hover:bg-[#103029] disabled:opacity-50"
+            className="rounded-xl border border-[var(--teal)] bg-[var(--teal-soft)] p-4 text-left transition hover:bg-[var(--bg-2)] disabled:opacity-50"
           >
             <div className="font-semibold">Studio · 149€/mese</div>
-            <div className="text-xs text-[#6b7280]">200 crediti/mese · −20% · 3 utenti</div>
+            <div className="text-xs text-[var(--text-muted)]">200 crediti/mese · −20% · 3 utenti</div>
           </button>
         </div>
       )}
 
       {/* Pacchetti crediti */}
       <div className="mt-5">
-        <p className="mb-2 text-xs uppercase tracking-wide text-[#6b7280]">Ricarica crediti</p>
+        <p className="mb-2 text-xs uppercase tracking-wide text-[var(--text-muted)]">Ricarica crediti</p>
         <div className="grid gap-3 sm:grid-cols-3">
           {PACCHETTI.map((p) => (
             <button
               key={p.eur}
               disabled={busy !== null}
               onClick={() => go(() => getToken().then((t) => startCreditsCheckout(p.eur, t!)), `cr${p.eur}`)}
-              className={`relative rounded-xl border p-4 text-center transition hover:bg-[#111] disabled:opacity-50 ${
-                p.consigliato ? "border-[#2a9d8f]" : "border-[#1f1f1f]"
+              className={`relative rounded-xl border p-4 text-center transition hover:bg-[var(--bg-2)] disabled:opacity-50 ${
+                p.consigliato ? "border-[var(--teal)]" : "border-[var(--line)]"
               }`}
             >
               {p.consigliato && (
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[#2a9d8f] px-2 py-0.5 text-[10px] font-semibold text-black">
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[var(--teal)] px-2 py-0.5 text-[10px] font-semibold text-[var(--on-accent)]">
                   consigliato
                 </span>
               )}
               <div className="text-xl font-bold tabular-nums">{p.cr}</div>
-              <div className="text-xs text-[#6b7280]">crediti · {p.eur}€</div>
+              <div className="text-xs text-[var(--text-muted)]">crediti · {p.eur}€</div>
             </button>
           ))}
         </div>
       </div>
 
-      <p className="mt-4 text-[11px] text-[#4b5563]">
+      <p className="mt-4 text-[11px] text-[var(--text-muted)]">
         I crediti pagano i Check express (1 cr = 1€). I Boost si pagano a prezzo, con lo sconto del tuo piano.
       </p>
     </section>

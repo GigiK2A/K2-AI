@@ -74,20 +74,20 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#050505] px-6 py-10 text-white">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--bg-0)] px-6 py-10 text-[var(--text-main)]">
       <div className="w-full max-w-sm">
         <div className="mb-6">
           <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#14b8a6] font-black text-black">K</div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--teal)] font-black text-[var(--on-accent)]">K</div>
             <span className="text-sm font-extrabold tracking-wide">K2-AI</span>
           </div>
           <h1 className="text-2xl font-extrabold">Nuova password</h1>
-          <p className="mt-2 text-sm text-[#6b7280]">Imposta una nuova password per il tuo account.</p>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">Imposta una nuova password per il tuo account.</p>
         </div>
 
-        <div className="rounded-2xl border border-[#1f1f1f] bg-[#050505] p-6 shadow-2xl shadow-black/30">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--bg-0)] p-6 shadow-sm">
           {checking ? (
-            <p className="text-sm text-[#6b7280]">Verifica del link in corso...</p>
+            <p className="text-sm text-[var(--text-muted)]">Verifica del link in corso...</p>
           ) : done ? (
             <p className="rounded-lg border border-teal-900/40 bg-teal-950/20 px-3 py-2 text-sm text-teal-200">
               Password aggiornata. Ti reindirizzo al login...
@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
               </p>
               <Link
                 href="/forgot-password"
-                className="block w-full rounded-lg bg-[#14b8a6] px-4 py-3 text-center text-sm font-bold text-black transition hover:bg-[#2dd4bf]"
+                className="block w-full rounded-lg bg-[var(--teal)] px-4 py-3 text-center text-sm font-bold text-[var(--on-accent)] transition hover:opacity-90"
               >
                 Richiedi un nuovo link
               </Link>
@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-[#6b7280]">Nuova password</span>
+                <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Nuova password</span>
                 <input
                   type="password"
                   value={password}
@@ -115,12 +115,12 @@ export default function ResetPasswordPage() {
                   autoComplete="new-password"
                   required
                   minLength={6}
-                  className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+                  className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
                   placeholder="Minimo 6 caratteri"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-[#6b7280]">Conferma password</span>
+                <span className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Conferma password</span>
                 <input
                   type="password"
                   value={confirmPassword}
@@ -128,7 +128,7 @@ export default function ResetPasswordPage() {
                   autoComplete="new-password"
                   required
                   minLength={6}
-                  className="w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]"
+                  className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2.5 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
                   placeholder="Ripeti la password"
                 />
               </label>
@@ -138,7 +138,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-[#14b8a6] px-4 py-3 text-sm font-bold text-black transition hover:bg-[#2dd4bf] disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-lg bg-[var(--teal)] px-4 py-3 text-sm font-bold text-[var(--on-accent)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Aggiorno..." : "Aggiorna password"}
               </button>

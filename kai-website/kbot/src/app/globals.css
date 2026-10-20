@@ -1,38 +1,47 @@
 @import "tailwindcss";
 
 :root {
-  --bg-0: #050505;
-  --bg-1: #0a0a0a;
-  --bg-2: #111111;
-  --line: rgba(255, 255, 255, 0.09);
-  --line-strong: rgba(255, 255, 255, 0.16);
-  --text-main: #f7f9fb;
-  --text-soft: #aab2bf;
-  --text-muted: #7f8998;
-  --teal: #00c8b4;
-  --teal-soft: rgba(0, 200, 180, 0.18);
-  --bg-radial: radial-gradient(circle at 12% -5%, rgba(0, 200, 180, 0.09), transparent 35%);
-}
-
-[data-theme="light"] {
-  --bg-0: #f7f8fa;
+  --bg-0: #f6f7f9;
   --bg-1: #ffffff;
   --bg-2: #eef0f4;
-  --line: rgba(0, 0, 0, 0.08);
-  --line-strong: rgba(0, 0, 0, 0.16);
-  --text-main: #0c1018;
+  --line: rgba(15, 23, 42, 0.09);
+  --line-strong: rgba(15, 23, 42, 0.18);
+  --text-main: #0f172a;
   --text-soft: #475569;
   --text-muted: #64748b;
-  --teal: #009a8b;
-  --teal-soft: rgba(0, 154, 139, 0.14);
-  --bg-radial: radial-gradient(circle at 12% -5%, rgba(0, 154, 139, 0.08), transparent 35%);
+  --teal: #0f766e;
+  --teal-soft: rgba(15, 118, 110, 0.1);
+  --on-accent: #ffffff;
+  --warn-bg: #fef3c7;
+  --warn-text: #92400e;
+  --ok-bg: #dcfce7;
+  --ok-text: #166534;
+  --bg-radial: none;
+}
+
+[data-theme="dark"] {
+  --bg-0: #0b0d11;
+  --bg-1: #12151b;
+  --bg-2: #1a1e26;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text-main: #f1f5f9;
+  --text-soft: #aab2bf;
+  --text-muted: #7f8998;
+  --teal: #2dd4bf;
+  --teal-soft: rgba(45, 212, 191, 0.14);
+  --on-accent: #04201d;
+  --warn-bg: rgba(250, 204, 21, 0.16);
+  --warn-text: #fde68a;
+  --ok-bg: rgba(74, 222, 128, 0.16);
+  --ok-text: #86efac;
 }
 
 html,
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--bg-radial), var(--bg-0);
+  background: var(--bg-0);
   color: var(--text-main);
   font-family: Inter, Geist, "SF Pro Text", "SF Pro Display", sans-serif;
 }
@@ -47,28 +56,19 @@ body {
 }
 
 .scroll-premium::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--line-strong);
   border-radius: 999px;
-}
-
-[data-theme="light"] .scroll-premium::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.18);
 }
 
 .k2-focus {
   outline: none;
   border-color: var(--teal);
-  box-shadow: 0 0 0 2px rgba(0, 200, 180, 0.14), 0 0 0 6px rgba(0, 200, 180, 0.05);
+  box-shadow: 0 0 0 3px var(--teal-soft);
 }
 
 .k2-panel {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.005));
+  background: var(--bg-1);
   border: 1px solid var(--line);
-  backdrop-filter: blur(2px);
-}
-
-[data-theme="light"] .k2-panel {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.015), rgba(0, 0, 0, 0.005)), var(--bg-1);
 }
 
 @keyframes k2-pulse-rec {

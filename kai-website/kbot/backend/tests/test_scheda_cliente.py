@@ -275,3 +275,12 @@ def test_dopo_un_successo_si_legge_solo_il_messaggio_nuovo():
     asyncio.run(corpo())
     inviato = c.chiamate[0]["messages"][0]["content"]
     assert "Paolo" in inviato and "Foligno" not in inviato.split("MESSAGGIO DELL'UTENTE:")[1]
+
+
+def test_public_session_espone_i_fatti_senza_citazioni():
+    from app.lib.sessions import public_session
+    s = {"id": "x", "collected_data": {"scheda_cliente": {
+        "citta": {"valore": "Foligno", "citazione": "siamo a Foligno", "turno": 1},
+        "vuoto": {"valore": "", "citazione": "x"}}}}
+    assert public_session(s)["schedaCliente"] == {"citta": "Foligno"}
+    assert public_session({"id": "y", "collected_data": {}})["schedaCliente"] == {}

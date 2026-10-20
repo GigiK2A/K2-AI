@@ -7,15 +7,15 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Composer } from "@/components/chat/Composer";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
-import { InsightPanel } from "@/components/insights/InsightPanel";
+import { PannelloPratica, eBozza, estraiFonti, type SchedaPratica } from "@/components/pratica/PannelloPratica";
 import { ReportGenerator } from "@/components/report/ReportGenerator";
 import {
-  sendMessage,
   streamMessage,
   uploadFiles,
   startCheckout,
   generatePdfStream,
   downloadDeliverableXlsx,
+  downloadMessageExport,
   getSession,
   fetchUrl,
   listConversations,
@@ -33,28 +33,26 @@ import { RateLimitBanner } from "@/components/chat/RateLimitBanner";
 import { track } from "@/lib/analytics";
 import { ChatMessage, Conversation, Mode } from "@/types/chat";
 import { uid } from "@/lib/utils";
-import { MessageCircle } from "lucide-react";
 import { AuthForm } from "@/components/auth/AuthForm";
-import { AccountButton } from "@/components/auth/AccountButton";
 import { useKbotAuth } from "@/app/providers";
 
 const REPORT_SUGGESTIONS = [
-  "Voglio un audit operativo per la mia PMI",
-  "Analisi strategia marketing per il mio settore",
-  "Audit SEO del mio sito",
-  "Valutazione tecnica di un nuovo progetto",
+  "Un cliente non mi paga una fattura",
+  "Posso licenziare un dipendente?",
+  "Devo aggiornare il DVR?",
+  "Ho ricevuto una lettera dall'Agenzia delle Entrate",
 ];
 
 const WELCOME_MESSAGE =
-  "Benvenuto. Sono K-BOT, l'analista K2-AI. Insieme produciamo il deliverable che ti serve: un'analisi/report (operativa, marketing, SEO, bilancio, fattibilità) oppure un documento operativo (calendario editoriale, piano contenuti, checklist, tabella Excel). Per partire, dimmi cosa ti preparo — o descrivi liberamente il tuo caso.\n\n_Privacy: la conversazione viene processata da Claude (Anthropic, US) per generare il documento. Dettagli su /privacy.html._";
+  "Ciao, sono K-BOT, il tuo pre-consulente per le questioni legali, fiscali, del lavoro e di bilancio. Raccontami il caso con i numeri che hai: importi, date, quanti dipendenti. Posso leggere i tuoi documenti, citare le norme in vigore e prepararti una bozza di lettera da far rivedere al tuo professionista.\n\nPrivacy: la conversazione viene elaborata da un modello di intelligenza artificiale. Dettagli su /privacy.html.";
 
 function LoginFirstScreen() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#050505] px-6 py-10 text-white">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[#111] bg-[#0a0a0a] md:grid-cols-[0.95fr_1fr]">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--bg-0)] px-6 py-10 text-[var(--text-main)]">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--bg-1)] md:grid-cols-[0.95fr_1fr]">
         <section
           className="hidden min-h-[640px] flex-col justify-between p-10 md:flex"
-          style={{ background: "linear-gradient(160deg,#071f1d 0%,#050d0c 60%,#050505 100%)" }}
+          style={{ background: "var(--bg-2)" }}
         >
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element -- need explicit basePath, next/image overhead unnecessary */}
@@ -68,15 +66,14 @@ function LoginFirstScreen() {
           </div>
           <div>
             <h1 className="text-3xl font-extrabold leading-tight">
-              Accedi per generare report premium
+              Accedi e apri la tua prima pratica
             </h1>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-[#9ca3af]">
-              La chat K-BOT si apre dopo il login: download, dashboard e stato Premium
-              restano collegati al tuo account.
+            <p className="mt-3 max-w-sm text-sm leading-6 text-[var(--text-soft)]">
+              Le tue pratiche, i documenti e le bozze restano salvati sul tuo account, su computer e telefono.
             </p>
           </div>
-          <p className="text-xs text-[#4b5563]">
-            K2-AI · report professionali e analisi strategica.
+          <p className="text-xs text-[var(--text-muted)]">
+            K2-AI · pre-consulenza per le PMI italiane.
           </p>
         </section>
 
@@ -90,13 +87,13 @@ function LoginFirstScreen() {
               height={56}
               className="mx-auto mb-3 h-14 w-auto"
             />
-            <p className="text-lg font-bold">Report Premium</p>
+            <p className="text-lg font-bold">K-BOT</p>
           </div>
           <div className="w-full max-w-sm">
             <div className="mb-6">
               <h2 className="text-xl font-bold">Accedi al tuo account</h2>
-              <p className="mt-1 text-sm text-[#6b7280]">
-                Dopo l&apos;accesso si apre la chat K-BOT.
+              <p className="mt-1 text-sm text-[var(--text-muted)]">
+                Dopo l&apos;accesso si apre la tua pratica.
               </p>
             </div>
             <AuthForm mode="login" />
@@ -111,8 +108,11 @@ export default function HomePage() {
   const { loading: authLoading, getToken, isSignedIn, hasPaid, ensureSession, resetSession, refreshSession, kbotSession } =
     useKbotAuth();
 
-  const [mode, setMode] = useState<Mode>("report");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mode] = useState<Mode>("report");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [scheda, setScheda] = useState<SchedaPratica>("bozza");
+  const [pannelloAperto, setPannelloAperto] = useState(false);
+  const [fatti, setFatti] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [composer, setComposer] = useState("");
   const [usedSkills, setUsedSkills] = useState<string[]>([]);
@@ -129,7 +129,7 @@ export default function HomePage() {
   >({});
   const [fetchingUrl, setFetchingUrl] = useState(false);
   const [analyzedUrls, setAnalyzedUrls] = useState<AnalyzedUrl[]>([]);
-  const [forcedSkills, setForcedSkills] = useState<string[]>([]);
+  const [forcedSkills] = useState<string[]>([]);
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
   const [pdfProgress, setPdfProgress] = useState<{ stage: string; progress: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -146,7 +146,7 @@ export default function HomePage() {
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: uid("conv"),
-      title: "Nuova conversazione",
+      title: "Nuova pratica",
       mode: "report",
       messages: [
         { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
@@ -178,7 +178,7 @@ export default function HomePage() {
         const mapped: Conversation[] = remote.map((r) => ({
           id: r.id,
           remoteId: r.id,
-          title: r.title || "Nuova conversazione",
+          title: r.title || "Nuova pratica",
           mode: r.mode,
           kbotSessionId: r.kbotSessionId,
           messages: [{ id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 }],
@@ -259,6 +259,13 @@ export default function HomePage() {
     if (Array.isArray(us) && us.length > 0 && usedSkills.length === 0) setUsedSkills(us);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbotSession?.id, kbotSession?.extractedData]);
+
+  /* I fatti del cliente stanno nella sessione del backend: dopo refresh o ritorno dalla dashboard si ripristinano. */
+  useEffect(() => {
+    const sc = kbotSession?.schedaCliente;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (sc) setFatti(sc);
+  }, [kbotSession?.id, kbotSession?.schedaCliente]);
 
   /* Cross-bot bridge: when arriving from suite-ai widget with ?continue=<id>,
      adopt that session id instead of creating a new one. Also picks up the
@@ -394,7 +401,7 @@ export default function HomePage() {
     );
   }
 
-  /** Imposta titolo conv se ancora generico ("Nuova chat" / "Nuova conversazione"). */
+  /** Imposta titolo conv se ancora generico ("Nuova pratica" / "Nuova pratica"). */
   function maybeSetTitle(label: string) {
     const clean = label.trim().replace(/\s+/g, " ").slice(0, 48);
     if (!clean) return;
@@ -402,7 +409,7 @@ export default function HomePage() {
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== activeConversation.id) return c;
-        const isGeneric = !c.title || /^Nuova (chat|conversazione)$/i.test(c.title);
+        const isGeneric = !c.title || /^Nuova (chat|conversazione|pratica)$/i.test(c.title);
         if (!isGeneric) return c;
         updatedRemoteId = c.remoteId;
         return { ...c, title: clean };
@@ -428,11 +435,6 @@ export default function HomePage() {
     );
   }
 
-  function toggleForcedSkill(name: string) {
-    setForcedSkills((prev) =>
-      prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name],
-    );
-  }
 
   async function handleRemoveContext({
     type,
@@ -480,7 +482,7 @@ export default function HomePage() {
         } else {
           const fresh: Conversation = {
             id: uid("conv"),
-            title: "Nuova chat",
+            title: "Nuova pratica",
             mode,
             messages: [{ id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 }],
           };
@@ -510,7 +512,7 @@ export default function HomePage() {
     const localId = uid("conv");
     const newConv: Conversation = {
       id: localId,
-      title: "Nuova chat",
+      title: "Nuova pratica",
       mode,
       messages: [
         { id: uid("msg"), role: "assistant", content: WELCOME_MESSAGE, ts: 0 },
@@ -532,7 +534,7 @@ export default function HomePage() {
           const token = await getToken();
           if (!token) return;
           const remote = await createRemoteConversation(token, {
-            title: "Nuova chat",
+            title: "Nuova pratica",
             mode,
           });
           setConversations((prev) =>
@@ -691,6 +693,8 @@ export default function HomePage() {
             (res.session?.extractedData as { used_skills?: string[] } | undefined)
               ?.used_skills ?? [];
           setUsedSkills(skills);
+          const sc = (res.session as { schedaCliente?: Record<string, string> } | undefined)?.schedaCliente;
+          if (sc) setFatti(sc);
           // Selettore di catalogo: il backend ha pre-scelto il Boost 8e → mostra il pannello.
           const sess = res.session as
             | { boostSuggerito?: string; boostSuggeritoLabel?: string }
@@ -705,6 +709,9 @@ export default function HomePage() {
           });
         },
       });
+
+      // La scheda dei fatti si aggiorna a fine turno: rileggila (non blocca, non tocca i messaggi).
+      void refreshSession().catch(() => undefined);
 
       // Long-form report → fetch follow-up suggestions (non-blocking).
       if (finalMessage && finalMessage.length > 1500) {
@@ -779,9 +786,54 @@ export default function HomePage() {
     }
   }
 
+  // Contenuti della pratica (pannello a destra): bozza, documenti, fonti. I fatti arrivano dal backend.
+  const bozzaIdx = (() => {
+    for (let i = activeConversation.messages.length - 1; i >= 0; i--) {
+      const m = activeConversation.messages[i];
+      if (m.role === "assistant" && m.ts > 0 && eBozza(m.content)) return i;
+    }
+    return -1;
+  })();
+  const bozza = bozzaIdx >= 0 ? activeConversation.messages[bozzaIdx].content.replace(/\n+Fonti:[^\n]*$/i, "").trim() : null;
+  const fonti = estraiFonti(activeConversation.messages.filter((m) => m.role === "assistant").map((m) => m.content));
+  const documentiPratica = (() => {
+    const viste = new Map<string, UploadedFile>();
+    for (const f of contextFilesByConversation[activeConversation.id] ?? []) viste.set(f.path, f);
+    for (const m of activeConversation.messages) for (const f of m.attachments ?? []) viste.set(f.path, f);
+    return [...viste.values()];
+  })();
+
+  async function scaricaBozzaWord() {
+    const sid = activeConversation.kbotSessionId ?? kbotSession?.id;
+    if (!sid || bozzaIdx < 1) throw new Error("La bozza non è ancora salvata: riprova tra un momento.");
+    const token = await getToken();
+    // Il backend conta i messaggi senza il benvenuto locale (indice 0 qui).
+    await downloadMessageExport(sid, "docx", { messageIndex: bozzaIdx - 1, authToken: token ?? null });
+  }
+
+  const pannello = (
+    <PannelloPratica
+      scheda={scheda}
+      onScheda={setScheda}
+      bozza={bozza}
+      onScaricaWord={bozza ? scaricaBozzaWord : undefined}
+      fatti={fatti}
+      fonti={fonti}
+      competenze={usedSkills}
+      documenti={documentiPratica}
+      siti={analyzedUrls}
+      onClose={() => setPannelloAperto(false)}
+      className={
+        pannelloAperto
+          ? "fixed inset-0 z-50 xl:static xl:z-auto xl:w-[460px] xl:shrink-0 xl:border-l xl:border-[var(--line)]"
+          : "hidden xl:flex xl:w-[460px] xl:shrink-0 xl:border-l xl:border-[var(--line)]"
+      }
+    />
+  );
+
   if (authLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050505] text-sm text-[#6b7280]">
+      <main className="flex min-h-screen items-center justify-center bg-[var(--bg-0)] text-sm text-[var(--text-muted)]">
         Caricamento…
       </main>
     );
@@ -792,11 +844,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg-0)] text-[var(--text-main)]">
+    <div className="flex h-[100dvh] overflow-hidden bg-[var(--bg-1)] text-[var(--text-main)]">
       <Sidebar
         open={sidebarOpen}
-        mode={mode}
-        onMode={(m) => setMode(m)}
         conversations={conversations}
         activeId={activeId}
         onSelect={(id) => {
@@ -839,18 +889,18 @@ export default function HomePage() {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="relative flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col ">
         <ChatLayoutHeader
-          mode={mode}
-          usedSkills={usedSkills}
-          activeSkills={usedSkills}
-          loading={loading}
+          titolo={activeConversation.title}
+          sottotitolo={loading ? "K-BOT sta lavorando…" : undefined}
           onOpenSidebar={() => setSidebarOpen(true)}
+          onOpenPannello={() => setPannelloAperto(true)}
+          schedeConContenuto={(bozza ? 1 : 0) + (documentiPratica.length + analyzedUrls.length > 0 ? 1 : 0) + (Object.keys(fatti).length > 0 ? 1 : 0) + (fonti.length > 0 ? 1 : 0)}
           isSignedIn={isSignedIn}
         />
 
-        <main className="scroll-premium flex-1 overflow-y-auto px-4 pb-24 pt-6 lg:px-8">
-          <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+        <main className="scroll-premium flex-1 overflow-y-auto px-4 pb-6 pt-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
             <AnimatePresence>
               {activeConversation.messages.map((m, idx) => (
                 <MessageBubble
@@ -872,6 +922,7 @@ export default function HomePage() {
                     }
                   }}
                   onFollowUp={handleFollowUpClick}
+                  onOpenDraft={idx === bozzaIdx ? () => { setScheda("bozza"); setPannelloAperto(true); } : undefined}
                   getAuthToken={getToken}
                   messageIndex={idx}
                 />
@@ -890,8 +941,8 @@ export default function HomePage() {
             )}
             {activeConversation.messages.length <= 2 && (
               <p className="px-4 text-center text-xs text-[var(--text-muted)]">
-                Le tue conversazioni vengono salvate sul tuo account. I documenti generati
-                restano disponibili in dashboard.
+                Le tue pratiche restano salvate sul tuo account. K-BOT è una pre-consulenza:
+                prima di agire fai rivedere le bozze al tuo professionista.
               </p>
             )}
             {/* Flusso ufficiale: quando il bot ha raccolto abbastanza (boost
@@ -911,7 +962,7 @@ export default function HomePage() {
         </main>
 
         <div className="px-4 lg:px-8">
-          <div className="mx-auto w-full max-w-4xl">
+          <div className="mx-auto w-full max-w-3xl">
             <Composer
               value={composer}
               onChange={setComposer}
@@ -934,22 +985,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[var(--bg-0)]/95 px-4 py-2 backdrop-blur xl:hidden">
-          <div className="mx-auto flex max-w-xl items-center justify-around text-xs text-[var(--text-soft)]">
-            <button className="flex flex-col items-center gap-1 text-[var(--teal)]">
-              <MessageCircle size={16} />Chat
-            </button>
-            <AccountButton compact />
-          </div>
-        </nav>
       </div>
 
-      <InsightPanel
-        mode={mode}
-        usedSkills={usedSkills}
-        forcedSkills={forcedSkills}
-        onToggleForcedSkill={toggleForcedSkill}
-      />
+      {pannello}
     </div>
   );
 }

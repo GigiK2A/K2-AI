@@ -29,6 +29,8 @@ export interface KbotSession {
   mode: Mode;
   messages: KbotMessage[];
   extractedData: Record<string, unknown>;
+  /** Fatti stabili detti dall'utente ({chiave: valore}), già verificati dal backend. */
+  schedaCliente?: Record<string, string>;
   summary: string | null;
   recommendedServiceId: string | null;
   recommendedServiceName: string | null;

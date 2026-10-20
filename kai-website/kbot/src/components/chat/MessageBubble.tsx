@@ -2,7 +2,7 @@
 
 import { Fragment } from "react";
 import { motion } from "framer-motion";
-import { Bot } from "lucide-react";
+import { FileText } from "lucide-react";
 import { ChatMessage } from "@/types/chat";
 import { prettyTime } from "@/lib/utils";
 
@@ -31,7 +31,7 @@ function renderWithCitations(text: string) {
       <span
         key={`cite-${match.index}`}
         title={`Riferimento pagina ${match[1]}`}
-        className="mx-0.5 inline-flex items-baseline rounded-md border border-[var(--teal)]/40 bg-[var(--teal)]/10 px-1 py-0 text-[11px] font-medium text-[var(--teal)] align-baseline"
+        className="mx-0.5 inline-flex items-baseline rounded-md border border-[var(--teal)]/40 bg-[var(--teal-soft)] px-1 py-0 text-[11px] font-medium text-[var(--teal)] align-baseline"
       >
         pag.&nbsp;{match[1]}
       </span>,
@@ -48,8 +48,11 @@ export function MessageBubble({
   onGeneratePdf,
   onDownloadXlsx,
   onFollowUp,
+  onOpenDraft,
 }: {
   message: ChatMessage;
+  /** Se presente, sotto la risposta compare «Apri la bozza» (il messaggio contiene un documento). */
+  onOpenDraft?: () => void;
   onCheckout?: () => Promise<void>;
   onGeneratePdf?: () => Promise<void>;
   onDownloadXlsx?: () => Promise<void>;
@@ -64,20 +67,9 @@ export function MessageBubble({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={isBot ? "mr-auto max-w-3xl" : "ml-auto max-w-xl"}
+      className={isBot ? "mr-auto w-full max-w-3xl" : "ml-auto max-w-xl"}
     >
-      <div
-        className={
-          isBot
-            ? "k2-panel rounded-2xl p-4"
-            : "rounded-2xl border border-[var(--line)] bg-[rgba(255,255,255,0.02)] p-4"
-        }
-      >
-        {isBot && (
-          <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <Bot size={14} /> K2-AI
-          </div>
-        )}
+      <div className={isBot ? "py-1" : "rounded-2xl bg-[var(--bg-2)] px-4 py-3"}>
 
         <p className="whitespace-pre-wrap text-[15px] leading-7 text-[var(--text-main)]">
           {renderWithCitations(message.content)}
@@ -91,7 +83,6 @@ export function MessageBubble({
                 /\.(jpe?g|png|gif|webp)$/i.test(f.name);
               if (isImage && f.publicUrl) {
                 return (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <a
                     key={f.path}
                     href={f.publicUrl}
@@ -127,7 +118,7 @@ export function MessageBubble({
               href={message.reportPdfUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-black"
+              className="inline-flex rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-[var(--on-accent)]"
             >
               Apri il report (PDF)
             </a>
@@ -137,7 +128,7 @@ export function MessageBubble({
                 onClick={() => {
                   void onDownloadXlsx();
                 }}
-                className="inline-flex rounded-lg border border-[var(--teal)] px-3 py-2 text-xs font-semibold text-[var(--teal)] hover:bg-[var(--teal)]/10"
+                className="inline-flex rounded-lg border border-[var(--teal)] px-3 py-2 text-xs font-semibold text-[var(--teal)] hover:bg-[var(--teal-soft)]"
               >
                 Scarica in Excel
               </button>
@@ -153,7 +144,7 @@ export function MessageBubble({
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={message.hasPaid ? onCheckout : onGeneratePdf}
-              className="inline-flex rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-black hover:opacity-90"
+              className="inline-flex rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-[var(--on-accent)] hover:opacity-90"
             >
               Genera il report PDF
             </button>
@@ -178,7 +169,17 @@ export function MessageBubble({
           </div>
         )}
 
-        <p className="mt-2 text-xs text-[var(--text-muted)]">{prettyTime(message.ts)}</p>
+        {isBot && onOpenDraft && (
+          <button
+            type="button"
+            onClick={onOpenDraft}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--line-strong)] bg-[var(--bg-1)] px-3 py-2 text-sm font-medium hover:border-[var(--teal)]"
+          >
+            <FileText size={15} /> Apri la bozza
+          </button>
+        )}
+
+        {message.ts > 0 && <p className="mt-2 text-xs text-[var(--text-muted)]">{prettyTime(message.ts)}</p>}
       </div>
     </motion.div>
   );

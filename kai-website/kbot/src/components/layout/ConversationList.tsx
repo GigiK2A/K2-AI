@@ -44,17 +44,17 @@ export function ConversationList({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-0.5">
       {conversations.map((c) => {
         const isEditing = editingId === c.id;
         return (
           <div
             key={c.id}
             className={cx(
-              "group flex w-full items-center gap-1 rounded-xl border px-3 py-2 transition",
+              "group flex w-full items-center gap-1 rounded-lg px-3 py-2 transition",
               c.id === activeId
-                ? "border-[var(--teal)] bg-[var(--teal-soft)]"
-                : "border-[var(--line)] hover:border-[var(--line-strong)]",
+                ? "bg-[var(--bg-1)] shadow-[inset_0_0_0_1px_var(--line)]"
+                : "hover:bg-[var(--bg-2)]",
             )}
           >
             {isEditing ? (
@@ -74,7 +74,7 @@ export function ConversationList({
                 onBlur={commit}
                 className="min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--bg-1)] px-2 py-1 text-sm text-[var(--text-main)] outline-none focus:border-[var(--teal)]"
                 maxLength={80}
-                aria-label="Rinomina conversazione"
+                aria-label="Rinomina pratica"
               />
             ) : (
               <button
@@ -85,12 +85,9 @@ export function ConversationList({
                   setDraft(c.title);
                 }}
                 className="min-w-0 flex-1 text-left"
-                title="Doppio click per rinominare"
+                title="Doppio clic per rinominare"
               >
-                <p className="truncate text-sm font-medium">{c.title}</p>
-                <p className="text-xs text-[var(--text-muted)]">
-                  {c.mode === "lead" ? "Lead" : "Report"}
-                </p>
+                <p className={cx("truncate text-sm", c.id === activeId ? "font-medium" : "text-[var(--text-soft)]")}>{c.title}</p>
               </button>
             )}
             {!isEditing && onRename && (
@@ -100,9 +97,9 @@ export function ConversationList({
                   setEditingId(c.id);
                   setDraft(c.title);
                 }}
-                className="flex-shrink-0 rounded-md p-1.5 text-[var(--text-muted)] opacity-0 transition hover:bg-white/5 hover:text-[var(--text-soft)] group-hover:opacity-100"
-                aria-label="Rinomina chat"
-                title="Rinomina chat"
+                className="flex-shrink-0 rounded-md p-1.5 text-[var(--text-muted)] opacity-0 transition hover:bg-[var(--bg-2)] hover:text-[var(--text-soft)] group-hover:opacity-100"
+                aria-label="Rinomina pratica"
+                title="Rinomina pratica"
               >
                 <Pencil size={13} />
               </button>
@@ -111,11 +108,11 @@ export function ConversationList({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm("Eliminare?")) onDelete(c.id);
+                  if (window.confirm("Eliminare questa pratica?")) onDelete(c.id);
                 }}
                 className="flex-shrink-0 rounded-md p-1.5 text-[var(--text-muted)] opacity-0 transition hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
-                aria-label="Elimina chat"
-                title="Elimina chat"
+                aria-label="Elimina pratica"
+                title="Elimina pratica"
               >
                 <Trash2 size={14} />
               </button>

@@ -37,7 +37,7 @@ export default function DashboardPage() {
 
   if (authLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050505] text-sm text-[#6b7280]">
+      <main className="flex min-h-screen items-center justify-center bg-[var(--bg-0)] text-sm text-[var(--text-muted)]">
         Caricamento…
       </main>
     );
@@ -45,12 +45,12 @@ export default function DashboardPage() {
 
   if (!isSignedIn) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-white">
-        <div className="max-w-md rounded-2xl border border-[#111] bg-[#0a0a0a] p-8 text-center">
+      <main className="flex min-h-screen items-center justify-center bg-[var(--bg-0)] px-6 text-[var(--text-main)]">
+        <div className="max-w-md rounded-2xl border border-[var(--line)] bg-[var(--bg-1)] p-8 text-center">
           <h1 className="text-xl font-bold">Accedi per vedere il tuo account</h1>
           <Link
             href="/sign-in"
-            className="mt-6 inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-black"
+            className="mt-6 inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)]"
           >
             Accedi
           </Link>
@@ -60,7 +60,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-6 py-10 text-white">
+    <main className="min-h-screen bg-[var(--bg-0)] px-6 py-10 text-[var(--text-main)]">
       <div className="mx-auto max-w-4xl">
         <header className="mb-8 flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="text-2xl font-bold">Account · K2-AI</h1>
@@ -84,30 +84,30 @@ export default function DashboardPage() {
         </div>
 
         <section className="mb-8">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#9ca3af]">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--text-soft)]">
             Dati azienda
           </h2>
-          <div className="rounded-2xl border border-[#111] bg-[#0a0a0a] p-6">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--bg-1)] p-6">
             <CompanyProfileForm />
           </div>
         </section>
 
         <section>
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[#9ca3af]">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--text-soft)]">
             Le tue sessioni
           </h2>
 
-          {loading && <p className="text-sm text-[#6b7280]">Caricamento sessioni…</p>}
+          {loading && <p className="text-sm text-[var(--text-muted)]">Caricamento sessioni…</p>}
           {error && <p className="text-sm text-red-300">{error}</p>}
 
           {!loading && data && data.sessions.length === 0 && (
-            <div className="rounded-2xl border border-[#111] bg-[#0a0a0a] p-8 text-center">
-              <p className="text-sm text-[#9ca3af]">
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--bg-1)] p-8 text-center">
+              <p className="text-sm text-[var(--text-soft)]">
                 Non hai ancora avviato nessuna conversazione.
               </p>
               <Link
                 href="/"
-                className="mt-4 inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-black"
+                className="mt-4 inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)]"
               >
                 Inizia ora →
               </Link>
@@ -140,15 +140,15 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border bg-[#0a0a0a] p-5 ${
-        accent ? "border-[var(--teal)]" : "border-[#111]"
+      className={`rounded-2xl border bg-[var(--bg-1)] p-5 ${
+        accent ? "border-[var(--teal)]" : "border-[var(--line)]"
       }`}
     >
-      <p className="text-xs uppercase tracking-wider text-[#6b7280]">{label}</p>
+      <p className="text-xs uppercase tracking-wider text-[var(--text-muted)]">{label}</p>
       <p className={`mt-2 text-lg font-semibold ${accent ? "text-[var(--teal)]" : ""}`}>
         {value}
       </p>
-      {sub && <p className="mt-1 text-xs text-[#6b7280]">{sub}</p>}
+      {sub && <p className="mt-1 text-xs text-[var(--text-muted)]">{sub}</p>}
     </div>
   );
 }
@@ -165,13 +165,13 @@ function SessionRow({ session }: { session: KbotSession }) {
     [...(session.messages ?? [])].reverse().find((m) => m.role === "user")?.content ?? "—";
 
   return (
-    <li className="rounded-2xl border border-[#111] bg-[#0a0a0a] p-5">
+    <li className="rounded-2xl border border-[var(--line)] bg-[var(--bg-1)] p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">
             {session.deliverableLabel || session.summary || lastUserMsg || `Sessione ${session.id.slice(0, 8)}`}
           </p>
-          <p className="mt-1 text-xs text-[#6b7280]">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             {date} · {time} · {session.serviceId ?? "—"}
           </p>
         </div>
@@ -182,7 +182,7 @@ function SessionRow({ session }: { session: KbotSession }) {
               href={session.pdfUrl}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg bg-[var(--teal)] px-3 py-1.5 text-xs font-semibold text-black"
+              className="rounded-lg bg-[var(--teal)] px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
             >
               Apri PDF
             </a>
@@ -195,16 +195,16 @@ function SessionRow({ session }: { session: KbotSession }) {
 
 function StatusPill({ status, hasPdf }: { status: string | null; hasPdf: boolean }) {
   let label = "Bozza";
-  let cls = "border-[#222] bg-[#111] text-[#9ca3af]";
+  let cls = "border-[var(--line)] bg-[var(--bg-2)] text-[var(--text-soft)]";
   if (status === "paid" || hasPdf) {
     label = "Pagato";
-    cls = "border-[var(--teal)]/60 bg-[#062120] text-[var(--teal)]";
+    cls = "border-[var(--teal)]/60 bg-[var(--teal-soft)] text-[var(--teal)]";
   } else if (status === "report_ready") {
     label = "Report pronto";
     cls = "border-amber-700/50 bg-amber-900/20 text-amber-300";
   } else if (status === "active") {
     label = "In corso";
-    cls = "border-[#222] bg-[#111] text-[#9ca3af]";
+    cls = "border-[var(--line)] bg-[var(--bg-2)] text-[var(--text-soft)]";
   }
   return (
     <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-wider ${cls}`}>

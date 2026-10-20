@@ -69,7 +69,7 @@ export function LoadingState({ text = "K2-AI sta ragionando...", reportProgress 
 
           <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-1,#1e2a38)]">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-[var(--teal)] to-[var(--accent,#E8A020)]"
+              className="h-full rounded-full from-[var(--teal)] to-[var(--teal)]"
               animate={{ width: `${reportProgress!.progress}%` }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             />

@@ -1,62 +1,50 @@
-import { Menu, Sparkles } from "lucide-react";
+import { FileText, Menu } from "lucide-react";
 import Link from "next/link";
-import { AIStatusIndicator } from "@/components/ui/AIStatusIndicator";
-import { SkillBadge } from "@/components/chat/SkillBadge";
 import { AccountButton } from "@/components/auth/AccountButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function ChatLayoutHeader({
-  mode,
-  usedSkills,
-  activeSkills,
-  loading,
+  titolo,
+  sottotitolo,
   onOpenSidebar,
+  onOpenPannello,
+  schedeConContenuto,
   isSignedIn,
 }: {
-  mode: "lead" | "report";
-  usedSkills: string[];
-  activeSkills: string[];
-  loading: boolean;
+  titolo: string;
+  sottotitolo?: string;
   onOpenSidebar: () => void;
+  /** Solo telefono: apre la pratica (bozza, documenti, fatti, fonti) a tutto schermo. */
+  onOpenPannello: () => void;
+  schedeConContenuto: number;
   isSignedIn?: boolean | null;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg-0)]/85 px-4 py-3 backdrop-blur">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <button onClick={onOpenSidebar} className="rounded-lg border border-[var(--line)] p-2 lg:hidden"><Menu size={16} /></button>
-          <div>
-            <p className="text-sm font-semibold">{mode === "lead" ? "Acquisizione clienti" : "Report premium"}</p>
-            <AIStatusIndicator online label="Motore Claude operativo" />
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-2 md:flex">
-            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--teal)]/30 bg-[var(--teal)]/10 px-2 py-1 text-xs text-[var(--teal)]">
-              <Sparkles size={12} /> Premium
-            </span>
-            {isSignedIn && (
-              <Link href="/dashboard" className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--text-soft)] hover:border-[var(--line-strong)]">
-                Dashboard
-              </Link>
-            )}
-          </div>
-          <ThemeToggle />
-          {isSignedIn ? (
-            <AccountButton />
-          ) : (
-            <Link href="/sign-in" className="rounded-lg bg-[var(--teal)] px-3 py-1.5 text-xs font-semibold text-black">
-              Accedi
-            </Link>
-          )}
-        </div>
+    <header className="flex items-center gap-2 border-b border-[var(--line)] bg-[var(--bg-1)] px-3 py-2.5">
+      <button onClick={onOpenSidebar} className="rounded-md p-2 text-[var(--text-soft)] lg:hidden" aria-label="Apri le pratiche">
+        <Menu size={18} />
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">{titolo}</p>
+        {sottotitolo && <p className="truncate text-xs text-[var(--text-muted)]">{sottotitolo}</p>}
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {(loading ? activeSkills : usedSkills).slice(0, 6).map((skill) => <SkillBadge key={skill} name={skill} />)}
-        {loading && activeSkills.length > 0 && (
-          <span className="rounded-full border border-[var(--teal)] px-2 py-1 text-xs text-[var(--teal)]">In uso ora</span>
+      <button
+        onClick={onOpenPannello}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-strong)] px-2.5 py-1.5 text-xs font-medium xl:hidden"
+      >
+        <FileText size={14} /> Pratica
+        {schedeConContenuto > 0 && (
+          <span className="rounded-full bg-[var(--teal)] px-1.5 text-[11px] text-[var(--on-accent)]">{schedeConContenuto}</span>
         )}
-      </div>
+      </button>
+      <ThemeToggle />
+      {isSignedIn ? (
+        <AccountButton />
+      ) : (
+        <Link href="/sign-in" className="rounded-lg bg-[var(--teal)] px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]">
+          Accedi
+        </Link>
+      )}
     </header>
   );
 }

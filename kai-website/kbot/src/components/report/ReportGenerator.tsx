@@ -217,7 +217,7 @@ export function ReportGenerator({
           href={pdfUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+          className="inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)] hover:opacity-90"
         >
           Apri il report{label ? ` · ${label}` : ""} (PDF)
         </a>
@@ -247,7 +247,7 @@ export function ReportGenerator({
         <button
           onClick={unlock}
           disabled={busy}
-          className="inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-60"
+          className="inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)] hover:opacity-90 disabled:opacity-60"
         >
           {busy
             ? KBOT_FAKE_PAYMENT
@@ -271,7 +271,7 @@ export function ReportGenerator({
         <button
           onClick={() => void generate()}
           disabled={busy}
-          className="inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-60"
+          className="inline-flex rounded-lg bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)] hover:opacity-90 disabled:opacity-60"
         >
           {busy ? "Generazione in corso…" : `Genera il report${boostLabel ? ` · ${boostLabel}` : ""}`}
         </button>

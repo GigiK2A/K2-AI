@@ -259,7 +259,7 @@ export function Composer({
               <button
                 onClick={handleUrlSubmit}
                 disabled={!urlInput.trim()}
-                className="rounded-lg bg-[var(--teal)] px-2 py-1 text-xs font-medium text-black disabled:opacity-40"
+                className="rounded-lg bg-[var(--teal)] px-2 py-1 text-xs font-medium text-[var(--on-accent)] disabled:opacity-40"
               >
                 Analizza
               </button>
@@ -320,7 +320,7 @@ export function Composer({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder="Scrivi la tua richiesta…"
+          placeholder="Descrivi il caso o allega un documento"
           className="k2-focus max-h-[170px] w-full resize-none rounded-xl border border-transparent bg-transparent px-3 py-2 text-sm leading-6"
         />
         <div className="mt-2 flex items-center justify-between px-1">
@@ -387,7 +387,7 @@ export function Composer({
             onClick={() => onSubmit()}
             disabled={disabled || !value.trim()}
             aria-label="Invia messaggio"
-            className="rounded-xl bg-[var(--teal)] p-2 text-black disabled:opacity-50"
+            className="rounded-xl bg-[var(--teal)] p-2 text-[var(--on-accent)] disabled:opacity-50"
           >
             <ArrowUp size={16} />
           </button>
