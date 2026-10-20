@@ -338,6 +338,16 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
                 "scrivere delle scuse. Applica la correzione al messaggio precedente e "
                 "rispondi DI NUOVO a quella domanda col termine giusto, mantenendo il filo "
                 "della conversazione (stesso argomento, stessi dati già raccolti).\n")
+        elif len(_msgs_all) >= 3 and _users_all and signals.is_recheck(_users_all[-1]):
+            context_interpretation = (
+                "\nINTERPRETAZIONE CONTESTUALE — l'utente ti chiede di RICONTROLLARE la tua risposta precedente "
+                "(«" + _users_all[-1].strip()[:80] + "»). NON è un nuovo argomento e NON è una richiesta di report o "
+                "documento: non generarne. Fai così, nella stessa risposta: (1) rileggi i numeri e i passaggi della "
+                "TUA risposta precedente e dei dati già detti dall'utente; (2) rifai i calcoli passo per passo, con le "
+                "formule (aliquote, soglie, coefficienti: solo quelli presenti nelle fonti o detti dall'utente; se un "
+                "valore non c'è, dillo); (3) dì chiaramente quali cifre erano sbagliate o incoerenti e perché; "
+                "(4) dai la versione corretta. Se i dati bastano, non rispondere con domande: chiedi solo ciò che "
+                "manca davvero e intanto mostra il calcolo con le ipotesi dichiarate.\n")
         else:
             context_interpretation = ""
     except Exception:

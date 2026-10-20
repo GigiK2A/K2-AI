@@ -127,6 +127,21 @@ def is_compliance_check(text: str) -> bool:
     return bool(_COMPLIANCE_RE.search(text or ""))
 
 
+# --- Richiesta di RICONTROLLARE la risposta precedente del bot --------------------------------------
+# «Ricontrolla i calcoli», «sei sicuro?», «mi sembrano sbagliati». Non è un nuovo argomento né una richiesta di
+# report: il bot deve rileggere i propri numeri, rifarli e correggersi nella stessa conversazione (20/10/2026).
+_RICONTROLLO_RE = re.compile(
+    r"\b(?:ricontroll\w+|ricalcol\w+|riverific\w+|rifai\s+(?:i\s+)?(?:calcol\w+|conti)|rivedi\s+(?:i\s+)?(?:calcol\w+|conti|numeri)|"
+    r"(?:controll\w+|verific\w+)\s+(?:di\s+)?nuovo|sei\s+sicur[oa]|"
+    r"(?:mi\s+)?sembr\w+\s+(?:sbagliat\w+|errat\w+)|non\s+(?:mi\s+)?torn\w+|ci\s+sono\s+(?:degli\s+)?error\w+|"
+    r"hai\s+sbagliato|c['’]è\s+un\s+errore)\b", re.I)
+
+
+def is_recheck(text: str) -> bool:
+    """True se l'utente chiede di ricontrollare/verificare quanto detto dal bot nel turno precedente."""
+    return bool(_RICONTROLLO_RE.search(text or ""))
+
+
 # --- Messaggio che è una CORREZIONE di un refuso del turno precedente -------------------
 # Bug reale: «ho scelto penai» → poi «openai volevo scrivere scusa». Il bot ha letto
 # «scusa» come «scrivimi delle scuse» e ha perso il filo GDPR. Una correzione va letta come

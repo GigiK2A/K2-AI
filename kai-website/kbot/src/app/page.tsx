@@ -337,9 +337,16 @@ export default function HomePage() {
   // bot è in stato pronto (nextAction=show_summary → reportReady); fallback al boost
   // persistito SOLO quando non c'è ancora un segnale di prontezza (es. al reload).
   const reportReady = useMemo(() => {
+    // SOLO il segnale esplicito del turno: il bot ha emesso il riepilogo (nextAction=show_summary). Prima c'era un
+    // ripiego su `boostSuggerito`: dal 3° turno il routing suggerisce un tipo di report, quindi ogni messaggio
+    // successivo («ricontrolla i calcoli») risultava «pronto» e la generazione partiva da sola (20/10/2026).
     const lastAssistant = [...activeConversation.messages].reverse().find((m) => m.role === "assistant");
-    return lastAssistant?.reportReady ?? Boolean(kbotSession?.boostSuggerito);
-  }, [activeConversation.messages, kbotSession?.boostSuggerito]);
+    return lastAssistant?.reportReady === true;
+  }, [activeConversation.messages]);
+  // Il pulsante «Genera» resta disponibile (senza avvio automatico) se il bot ha già emesso il riepilogo in questa
+  // sessione: si ricava dalla sessione del backend, così sopravvive a un ricaricamento.
+  const reportDisponibile =
+    reportReady || Boolean((kbotSession?.extractedData as { generation?: unknown } | undefined)?.generation);
 
   // Auto-scroll to bottom on new messages / streaming deltas / loading state.
   useEffect(() => {
@@ -1027,7 +1034,7 @@ export default function HomePage() {
             {/* Flusso ufficiale: quando il bot ha raccolto abbastanza (boost
                 instradato), UN bottone genera il report. Niente form da riempire:
                 gli input 8e sono auto-compilati dalla conversazione e dai file. */}
-            {kbotSession?.id && reportReady && (kbotSession.boostSuggerito || suggestedBoost) && (
+            {kbotSession?.id && reportDisponibile && (kbotSession.boostSuggerito || suggestedBoost) && (
               <ReportGenerator
                 sessionId={kbotSession.id}
                 getAuthToken={getToken}

@@ -18,3 +18,6 @@ node e2e/schermate.mjs                                                       # s
 `chat_dashboard.mjs` riproduce il difetto del 20/10/2026 (la chat spariva tornando dalla dashboard: la sessione veniva
 azzerata e, anche conservata, la cronologia non veniva riletta dal backend). Il nome del localStorage di Supabase è
 `sb-<primo pezzo dell'host>-auth-token` (qui `sb-127-auth-token`).
+
+
+Nota: `server_ui.py` tiene le conversazioni in memoria. Tra una suite e l'altra (`titoli.mjs`, `pratica.mjs`, `report_non_richiesto.mjs`) va riavviato, altrimenti la pratica attiva è già titolata e i controlli sui titoli falliscono per inquinamento, non per un difetto.

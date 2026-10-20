@@ -371,8 +371,14 @@ _SISTEMA_PROPOSTA = (
     "dentro la norma.\n"
     "'parole': da 3 a 6 parole italiane tecniche che compaiono nel testo di legge pertinente (sostantivi e "
     "verbi giuridici, niente articoli o preposizioni).\n"
-    "Se il quesito NON riguarda norme di legge (strategia, marketing, organizzazione, tecnica, calcoli) o è una "
-    "chiacchiera, rispondi {\"norme\":[],\"parole\":[]}."
+    "Se il quesito NON riguarda norme di legge (strategia, marketing, organizzazione, tecnica) o è una "
+    "chiacchiera, rispondi {\"norme\":[],\"parole\":[]}.\n"
+    "ATTENZIONE ai calcoli: un calcolo puramente aritmetico su dati dati dall'utente (costo per contatto, margine) "
+    "non ha norme. Ma un calcolo che APPLICA aliquote, soglie, coefficienti o limiti di legge (IVA, IRES, IRPEF, "
+    "ammortamento, deducibilità, detraibilità, sanzioni, interessi) le ha: indica le norme che li fissano, "
+    "anche se la domanda è «calcolami…» o «ricontrolla i calcoli» (in tal caso guarda il contesto). Esempi: "
+    "ammortamento di un bene → 'D.P.R. 917/1986 art. 102'; aliquota IRES → 'D.P.R. 917/1986 art. 77'; "
+    "detrazione dell'IVA sugli acquisti → 'D.P.R. 633/1972 art. 19'."
 )
 
 

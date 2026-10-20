@@ -453,6 +453,10 @@ async def create(body: DeliverableBody, bg: BackgroundTasks,
 class AutoBody(BaseModel):
     sessionId: str = Field(..., alias="session_id")
     servizioId: Optional[str] = Field(default=None, alias="servizio_id")
+    # True = la richiesta nasce da un'azione dell'utente (clic su «Genera», «procedi», ripresa dopo il pagamento).
+    # False = avvio automatico del client: il pre-flight allora applica la regola «senza consenso serve una diagnosi
+    # solida». Il default True mantiene il comportamento dei client già caricati nei browser.
+    explicit: bool = True
 
     class Config:
         populate_by_name = True
@@ -474,17 +478,22 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
 
     # PRE-FLIGHT CONSULENZIALE (review calo ordini): la generazione è una CONSEGUENZA della
     # diagnosi e della volontà utente, non un automatismo. Il click su /auto è un'azione
-    # esplicita (user_requested=True): il gate blocca SOLO se l'utente ha chiesto di
-    # continuare la consulenza (report_hold) — il suo "no" esplicito vince anche qui.
-    _gate = report_gate.evaluate(collected, servizio_id, user_requested=True)
+    # esplicita (explicit=True): il gate blocca SOLO se l'utente ha chiesto di continuare la
+    # consulenza (report_hold) — il suo "no" esplicito vince anche qui. Un avvio AUTOMATICO del client
+    # (explicit=False) non è un consenso: senza diagnosi solida il report non parte (20/10/2026: partiva da solo
+    # alla domanda «ricontrolla i calcoli», con `user_requested` sempre True).
+    _gate = report_gate.evaluate(collected, servizio_id, user_requested=bool(body.explicit))
     log.info("auto: pre-flight generazione allowed=%s reason=%s checks=%s",
              _gate["allowed"], _gate["reason"], _gate["checks"])
     if not _gate["allowed"]:
         raise HTTPException(status_code=409, detail={
             "reason": "consulenza_aperta",
             "gate_reason": _gate["reason"],
-            "message": ("Restiamo in consulenza: mi hai chiesto di continuare a ragionare, "
-                        "quindi non genero ancora il report. Dimmi quando vuoi procedere."),
+            "message": (("Restiamo in consulenza: mi hai chiesto di continuare a ragionare, "
+                         "quindi non genero ancora il report. Dimmi quando vuoi procedere.")
+                        if _gate["reason"] == "hold_utente" else
+                        ("La consulenza non è ancora conclusa: continuiamo in chat. "
+                         "Il report parte quando me lo chiedi.")),
         })
 
     # TRIGGER STRUTTURATO (review flusso deliverable): la generazione parte dal PAYLOAD

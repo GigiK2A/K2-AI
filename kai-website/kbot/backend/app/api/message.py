@@ -29,7 +29,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import crisi, avvisi_input, verifica_bozze, skill_router
+from ..lib import crisi, avvisi_input, verifica_bozze, skill_router, eco_guard
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -234,10 +234,12 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
     """Finalize CONDIVISA del turno (path sync E streaming — la duplicazione dei due
     path aveva già prodotto divergenze: il fallback readiness esisteva solo sullo
     streaming). Ordine: forced-summary → quality gate."""
-    raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text,
-                                     merged_messages, collected)
     _last_user = next((str(m.get("content") or "") for m in reversed(merged_messages or [])
                        if isinstance(m, dict) and m.get("role") == "user"), "")
+    # La risposta non può essere il messaggio dell'utente ripetuto (vedi lib/eco_guard).
+    raw_text = eco_guard.assicura(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, _last_user)
+    raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text,
+                                     merged_messages, collected)
     # Bozza richiesta ma assente (il modello fa una domanda invece di scriverla): seconda chiamata esplicita.
     raw_text = verifica_bozze.assicura(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, _last_user)
     raw_text = quality_gate.review(client, ANTHROPIC_MODEL, merged_messages, raw_text,
