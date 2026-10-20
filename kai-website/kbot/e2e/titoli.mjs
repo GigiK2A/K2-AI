@@ -14,6 +14,7 @@ await p.route('**/api/kbot/message/stream', async (r) => {
   const body = JSON.parse(r.request().postData() || '{}');
   const sess = { id: body.session_id || body.sessionId || 'x', mode: 'report', messages: [], extractedData: { used_skills: ['diagnosi-ai-operativa-pmi', 'fiscale-tributario-italiano'] }, schedaCliente: { importo: '2.500 euro' }, timestamps: {} };
   const ev = (o) => 'data: ' + JSON.stringify(o) + '\n\n';
+  await new Promise((x) => setTimeout(x, 1200));
   r.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream' }, body: ev({ delta: 'Sotto i 516,46 euro ' }) + ev({ delta: 'è deducibile subito; sopra si ammortizza.' }) + ev({ done: true, message: 'Sotto i 516,46 euro è deducibile subito; sopra si ammortizza.', nextAction: 'continue', session: sess }) });
 });
 const esiti = []; const ok = (n, v) => { esiti.push([n, !!v]); console.log((v ? 'OK  ' : 'FAIL') + ' ' + n); };
@@ -24,6 +25,8 @@ const ta = p.locator('textarea').first(); await ta.fill(testo); await ta.press('
 await p.waitForTimeout(250);
 let side = await p.locator('aside').innerText();
 ok('titolo provvisorio breve (non la frase tagliata)', !/Abbiamo comprato un computer da 2\.500 euro per l/.test(side) && /Comprato computer/.test(side));
+await p.waitForFunction(() => document.body.innerText.includes('516,46'), null, { timeout: 8000 }).catch(() => {});
+ok('LA RISPOSTA compare in chat (la pratica cambia id mentre arriva)', (await p.evaluate(() => document.body.innerText)).includes('Sotto i 516,46 euro è deducibile subito'));
 await p.waitForFunction(() => document.querySelector('aside')?.innerText.includes('Ammortamento computer'), null, { timeout: 8000 }).catch(() => {});
 side = await p.locator('aside').innerText();
 ok('titolo del backend nella lista pratiche', side.includes('Ammortamento computer'));

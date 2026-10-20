@@ -431,10 +431,9 @@ export default function HomePage() {
             mode,
             kbotSessionId: conv.kbotSessionId ?? sessioneCorrenteRef.current,
           });
-          setConversations((prev) =>
-            prev.map((c) => (c.id === conv.id ? { ...c, remoteId: remote.id, id: remote.id } : c)),
-          );
-          setActiveId((prev) => (prev === conv.id ? remote.id : prev));
+          // NON si cambia l'id locale: la risposta in streaming sta ancora scrivendo nella pratica con quell'id
+          // (cambiarlo qui faceva sparire la risposta, 20/10/2026). Si aggiunge solo il riferimento remoto.
+          setConversations((prev) => prev.map((c) => (c.id === conv.id ? { ...c, remoteId: remote.id } : c)));
           // La sessione del backend può essere nata mentre la pratica si creava: collegala ora.
           const sid = sessioneCorrenteRef.current;
           if (sid && sid !== (conv.kbotSessionId ?? null)) {
@@ -475,10 +474,10 @@ export default function HomePage() {
     const dopoCreazione = salva(clean);
     if (!titolaConModello) return;
     void (async () => {
-      const [titolo, remoteId] = await Promise.all([generateConversationTitle(label), dopoCreazione]);
+      const [titolo] = await Promise.all([generateConversationTitle(label), dopoCreazione]);
       if (!titolo) return;
       // Sostituisce solo il provvisorio: se nel frattempo l'utente ha rinominato, vince l'utente.
-      const attuale = conversazioniRef.current.find((c) => c.id === convId || c.id === remoteId);
+      const attuale = conversazioniRef.current.find((c) => c.id === convId);
       if (!attuale || attuale.title !== clean) return;
       setConversations((prev) =>
         prev.map((c) => (c.id === attuale.id ? { ...c, title: titolo } : c)),
