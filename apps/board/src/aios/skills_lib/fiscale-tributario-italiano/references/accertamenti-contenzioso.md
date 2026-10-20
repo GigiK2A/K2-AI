@@ -55,16 +55,25 @@ Il ravvedimento è sempre possibile finché non è stato notificato un atto di a
 
 ### Tipi di ravvedimento e sanzioni ridotte
 
-| Denominazione | Entro | Sanzione ridotta (su base 30%) |
-|--------------|-------|-------------------------------|
-| **Sprint** | 14 giorni dalla scadenza | 1/10 della sanzione → **1,5%** (0,5% × giorni se entro 14 gg) |
-| **Breve** | 30 giorni | 1/8 → **3,75%** |
-| **Medio** | 90 giorni | 1/7 → **4,29%** |
-| **Lungo** | Entro la dichiarazione dell'anno successivo | 1/6 → **5%** |
-| **Lunghissimo** | Entro 2 anni dalla violazione | 1/5 → **6%** |
-| **Speciale** | Oltre 2 anni | 1/4 → **7,5%** |
+Tabella (testo vigente art. 13 D.Lgs. 472/1997, riduzioni sul «minimo»; verificato su Normattiva il 20/10/2026):
 
-**Nota**: La sanzione base per omesso/tardivo versamento è del **30%** (ridotta al **15%** se il versamento avviene entro 90 giorni dalla scadenza). Per violazioni "formali" (dichiarazioni tardive, ecc.) la base è **250€**.
+Sanzione base per omesso/tardivo versamento (art. 13 D.Lgs. 471/1997): **25%** per le violazioni commesse dal 1° settembre 2024 (**30%** prima). Se il ritardo non supera 90 giorni la sanzione è già **dimezzata (12,5%)**.
+
+| Quando si regolarizza | Riduzione | Sanzione finale (violazioni dal 1/9/2024) |
+|------|-----------|-----------------|
+| Entro 14 giorni | 1/10 | **0,0833% per ogni giorno** di ritardo (12,5% ÷ 15 ÷ 10) |
+| Dal 15° al 30° giorno | 1/10 del 12,5% | **1,25%** |
+| Dal 31° al 90° giorno | 1/9 del 12,5% | **1,39%** |
+| Dal 91° giorno fino al termine della dichiarazione dell'anno della violazione (o 1 anno se non c'è dichiarazione) | 1/8 del 25% | **3,125%** |
+| Oltre quel termine | 1/7 del 25% | **3,57%** |
+| Dopo la comunicazione dello schema di atto (art. 6-bis L. 212/2000), senza verbale di constatazione | 1/6 | **4,17%** |
+| Dopo la constatazione (verbale), prima dello schema di atto | 1/5 | **5%** |
+| Dopo lo schema di atto relativo a violazione constatata | 1/4 | **6,25%** |
+
+Per le violazioni **commesse prima del 1/9/2024** la base è 30% (15% se ritardo ≤ 90 giorni): le percentuali finali cambiano (es. 1,67% per 31-90 giorni).
+Dichiarazione omessa presentata entro 90 giorni: 1/10 del minimo. **Oltre 90 giorni di ritardo la riduzione è esclusa.**
+Pagamento: tributo + sanzione ridotta + interessi insieme, contestualmente. Interessi al **tasso legale, maturati giorno per giorno**.
+⚠ Il testo ricevuto da Normattiva indica che dal **1° gennaio 2027** l'art. 13 D.Lgs. 472/1997 è abrogato (D.Lgs. 173/2024, testo unico sanzioni, come modificato dal D.L. 200/2025): per regolarizzazioni dopo quella data verifica la nuova disciplina prima di dare percentuali.
 
 ### Calcolo completo ravvedimento
 
@@ -81,11 +90,11 @@ Tasso legale (verificare aggiornamento annuale):
   2024: 2,50%
 ```
 
-**Esempio**: omesso versamento IRPEF €2.000 con 45 giorni di ritardo (tasso 2024: 2,5%):
+**Esempio** (violazione dopo il 1/9/2024): omesso versamento IRPEF €2.000 con 45 giorni di ritardo (31-90 giorni → 1,39%; tasso legale usato nell'esempio: 2,5%, da sostituire con quello dell'anno):
 ```
-Sanzione ridotta = €2.000 × 3,75% = €75
+Sanzione ridotta = €2.000 × 12,5% ÷ 9 = €27,78
 Interessi = €2.000 × 2,5% × 45/365 = €6,16
-Totale = €2.000 + €75 + €6,16 = €2.081,16
+Totale = €2.000 + €27,78 + €6,16 = €2.033,94
 ```
 
 ### Codici tributo F24 per il ravvedimento

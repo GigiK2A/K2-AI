@@ -360,20 +360,27 @@ Leggi `references/accertamenti-contenzioso.md` per i dettagli completi.
 ### Ravvedimento operoso (art. 13 D.Lgs. 472/1997)
 Il ravvedimento operoso permette di regolarizzare spontaneamente violazioni fiscali con sanzioni ridotte.
 
-**Calcolo sanzione ridotta:**
+**Calcolo sanzione ridotta** (testo vigente art. 13 D.Lgs. 472/1997, riduzioni sul «minimo»; verificato su Normattiva il 20/10/2026):
 
-| Tipo | Entro | Sanzione base | Riduzione | Sanzione finale |
-|------|-------|---------------|-----------|-----------------|
-| Sprint | 14 giorni | 30% → 15%\* | 1/10 | **1,5%** |
-| Breve | 30 giorni | 30% | 1/8 | **3,75%** |
-| Medio | 90 giorni | 30% | 1/7 | **4,29%** |
-| Lungo | Entro dichiarazione successiva | 30% | 1/6 | **5%** |
-| Lunghissimo | Entro 2 anni / contestazione | 30% | 1/5 | **6%** |
-| Speciale | Dopo 2 anni | 30% | 1/4 | **7,5%** |
+Sanzione base per omesso/tardivo versamento (art. 13 D.Lgs. 471/1997): **25%** per le violazioni commesse dal 1° settembre 2024 (**30%** prima). Se il ritardo non supera 90 giorni la sanzione è già **dimezzata (12,5%)**.
 
-\* La sanzione per omesso/tardivo versamento è del 30% (ridotta al 15% se pagato entro 90 giorni)
+| Quando si regolarizza | Riduzione | Sanzione finale (violazioni dal 1/9/2024) |
+|------|-----------|-----------------|
+| Entro 14 giorni | 1/10 | **0,0833% per ogni giorno** di ritardo (12,5% ÷ 15 ÷ 10) |
+| Dal 15° al 30° giorno | 1/10 del 12,5% | **1,25%** |
+| Dal 31° al 90° giorno | 1/9 del 12,5% | **1,39%** |
+| Dal 91° giorno fino al termine della dichiarazione dell'anno della violazione (o 1 anno se non c'è dichiarazione) | 1/8 del 25% | **3,125%** |
+| Oltre quel termine | 1/7 del 25% | **3,57%** |
+| Dopo la comunicazione dello schema di atto (art. 6-bis L. 212/2000), senza verbale di constatazione | 1/6 | **4,17%** |
+| Dopo la constatazione (verbale), prima dello schema di atto | 1/5 | **5%** |
+| Dopo lo schema di atto relativo a violazione constatata | 1/4 | **6,25%** |
 
-**Calcolo interessi di mora** (tasso legale vigente — verificare anno per anno, nel 2024: 2,5%):
+Per le violazioni **commesse prima del 1/9/2024** la base è 30% (15% se ritardo ≤ 90 giorni): le percentuali finali cambiano (es. 1,67% per 31-90 giorni).
+Dichiarazione omessa presentata entro 90 giorni: 1/10 del minimo. **Oltre 90 giorni di ritardo la riduzione è esclusa.**
+Pagamento: tributo + sanzione ridotta + interessi insieme, contestualmente. Interessi al **tasso legale, maturati giorno per giorno**.
+⚠ Il testo ricevuto da Normattiva indica che dal **1° gennaio 2027** l'art. 13 D.Lgs. 472/1997 è abrogato (D.Lgs. 173/2024, testo unico sanzioni, come modificato dal D.L. 200/2025): per regolarizzazioni dopo quella data verifica la nuova disciplina prima di dare percentuali.
+
+**Calcolo interessi di mora** (tasso legale: fissato ogni anno con decreto MEF, da verificare per l'anno in cui cade il ritardo; 2024: 2,5%):
 ```
 Interessi = Importo × Tasso legale × Giorni / 365
 ```
