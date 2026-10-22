@@ -1017,7 +1017,8 @@ def test_compact_messages_huge_history_no_blowup():
     out = compact_messages(msgs, max_messages=12, max_chars_per_message=900)
     assert len(out) == 12
     for m in out:
-        assert len(m["content"]) <= 900
+        assert len(m["content"]) <= (900 if m["role"] == "user" else 6000)      # le risposte del bot hanno un tetto proprio
+    assert sum(len(m["content"]) for m in out) <= 6 * 900 + 2 * 6000 + 4 * 2500
 
 
 def test_concurrent_update_session_last_writer_wins(fake_db):

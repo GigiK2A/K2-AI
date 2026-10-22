@@ -14,8 +14,8 @@ description: >-
 |-----------|------------|----------------|
 | **DVR** (Documento Valutazione Rischi) | Datore + RSPP + RLS | ≥ 1 dipendente |
 | **DUVRI** (Documento Unico Valutazione Rischi da Interferenze) | Committente | Affidamento lavori a ditte esterne |
-| **PSC** (Piano Sicurezza e Coordinamento) | CSP | Cantieri con ≥ 2 imprese o > 200 pers/giorno |
-| **POS** (Piano Operativo Sicurezza) | Ogni impresa | Obbligo per ogni cantiere |
+| **PSC** (Piano Sicurezza e Coordinamento) | Coordinatore per la progettazione | Cantiere con più imprese esecutrici, anche non contemporanee (art. 90 c.3); eccezione art. 90 c.11 |
+| **POS** (Piano Operativo Sicurezza) | Datore di lavoro dell'impresa ESECUTRICE | Per il singolo CANTIERE temporaneo o mobile (art. 89 c.1 lett. h; art. 96 c.1 lett. g). Non per un sopralluogo senza lavori né per le sole forniture (art. 96 c.1-bis) |
 | **Piano Emergenza** | Datore | ≥ 10 dipendenti o rischio incendio medio/alto |
 | **Registro Infortuni** | Datore | Tutti |
 
@@ -93,6 +93,30 @@ L'ispettore chiede in ordine:
 7. Registro controlli/manutenzione attrezzature
 
 Prepara una cartella "sicurezza" con tutti i documenti scansionati.
+
+## Lavori in quota e coperture (tetti): cosa impone la legge, cosa la valutazione dei rischi, cosa è buona pratica
+
+Distingui SEMPRE i tre piani, e non dare un «sì/no» secco se mancano dati (altezza, bordi, resistenza della copertura, durata, chi esegue).
+
+**1. Ciò che la legge impone** (testi vigenti Normattiva, D.Lgs. 81/2008):
+- **Art. 107 c.1**: «lavoro in quota» = attività che espone al rischio di caduta da una quota **superiore a 2 m** rispetto a un piano stabile. Un tetto a 8 m è lavoro in quota anche per 20 minuti: la brevità NON è un'esenzione generale (la durata breve compare solo per la scala a pioli, art. 111 c.3, e per le funi, art. 111 c.4).
+- **Art. 111 c.1 lett. a) e art. 115 c.1**: **priorità alla protezione collettiva** (parapetti, reti di sicurezza) rispetto a quella individuale.
+- **Art. 115 c.2-4**: SOLO se la protezione collettiva non è realizzabile servono sistemi individuali (trattenuta, posizionamento, funi, arresto caduta), agganciati a un **punto di ancoraggio sicuro**; fra gli individuali sono da preferire trattenuta/posizionamento/funi rispetto all'arresto caduta (c.3).
+- **Art. 148 c.1-2**: prima di lavorare su lucernari, tetti, coperture va **accertata la resistenza** a sostenere le persone; se è dubbia servono apprestamenti (tavole, sottopalchi) e DPI anticaduta.
+- **Art. 126**: parapetto robusto su tutti i lati verso il vuoto per impalcati e passerelle oltre 2 m (riguarda ponti di servizio e passerelle, non automaticamente il parapetto perimetrale di un tetto esistente).
+- **Art. 111 c.7**: lavori in quota solo con condizioni meteo che non mettono in pericolo i lavoratori.
+- **Art. 17 c.1 lett. a) e art. 28**: la **valutazione dei rischi** non è delegabile e deve coprire anche questa attività.
+- **Non esiste** nel D.Lgs. 81/2008 una «distanza minima dal bordo» che consenta di lavorare senza protezioni anticaduta: se qualcuno la cita, chiedi la fonte; non confermarla. Che «altri tecnici lo fanno senza imbracatura» non è una fonte.
+
+**2. Ciò che deriva dalla valutazione del rischio**: se i bordi sono privi di parapetto, quali sistemi scegliere, se un sopralluogo di sola osservazione dal lato protetto sia accettabile, chi deve esserci (preposto), formazione e addestramento per i DPI di III categoria (art. 77 e 37). Qui il giudizio spetta a RSPP/datore di lavoro: dillo.
+
+**3. Buone pratiche** (non obblighi di legge): non andare da soli, fotografare dall'accesso o con drone quando basta, verificare in anticipo ancoraggi e resistenza con il proprietario, tenere una checklist del sopralluogo.
+
+**Imbracatura**: non scrivere «è obbligatoria» né «non serve». Scrivi: la legge impone di proteggere dalla caduta con priorità alla protezione collettiva; l'imbracatura (con ancoraggio idoneo) è la misura individuale da usare quando la collettiva manca e il rischio di caduta resta; stare a una certa distanza dal bordo è una misura organizzativa che può ridurre il rischio ma va stabilita nella valutazione dei rischi, non è una deroga di legge.
+
+**POS**: è il documento dell'impresa **esecutrice** per un **cantiere** temporaneo o mobile (art. 89 c.1 lett. h; art. 96 c.1 lett. g; contenuti nell'Allegato XV). Un sopralluogo per foto e misure non è di per sé un cantiere: in quel caso non c'è POS, ma restano DVR e misure di prevenzione. Se poi si eseguono lavori (installazione di apparati su una copertura) si ricade nel cantiere solo se sono lavori edili o di ingegneria civile; verifica con il committente/CSE e, se un'impresa lavora nei locali del committente, coordinati secondo l'art. 26.
+
+**Fonti**: cita gli articoli del pacchetto normativo; per la prassi e le circolari usa il sito del Ministero del Lavoro, INL, INAIL o Normattiva, NON siti commerciali (noleggio, vendita DPI, blog): se la ricerca web restituisce solo fonti commerciali, dillo.
 
 ## Aggiornamenti recenti
 

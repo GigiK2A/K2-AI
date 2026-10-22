@@ -316,9 +316,15 @@ def _query_estremi(db: Path, anno: int, num: str, valid_tipi, articolo, limit: i
         artnum = re.sub(r"\D", "", str(articolo)) if articolo else ""
         if artnum:
             match += f" AND file:{artnum}"
+        # Se il numero dell'articolo coincide col numero o con l'anno della norma (D.Lgs. 11/2010 art. 11, L. 300/1970
+        # art. 300) la MATCH non distingue gli articoli: tutti i chunk della norma hanno quei token. Con LIMIT 8 l'art. 11
+        # del D.Lgs. 11/2010 non veniva MAI trovato (22/10/2026, test 09): qui si leggono tutti i chunk e filtra l'estremo esatto.
+        n_righe = max(1, int(limit)) * 8
+        if artnum and artnum in (re.sub(r"\D", "", str(num)), str(int(anno))):
+            n_righe = 5000
         rows = con.execute(
             "SELECT file, testo FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT ?",
-            (match, max(1, int(limit)) * 8),
+            (match, n_righe),
         ).fetchall()
     except sqlite3.OperationalError:
         return []

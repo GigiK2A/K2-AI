@@ -43,9 +43,9 @@ from . import norme_ue
 log = logging.getLogger(__name__)
 
 # ── configurazione ───────────────────────────────────────────────────────────────────────
-MAX_RIFERIMENTI = int(os.getenv("KBOT_NORME_MAX_RIF", "5"))
+MAX_RIFERIMENTI = int(os.getenv("KBOT_NORME_MAX_RIF", "7"))
 MAX_CHARS_ARTICOLO = int(os.getenv("KBOT_NORME_MAX_CHARS_ARTICOLO", "2400"))
-MAX_CHARS_TOTALE = int(os.getenv("KBOT_NORME_MAX_CHARS", "7500"))
+MAX_CHARS_TOTALE = int(os.getenv("KBOT_NORME_MAX_CHARS", "10000"))
 # Un comma lunghissimo (il comma 1 dell'art. 49 D.Lgs. 231/2007 ha 1.450 caratteri) non deve consumare
 # il budget degli altri: si taglia a una frase e si segna «[…]».
 MAX_CHARS_COMMA = int(os.getenv("KBOT_NORME_MAX_CHARS_COMMA", "650"))
@@ -341,7 +341,8 @@ def _mappa() -> list[dict]:
         bozze = os.getenv("KBOT_MAPPA_BOZZE", "0") == "1"
         for v in voci:
             # una voce senza professionista che l'abbia validata è una BOZZA: inattiva in produzione
-            if isinstance(v, dict) and not (v.get("validato_da") or "").strip() and not bozze:
+            if isinstance(v, dict) and not (v.get("validato_da") or "").strip() and not bozze \
+                    and not v.get("attiva_senza_validazione"):
                 continue
             if isinstance(v, dict) and v.get("trigger") and v.get("riferimenti"):
                 out.append({"id": v.get("id", ""), "trigger": [re.compile(t, re.I) for t in v["trigger"]],
@@ -777,6 +778,11 @@ _ISTRUZIONI = (
     "- Se in un turno precedente hai dato una cifra, una soglia o un'interpretazione che NON sta in queste fonti e non "
     "l'ha detta l'utente, non difenderla: ritirala dicendo che era un'ipotesi senza fonte, o sostituiscila con quella "
     "delle fonti. Se hai ammesso di non avere una fonte, la conclusione che ne dipendeva non resta in piedi.\n"
+    "- Domande del tipo «possiamo / è lecito / si può detrarre / la banca è responsabile?»: se un fatto che DECIDE la "
+    "risposta manca (stato della partita IVA alla data, esito della verifica del beneficiario, chi esegue i lavori, "
+    "durata e luogo…), NON aprire con «Sì» o «No»: apri con «dipende da…», nomina i 2-3 fatti decisivi, indica "
+    "l'azione prudente da fare nel frattempo e presenta la conclusione come condizionata. Tieni distinti ciò che la "
+    "norma stabilisce, ciò che dipende dai fatti o dalla valutazione del rischio, e ciò che è prassi o buona pratica.\n"
     "- Se un passaggio non riguarda il caso, ignoralo senza citarlo. Se le fonti non coprono il punto, dillo e "
     "indirizza al professionista invece di inventare.\n"
     "- Il testo può non essere aggiornato all'ultima modifica: per scadenze e importi che pesano sulla decisione "

@@ -17,6 +17,8 @@ from __future__ import annotations
 import contextvars
 import logging
 import os
+import re
+from urllib.parse import urlsplit, urlunsplit
 from typing import Any, Optional
 
 from ..settings import OPENAI_API_KEY, OPENAI_SEARCH_MODEL
@@ -67,10 +69,56 @@ SYSTEM_HINT = (
     "ricerca non conferma con certezza), NON scrivere il numero: parla in modo descrittivo "
     "('il codice civile disciplina il periodo di prova', 'il tuo CCNL specifica la durata "
     "del preavviso') senza inventare la numerazione esatta. Un numero di articolo sbagliato "
-    "è un danno per l'utente maggiore che non citarlo affatto."
+    "è un danno per l'utente maggiore che non citarlo affatto.\n"
+    "- FONTI: per norme, circolari e prassi vale solo una fonte UFFICIALE (Normattiva, Gazzetta Ufficiale, EUR-Lex, "
+    "Agenzia delle Entrate, INPS, INAIL, Ministero del Lavoro, Banca d'Italia/ABF, Garante privacy). Siti di aziende, "
+    "noleggi, blog e portali commerciali non sono fonti di legge: se la ricerca restituisce solo quelle, dillo "
+    "all'utente invece di citarle come base normativa."
 )
 
 _MAX_QUERY_CHARS = 600
+
+# FONTI UFFICIALI (22/10/2026, test 10: la ricerca citava un sito di noleggio al posto della normativa). La prima ricerca è
+# ristretta a questi domini; se non restituisce nulla si ripiega senza filtro e le fonti restano marcate «non ufficiale».
+DOMINI_UFFICIALI = (
+    "normattiva.it", "gazzettaufficiale.it", "eur-lex.europa.eu", "europa.eu", "agenziaentrate.gov.it", "finanze.gov.it",
+    "mef.gov.it", "inps.it", "inail.it", "lavoro.gov.it", "ispettorato.gov.it", "garanteprivacy.it", "bancaditalia.it",
+    "arbitrobancariofinanziario.it", "consob.it", "cortecostituzionale.it", "cortedicassazione.it", "giustizia.it",
+    "senato.it", "camera.it", "agid.gov.it", "mimit.gov.it", "governo.it", "gov.it", "esma.europa.eu", "eba.europa.eu",
+)
+_FILTRO_MAX = 20            # limite del filtro `allowed_domains` dell'API: i primi 20 (i più autorevoli)
+
+
+def e_ufficiale(url: str) -> bool:
+    """True se l'host è (o è un sottodominio di) un dominio istituzionale. `normattiva.it.evil.example` NON lo è."""
+    try:
+        host = (urlsplit(url).hostname or "").lower()
+    except ValueError:
+        return False
+    return any(host == d or host.endswith("." + d) for d in DOMINI_UFFICIALI)
+
+
+def _pulisci_url(url: str) -> str:
+    """Senza parametri di tracciamento (utm_*, ...): l'utente vede l'indirizzo vero della fonte."""
+    try:
+        p = urlsplit(url)
+        q = "&".join(x for x in p.query.split("&") if x and not re.match(r"(?i)(utm_|fbclid|gclid)", x))
+        return urlunsplit((p.scheme, p.netloc, p.path, q, p.fragment))
+    except ValueError:
+        return url
+
+
+def ordina_fonti(cites: list) -> list:
+    """Fonti ripulite, marcate `ufficiale` e ordinate: prima le istituzionali (a parità, l'ordine originale)."""
+    out = [{**c, "url": _pulisci_url(c["url"]), "ufficiale": e_ufficiale(c["url"]),
+            "title": _pulisci_url(c["title"]) if str(c.get("title") or "").startswith("http") else c.get("title", "")}
+           for c in cites if c.get("url")]
+    return sorted(out, key=lambda c: not c["ufficiale"])
+
+
+def _marca(c: dict) -> str:
+    return "[ufficiale]" if c.get("ufficiale") else "[non ufficiale]"
+
 
 # FONTI REALMENTE CONSULTATE nel turno: ogni ricerca registra qui le URL che ha restituito (la lista è creata dal chiamante e
 # condivisa con i thread, che ne ricevono una copia del contesto ma lo stesso oggetto lista). A fine turno il codice — non il
@@ -86,9 +134,10 @@ def _registra(cites: list) -> None:
     lista = _FONTI_TURNO.get()
     if lista is None:
         return
-    for c in cites:
-        if c.get("url") and all(c["url"] != x["url"] for x in lista):
+    for c in ordina_fonti(cites):
+        if all(c["url"] != x["url"] for x in lista):
             lista.append(c)
+    lista.sort(key=lambda c: not c.get("ufficiale", e_ufficiale(c["url"])))
 
 
 def fonti_turno() -> list:
@@ -100,7 +149,8 @@ def aggiungi_fonti_web(testo: str, massimo: int = 6) -> str:
     fonti = fonti_turno()
     if not fonti or not testo or "Fonti web consultate" in testo:
         return testo
-    righe = "\n".join(f"- {(f.get('title') or f['url'])[:90]}: {f['url']}" for f in fonti[:massimo])
+    fonti = ordina_fonti(fonti)
+    righe = "\n".join(f"- {_marca(f)} {(f.get('title') or f['url'])[:90]}: {f['url']}" for f in fonti[:massimo])
     return testo.rstrip() + "\n\nFonti web consultate:\n" + righe
 
 
@@ -142,18 +192,32 @@ def run_openai_search(query: str) -> str:
         # Timeout esplicito: il default SDK è 600s → una singola ricerca appesa
         # bloccherebbe la chat e la generazione. Cap a 30s + 1 solo retry.
         client = OpenAI(api_key=OPENAI_API_KEY, timeout=30.0, max_retries=1)
-        resp = client.responses.create(
-            model=OPENAI_SEARCH_MODEL,
-            tools=[{"type": "web_search"}],
-            input=query,
-            timeout=30.0,
-        )
+
+        def _cerca(domini):
+            tool = {"type": "web_search"}
+            if domini:
+                tool["filters"] = {"allowed_domains": list(domini)[:_FILTRO_MAX]}
+            return client.responses.create(model=OPENAI_SEARCH_MODEL, tools=[tool], input=query, timeout=30.0)
+
+        resp, cites = None, []
+        if _flag("KBOT_WEB_SEARCH_UFFICIALI", "1"):
+            try:
+                resp = _cerca(DOMINI_UFFICIALI)
+                cites = _extract_citations(resp)
+            except Exception as exc:                      # filtro non supportato/errore: si ripiega senza filtro
+                log.warning("ricerca web ristretta ai domini ufficiali non riuscita (%s): ripiego senza filtro", exc)
+                resp = None
+        if resp is None or not cites:
+            resp = _cerca(None)
+            cites = _extract_citations(resp)
         text = (getattr(resp, "output_text", "") or "").strip()
-        cites = _extract_citations(resp)
+        cites = ordina_fonti(cites)
         _registra(cites)
         if cites:
-            fonti = "\n".join(f"- {c['title'] or c['url']}: {c['url']}" for c in cites)
-            text = f"{text}\n\nFonti:\n{fonti}" if text else f"Fonti:\n{fonti}"
+            fonti = "\n".join(f"- {_marca(c)} {c['title'] or c['url']}: {c['url']}" for c in cites)
+            nota = ("" if any(c["ufficiale"] for c in cites) else
+                    "\nATTENZIONE: nessuna fonte ufficiale trovata; per norme e prassi non fidarti di queste fonti come testo di legge: dillo all'utente.")
+            text = f"{text}\n\nFonti:\n{fonti}{nota}" if text else f"Fonti:\n{fonti}{nota}"
         return text or "[ricerca web: nessun risultato]"
     except Exception as exc:  # rete/credito/modello: Claude prosegue con la nota
         log.warning("OpenAI web search fallita: %s", exc)

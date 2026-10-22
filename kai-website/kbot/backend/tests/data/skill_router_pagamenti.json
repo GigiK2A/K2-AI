@@ -1,0 +1,162 @@
+[
+ {
+  "q": "La carta aziendale della nostra società è stata clonata: ci sono addebiti in Romania e a Dubai che nessuno dei dipendenti ha fatto. Chi paga?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Il cliente ci paga sempre a 120 giorni, ma il contratto dice 60. Possiamo applicare interessi retroattivi?",
+  "tema": "altro"
+ },
+ {
+  "q": "Qualcuno si è finto il nostro commercialista via mail e ci ha fatto pagare una fattura su un conto estero. Abbiamo già disposto 4.500 euro, siamo ancora in tempo?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Ho comprato un computer da 1.800 euro: come lo ammortizzo e con che aliquota?",
+  "tema": "altro"
+ },
+ {
+  "q": "Sull'estratto conto compaiono addebiti ricorrenti per un abbonamento che non abbiamo mai sottoscritto. Come li facciamo stornare?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Un cliente ci ha dato un assegno da 6.000 euro e la banca dice che è falso. Abbiamo già consegnato la merce. Come ci muoviamo?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Prima di firmare un contratto di fornitura con un cliente grande, quali clausole devo guardare con più attenzione?",
+  "tema": "altro"
+ },
+ {
+  "q": "Stiamo valutando un mutuo per comprare il capannone, cosa guardano le banche nel bilancio?",
+  "tema": "altro"
+ },
+ {
+  "q": "Se la banca rigetta il reclamo, posso andare all'Arbitro Bancario Finanziario anche come società a responsabilità limitata?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Ho mandato un pagamento istantaneo al fornitore sbagliato, di quelli che arrivano in 10 secondi. Esiste modo di fermarlo o è perso?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Abbiamo un infortunio di un operaio in cantiere ieri, 4 giorni di prognosi. Che comunicazioni vanno fatte e a chi?",
+  "tema": "altro"
+ },
+ {
+  "q": "Ieri ho fatto un bonifico da 14.800 euro a un fornitore ma mi sono accorto che l'IBAN era quello di una persona che non conosco. Cosa posso fare per riavere i soldi?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Quali sono le prossime scadenze fiscali per una SRL a ottobre e novembre?",
+  "tema": "altro"
+ },
+ {
+  "q": "Mi hanno telefonato dicendo di essere dell'antifrode della banca e di spostare i soldi su un conto sicuro. L'ho fatto, ora capisco che era una truffa. Serve denuncia?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Il preventivo che abbiamo mandato conta già come contratto se il cliente risponde con un ok via WhatsApp?",
+  "tema": "altro"
+ },
+ {
+  "q": "Come si calcolano gli interessi di mora su una fattura scaduta tra due imprese? Il contratto non dice nulla.",
+  "tema": "altro"
+ },
+ {
+  "q": "Il commercialista dice che il bilancio va depositato entro 30 giorni dall'approvazione. È vero? E se facciamo tardi?",
+  "tema": "altro"
+ },
+ {
+  "q": "Dobbiamo mettere telecamere in magazzino: serve l'accordo sindacale o basta l'informativa privacy?",
+  "tema": "altro"
+ },
+ {
+  "q": "Ho dimenticato di versare l'F24 delle ritenute entro la scadenza. Posso regolarizzare col ravvedimento operoso?",
+  "tema": "altro"
+ },
+ {
+  "q": "Quali corsi di sicurezza sul lavoro sono obbligatori per i nuovi assunti in un'officina di 12 persone?",
+  "tema": "altro"
+ },
+ {
+  "q": "Un cliente non ci paga una fattura da 7.500 euro scaduta da cinque mesi. Conviene mandare un decreto ingiuntivo o prima un sollecito formale?",
+  "tema": "altro"
+ },
+ {
+  "q": "Il cliente contesta la qualità del lavoro e rifiuta di pagare il saldo di 12.000 euro. Come ci tuteliamo?",
+  "tema": "altro"
+ },
+ {
+  "q": "Voglio fare reclamo alla mia banca perché non ha bloccato un'operazione palesemente anomala sul conto della ditta. Come si scrive e a chi va mandato?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Un collega ha mandato per sbaglio il file con gli stipendi di tutti a un cliente. È un data breach? Devo avvisare il Garante?",
+  "tema": "altro"
+ },
+ {
+  "q": "Un ex dipendente ci chiede di cancellare tutti i suoi dati personali. Dobbiamo farlo subito?",
+  "tema": "altro"
+ },
+ {
+  "q": "La banca dice che l'operazione l'abbiamo autorizzata noi perché c'era il codice OTP. Ma il codice l'ha dato il mio socio a una persona che si è presentata come l'assistenza della banca. Abbiamo speranze di rimborso?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Ho pagato un conto sbagliato, ho digitato male una cifra dell'IBAN e i soldi sono partiti. Si può bloccare?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Ci è arrivata una mail dal nostro fornitore di materiali che dice che ha cambiato banca e ci dà un nuovo IBAN. Abbiamo pagato 9.200 euro lì, ma oggi il fornitore ci chiama per il sollecito: non ha mai mandato quella mail.",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Il mio socio vuole uscire dalla società: come si valuta la quota?",
+  "tema": "altro"
+ },
+ {
+  "q": "Abbiamo emesso una fattura con l'IVA al 22% ma doveva essere al 10%. Si può correggere con una nota di credito o è tutto da rifare?",
+  "tema": "altro"
+ },
+ {
+  "q": "Abbiamo ricevuto cartelle esattoriali per 28.000 euro. Si può rateizzare e in quante rate?",
+  "tema": "altro"
+ },
+ {
+  "q": "Vorrei un finanziamento con garanzia del Fondo di Garanzia per le PMI, come si fa a richiederlo?",
+  "tema": "altro"
+ },
+ {
+  "q": "Voglio licenziare un dipendente che sta spesso in malattia. Quali sono i rischi?",
+  "tema": "altro"
+ },
+ {
+  "q": "Sul conto ci è stato addebitato un SDD da 2.340 euro da una società che non conosciamo, non abbiamo mai firmato nessun mandato. Entro quanto posso contestarlo?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "La nostra fattura elettronica è stata scartata dallo SDI con un errore sul codice destinatario. Cosa faccio?",
+  "tema": "altro"
+ },
+ {
+  "q": "Come si fa il richiamo di un bonifico? Ho chiamato la banca ma mi dicono che devono aspettare la banca del beneficiario e non mi richiamano da tre giorni.",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Ci hanno svuotato il conto aziendale stanotte. Sull'app vedo tre operazioni che non ho fatto, per circa 31.000 euro in tutto.",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "Il nostro gestionale è lentissimo da una settimana, il server impiega minuti ad aprire una pratica. Da dove comincio?",
+  "tema": "altro"
+ },
+ {
+  "q": "Un dipendente dell'amministrazione ha cliccato su un link in una mail che sembrava della nostra banca e ha inserito le credenziali dell'home banking. Poi ci sono stati movimenti strani. Cosa facciamo subito?",
+  "tema": "pagamenti"
+ },
+ {
+  "q": "La banca ci ha ridotto il fido di 50.000 euro senza preavviso. Può farlo?",
+  "tema": "altro"
+ }
+]

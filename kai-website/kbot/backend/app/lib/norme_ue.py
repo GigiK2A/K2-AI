@@ -56,7 +56,8 @@ def fonti_ue(testo: str, Fonte) -> List:
             # la prima riga è «Articolo N» (già nel titolo della fonte) e la seconda è la rubrica: si tengono i commi
             corpo = "\n".join("  " + r for r in righe[2:] if r.strip()) if righe and righe[0].lower().startswith("articolo") and f["articolo"] != "4" else \
                     "\n".join("  " + r for r in righe[1:] if r.strip()) if f["articolo"] == "4" else "\n".join("  " + r for r in righe)
-            out.append(Fonte(citazione=f["citazione"], tipo="regolamento_ue", anno=2016, numero="679", articolo=f["articolo"],
+            out.append(Fonte(citazione=f["citazione"], tipo=f.get("tipo", "regolamento_ue"), anno=int(f.get("anno", 2016)),
+                             numero=str(f.get("numero", "679")), articolo=f["articolo"],
                              rubrica=f.get("rubrica", ""), sigla=f["sigla"], origine="norma", testo=corpo))
     return out
 

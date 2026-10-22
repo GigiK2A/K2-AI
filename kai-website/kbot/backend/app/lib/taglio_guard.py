@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 
 MIN_CARATTERI = 200
 _ELENCO = re.compile(r"^\s*(?:[-*•–]|\d+[.)]|#{1,6}\s|\|)")
-_FINE_OK = tuple(".?!:;)»”\"'*…]")
+_FINE_OK = tuple(".?!:;)»”\"'*]")
+_ELLISSI = ("…", "...")
 
 
 def e_troncata(testo: str) -> bool:
@@ -25,6 +26,8 @@ def e_troncata(testo: str) -> bool:
     if len(t) < MIN_CARATTERI or "```" in t[-400:]:
         return False
     ultima = t.splitlines()[-1].strip()
+    if ultima.endswith(_ELLISSI) and len(ultima) >= 12:
+        return True                                   # «…» in fondo: il testo è stato amputato (anche dentro un elenco)
     if not ultima or _ELENCO.match(ultima) or len(ultima) < 25:
         return False                                  # elenchi puntati, titoli, righe brevi: possono non avere il punto
     if ultima.endswith(_FINE_OK):
@@ -36,6 +39,8 @@ def completa(client, modello: str, system_prompt: str, messages: list, raw_text:
     """`raw_text` completato con una continuazione se era interrotto a metà frase; altrimenti invariato. Non solleva mai."""
     if os.getenv("KBOT_TAGLIO_GUARD", "1") == "0" or not e_troncata(raw_text):
         return raw_text
+    if raw_text.rstrip().endswith(_ELLISSI):
+        raw_text = raw_text.rstrip().rstrip("….").rstrip()
     log.warning("taglio_guard: risposta interrotta a metà frase (car=%d, coda=%r): chiedo la continuazione",
                 len(raw_text), raw_text[-60:])
     try:

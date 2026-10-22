@@ -82,3 +82,31 @@ def test_i_richiami_del_prompt_coprono_il_caso_del_software():
     t = N._SISTEMA_PROPOSTA
     for frase in ("art. 1460 c.c.", "art. 1667 c.c.", "D.Lgs. 28/2010 art. 5", "art. 2222 c.c."):
         assert frase in t
+
+
+# ── 22/10/2026 (test 09 e 11): verifica del beneficiario (Reg. 2024/886) e prassi sulla cessazione della partita IVA ──
+def _sigle(testo):
+    from app.lib import norme_evidence as E
+    return {f.sigla for f in norme_ue.fonti_ue(testo, E.Fonte)}
+
+
+def test_il_falso_iban_porta_l_art_5_quater():
+    q = ("Abbiamo fatto un bonifico di 7.500 euro su un IBAN diverso comunicato da un'email falsa del fornitore. "
+         "La banca dice che l'abbiamo autorizzato noi; il sistema non ci ha avvisato che il nome era diverso.")
+    assert "Reg. UE 260/2012 art. 5 quater" in _sigle(q)
+
+
+def test_un_bonifico_normale_non_porta_l_art_5_quater():
+    assert "Reg. UE 260/2012 art. 5 quater" not in _sigle("Come registriamo in contabilità il bonifico ricevuto dal cliente?")
+
+
+def test_l_art_5_quater_e_il_testo_ufficiale():
+    from app.lib import norme_evidence as E
+    f = [x for x in norme_ue.fonti_ue("bonifico a un IBAN falso, truffa via email", E.Fonte) if x.articolo == "5-quater"][0]
+    assert f.anno == 2012 and f.numero == "260" and "9 ottobre 2025" in f.testo and "rimborsa immediatamente" in f.testo
+
+
+def test_la_partita_iva_cessata_porta_la_prassi_con_la_cautela():
+    from app.lib import norme_evidence as E
+    fonti = [x for x in norme_ue.fonti_ue("Il fornitore ha la partita IVA cessata da sei mesi: possiamo detrarre?", E.Fonte) if x.sigla == "AdE Risp. 218/2022"]
+    assert fonti and "232/E" in fonti[0].testo and "vale per l'istante" in fonti[0].testo

@@ -732,6 +732,22 @@ def normalize_assistant_reply(raw: str) -> str:
     return text
 
 
+MAX_ASSISTANT_RECENTE = 6000
+MAX_ASSISTANT_VECCHIA = 2500
+
+
+def _taglia_a_fine_frase(testo: str, tetto: int) -> str:
+    """`testo` ridotto a `tetto` caratteri chiudendo a fine paragrafo/frase (mai a metà frase, mai con «…»)."""
+    if len(testo) <= tetto:
+        return testo
+    parte = testo[:tetto]
+    for sep in ("\n\n", "\n", ". ", "? ", "! "):
+        k = parte.rfind(sep)
+        if k > tetto * 0.5:
+            return parte[: k + (1 if sep.strip() else 0)].rstrip()
+    return parte.rstrip()
+
+
 def compact_messages(messages: List[dict], max_messages: int, max_chars_per_message: int,
                      max_chars_last_user: Optional[int] = None) -> List[dict]:
     """Take last N messages and truncate each.
@@ -748,11 +764,21 @@ def compact_messages(messages: List[dict], max_messages: int, max_chars_per_mess
             if window[i].get("role") == "user":
                 last_user_idx = i
                 break
+    # Le risposte del BOT non si amputano a 900 car. + «…»: il modello vedeva le proprie risposte finire a metà
+    # frase e al turno dopo chiudeva allo stesso modo (22/10/2026, test 09-11: risposte di 890-1.500 car. con «…»
+    # finale in prod, anche dopo «continua»). Le ultime due arrivano intere (tetto alto), le più vecchie compatte,
+    # sempre tagliate a fine frase e senza ellissi.
+    assist_idx = [i for i, m in enumerate(window) if m.get("role") == "assistant"]
+    recenti = set(assist_idx[-2:])
     out = []
     for i, m in enumerate(window):
         content = str(m.get("content") or "")
-        cap = max_chars_last_user if i == last_user_idx else max_chars_per_message
-        if len(content) > cap:
-            content = content[: cap - 1].rstrip() + "…"
+        if m.get("role") == "assistant":
+            cap = MAX_ASSISTANT_RECENTE if i in recenti else MAX_ASSISTANT_VECCHIA
+            content = _taglia_a_fine_frase(content, cap)
+        else:
+            cap = max_chars_last_user if i == last_user_idx else max_chars_per_message
+            if len(content) > cap:
+                content = content[: cap - 1].rstrip() + "…"
         out.append({"role": m.get("role"), "content": content})
     return out

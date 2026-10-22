@@ -23,7 +23,9 @@ def _msgs(n_filler=0, last_user="ciao"):
 
 def test_senza_il_nuovo_parametro_il_comportamento_non_cambia():
     out = prompts.compact_messages(_msgs(1, "z" * 3000), 12, 900)
-    assert all(len(m["content"]) <= 900 for m in out)
+    assert all(len(m["content"]) <= 900 for m in out if m["role"] == "user")
+    # le risposte del bot non si amputano più a 900 car. + «…» (22/10/2026): vedi test_storia_non_amputata
+    assert all(not m["content"].endswith("…") for m in out if m["role"] == "assistant")
 
 
 def test_l_ultimo_messaggio_utente_puo_essere_lungo():
@@ -36,16 +38,18 @@ def test_l_ultimo_messaggio_utente_puo_essere_lungo():
 def test_la_storia_resta_compattata():
     out = prompts.compact_messages(_msgs(2, "z" * 3000), 12, 900, max_chars_last_user=8000)
     storia, ultimo = out[:-1], out[-1]
-    assert all(len(m["content"]) <= 900 for m in storia)
+    assert all(len(m["content"]) <= 900 for m in storia if m["role"] == "user")
+    assert all(len(m["content"]) <= prompts.MAX_ASSISTANT_VECCHIA for m in storia if m["role"] == "assistant")
+    assert all(not m["content"].endswith("…") for m in storia if m["role"] == "assistant")
     assert len(ultimo["content"]) == 3000
 
 
 def test_il_tetto_alto_vale_solo_per_l_ultimo_messaggio_utente():
     msgs = [{"role": "user", "content": "a" * 3000},          # vecchio: resta tagliato
-            {"role": "assistant", "content": "b" * 3000},     # assistente: resta tagliato
+            {"role": "assistant", "content": "b" * 3000},     # assistente: ora intero (tetto proprio, 22/10/2026)
             {"role": "user", "content": "c" * 3000}]          # ultimo utente: intero
     out = prompts.compact_messages(msgs, 12, 900, max_chars_last_user=8000)
-    assert [len(m["content"]) for m in out] == [900, 900, 3000]
+    assert [len(m["content"]) for m in out] == [900, 3000, 3000]
 
 
 def test_oltre_il_tetto_alto_si_taglia_ancora():

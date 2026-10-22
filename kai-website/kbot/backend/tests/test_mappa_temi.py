@@ -23,9 +23,13 @@ def _voci():
     return json.load(open(N._MAPPA_PATH, encoding="utf-8"))["temi"]
 
 
+_ATTIVE_NON_VALIDATE = {"frode-bonifico-iban", "lavori-in-quota", "pos-cantiere", "iva-fornitore-cessato"}
+
+
 def test_le_bozze_sono_spente_senza_interruttore(monkeypatch):
     monkeypatch.delenv("KBOT_MAPPA_BOZZE", raising=False)
-    assert N._mappa() == []
+    # restano attive SOLO le voci con l'esplicito «attiva_senza_validazione» (22/10/2026): le altre bozze sono spente
+    assert all(v["id"] in _ATTIVE_NON_VALIDATE for v in N._mappa())
     assert N.riferimenti_da_mappa("devo dare una sanzione disciplinare al dipendente") == []
 
 
@@ -46,8 +50,9 @@ def test_una_voce_validata_si_carica_anche_senza_interruttore(monkeypatch, tmp_p
 
 def test_ogni_voce_ha_i_campi_e_i_riferimenti_si_leggono():
     for v in _voci():
-        assert v["id"] and v["trigger"] and v["riferimenti"] and v["stato"] == "bozza" and v["validato_da"] == ""
-        assert len(v["riferimenti"]) <= 3, v["id"]
+        assert v["id"] and v["trigger"] and v["riferimenti"] and v["validato_da"] == ""
+        assert v["stato"] == ("attiva-non-validata" if v.get("attiva_senza_validazione") else "bozza"), v["id"]
+        assert len(v["riferimenti"]) <= (5 if v.get("attiva_senza_validazione") else 3), v["id"]
         for r in v["riferimenti"]:
             assert N.riferimenti_da_testo(r), f"{v['id']}: riferimento non leggibile: {r}"
 

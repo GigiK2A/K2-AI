@@ -208,6 +208,86 @@
    "validato_da": "",
    "validato_il": "",
    "stato": "bozza"
+  },
+  {
+   "id": "frode-bonifico-iban",
+   "trigger": [
+    "\\bbonific\\w+[^\\n]{0,160}\\biban\\b",
+    "\\biban\\b[^\\n]{0,160}\\bbonific\\w+",
+    "(?:truffa|frode|phishing)[^.\\n]{0,80}(?:bonific\\w+|\\biban\\b|e-?mail|banca)",
+    "servizi?\\s+di\\s+pagamento|operazion\\w+\\s+di\\s+pagamento\\s+non\\s+autorizzat\\w+"
+   ],
+   "riferimenti": [
+    "D.Lgs. 11/2010 art. 5",
+    "D.Lgs. 11/2010 art. 11",
+    "D.Lgs. 11/2010 art. 24",
+    "D.Lgs. 11/2010 art. 25",
+    "D.Lgs. 11/2010 art. 10"
+   ],
+   "note": "Test 09 (22/10/2026): senza questi articoli il bot confondeva revoca (art. 5) e recupero dei fondi (art. 24) e dava conclusioni categoriche sulla responsabilità della banca (art. 11: operazioni NON autorizzate; art. 24: identificativo unico inesatto). Manca il Reg. UE 260/2012 art. 5 quater: sta in data/norme_ue. Voce attiva il 22/10/2026 SENZA validazione di un professionista (campo attiva_senza_validazione): sceglie solo QUALI articoli del corpus Normattiva (testo vigente) entrano nel pacchetto, non cosa dicono. Da far validare.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "attiva-non-validata",
+   "attiva_senza_validazione": true
+  },
+  {
+   "id": "lavori-in-quota",
+   "trigger": [
+    "\\b(?:tetto|tetti|copertur\\w+|lucernar\\w+|lavori?\\s+in\\s+quota|in\\s+quota|lavori?\\s+in\\s+altezza|ponteggi\\w*|parapett\\w+|linea\\s+vita|linee\\s+vita|imbracatur\\w+|anticaduta|cadut\\w+\\s+dall.alto)\\b"
+   ],
+   "riferimenti": [
+    "D.Lgs. 81/2008 art. 107",
+    "D.Lgs. 81/2008 art. 111",
+    "D.Lgs. 81/2008 art. 115",
+    "D.Lgs. 81/2008 art. 148",
+    "D.Lgs. 81/2008 art. 126"
+   ],
+   "note": "Test 10 (22/10/2026): il pacchetto proponeva gli artt. 172-174 (videoterminali) e non gli articoli sul lavoro in quota. Art. 107 definizione (> 2 m), 111 obblighi e scelta attrezzature, 115 sistemi di protezione anticaduta (priorità alla protezione collettiva), 148 lavori su tetti/coperture, 126 parapetti. Voce attiva il 22/10/2026 SENZA validazione di un professionista (campo attiva_senza_validazione): sceglie solo QUALI articoli del corpus Normattiva (testo vigente) entrano nel pacchetto, non cosa dicono. Da far validare.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "attiva-non-validata",
+   "attiva_senza_validazione": true
+  },
+  {
+   "id": "pos-cantiere",
+   "trigger": [
+    "\\bPOS\\b",
+    "piano\\s+operativo\\s+di\\s+sicurezza",
+    "cantier\\w+\\s+(?:temporane\\w+|mobil\\w+)",
+    "\\bPSC\\b|piano\\s+di\\s+sicurezza\\s+e\\s+coordinamento"
+   ],
+   "riferimenti": [
+    "D.Lgs. 81/2008 art. 89",
+    "D.Lgs. 81/2008 art. 96",
+    "D.Lgs. 81/2008 art. 100",
+    "D.Lgs. 81/2008 art. 17",
+    "D.Lgs. 81/2008 art. 28"
+   ],
+   "note": "Test 10: il POS è definito all'art. 89 c.1 lett. h) e richiesto alle imprese esecutrici di un CANTIERE temporaneo o mobile (art. 96 c.1 lett. g); un sopralluogo non è di per sé un cantiere: serve la valutazione dei rischi (artt. 17, 28). Voce attiva il 22/10/2026 SENZA validazione di un professionista (campo attiva_senza_validazione): sceglie solo QUALI articoli del corpus Normattiva (testo vigente) entrano nel pacchetto, non cosa dicono. Da far validare.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "attiva-non-validata",
+   "attiva_senza_validazione": true
+  },
+  {
+   "id": "iva-fornitore-cessato",
+   "trigger": [
+    "partita\\s+iva[^.\\n]{0,80}cessat\\w+",
+    "cessazion\\w+[^.\\n]{0,60}partita\\s+iva",
+    "fornitore[^.\\n]{0,80}(?:cessat\\w+|chius\\w+\\s+la\\s+partita)"
+   ],
+   "riferimenti": [
+    "D.P.R. 633/1972 art. 6",
+    "D.P.R. 633/1972 art. 19",
+    "D.P.R. 633/1972 art. 21",
+    "D.P.R. 633/1972 art. 26",
+    "D.P.R. 633/1972 art. 35"
+   ],
+   "note": "Test 11 (22/10/2026): momento di effettuazione (art. 6), detrazione (art. 19), fatturazione (art. 21), note di variazione (art. 26), dichiarazione di cessazione (art. 35). La prassi (Ris. 232/E 2009, Risp. 218/2022) NON è nel corpus: sta nella skill fiscale. Voce attiva il 22/10/2026 SENZA validazione di un professionista (campo attiva_senza_validazione): sceglie solo QUALI articoli del corpus Normattiva (testo vigente) entrano nel pacchetto, non cosa dicono. Da far validare.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "attiva-non-validata",
+   "attiva_senza_validazione": true
   }
  ]
 }

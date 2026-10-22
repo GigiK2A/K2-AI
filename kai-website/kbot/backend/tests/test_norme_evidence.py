@@ -374,7 +374,9 @@ def test_la_mappa_distribuita_non_ha_voci_attive_e_ben_formata(monkeypatch):
     monkeypatch.delenv("KBOT_MAPPA_BOZZE", raising=False)
     E._mappa.cache_clear()
     try:
-        assert E._mappa() == []
+        # attive solo le voci col flag esplicito «attiva_senza_validazione» (22/10/2026, da far validare)
+        attive = {t["id"] for t in d["temi"] if t.get("attiva_senza_validazione")}
+        assert {v["id"] for v in E._mappa()} == attive
     finally:
         E._mappa.cache_clear()
 

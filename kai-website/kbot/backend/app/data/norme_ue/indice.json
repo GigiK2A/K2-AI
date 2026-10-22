@@ -43,9 +43,55 @@
      "motivo": "Il Codice privacy italiano (D.Lgs. 196/2003) ha articoli su ricerca medica/statistica (110, 110-bis, 111) che il modello proponeva per un incidente di invio errato di un file: rumore. Se l'utente cita un articolo del Codice, resta."
     }
    ]
+  },
+  {
+   "id": "verifica-beneficiario-bonifici",
+   "trigger": [
+    "verific\\w+\\s+(?:del\\s+)?beneficiari\\w+",
+    "corrispondenz\\w+[^.\\n]{0,60}(?:iban|beneficiari\\w+|nome)",
+    "(?:bonifico|bonifici)[^\\n]{0,160}(?:iban|beneficiari\\w+)[^\\n]{0,160}(?:falso|falsa|fals\\w+|truffa|frode|diverso|diversa|sbagliat\\w+|errat\\w+)",
+    "iban[^.\\n]{0,120}(?:falso|falsa|fals\\w+|truffa|frode|diverso|diversa|cambiat\\w+|nuovo|sbagliat\\w+)[^.\\n]{0,160}(?:bonifico|pagament\\w+|banca)",
+    "(?:truffa|frode)[^.\\n]{0,80}(?:bonifico|iban|e-?mail|mail)",
+    "(?:e-?mail|mail|pec)[^.\\n]{0,100}(?:falsa|fals\\w+|truffa)[^.\\n]{0,100}(?:bonifico|iban|pagament\\w+)"
+   ],
+   "fonti": [
+    {
+     "file": "reg_2024_886_art_5quater.txt",
+     "citazione": "Regolamento (UE) n. 260/2012, art. 5 quater (inserito dal Regolamento (UE) 2024/886)",
+     "sigla": "Reg. UE 260/2012 art. 5 quater",
+     "articolo": "5-quater",
+     "rubrica": "Verifica del beneficiario in caso di bonifici",
+     "tipo": "regolamento_ue",
+     "anno": 2012,
+     "numero": "260"
+    }
+   ],
+   "escludi_proposte": []
+  },
+  {
+   "id": "prassi-cessazione-partita-iva",
+   "trigger": [
+    "partita\\s+iva[^\\n]{0,80}cessat\\w+",
+    "cessazion\\w+[^\\n]{0,60}partita\\s+iva",
+    "fornitore[^\\n]{0,80}(?:cessat\\w+|chius\\w+\\s+la\\s+partita)",
+    "chius\\w+\\s+(?:la\\s+)?partita\\s+iva"
+   ],
+   "fonti": [
+    {
+     "file": "prassi_ade_218_2022.txt",
+     "citazione": "Agenzia delle Entrate, Risposta a interpello n. 218 del 26 aprile 2022 (richiama circ. 11/E 2007 e ris. 232/E 2009)",
+     "sigla": "AdE Risp. 218/2022",
+     "articolo": "—",
+     "rubrica": "Cessazione dell'attività professionale e della partita IVA: non prima della chiusura dei rapporti pendenti",
+     "tipo": "prassi",
+     "anno": 2022,
+     "numero": "218"
+    }
+   ],
+   "escludi_proposte": []
   }
  ],
- "fonte": "Regolamento (UE) 2016/679 (GDPR), testo italiano ufficiale dell'Ufficio delle pubblicazioni dell'Unione europea (CELEX 32016R0679), scaricato il 2026-10-20",
+ "fonte": "Regolamento (UE) 2016/679 (GDPR), testo italiano ufficiale dell'Ufficio delle pubblicazioni dell'Unione europea (CELEX 32016R0679), scaricato il 2026-10-20; Reg. (UE) 2024/886 (CELEX 32024R0886), testo italiano dell'Ufficio delle pubblicazioni dell'UE, scaricato il 2026-10-22; Agenzia delle Entrate, Risposta n. 218/2022 (PDF ufficiale agenziaentrate.gov.it, scaricato il 2026-10-22)",
  "scaricato_il": "2026-10-20",
  "validato_da": ""
 }

@@ -338,6 +338,39 @@
     "diagnostica-it-pmi"
    ],
    "note": "Nuova skill creata il 20/10/2026 dopo l'audit: non esisteva una skill di diagnostica informatica (test 03: ping su 127.0.0.1, antivirus spento, SMART «Buono» come prova)."
+  },
+  {
+   "id": "pagamenti-frodi",
+   "descrizione": "Bonifici e pagamenti sbagliati o truffe sul pagamento (falso IBAN), richiamo fondi, operazioni non autorizzate, reclamo alla banca e ABF",
+   "trigger": [
+    "\\bbonific\\w+[^\\n]{0,200}(?:sbagliat\\w+|errat\\w+|truff\\w+|frod\\w+|fals\\w+|recuper\\w+|richiam\\w+|annull\\w+|blocc\\w+|stornar\\w+|storno|non\\s+autorizzat\\w+|non\\s+riconosciut\\w+|contest\\w+|perso|persi|fermar\\w+)",
+    "(?:sbagliat\\w+|errat\\w+|truff\\w+|frod\\w+|fals\\w+|recuper\\w+|richiam\\w+|annull\\w+|blocc\\w+|stornar\\w+|storno|non\\s+autorizzat\\w+|non\\s+riconosciut\\w+|contest\\w+|perso|persi|fermar\\w+)[^\\n]{0,200}\\bbonific\\w+",
+    "\\biban\\b[^\\n]{0,200}(?:sbagliat\\w+|errat\\w+|truff\\w+|frod\\w+|fals\\w+|recuper\\w+|richiam\\w+|annull\\w+|blocc\\w+|stornar\\w+|storno|non\\s+autorizzat\\w+|non\\s+riconosciut\\w+|contest\\w+|perso|persi|fermar\\w+)",
+    "(?:sbagliat\\w+|errat\\w+|truff\\w+|frod\\w+|fals\\w+|recuper\\w+|richiam\\w+|annull\\w+|blocc\\w+|stornar\\w+|storno|non\\s+autorizzat\\w+|non\\s+riconosciut\\w+|contest\\w+|perso|persi|fermar\\w+)[^\\n]{0,200}\\biban\\b",
+    "(?:truffa|truffat\\w+|frode|fraudolent\\w+|phishing|raggir\\w+|finto|finta|finti|finte|spacciat\\w+)\\b[^\\n]{0,100}(?:banca|conto|bonific\\w+|carta|pagament\\w+|e-?mail|mail|commercialista|fornitore)",
+    "(?:banca|conto)[^\\n]{0,80}(?:truffa|frode|fraudolent\\w+|phishing|clonat\\w+|svuotat\\w+)",
+    "richiam\\w+\\s+(?:dei\\s+)?fondi|\\brecall\\b",
+    "operazion\\w+\\s+(?:di\\s+pagamento\\s+)?non\\s+autorizzat\\w+|addebit\\w+[^\\n]{0,80}non\\s+(?:abbiamo|ho|hanno|è\\s+stato|siamo)\\s+(?:mai\\s+)?(?:sottoscritt\\w+|firmat\\w+|autorizzat\\w+|riconosc\\w+)|addebit\\w+\\s+non\\s+riconosciut\\w+",
+    "\\bsdd\\b|addebito\\s+diretto|mandato\\s+sdd",
+    "assegn\\w+[^\\n]{0,80}fals\\w+|fals\\w+[^\\n]{0,40}assegn\\w+",
+    "pagament\\w+\\s+istantane\\w+|bonific\\w+\\s+istantane\\w+",
+    "\\botp\\b|codice\\s+(?:otp|sms)|credenziali\\s+(?:dell.)?home\\s*banking",
+    "conto\\s+(?:estero|di\\s+un\\s+altro\\s+paese)",
+    "\\babf\\b|arbitro\\s+bancario",
+    "reclam\\w+[^\\n]{0,40}banca|banca[^\\n]{0,40}reclam\\w+",
+    "carta\\s+(?:di\\s+credito|di\\s+debito|aziendale|prepagata)[^\\n]{0,60}(?:clonat\\w+|frod\\w+|non\\s+autorizzat\\w+)",
+    "svuotat\\w+\\s+(?:il\\s+)?conto|conto\\s+svuotat\\w+|pagat\\w+\\s+(?:il\\s+)?(?:conto|iban)\\s+sbagliat\\w+|(?:fornitore|conto|iban|beneficiari\\w+)\\s+sbagliat\\w+"
+   ],
+   "debole": [
+    "\\bbanca\\b|\\bbancari\\w+",
+    "home\\s*banking",
+    "\\bfornitore\\b",
+    "\\be-?mail\\b|\\bmail\\b"
+   ],
+   "skill": [
+    "pagamenti-frodi-bancarie"
+   ],
+   "note": "Nuovo tema 22/10/2026 (test 09, frode del falso IBAN): non esisteva una skill sui pagamenti e il fallback sul «pillar» storico accendeva contabilita-bilancio, analisi-bilancio, budget-forecast, programmazione-controllo, reconciliation."
   }
  ]
 }
