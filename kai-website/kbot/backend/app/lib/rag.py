@@ -138,7 +138,7 @@ def bm25_top_k(query: str, chunks: List[dict], k: int = 10) -> List[dict]:
     return [c for _s, c in ranked[:k] if _s > 0] or chunks[:k]
 
 
-def format_chunks_for_prompt(chunks: List[dict]) -> str:
+def format_chunks_for_prompt(chunks: List[dict], ids: Optional[dict] = None) -> str:
     """Render chunks for the system prompt with [pag.N] markers."""
     lines: List[str] = []
     for c in chunks:
@@ -149,7 +149,9 @@ def format_chunks_for_prompt(chunks: List[dict]) -> str:
             continue
         safe = text.replace("</UNTRUSTED_FILE_CONTENT>", "<_/UNTRUSTED_FILE_CONTENT>")
         marker = f"[pag.{page}]" if page else f"[parte {int(c.get('chunk_index') or 0) + 1}]"
-        lines.append(f"--- {name} {marker} ---\n{safe}")
+        did = (ids or {}).get(name.casefold())
+        sigla = f" [doc:{did}]" if did else ""
+        lines.append(f"--- {name}{sigla} {marker} ---\n{safe}")
     return "\n\n".join(lines)
 
 

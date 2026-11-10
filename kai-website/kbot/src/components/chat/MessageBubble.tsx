@@ -1,13 +1,12 @@
 "use client";
 
-import { Fragment } from "react";
 import { motion } from "framer-motion";
 import { FileText, RotateCcw } from "lucide-react";
 import { ChatMessage } from "@/types/chat";
 import { prettyTime } from "@/lib/utils";
 import { fuoriDalDocumento } from "@/lib/documento";
-
-const CITATION_RE = /\(pag\.\s*(\d+)\)/gi;
+import { Markdown } from "./Markdown";
+import type { Citazione } from "@/lib/citazioni";
 
 /**
  * FREE MODE (K-BOT ufficiale senza paywall): quando NEXT_PUBLIC_KBOT_FREE_MODE
@@ -16,32 +15,6 @@ const CITATION_RE = /\(pag\.\s*(\d+)\)/gi;
  * NB: NEXT_PUBLIC_* è inlinato a build-time → richiede rebuild del frontend.
  */
 const FREE_MODE = process.env.NEXT_PUBLIC_KBOT_FREE_MODE === "1";
-
-/** Riconosce "(pag. N)" e li mostra come chip cliccabili (styling only per ora). */
-function renderWithCitations(text: string) {
-  if (!text) return text;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  CITATION_RE.lastIndex = 0;
-  while ((match = CITATION_RE.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    parts.push(
-      <span
-        key={`cite-${match.index}`}
-        title={`Riferimento pagina ${match[1]}`}
-        className="mx-0.5 inline-flex items-baseline rounded-md border border-[var(--teal)]/40 bg-[var(--teal-soft)] px-1 py-0 text-[11px] font-medium text-[var(--teal)] align-baseline"
-      >
-        pag.&nbsp;{match[1]}
-      </span>,
-    );
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-  return parts.length > 1 ? parts.map((p, i) => <Fragment key={i}>{p}</Fragment>) : text;
-}
 
 export function MessageBubble({
   message,
@@ -52,7 +25,10 @@ export function MessageBubble({
   onOpenDraft,
   docInfo,
   onRetry,
+  onCitazione,
 }: {
+  /** Click su una citazione documentale: apre il visualizzatore al passaggio. */
+  onCitazione?: (c: Citazione) => void;
   message: ChatMessage;
   /** Se presente, sotto la risposta compare «Apri la bozza» (il messaggio contiene un documento). */
   onOpenDraft?: () => void;
@@ -86,9 +62,13 @@ export function MessageBubble({
         </p>
 
         {testo && (
-          <p className={"whitespace-pre-wrap text-[15px] leading-7 text-[var(--text-main)]" + (isBot && onOpenDraft && docInfo?.legacy ? " line-clamp-5" : "")}>
-            {renderWithCitations(testo)}
-          </p>
+          isBot ? (
+            <div className={isBot && onOpenDraft && docInfo?.legacy ? "line-clamp-5" : undefined}>
+              <Markdown testo={testo} onCitazione={onCitazione} />
+            </div>
+          ) : (
+            <p className="whitespace-pre-wrap text-[15px] leading-7 text-[var(--text-main)]">{testo}</p>
+          )
         )}
 
         {message.attachments && message.attachments.length > 0 && (

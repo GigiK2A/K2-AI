@@ -1179,3 +1179,36 @@ export async function pollDeliverable(
     await new Promise((r) => setTimeout(r, interval));
   }
 }
+
+export type VistaDocumento = {
+  ok: boolean;
+  tipo: "pdf" | "testo";
+  nome: string;
+  pagina?: number;
+  pagine?: number;
+  immagine?: string;
+  riquadri?: { x: number; y: number; w: number; h: number }[];
+  localizzato: boolean;
+  testo?: string;
+  evidenzia?: [number, number] | null;
+};
+
+/** Apre un documento della pratica al passaggio citato (autorizzazione sul backend, nessun link pubblico). */
+export async function getVistaDocumento(
+  sessionId: string,
+  docId: string,
+  pag: number,
+  quote: string,
+  token?: string | null,
+): Promise<VistaDocumento> {
+  const qs = new URLSearchParams({ pag: String(pag || 1), quote, zoom: "2" });
+  const res = await fetch(`${API_BASE}/api/kbot/session/${sessionId}/documents/${docId}/view?${qs}`, {
+    headers: { ...authHeaders(token) },
+    cache: "no-store",
+  });
+  if (res.status === 410) throw new Error("Il file non è più disponibile.");
+  if (res.status === 403) throw new Error("Non hai accesso a questo documento.");
+  if (res.status === 404) throw new Error("Documento non trovato in questa pratica.");
+  if (!res.ok) await parseErr(res, "Impossibile aprire il documento");
+  return res.json();
+}

@@ -89,6 +89,12 @@ if os.environ.get("UI_LLM_FINTO") == "1":
             return NS(content=[NS(type="text", text=t)], usage=NS(input_tokens=10, output_tokens=5))
         def stream(self, **k):
             ultimo = str(k["messages"][-1]["content"]).lower()
+            if "riepilogo" in ultimo:
+                par = "\n\n".join(f"**Punto {i}.** Verifica ulteriore sulla commessa: la coerenza tra quantità e prezzi va ricontrollata con il cliente prima di fatturare, perché ogni scarto incide sul margine." for i in range(1, 25))
+                return _Flusso("Ho controllato il riepilogo. Le pratiche autorizzative: 8 × 680 € = 5.440 €, mentre il documento indica **5.040,00 €** (pag. 1).\n\n"
+                               "| Voce | Dichiarato | Corretto |\n|---|---|---|\n| Pratiche autorizzative | 5.040,00 € | **5.440,00 €** |\n| Imponibile | 15.250,00 € | **15.650,00 €** |\n\n"
+                               "> Importi da confermare con il cliente.\n\n- primo punto\n- secondo punto con *corsivo* e `codice`\n\n" + par +
+                               "\n\nIl residuo da liquidare è 7.890,00 € (pag. 2).")
             if "versione 2" in ultimo or "aggiorna" in ultimo:
                 return _Flusso(f"Ho aggiornato la PEC con la data del contratto.\n\n<<<DOCUMENTO: PEC di contestazione>>>\n{_doc2}\n<<<FINE DOCUMENTO>>>\n\n{_note}")
             if "interrompi" in ultimo and _stato["interrompi"] == 0:

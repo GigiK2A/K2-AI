@@ -21,3 +21,7 @@ azzerata e, anche conservata, la cronologia non veniva riletta dal backend). Il 
 
 
 Nota: `server_ui.py` tiene le conversazioni in memoria. Tra una suite e l'altra (`titoli.mjs`, `pratica.mjs`, `report_non_richiesto.mjs`) va riavviato, altrimenti la pratica attiva è già titolata e i controlli sui titoli falliscono per inquinamento, non per un difetto.
+
+Prove aggiunte nell'audit di novembre 2026 (tutte con `UI_LLM_FINTO=1` per un modello finto deterministico):
+`scroll_streaming.mjs` (scroll libero durante lo streaming), `citazioni_documenti.mjs` (Markdown + citazioni + visualizzatore),
+`trascina_file.mjs` (drag & drop). Il Chromium di Playwright sta in `~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome`.

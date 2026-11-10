@@ -15,6 +15,8 @@ await p.route('**/api/kbot/message/stream', async (r) => {
   r.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream' }, body: ev({ delta: 'Risposta.' }) + ev({ done: true, message: 'Risposta.', nextAction: 'continue', session: { id: 'x', mode: 'report', messages: [], extractedData: {}, timestamps: {} } }) });
 });
 const esiti = []; const ok = (n, v, e = '') => { esiti.push([n, !!v]); console.log((v ? 'OK  ' : 'FAIL') + ' ' + n + (e ? '  ' + e : '')); };
+// il backend di prova non ha la chiave della ricerca web: qui si simula un server che la ha (il pulsante compare solo se /capabilities la dichiara)
+await p.route('**/api/kbot/capabilities', (r) => r.fulfill({ json: { webSearch: true, normeSearch: true } }));
 await p.goto('http://localhost:3100/app/', { waitUntil: 'networkidle' }); await p.waitForTimeout(1500);
 const bottoneRicerca = p.getByRole('button', { name: 'Cerca sul web' });
 const bottoneLink = p.getByRole('button', { name: /Analizza una pagina/ });

@@ -49,6 +49,9 @@ class _FakeStorageBucket:
         self.files[path] = data
         return {"path": path}
 
+    def download(self, path):
+        return self.files[path]
+
     def get_public_url(self, path):
         return f"https://fake.supabase.co/storage/{path}"
 
@@ -488,10 +491,11 @@ def test_normalize_strips_unclosed_json_block():
     assert "Premessa" in out
 
 
-def test_normalize_strips_bold():
-    out = normalize_assistant_reply("Questo è **molto** importante.")
-    assert "**" not in out
-    assert "molto" in out
+def test_normalize_keeps_markdown():
+    # il frontend rende il Markdown: grassetto, tabelle e liste NON vanno tolti dal backend
+    raw = "Questo è **molto** importante.\n\n| a | b |\n|---|---|\n| **1** | 2 |\n\n- uno\n- due"
+    out = normalize_assistant_reply(raw)
+    assert "**molto**" in out and "| **1** | 2 |" in out and "- due" in out
 
 
 def test_normalize_empty_input():

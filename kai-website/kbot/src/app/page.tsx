@@ -5,6 +5,9 @@ import { AnimatePresence } from "framer-motion";
 import { ChatLayoutHeader } from "@/components/layout/ChatLayout";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Composer } from "@/components/chat/Composer";
+import { useAutoScroll } from "@/lib/useAutoScroll";
+import { preparaTesto, type Citazione } from "@/lib/citazioni";
+import { VisualizzatoreDocumento } from "@/components/chat/VisualizzatoreDocumento";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { LoadingState } from "@/components/chat/LoadingState";
 import { PannelloPratica, eBozza, estraiFonti, type DocumentoPannello, type SchedaPratica } from "@/components/pratica/PannelloPratica";
@@ -367,9 +370,31 @@ export default function HomePage() {
     reportReady || Boolean((kbotSession?.extractedData as { generation?: unknown } | undefined)?.generation);
 
   // Auto-scroll to bottom on new messages / streaming deltas / loading state.
+  // (scroll intelligente: vedi lib/useAutoScroll — prima uno scrollIntoView(smooth) a ogni token toglieva il controllo all'utente)
+  const { contenitore: scrollRef, contenuto: contenutoRef, lontano: lontanoDalFondo, riprendi: tornaInFondo } = useAutoScroll();
+  // Citazioni documentali: apertura del visualizzatore e elenco (per passare dall'una all'altra) ricavato dai messaggi.
+  const [citazioneAperta, setCitazioneAperta] = useState<Citazione | null>(null);
+  const tuttiMessaggi = activeConversation.messages;
+  const elencoCitazioni = useMemo(() => {
+    const viste = new Set<string>(); const out: Citazione[] = [];
+    for (const m of tuttiMessaggi) {
+      if (m.role !== "assistant") continue;
+      for (const c of preparaTesto(m.content).citazioni) {
+        const k = `${c.doc}|${c.pag}|${c.quote}`;
+        if (c.stato !== "attesa" && !viste.has(k)) { viste.add(k); out.push(c); }
+      }
+    }
+    return out;
+  }, [tuttiMessaggi]);
+  const convId = activeConversation.id;
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setCitazioneAperta(null); }, [convId]);   // il documento appartiene alla pratica: cambiando conversazione si chiude
+  const nMessaggi = activeConversation.messages.length;
+  const ultimoRuolo = activeConversation.messages.at(-1)?.role;
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [activeConversation.messages.length, activeConversation.messages.at(-1)?.content, loading]);
+    // l'utente ha appena inviato: si segue la risposta che sta per arrivare
+    if (ultimoRuolo === "user") tornaInFondo();
+  }, [nMessaggi, ultimoRuolo, tornaInFondo]);
 
   /* Per-conversation backend session: each sidebar conv must talk to its OWN
      kbot_sessions row, otherwise switching/creating conversations leaks
@@ -1054,8 +1079,8 @@ export default function HomePage() {
           isSignedIn={isSignedIn}
         />
 
-        <main className="scroll-premium flex-1 overflow-y-auto px-4 pb-6 pt-6 lg:px-8">
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+        <main ref={scrollRef} tabIndex={-1} className="scroll-premium flex-1 overflow-y-auto px-4 pb-6 pt-6 outline-none lg:px-8">
+          <div ref={contenutoRef} className="mx-auto flex w-full max-w-3xl flex-col gap-4">
             {activeConversation.messages.every((m) => m.ts === 0) && !loading && (
               <div className="py-8">
                 <h2 className="font-doc text-2xl font-semibold">Apri la pratica</h2>
@@ -1088,6 +1113,7 @@ export default function HomePage() {
                   key={m.id}
                   message={{ ...m, hasPaid }}
                   onCheckout={startCheckoutFromUI}
+                  onCitazione={setCitazioneAperta}
                   onGeneratePdf={() => generateReportPdfFromUI(m.id)}
                   onDownloadXlsx={async () => {
                     const sid = kbotSession?.id;
@@ -1140,8 +1166,31 @@ export default function HomePage() {
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}
             <div ref={messagesEndRef} />
+            {lontanoDalFondo && (
+              <div className="pointer-events-none sticky bottom-2 flex justify-center">
+                <button
+                  type="button"
+                  data-testid="vai-in-fondo"
+                  onClick={tornaInFondo}
+                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-[var(--line-strong)] bg-[var(--bg-1)] px-3 py-1.5 text-xs font-medium shadow-md hover:border-[var(--teal)]"
+                >
+                  {loading ? "Vai alla risposta in corso" : "Vai in fondo"} <span aria-hidden>↓</span>
+                </button>
+              </div>
+            )}
           </div>
         </main>
+
+        {citazioneAperta && kbotSession?.id && (
+          <VisualizzatoreDocumento
+            sessionId={kbotSession.id}
+            getToken={getToken}
+            citazione={citazioneAperta}
+            elenco={elencoCitazioni}
+            onSeleziona={setCitazioneAperta}
+            onChiudi={() => setCitazioneAperta(null)}
+          />
+        )}
 
         <div className="px-4 lg:px-8">
           <div className="mx-auto w-full max-w-3xl">

@@ -30,7 +30,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import analisi_documenti, testo_pulito, strumenti, ricerca_norme, calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
+from ..lib import fonti_documenti, rag, analisi_documenti, testo_pulito, strumenti, ricerca_norme, calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -177,7 +177,7 @@ def _analysis_streak_reached(merged_messages: list, raw_text: str, need: int = 2
     return streak >= need
 
 
-def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Optional[dict] = None):
+def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Optional[dict] = None, session_id: str = ""):
     """Estrae summary + stato diagnostico; SOPPRIME il summary se in fase intervista o se
     l'utente ha chiesto di continuare la consulenza (report_hold). Il visibile è ripulito
     da ENTRAMBI i blocchi macchina (summary + diagnosi)."""
@@ -194,6 +194,13 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
     # HTML/template/placeholder/artefatti tecnici/tipografia sporca. Fail-open.
     _v_protetto, _mappa_doc = documento.proteggi(visible)       # i marcatori del documento non devono essere «puliti»
     visible = documento.ripristina(output_quality.polish(_v_protetto), _mappa_doc)
+    if collected and collected.get("uploaded_files"):
+        # citazioni documentali: ogni marcatore è verificato sul testo vero del documento (lib/fonti_documenti)
+        try:
+            visible = fonti_documenti.verifica(visible, collected, session_id, rag.fetch_chunks(session_id) if session_id else None)
+        except Exception:
+            log.exception("verifica citazioni fallita")
+            visible = _re.sub(r"\[\[fonte\|[^\]]*\]\]", "", visible)
     visible = testo_pulito.pulisci(visible)      # entità residue, codifica doppia, caratteri invisibili (il codice e i marcatori restano)
     visible = impegni_guard.sanitize(visible)       # niente rimborsi/risarcimenti promessi dal bot
     # Numeri verdi (800/803) scritti dal modello e non dall'utente: fonte sconosciuta, si tolgono (lib/crisi).
@@ -602,7 +609,7 @@ async def post_message(
                                getattr(result, "stop_reason", None))
     raw_text = avvisi_input.aggiungi(raw_text, avvisi)
     usage = getattr(result, "usage", None)
-    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected)
+    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected, body.sessionId)
     _persist_diagnosi(collected, diagnosi)
     _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
     track_server(
@@ -735,7 +742,7 @@ def _persist_assistant_turn(
     skills: Optional[List[str]] = None,
 ) -> tuple[str, Optional[dict], dict]:
     """Apply summary extraction + persist assistant message. Returns (user_visible, summary, updated_session)."""
-    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected)
+    user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected, body_session_id)
     _persist_diagnosi(collected, diagnosi)
 
     updated_messages = sessions.append_messages(
