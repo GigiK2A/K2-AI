@@ -23,14 +23,15 @@ def _voci():
     return json.load(open(N._MAPPA_PATH, encoding="utf-8"))["temi"]
 
 
-_ATTIVE_NON_VALIDATE = {"frode-bonifico-iban", "lavori-in-quota", "pos-cantiere", "iva-fornitore-cessato"}
+_ATTIVE_NON_VALIDATE = {"frode-bonifico-iban", "lavori-in-quota", "pos-cantiere", "iva-fornitore-cessato", "conflitto-mobbing"}
 
 
 def test_le_bozze_sono_spente_senza_interruttore(monkeypatch):
     monkeypatch.delenv("KBOT_MAPPA_BOZZE", raising=False)
     # restano attive SOLO le voci con l'esplicito «attiva_senza_validazione» (22/10/2026): le altre bozze sono spente
     assert all(v["id"] in _ATTIVE_NON_VALIDATE for v in N._mappa())
-    assert N.riferimenti_da_mappa("devo dare una sanzione disciplinare al dipendente") == []
+    assert N.riferimenti_da_mappa("Posso installare telecamere in reparto?") == []          # voce ancora in bozza
+    assert N.riferimenti_da_mappa("devo dare una sanzione disciplinare al dipendente")      # voce attiva dal 10/11/2026
 
 
 def test_con_l_interruttore_le_bozze_si_caricano(monkeypatch):

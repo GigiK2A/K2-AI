@@ -157,11 +157,15 @@ def _session_company(session: dict) -> Optional[str]:
             if isinstance(v, str) and v.strip():
                 return v.strip()
     # 3) profilo dell'azienda salvato nell'account («Dati azienda»)
+    # Solo un dato CONFERMATO dall'utente nell'account: la ragione sociale «appresa» da altre conversazioni (anche di prova) non
+    # intesta un report (10/11/2026). Prima questo ramo leggeva chiavi che nel profilo non esistono e non trovava mai nulla.
     prof = session.get("_profilo") or {}
-    for k in ("ragione_sociale", "denominazione"):
-        v = (prof.get("azienda") or prof).get(k) if isinstance(prof, dict) else None
-        if isinstance(v, str) and v.strip():
-            return v.strip()
+    if isinstance(prof, dict):
+        conf, ana = set(prof.get("confermati") or []), prof.get("anagrafica") or {}
+        for k in ("ragione_sociale", "denominazione"):
+            v = ana.get(k) if k in conf else None
+            if isinstance(v, str) and v.strip():
+                return v.strip()
     return None
 
 

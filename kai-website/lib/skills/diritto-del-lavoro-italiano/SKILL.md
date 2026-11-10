@@ -20,6 +20,20 @@ I testi di legge in fondo sono il testo vigente letto da Normattiva il 2026-10-2
 4. **Dati da chiedere, solo se servono**: CCNL applicato, numero di dipendenti, data di assunzione del lavoratore, se ci sono già state contestazioni scritte e quando.
 5. **Stile**: risposta operativa e breve. Dì subito cosa si può fare e cosa no, poi cosa documentare (timbrature, richiami scritti con data), poi cosa verificare. Evidenzia le azioni rischiose o irreversibili (licenziare, trattenere senza base, sospendere senza procedura).
 
+## Conflitto interno e segnalazione di vessazioni («mobbing»): come ragionare
+
+Nel prepararsi a una consulenza non dare per accertato ciò che è solo riferito. Tieni separati: (1) **fatti riferiti** da chi segnala, (2) **fatti accertati** (documenti, messaggi, testimoni), (3) **valutazione giuridica**, che spetta al consulente del lavoro o all'avvocato. «Mobbing» non è una definizione di legge ma una qualificazione dei giudici: l'azienda non deve aspettare di poterlo provare per doversi attivare. Se l'utente non ha detto di precedenti provvedimenti, **non scrivere che non ce ne sono**: chiedilo.
+
+**L'obbligo c'è comunque**: l'imprenditore deve adottare le misure necessarie a tutelare l'integrità fisica e la **personalità morale** dei lavoratori (art. 2087 c.c.). Una segnalazione di umiliazioni o assegnazioni ingiuste va presa in carico e verificata.
+
+**Misure immediate (organizzative, non punitive, reversibili, e non a carico di chi ha segnalato):** separare operativamente le persone (riporto, turni, postazioni) in modo temporaneo; un referente neutro per ascoltare; conservare messaggi, ordini di servizio e assegnazioni com'erano; evitare riunioni collettive sul caso. Spostare, penalizzare o cambiare mansioni a chi ha segnalato può essere letto come ritorsione: va deciso col consulente.
+
+**Verifica dei fatti:** ascoltare separatamente le due persone, per iscritto; individuare i testimoni **pertinenti** e sentirli in modo riservato. Gli altri colleghi non vanno «esclusi» né coinvolti a caso: si distingue fra raccolta riservata di testimonianze e diffusione del conflitto in azienda.
+
+**Procedura disciplinare (art. 7 L. 300/1970, testo vigente):** nessun provvedimento senza aver prima **contestato per iscritto l'addebito** e **sentito** il lavoratore a sua difesa, che può farsi assistere da un rappresentante sindacale; i provvedimenti più gravi del rimprovero verbale non prima che siano trascorsi **cinque giorni** dalla contestazione; le sanzioni e le procedure applicano il **CCNL** e il codice disciplinare va **affisso**; la legge fissa limiti alle sanzioni conservative (multa fino a quattro ore di retribuzione base, sospensione fino a dieci giorni) e rinvia ai contratti collettivi per le procedure. Una sanzione «uguale per tutti» senza individuare le responsabilità di ciascuno è fragile: la contestazione è personale e specifica.
+
+**Nel documento per il consulente:** cronologia datata, cosa è riferito e cosa è provato, cosa è già stato fatto, il CCNL applicato, le domande aperte. Non ripetere domande già risolte nei messaggi precedenti.
+
 ## Testi di legge (vigenti)
 
 ### Legge 300/1970 (Statuto dei lavoratori), art. 7 — Sanzioni disciplinari

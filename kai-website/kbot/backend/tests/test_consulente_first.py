@@ -98,17 +98,18 @@ def test_merge_idempotente_e_dedupe():
 def test_render_block_nel_prompt():
     p, _ = profile.merge_from_session(None, _sessione_con_dati())
     block = profile.render_block(p)
-    assert "PROFILO CLIENTE" in block and "Rossi SRL" in block and "FinanceBoost" in block
+    # i dati appresi dalle conversazioni entrano come MEMORIA NON VERIFICATA (10/11/2026), non come profilo confermato
+    assert "MEMORIA APPRESA" in block and "Rossi SRL" in block and "FinanceBoost" in block
     # e il prompt lo integra
     full = _prompt([{"role": "user", "content": "ciao"}], profilo=p)
-    assert "PROFILO CLIENTE" in full and "Rossi SRL" in full
+    assert "MEMORIA APPRESA" in full and "Rossi SRL" in full
 
 
 def test_render_vuoto_senza_profilo():
     assert profile.render_block(None) == ""
     assert profile.render_block({}) == ""
     full = _prompt([{"role": "user", "content": "ciao"}])
-    assert "PROFILO CLIENTE" not in full     # anonimo → nessun blocco
+    assert "PROFILO CLIENTE" not in full and "MEMORIA APPRESA" not in full     # anonimo → nessun blocco
 
 
 def test_update_after_turn_skip_anonimo():

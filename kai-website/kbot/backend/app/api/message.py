@@ -30,7 +30,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
+from ..lib import calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -247,7 +247,7 @@ def _update_report_hold(collected: dict, last_user_text: str) -> bool:
 
 
 def _postprocess_turn(client, system_prompt, messages: list, merged_messages: list,
-                      raw_text: str, collected: Optional[dict] = None) -> str:
+                      raw_text: str, collected: Optional[dict] = None, stop_reason=None) -> str:
     """Finalize CONDIVISA del turno (path sync E streaming — la duplicazione dei due
     path aveva già prodotto divergenze: il fallback readiness esisteva solo sullo
     streaming). Ordine: forced-summary → quality gate."""
@@ -256,7 +256,9 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
     # La risposta non può essere il messaggio dell'utente ripetuto (vedi lib/eco_guard).
     raw_text = eco_guard.assicura(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, _last_user)
     # Risposta interrotta a metà frase (il modello emette la fine-turno da solo): una sola continuazione.
-    raw_text = taglio_guard.completa(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text)
+    raw_text = taglio_guard.completa(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, stop_reason)
+    if "CONSULENZA_SUMMARY" not in raw_text:
+        raw_text = raw_text + calcoli.nota_aritmetica(raw_text)  # aritmetica scritta che non torna: nota col valore giusto
     raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text,
                                      merged_messages, collected)
     # Bozza richiesta ma assente (il modello fa una domanda invece di scriverla): seconda chiamata esplicita.
@@ -594,7 +596,8 @@ async def post_message(
         block.text for block in result.content if getattr(block, "type", "") == "text"
     )
     # Finalize CONDIVISA (stessa catena del path streaming): forced-summary + quality gate.
-    raw_text = await _off_loop(_postprocess_turn, client, system_prompt, history, merged_messages, raw_text, collected)
+    raw_text = await _off_loop(_postprocess_turn, client, system_prompt, history, merged_messages, raw_text, collected,
+                               getattr(result, "stop_reason", None))
     raw_text = avvisi_input.aggiungi(raw_text, avvisi)
     usage = getattr(result, "usage", None)
     user_visible, summary, diagnosi = _extract_gated_summary(raw_text, merged_messages, collected)
@@ -692,6 +695,10 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser], cron: Optio
     session_for_prompt = {**session, "collected_data": collected, "messages": merged_messages,
                           "_profilo": profile_lib.load(session.get("user_id"))}
     skills = resolve_skills_for_session(session_for_prompt)
+    # Tracciabilità della memoria nel turno: SOLO conteggi (confermate/apprese), mai valori né testi aziendali.
+    _memoria_stat = profile_lib.statistiche(session_for_prompt.get("_profilo"), collected.get("scheda_cliente"))
+    log.info("kbot memoria: confermate=%s apprese=%s", _memoria_stat["confermati"], _memoria_stat["appresi"])
+    session["_memoria_stat"] = _memoria_stat          # solo per la risposta di questo turno (non si salva)
     req_hint = await _required_fields_hint(collected)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
     if web_search.enabled():
@@ -1076,7 +1083,8 @@ async def post_message_stream(
         cron.aggiungi_uso(usage)
         yield _sse({"fase": "verifica"})                       # evento reale: da qui girano guardie, bozze e quality gate
         # Finalize CONDIVISA coi due path: forced-summary + quality gate (vedi _postprocess_turn).
-        raw_text = await _off_loop(_postprocess_turn, client, system_prompt, messages, merged_messages, raw_text, collected)
+        raw_text = await _off_loop(_postprocess_turn, client, system_prompt, messages, merged_messages, raw_text, collected,
+                               getattr(final, "stop_reason", None))
         raw_text = web_search.aggiungi_fonti_web(raw_text)
         cron.segna("verificato")
         _user_turns = sum(1 for m in merged_messages if isinstance(m, dict) and m.get("role") == "user")
@@ -1118,6 +1126,7 @@ async def post_message_stream(
                 "nextAction": "show_summary" if summary else "continue",
                 "session": sessions.public_session(updated),
                 "timing": cron.riepilogo(),
+                "memoria": session.get("_memoria_stat") or {"confermati": 0, "appresi": 0},
             }
         )
 

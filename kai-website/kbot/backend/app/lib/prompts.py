@@ -364,9 +364,13 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
     # PROFILO CLIENTE cross-sessione ("prima consulente"): caricato da message.py e
     # passato in session["_profilo"]. Memoria centrale: mai richiedere dati già noti,
     # consulenza continuativa e personalizzata.
-    profile_context = profile_mod.render_block(session.get("_profilo"))
+    profile_context = profile_mod.render_block(session.get("_profilo"), scheda=collected.get("scheda_cliente"))
     # SCHEDA DEL CLIENTE: i fatti detti dall'utente in QUESTA conversazione (oltre la finestra di 12 messaggi).
     profile_context += scheda_cliente.render_block(collected.get("scheda_cliente"))
+    # Calcoli economici (assunzioni, investimenti, margini): metodo e ipotesi esplicite, solo quando la domanda li richiede.
+    from . import calcoli as _calcoli
+    profile_context += _calcoli.blocco([str(m.get("content") or "") for m in (session.get("messages") or [])
+                                        if isinstance(m, dict) and m.get("role") == "user"])
     # Glossario degli indici e regola delle bozze: solo quando l'ultimo messaggio (o i due precedenti dell'utente) li richiama.
     _recenti = [str(m.get("content") or "") for m in (session.get("messages") or [])
                 if isinstance(m, dict) and m.get("role") == "user"][-3:]

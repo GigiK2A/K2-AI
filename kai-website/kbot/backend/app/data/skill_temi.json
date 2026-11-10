@@ -24,7 +24,8 @@
     "contestazione (?:scritta|disciplinare)|provvediment\\w+ disciplinar\\w+|richiamo scritto",
     "trasferiment\\w+ (?:in|ad|presso) (?:un')?altra sede|trasferire (?:il|un) dipendente",
     "demansionament\\w+",
-    "(?:concedere|concedo|concedi|concedono|negare|nego|negato|approvare|rifiutare|richiesta di|giorni di|monte)\\s+(?:le\\s+)?ferie|ferie\\s+(?:forzat\\w+|maturat\\w+|non\\s+godut\\w+|arretrat\\w+|residu\\w+|obbligator\\w+|ad\\s+agosto)|ore di straordinar\\w+"
+    "(?:concedere|concedo|concedi|concedono|negare|nego|negato|approvare|rifiutare|richiesta di|giorni di|monte)\\s+(?:le\\s+)?ferie|ferie\\s+(?:forzat\\w+|maturat\\w+|non\\s+godut\\w+|arretrat\\w+|residu\\w+|obbligator\\w+|ad\\s+agosto)|ore di straordinar\\w+",
+    "mobbing|vessazion\\w+|umiliazion\\w+|molestie\\s+(?:sul|nel)\\s+lavoro|conflitt\\w+\\s+(?:tra|fra|con)\\s+(?:i\\s+|un\\s+|due\\s+)?(?:dipendent\\w+|collegh\\w+|coordinator\\w+)"
    ],
    "skill": [
     "diritto-del-lavoro-italiano",

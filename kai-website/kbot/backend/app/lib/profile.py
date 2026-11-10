@@ -86,6 +86,9 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
     ana = dict(p.get("anagrafica") or {})
     ctx = dict(p.get("contesto") or {})
     storico = list(p.get("storico") or [])
+    confermati = set(p.get("confermati") or [])      # campi impostati ESPLICITAMENTE dall'utente: le conversazioni non li toccano
+    prov = dict(p.get("prov") or {})                 # per voce appresa: conversazione (8 car.) e data. Niente valori, niente testi
+    _origine = {"sid": str(session.get("id") or "")[:8], "data": datetime.now(timezone.utc).date().isoformat()}
     changed = False
 
     coll = session.get("collected_data") or session.get("collected") or {}
@@ -104,11 +107,14 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
         ("clienti_principali", ("clienti_principali",)),
         ("citta", ("citta",)),
     ):
+        if pkey in confermati:
+            continue
         for src in (coll, extracted, coll.get("deliverable_inputs") or {}, scheda_flat):
             for k in sources:
                 v = _clean(src.get(k)) if isinstance(src, dict) else None
                 if v and ana.get(pkey) != v:
                     ana[pkey] = v
+                    prov[pkey] = dict(_origine)
                     changed = True
                     break
             else:
@@ -123,6 +129,7 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
             continue
         if fatti.get(k) != v:
             fatti[k] = v
+            prov[k] = dict(_origine)
             changed = True
     while len(fatti) > 25:
         fatti.pop(next(iter(fatti)))
@@ -133,6 +140,7 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
     for v, dest in ((extracted.get("summary"), problemi), (extracted.get("objective"), obiettivi)):
         s = _clean(v)
         if s and _push_unique(dest, s[:220]):
+            prov["_contesto"] = dict(_origine)
             changed = True
     ctx["problemi"], ctx["obiettivi"] = problemi[-_MAX_LIST:], obiettivi[-_MAX_LIST:]
 
@@ -153,6 +161,8 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
         p["contesto"] = ctx
     if storico:
         p["storico"] = storico
+    if prov:
+        p["prov"] = {k: v for k, v in prov.items() if k in ana or k in fatti or k == "_contesto"}
     return p, changed
 
 
@@ -160,7 +170,10 @@ def load_anagrafica(user_id: Optional[str]) -> dict:
     """Dati azienda impostati sull'account (per il form dashboard/signup). {} se assente."""
     prof = load(user_id) or {}
     ana = prof.get("anagrafica") if isinstance(prof, dict) else None
-    return {k: v for k, v in (ana or {}).items() if k in ANAGRAFICA_FIELDS and _clean(v)}
+    conf = set(prof.get("confermati") or []) if isinstance(prof, dict) else set()
+    # Solo i dati CONFERMATI: il modulo dashboard non deve precompilare (e far «confermare» senza accorgersene) valori appresi da altre
+    # conversazioni; quelli si vedono e si correggono da /profile/memoria.
+    return {k: v for k, v in (ana or {}).items() if k in ANAGRAFICA_FIELDS and k in conf and _clean(v)}
 
 
 def seed_from_metadata(user_id: Optional[str], user_metadata: Optional[dict]) -> dict:
@@ -195,17 +208,21 @@ def save_anagrafica(user_id: str, data: dict) -> dict:
         raise RuntimeError("profile memory disabled")
     prof = dict(load(user_id) or {})
     ana = dict(prof.get("anagrafica") or {})
+    conf = set(prof.get("confermati") or [])
     for k in ANAGRAFICA_FIELDS:
         if k in data:
             v = _clean(data.get(k))
             if v:
                 ana[k] = v[:120]
+                conf.add(k)                              # impostato dall'utente: confermato
             else:
                 ana.pop(k, None)
+                conf.discard(k)
     ana = {k: v for k, v in ana.items() if k in ANAGRAFICA_FIELDS or _clean(v)}
     prof["anagrafica"] = ana
+    prof["confermati"] = sorted(conf)
     _save(user_id, prof)
-    return {k: v for k, v in ana.items() if k in ANAGRAFICA_FIELDS}
+    return {k: v for k, v in ana.items() if k in ANAGRAFICA_FIELDS and k in conf}
 
 
 def update_after_turn(session: dict) -> None:
@@ -224,33 +241,101 @@ def update_after_turn(session: dict) -> None:
         log.warning("profilo: update fallita (fail-open)", exc_info=True)
 
 
-def render_block(profile: Optional[dict]) -> str:
-    """Blocco PROFILO CLIENTE per il system prompt ('' se profilo vuoto)."""
+def _data_it(prov: Optional[dict]) -> str:
+    d = str((prov or {}).get("data") or "")
+    if len(d) == 10 and d[4] == "-" and d[7] == "-":
+        return f"{d[8:10]}/{d[5:7]}/{d[:4]}"
+    return ""
+
+
+def _voci(profile: dict, scheda: Optional[dict]) -> tuple[list[str], list[str]]:
+    """(confermate, apprese) come righe di testo. Le voci apprese portano conversazione/data; quelle che l'utente sta dicendo
+    NELLA conversazione in corso (scheda) non si ripetono: vince ciò che dice ora."""
+    from .scheda_cliente import piatta as _piatta
+    ora = set(_piatta(scheda))
+    prov = profile.get("prov") or {}
+    confermati = set(profile.get("confermati") or [])
+    conf, app = [], []
+
+    def _fonte(k: str) -> str:
+        d = _data_it(prov.get(k))
+        return f" (da una conversazione del {d})" if d else " (da una conversazione precedente, data non nota)"
+
+    for k, v in (profile.get("anagrafica") or {}).items():
+        if k in ora:
+            continue
+        etichetta = _ANAGRAFICA_LABELS.get(k, k.replace("_", " "))
+        if k in confermati:
+            conf.append(f"{etichetta}: {v}")
+        else:
+            app.append(f"{etichetta}: {v}{_fonte(k)}")
+    for k, v in list((profile.get("fatti") or {}).items())[-12:]:
+        if k not in ora and k not in (profile.get("anagrafica") or {}):
+            app.append(f"{k.replace('_', ' ')}: {v}{_fonte(k)}")
+    ctx = profile.get("contesto") or {}
+    for chiave, titolo in (("problemi", "Tema trattato"), ("obiettivi", "Obiettivo espresso")):
+        for v in (ctx.get(chiave) or [])[-3:]:
+            app.append(f"{titolo}: {v}{_fonte('_contesto')}")
+    for e in (profile.get("storico") or [])[-3:]:
+        app.append(f"Report prodotto il {e.get('data')}: {e.get('tema')}")
+    return conf, app
+
+
+def statistiche(profile: Optional[dict], scheda: Optional[dict] = None) -> dict:
+    """Quante voci confermate/apprese entrano nel prompt: numeri, mai valori (tracciabilità senza dati aziendali nei log)."""
+    if not isinstance(profile, dict) or not profile:
+        return {"confermati": 0, "appresi": 0}
+    conf, app = _voci(profile, scheda)
+    return {"confermati": len(conf), "appresi": len(app)}
+
+
+def memoria_appresa(user_id: Optional[str]) -> list[dict]:
+    """Elenco delle voci apprese dell'utente (per mostrarle e farle correggere): chiave, valore, conversazione, data."""
+    prof = load(user_id) or {}
+    prov, confermati = prof.get("prov") or {}, set(prof.get("confermati") or [])
+    out = []
+    for k, v in (prof.get("anagrafica") or {}).items():
+        if k not in confermati:
+            out.append({"chiave": k, "valore": v, "conversazione": (prov.get(k) or {}).get("sid", ""), "data": (prov.get(k) or {}).get("data", "")})
+    for k, v in (prof.get("fatti") or {}).items():
+        out.append({"chiave": k, "valore": v, "conversazione": (prov.get(k) or {}).get("sid", ""), "data": (prov.get(k) or {}).get("data", "")})
+    return out
+
+
+def dimentica(user_id: Optional[str], chiave: Optional[str] = None) -> int:
+    """Cancella una voce appresa (o tutte). I dati CONFERMATI dall'utente nell'account non si toccano. Ritorna quante ne ha tolte."""
+    if not user_id or not _enabled():
+        return 0
+    prof = dict(load(user_id) or {})
+    confermati = set(prof.get("confermati") or [])
+    ana, fatti, prov = dict(prof.get("anagrafica") or {}), dict(prof.get("fatti") or {}), dict(prof.get("prov") or {})
+    tolte = 0
+    for k in [k for k in ana if k not in confermati and (chiave is None or k == chiave)]:
+        ana.pop(k); prov.pop(k, None); tolte += 1
+    for k in [k for k in fatti if chiave is None or k == chiave]:
+        fatti.pop(k); prov.pop(k, None); tolte += 1
+    if chiave is None and prof.get("contesto"):
+        prof.pop("contesto"); prov.pop("_contesto", None)
+    if tolte or chiave is None:
+        prof["anagrafica"], prof["fatti"], prof["prov"] = ana, fatti, prov
+        _save(user_id, prof)
+    return tolte
+
+
+def render_block(profile: Optional[dict], scheda: Optional[dict] = None) -> str:
+    """Blocchi del system prompt: DATI CONFERMATI dall'utente (fatti utilizzabili) e MEMORIA APPRESA (non verificata, con provenienza).
+    `scheda` = fatti detti nella conversazione in corso: prevalgono sulla memoria e non si ripetono."""
     if not isinstance(profile, dict) or not profile:
         return ""
-    parts = []
-    ana = profile.get("anagrafica") or {}
-    if ana:
-        parts.append("Anagrafica: " + "; ".join(
-            f"{_ANAGRAFICA_LABELS.get(k, k.replace('_', ' '))}: {v}" for k, v in ana.items()))
-    fatti = profile.get("fatti") or {}
-    if fatti:
-        parts.append("Fatti noti dalle conversazioni: " + "; ".join(
-            f"{k.replace('_', ' ')}: {v}" for k, v in list(fatti.items())[-15:]))
-    ctx = profile.get("contesto") or {}
-    if ctx.get("problemi"):
-        parts.append("Problemi/temi già trattati: " + " | ".join(ctx["problemi"][-5:]))
-    if ctx.get("obiettivi"):
-        parts.append("Obiettivi noti: " + " | ".join(ctx["obiettivi"][-5:]))
-    storico = profile.get("storico") or []
-    if storico:
-        parts.append("Report già prodotti: " + " | ".join(
-            f"{e.get('data')} {e.get('tema')}" for e in storico[-5:]))
-    if not parts:
-        return ""
-    return (
-        "\nPROFILO CLIENTE (memoria dalle conversazioni precedenti — USALA: non richiedere "
-        "MAI dati già presenti qui; personalizza consigli ed esempi su questa azienda; "
-        "se ciò che l'utente dice ORA contraddice il profilo, vale ciò che dice ora):\n- "
-        + "\n- ".join(parts) + "\n"
-    )
+    conf, app = _voci(profile, scheda)
+    out = ""
+    if conf:
+        out += ("\nPROFILO CLIENTE — DATI CONFERMATI DALL'UTENTE (impostati nel suo account: puoi usarli come fatti e non "
+                "richiederli; se ciò che dice ORA li contraddice, vale ciò che dice ora):\n- " + "\n- ".join(conf) + "\n")
+    if app:
+        out += ("\nMEMORIA APPRESA DA CONVERSAZIONI PRECEDENTI — NON VERIFICATA (può riguardare un altro caso, un'altra azienda o "
+                "una prova). Non affermarla come fatto, non usarla nei calcoli e non attribuirla all'utente senza conferma. Se ti "
+                "serve, chiedi: «in una conversazione precedente risultava X: è ancora così?» e poi usa la risposta. Se l'utente "
+                "dice ora qualcosa di diverso, vale ciò che dice ora. Se non c'entra con la domanda, ignorala senza citarla:\n- "
+                + "\n- ".join(app) + "\n")
+    return out

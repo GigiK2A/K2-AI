@@ -55,3 +55,35 @@ def put_profile(body: CompanyProfile, user: AuthUser = Depends(require_user)) ->
     except Exception:
         log.exception("profile PUT fallita")
         raise HTTPException(status_code=502, detail="salvataggio profilo non riuscito, riprova")
+
+
+@router.get("/profile/memoria")
+def get_memoria(user: AuthUser = Depends(require_user)) -> dict:
+    """Cosa il K-BOT ha APPRESO dalle conversazioni (non verificato), con conversazione e data di origine: l'utente può
+    vederlo e correggerlo. I dati confermati dell'account (PUT /profile) non compaiono qui."""
+    try:
+        return {"voci": profile_lib.memoria_appresa(user.id)}
+    except Exception:
+        log.warning("memoria GET fallita (fail-open → vuoto)", exc_info=True)
+        return {"voci": []}
+
+
+@router.delete("/profile/memoria")
+def delete_memoria(user: AuthUser = Depends(require_user)) -> dict:
+    """Il K-BOT dimentica tutto ciò che ha appreso dalle conversazioni (i dati confermati dell'account restano)."""
+    try:
+        profile_lib.dimentica(user.id)
+        return {"ok": True}
+    except Exception:
+        log.exception("memoria DELETE fallita")
+        raise HTTPException(status_code=502, detail="cancellazione non riuscita, riprova")
+
+
+@router.delete("/profile/memoria/{chiave}")
+def delete_memoria_voce(chiave: str, user: AuthUser = Depends(require_user)) -> dict:
+    """Corregge la memoria: dimentica una singola voce appresa."""
+    try:
+        return {"rimosse": profile_lib.dimentica(user.id, chiave)}
+    except Exception:
+        log.exception("memoria DELETE voce fallita")
+        raise HTTPException(status_code=502, detail="cancellazione non riuscita, riprova")

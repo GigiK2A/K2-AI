@@ -288,6 +288,24 @@
    "validato_il": "",
    "stato": "attiva-non-validata",
    "attiva_senza_validazione": true
+  },
+  {
+   "id": "conflitto-mobbing",
+   "trigger": [
+    "mobbing|vessazion\\w+|umiliazion\\w+",
+    "conflitt\\w+[^\\n]{0,60}(?:dipendent\\w+|collegh\\w+|coordinator\\w+)",
+    "provvediment\\w+\\s+disciplinar\\w+|sanzion\\w+\\s+disciplinar\\w+|contestazion\\w+\\s+(?:scritta|disciplinare)"
+   ],
+   "riferimenti": [
+    "art. 2087 c.c.",
+    "L. 300/1970 art. 7",
+    "D.Lgs. 81/2008 art. 28"
+   ],
+   "note": "Test A (10/11/2026): conflitto fra dipendenti con possibile mobbing e provvedimenti disciplinari. Art. 2087 c.c. (tutela della personalità morale), art. 7 St. lav. (procedura disciplinare), art. 28 TU sicurezza (valutazione dei rischi, anche stress lavoro-correlato). Voce attiva il 10/11/2026 SENZA validazione di un professionista (campo attiva_senza_validazione): sceglie solo QUALI articoli entrano nel pacchetto, non cosa dicono. Da far validare.",
+   "validato_da": "",
+   "validato_il": "",
+   "stato": "attiva-non-validata",
+   "attiva_senza_validazione": true
   }
  ]
 }

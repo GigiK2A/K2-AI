@@ -54,7 +54,10 @@ def test_la_ragione_sociale_detta_in_chat_arriva_al_generatore():
     sess = {"collected_data": {"scheda_cliente": {"ragione_sociale": {"valore": "DemoTech S.r.l.", "citazione": "DemoTech S.r.l.", "turno": 3}}}}
     assert _session_company(sess) == "DemoTech S.r.l."
     assert _session_company({"collected_data": {}}) is None
-    assert _session_company({"collected_data": {}, "_profilo": {"ragione_sociale": "Profilo Srl"}}) == "Profilo Srl"
+    # forma REALE del profilo (anagrafica + campi confermati); la chiave piatta di prima non esisteva e non trovava mai nulla
+    assert _session_company({"collected_data": {}, "_profilo": {"anagrafica": {"ragione_sociale": "Profilo Srl"},
+                                                                 "confermati": ["ragione_sociale"]}}) == "Profilo Srl"
+    assert _session_company({"collected_data": {}, "_profilo": {"anagrafica": {"ragione_sociale": "Appresa Srl"}}}) is None
 
 
 def test_il_boost_predefinito_non_si_assegna_a_un_incidente_gdpr():
