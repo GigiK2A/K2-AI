@@ -1,5 +1,6 @@
 import io
 import pytest
+import pytest
 from app.lib import fonti_documenti as fd
 
 
@@ -92,3 +93,61 @@ def test_pagine_dal_pdf_originale_quando_non_ci_sono_chunk(monkeypatch):
     d = fd.doc_id(col["uploaded_files"][0])
     out = fd.verifica(f"Residuo [[fonte|{d}|1|Residuo da liquidare 7.890,00 euro]].", col, "s9", [])
     assert f"[[fonte|{d}|2|Residuo da liquidare 7.890,00 euro|ok]]" in out
+
+
+# ── Test 27D: «Evidenziazione esatta non disponibile» sul residuo di 8.850 € ───────────────────────────────
+RIGHE_REALI = [
+    "RIEPILOGO ECONOMICO DI COMMESSA", "Commessa UM-26-041 | Adeguamento siti tecnici", "TOTALE IMPONIBILE € 15.250,00",
+    "• Delle 8 pratiche autorizzative valorizzate, 6 risultano protocollate; per le altre 2 è indicato lo stato «in attesa di",
+    "protocollo».",
+    "• Accordo commerciale, estratto: «Il corrispettivo relativo alle pratiche autorizzative matura alla data di deposito e",
+    "acquisizione del numero di protocollo».",
+    "• Acconto ricevuto il 15/10/2026: € 6.400,00.",
+    "• Residuo da incassare riportato nel documento: € 8.850,00.",
+    "• Valori esposti al netto dell’IVA. L’IVA non è compresa in questo riepilogo.",
+]
+
+
+@pytest.mark.parametrize("quote", [
+    "Residuo da incassare riportato nel documento: € 8.850,00",          # il marcatore salvato dal Test 27D (senza il punto finale)
+    "Residuo da incassare riportato nel documento: € 8.850,00.",         # con il punto
+    "8.850,00",
+    "Acconto ricevuto il 15/10/2026: € 6.400,00",
+    "Il corrispettivo relativo alle pratiche autorizzative matura alla data di deposito e acquisizione del numero di protocollo",   # su due righe
+    "in attesa di protocollo",                                            # a cavallo di due righe, con la «»
+])
+def test_passaggi_del_riepilogo_si_verificano_e_si_evidenziano_con_la_stessa_regola(quote):
+    pdf = _pdf([RIGHE_REALI])
+    testo = "\n".join(RIGHE_REALI)
+    assert fd.contiene(testo, quote)                                       # la verifica dice «ok»…
+    r = fd.localizza(pdf, 1, quote)
+    assert r["ok"] and r["localizzato"] and r["riquadri"], quote           # …e quindi il visualizzatore DEVE poter evidenziare
+    assert all(0 <= q["x"] <= 1 and 0 < q["w"] <= 1 and 0 <= q["y"] <= 1 for q in r["riquadri"])
+
+
+def test_il_testo_non_presente_non_viene_ne_verificato_ne_evidenziato():
+    pdf = _pdf([RIGHE_REALI])
+    assert not fd.contiene("\n".join(RIGHE_REALI), "Residuo da incassare 9.250,00")
+    assert not fd.localizza(pdf, 1, "Residuo da incassare riportato nel documento: € 9.250,00")["localizzato"]
+
+
+def test_verifica_e_localizza_non_possono_discordare_su_punteggiatura_e_simboli():
+    """Proprietà: tutto ciò che `verifica` marca ok su un PDF si evidenzia (stesso confronto a token)."""
+    pdf = _pdf([RIGHE_REALI])
+    testo = "\n".join(RIGHE_REALI)
+    for quote in ["€ 8.850,00", "euro 8.850,00", "“Residuo da incassare”", "(8.850,00)", "6.400,00.", "L’IVA non è compresa"]:
+        if fd.contiene(testo, quote):
+            assert fd.localizza(pdf, 1, quote)["localizzato"], quote
+
+
+def test_riquadro_allineato_alla_pagina_disegnata_anche_con_glifi_a_larghezza_nulla():
+    """Replica del collaudo: pdfminer misura «€» con larghezza 0 e sfasa le parole di ~5 pt; il riquadro deve seguire il motore di resa (pdfium)."""
+    import pypdfium2 as pdfium
+    pdf = _pdf([RIGHE_REALI])
+    r = fd.localizza(pdf, 1, "Residuo da incassare riportato nel documento: € 8.850,00")
+    box = r["riquadri"][0]
+    doc = pdfium.PdfDocument(pdf); pag = doc[0]; tp = pag.get_textpage(); n = tp.count_chars(); t = tp.get_text_range(0, n)
+    a = t.index("Residuo"); b = t.index("8.850,00") + 8
+    l = tp.get_charbox(a, loose=False)[0]; rr = tp.get_charbox(b - 1, loose=False)[2]; W = pag.get_width()
+    assert abs(box["x"] * W - l) <= 2.5 and abs((box["x"] + box["w"]) * W - rr) <= 5.5     # +punto finale della parola; prima: sfasato di 5-8 pt e tagliato
+    tp.close(); pag.close(); doc.close()

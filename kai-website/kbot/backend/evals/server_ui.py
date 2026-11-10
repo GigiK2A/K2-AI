@@ -57,13 +57,18 @@ if os.environ.get("UI_SEED_FASCICOLO") == "1":
     import io, hashlib
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
-    _b = io.BytesIO(); _c = canvas.Canvas(_b, pagesize=A4)
-    _c.drawString(60, 780, "Commessa DEMO-001 - Riepilogo"); _c.showPage(); _c.drawString(60, 780, "Residuo da liquidare 7.890,00 euro"); _c.showPage(); _c.save()
+    # replica FITTIZIA del documento del collaudo (KBot_Test_04_Riepilogo_Commessa.pdf): stesse righe, con «€», punti finali e frasi su due righe
+    _RIGHE = ["RIEPILOGO ECONOMICO DI COMMESSA", "Commessa UM-26-041 | Adeguamento siti tecnici", "TOTALE IMPONIBILE € 15.250,00",
+              "• Acconto ricevuto il 15/10/2026: € 6.400,00.", "• Residuo da incassare riportato nel documento: € 8.850,00.",
+              "• Accordo commerciale, estratto: «Il corrispettivo relativo alle pratiche autorizzative matura alla data di deposito e", "acquisizione del numero di protocollo»."]
+    _b = io.BytesIO(); _c = canvas.Canvas(_b, pagesize=A4); _y = 780
+    for _r in _RIGHE: _c.drawString(60, _y, _r); _y -= 20
+    _c.showPage(); _c.save()
     db.storage.bucket.files["seed/Riepilogo.pdf"] = _b.getvalue()
     _U = "00000000-0000-4000-8000-000000000001"
     _f = db.table("kbot_fascicoli").insert({"user_id": _U, "tipo": "commessa", "codice": "DEMO-001", "titolo": "Commessa di prova", "stato": "aperto"}).execute().data[0]
     db.table("kbot_fascicolo_documenti").insert({"fascicolo_id": _f["id"], "user_id": _U, "name": "Riepilogo.pdf", "type": "application/pdf", "size": 100, "path": "seed/Riepilogo.pdf",
-        "extracted_text": "Commessa DEMO-001 - Riepilogo\nResiduo da liquidare 7.890,00 euro", "versione": 1, "serie": "riepilogo", "stato": "caricato"}).execute()
+        "extracted_text": "\n".join(_RIGHE), "versione": 1, "serie": "riepilogo", "stato": "caricato"}).execute()
     for _i in range(230):
         db.table("kbot_fascicolo_voci").insert({"fascicolo_id": _f["id"], "user_id": _U, "tipo": "dato", "chiave": f"voce_{_i}", "testo": f"Voce {_i} " + "descrizione lunga " * 6,
             "valore": str(1000 + _i), "verifica": "non_verificato", "stato_record": "attuale", "origine": "letto_da_documento", "fonti": [{"origine": "documento", "doc": "x", "pag": 1}]}).execute()
@@ -115,8 +120,8 @@ if os.environ.get("UI_LLM_FINTO") == "1":
                     import re as _r
                     m = _r.search(r"\[doc:([0-9a-f]{12})\]", res)
                     if "PARZIALE" in res or "COMPLETO" in res:
-                        return _Flusso("Ho letto il fascicolo: " + ("parziale, servono altre pagine." if "PARZIALE" in res else "completo.") + " [[fonte|%s|1|Residuo da liquidare 7.890,00 euro]]" % (m.group(1) if m else "x"))
-                    return _Flusso("Il residuo da liquidare è 7.890,00 € [[fonte|%s|1|Residuo da liquidare 7.890,00 euro]]." % (m.group(1) if m else "x"))
+                        return _Flusso("Ho letto il fascicolo: " + ("parziale, servono altre pagine." if "PARZIALE" in res else "completo.") + " [[fonte|%s|1|Residuo da incassare riportato nel documento: € 8.850,00]]" % (m.group(1) if m else "x"))
+                    return _Flusso("Il residuo da liquidare è 7.890,00 € [[fonte|%s|1|Residuo da incassare riportato nel documento: € 8.850,00]]." % (m.group(1) if m else "x"))
                 if "apri il documento" in ultimo:
                     return _Flusso("", tool=("fascicolo_documento", {"fascicolo": "DEMO-001", "documento": "Riepilogo", "query": "residuo da liquidare"}))
                 return _Flusso("", tool=("fascicolo_apri", {"fascicolo": "DEMO-001"}))

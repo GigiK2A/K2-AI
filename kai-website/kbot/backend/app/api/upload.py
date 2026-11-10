@@ -633,16 +633,12 @@ def vista_documento(voce: dict, pag: int, quote: str, zoom: float):
         out.update({"tipo": "pdf", "nome": nome})
     else:
         testo = str(voce.get("extractedText") or voce.get("extracted_text") or voce.get("extractedSummary") or "")
-        nq = fonti_documenti.norm(quote)
         pos, fine = -1, 0
-        if nq:
-            import re as _re
-            parole = [(m.start(), m.end(), fonti_documenti.norm(m.group())) for m in _re.finditer(r"\S+", testo)]
-            qt = nq.split()
-            for i in range(len(parole) - len(qt) + 1):
-                if [w[2] for w in parole[i:i + len(qt)]] == qt:
-                    pos, fine = parole[i][0], parole[i + len(qt) - 1][1]
-                    break
+        import re as _re
+        parole = [(m.start(), m.end(), m.group()) for m in _re.finditer(r"\S+", testo)]
+        tr = fonti_documenti.trova_in_parole([w[2] for w in parole], quote) if quote else None
+        if tr:
+            pos, fine = parole[tr[0]][0], parole[tr[1]][1]
         out = {"ok": True, "tipo": "testo", "nome": nome, "testo": testo[:200000], "evidenzia": [pos, fine] if pos >= 0 else None, "localizzato": pos >= 0}
     return JSONResponse(out, headers={"Cache-Control": "no-store"})
 

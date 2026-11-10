@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 _MARC = re.compile(r"\[\[\s*fonte\s*\|([^|\]]*)\|([^|\]]*)\|([^\]]*?)\s*\]\]", re.I)
 
@@ -38,6 +38,37 @@ def norm(t: str) -> str:
     t = unicodedata.normalize("NFKC", str(t or "")).casefold().replace("€", " euro ")
     t = re.sub(r"[^\w.,%/-]+", " ", t)
     return re.sub(r"\s+", " ", t).strip()
+
+
+def token(t: str) -> List[str]:
+    """Parole normalizzate SENZA la punteggiatura ai bordi («8.850,00.» e «8.850,00» sono lo stesso token): è il confronto usato sia per
+    verificare la citazione sia per evidenziarla, così i due controlli non possono più dare esiti diversi."""
+    return [w for w in (x.strip(".,-/%") for x in norm(t).split()) if w]
+
+
+def contiene(testo: str, quote: str) -> bool:
+    q = token(quote)
+    if not q:
+        return False
+    t = token(testo)
+    return any(t[i:i + len(q)] == q for i in range(len(t) - len(q) + 1))
+
+
+def trova_in_parole(parole_testo: List[str], quote: str) -> Optional[Tuple[int, int]]:
+    """Primo intervallo [i, j] di PAROLE del documento (indici) che riproduce alla lettera il passaggio citato, o None.
+    Una parola del PDF può valere più token («€8.850,00» → euro, 8.850,00): si appiattisce e si risale agli indici."""
+    q = token(quote)
+    if not q:
+        return None
+    piatti: List[Tuple[str, int]] = []
+    for i, w in enumerate(parole_testo):
+        for tk in token(w):
+            piatti.append((tk, i))
+    k = len(q)
+    for a in range(len(piatti) - k + 1):
+        if [x[0] for x in piatti[a:a + k]] == q:
+            return piatti[a][1], piatti[a + k - 1][1]
+    return None
 
 
 def istruzioni() -> str:
@@ -118,16 +149,16 @@ def verifica(testo: str, collected: dict, session_id: str, chunks: Optional[List
         quote = re.sub(r"[|\[\]]", " ", quote)[:200]
         nq = norm(quote)
         if p in testi:
-            if nq and nq in norm(testi[p]):
+            if nq and contiene(testi[p], quote):
                 return f"[[fonte|{d}|{p}|{quote}|ok]]"
             # il testo non è in quella pagina: se è in un'altra, la pagina giusta è quella; mai accettare a occhio
             if nq:
                 for pp, tt in testi.items():
-                    if pp and nq in norm(tt):
+                    if pp and contiene(tt, quote):
                         return f"[[fonte|{d}|{pp}|{quote}|ok]]"
             return f"[[fonte|{d}|{p}||pag]]" if p else ""
         if 0 in testi and len(testi) == 1:             # formato senza pagine: si verifica sul testo intero
-            if nq and nq in norm(testi[0]):
+            if nq and contiene(testi[0], quote):
                 return f"[[fonte|{d}|0|{quote}|ok]]"
             return ""
         return ""                                       # pagina inesistente nel documento
@@ -162,9 +193,9 @@ def _auto_collega(testo: str, docs: Dict[str, dict], pagine: Dict[str, Dict[int,
             t = per_pag.get(n)
             if t is None:
                 continue
-            nt = norm(t)
+            nt = token(t)
             for num in reversed(numeri):
-                if norm(num) in nt.split():
+                if norm(num).strip(".,-/%") in nt:
                     scelta = (d, num, "ok"); break
             if scelta:
                 break
@@ -205,6 +236,52 @@ def _rendi_pagina(pdf_bytes: bytes, indice: int, scala: float) -> bytes:
     return buf.getvalue()
 
 
+def _geometria_pdfium(pdf_bytes: bytes, indice: int, quote: str) -> List[dict]:
+    """Riquadri del passaggio calcolati dal motore che DISEGNA la pagina (pdfium): coincidono con l'immagine servita al visualizzatore.
+    Le metriche di pdfplumber/pdfminer possono differire di qualche punto (glifi come «€» con larghezza nulla nei font standard):
+    con quelle l'evidenziazione cadeva sfasata. Vuoto se il passaggio non si trova alla lettera nel testo della pagina."""
+    import pypdfium2 as pdfium
+
+    with _PDFIUM:
+        doc = pdfium.PdfDocument(pdf_bytes)
+        try:
+            pag = doc[indice]
+            try:
+                tp = pag.get_textpage()
+                try:
+                    n = tp.count_chars()
+                    testo = tp.get_text_range(0, n) if n else ""
+                    if len(testo) != n:
+                        return []
+                    parole = [(m.start(), m.end()) for m in re.finditer(r"\S+", testo)]
+                    tr = trova_in_parole([testo[a:b] for a, b in parole], quote)
+                    if not tr:
+                        return []
+                    a, b = parole[tr[0]][0], parole[tr[1]][1]
+                    W, H = float(pag.get_width()), float(pag.get_height())
+                    righe: List[List[tuple]] = []
+                    for k in range(a, b):
+                        if testo[k].isspace():
+                            continue
+                        l, bo, r, t = tp.get_charbox(k, loose=False)
+                        # stessa riga finché il carattere si sovrappone in verticale alla fascia della riga (punti e virgole sono bassi, «€» è alto)
+                        if righe and bo <= max(x[3] for x in righe[-1]) and t >= min(x[1] for x in righe[-1]):
+                            righe[-1].append((l, bo, r, t))
+                        else:
+                            righe.append([(l, bo, r, t)])
+                    out = []
+                    for box in righe:
+                        l = min(x[0] for x in box); r = max(x[2] for x in box); bo = min(x[1] for x in box); t = max(x[3] for x in box)
+                        out.append({"x": max(0.0, (l - 1) / W), "y": max(0.0, (H - t - 1) / H), "w": (r - l + 2) / W, "h": (t - bo + 2) / H})
+                    return out
+                finally:
+                    tp.close()
+            finally:
+                pag.close()
+        finally:
+            doc.close()
+
+
 def localizza(pdf_bytes: bytes, pagina: int, quote: str, zoom: float = 1.4) -> dict:
     """Pagina PDF resa in PNG (base64) + riquadri normalizzati (0-1) del testo citato, solo se TROVATO nelle parole reali."""
     import base64
@@ -219,21 +296,23 @@ def localizza(pdf_bytes: bytes, pagina: int, quote: str, zoom: float = 1.4) -> d
         page = pdf.pages[pagina - 1]
         W, H = float(page.width), float(page.height)
         rects: List[dict] = []
-        qt = norm(quote).split()
-        if qt:
-            words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
-            nw = [norm(w["text"]) for w in words]
-            k = len(qt)
-            for i in range(len(words) - k + 1):
-                if [x for x in nw[i:i + k]] == qt:
-                    righe: Dict[int, List[dict]] = {}
-                    for w in words[i:i + k]:
-                        righe.setdefault(round(float(w["top"]) / 3), []).append(w)
-                    for ws in righe.values():
-                        x0 = min(float(w["x0"]) for w in ws); x1 = max(float(w["x1"]) for w in ws)
-                        t = min(float(w["top"]) for w in ws); b = max(float(w["bottom"]) for w in ws)
-                        rects.append({"x": x0 / W, "y": t / H, "w": (x1 - x0) / W, "h": (b - t) / H})
-                    break
+        if quote:
+            try:
+                rects = _geometria_pdfium(pdf_bytes, pagina - 1, quote)
+            except Exception:
+                rects = []
+        words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
+        trovato = trova_in_parole([w["text"] for w in words], quote) if (quote and not rects) else None   # ripiego: geometria di pdfplumber
+        if trovato:
+            i0, i1 = trovato
+            righe: Dict[int, List[dict]] = {}
+            for w in words[i0:i1 + 1]:
+                righe.setdefault(round(float(w["top"]) / 3), []).append(w)
+            for ws in righe.values():
+                x0 = min(float(w["x0"]) for w in ws); x1 = max(float(w["x1"]) for w in ws)
+                t = min(float(w["top"]) for w in ws); b = max(float(w["bottom"]) for w in ws)
+                pad = 1.5   # punti PDF: il rendering di pdfium e le metriche di pdfplumber differiscono di un soffio ai bordi
+                rects.append({"x": max(0.0, (x0 - pad) / W), "y": max(0.0, (t - 1) / H), "w": (x1 - x0 + 2 * pad) / W, "h": (b - t + 2) / H})
         png = _rendi_pagina(pdf_bytes, pagina - 1, max(0.8, min(zoom, 3.0)))
         return {"ok": True, "pagina": pagina, "pagine": n, "larghezza": W, "altezza": H,
                 "immagine": base64.b64encode(png).decode(), "riquadri": rects,

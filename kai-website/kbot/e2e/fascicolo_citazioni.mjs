@@ -28,6 +28,9 @@ if (nc) {
   await p.waitForSelector('[data-testid="evidenziazione"], [data-testid="visualizzatore"] [role="alert"]', { timeout: 20000 }).catch(() => {});
   ok('F3 si apre il PDF originale del fascicolo nel visualizzatore', await p.locator('[data-testid="visualizzatore"]').isVisible());
   ok('F4 il passaggio citato è evidenziato', (await p.locator('[data-testid="evidenziazione"]').count()) > 0, (await p.locator('[data-testid="visualizzatore"]').innerText()).slice(0, 80).replace(/\n/g, ' | '));
+  const stato = await p.locator('[data-testid="visualizzatore"] [role="status"]').innerText().catch(() => '');
+  ok('F4b il visualizzatore NON dice «evidenziazione non disponibile» e riporta il passaggio citato', !/non disponibile/i.test(stato) && /8\.850,00/.test(stato), stato.slice(0, 90));
+  ok('F4c il riquadro cade sulla riga giusta (area alta della pagina, larghezza > 0)', await p.evaluate(() => { const e = document.querySelector('[data-testid="evidenziazione"]'); if (!e) return false; const r = e.getBoundingClientRect(); const pg = e.parentElement.getBoundingClientRect(); return r.width > 20 && r.height > 3 && (r.top - pg.top) / pg.height < 0.3; }));
   await p.screenshot({ path: 'fascicolo-citazione.png' });
   await p.locator('[data-testid="chiudi-visualizzatore"]').click(); await p.waitForTimeout(400);
   ok('F5 si torna alla conversazione', !(await p.locator('[data-testid="visualizzatore"]').count()) && (await p.locator('main').first().innerText()).includes('Apri il documento Riepilogo'));
