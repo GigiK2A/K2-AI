@@ -67,11 +67,11 @@ def schema_versioni_ok() -> Optional[bool]:
     if time.monotonic() - t < 60 and "v" in _SCHEMA_OK:
         return _SCHEMA_OK["v"]
     try:
-        _db().table(T_VOCI).select("stato_record").limit(1).execute()
+        _db().table(T_VOCI).select("stato_record,revisione").limit(1).execute()
         _db().table("kbot_fascicolo_eventi").select("id").limit(1).execute()
         v: Optional[bool] = True
     except Exception as e:
-        v = False if "stato_record" in str(e) or "kbot_fascicolo_eventi" in str(e) or "does not exist" in str(e) else None
+        v = False if "stato_record" in str(e) or "revisione" in str(e) or "kbot_fascicolo_eventi" in str(e) or "does not exist" in str(e) else None
     _SCHEMA_OK.update({"t": time.monotonic(), "v": v})
     return v
 
@@ -196,7 +196,7 @@ def salva(ctx: Contesto, *, fascicolo: str = "", tipo: str = "commessa", codice:
         avvisi += note_doc
     _db().table(T_FASC).update({"updated_at": _ora()}).eq("id", fid).eq("user_id", uid).execute()
     return {"ok": True, "fascicolo": fid, "codice": f.get("codice"), "titolo": f.get("titolo"), "nuovo": nuovo,
-            "voci_salvate": len(salvate), "documenti_allegati": n_doc, "avvisi": avvisi, "esiti": esiti}
+            "voci_salvate": len(salvate), "documenti_allegati": n_doc, "avvisi": avvisi, "esiti": esiti, "id_salvati": [str(i) for i in salvate]}
 
 
 def _serie(nome: str) -> str:
@@ -408,11 +408,11 @@ def blocco_prompt() -> str:
 
 
 # ── strumenti del modello ──────────────────────────────────────────────────────────────────────────────
-NOMI = ("fascicolo_cerca", "fascicolo_apri", "fascicolo_collega", "fascicolo_salva", "fascicolo_voce", "fascicolo_confronta", "fascicolo_duplicati", "fascicolo_documento")
+NOMI = ("fascicolo_cerca", "fascicolo_apri", "fascicolo_collega", "fascicolo_salva", "fascicolo_aggiorna", "fascicolo_voce", "fascicolo_confronta", "fascicolo_duplicati", "fascicolo_documento")
 _NUOVO = {"tipo": {"type": "string", "enum": sorted(TIPI_VOCE)}, "testo": {"type": "string", "description": "Cosa si registra, in una frase."},
           "chiave": {"type": "string", "description": "Nome STABILE del dato (es. imponibile_dichiarato, pratiche_protocollate): serve a riconoscere duplicati e cambi di valore."},
           "valore": {"type": "string"}, "unita": {"type": "string", "description": "es. EUR, pratiche"}, "periodo": {"type": "string"},
-          "contesto": {"type": "string", "description": "Prestazione o voce di contratto a cui si riferisce."},
+          "contesto": {"type": "string", "description": "SOLO un'etichetta breve (max 40 caratteri) della prestazione/voce di contratto. Non scriverci note o provenienza."},
           "origine": {"type": "string", "enum": ["letto_da_documento", "dichiarato_utente", "calcolato"]},
           "stato": {"type": "string", "enum": ["attuale", "da_verificare"], "description": "da_verificare per revisioni solo dichiarate"},
           "doc": {"type": "string", "description": "ID documento dell'estratto da cui viene il dato."}, "pag": {"type": "integer"},
@@ -432,13 +432,22 @@ def definizioni() -> List[dict]:
         {"name": "fascicolo_collega", "description": "Collega QUESTA conversazione a un fascicolo (non carica i documenti: si aprono con fascicolo_documento).",
          "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}}, "required": ["fascicolo"]}},
         {"name": "fascicolo_salva", "description": (
-            "Crea un fascicolo o vi aggiunge record. Il sistema evita i duplicati (stesso valore: aggiunge solo la fonte) e, se il valore è DIVERSO da quello corrente, "
+            "Crea un fascicolo o vi aggiunge informazioni NUOVE (per cambiare un record esistente usa fascicolo_aggiorna). Il sistema evita i duplicati (stesso valore: aggiunge solo la fonte) e, se il valore è DIVERSO da quello corrente, "
             "crea una PROPOSTA «da_verificare» senza sostituire nulla. Funziona SOLO se l'utente lo ha chiesto o confermato nel suo ultimo messaggio."),
          "input_schema": {"type": "object", "properties": {
              "fascicolo": {"type": "string"}, "tipo": {"type": "string", "enum": sorted(TIPI_FASCICOLO)}, "codice": {"type": "string"}, "titolo": {"type": "string"},
              "stato": {"type": "string", "enum": ["aperto", "in_corso", "chiuso"]}, "voci": {"type": "array", "items": voce}, "allega_documenti": {"type": "boolean"}}}},
+        {"name": "fascicolo_aggiorna", "description": (
+            "CAMBIA il valore di un record GIÀ ESISTENTE (id a 6+ caratteri, da fascicolo_apri) mantenendone l'ID: il valore precedente resta nello storico. NON crea mai record. "
+            "Usalo per ogni «aggiorna/modifica/correggi l'importo di…»: fascicolo_salva serve solo per informazioni NUOVE. Idempotente (stesso valore = nessuna modifica). "
+            "`revisione_attesa` (la rev mostrata da fascicolo_apri) protegge da modifiche concorrenti. Richiede la conferma dell'utente."),
+         "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "record": {"type": "string", "description": "id del record da aggiornare"},
+                                                           "valore": {"type": "string", "description": "nuovo valore"}, "testo": {"type": "string"}, "unita": {"type": "string"},
+                                                           "motivo": {"type": "string", "description": "perché cambia (obbligatorio)"}, "revisione_attesa": {"type": "integer"},
+                                                           "doc": {"type": "string"}, "pag": {"type": "integer"}, "quote": {"type": "string"}},
+                          "required": ["fascicolo", "record", "motivo"]}},
         {"name": "fascicolo_voce", "description": (
-            "Operazioni su un record (id a 8+ caratteri). `storico`: tutte le versioni e la cronologia (anche solo `alla_data`). Le altre MODIFICANO e richiedono la conferma "
+            "Operazioni su un record (id a 6+ caratteri). `storico`: tutte le versioni e la cronologia (anche solo `alla_data`). Le altre MODIFICANO e richiedono la conferma "
             "dell'utente: `sostituisci` (conferma una proposta: il vecchio valore diventa superato, resta nello storico), `contesta`, `archivia`/`scarta`, `conferma` (soggetto autorizzato), `verifica_esterna`."),
          "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "azione": {"type": "string", "enum": ["storico", "sostituisci", "contesta", "archivia", "scarta", "conferma", "verifica_esterna"]},
                                                            "record": {"type": "string", "description": "id (o parte del testo, solo per storico)"}, "motivo": {"type": "string"}, "alla_data": {"type": "string"}},
@@ -459,7 +468,8 @@ def definizioni() -> List[dict]:
 SYSTEM_HINT = (
     "\n\nSTRUMENTI MEMORIA AZIENDALE (`fascicolo_*`): i fascicoli persistono fra le conversazioni. Leggi con cerca/apri; apri i documenti con `fascicolo_documento` (recupero mirato). "
     "SCRIVI solo dopo che l'utente ha chiesto o confermato: prima mostra il riepilogo di cosa salveresti/cambieresti (valori, fonti) e aspetta il sì; se il sistema risponde «NON SALVATO/NON ESEGUITO», "
-    "chiedi conferma, non ritentare. Un valore DIVERSO non sovrascrive: diventa proposta, e si sostituisce solo con la conferma (`fascicolo_voce` «sostituisci»). Una revisione solo dichiarata "
+    "chiedi conferma, non ritentare. PER CAMBIARE un record esistente: `fascicolo_apri` (id e rev) poi `fascicolo_aggiorna` — mai `fascicolo_salva`, che serve solo per informazioni nuove; se l'aggiornamento "
+    "fallisce, riferisci l'errore: NON creare un record nuovo come ripiego. Un valore DIVERSO salvato con fascicolo_salva non sovrascrive: diventa proposta, e si sostituisce solo con la conferma (`fascicolo_voce` «sostituisci»). Una revisione solo dichiarata "
     "(senza nuovo documento) resta «da_verificare». Non scegliere da solo il valore più recente: distingui ultimo documento ricevuto, verificato, approvato e valore in uso. "
     "Riporta sempre stato, origine e fonte dei dati; non dire di aver salvato o modificato se lo strumento non lo conferma.\n")
 
@@ -494,8 +504,9 @@ def esegui(nome: str, args: dict) -> str:
             if not r.get("ok"):
                 return "NON SALVATO: " + str(r.get("errore"))
             e = r["esiti"]
-            return (f"Salvato nel fascicolo {r.get('codice') or r.get('titolo')}{' (nuovo)' if r['nuovo'] else ''}: {e['creata']} record nuovi, {e['duplicato']} già presenti (non duplicati), "
+            return (f"ESITO: ok. Salvato nel fascicolo {r.get('codice') or r.get('titolo')}{' (nuovo)' if r['nuovo'] else ''}: {e['creata']} record nuovi, {e['duplicato']} già presenti (non duplicati), "
                     f"{e['fonte_aggiunta']} con fonte aggiunta, {e['proposta']} proposte di aggiornamento in attesa di conferma, {r['documenti_allegati']} documenti."
+                    + (f"\nId creati/proposti: {', '.join(i[:8] for i in r['id_salvati'])}." if r.get("id_salvati") else "")
                     + ("\n" + "\n".join(r["avvisi"]) if r["avvisi"] else ""))
         f = _fascicolo(c, a)
         if not f:
@@ -511,6 +522,16 @@ def esegui(nome: str, args: dict) -> str:
             return f"Conversazione collegata al fascicolo {f.get('codice') or f.get('titolo')} ({n} documenti conservati, apribili con fascicolo_documento).\n" + formatta_fascicolo(c.user_id, f, 12)
         if nome == "fascicolo_confronta":
             return V.confronta(c.user_id, fid, [x for x in (a.get("valori") or []) if isinstance(x, dict)], bool(a.get("documento_caricato")))
+        if nome == "fascicolo_aggiorna":
+            if not conferma_utente(c):
+                return "ESITO: errore NON_ESEGUITO — " + _senza_conferma(f"aggiornare il record {a.get('record')} a {a.get('valore')}")
+            if not str(a.get("motivo") or "").strip():
+                return "ESITO: errore MOTIVO_MANCANTE — indica il motivo dell'aggiornamento."
+            fo = {k: a.get(k) for k in ("doc", "pag", "quote") if a.get(k) not in (None, "")}
+            r = V.aggiorna(c, fid, str(a.get("record") or ""), a.get("valore"), a.get("testo"), a.get("unita"), str(a.get("motivo") or ""),
+                           a.get("revisione_attesa"), fo or None, "utente")
+            return (("ESITO: ok" + (" (idempotente)" if r.get("idempotente") else "") if r["ok"] else f"ESITO: errore {r['codice']}") + f" — {r['dettaglio']}"
+                    + (f"\n{{\"ok\": true, \"id\": \"{r['id']}\", \"revisione\": {r['revisione']}, \"valore\": \"{r.get('valore')}\"}}" if r["ok"] else ""))
         if nome == "fascicolo_voce":
             act = str(a.get("azione") or "")
             if act == "storico":
@@ -518,7 +539,7 @@ def esegui(nome: str, args: dict) -> str:
             if not conferma_utente(c):
                 return _senza_conferma(f"{act} sul record {a.get('record')}")
             r = V.azione(c, fid, str(a.get("record") or ""), act, str(a.get("motivo") or ""), "utente")
-            return ("ESEGUITO: " + r["dettaglio"]) if r.get("ok") else "NON ESEGUITO: " + str(r.get("errore"))
+            return ("ESITO: ok — ESEGUITO: " + r["dettaglio"]) if r.get("ok") else "ESITO: errore — NON ESEGUITO: " + str(r.get("errore"))
         if nome == "fascicolo_duplicati":
             gr = V.duplicati(c.user_id, fid)
             if a.get("azione") != "consolida":

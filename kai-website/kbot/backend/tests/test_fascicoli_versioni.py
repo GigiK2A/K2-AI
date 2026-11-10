@@ -68,10 +68,10 @@ def test_fase3_revisione_dichiarata_non_sostituisce_poi_conferma_e_storico(db):
     prop = [v for v in db.d[F.T_VOCI] if v["stato_record"] == "da_verificare" and v["chiave"] == "pratiche_protocollate"][0]
     # sostituire richiede la conferma dell'utente (non basta che lo chieda il modello)
     ctx("A", utente="cosa ne pensi?")
-    assert F.esegui("fascicolo_voce", {"fascicolo": "UM-26-041", "azione": "sostituisci", "record": prop["id"]}).startswith("NON ESEGUITO")
+    assert F.esegui("fascicolo_voce", {"fascicolo": "UM-26-041", "azione": "sostituisci", "record": prop["id"]}).count("NON ESEGUITO") == 1
     ctx("A", utente="Sì, conferma la sostituzione: è arrivato il documento")
     out = F.esegui("fascicolo_voce", {"fascicolo": "UM-26-041", "azione": "sostituisci", "record": prop["id"][:8], "motivo": "nuova versione 2 caricata e verificata"})
-    assert out.startswith("ESEGUITO")
+    assert out.startswith("ESITO: ok") and "ESEGUITO:" in out
     vecchio = [v for v in db.d[F.T_VOCI] if v["chiave"] == "pratiche_protocollate" and v["stato_record"] == "superata"][0]
     assert vecchio["valore"] == "6" and vecchio["sostituita_da"] == prop["id"] and vecchio["valido_fino"]
     assert attuali(db, "pratiche_protocollate")[0]["valore"] == "8" and attuali(db, "pratiche_protocollate")[0]["sostituisce"] == vecchio["id"]

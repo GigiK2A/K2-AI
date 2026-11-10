@@ -53,7 +53,7 @@ def test_con_richiesta_esplicita_salva_e_traccia_fonte(db):
     ctx("A", utente="Sì, salva nel fascicolo UM-26-041 l'imponibile corretto 15.650", assistente="Vuoi che lo registri nel fascicolo?")
     out = F.esegui("fascicolo_salva", {"codice": "UM-26-041", "titolo": "Commessa Rossi", "voci": [
         {"tipo": "dato", "testo": "Imponibile corretto", "chiave": "imponibile", "valore": "15.650", "doc": "abc", "pag": 1, "quote": "15.250,00"}]})
-    assert out.startswith("Salvato") and "1 record nuovi" in out
+    assert out.startswith("ESITO: ok. Salvato") and "1 record nuovi" in out
     v = db.d[F.T_VOCI][0]
     assert v["fonte"]["doc"] == "abc" and v["fonte"]["pag"] == 1 and v["verifica"] == "non_verificato" and v["data_verifica"]
 
@@ -72,7 +72,7 @@ def test_valore_diverso_diventa_proposta_non_sovrascrive(db):
     F.esegui("fascicolo_salva", {"codice": "C1", "titolo": "C", "voci": [{"testo": "Imponibile", "chiave": "imponibile", "valore": "15.250"}]})
     ctx("A", utente="salva anche questo")
     out = F.esegui("fascicolo_salva", {"fascicolo": "C1", "voci": [{"testo": "Imponibile da PDF", "chiave": "imponibile", "valore": "15.650"}]})
-    assert "1 proposte" in out and "non sostituisce" in out
+    assert "1 proposte" in out and "NIENTE è stato sostituito" in out and "fascicolo_aggiorna" in out
     stati = sorted((v["valore"], v["stato_record"]) for v in db.d[F.T_VOCI])
     assert stati == [("15.250", "attuale"), ("15.650", "da_verificare")]
 

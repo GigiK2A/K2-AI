@@ -103,6 +103,29 @@ def _jaccard(a: set, b: set) -> float:
     return len(a & b) / len(a | b) if a and b else 0.0
 
 
+def _ctx_ok(a: dict, b: dict) -> bool:
+    """Il «contesto» distingue due dati SOLO se è un'etichetta breve (prestazione/voce di contratto) presente in entrambi. Il modello a volte ci scrive
+    una frase di provenienza diversa a ogni chiamata (28C): non deve rendere «diversi» due record uguali."""
+    ca, cb = _vuoto(a.get("contesto")), _vuoto(b.get("contesto"))
+    return not ca or not cb or len(ca) > 40 or len(cb) > 40 or ca == cb
+
+
+def _testo_chiave(v: dict) -> set:
+    return parole(f"{str(v.get('chiave') or '').replace('_', ' ')} {v.get('testo') or ''}")
+
+
+def correlati(a: dict, b: dict) -> float:
+    """Stessa INFORMAZIONE a prescindere dal valore (serve a decidere «aggiornamento» invece di «nuovo record»). 0 = no, altrimenti la somiglianza.
+    Stessa chiave → 1.0; altrimenti stesso tipo e testo (incl. parole della chiave) abbastanza simile (≥ 0.35)."""
+    if a.get("tipo") != b.get("tipo") or _vuoto(a.get("periodo")) != _vuoto(b.get("periodo")) or not _ctx_ok(a, b):
+        return 0.0
+    if (a.get("chiave") or "") and (b.get("chiave") or ""):
+        u_a, u_b = _vuoto(a.get("unita")), _vuoto(b.get("unita"))
+        return 1.0 if (_fold(a.get("chiave")) == _fold(b.get("chiave")) and (not u_a or not u_b or u_a == u_b)) else 0.0
+    j = _jaccard(_testo_chiave(a), _testo_chiave(b))
+    return j if j >= 0.35 else 0.0
+
+
 def equivalenti(a: dict, b: dict) -> bool:
     """Stessa informazione? Con `chiave` in entrambi: stessa firma. Senza: stesso tipo + stessi numeri + parole simili (dati storici)."""
     if a.get("tipo") != b.get("tipo"):
@@ -111,8 +134,8 @@ def equivalenti(a: dict, b: dict) -> bool:
         # l'unità mancante da una parte è un'omissione, non una differenza; periodo e contesto invece distinguono i dati
         u_a, u_b = _vuoto(a.get("unita")), _vuoto(b.get("unita"))
         return (_fold(a.get("chiave")) == _fold(b.get("chiave")) and _vuoto(a.get("periodo")) == _vuoto(b.get("periodo"))
-                and _vuoto(a.get("contesto")) == _vuoto(b.get("contesto")) and (not u_a or not u_b or u_a == u_b))
-    if _vuoto(a.get("periodo")) != _vuoto(b.get("periodo")) or _vuoto(a.get("contesto")) != _vuoto(b.get("contesto")):
+                and _ctx_ok(a, b) and (not u_a or not u_b or u_a == u_b))
+    if _vuoto(a.get("periodo")) != _vuoto(b.get("periodo")) or not _ctx_ok(a, b):
         return False
     na, nb = numeri(a.get("valore")), numeri(b.get("valore"))
     j = _jaccard(parole(a.get("testo")), parole(b.get("testo")))
@@ -160,18 +183,17 @@ def inserisci(ctx, fid: str, v: dict, esistenti: List[dict], attore: str = "mode
              "testo": testo, "valore": str(v.get("valore") or "").strip()[:120] or None, "unita": (str(v.get("unita") or "").strip() or None),
              "periodo": (str(v.get("periodo") or "").strip() or None), "contesto": (str(v.get("contesto") or "").strip()[:120] or None)}
     attivi = [e for e in esistenti if stato_di(e) in ATTIVI]
-    for e in attivi:
-        if not equivalenti(nuova, e):
-            continue
-        if stesso_valore(nuova, e) or not (nuova["valore"] and e.get("valore")):
+    cand = sorted(((correlati(nuova, e), stesso_valore(nuova, e) or not (nuova["valore"] and e.get("valore")), e) for e in attivi), key=lambda x: (-x[1], -x[0]))
+    for sim, uguale, e in [c for c in cand if c[0] > 0][:1]:
+        if uguale:
             fonti = fonti_di(e)
             if any(_chiave_fonte(f) == _chiave_fonte(fonte) for f in fonti) or not (fonte.get("doc") or v.get("pag")) and fonti:
-                return {"esito": "duplicato", "id": str(e["id"]), "dettaglio": "già presente con la stessa fonte"}
+                return {"esito": "duplicato", "id": str(e["id"]), "dettaglio": f"{str(e['id'])[:8]}: già presente (stesso valore e fonte): non duplicato"}
             nuove = fonti + [fonte]
             _upd(uid, str(e["id"]), {"fonti": nuove})
             e["fonti"] = nuove
             evento(uid, fid, str(e["id"]), "aggiunge_fonte", None, {"fonte": fonte}, "stesso valore da un'altra fonte", attore)
-            return {"esito": "fonte_aggiunta", "id": str(e["id"]), "dettaglio": "stesso valore: aggiunta la nuova fonte al record esistente"}
+            return {"esito": "fonte_aggiunta", "id": str(e["id"]), "dettaglio": f"{str(e['id'])[:8]}: stesso valore, aggiunta la nuova fonte al record esistente"}
         # stessa informazione, valore diverso → proposta, mai sovrascrittura
         riga = {"fascicolo_id": fid, "user_id": uid, **nuova, "fonte": fonte, "fonti": [fonte], "origine": org, "verifica": "non_verificato",
                 "stato_record": "da_verificare", "sostituisce": str(e["id"]), "valido_dal": _ora(), "data_verifica": _ora(), "modificato_da": attore,
@@ -181,7 +203,8 @@ def inserisci(ctx, fid: str, v: dict, esistenti: List[dict], attore: str = "mode
         esistenti.append(r)
         evento(uid, fid, str(r["id"]), "propone", _snap(e), {"valore": nuova["valore"], "origine": org}, riga["motivo"], attore)
         return {"esito": "proposta", "id": str(r["id"]), "corrente": str(e["id"]), "dettaglio":
-                f"«{e.get('chiave') or e.get('testo', '')[:40]}»: corrente {e.get('valore')} → proposto {nuova['valore']} (non sostituisce finché l'utente conferma)"}
+                f"{str(e['id'])[:8]} «{e.get('chiave') or e.get('testo', '')[:40]}»: valore corrente {e.get('valore')}, proposto {nuova['valore']} → creata la PROPOSTA {str(r['id'])[:8]} (da_verificare), "
+                f"NIENTE è stato sostituito. Per cambiare il valore del record {str(e['id'])[:8]} usa fascicolo_aggiorna (stesso ID, storico conservato) o fascicolo_voce «sostituisci» {str(r['id'])[:8]}"}
     stato = "da_verificare" if v.get("stato") == "da_verificare" or str(testo).upper().startswith("DA CONFERMARE") else "attuale"
     riga = {"fascicolo_id": fid, "user_id": uid, **nuova, "fonte": fonte, "fonti": [fonte], "origine": org, "verifica": "non_verificato",
             "stato_record": stato, "valido_dal": _ora(), "data_verifica": _ora(), "modificato_da": attore, "firma": firma(nuova),
@@ -192,6 +215,64 @@ def inserisci(ctx, fid: str, v: dict, esistenti: List[dict], attore: str = "mode
     esistenti.append(r)
     evento(uid, fid, str(r["id"]), "crea", None, {"valore": nuova["valore"], "stato": stato, "origine": org}, "", attore)
     return {"esito": "creata", "id": str(r["id"]), "dettaglio": ""}
+
+
+# ── aggiornamento per ID (stesso record, storico conservato) ──────────────────────────────────────────────
+def _trova_record(voci_: List[dict], rif: str) -> Optional[dict]:
+    rif = (rif or "").strip()
+    if len(rif) < 6:
+        return None
+    c = [x for x in voci_ if str(x["id"]).startswith(rif)]
+    return c[0] if len(c) == 1 else None
+
+
+def aggiorna(ctx, fid: str, rif: str, valore: Optional[str] = None, testo: Optional[str] = None, unita: Optional[str] = None, motivo: str = "",
+             revisione_attesa: Optional[int] = None, fonte: Optional[dict] = None, attore: str = "utente") -> dict:
+    """Cambia il valore di un record ESISTENTE mantenendo il suo ID. Il valore precedente resta nello storico (evento `aggiorna` con prima/dopo).
+    Mai crea un record: se il record non esiste o non è modificabile, risponde con un errore strutturato.
+    Idempotente: lo stesso valore già presente non produce modifiche né eventi. Concorrenza: se `revisione_attesa` non coincide, rifiuta."""
+    uid = ctx.user_id
+    F = _F()
+    tutte = F.voci(uid, fid)
+    v = _trova_record(tutte, rif)
+    if not v:
+        return {"ok": False, "codice": "NON_TROVATO", "dettaglio": f"nessun record con id «{rif}» (servono almeno 6 caratteri dell'id, univoci): usa fascicolo_apri per vedere gli id"}
+    vid, rev = str(v["id"]), int(v.get("revisione") or 1)
+    if stato_di(v) in ("superata", "archiviata"):
+        return {"ok": False, "codice": "NON_MODIFICABILE", "id": vid[:8], "dettaglio": f"il record {vid[:8]} è {stato_di(v)}: non si aggiorna; cerca il record attuale con lo storico"}
+    if revisione_attesa is not None and int(revisione_attesa) != rev:
+        return {"ok": False, "codice": "CONFLITTO", "id": vid[:8], "revisione": rev, "dettaglio":
+                f"il record {vid[:8]} è alla revisione {rev}, non {revisione_attesa}: è stato modificato nel frattempo (valore ora {v.get('valore')}); rileggilo e riprova"}
+    nuovo_valore = (str(valore).strip()[:120] if valore not in (None, "") else None)
+    nuovo_testo = (str(testo).strip()[:600] if testo not in (None, "") else None)
+    nuova_unita = (str(unita).strip()[:20] if unita not in (None, "") else None)
+    cambia = {}
+    if nuovo_valore is not None and not (stesso_valore({"valore": nuovo_valore}, v) or _fold(nuovo_valore) == _fold(v.get("valore"))):
+        cambia["valore"] = nuovo_valore
+    if nuovo_testo is not None and nuovo_testo != v.get("testo"):
+        cambia["testo"] = nuovo_testo
+    if nuova_unita is not None and nuova_unita != v.get("unita"):
+        cambia["unita"] = nuova_unita
+    if not cambia and not fonte:
+        return {"ok": True, "idempotente": True, "id": vid[:8], "revisione": rev, "valore": v.get("valore"),
+                "dettaglio": f"{vid[:8]} ha già questo valore ({v.get('valore')}), revisione {rev}: nessuna modifica, nessun nuovo record"}
+    prima = {k: v.get(k) for k in ("valore", "testo", "unita", "verifica", "stato_record")}
+    prima["revisione"] = rev
+    patch = dict(cambia)
+    patch.update({"revisione": rev + 1, "modificato_da": attore, "motivo": (motivo or None) and motivo[:300], "data_verifica": _ora()})
+    if "valore" in cambia and v.get("verifica") in ("confermato", "verificato"):
+        patch["verifica"] = "non_verificato"          # la conferma valeva per il vecchio valore
+    if fonte:
+        fo = {k: fonte[k] for k in ("doc", "pag", "quote") if fonte.get(k) not in (None, "")}
+        fo.update({"session_id": ctx.session_id, "origine": "documento" if fo.get("doc") else "utente"})
+        if not any(_chiave_fonte(f) == _chiave_fonte(fo) for f in fonti_di(v)):
+            patch["fonti"] = fonti_di(v) + [fo]
+    _upd(uid, vid, patch)
+    dopo = {k: patch.get(k, v.get(k)) for k in ("valore", "testo", "unita", "verifica")}
+    dopo["revisione"] = rev + 1
+    evento(uid, fid, vid, "aggiorna", prima, dopo, motivo, attore)
+    return {"ok": True, "id": vid[:8], "revisione": rev + 1, "valore": dopo["valore"], "precedente": prima["valore"], "dettaglio":
+            f"{vid[:8]} aggiornato: revisione {rev}→{rev + 1}, valore {prima['valore']} → {dopo['valore']}. Stesso ID, nessun nuovo record; il valore precedente è nello storico"}
 
 
 # ── azioni dell'utente sui record (da chiamare solo dopo la conferma) ──────────────────────────────────
@@ -262,7 +343,15 @@ def storico(uid: str, fid: str, rif: str = "", alla_data: str = "") -> str:
                 and (not x.get("valido_fino") or str(x["valido_fino"]) > d)]
         if rif:
             vivi = [x for x in vivi if rif.casefold() in f"{x.get('chiave') or ''} {x.get('testo') or ''}".casefold() or str(x["id"]).startswith(rif)]
-        return (f"Valori considerati validi al {alla_data[:10]}:\n" + "\n".join(riga(x) for x in vivi)) if vivi else f"Nessun valore valido al {alla_data[:10]}."
+        # record aggiornati per ID dopo quella data: il valore di allora è il «prima» del primo aggiornamento successivo
+        evs = [e for e in _F()._db().table("kbot_fascicolo_eventi").select("*").eq("user_id", uid).eq("fascicolo_id", fid).execute().data or [] if e.get("azione") == "aggiorna"]
+        righe_d = []
+        for x in vivi:
+            succ = sorted([e for e in evs if str(e.get("voce_id")) == str(x["id"]) and str(e.get("created_at") or "") > d], key=lambda e: str(e.get("created_at")))
+            if succ:
+                x = {**x, "valore": (succ[0].get("prima") or {}).get("valore"), "testo": (succ[0].get("prima") or {}).get("testo") or x.get("testo")}
+            righe_d.append(riga(x))
+        return (f"Valori considerati validi al {alla_data[:10]}:\n" + "\n".join(righe_d)) if vivi else f"Nessun valore valido al {alla_data[:10]}."
     base = next((x for x in tutte if str(x["id"]).startswith(rif) and len(rif) >= 6), None)
     if not base and rif:
         c = [x for x in tutte if rif.casefold() in f"{x.get('chiave') or ''} {x.get('testo') or ''} {x.get('valore') or ''}".casefold()]
@@ -275,14 +364,21 @@ def storico(uid: str, fid: str, rif: str = "", alla_data: str = "") -> str:
     ev = [e for e in _F()._db().table("kbot_fascicolo_eventi").select("*").eq("user_id", uid).eq("fascicolo_id", fid).execute().data or []
           if str(e.get("voce_id")) in {str(x["id"]) for x in _catena(tutte, base)}]
     ev.sort(key=lambda e: str(e.get("created_at") or ""))
-    return "STORICO\n" + "\n".join(righe) + "\nCRONOLOGIA\n" + "\n".join(f"- {str(e.get('created_at'))[:16]} {e.get('azione')} ({e.get('attore')}) {e.get('motivo') or ''}" for e in ev[-15:])
+    prec = [e for e in ev if e.get("azione") == "aggiorna"]
+    versioni = ""
+    if prec:
+        versioni = "\nVALORI PRECEDENTI DELLO STESSO RECORD (aggiornamenti per ID)\n" + "\n".join(
+            f"- rev{(e.get('prima') or {}).get('revisione', '?')}: {(e.get('prima') or {}).get('valore')} (fino al {str(e.get('created_at'))[:16]}) → {(e.get('dopo') or {}).get('valore')}"
+            f"{' — ' + e['motivo'] if e.get('motivo') else ''}" for e in prec)
+    return "STORICO\n" + "\n".join(righe) + versioni + "\nCRONOLOGIA\n" + "\n".join(f"- {str(e.get('created_at'))[:16]} {e.get('azione')} ({e.get('attore')}) {e.get('motivo') or ''}" for e in ev[-15:])
 
 
 def riga(v: dict) -> str:
     fo = fonti_di(v)
     fonti = "; ".join(("doc " + str(f.get("doc")) + (f" pag. {f.get('pag')}" if f.get("pag") else "")) if f.get("doc") else str(f.get("origine") or "?") for f in fo[:3]) or "nessuna"
     extra = (" ← propone di sostituire " + str(v["sostituisce"])[:8]) if v.get("sostituisce") and stato_di(v) == "da_verificare" else ""
-    return (f"- {str(v['id'])[:8]} [{v.get('tipo')}] {v.get('testo')}" + (f" = {v['valore']}" if v.get("valore") else "") +
+    rev = f" rev{v['revisione']}" if int(v.get("revisione") or 1) > 1 else ""
+    return (f"- {str(v['id'])[:8]}{rev} [{v.get('tipo')}] {v.get('testo')}" + (f" = {v['valore']}" if v.get("valore") else "") +
             f" ({stato_di(v)}; verifica {v.get('verifica') or 'non_verificato'}; origine {origine_di(v)}; fonti: {fonti}){extra}")
 
 

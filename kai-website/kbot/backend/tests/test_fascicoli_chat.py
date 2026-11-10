@@ -38,7 +38,7 @@ def test_chat_il_modello_non_puo_salvare_senza_conferma_poi_si(client, fake_anth
         client.post("/api/kbot/message/stream", json={"session_id": sid, "message": "Com'è la commessa UM-26-041?"})
         assert esiti and esiti[-1].startswith("NON SALVATO") and not db.d.get(F.T_FASC)
         client.post("/api/kbot/message/stream", json={"session_id": sid, "message": "Sì, salva nel fascicolo l'imponibile corretto"})
-        assert esiti[-1].startswith("Salvato") and db.d[F.T_FASC][0]["user_id"] == "A"
+        assert esiti[-1].startswith("ESITO: ok. Salvato") and db.d[F.T_FASC][0]["user_id"] == "A"
     finally:
         app.dependency_overrides.pop(optional_user, None)
 
@@ -48,7 +48,7 @@ def _flusso_tool(nome, args, tid="t1"):
     return _flusso("", NS(stop_reason="tool_use", usage=NS(input_tokens=1, output_tokens=1), content=[NS(type="tool_use", name=nome, id=tid, input=args)]))
 
 
-def test_il_modello_vede_tutti_gli_otto_strumenti_con_schema_valido(client, fake_anthropic, monkeypatch):
+def test_il_modello_vede_tutti_gli_strumenti_fascicolo_con_schema_valido(client, fake_anthropic, monkeypatch):
     from app.main import app
     from app.lib.auth import AuthUser, optional_user
     monkeypatch.setattr(app.state.limiter, "enabled", False)
@@ -68,7 +68,7 @@ def test_il_modello_vede_tutti_gli_otto_strumenti_con_schema_valido(client, fake
         chat = [k for k in viste if "tools" in k]
         assert chat, "nessuna richiesta al modello con strumenti"
         nomi = [t["name"] for t in chat[0]["tools"]]
-        assert set(F.NOMI) <= set(nomi) and len(F.NOMI) == 8
+        assert set(F.NOMI) <= set(nomi) and len(F.NOMI) == 9 and "fascicolo_aggiorna" in F.NOMI
         for t in chat[0]["tools"]:
             assert t["input_schema"]["type"] == "object" and t["description"]
         sistema = str(chat[0]["system"])
@@ -149,5 +149,42 @@ def test_citazione_di_un_documento_persistente_diventa_cliccabile_con_pagina_esa
         msg = [e for e in ev if e.get("done")][-1]["message"]
         # il modello aveva scritto pagina 1 (sbagliata): il backend la corregge alla pagina vera 2 perché il testo è lì
         assert f"[[fonte|{did}|2|Residuo da liquidare 7.890,00 euro|ok]]" in msg
+    finally:
+        app.dependency_overrides.pop(optional_user, None)
+
+
+def test_dal_modello_due_conversazioni_nuove_aggiornano_per_id_senza_duplicati(client, fake_anthropic, monkeypatch):
+    """Test 28C attraverso il modello: stessa richiesta in due conversazioni NUOVE → un solo record, rev 2, 10.000 nello storico."""
+    from app.main import app
+    from app.lib.auth import AuthUser, optional_user
+    from test_fascicoli_aggiorna import crea_10000
+    monkeypatch.setattr(app.state.limiter, "enabled", False)
+    monkeypatch.setattr(strumenti.web_search, "enabled", lambda: False)
+    db = _DB(); monkeypatch.setattr(F, "_db", lambda: db)
+    vid = crea_10000(db)
+    esiti, offerti = [], []
+
+    def stream(self, **kw):
+        if str(kw.get("system", "")).startswith("Estrai") or "tools" not in kw:
+            return _flusso("ok", NS(stop_reason="end_turn", usage=NS(input_tokens=1, output_tokens=1), content=[]))
+        ult = kw["messages"][-1]["content"]
+        if isinstance(ult, list):
+            esiti.append(ult[0]["content"])
+            return _flusso("Fatto.", NS(stop_reason="end_turn", usage=NS(input_tokens=1, output_tokens=1), content=[]))
+        offerti.append([t["name"] for t in kw["tools"]])
+        return _flusso("", NS(stop_reason="tool_use", usage=NS(input_tokens=1, output_tokens=1), content=[NS(
+            type="tool_use", name="fascicolo_aggiorna", id="t1", input={"fascicolo": "TEST-KBOT-VERSIONI-01", "record": vid[:8], "valore": "12.500 €", "motivo": "nuova stima interna"})]))
+
+    monkeypatch.setattr("test_e2e_scenarios._FakeMessages.stream", stream)
+    app.dependency_overrides[optional_user] = lambda: AuthUser(id="A", email="a@b.it", has_paid=False, raw={})
+    try:
+        for _ in range(2):
+            sid = _make_session(client)
+            client.post("/api/kbot/message/stream", json={"session_id": sid, "message": "Sì, aggiorna il budget del fascicolo TEST-KBOT-VERSIONI-01 a 12.500 €"})
+        assert all("fascicolo_aggiorna" in o for o in offerti)
+        assert esiti[0].startswith("ESITO: ok") and "idempotente" not in esiti[0]
+        assert esiti[1].startswith("ESITO: ok (idempotente)")                    # la seconda conversazione non duplica né rimodifica
+        assert len(db.d[F.T_VOCI]) == 1 and db.d[F.T_VOCI][0]["id"] == vid and db.d[F.T_VOCI][0]["valore"] == "12.500 €" and db.d[F.T_VOCI][0]["revisione"] == 2
+        assert [e["prima"]["valore"] for e in db.d["kbot_fascicolo_eventi"] if e["azione"] == "aggiorna"] == ["10.000 €"]
     finally:
         app.dependency_overrides.pop(optional_user, None)
