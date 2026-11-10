@@ -40,7 +40,7 @@ def test_aggiornamento_per_id_mantiene_identita_e_storico(db):
     st = F.esegui("fascicolo_voce", {"fascicolo": "TEST-KBOT-VERSIONI-01", "azione": "storico", "record": vid[:8]})
     assert "10.000 €" in st and "12.500 €" in st and "VALORI PRECEDENTI" in st and "nuova stima interna" in st
     ap = F.esegui("fascicolo_apri", {"fascicolo": "TEST-KBOT-VERSIONI-01"})
-    assert "12.500 €" in ap and "rev2" in ap and ap.count("\n- ") == 1
+    assert "12.500 €" in ap and "rev=2" in ap and ap.count("\n- ") == 1
 
 
 def test_stessa_richiesta_ripetuta_non_duplica_ed_e_idempotente(db):

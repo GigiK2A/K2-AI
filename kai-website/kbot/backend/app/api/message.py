@@ -279,6 +279,7 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
     raw_text = taglio_guard.completa(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, stop_reason)
     # «ho interrogato il database» solo se cerca_norma è stato chiamato davvero (altrimenti è un estratto nel contesto)
     raw_text = ricerca_norme.correggi_dichiarazioni(raw_text)
+    raw_text = fascicoli.verifica_dichiarazioni(raw_text)   # «ho salvato/aggiornato» solo se uno strumento l'ha davvero fatto
     if "CONSULENZA_SUMMARY" not in raw_text:
         raw_text = raw_text + calcoli.nota_aritmetica(raw_text)  # aritmetica scritta che non torna: nota col valore giusto
     raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text,

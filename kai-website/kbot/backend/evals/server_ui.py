@@ -72,6 +72,12 @@ if os.environ.get("UI_SEED_FASCICOLO") == "1":
     for _i in range(230):
         db.table("kbot_fascicolo_voci").insert({"fascicolo_id": _f["id"], "user_id": _U, "tipo": "dato", "chiave": f"voce_{_i}", "testo": f"Voce {_i} " + "descrizione lunga " * 6,
             "valore": str(1000 + _i), "verifica": "non_verificato", "stato_record": "attuale", "origine": "letto_da_documento", "fonti": [{"origine": "documento", "doc": "x", "pag": 1}]}).execute()
+# Fascicolo fittizio per il test 28E con un MODELLO VERO (UI_SEED_BUDGET=1): TEST-E2E-ISOLATO-01 con un solo record da 10.000 €.
+if os.environ.get("UI_SEED_BUDGET") == "1":
+    _U2 = "00000000-0000-4000-8000-000000000001"
+    _f2 = db.table("kbot_fascicoli").insert({"user_id": _U2, "tipo": "commessa", "codice": "TEST-E2E-ISOLATO-01", "titolo": "Fascicolo isolato di prova", "stato": "aperto"}).execute().data[0]
+    db.table("kbot_fascicolo_voci").insert({"fascicolo_id": _f2["id"], "user_id": _U2, "tipo": "dato", "chiave": "budget_intervento", "testo": "Budget previsto per l'intervento",
+        "valore": "10.000 €", "unita": "EUR", "verifica": "non_verificato", "stato_record": "attuale", "origine": "dichiarato_utente", "revisione": 1, "fonti": [{"origine": "utente"}]}).execute()
 # Modello FINTO che scrive lentamente (UI_LLM_FINTO=1): permette di provare nel browser lo streaming del documento, le fasi,
 # l'errore a metà testo e la ripresa con codice di backend VERO (marcatori, guardie, esportazione).
 if os.environ.get("UI_LLM_FINTO") == "1":

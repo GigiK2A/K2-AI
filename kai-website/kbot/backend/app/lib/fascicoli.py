@@ -38,6 +38,7 @@ class Contesto:
     ultimo_assistente: str = ""
     collected: Dict[str, Any] = field(default_factory=dict)
     salvataggi: int = 0
+    chiamate: List[dict] = field(default_factory=list)      # traccia degli strumenti davvero eseguiti in questo turno
 
 
 _CTX: contextvars.ContextVar[Optional[Contesto]] = contextvars.ContextVar("kbot_fascicoli_ctx", default=None)
@@ -441,11 +442,12 @@ def definizioni() -> List[dict]:
             "CAMBIA il valore di un record GIÀ ESISTENTE (id a 6+ caratteri, da fascicolo_apri) mantenendone l'ID: il valore precedente resta nello storico. NON crea mai record. "
             "Usalo per ogni «aggiorna/modifica/correggi l'importo di…»: fascicolo_salva serve solo per informazioni NUOVE. Idempotente (stesso valore = nessuna modifica). "
             "`revisione_attesa` (la rev mostrata da fascicolo_apri) protegge da modifiche concorrenti. Richiede la conferma dell'utente."),
-         "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "record": {"type": "string", "description": "id del record da aggiornare"},
+         "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "record": {"type": "string", "description": "id del record da aggiornare (da fascicolo_apri)"},
+                                                           "chiave": {"type": "string", "description": "in alternativa all'id: la chiave ESATTA mostrata da fascicolo_apri (se più record l'hanno, errore AMBIGUO)"},
                                                            "valore": {"type": "string", "description": "nuovo valore"}, "testo": {"type": "string"}, "unita": {"type": "string"},
                                                            "motivo": {"type": "string", "description": "perché cambia (obbligatorio)"}, "revisione_attesa": {"type": "integer"},
                                                            "doc": {"type": "string"}, "pag": {"type": "integer"}, "quote": {"type": "string"}},
-                          "required": ["fascicolo", "record", "motivo"]}},
+                          "required": ["fascicolo", "motivo"]}},
         {"name": "fascicolo_voce", "description": (
             "Operazioni su un record (id a 6+ caratteri). `storico`: tutte le versioni e la cronologia (anche solo `alla_data`). Le altre MODIFICANO e richiedono la conferma "
             "dell'utente: `sostituisci` (conferma una proposta: il vecchio valore diventa superato, resta nello storico), `contesta`, `archivia`/`scarta`, `conferma` (soggetto autorizzato), `verifica_esterna`."),
@@ -471,7 +473,9 @@ SYSTEM_HINT = (
     "chiedi conferma, non ritentare. PER CAMBIARE un record esistente: `fascicolo_apri` (id e rev) poi `fascicolo_aggiorna` — mai `fascicolo_salva`, che serve solo per informazioni nuove; se l'aggiornamento "
     "fallisce, riferisci l'errore: NON creare un record nuovo come ripiego. Un valore DIVERSO salvato con fascicolo_salva non sovrascrive: diventa proposta, e si sostituisce solo con la conferma (`fascicolo_voce` «sostituisci»). Una revisione solo dichiarata "
     "(senza nuovo documento) resta «da_verificare». Non scegliere da solo il valore più recente: distingui ultimo documento ricevuto, verificato, approvato e valore in uso. "
-    "Riporta sempre stato, origine e fonte dei dati; non dire di aver salvato o modificato se lo strumento non lo conferma.\n")
+    "Riporta sempre stato, origine e fonte dei dati (fascicolo_apri e lo storico mostrano per ogni record id, chiave, rev, stato, verifica, origine, fonti e record precedente: usali, non indovinare). "
+    "DISTINGUI sempre: «ho chiamato lo strumento X e ha risposto…» (fatto), «ne deduco…» (inferenza), «non ho eseguito…» (operazione non fatta). Un salvataggio, aggiornamento o archiviazione "
+    "esiste solo se l'esito dello strumento dice «ESITO: ok»; se è errore o manca, dillo e non dichiarare di averlo fatto (il sistema aggiunge una nota se lo fai).\n")
 
 
 def _fascicolo(c: Contesto, a: dict) -> Optional[dict]:
@@ -482,7 +486,7 @@ def _senza_conferma(cosa: str) -> str:
     return (f"NON ESEGUITO: manca la conferma esplicita dell'utente nel suo ultimo messaggio. Mostragli il riepilogo ({cosa}) e chiedigli se procedere.")
 
 
-def esegui(nome: str, args: dict) -> str:
+def _esegui(nome: str, args: dict) -> str:
     c = _CTX.get()
     if not (c and c.user_id):
         return "[memoria aziendale non disponibile: serve un utente autenticato]"
@@ -529,7 +533,7 @@ def esegui(nome: str, args: dict) -> str:
                 return "ESITO: errore MOTIVO_MANCANTE — indica il motivo dell'aggiornamento."
             fo = {k: a.get(k) for k in ("doc", "pag", "quote") if a.get(k) not in (None, "")}
             r = V.aggiorna(c, fid, str(a.get("record") or ""), a.get("valore"), a.get("testo"), a.get("unita"), str(a.get("motivo") or ""),
-                           a.get("revisione_attesa"), fo or None, "utente")
+                           a.get("revisione_attesa"), fo or None, "utente", chiave_esatta=str(a.get("chiave") or ""))
             return (("ESITO: ok" + (" (idempotente)" if r.get("idempotente") else "") if r["ok"] else f"ESITO: errore {r['codice']}") + f" — {r['dettaglio']}"
                     + (f"\n{{\"ok\": true, \"id\": \"{r['id']}\", \"revisione\": {r['revisione']}, \"valore\": \"{r.get('valore')}\"}}" if r["ok"] else ""))
         if nome == "fascicolo_voce":
@@ -570,3 +574,61 @@ def esegui(nome: str, args: dict) -> str:
         log.warning("strumento %s fallito (fail-open)", nome, exc_info=True)
         return "[strumento memoria non riuscito: non dichiarare di aver letto o salvato nulla]"
     return "[strumento sconosciuto]"
+
+
+_SCRIVE = {"fascicolo_salva", "fascicolo_aggiorna"}
+
+
+def _e_scrittura(nome: str, a: dict) -> bool:
+    if nome in _SCRIVE:
+        return True
+    if nome == "fascicolo_voce":
+        return str(a.get("azione") or "") != "storico"
+    if nome == "fascicolo_duplicati":
+        return str(a.get("azione") or "") == "consolida"
+    if nome == "fascicolo_documento":
+        return bool(a.get("imposta_stato"))
+    return False
+
+
+def _riuscita(nome: str, out: str) -> bool:
+    o = out.lstrip()
+    if o.startswith(("ESITO: errore", "NON SALVATO", "NON ESEGUITO", "[", "Fascicolo non trovato", "Documento non trovato", "Record non trovato", "Nessun fascicolo")):
+        return False
+    return True
+
+
+def esegui(nome: str, args: dict) -> str:
+    """Esegue lo strumento e ne TRACCIA l'esito: serve a controllare, a fine turno, che il modello non dichiari operazioni mai eseguite."""
+    out = _esegui(nome, args)
+    c = _CTX.get()
+    if c is not None and nome in NOMI:
+        a = args if isinstance(args, dict) else {}
+        c.chiamate.append({"nome": nome, "scrittura": _e_scrittura(nome, a), "ok": _riuscita(nome, out), "esito": out.splitlines()[0][:120] if out else ""})
+    return out
+
+
+# ── dichiarazioni del modello contro gli strumenti davvero eseguiti ─────────────────────────────────────
+_PASSATO = re.compile(r"\b(?:ho|abbiamo|è\s+stat[oa]|sono\s+stat[ie])\s+(?:già\s+|appena\s+|correttamente\s+|regolarmente\s+)?(?:salvat|aggiornat|archiviat|sostituit|registrat|consolidat|modificat|memorizzat|cancellat|eliminat)\w*", re.I)
+_OGGETTO = re.compile(r"\b(?:fascicolo|record|voce|voci|dato|dati|archivio|importo|valore|budget)\b", re.I)
+_LETTO = re.compile(r"\b(?:ho|abbiamo)\s+(?:già\s+|appena\s+)?(?:consultat|letto|verificat|controllat|interrogat|cercat|aperto)\w*\s+(?:il|lo|l['’]|nel|nell['’]|sul|dal)\s*(?:fascicolo|archivio|database|data\s?base|storico)", re.I)
+_PREGRESSO = re.compile(r"\b(?:prima|ieri|in precedenza|precedentemente|nella (?:chat|conversazione) precedente|già salvat\w+ in precedenza)\b", re.I)
+
+
+def verifica_dichiarazioni(testo: str) -> str:
+    """Se il modello scrive «ho salvato/aggiornato/archiviato…» ma in questo turno nessuno strumento di scrittura è riuscito, oppure «ho consultato il fascicolo»
+    ma nessuno strumento fascicolo è stato eseguito, aggiunge una nota del sistema. Non riscrive il testo: lo affianca con il fatto tecnico."""
+    c = _CTX.get()
+    if not testo or not (c and c.user_id):
+        return testo
+    frasi = re.split(r"(?<=[.!?])\s+|\n+", testo)
+    scrive_ok = any(x["scrittura"] and x["ok"] for x in c.chiamate)
+    scrive_ko = [x for x in c.chiamate if x["scrittura"] and not x["ok"]]
+    usati = [x for x in c.chiamate]
+    note = []
+    if not scrive_ok and any(_PASSATO.search(f) and _OGGETTO.search(f) and not _PREGRESSO.search(f) for f in frasi):
+        dettaglio = ("Tentativi non riusciti: " + "; ".join(x["esito"] for x in scrive_ko) + ". ") if scrive_ko else "Nessuno strumento di scrittura è stato eseguito. "
+        note.append("⚠ Nota del sistema: " + dettaglio + "Quanto sopra non risulta salvato/aggiornato sul fascicolo (manca la conferma tecnica degli strumenti).")
+    if not usati and any(_LETTO.search(f) and not _PREGRESSO.search(f) for f in frasi):
+        note.append("⚠ Nota del sistema: in questo turno nessuno strumento del fascicolo è stato eseguito: le informazioni sul fascicolo citate sopra non provengono da una consultazione di questo turno.")
+    return testo + ("\n\n" + "\n".join(note) if note else "")

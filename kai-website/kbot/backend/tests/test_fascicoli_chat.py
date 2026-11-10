@@ -97,7 +97,7 @@ def test_fascicolo_grande_si_recupera_per_intero_a_pagine_senza_troncamenti(monk
     while True:
         out = F.esegui("fascicolo_apri", {"fascicolo": "BIG-1", "da": da})
         assert len(out) <= F.MAX_CARATTERI_APRI, len(out)
-        ids = {r.split()[1] for r in out.splitlines() if r.startswith("- ")}
+        ids = {r.split()[1][3:] for r in out.splitlines() if r.startswith("- id=")}
         assert ids, out[:200]
         visti |= ids; giri += 1
         if "[COMPLETO" in out:
@@ -188,3 +188,70 @@ def test_dal_modello_due_conversazioni_nuove_aggiornano_per_id_senza_duplicati(c
         assert [e["prima"]["valore"] for e in db.d["kbot_fascicolo_eventi"] if e["azione"] == "aggiorna"] == ["10.000 €"]
     finally:
         app.dependency_overrides.pop(optional_user, None)
+
+
+def _scenario_modello(client, monkeypatch, id_da_usare):
+    """Modello finto a più giri come Haiku: 1) fascicolo_apri  2) fascicolo_aggiorna con l'id (letto dal risultato o forzato)  3) risposta che dichiara di aver aggiornato."""
+    from app.main import app
+    from app.lib.auth import AuthUser, optional_user
+    monkeypatch.setattr(app.state.limiter, "enabled", False)
+    monkeypatch.setattr(strumenti.web_search, "enabled", lambda: False)
+    esiti = []
+
+    def stream(self, **kw):
+        if str(kw.get("system", "")).startswith("Estrai") or "tools" not in kw:
+            return _flusso("ok", NS(stop_reason="end_turn", usage=NS(input_tokens=1, output_tokens=1), content=[]))
+        ult = kw["messages"][-1]["content"]
+        giri = sum(1 for m in kw["messages"] if isinstance(m.get("content"), list) and m["content"] and isinstance(m["content"][0], dict) and m["content"][0].get("type") == "tool_result")
+        if isinstance(ult, list):
+            esiti.append(ult[0]["content"])
+        if giri == 0:
+            return _flusso_tool("fascicolo_apri", {"fascicolo": "TEST-E2E-ISOLATO-01"}, "t1")
+        if giri == 1:
+            m = __import__("re").search(r"id=(\w{8}) chiave=budget_intervento", esiti[-1])
+            rid = id_da_usare or (m.group(1) if m else "00000000")
+            return _flusso_tool("fascicolo_aggiorna", {"fascicolo": "TEST-E2E-ISOLATO-01", "record": rid, "valore": "12.500 €", "motivo": "nuova stima interna"}, "t2")
+        return _flusso("Ho aggiornato il budget nel fascicolo a 12.500 €.", NS(stop_reason="end_turn", usage=NS(input_tokens=1, output_tokens=1), content=[]))
+
+    monkeypatch.setattr("test_e2e_scenarios._FakeMessages.stream", stream)
+    app.dependency_overrides[optional_user] = lambda: AuthUser(id="A", email="a@b.it", has_paid=False, raw={})
+    return esiti, app, optional_user
+
+
+def _msg_finale(r):
+    import json
+    ev = [json.loads(x[5:].strip()) for x in r.text.splitlines() if x.startswith("data:")]
+    return [e for e in ev if e.get("done")][-1]["message"]
+
+
+def test_haiku_finto_apre_legge_id_e_chiave_poi_aggiorna_senza_duplicati(client, fake_anthropic, monkeypatch):
+    from test_fascicoli_chiave_id import crea
+    db = _DB(); monkeypatch.setattr(F, "_db", lambda: db)
+    crea(db)
+    esiti, app, opt = _scenario_modello(client, monkeypatch, None)
+    try:
+        for n in range(2):                                                        # due conversazioni nuove
+            sid = _make_session(client)
+            r = client.post("/api/kbot/message/stream", json={"session_id": sid, "message": "Sì, aggiorna il budget del fascicolo TEST-E2E-ISOLATO-01 a 12.500 €"})
+            assert "Nota del sistema" not in _msg_finale(r)                       # la dichiarazione è sostenuta dagli strumenti
+        assert any("chiave=budget_intervento" in e for e in esiti)                # il modello HA visto id e chiave
+        assert esiti[1].startswith("ESITO: ok") and "idempotente" not in esiti[1] and "ESITO: ok (idempotente)" in esiti[-1]
+        assert len(db.d[F.T_VOCI]) == 1 and db.d[F.T_VOCI][0]["valore"] == "12.500 €" and db.d[F.T_VOCI][0]["revisione"] == 2
+    finally:
+        app.dependency_overrides.pop(opt, None)
+
+
+def test_se_l_aggiornamento_fallisce_non_si_crea_nulla_e_la_falsa_dichiarazione_e_segnalata(client, fake_anthropic, monkeypatch):
+    from test_fascicoli_chiave_id import crea
+    db = _DB(); monkeypatch.setattr(F, "_db", lambda: db)
+    crea(db)
+    esiti, app, opt = _scenario_modello(client, monkeypatch, "deadbeef")          # id sbagliato
+    try:
+        sid = _make_session(client)
+        r = client.post("/api/kbot/message/stream", json={"session_id": sid, "message": "Sì, aggiorna il budget del fascicolo TEST-E2E-ISOLATO-01 a 12.500 €"})
+        msg = _msg_finale(r)
+        assert esiti[-1].startswith("ESITO: errore NON_TROVATO")
+        assert "Nota del sistema" in msg and "NON_TROVATO" in msg                 # il modello ha scritto «ho aggiornato»: il sistema lo smentisce con l'esito tecnico
+        assert len(db.d[F.T_VOCI]) == 1 and db.d[F.T_VOCI][0]["valore"] == "10.000 €"      # nessun record nuovo, nessuna modifica
+    finally:
+        app.dependency_overrides.pop(opt, None)

@@ -226,8 +226,15 @@ def _trova_record(voci_: List[dict], rif: str) -> Optional[dict]:
     return c[0] if len(c) == 1 else None
 
 
+def trova_per_chiave(voci_: List[dict], chiave: str) -> Tuple[Optional[dict], List[dict]]:
+    """Corrispondenza ESATTA sulla chiave tra i record attivi (mai approssimata). (record, candidati): se i candidati non sono uno solo, record=None."""
+    k = _fold(chiave)
+    c = [x for x in voci_ if k and _fold(x.get("chiave")) == k and stato_di(x) in ATTIVI]
+    return (c[0] if len(c) == 1 else None), c
+
+
 def aggiorna(ctx, fid: str, rif: str, valore: Optional[str] = None, testo: Optional[str] = None, unita: Optional[str] = None, motivo: str = "",
-             revisione_attesa: Optional[int] = None, fonte: Optional[dict] = None, attore: str = "utente") -> dict:
+             revisione_attesa: Optional[int] = None, fonte: Optional[dict] = None, attore: str = "utente", chiave_esatta: str = "") -> dict:
     """Cambia il valore di un record ESISTENTE mantenendo il suo ID. Il valore precedente resta nello storico (evento `aggiorna` con prima/dopo).
     Mai crea un record: se il record non esiste o non è modificabile, risponde con un errore strutturato.
     Idempotente: lo stesso valore già presente non produce modifiche né eventi. Concorrenza: se `revisione_attesa` non coincide, rifiuta."""
@@ -235,8 +242,13 @@ def aggiorna(ctx, fid: str, rif: str, valore: Optional[str] = None, testo: Optio
     F = _F()
     tutte = F.voci(uid, fid)
     v = _trova_record(tutte, rif)
+    if not v and chiave_esatta:
+        v, cands = trova_per_chiave(tutte, chiave_esatta)
+        if not v and len(cands) > 1:
+            return {"ok": False, "codice": "AMBIGUO", "dettaglio": f"la chiave «{chiave_esatta}» corrisponde a {len(cands)} record attivi ({', '.join(str(x['id'])[:8] for x in cands)}): indica l'id del record da aggiornare"}
     if not v:
-        return {"ok": False, "codice": "NON_TROVATO", "dettaglio": f"nessun record con id «{rif}» (servono almeno 6 caratteri dell'id, univoci): usa fascicolo_apri per vedere gli id"}
+        return {"ok": False, "codice": "NON_TROVATO", "dettaglio": f"nessun record con id «{rif}»" + (f" né chiave esatta «{chiave_esatta}»" if chiave_esatta else "")
+                + " (servono almeno 6 caratteri dell'id, univoci): usa fascicolo_apri per vedere id e chiavi"}
     vid, rev = str(v["id"]), int(v.get("revisione") or 1)
     if stato_di(v) in ("superata", "archiviata"):
         return {"ok": False, "codice": "NON_MODIFICABILE", "id": vid[:8], "dettaglio": f"il record {vid[:8]} è {stato_di(v)}: non si aggiorna; cerca il record attuale con lo storico"}
@@ -374,12 +386,19 @@ def storico(uid: str, fid: str, rif: str = "", alla_data: str = "") -> str:
 
 
 def riga(v: dict) -> str:
+    """Una riga completa per il modello: id · chiave · valore · stato · revisione · verifica · origine · fonti · record precedente/successivo.
+    La chiave è esposta (se non c'è lo dice): il modello non deve mai doverla indovinare."""
     fo = fonti_di(v)
     fonti = "; ".join(("doc " + str(f.get("doc")) + (f" pag. {f.get('pag')}" if f.get("pag") else "")) if f.get("doc") else str(f.get("origine") or "?") for f in fo[:3]) or "nessuna"
-    extra = (" ← propone di sostituire " + str(v["sostituisce"])[:8]) if v.get("sostituisce") and stato_di(v) == "da_verificare" else ""
-    rev = f" rev{v['revisione']}" if int(v.get("revisione") or 1) > 1 else ""
-    return (f"- {str(v['id'])[:8]}{rev} [{v.get('tipo')}] {v.get('testo')}" + (f" = {v['valore']}" if v.get("valore") else "") +
-            f" ({stato_di(v)}; verifica {v.get('verifica') or 'non_verificato'}; origine {origine_di(v)}; fonti: {fonti}){extra}")
+    legami = []
+    if v.get("sostituisce"):
+        legami.append(("propone di sostituire " if stato_di(v) == "da_verificare" else "sostituisce ") + str(v["sostituisce"])[:8])
+    if v.get("sostituita_da"):
+        legami.append("sostituito da " + str(v["sostituita_da"])[:8])
+    return (f"- id={str(v['id'])[:8]} chiave={v.get('chiave') or '(nessuna)'} rev={int(v.get('revisione') or 1)} [{v.get('tipo')}] {v.get('testo')}"
+            + (f" = {v['valore']}" if v.get("valore") else "") + (f" {v['unita']}" if v.get("unita") and v.get("unita") not in str(v.get("valore") or "") else "")
+            + f" | stato={stato_di(v)} verifica={v.get('verifica') or 'non_verificato'} origine={origine_di(v)} fonti={fonti}"
+            + (" | " + "; ".join(legami) if legami else ""))
 
 
 # ── confronto fra versioni ─────────────────────────────────────────────────────────────────────────────
