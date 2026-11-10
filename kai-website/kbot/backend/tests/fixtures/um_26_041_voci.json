@@ -1,0 +1,157 @@
+[
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: sopralluoghi eseguiti 12 x 350 euro = 4.200 euro (importo indicato coerente).",
+"valore": "4.200,00 EUR"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: relazioni tecniche 5 x 950 euro = 4.750 euro (importo indicato coerente).",
+"valore": "4.750,00 EUR"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: varianti documentali 3 x 420 euro = 1.260 euro (importo indicato coerente).",
+"valore": "1.260,00 EUR"
+},
+{
+"tipo": "anomalia",
+"testo": "ERRORE ARITMETICO VERIFICATO: pratiche autorizzative 8 x 680 euro = 5.440 euro, ma il documento riporta 5.040 euro (scarto 400 euro in difetto).",
+"valore": "-400,00 EUR"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: totale imponibile dichiarato 15.250 euro, che quadra solo con la riga pratiche errata (5.040 euro).",
+"valore": "15.250,00 EUR (dichiarato)"
+},
+{
+"tipo": "dato",
+"testo": "CALCOLATO (non presente nel documento): totale imponibile corretto con pratiche a 5.440 euro = 15.650 euro. Calcolo: 4.200 + 5.440 + 4.750 + 1.260 = 15.650.",
+"valore": "15.650,00 EUR (corretto, calcolato)"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: pratiche protocollate 6, in attesa di protocollo 2. La proposta le include comunque tutte e 8.",
+"valore": "6 protocollate / 2 in attesa"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: la proposta di liquidazione include tutte le 8 pratiche autorizzative.",
+"valore": "8 incluse"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento (estratto dell'accordo come riportato nel riepilogo, contratto originale NON visionato): il corrispettivo delle pratiche matura alla data di deposito e acquisizione del numero di protocollo.",
+"valore": "maturazione con protocollo"
+},
+{
+"tipo": "dato",
+"testo": "CALCOLATO: maturato imponibile = 6 pratiche protocollate x 680 = 4.080 euro; maturato imponibile complessivo = 4.200 + 4.080 + 4.750 + 1.260 = 14.290 euro (al netto IVA e dei 1.360 euro non maturati).",
+"valore": "14.290,00 EUR (maturato imponibile)"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: acconto ricevuto il 15/10/2026 pari a 6.400 euro (non assegnato a una specifica voce nel documento).",
+"valore": "6.400,00 EUR"
+},
+{
+"tipo": "dato",
+"testo": "CALCOLATO: residuo maturato al netto IVA = 14.290 - 6.400 = 7.890 euro.",
+"valore": "7.890,00 EUR (residuo maturato)"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: residuo da incassare riportato 8.850 euro, che deriva dal totale errato (15.250 - 6.400). Con totale corretto il residuo sarebbe 9.250 euro.",
+"valore": "8.850,00 EUR (dichiarato)"
+},
+{
+"tipo": "anomalia",
+"testo": "APERTA: data di scadenza 30/10/2026 precedente alla data di emissione 04/11/2026 (5 giorni). Da chiarire se refuso o termine diverso.",
+"valore": "scadenza 30/10/2026 < emissione 04/11/2026"
+},
+{
+"tipo": "anomalia",
+"testo": "APERTA: liquidazione di 1.360 euro (2 pratiche non protocollate, 2 x 680) inclusa nella proposta ma non ancora maturata secondo la clausola riportata.",
+"valore": "1.360,00 EUR"
+},
+{
+"tipo": "nota",
+"testo": "DA CONFERMARE: clausola di maturazione letta da estratto nel riepilogo; contratto/accordo originale non visionato. Verificare sull'accordo firmato.",
+"valore": "da confermare"
+},
+{
+"tipo": "nota",
+"testo": "DA CONFERMARE: importi al netto IVA; IVA non presente nel riepilogo. Aliquota e importo IVA non determinati.",
+"valore": "IVA non determinata"
+},
+{
+"tipo": "nota",
+"testo": "DA CONFERMARE: a quale voce sia imputato l'acconto di 6.400 euro e se incida sul residuo maturato.",
+"valore": "6.400,00 EUR"
+},
+{
+"tipo": "attivita",
+"testo": "DA FARE: ricalcolare la riga pratiche autorizzative e correggere il totale a 15.650 euro; chiedere al committente/fornitore la proposta corretta.",
+"valore": "aperta"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: pratiche autorizzative 8 x 680 euro = 5.440 euro; il documento riporta 5.040 euro (scarto 400 euro in difetto). Citazione: riga 'Pratiche autorizzative 8 € 680,00 € 5.040,00'.",
+"valore": "Pratiche autorizzative: indicato 5.040,00 EUR; corretto 5.440,00 EUR"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: totale imponibile dichiarato 15.250 euro, che quadra solo con la riga pratiche errata (5.040 euro).",
+"valore": "15.250,00 EUR (dichiarato)"
+},
+{
+"tipo": "dato",
+"testo": "CALCOLATO: totale imponibile corretto = 4.200 + 5.440 + 4.750 + 1.260 = 15.650 euro. Da confermare con la proposta corretta del committente/fornitore.",
+"valore": "15.650,00 EUR (corretto, calcolato)"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: sopralluoghi 12 x 350 = 4.200 euro; relazioni tecniche 5 x 950 = 4.750 euro; varianti documentali 3 x 420 = 1.260 euro (importi coerenti). Attività consegnate e accettate dal committente.",
+"valore": "4.200,00 / 4.750,00 / 1.260,00 EUR"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: delle 8 pratiche autorizzative, 6 risultano protocollate e 2 in attesa di protocollo. La proposta le include comunque tutte e 8.",
+"valore": "6 protocollate / 2 in attesa di protocollo"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: la proposta di liquidazione include tutte le 8 pratiche autorizzative.",
+"valore": "8 incluse"
+},
+{
+"tipo": "dato",
+"testo": "Clausola di maturazione, come riportata nel riepilogo (estratto; contratto originale NON visionato): il corrispettivo delle pratiche matura alla data di deposito e acquisizione del numero di protocollo.",
+"valore": "maturazione alla data di deposito e acquisizione del numero di protocollo"
+},
+{
+"tipo": "dato",
+"testo": "CALCOLATO: maturato imponibile = 4.200 + (6 x 680 = 4.080) + 4.750 + 1.260 = 14.290 euro, al netto IVA e dei 1.360 euro non maturati. Dipende dalla clausola riportata (da confermare sull'accordo firmato).",
+"valore": "14.290,00 EUR (maturato imponibile)"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: acconto ricevuto il 15/10/2026 pari a 6.400 euro; il documento non lo assegna a una specifica voce.",
+"valore": "6.400,00 EUR"
+},
+{
+"tipo": "dato",
+"testo": "CALCOLATO: residuo maturato al netto IVA = 14.290 - 6.400 = 7.890 euro. Assume che l'acconto sia imputato sul maturato: DA CONFERMARE.",
+"valore": "7.890,00 EUR (residuo maturato, da confermare)"
+},
+{
+"tipo": "dato",
+"testo": "VERIFICATO sul documento: residuo da incassare riportato 8.850 euro, che deriva dal totale errato (15.250 - 6.400). Con totale corretto il residuo sarebbe 9.250 euro.",
+"valore": "8.850,00 EUR (dichiarato); 9.250,00 EUR (con totale corretto)"
+},
+{
+"tipo": "anomalia",
+"testo": "APERTA: liquidazione di 1.360 euro (2 pratiche non protocollate x 680) inclusa nella proposta ma non ancora maturata secondo la clausola riportata.",
+"valore": "1.360,00 EUR"
+}
+]

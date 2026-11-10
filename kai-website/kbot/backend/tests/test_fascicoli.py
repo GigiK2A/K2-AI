@@ -53,7 +53,7 @@ def test_con_richiesta_esplicita_salva_e_traccia_fonte(db):
     ctx("A", utente="Sì, salva nel fascicolo UM-26-041 l'imponibile corretto 15.650", assistente="Vuoi che lo registri nel fascicolo?")
     out = F.esegui("fascicolo_salva", {"codice": "UM-26-041", "titolo": "Commessa Rossi", "voci": [
         {"tipo": "dato", "testo": "Imponibile corretto", "chiave": "imponibile", "valore": "15.650", "doc": "abc", "pag": 1, "quote": "15.250,00"}]})
-    assert out.startswith("Salvato") and "1 voci" in out
+    assert out.startswith("Salvato") and "1 record nuovi" in out
     v = db.d[F.T_VOCI][0]
     assert v["fonte"]["doc"] == "abc" and v["fonte"]["pag"] == 1 and v["verifica"] == "non_verificato" and v["data_verifica"]
 
@@ -67,12 +67,14 @@ def test_si_secco_vale_solo_dopo_proposta(db):
     assert not F.conferma_utente(c)
 
 
-def test_contraddizione_segnalata(db):
+def test_valore_diverso_diventa_proposta_non_sovrascrive(db):
     ctx("A", utente="salva questi dati")
     F.esegui("fascicolo_salva", {"codice": "C1", "titolo": "C", "voci": [{"testo": "Imponibile", "chiave": "imponibile", "valore": "15.250"}]})
     ctx("A", utente="salva anche questo")
     out = F.esegui("fascicolo_salva", {"fascicolo": "C1", "voci": [{"testo": "Imponibile da PDF", "chiave": "imponibile", "valore": "15.650"}]})
-    assert "contraddizioni" in out and all(v["verifica"] == "contraddittorio" for v in db.d[F.T_VOCI])
+    assert "1 proposte" in out and "non sostituisce" in out
+    stati = sorted((v["valore"], v["stato_record"]) for v in db.d[F.T_VOCI])
+    assert stati == [("15.250", "attuale"), ("15.650", "da_verificare")]
 
 
 def test_isolamento_fra_aziende(db):
@@ -90,18 +92,21 @@ def test_isolamento_fra_aziende(db):
     assert sorted(f["user_id"] for f in db.d[F.T_FASC]) == ["A", "B"] and len(db.d[F.T_VOCI]) == 1
 
 
-def test_nuova_conversazione_recupera_fascicolo_e_documenti(db):
+def test_nuova_conversazione_recupera_fascicolo_e_apre_il_documento_a_richiesta(db):
     col = {"uploaded_files": [{"name": "Riepilogo.pdf", "type": "application/pdf", "size": 5, "path": "s1/1-Riepilogo.pdf", "extractedText": "Imponibile 15.250,00"}]}
     ctx("A", utente="salva nel fascicolo anche il documento", collected=col)
     F.esegui("fascicolo_salva", {"codice": "UM-26-041", "titolo": "Commessa", "voci": [{"testo": "Imponibile dichiarato", "valore": "15.250"}], "allega_documenti": True})
-    assert len(db.d[F.T_DOC]) == 1
+    assert len(db.d[F.T_DOC]) == 1 and db.d[F.T_DOC][0]["versione"] == 1
     nuova = {}
     ctx("A", utente="riprendiamo la UM-26-041", collected=nuova, sess="s2")
     assert "UM-26-041" in F.blocco_prompt() and "fascicolo_collega" in F.blocco_prompt()
     out = F.esegui("fascicolo_collega", {"fascicolo": "UM-26-041"})
     assert "1 documenti" in out and "Imponibile dichiarato" in out
-    assert nuova["fascicolo_id"] and nuova["uploaded_files"][0]["extractedText"].startswith("Imponibile") and nuova["uploaded_files"][0]["path"] == "s1/1-Riepilogo.pdf"
-    assert "FASCICOLO COLLEGATO" in F.blocco_prompt()
+    assert nuova["fascicolo_id"] and not nuova.get("uploaded_files")          # NON si caricano tutti i documenti
+    did = F.doc_id_di(db.d[F.T_DOC][0])
+    out = F.esegui("fascicolo_documento", {"fascicolo": "UM-26-041", "documento": did, "query": "imponibile"})
+    assert f"[[fonte|{did}|PAGINA" in out and "15.250,00" in out
+    assert nuova["uploaded_files"][0]["path"] == "s1/1-Riepilogo.pdf"             # ora citabile e apribile nel visualizzatore
 
 
 def test_strumenti_solo_con_utente(db, monkeypatch):

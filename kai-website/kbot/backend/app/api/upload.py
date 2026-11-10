@@ -613,6 +613,40 @@ def _bytes_documento(path: str) -> Optional[bytes]:
     return data
 
 
+def vista_documento(voce: dict, pag: int, quote: str, zoom: float):
+    """Pagina/testo del documento citato, con i riquadri evidenziati. `voce` ha name, path, extractedText (chat) o extracted_text (fascicolo)."""
+    from fastapi.responses import JSONResponse
+
+    from ..lib import fonti_documenti
+
+    nome = str(voce.get("name") or "documento")
+    quote = quote[:300]
+    if nome.lower().endswith(".pdf"):
+        data = _bytes_documento(str(voce.get("path") or ""))
+        if not data:
+            return JSONResponse({"ok": False, "motivo": "file_non_disponibile", "nome": nome}, status_code=410, headers={"Cache-Control": "no-store"})
+        try:
+            out = fonti_documenti.localizza(data, max(1, pag), quote, zoom)
+        except Exception:
+            log.exception("localizza fallita per %s", nome)
+            raise HTTPException(status_code=422, detail="impossibile aprire il PDF")
+        out.update({"tipo": "pdf", "nome": nome})
+    else:
+        testo = str(voce.get("extractedText") or voce.get("extracted_text") or voce.get("extractedSummary") or "")
+        nq = fonti_documenti.norm(quote)
+        pos, fine = -1, 0
+        if nq:
+            import re as _re
+            parole = [(m.start(), m.end(), fonti_documenti.norm(m.group())) for m in _re.finditer(r"\S+", testo)]
+            qt = nq.split()
+            for i in range(len(parole) - len(qt) + 1):
+                if [w[2] for w in parole[i:i + len(qt)]] == qt:
+                    pos, fine = parole[i][0], parole[i + len(qt) - 1][1]
+                    break
+        out = {"ok": True, "tipo": "testo", "nome": nome, "testo": testo[:200000], "evidenzia": [pos, fine] if pos >= 0 else None, "localizzato": pos >= 0}
+    return JSONResponse(out, headers={"Cache-Control": "no-store"})
+
+
 @router.get("/session/{session_id}/documents/{doc_id}/view")
 def session_document_view(
     session_id: str,
@@ -622,16 +656,14 @@ def session_document_view(
     zoom: float = 1.4,
     user: Optional[AuthUser] = Depends(optional_user),
 ):
-    """Apre un documento della pratica al passaggio citato (visualizzatore delle citazioni).
+    """Apre un documento al passaggio citato (visualizzatore delle citazioni).
 
-    Autorizzazione: stessa regola di /upload (sessione di un utente ⇒ solo lui). Il documento si cerca SOLO fra
-    quelli della sessione: l'id non è un percorso e non si può indirizzare un file di un'altra pratica.
-    Nessun link pubblico: i byte passano da qui. Il riquadro evidenziato esiste solo se il testo citato è stato
-    trovato nelle parole reali della pagina.
+    Autorizzazione: la sessione di un utente si legge solo da lui. Il documento si cerca fra quelli della sessione e, se non c'è, fra i
+    documenti dei fascicoli DELLO STESSO UTENTE (citazioni salvate in un fascicolo e riaperte da un'altra conversazione). L'id non è un
+    percorso: non si può indirizzare un file altrui. Nessun link pubblico: i byte passano da qui. Il riquadro evidenziato esiste solo se il
+    testo citato è stato trovato nelle parole reali della pagina.
     """
-    from fastapi.responses import JSONResponse
-
-    from ..lib import fonti_documenti
+    from ..lib import fascicoli, fonti_documenti
 
     session = sessions.get_session(session_id)
     if not session:
@@ -639,39 +671,12 @@ def session_document_view(
     owner = session.get("user_id")
     if owner and (not user or user.id != owner):
         raise HTTPException(status_code=403, detail="not your session")
-    collected = session.get("collected_data") or {}
-    voce = fonti_documenti.mappa_documenti(collected).get(doc_id)
+    voce = fonti_documenti.mappa_documenti(session.get("collected_data") or {}).get(doc_id)
+    if not voce and user:
+        try:
+            voce = fascicoli.documento_dell_utente(user.id, doc_id)
+        except Exception:
+            log.warning("ricerca documento nei fascicoli fallita", exc_info=True)
     if not voce:
         raise HTTPException(status_code=404, detail="documento non trovato in questa pratica")
-    nome = str(voce.get("name") or "documento")
-    lower = nome.lower()
-    quote = quote[:300]
-    out: dict
-    if lower.endswith(".pdf"):
-        data = _bytes_documento(str(voce.get("path") or ""))
-        if not data:
-            return JSONResponse({"ok": False, "motivo": "file_non_disponibile", "nome": nome}, status_code=410,
-                                headers={"Cache-Control": "no-store"})
-        try:
-            out = fonti_documenti.localizza(data, max(1, pag), quote, zoom)
-        except Exception:
-            log.exception("localizza fallita per %s", nome)
-            raise HTTPException(status_code=422, detail="impossibile aprire il PDF")
-        out.update({"tipo": "pdf", "nome": nome})
-    else:
-        testo = str(voce.get("extractedText") or voce.get("extractedSummary") or "")
-        nq = fonti_documenti.norm(quote)
-        pos = -1
-        if nq:
-            # posizione nel testo ORIGINALE: scansione per finestre sul testo normalizzato parola per parola
-            import re as _re
-            parole = [(m.start(), m.end(), fonti_documenti.norm(m.group())) for m in _re.finditer(r"\S+", testo)]
-            qt = nq.split()
-            for i in range(len(parole) - len(qt) + 1):
-                if [w[2] for w in parole[i:i + len(qt)]] == qt:
-                    pos = parole[i][0]
-                    fine = parole[i + len(qt) - 1][1]
-                    break
-        out = {"ok": True, "tipo": "testo", "nome": nome, "testo": testo[:200000],
-               "evidenzia": [pos, fine] if pos >= 0 else None, "localizzato": pos >= 0}
-    return JSONResponse(out, headers={"Cache-Control": "no-store"})
+    return vista_documento(voce, pag, quote, zoom)
