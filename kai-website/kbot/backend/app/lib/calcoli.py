@@ -92,3 +92,45 @@ def nota_aritmetica(testo: str) -> str:
     if not errori:
         return ""
     return "\n\nControllo dei calcoli: " + "; ".join(errori[:3]) + ". Fai riferimento ai valori corretti."
+
+
+# ── cifre calcolate dal codice ────────────────────────────────────────────────────────────────────────────
+_NUM_P = {"un": 1, "una": 1, "uno": 1, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6, "sette": 7, "otto": 8, "nove": 9, "dieci": 10}
+_PERSONE = re.compile(r"\b(un|una|due|tre|quattro|cinque|sei|sette|otto|nove|dieci|\d{1,3})\s+(?:altr[ei]\s+)?(?:person\w+|dipendent\w+|collaborator\w+|risors\w+)", re.I)
+_NETTO = re.compile(rf"(?:netto|netti)\s+(?:di\s+)?(?:circa\s+)?({_N})\s*(?:€|euro)|({_N})\s*(?:€|euro)\s+netti", re.I)
+_PREZZO_MESE = re.compile(rf"({_N})\s*(?:€|euro)\s*(?:al\s+mese|/\s*mese|mensil\w+)", re.I)
+_CLIENTI = re.compile(rf"({_N})\s+(?:aziende|clienti|imprese|abbonati|utenti|pmi)\b", re.I)
+_INVEST = re.compile(rf"invest\w+\s+(?:circa\s+|almeno\s+|oltre\s+)?({_N})\s*(?:€|euro)", re.I)
+
+
+def fatti_calcolati(messaggi_utente: list[str]) -> str:
+    """Cifre DERIVATE dai numeri dell'utente e calcolate qui, così il modello le usa invece di rifarle a mente (collaudo del 10/11/2026: per
+    1.000 clienti × 99 €/mese scriveva 118.800 € o 990.000 € invece di 1.188.000 €). Solo aritmetica; il costo azienda non si deduce dal netto."""
+    if os.getenv("KBOT_CALCOLI", "1") == "0":
+        return ""
+    testo = "\n".join((messaggi_utente or [])[-2:])
+    righe = []
+    pers, nett = _PERSONE.search(testo), _NETTO.search(testo)
+    if pers and nett:
+        n = _NUM_P.get(pers.group(1).lower()) or int(pers.group(1))
+        netto = _v(nett.group(1) or nett.group(2))
+        righe.append(f"Netto annuo per {n} persone con {_fmt(netto)} € netti al mese ciascuna: {_fmt(netto * 12 * n)} € su 12 mensilità, "
+                     f"{_fmt(netto * 13 * n)} € su 13, {_fmt(netto * 14 * n)} € su 14. È un NETTO: il COSTO per l'azienda è maggiore e dipende da "
+                     "livello, CCNL, contributi, INAIL, TFR: NON si calcola dal netto con una percentuale tua; chiedilo al consulente del lavoro.")
+    prezzo, clienti = _PREZZO_MESE.search(testo), _CLIENTI.search(testo)
+    if prezzo and clienti:
+        p, c = _v(prezzo.group(1)), _v(clienti.group(1))
+        arr = p * c * 12
+        riga = (f"{_fmt(c)} clienti × {_fmt(p)} €/mese × 12 = {_fmt(arr)} € di ricavo annuo RICORRENTE a regime (lordo, prima di costi, IVA e abbandoni); "
+                f"non è il ricavo del primo anno, che dipende dal ritmo di acquisizione (se i clienti arrivassero in modo uniforme durante l'anno, "
+                f"circa metà: ipotesi).")
+        inv = _INVEST.search(testo)
+        if inv:
+            i = _v(inv.group(1))
+            riga += (f" Con un investimento di {_fmt(i)} €, il recupero richiede almeno {_fmt(i / (arr / 12))} mesi di RICAVI a regime; con un margine "
+                     "di contribuzione m (dato da ottenere: non assumerlo) i mesi diventano investimento ÷ (ricavo mensile × m).")
+        righe.append(riga)
+    if not righe:
+        return ""
+    return ("\nCALCOLI VERIFICATI DAL SISTEMA (aritmetica sui numeri dell'utente: usa queste cifre, non rifare i conti a mente):\n- "
+            + "\n- ".join(righe) + "\n")

@@ -84,7 +84,7 @@ def test_merge_costruisce_profilo():
     assert p["anagrafica"]["ragione_sociale"] == "Rossi SRL"
     assert p["anagrafica"]["settore"] == "manifatturiero"
     assert p["anagrafica"]["dipendenti"] == "25"
-    assert "ridurre i tempi di incasso" in p["contesto"]["obiettivi"][0]
+    assert "contesto" not in p               # i riassunti scritti dal modello non entrano più nella memoria (10/11/2026)
     assert p["storico"][0]["tema"] == "FinanceBoost" and p["storico"][0]["tipo"] == "report"
 
 

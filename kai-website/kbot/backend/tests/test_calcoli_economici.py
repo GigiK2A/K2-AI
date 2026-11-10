@@ -61,3 +61,28 @@ def test_l_idea_da_validare_porta_il_piano_di_validazione():
     assert "VALIDAZIONE DI UN'IDEA" in p and "CALCOLI ECONOMICI" in p
     assert "VALIDAZIONE DI UN'IDEA" not in _prompt("Voglio assumere due persone da 1.700 euro netti al mese")
     assert "VALIDAZIONE DI UN'IDEA" not in _prompt("Il dipendente è arrivato in ritardo tre volte")
+
+
+# ── cifre calcolate dal codice (non a mente) ──────────────────────────────────────────────────────────
+def test_idea_99_euro_al_mese_per_1000_aziende_ricavo_annuo_corretto():
+    """Nel collaudo del 10/11 il modello ha scritto «118.800 euro» e «990.000 euro» per 1.000 clienti × 99 €/mese: il valore è 1.188.000."""
+    f = calcoli.fatti_calcolati(["Penso di venderlo con un abbonamento da 99 euro al mese e arrivare a 1.000 aziende clienti entro il primo anno. "
+                                 "Sto pensando di investire circa 100.000 euro."])
+    assert "1.188.000" in f and "99" in f and "100.000" in f
+    assert "recupero" in f.lower() or "payback" in f.lower()
+
+
+def test_assunzioni_netto_annuo_su_12_13_14_mensilita():
+    f = calcoli.fatti_calcolati(["Sto pensando di assumere altre due persone, con uno stipendio netto di circa 1.700 euro al mese ciascuna."])
+    assert "40.800" in f and "44.200" in f and "47.600" in f
+    assert "costo" in f.lower() and "non" in f.lower()          # il costo azienda NON si calcola dal netto
+
+
+def test_senza_dati_calcolabili_niente_blocco():
+    assert calcoli.fatti_calcolati(["Il dipendente è arrivato in ritardo tre volte"]) == ""
+    assert calcoli.fatti_calcolati(["Vorrei assumere qualcuno ma non so quanto costa"]) == ""
+
+
+def test_i_fatti_calcolati_entrano_nel_prompt():
+    p = _prompt("Sto pensando di assumere due persone con uno stipendio netto di 1.700 euro al mese ciascuna: quanto mi costano?")
+    assert "CALCOLI VERIFICATI" in p and "40.800" in p

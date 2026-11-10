@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -84,7 +85,6 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
     sovrascrivono se la sessione ne porta di nuovi)."""
     p = dict(profile or {})
     ana = dict(p.get("anagrafica") or {})
-    ctx = dict(p.get("contesto") or {})
     storico = list(p.get("storico") or [])
     confermati = set(p.get("confermati") or [])      # campi impostati ESPLICITAMENTE dall'utente: le conversazioni non li toccano
     prov = dict(p.get("prov") or {})                 # per voce appresa: conversazione (8 car.) e data. Niente valori, niente testi
@@ -134,15 +134,8 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
     while len(fatti) > 25:
         fatti.pop(next(iter(fatti)))
 
-    # ── contesto operativo: problemi/obiettivi dalle sintesi (dedupe) ──
-    problemi = list(ctx.get("problemi") or [])
-    obiettivi = list(ctx.get("obiettivi") or [])
-    for v, dest in ((extracted.get("summary"), problemi), (extracted.get("objective"), obiettivi)):
-        s = _clean(v)
-        if s and _push_unique(dest, s[:220]):
-            prov["_contesto"] = dict(_origine)
-            changed = True
-    ctx["problemi"], ctx["obiettivi"] = problemi[-_MAX_LIST:], obiettivi[-_MAX_LIST:]
+    # (10/11/2026) NON si memorizzano più problemi/obiettivi dai riassunti: li scrive il modello, non l'utente, e tornavano nel prompt
+    # come «cose emerse nelle conversazioni precedenti» (test B: «aumento del personale senza aumento del margine», mai detto).
 
     # ── storico consulenziale: report generati in questa sessione ──
     label = _clean(coll.get("deliverable_label")) or _clean(coll.get("deliverable_service"))
@@ -157,8 +150,6 @@ def merge_from_session(profile: Optional[dict], session: dict) -> tuple[dict, bo
         p["anagrafica"] = ana
     if fatti:
         p["fatti"] = fatti
-    if ctx.get("problemi") or ctx.get("obiettivi"):
-        p["contesto"] = ctx
     if storico:
         p["storico"] = storico
     if prov:
@@ -272,13 +263,37 @@ def _voci(profile: dict, scheda: Optional[dict]) -> tuple[list[str], list[str]]:
     for k, v in list((profile.get("fatti") or {}).items())[-12:]:
         if k not in ora and k not in (profile.get("anagrafica") or {}):
             app.append(f"{k.replace('_', ' ')}: {v}{_fonte(k)}")
-    ctx = profile.get("contesto") or {}
-    for chiave, titolo in (("problemi", "Tema trattato"), ("obiettivi", "Obiettivo espresso")):
-        for v in (ctx.get(chiave) or [])[-3:]:
-            app.append(f"{titolo}: {v}{_fonte('_contesto')}")
     for e in (profile.get("storico") or [])[-3:]:
         app.append(f"Report prodotto il {e.get('data')}: {e.get('tema')}")
     return conf, app
+
+
+_FONTE = re.compile(r"da dove|dove hai preso|quale fonte|che fonte|fonte (?:esatta|precisa)|hai (?:una )?fonte|l.hai dedott|provenienza|"
+                    r"conversazioni precedenti|memoria|scheda|profilo", re.I)
+
+
+def chiede_la_fonte(testo: str) -> bool:
+    """L'utente chiede da dove viene un'informazione che il K-BOT ha usato (fonte, memoria, scheda, profilo)."""
+    return bool(_FONTE.search(testo or ""))
+
+
+def _blocco_fonte(profile: dict, scheda: Optional[dict]) -> str:
+    """Fatti VERIFICABILI sulla provenienza, da dare al modello quando l'utente chiede «da dove l'hai preso?»: senza, il modello inventa
+    («ho una scheda aziendale con identificativi…») o promette controlli che non esistono (test B del 10/11/2026)."""
+    prov = profile.get("prov") or {}
+    conf = set(profile.get("confermati") or [])
+    righe = []
+    for k in list((profile.get("anagrafica") or {})) + list((profile.get("fatti") or {})):
+        if k in conf:
+            continue
+        o = prov.get(k) or {}
+        righe.append(f"{k.replace('_', ' ')}: conversazione {o.get('sid') or 'n/d'} del {_data_it(o) or 'data non nota'}")
+    return ("\nSE L'UTENTE CHIEDE DA DOVE VIENE UN'INFORMAZIONE — rispondi SOLO con questi fatti, senza inventare controlli: la memoria è "
+            "collegata al suo ACCOUNT, non a un'azienda; non esiste un identificativo aziendale né altri metadati di provenienza; le voci "
+            "apprese vengono dalle sue conversazioni precedenti (non da documenti aziendali o bilanci) e non sono verificate. Origine: "
+            + ("; ".join(righe[:12]) or "nessuna voce appresa") + ". Se la voce non c'è nell'elenco o l'utente non l'ha detta, ammetti "
+            "che non hai una fonte e che era una tua deduzione. L'utente può far dimenticare la memoria appresa dalle impostazioni. "
+            "Non dire che il dato appartiene a un'altra azienda: non lo sai.\n")
 
 
 def statistiche(profile: Optional[dict], scheda: Optional[dict] = None) -> dict:
@@ -315,14 +330,14 @@ def dimentica(user_id: Optional[str], chiave: Optional[str] = None) -> int:
     for k in [k for k in fatti if chiave is None or k == chiave]:
         fatti.pop(k); prov.pop(k, None); tolte += 1
     if chiave is None and prof.get("contesto"):
-        prof.pop("contesto"); prov.pop("_contesto", None)
+        prof.pop("contesto"); prov.pop("_contesto", None)       # contesto: dato di profili vecchi, non più scritto né letto
     if tolte or chiave is None:
         prof["anagrafica"], prof["fatti"], prof["prov"] = ana, fatti, prov
         _save(user_id, prof)
     return tolte
 
 
-def render_block(profile: Optional[dict], scheda: Optional[dict] = None) -> str:
+def render_block(profile: Optional[dict], scheda: Optional[dict] = None, domanda_fonte: bool = False) -> str:
     """Blocchi del system prompt: DATI CONFERMATI dall'utente (fatti utilizzabili) e MEMORIA APPRESA (non verificata, con provenienza).
     `scheda` = fatti detti nella conversazione in corso: prevalgono sulla memoria e non si ripetono."""
     if not isinstance(profile, dict) or not profile:
@@ -338,4 +353,6 @@ def render_block(profile: Optional[dict], scheda: Optional[dict] = None) -> str:
                 "serve, chiedi: «in una conversazione precedente risultava X: è ancora così?» e poi usa la risposta. Se l'utente "
                 "dice ora qualcosa di diverso, vale ciò che dice ora. Se non c'entra con la domanda, ignorala senza citarla:\n- "
                 + "\n- ".join(app) + "\n")
+        if domanda_fonte:
+            out += _blocco_fonte(profile, scheda)
     return out

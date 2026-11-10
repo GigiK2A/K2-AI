@@ -66,8 +66,9 @@ def test_profilo_vecchio_senza_conferme_e_tutto_non_verificato():
             "fatti": {"incidente": "data breach di 120 clienti"}, "contesto": {"problemi": ["personale aumentato senza margine"]}}
     b = P.render_block(prof)
     assert "CONFERMATI" not in b and "NON VERIFICATA" in b
-    for voce in ("DemoTech", "7500000", "data breach", "personale aumentato"):
+    for voce in ("DemoTech", "7500000", "data breach"):
         assert voce in b.split("NON VERIFICATA", 1)[1]
+    assert "personale aumentato" not in b            # i riassunti del modello (contesto.problemi) non si iniettano più
 
 
 def test_cio_che_l_utente_dice_in_questa_conversazione_vince_sulla_memoria():
@@ -145,3 +146,25 @@ def test_il_modulo_dati_azienda_mostra_solo_i_dati_confermati(fake_store):
     P.save_anagrafica("u9", {"ragione_sociale": "Acme Srl"})
     assert P.load_anagrafica("u9") == {"ragione_sociale": "Acme Srl"}            # il fatturato appreso non diventa «dato dell'account»
     assert "fatturato" in {v["chiave"] for v in P.memoria_appresa("u9")}
+
+
+# ── cosa NON entra nel prompt: riassunti scritti dal modello ───────────────────────────────────────────
+def test_i_riassunti_del_modello_non_entrano_nella_memoria():
+    """Test B: «aumento del personale senza aumento del margine» non lo aveva detto l'utente: veniva da `extractedData.summary`, un
+    riassunto scritto dal modello e poi presentato come «dalle conversazioni precedenti». Solo i fatti con citazione dell'utente (scheda)."""
+    s = _sessione(extractedData={"summary": "Aumento del personale senza aumento del margine operativo", "objective": "ridurre i costi"})
+    p, _ = P.merge_from_session({}, s)
+    assert "contesto" not in p
+    legacy = {"anagrafica": {}, "contesto": {"problemi": ["Aumento del personale senza aumento del margine"]}}
+    assert "Aumento del personale" not in P.render_block(legacy) and P.statistiche(legacy) == {"confermati": 0, "appresi": 0}
+
+
+# ── «da dove l'hai preso?» ───────────────────────────────────────────────────────────────────────────
+def test_alla_domanda_sulla_fonte_il_modello_riceve_i_fatti_verificabili():
+    prof = {"anagrafica": {"fatturato": "7500000"}, "prov": {"fatturato": {"sid": "abcd1234", "data": "2026-10-22"}}}
+    b = P.render_block(prof, domanda_fonte=True)
+    assert "abcd1234" in b and "22/10/2026" in b and "account" in b.lower()
+    assert "identificativo" in b.lower() and "azienda" in b.lower()          # dice cosa NON c'è: nessun id aziendale
+    assert "abcd1234" not in P.render_block(prof)                          # senza la domanda il blocco non pesa sul prompt
+    assert P.chiede_la_fonte("Da dove hai preso quell'informazione? C'è una fonte o l'hai dedotta?") is True
+    assert P.chiede_la_fonte("Voglio assumere due persone") is False
