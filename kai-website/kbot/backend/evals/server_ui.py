@@ -45,11 +45,28 @@ class DB:
     def table(s, n): return Q(s, n)
 db = DB()
 import app.lib.supabase_admin as sa, app.lib.sessions as sess, app.lib.storage as stor, app.lib.profile as prof, app.api.conversations as conv
-for mod in (sa, sess, stor, prof, conv): mod.get_admin_client = lambda: db
+import app.lib.fascicoli as _fas
+for mod in (sa, sess, stor, prof, conv, _fas): mod.get_admin_client = lambda: db
 import app.lib.rag as rag
 _ch = {}
 rag.persist_chunks = lambda rows: [_ch.setdefault(r["session_id"], []).append(r) for r in rows] and None
 rag.fetch_chunks = lambda sid, limit=500: list(_ch.get(str(sid), []))[:limit]
+# Fascicolo FITTIZIO per provare nel browser le citazioni dei documenti persistenti (UI_SEED_FASCICOLO=1): commessa DEMO-001 con un PDF
+# nello storage finto e 230 record (paginazione di fascicolo_apri). Non è la commessa reale UM-26-041.
+if os.environ.get("UI_SEED_FASCICOLO") == "1":
+    import io, hashlib
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    _b = io.BytesIO(); _c = canvas.Canvas(_b, pagesize=A4)
+    _c.drawString(60, 780, "Commessa DEMO-001 - Riepilogo"); _c.showPage(); _c.drawString(60, 780, "Residuo da liquidare 7.890,00 euro"); _c.showPage(); _c.save()
+    db.storage.bucket.files["seed/Riepilogo.pdf"] = _b.getvalue()
+    _U = "00000000-0000-4000-8000-000000000001"
+    _f = db.table("kbot_fascicoli").insert({"user_id": _U, "tipo": "commessa", "codice": "DEMO-001", "titolo": "Commessa di prova", "stato": "aperto"}).execute().data[0]
+    db.table("kbot_fascicolo_documenti").insert({"fascicolo_id": _f["id"], "user_id": _U, "name": "Riepilogo.pdf", "type": "application/pdf", "size": 100, "path": "seed/Riepilogo.pdf",
+        "extracted_text": "Commessa DEMO-001 - Riepilogo\nResiduo da liquidare 7.890,00 euro", "versione": 1, "serie": "riepilogo", "stato": "caricato"}).execute()
+    for _i in range(230):
+        db.table("kbot_fascicolo_voci").insert({"fascicolo_id": _f["id"], "user_id": _U, "tipo": "dato", "chiave": f"voce_{_i}", "testo": f"Voce {_i} " + "descrizione lunga " * 6,
+            "valore": str(1000 + _i), "verifica": "non_verificato", "stato_record": "attuale", "origine": "letto_da_documento", "fonti": [{"origine": "documento", "doc": "x", "pag": 1}]}).execute()
 # Modello FINTO che scrive lentamente (UI_LLM_FINTO=1): permette di provare nel browser lo streaming del documento, le fasi,
 # l'errore a metà testo e la ripresa con codice di backend VERO (marcatori, guardie, esportazione).
 if os.environ.get("UI_LLM_FINTO") == "1":
@@ -66,7 +83,7 @@ if os.environ.get("UI_LLM_FINTO") == "1":
     _stato = {"interrompi": 0}
 
     class _Flusso:
-        def __init__(self, testo, errore_dopo=None): self.t, self.err = testo, errore_dopo
+        def __init__(self, testo, errore_dopo=None, tool=None): self.t, self.err, self.tool = testo, errore_dopo, tool
         def __enter__(self): return self
         def __exit__(self, *a): return False
         @property
@@ -76,7 +93,9 @@ if os.environ.get("UI_LLM_FINTO") == "1":
                 yield self.t[i:i + 14]
                 if self.err and i >= self.err:
                     raise anthropic.APIConnectionError(request=httpx.Request("POST", "http://x"))
-        def get_final_message(self): return NS(stop_reason="end_turn", usage=NS(input_tokens=1000, output_tokens=300), content=[])
+        def get_final_message(self):
+            if self.tool: return NS(stop_reason="tool_use", usage=NS(input_tokens=1000, output_tokens=300), content=[NS(type="tool_use", name=self.tool[0], id="tu1", input=self.tool[1])])
+            return NS(stop_reason="end_turn", usage=NS(input_tokens=1000, output_tokens=300), content=[])
 
     class _Msg:
         def create(self, **k):
@@ -89,6 +108,18 @@ if os.environ.get("UI_LLM_FINTO") == "1":
             return NS(content=[NS(type="text", text=t)], usage=NS(input_tokens=10, output_tokens=5))
         def stream(self, **k):
             ultimo = str(k["messages"][-1]["content"]).lower()
+            if "fascicolo" in ultimo or isinstance(k["messages"][-1]["content"], list):
+                ult_c = k["messages"][-1]["content"]
+                if isinstance(ult_c, list):          # secondo giro: risultato dello strumento → risposta con citazione
+                    res = str(ult_c[0].get("content"))
+                    import re as _r
+                    m = _r.search(r"\[doc:([0-9a-f]{12})\]", res)
+                    if "PARZIALE" in res or "COMPLETO" in res:
+                        return _Flusso("Ho letto il fascicolo: " + ("parziale, servono altre pagine." if "PARZIALE" in res else "completo.") + " [[fonte|%s|1|Residuo da liquidare 7.890,00 euro]]" % (m.group(1) if m else "x"))
+                    return _Flusso("Il residuo da liquidare è 7.890,00 € [[fonte|%s|1|Residuo da liquidare 7.890,00 euro]]." % (m.group(1) if m else "x"))
+                if "apri il documento" in ultimo:
+                    return _Flusso("", tool=("fascicolo_documento", {"fascicolo": "DEMO-001", "documento": "Riepilogo", "query": "residuo da liquidare"}))
+                return _Flusso("", tool=("fascicolo_apri", {"fascicolo": "DEMO-001"}))
             if "riepilogo" in ultimo:
                 par = "\n\n".join(f"**Punto {i}.** Verifica ulteriore sulla commessa: la coerenza tra quantità e prezzi va ricontrollata con il cliente prima di fatturare, perché ogni scarto incide sul margine." for i in range(1, 25))
                 return _Flusso("Ho controllato il riepilogo. Le pratiche autorizzative: 8 × 680 € = 5.440 €, mentre il documento indica **5.040,00 €** (pag. 1).\n\n"

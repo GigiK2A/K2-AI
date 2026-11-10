@@ -61,8 +61,40 @@ def _testi_pagine(collected: dict, session_id: str, chunks: Optional[List[dict]]
         out.setdefault(d, {})[p] = out.get(d, {}).get(p, "") + "\n" + str(c.get("content") or "")
     for d, f in mappa_documenti(collected).items():
         if d not in out:
-            out[d] = {0: str(f.get("extractedText") or f.get("extractedSummary") or "")}
+            pag = _pagine_da_pdf(f)
+            out[d] = pag or {0: str(f.get("extractedText") or f.get("extractedSummary") or "")}
     return out
+
+
+_PDF_PAGINE: Dict[str, Dict[int, str]] = {}
+
+
+def _pagine_da_pdf(f: dict) -> Dict[int, str]:
+    """Testo per pagina letto dal PDF originale, quando non ci sono chunk con le pagine (documento di un fascicolo, sessione vecchia).
+    Così la citazione ha la pagina vera e il passaggio si può evidenziare. Vuoto se non è un PDF o il file non c'è."""
+    path = str(f.get("path") or "")
+    if not path or not str(f.get("name") or "").lower().endswith(".pdf"):
+        return {}
+    if path in _PDF_PAGINE:
+        return _PDF_PAGINE[path]
+    try:
+        import io
+
+        import pdfplumber
+
+        from ..api import upload
+
+        data = upload._bytes_documento(path)
+        if not data:
+            return {}
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
+            out = {i + 1: (pg.extract_text() or "") for i, pg in enumerate(pdf.pages[:120])}
+        if len(_PDF_PAGINE) >= 20:
+            _PDF_PAGINE.pop(next(iter(_PDF_PAGINE)))
+        _PDF_PAGINE[path] = out
+        return out
+    except Exception:
+        return {}
 
 
 def verifica(testo: str, collected: dict, session_id: str, chunks: Optional[List[dict]] = None) -> str:
@@ -206,3 +238,17 @@ def localizza(pdf_bytes: bytes, pagina: int, quote: str, zoom: float = 1.4) -> d
         return {"ok": True, "pagina": pagina, "pagine": n, "larghezza": W, "altezza": H,
                 "immagine": base64.b64encode(png).decode(), "riquadri": rects,
                 "localizzato": bool(rects)}
+
+
+def chunk_della_pratica(collected: dict, session_id: str, fetch) -> List[dict]:
+    """Chunk con pagine di TUTTI i documenti della conversazione: quelli caricati qui e quelli aperti da un fascicolo
+    (i cui chunk stanno sotto la sessione dove furono caricati). `fetch(session_id)` → lista di chunk."""
+    out = list(fetch(session_id) or []) if session_id else []
+    visti = {str(session_id)}
+    for f in (collected or {}).get("uploaded_files") or []:
+        sorg = str(f.get("sorgenteSessione") or "")
+        if f.get("dalFascicolo") and sorg and sorg not in visti:
+            visti.add(sorg)
+            nome = str(f.get("name") or "").casefold()
+            out += [c for c in (fetch(sorg) or []) if str(c.get("file_name") or "").casefold() == nome]
+    return out

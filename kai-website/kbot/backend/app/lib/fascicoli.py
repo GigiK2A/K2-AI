@@ -57,6 +57,25 @@ def disponibile() -> bool:
     return bool(c and c.user_id) and os.environ.get("KBOT_FASCICOLI", "1") != "0"
 
 
+_SCHEMA_OK: Dict[str, Any] = {}
+
+
+def schema_versioni_ok() -> Optional[bool]:
+    """True se la migrazione 008 è applicata (colonne `stato_record`, tabella eventi). Cache 60 s. None se non verificabile."""
+    import time
+    t = _SCHEMA_OK.get("t", 0)
+    if time.monotonic() - t < 60 and "v" in _SCHEMA_OK:
+        return _SCHEMA_OK["v"]
+    try:
+        _db().table(T_VOCI).select("stato_record").limit(1).execute()
+        _db().table("kbot_fascicolo_eventi").select("id").limit(1).execute()
+        v: Optional[bool] = True
+    except Exception as e:
+        v = False if "stato_record" in str(e) or "kbot_fascicolo_eventi" in str(e) or "does not exist" in str(e) else None
+    _SCHEMA_OK.update({"t": time.monotonic(), "v": v})
+    return v
+
+
 def _db():
     return get_admin_client()
 
@@ -253,7 +272,8 @@ def collega_documento(ctx: Contesto, d: dict) -> None:
         return
     col.setdefault("uploaded_files", []).append({"name": d.get("name"), "type": d.get("type") or "", "size": d.get("size") or 0, "path": d["path"],
                                                  "publicUrl": "", "extractedText": d.get("extracted_text") or "", "extractedSummary": "",
-                                                 "extractionMethod": d.get("extraction_method") or "", "dalFascicolo": str(d.get("fascicolo_id") or "1")})
+                                                 "extractionMethod": d.get("extraction_method") or "", "dalFascicolo": str(d.get("fascicolo_id") or "1"),
+                                                 "sorgenteSessione": str(d.get("source_session") or "")})
 
 
 def passaggi_documento(ctx: Contesto, d: dict, query: str, k: int = 5) -> List[dict]:
@@ -310,16 +330,40 @@ def _riga_doc(d: dict) -> str:
     return f"{d.get('name')} [doc:{doc_id_di(d)}] v{d.get('versione') or 1} ({d.get('stato') or 'caricato'})"
 
 
-def formatta_fascicolo(user_id: str, f: dict, max_voci: int = 30, con_superate: bool = False) -> str:
+MAX_CARATTERI_APRI = 12000
+PER_PAGINA = 40
+
+
+def formatta_fascicolo(user_id: str, f: dict, max_voci: int = PER_PAGINA, con_superate: bool = False, da: int = 0,
+                       tipo: str = "", cerca_testo: str = "") -> str:
+    """Il fascicolo per il modello. MAI troncato in silenzio: se non entra tutto dice «mostrati N–M di T» e come chiedere il resto (`da`)."""
     vv = voci(user_id, str(f["id"]))
     dd = documenti(user_id, str(f["id"]))
-    attivi = [v for v in vv if V.stato_di(v) in V.ATTIVI]
     n_sup = sum(1 for v in vv if V.stato_di(v) in ("superata", "archiviata"))
+    mostra = vv if con_superate else [v for v in vv if V.stato_di(v) in V.ATTIVI]
+    if tipo:
+        mostra = [v for v in mostra if v.get("tipo") == tipo]
+    if cerca_testo:
+        q = cerca_testo.casefold()
+        mostra = [v for v in mostra if q in f"{v.get('chiave') or ''} {v.get('testo') or ''} {v.get('valore') or ''}".casefold() or str(v["id"]).startswith(q)]
+    totale = len(mostra)
+    da = max(0, int(da or 0))
     righe = [f"FASCICOLO {f.get('codice') or '(senza codice)'} — {f.get('titolo')} [{f.get('tipo')}, {f.get('stato')}] id={f['id']}"]
-    mostra = vv if con_superate else attivi
-    righe += [_riga_voce(v) for v in mostra[-max_voci:]] or ["(nessun record attuale)"]
+    corpo, usati = [], 0
+    budget = MAX_CARATTERI_APRI - 1500
+    for v in mostra[da:da + max(1, max_voci)]:
+        r = _riga_voce(v)
+        if usati + len(r) > budget and corpo:
+            break
+        corpo.append(r)
+        usati += len(r) + 1
+    righe += corpo or ["(nessun record attuale)"]
+    if corpo and da + len(corpo) < totale:
+        righe.append(f"[PARZIALE: mostrati i record {da + 1}–{da + len(corpo)} di {totale}. Per il resto richiama fascicolo_apri con da={da + len(corpo)} (o filtra con tipo/cerca_testo).]")
+    elif corpo:
+        righe.append(f"[COMPLETO: {da + 1}–{da + len(corpo)} di {totale} record.]")
     if n_sup and not con_superate:
-        righe.append(f"({n_sup} record superati/archiviati nello storico: usa fascicolo_voce con azione «storico»)")
+        righe.append(f"({n_sup} record superati/archiviati nello storico: usa fascicolo_voce con azione «storico» o con_superate=true)")
     if dd:
         per_serie: Dict[str, List[dict]] = {}
         for d in dd:
@@ -332,14 +376,14 @@ def formatta_fascicolo(user_id: str, f: dict, max_voci: int = 30, con_superate: 
             righe.append(f"Documento {serie}: ultima ricevuta {_riga_doc(ult)}"
                          + (f"; ultima verificata v{verif[-1].get('versione') or 1}" if verif else "; nessuna versione verificata")
                          + (f"; approvata v{appr[-1].get('versione') or 1}" if appr else "; nessuna approvata")
-                         + " — i valori «attuali» sono quelli in uso nei calcoli")
+                         + " — apribile con fascicolo_documento; i valori «attuali» sono quelli in uso nei calcoli")
     contest = [v for v in vv if V.stato_di(v) == "contestata"]
     prop = [v for v in vv if V.stato_di(v) == "da_verificare" and v.get("sostituisce")]
     if contest:
         righe.append(f"ATTENZIONE: {len(contest)} record contestati — segnalalo e chiedi quale è corretto.")
     if prop:
         righe.append(f"{len(prop)} proposte di aggiornamento in attesa di conferma dell'utente.")
-    return "\n".join(righe)[:7000]
+    return "\n".join(righe)
 
 
 def blocco_prompt() -> str:
@@ -382,7 +426,9 @@ def definizioni() -> List[dict]:
         {"name": "fascicolo_cerca", "description": "Cerca fra i fascicoli dell'utente (commesse, clienti, contratti…) per codice, titolo o contenuto.",
          "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}}},
         {"name": "fascicolo_apri", "description": "Apre un fascicolo (id o codice): record ATTUALI con stato, verifica, origine e fonti; documenti con versione. `alla_data` (AAAA-MM-GG) mostra cosa era valido allora.",
-         "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "alla_data": {"type": "string"}, "con_superate": {"type": "boolean"}}, "required": ["fascicolo"]}},
+         "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "alla_data": {"type": "string"}, "con_superate": {"type": "boolean"},
+                                                           "da": {"type": "integer", "description": "indice del primo record (paginazione: l'output dice se è PARZIALE)"},
+                                                           "tipo": {"type": "string", "enum": sorted(TIPI_VOCE)}, "cerca_testo": {"type": "string"}}, "required": ["fascicolo"]}},
         {"name": "fascicolo_collega", "description": "Collega QUESTA conversazione a un fascicolo (non carica i documenti: si aprono con fascicolo_documento).",
          "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}}, "required": ["fascicolo"]}},
         {"name": "fascicolo_salva", "description": (
@@ -458,7 +504,8 @@ def esegui(nome: str, args: dict) -> str:
         if nome == "fascicolo_apri":
             if a.get("alla_data"):
                 return f"FASCICOLO {f.get('codice') or f.get('titolo')}\n" + V.storico(c.user_id, fid, "", str(a["alla_data"]))
-            return formatta_fascicolo(c.user_id, f, con_superate=bool(a.get("con_superate")))
+            return formatta_fascicolo(c.user_id, f, con_superate=bool(a.get("con_superate")), da=int(a.get("da") or 0),
+                                      tipo=str(a.get("tipo") or ""), cerca_testo=str(a.get("cerca_testo") or ""))
         if nome == "fascicolo_collega":
             n = collega(c, f)
             return f"Conversazione collegata al fascicolo {f.get('codice') or f.get('titolo')} ({n} documenti conservati, apribili con fascicolo_documento).\n" + formatta_fascicolo(c.user_id, f, 12)

@@ -209,7 +209,7 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
     if collected and collected.get("uploaded_files"):
         # citazioni documentali: ogni marcatore è verificato sul testo vero del documento (lib/fonti_documenti)
         try:
-            visible = fonti_documenti.verifica(visible, collected, session_id, rag.fetch_chunks(session_id) if session_id else None)
+            visible = fonti_documenti.verifica(visible, collected, session_id, fonti_documenti.chunk_della_pratica(collected, session_id, rag.fetch_chunks))
         except Exception:
             log.exception("verifica citazioni fallita")
             visible = _re.sub(r"\[\[fonte\|[^\]]*\]\]", "", visible)

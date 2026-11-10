@@ -80,3 +80,15 @@ def test_pag_semplice_diventa_citazione_solo_se_il_dato_e_nella_pagina():
 def test_nessun_collegamento_senza_pagine_note_o_senza_allegati():
     assert fd.verifica("costa 5 euro (pag. 3)", {}, "s1", CH) == "costa 5 euro (pag. 3)"
     assert fd.verifica("costa 5.040 euro (pag. 9)", COLL, "s1", CH) == "costa 5.040 euro (pag. 9)"
+
+
+def test_pagine_dal_pdf_originale_quando_non_ci_sono_chunk(monkeypatch):
+    """Documento aperto da un fascicolo, senza chunk con pagine: la citazione prende la pagina vera dal PDF."""
+    from app.api import upload
+    pdf = _pdf([["Intestazione commessa"], ["Residuo da liquidare 7.890,00 euro"]])
+    monkeypatch.setattr(upload, "_bytes_documento", lambda p: pdf if p == "old/r.pdf" else None)
+    fd._PDF_PAGINE.clear()
+    col = {"uploaded_files": [{"name": "Riepilogo.pdf", "path": "old/r.pdf", "extractedText": "x", "dalFascicolo": "f1"}]}
+    d = fd.doc_id(col["uploaded_files"][0])
+    out = fd.verifica(f"Residuo [[fonte|{d}|1|Residuo da liquidare 7.890,00 euro]].", col, "s9", [])
+    assert f"[[fonte|{d}|2|Residuo da liquidare 7.890,00 euro|ok]]" in out
