@@ -44,6 +44,7 @@ log = logging.getLogger(__name__)
 
 # ── configurazione ───────────────────────────────────────────────────────────────────────
 MAX_RIFERIMENTI = int(os.getenv("KBOT_NORME_MAX_RIF", "7"))
+MAX_MAPPA = int(os.getenv("KBOT_NORME_MAX_MAPPA", "4"))
 MAX_CHARS_ARTICOLO = int(os.getenv("KBOT_NORME_MAX_CHARS_ARTICOLO", "2400"))
 MAX_CHARS_TOTALE = int(os.getenv("KBOT_NORME_MAX_CHARS", "10000"))
 # Un comma lunghissimo (il comma 1 dell'art. 49 D.Lgs. 231/2007 ha 1.450 caratteri) non deve consumare
@@ -243,6 +244,8 @@ class Fonte:
     testo: str = ""                # ciò che entra nel pacchetto
     note: str = ""                 # modifiche successive che toccano cifre (non incorporate nel testo)
     avviso: str = ""               # «cifra vigente X; la cifra Y del testo è superata» (deterministico)
+    versione: str = ""             # «testo vigente dal 31/12/2025, verificato sull'API ufficiale il 10/11/2026» / «consolidato al …»
+    aggiornamenti: str = ""        # note «AGGIORNAMENTO (n)»: quali norme hanno modificato l'articolo (es. D.L. 159/2025)
 
 
 @dataclass
@@ -702,13 +705,24 @@ def recupera(rif: dict, parole: list[str], origine: str, budget: int, quesito: s
     commi = dividi_commi(corpo)
     if len(commi) == 1 and len(corpo) > budget:
         commi = _frasi(corpo)
-    idx, caps = seleziona_indici(commi, parole, budget, quesito)
-    testo = _formatta(commi, idx, caps)
+    comma = re.sub(r"\s+", "", str(rif.get("comma") or "")).lower()
+    sel = [i for i, (et, _) in enumerate(commi) if comma and et.replace(" ", "").lower() == comma]
+    if sel:                                    # l'utente ha indicato il comma: è quello che deve arrivare al modello, per intero
+        testo = _formatta(commi, sel)
+    else:
+        idx, caps = seleziona_indici(commi, parole, budget, quesito)
+        testo = _formatta(commi, idx, caps)
+    ver, agg = "", ""
+    try:
+        from . import ricerca_norme
+        ver, agg = ricerca_norme.versione_e_note(int(rif["anno"]), str(rif["numero"]), rif["articolo"], rif.get("tipo"), comma or None)
+    except Exception:
+        pass                                   # la versione è un'informazione in più: mai bloccare il recupero
     return Fonte(citazione=rec.get("citazione", ""), tipo=rec.get("tipo", ""), anno=int(rec.get("anno") or rif["anno"]),
                  numero=str(rec.get("numero") or rif["numero"]), articolo=str(rec.get("articolo") or rif["articolo"]),
                  rubrica=rub.group(1).strip() if rub else "", sigla=_sigla(rec), origine=origine, testo=testo,
                  note=note_rilevanti(rec.get("testo") or ""),
-                 avviso=vigenza_avviso(rec.get("testo") or "", corpo))
+                 avviso=vigenza_avviso(rec.get("testo") or "", corpo), versione=ver, aggiornamenti=agg)
 
 
 _SUFFISSI_AFFINI = ("bis", "ter", "quater", "quinquies", "sexies", "septies", "octies", "novies", "decies")
@@ -783,6 +797,8 @@ _ISTRUZIONI = (
     "durata e luogo…), NON aprire con «Sì» o «No»: apri con «dipende da…», nomina i 2-3 fatti decisivi, indica "
     "l'azione prudente da fare nel frattempo e presenta la conclusione come condizionata. Tieni distinti ciò che la "
     "norma stabilisce, ciò che dipende dai fatti o dalla valutazione del rischio, e ciò che è prassi o buona pratica.\n"
+    "- Questo blocco è un ESTRATTO scelto dal sistema: non dire di aver «interrogato» il database. Se manca un articolo che serve "
+    "e non puoi cercarlo, dì che non è nell'estratto che hai ricevuto, senza ricostruirlo a memoria.\n"
     "- Se un passaggio non riguarda il caso, ignoralo senza citarlo. Se le fonti non coprono il punto, dillo e "
     "indirizza al professionista invece di inventare.\n"
     "- Il testo può non essere aggiornato all'ultima modifica: per scadenze e importi che pesano sulla decisione "
@@ -791,10 +807,14 @@ _ISTRUZIONI = (
 
 
 def costruisci_blocco(fonti: list[Fonte]) -> str:
-    righe = ["FONTI NORMATIVE PER QUESTO TURNO (testo ufficiale dal corpus Normattiva, recuperato dal sistema):"]
+    righe = ["FONTI NORMATIVE PER QUESTO TURNO (testo ufficiale dal corpus Normattiva: ESTRATTO scelto dal sistema, non l'intero database; per altro usa lo strumento cerca_norma, se disponibile):"]
     for i, f in enumerate(fonti, 1):
         titolo = f"[{i}] ({f.sigla}) {f.citazione}" + (f" — {f.rubrica}" if f.rubrica else "")
         righe.append(titolo)
+        if f.versione:
+            righe.append("  Versione: " + f.versione)
+        if f.aggiornamenti:
+            righe.append("  Modifiche normative in nota: " + f.aggiornamenti)
         if f.avviso:
             righe.append("  " + f.avviso)
         righe.append(f.testo)
@@ -814,11 +834,22 @@ def costruisci(quesito: str, contesto: str, client=None, modello: str = "") -> O
         fonti_ue = norme_ue.fonti_ue(testo_tot, Fonte)       # norme UE che il corpus Normattiva non ha (es. GDPR)
         parole = _parole_chiave(quesito)
         candidati: list[tuple[dict, str]] = [(r, "utente") for r in riferimenti_da_testo(testo_tot)]
-        candidati += [(r, "mappa") for r in riferimenti_da_mappa(testo_tot)]
+        # La mappa dei temi è un elenco FISSO: se riempie tutti i posti, gli stessi articoli tornano sempre (test art. 113, 10/11/2026).
+        # Al massimo MAX_MAPPA posti, il resto va a ciò che la domanda dice davvero (ricerca per parole) e alle proposte del modello.
+        candidati += [(r, "mappa") for r in riferimenti_da_mappa(testo_tot)[:MAX_MAPPA]]
         if client is not None:
             proposti, parole_modello = proponi(client, modello, quesito, contesto)
             parole = list(dict.fromkeys(parole_modello + parole))
             candidati += [(r, "proposta") for r in proposti]
+        if candidati and _flag("KBOT_NORME_RICERCA_TESTO"):
+            # Ricerca per parole DENTRO la norma già indicata (utente, mappa o proposta del modello): aggiunge gli articoli che la domanda
+            # descrive con le sue parole e che né la mappa fissa né il modello hanno nominato (es. art. 113 sulle scale). Mai su tutto il corpus:
+            # una ricerca lessicale libera porterebbe articoli a caso in ogni risposta.
+            try:
+                from . import ricerca_norme
+                candidati += [(r, "ricerca") for r in ricerca_norme.candidati_testuali(quesito, candidati)]
+            except Exception:
+                log.warning("norme_evidence: ricerca per parole fallita (fail-open)", exc_info=True)
         visti, uniche = set(), []
         for r, o in candidati:
             k = (r.get("tipo"), str(r.get("numero")), r.get("anno"), re.sub(r"[^0-9a-z]", "", str(r.get("articolo") or "").lower()))

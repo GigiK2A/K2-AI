@@ -83,6 +83,14 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content={"detail": "internal server error"})
 
 
+@app.get("/api/kbot/capabilities")
+def capabilities() -> dict:
+    """Cosa può fare il K-BOT adesso (solo booleani, nessun dato sensibile): il frontend spegne i comandi non disponibili invece di
+    lasciare un pulsante acceso che produce un avviso a ogni messaggio."""
+    from .lib import ricerca_norme, web_search
+    return {"webSearch": bool(web_search.enabled()), "normeSearch": bool(ricerca_norme.disponibile())}
+
+
 @app.get("/health")
 def health() -> dict:
     return {"ok": True, "service": "kbot", "sentry": _SENTRY_ON}

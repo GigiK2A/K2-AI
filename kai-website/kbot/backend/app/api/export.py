@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from ..lib import sessions, documento
 from ..lib.auth import AuthUser, optional_user, verify_internal_key
+from ..lib import testo_pulito
 from ..lib.pdf_renderer import _html_to_pdf_bytes  # reuse Playwright path
 from ..lib.xlsx_renderer import render_xlsx
 import asyncio
@@ -99,7 +100,7 @@ _INLINE_CODE = re.compile(r"`([^`\n]+)`")
 
 
 def _inline(text: str) -> str:
-    escaped = html.escape(text)
+    escaped = html.escape(text, quote=False)           # gli apostrofi non vanno trasformati in &#x27; (restavano visibili)
     escaped = _INLINE_BOLD.sub(r"<strong>\1</strong>", escaped)
     escaped = _INLINE_ITALIC.sub(r"<em>\1</em>", escaped)
     escaped = _INLINE_CODE.sub(r"<code>\1</code>", escaped)
@@ -107,7 +108,7 @@ def _inline(text: str) -> str:
 
 
 def _markdown_to_html(md: str) -> str:
-    lines = md.splitlines()
+    lines = testo_pulito.pulisci(md).splitlines()
     out: list[str] = []
     in_list = False
     para: list[str] = []
@@ -297,6 +298,7 @@ def _add_run_with_inline_marks(paragraph, text: str) -> None:
 
 def _markdown_to_docx(doc, md: str) -> None:
     """Subset markdown → python-docx (headings, lists, paragraphs, inline marks)."""
+    md = testo_pulito.pulisci(md)
     para_buf: list[str] = []
 
     def flush_para():

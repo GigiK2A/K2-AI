@@ -166,7 +166,7 @@ _TIPO_ALIASES = {
 # label testuale (es. 'D.Lgs', 'DM') normalizzata → tipo canonico.
 _LABEL_TO_TIPO = {
     "dm": "decreto_ministeriale", "dlgs": "decreto_legislativo",
-    "dl": "decreto_legge", "dpr": "decreto_presidente_repubblica",
+    "dl": "decreto_legge", "decretolegge": "decreto_legge", "decretolegislativo": "decreto_legislativo", "dpr": "decreto_presidente_repubblica",
     "dpcm": "decreto_presidente_consiglio_ministri",
     "l": "legge", "legge": "legge", "rd": "regio_decreto",
 }
@@ -219,18 +219,30 @@ def _norm_code(s: str) -> str:
 # Riferimento normativo nel testo (mirror della regex C2 del CAGE in grounding.py, che
 # accetta anni a 2-4 cifre). L'anno può essere a 2 cifre ('D.Lgs 81/08', 'L. 300/70'):
 # va espanso a 4 cifre per matchare i filename del corpus (_FN_RE = \d{4}).
+_COMMA = r"(\d+(?:\s*-\s*[a-z]+)?)"
 _NORM_REF_RE = re.compile(
-    r"\b(d\.?\s?m\.?|d\.?\s?l\.?|d\.?\s?p\.?r\.?|d\.?\s?lgs\.?|legge|l\.)\s*(?:n\.?\s*)?(\d{1,4})\s*[/\-]\s*(\d{2,4})"
-    # articolo DOPO gli estremi ("L. 300/1970, art. 4", "D.Lgs 231/2001, art. 25-septies"):
+    r"\b(d\.?\s?m\.?|d\.?\s?l\.?|d\.?\s?p\.?r\.?|d\.?\s?lgs\.?|decreto[\s-]+legislativo|decreto[\s-]+legge|legge|l\.)\s*(?:n\.?\s*)?(\d{1,4})\s*(?:[/\-]|\bdel\b)\s*(\d{2,4})"
+    # articolo DOPO gli estremi ("L. 300/1970, art. 4", "D.Lgs 231/2001, art. 25-septies", "D.Lgs. 81/2008, art. 113, comma 2"):
     # senza catturarlo, l'enrich agganciava il PRIMO chunk della legge nel corpus (es.
     # art. 1 dello Statuto al posto dell'art. 4 sulla videosorveglianza) → citazione
     # verbatim con articolo SBAGLIATO in un parere legale.
-    r"(?:\s*,?\s*art(?:icol[oi]|t)?\.?\s*(\d+(?:\s*-\s*[a-z]+)?))?",
+    r"(?:\s*,?\s*art(?:icol[oi]|t)?\.?\s*(\d+(?:\s*-\s*[a-z]+)?)(?:\s*,?\s*(?:comm[ai]|co\.)\s*"+_COMMA+r")?)?",
     re.I)
+
+# Norme citate per NOME o sigla («TUSL», «Statuto dei lavoratori»): si riscrivono negli estremi prima di cercare i riferimenti.
+_ALIAS_NORME = (
+    (re.compile(r"\b(?:tusl|t\.?\s?u\.?\s?s\.?\s?l\.?|testo\s+unico\s+(?:sulla\s+|in\s+materia\s+di\s+)?sicurezza(?:\s+sul\s+lavoro)?|tu\s+sicurezza)\b", re.I), "D.Lgs. 81/2008"),
+    (re.compile(r"\bstatuto\s+dei\s+lavoratori\b", re.I), "L. 300/1970"),
+)
+# «decreto legislativo 9 aprile 2008, n. 81»: la data sta fra la sigla e il numero.
+_MESI = r"(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)"
+_NORM_DATA_RE = re.compile(
+    r"\b(d\.?\s?lgs\.?|decreto[\s-]+legislativo|d\.?\s?l\.?|decreto[\s-]+legge|legge)\s+(?:\d{1,2}\s+"+_MESI+r"\s+)(\d{4})\s*,?\s*n\.?\s*(\d{1,4})"
+    r"(?:\s*,?\s*art(?:icol[oi]|t)?\.?\s*(\d+(?:\s*-\s*[a-z]+)?)(?:\s*,?\s*(?:comm[ai]|co\.)\s*"+_COMMA+r")?)?", re.I)
 
 # articolo PRIMA degli estremi ("art. 4 della L. 300/1970", "ex art. 13 del D.Lgs 81/2008"):
 # cercato in una finestra corta subito a monte del riferimento.
-_ART_BEFORE_RE = re.compile(r"art(?:icol[oi]|t)?\.?\s*(\d+(?:\s*-\s*[a-z]+)?)\s*(?:,\s*)?(?:del(?:la|lo)?\s+|di\s+)?$", re.I)
+_ART_BEFORE_RE = re.compile(r"art(?:icol[oi]|t)?\.?\s*(\d+(?:\s*-\s*[a-z]+)?)\s*(?:,\s*)?(?:(?:comm[ai]|co\.)\s*"+_COMMA+r"\s*(?:,\s*)?)?(?:del(?:la|lo)?\s+|di\s+)?$", re.I)
 
 
 def _norm_art(a) -> str:
@@ -257,21 +269,37 @@ def extract_norm_refs(text: str) -> list[dict]:
     corpus. Cattura anche l'ARTICOLO (dopo o prima degli estremi) quando indicato, così
     l'enrich cita il chunk giusto. Ritorna [{tipo, numero, anno, articolo?, label}]."""
     text = text or ""
+    for rx, estremi in _ALIAS_NORME:
+        text = rx.sub(estremi, text)
     refs, seen = [], set()
     for m in _NORM_REF_RE.finditer(text):
         tipo = _LABEL_TO_TIPO.get(_norm_label(m.group(1)))
         numero, anno = m.group(2), _expand_year(int(m.group(3)))
-        articolo = m.group(4)
+        articolo, comma = m.group(4), m.group(5)
         if not articolo:
-            b = _ART_BEFORE_RE.search(text[max(0, m.start() - 40):m.start()])
+            b = _ART_BEFORE_RE.search(text[max(0, m.start() - 60):m.start()])
             if b:
-                articolo = b.group(1)
+                articolo, comma = b.group(1), b.group(2)
         articolo = re.sub(r"\s+", "", articolo) if articolo else None
+        comma = re.sub(r"\s+", "", comma) if comma else None
         key = (tipo, numero, anno, _norm_art(articolo))
         if tipo and key not in seen:
             seen.add(key)
             refs.append({"tipo": tipo, "numero": numero, "anno": anno,
-                         "articolo": articolo, "label": m.group(0).strip()})
+                         "articolo": articolo, "comma": comma, "label": m.group(0).strip()})
+    for m in _NORM_DATA_RE.finditer(text):
+        tipo = _LABEL_TO_TIPO.get(_norm_label(m.group(1)))
+        numero, anno = m.group(3), int(m.group(2))
+        articolo = re.sub(r"\s+", "", m.group(4)) if m.group(4) else None
+        if not articolo:
+            b = _ART_BEFORE_RE.search(text[max(0, m.start() - 60):m.start()])
+            articolo = re.sub(r"\s+", "", b.group(1)) if b else None
+        comma = re.sub(r"\s+", "", m.group(5)) if m.group(5) else None
+        key = (tipo, numero, anno, _norm_art(articolo))
+        if tipo and key not in seen:
+            seen.add(key)
+            refs.append({"tipo": tipo, "numero": numero, "anno": anno,
+                         "articolo": articolo, "comma": comma, "label": m.group(0).strip()})
     # CODICI per abbreviazione/nome ('art. 595 c.p.' → R.D. 1398/1930, art. 595): mappa
     # l'abbreviazione sugli estremi del corpus così find_by_estremi aggancia il verbatim.
     for m in _CODICE_REF_RE.finditer(text):
@@ -351,7 +379,7 @@ def find_by_estremi(anno: int, numero: str, tipo: Optional[str] = None,
     """Cerca una norma per estremi (anno, numero) — per VERIFICARE un riferimento citato
     nel deliverable. Filtra per `tipo` (alias-aware: 'decreto_ministeriale' ≡ 'dm') così
     una norma confabulata ('DM 143/2013' quando esiste solo L. 143/2013) NON viene
-    verificata. Interroga il corpus PRINCIPALE poi, se non basta, il SUPPLEMENTO bundlato
+    verificata. Interroga il SUPPLEMENTO bundlato (testi aggiornati) poi il corpus PRINCIPALE
     (norme aggiunte non ancora nel volume). Ritorna [] se nessuno dei due ha la norma."""
     if not anno or not numero:
         return []
@@ -360,10 +388,19 @@ def find_by_estremi(anno: int, numero: str, tipo: Optional[str] = None,
         return []
     valid_tipi = _TIPO_ALIASES.get(tipo) if tipo else None
     out: list[dict] = []
-    for db in (_db_path(), _supp_path()):
+    visti: set[str] = set()
+    # Il SUPPLEMENTO va per primo (10/11/2026): contiene articoli riscaricati dall'API ufficiale con la data di vigenza e le note di
+    # aggiornamento (es. D.Lgs. 81/2008 art. 113, modificato dal D.L. 159/2025); il corpus principale è un consolidato più vecchio e,
+    # interrogato per primo, nascondeva sempre la versione aggiornata (si fermava al primo hit).
+    for db in (_supp_path(), _db_path()):
         if db is None:
             continue
-        out.extend(_query_estremi(db, anno, num, valid_tipi, articolo, limit - len(out)))
-        if len(out) >= limit:
-            break
+        for r in _query_estremi(db, anno, num, valid_tipi, articolo, max(1, limit)):
+            k = _norm_art(r.get("articolo"))
+            if k in visti:
+                continue                       # stesso articolo già dato dal supplemento: quello del corpus è la versione vecchia
+            visti.add(k)
+            out.append(r)
+            if len(out) >= limit:
+                return out
     return out

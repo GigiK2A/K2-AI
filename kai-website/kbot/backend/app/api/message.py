@@ -30,7 +30,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
+from ..lib import testo_pulito, strumenti, ricerca_norme, calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -194,6 +194,7 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
     # HTML/template/placeholder/artefatti tecnici/tipografia sporca. Fail-open.
     _v_protetto, _mappa_doc = documento.proteggi(visible)       # i marcatori del documento non devono essere «puliti»
     visible = documento.ripristina(output_quality.polish(_v_protetto), _mappa_doc)
+    visible = testo_pulito.pulisci(visible)      # entità residue, codifica doppia, caratteri invisibili (il codice e i marcatori restano)
     visible = impegni_guard.sanitize(visible)       # niente rimborsi/risarcimenti promessi dal bot
     # Numeri verdi (800/803) scritti dal modello e non dall'utente: fonte sconosciuta, si tolgono (lib/crisi).
     _u = norme_evidence.testo_utente_corrente()
@@ -257,6 +258,8 @@ def _postprocess_turn(client, system_prompt, messages: list, merged_messages: li
     raw_text = eco_guard.assicura(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, _last_user)
     # Risposta interrotta a metà frase (il modello emette la fine-turno da solo): una sola continuazione.
     raw_text = taglio_guard.completa(client, ANTHROPIC_MODEL, system_prompt, messages, raw_text, stop_reason)
+    # «ho interrogato il database» solo se cerca_norma è stato chiamato davvero (altrimenti è un estratto nel contesto)
+    raw_text = ricerca_norme.correggi_dichiarazioni(raw_text)
     if "CONSULENZA_SUMMARY" not in raw_text:
         raw_text = raw_text + calcoli.nota_aritmetica(raw_text)  # aritmetica scritta che non torna: nota col valore giusto
     raw_text = _ensure_summary_block(client, system_prompt, messages, raw_text,
@@ -535,8 +538,7 @@ async def post_message(
                 seen.add(fs)
     req_hint = await _required_fields_hint(collected)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
-    if web_search.enabled():
-        system_prompt += web_search.SYSTEM_HINT
+    system_prompt += strumenti.hint()
     # GROUNDING FORZATO (filosofia: la risposta si costruisce dalla CONOSCENZA, non dalla
     # memoria del modello): fatto specifico, conformità, provider nominato o richiesta
     # esplicita → il server recupera la fonte PRIMA del turno e la inietta (il contesto
@@ -573,7 +575,7 @@ async def post_message(
         # web_search abilitato: il modello cerca DAVVERO quando l'utente lo chiede, invece
         # di promettere una ricerca che non fa. L'helper gestisce pause_turn + fallback.
         result = await _off_loop(
-            web_search.create_with_web_search,
+            strumenti.create_con_strumenti,
             client,
             model=ANTHROPIC_MODEL,
             # max_tokens generoso: serve per i report finali. 1200 era ok per
@@ -701,8 +703,7 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser], cron: Optio
     session["_memoria_stat"] = _memoria_stat          # solo per la risposta di questo turno (non si salva)
     req_hint = await _required_fields_hint(collected)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
-    if web_search.enabled():
-        system_prompt += web_search.SYSTEM_HINT
+    system_prompt += strumenti.hint()
     # NB: il GROUNDING FORZATO (ricerca web proattiva) NON avviene qui: nello stream gira
     # DOPO l'heartbeat (event_gen), così una ricerca lenta non tiene fermo il primo byte
     # (rischio 524 all'edge). Vedi post_message_stream.
@@ -897,13 +898,17 @@ async def _blocco_norme(client, last_user_text: str, recent_ctx: str) -> str:
     lo rende disponibile alle guardie a valle (citazioni consentite, numeri fondati). Fail-open: senza
     corpus, senza ambito normativo o su errore, ritorna '' e la chat funziona come prima."""
     norme_evidence.imposta(None)
+    ricerca_norme.inizia_turno()
     try:
         pk = await asyncio.to_thread(norme_evidence.costruisci, last_user_text, recent_ctx,
                                      client, ANTHROPIC_MODEL)
     except Exception:
         log.warning("norme_evidence: errore nel recupero (fail-open)", exc_info=True)
-        return ""
+        pk = None
     if not pk:
+        if ricerca_norme.disponibile():
+            # pacchetto vuoto: equivale a «nessuno» per le guardie, ma accoglie i risultati di cerca_norma (citazioni consentite)
+            norme_evidence.imposta(norme_evidence.Pacchetto(testo=""))
         return ""
     norme_evidence.imposta(pk)
     log.info("norme_evidence: %d fonti nel prompt (%s)", len(pk.fonti), "; ".join(f.sigla for f in pk.fonti))
@@ -963,6 +968,7 @@ async def post_message_stream(
         # nel frattempo lo stream resta vivo con commenti SSE (il client li ignora).
         yield _sse({"fase": "fonti"})
         web_search.inizia_turno()
+        ricerca_norme.inizia_turno()
         _forza_ricerca = (body.webSearch or "").lower() == "force"
         _t_ground = asyncio.ensure_future(asyncio.to_thread(
             fact_grounding.ground_block, _last_user_text, _recent_user_text, _forza_ricerca))
@@ -983,17 +989,24 @@ async def post_message_stream(
                                "risposta su quei risultati e dì quali fonti hai usato; non limitarti a un solo link e non "
                                "inventare indirizzi.\n")
             else:
-                # La ricerca richiesta non è partita o non ha dato risultati: lo si dice, non si finge.
-                avvisi.append("Hai chiesto di cercare sul web, ma la ricerca non è disponibile in questo momento"
-                              if not web_search.enabled() else
-                              "Hai chiesto di cercare sul web, ma la ricerca non ha restituito risultati utili: la risposta "
-                              "si basa solo sulle fonti normative del sistema")
+                # La ricerca richiesta non è partita o non ha dato risultati: lo si dice, non si finge. Ma con la ricerca spenta e il
+                # pulsante rimasto acceso (localStorage) ogni messaggio arrivava con `force`: l'avviso era in OGNI risposta (10/11/2026).
+                # Ora una volta per conversazione, e di nuovo solo se il messaggio chiede davvero di cercare online.
+                if not web_search.enabled():
+                    if web_search.chiede_ricerca_online(_last_user_text) or not collected.get("avviso_ricerca_web_dato"):
+                        avvisi.append("Hai chiesto di cercare sul web, ma la ricerca non è disponibile in questo momento")
+                        collected["avviso_ricerca_web_dato"] = True
+                else:
+                    avvisi.append("Hai chiesto di cercare sul web, ma la ricerca non ha restituito risultati utili: la risposta "
+                                  "si basa solo sulle fonti normative del sistema")
         norme_evidence.imposta(None)
         _pk = _t_norme.result()
         if _pk:
             norme_evidence.imposta(_pk)
             sys_prompt += _pk.testo
             log.info("norme_evidence: %d fonti nel prompt (%s)", len(_pk.fonti), "; ".join(f.sigla for f in _pk.fonti))
+        elif ricerca_norme.disponibile():
+            norme_evidence.imposta(norme_evidence.Pacchetto(testo=""))     # accoglie i risultati di cerca_norma
         cron.segna("fonti")
         raw_buffer: list[str] = []
         usage = None
@@ -1004,8 +1017,7 @@ async def post_message_stream(
         # web_search è un CLIENT-tool agganciato a OpenAI (il path streaming è quello LIVE
         # della chat usato dal frontend). Loop: stream Claude → se chiama web_search,
         # eseguiamo la ricerca via OpenAI e proseguiamo lo stream coi risultati.
-        use_search = web_search.enabled()
-        tools = [web_search.web_search_tool()] if use_search else None
+        tools = strumenti.definizioni() or None
         messages = list(history)
         rounds, max_rounds = 0, 4
         try:
@@ -1051,7 +1063,7 @@ async def post_message_stream(
                 # Claude ha chiamato web_search? esegui la ricerca OpenAI e continua.
                 if not tools or getattr(final, "stop_reason", None) != "tool_use" or rounds >= max_rounds:
                     break
-                tool_results = await _off_loop(web_search.execute_tool_uses, final.content)
+                tool_results = await _off_loop(strumenti.esegui, final.content)
                 if not tool_results:
                     break
                 messages = [

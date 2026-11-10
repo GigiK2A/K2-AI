@@ -30,6 +30,15 @@ def _flag(name: str, default: str = "1") -> bool:
     return (os.environ.get(name, default) or default).strip().lower() not in ("0", "false", "no", "off")
 
 
+_CHIEDE_ONLINE = re.compile(r"\b(?:cerca\w*|ricerc\w+|verific\w+|controll\w+|trova\w*|guarda\w*|consult\w+)\b[^.?!\n]{0,40}\b(?:sul\s+web|online|on-?line|su\s+internet|in\s+rete|su\s+google)\b|"
+                            r"\b(?:sul\s+web|su\s+internet|online)\b[^.?!\n]{0,30}\b(?:cerca\w*|ricerc\w+|verific\w+)", re.I)
+
+
+def chiede_ricerca_online(testo: str) -> bool:
+    """Il messaggio chiede ESPLICITAMENTE di cercare in rete («cerca sul web…», «verifica online…»)."""
+    return bool(_CHIEDE_ONLINE.search(testo or ""))
+
+
 def enabled() -> bool:
     """ON quando la ricerca è usabile: flag attivo E chiave OpenAI presente.
     `KBOT_WEB_SEARCH=0` la spegne."""

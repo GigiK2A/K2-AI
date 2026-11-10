@@ -51,6 +51,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from . import testo_pulito
 log = logging.getLogger(__name__)
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -349,6 +350,7 @@ def _clean_inline(txt: str) -> str:
     """Rimuove tag non-supportati, lascia <b>/<i>/<br>, normalizza whitespace."""
     if not txt:
         return ""
+    txt = testo_pulito.decodifica_entita(txt, tieni_xml=True)        # &egrave; &#x27; &amp;#x27; → caratteri veri (prima restavano letterali)
     txt = _TAG_STRIP.sub("", txt)
     txt = re.sub(r"\s+", " ", txt).strip()
     # Escape & ma preserva entità note + bilancia tag inline → XML valido
@@ -2102,8 +2104,12 @@ def _html_to_pdf_bytes(html: str) -> bytes:
     doc.addPageTemplates([PageTemplate(id="plain", frames=[frame])])
     styles = _make_styles()
 
+    # Il <head> si butta INTERO (titolo e CSS compresi: prima si toglievano solo i tag e il contenuto di <style>/<title> finiva nel
+    # documento: «@page { size: A4 … }» in cima al PDF, collaudo del 10/11/2026), poi <style>/<script>/commenti ovunque.
+    work = re.sub(r"(?is)<head\b.*?</head>|<style\b.*?</style>|<script\b.*?</script>|<!--.*?-->", "", html)
+    work = testo_pulito.decodifica_entita(work, tieni_xml=True)
     # Strip outer html/body
-    work = re.sub(r"</?(?:html|body|head|meta|title)[^>]*>", "", html, flags=re.IGNORECASE)
+    work = re.sub(r"</?(?:html|body|head|meta|title)[^>]*>", "", work, flags=re.IGNORECASE)
     # Split on h1-h4 + p + ul/ol
     flows: List[Flowable] = []
     head_re = re.compile(r"<(h[1-4])[^>]*>(.*?)</\1>", re.IGNORECASE | re.DOTALL)
