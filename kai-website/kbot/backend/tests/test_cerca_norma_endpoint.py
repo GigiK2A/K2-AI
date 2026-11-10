@@ -1,3 +1,4 @@
+import re
 """Lo strumento `cerca_norma` dalla chat, come in produzione: il modello lo chiama, riceve l'articolo e può citarlo; senza chiamata non può dire
 di aver «interrogato il database» (10/11/2026: «ricevo solo un blocco di fonti predefinito»)."""
 import json
@@ -46,7 +47,7 @@ def test_il_modello_chiama_cerca_norma_e_riceve_comma_versione_e_note(client, fa
     assert "cerca_norma" in [t["name"] for t in chat[0]["tools"]]
     ultimo = chat[1]["messages"][-1]["content"][0]
     assert ultimo["type"] == "tool_result" and "75 gradi" in ultimo["content"] and "comma 2" in ultimo["content"]
-    assert "Versione:" not in ultimo["content"] and "testo" in ultimo["content"]
+    assert re.search(r"vigent|consolidat", ultimo["content"], re.I)   # lo strumento riporta la versione in vigore
     assert "art. 113" in ev[-1]["message"]                      # la citazione che deriva dallo strumento non viene de-specificata
 
 

@@ -543,6 +543,19 @@ export async function uploadFiles(
  * URL fetching and analysis
  * ----------------------------------------------------------------- */
 
+export type Capabilities = { webSearch: boolean; normeSearch: boolean };
+
+/** Funzioni attive sul server (ricerca web, banca dati norme). Se non risponde: nessuna promessa. */
+export async function getCapabilities(): Promise<Capabilities | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/kbot/capabilities`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchUrl(
   sessionId: string,
   url: string,

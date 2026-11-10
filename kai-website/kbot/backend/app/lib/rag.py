@@ -93,6 +93,25 @@ def fetch_chunks(session_id: str, limit: int = 500) -> List[dict]:
         return []
 
 
+def chunk_da_file(session_id: str, files: List[dict]) -> List[dict]:
+    """Chunk in memoria dal testo estratto tenuto nella sessione.
+
+    Serve quando `kbot_file_chunks` non esiste o è vuota (migrazione non applicata, persistenza
+    fallita, sessione vecchia): il documento resta interrogabile per intero con BM25, non solo
+    nelle prime 18.000 battute. Il testo non ha i numeri di pagina: i chunk sono «parti».
+    """
+    rows: List[dict] = []
+    for f in files or []:
+        name = str(f.get("name") or "file").strip()
+        text = str(f.get("extractedText") or f.get("extractedSummary") or "").strip()
+        if not text:
+            continue
+        for r in build_chunks_from_pages(session_id, name, [{"n": 0, "text": text}]):
+            r["chunk_index"] = len(rows)
+            rows.append(r)
+    return rows
+
+
 def _tokenize(text: str) -> List[str]:
     return [t.lower() for t in _TOKEN_RE.findall(text or "")]
 
@@ -129,7 +148,7 @@ def format_chunks_for_prompt(chunks: List[dict]) -> str:
         if not text:
             continue
         safe = text.replace("</UNTRUSTED_FILE_CONTENT>", "<_/UNTRUSTED_FILE_CONTENT>")
-        marker = f"[pag.{page}]" if page else "[pag.?]"
+        marker = f"[pag.{page}]" if page else f"[parte {int(c.get('chunk_index') or 0) + 1}]"
         lines.append(f"--- {name} {marker} ---\n{safe}")
     return "\n\n".join(lines)
 

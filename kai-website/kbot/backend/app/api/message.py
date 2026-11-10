@@ -30,7 +30,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import testo_pulito, strumenti, ricerca_norme, calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
+from ..lib import analisi_documenti, testo_pulito, strumenti, ricerca_norme, calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -647,6 +647,7 @@ async def post_message(
     existing_extracted["used_skills"] = list(skills)
     collected["extractedData"] = existing_extracted
 
+    analisi_documenti.registra(collected, user_visible, next((str(m.get('content') or '') for m in reversed(merged_messages or []) if isinstance(m, dict) and m.get('role') == 'user'), ''))
     new_step = int(session.get("step") or 1) + 1
     updated = sessions.update_session(
         body.sessionId,
@@ -759,6 +760,7 @@ def _persist_assistant_turn(
         existing_extracted["used_skills"] = list(skills)
         collected["extractedData"] = existing_extracted
 
+    analisi_documenti.registra(collected, user_visible, next((str(m.get('content') or '') for m in reversed(merged_messages or []) if isinstance(m, dict) and m.get('role') == 'user'), ''))
     new_step = int(session.get("step") or 1) + 1
     updated = sessions.update_session(
         body_session_id,

@@ -8,7 +8,7 @@ from typing import List, Optional
 from ..settings import CHAT_SYSTEM_MAX_CHARS
 from .skills import load_skill_bundle
 from . import profile as profile_mod
-from . import rag, signals, strategy_alternatives, client_profile, privacy_case, scheda_cliente, avvisi_input, indici_e_bozze
+from . import analisi_documenti, rag, signals, strategy_alternatives, client_profile, privacy_case, scheda_cliente, avvisi_input, indici_e_bozze
 
 REPORT_TYPES_OVERVIEW = """TIPI DI ANALISI / REPORT che puoi produrre (K-BOT PREMIUM = SOLO analisi e report, NON proporre automazioni o implementazioni software):
 - Analisi di bilancio / salute finanziaria e bancabilità (flussi di cassa, margini, indici, solvibilità)
@@ -148,6 +148,8 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
     if has_extracted_text and session_id:
         try:
             chunks = rag.fetch_chunks(str(session_id))
+            if not chunks:
+                chunks = rag.chunk_da_file(str(session_id), uploaded_files[-5:])
             if chunks:
                 query = rag.latest_user_message(session.get("messages") or [])
                 # Domanda che riguarda il documento INTERO (rischi, clausole, controlli): più parti. Il tetto
@@ -220,6 +222,13 @@ def build_system_prompt_v2(skill_names: List[str], session: dict,
                 f"{file_summaries}\n"
                 "</UNTRUSTED_FILE_CONTENT>\n"
             )
+
+    try:
+        _pratica = analisi_documenti.blocco(collected)
+    except Exception:
+        _pratica = ""
+    if _pratica:
+        attachments_section = _pratica + attachments_section
 
     # Same wrapping for URL summaries (attacker-controlled web pages — H-4).
     url_context = ""

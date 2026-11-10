@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Globe, Loader2, Mic, MicOff, Paperclip, Search, X } from "lucide-react";
 import { UploadedFile, AnalyzedUrl } from "@/lib/api";
+import { ACCEPT_ATTR, haFile, validaFile } from "@/lib/files";
 
 const URL_RE = /https?:\/\/[^\s<>"']{6,}/i;
 
@@ -48,6 +49,7 @@ export function Composer({
   disabled,
   suggestions,
   onPickFiles,
+  onFileError,
   files,
   uploadingFiles = [],
   onFetchUrl,
@@ -66,6 +68,7 @@ export function Composer({
   disabled?: boolean;
   suggestions: string[];
   onPickFiles: (files: File[]) => void;
+  onFileError?: (message: string) => void;
   files: UploadedFile[];
   uploadingFiles?: { name: string; size: number; type: string }[];
   onFetchUrl?: (url: string) => void;
@@ -75,6 +78,43 @@ export function Composer({
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [trascinando, setTrascinando] = useState(false);
+
+  function accettaFile(selected: File[]) {
+    if (!selected.length) return;
+    const { ok, errori } = validaFile(selected);
+    if (errori.length) onFileError?.(errori.join(" "));
+    if (ok.length) onPickFiles(ok);
+  }
+  const accettaRef = useRef(accettaFile);
+  accettaRef.current = accettaFile;
+
+  // Trascinamento: senza preventDefault il browser APRE il file al posto della chat.
+  // Ascolto sulla finestra (si può lasciare il file ovunque nella chat) e mostro un riquadro.
+  useEffect(() => {
+    let livello = 0;
+    const entra = (e: DragEvent) => { if (haFile(e)) { e.preventDefault(); livello++; setTrascinando(true); } };
+    const sopra = (e: DragEvent) => { if (haFile(e)) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = "copy"; } };
+    const esce = (e: DragEvent) => { if (haFile(e)) { livello = Math.max(0, livello - 1); if (livello === 0) setTrascinando(false); } };
+    const lascia = (e: DragEvent) => {
+      if (!haFile(e)) return;
+      e.preventDefault();
+      livello = 0;
+      setTrascinando(false);
+      accettaRef.current(Array.from(e.dataTransfer?.files ?? []));
+    };
+    window.addEventListener("dragenter", entra);
+    window.addEventListener("dragover", sopra);
+    window.addEventListener("dragleave", esce);
+    window.addEventListener("drop", lascia);
+    return () => {
+      window.removeEventListener("dragenter", entra);
+      window.removeEventListener("dragover", sopra);
+      window.removeEventListener("dragleave", esce);
+      window.removeEventListener("drop", lascia);
+    };
+  }, []);
+
   const [urlMode, setUrlMode] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const urlRef = useRef<HTMLInputElement>(null);
@@ -280,7 +320,18 @@ export function Composer({
         </div>
       )}
 
-      <div className="rounded-lg border border-[var(--line-strong)] bg-[var(--bg-1)] p-2">
+      <div
+        data-testid="composer-box"
+        className={`relative rounded-lg border bg-[var(--bg-1)] p-2 ${trascinando ? "border-[var(--teal)]" : "border-[var(--line-strong)]"}`}
+      >
+        {trascinando && (
+          <div
+            data-testid="drop-zone"
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-[var(--teal)] bg-[var(--bg-1)]/90 text-sm font-medium text-[var(--teal)]"
+          >
+            Rilascia qui i file da allegare
+          </div>
+        )}
         {(files.length > 0 || uploadingFiles.length > 0) && (
           <div className="mb-2 flex flex-wrap gap-2 px-1">
             {files.map((f) => {
@@ -334,11 +385,10 @@ export function Composer({
               ref={fileRef}
               type="file"
               multiple
-              accept="image/*,.pdf,.txt,.md,.csv,.json,.xml"
+              accept={ACCEPT_ATTR}
               className="hidden"
               onChange={(e) => {
-                const selected = Array.from(e.target.files ?? []);
-                if (selected.length) onPickFiles(selected);
+                accettaFile(Array.from(e.target.files ?? []));
                 e.currentTarget.value = "";
               }}
             />

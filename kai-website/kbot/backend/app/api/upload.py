@@ -576,3 +576,22 @@ def upload(
 
     sessions.update_session(body.sessionId, {"collected_data": collected})
     return {"files": saved}
+
+
+@router.get("/session/{session_id}/documents")
+def session_documents(session_id: str, user: Optional[AuthUser] = Depends(optional_user)):
+    """Documenti della pratica (nome, formato, stato di lettura) senza il testo: per ripresa e UI.
+
+    Stessa regola di /upload: la sessione di un utente si legge solo da lui.
+    """
+    from ..lib import analisi_documenti
+
+    session = sessions.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="session not found")
+    owner = session.get("user_id")
+    if owner and (not user or user.id != owner):
+        raise HTTPException(status_code=403, detail="not your session")
+    collected = session.get("collected_data") or {}
+    return {"documents": analisi_documenti.elenco(collected),
+            "analisi": len(collected.get("analisi_documenti") or [])}

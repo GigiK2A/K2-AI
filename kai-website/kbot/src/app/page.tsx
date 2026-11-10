@@ -19,6 +19,7 @@ import {
   downloadMessageExport,
   getSession,
   fetchUrl,
+  getCapabilities,
   listConversations,
   createRemoteConversation,
   updateRemoteConversation,
@@ -118,6 +119,10 @@ export default function HomePage() {
   const [versioneSel, setVersioneSel] = useState<number | null>(null);
   // «Cerca sul web»: preferenza dell'UTENTE, salvata nel browser; il sistema non la cambia mai da solo.
   const [ricercaWeb, setRicercaWeb] = useState(false);
+  // Ricerca web non configurata sul server → il pulsante non si offre e "force" non si invia mai
+  // (altrimenti ogni messaggio riceveva l'avviso «ricerca non disponibile»).
+  const [webDisponibile, setWebDisponibile] = useState(true);
+  useEffect(() => { getCapabilities().then((c) => { if (c && c.webSearch === false) setWebDisponibile(false); }); }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { try { setRicercaWeb(localStorage.getItem("kbot.web_search") === "1"); } catch { /* ignore */ } }, []);
   function toggleRicercaWeb() {
@@ -762,7 +767,7 @@ export default function HomePage() {
       await streamMessage(session.id, prompt, {
         authToken: token,
         forcedSkills: forcedSkills.length ? forcedSkills : undefined,
-        webSearch: ricercaWeb ? "force" : undefined,
+        webSearch: ricercaWeb && webDisponibile ? "force" : undefined,
         onFase: (f) => {
           if (f === "fonti" || f === "generazione" || f === "verifica") patchStub({ fase: f });
         },
@@ -1152,11 +1157,12 @@ export default function HomePage() {
               }
               suggestions={[]}
               onPickFiles={handleFilePick}
+              onFileError={setError}
               files={pendingFiles}
               uploadingFiles={uploadingFiles}
               onFetchUrl={handleFetchUrl}
               ricercaWeb={ricercaWeb}
-              onToggleRicercaWeb={toggleRicercaWeb}
+              onToggleRicercaWeb={webDisponibile ? toggleRicercaWeb : undefined}
               fetchingUrl={fetchingUrl}
               analyzedUrls={analyzedUrls}
               onRemoveContext={handleRemoveContext}
