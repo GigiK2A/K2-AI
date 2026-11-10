@@ -1161,7 +1161,7 @@ export default function HomePage() {
                 sessionId={kbotSession.id}
                 getAuthToken={getToken}
                 boostLabel={suggestedBoost?.label ?? kbotSession.boostSuggeritoLabel ?? undefined}
-                autoStart={reportReady}
+                autoStart={false}   /* l'8e parte solo se l'utente preme «Genera» (blocco del 10/11/2026) */
               />
             )}
             {error && <p className="text-sm text-red-300">{error}</p>}

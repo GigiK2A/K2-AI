@@ -29,6 +29,7 @@ def test_riepilogo_gia_emesso_dal_bot_e_un_consenso():
 def test_l_endpoint_auto_non_tratta_l_avvio_automatico_come_un_clic(monkeypatch):
     """/deliverables/auto con explicit=False deve passare user_requested=False al pre-flight."""
     from app.api import deliverables as D
+    monkeypatch.setenv("KBOT_8E_SOLO_RICHIESTA", "0")      # qui si prova il pre-flight; il blocco a monte ha il suo test sotto
     visto = {}
     real = D.report_gate.evaluate
 
@@ -105,3 +106,26 @@ def test_il_ricontrollo_chiede_di_ritirare_i_dati_senza_fonte():
 def test_le_istruzioni_sulle_fonti_vietano_di_difendere_cifre_senza_fonte():
     from app.lib import norme_evidence as N
     assert "non difenderla" in N._ISTRUZIONI and "senza fonte" in N._ISTRUZIONI
+
+
+def test_l_8e_non_parte_da_solo_ma_parte_al_clic(monkeypatch):
+    """Blocco 10/11/2026: un avvio automatico del client (explicit=False) non raggiunge né l'autofill né l'8e; il clic sì."""
+    import asyncio
+    from fastapi import BackgroundTasks, HTTPException
+    from app.api import deliverables as D
+    monkeypatch.delenv("KBOT_8E_SOLO_RICHIESTA", raising=False)
+    monkeypatch.setattr(D.sessions, "get_session", lambda sid: {"id": sid, "user_id": None, "collected_data": _caso(), "messages": []})
+    monkeypatch.setattr(D, "_check_ownership", lambda s, u: None)
+    chiamato = []
+    monkeypatch.setattr(D.autofill, "extract_inputs", lambda *a, **k: chiamato.append("autofill") or {})
+    monkeypatch.setattr(D.engine, "create_deliverable", lambda *a, **k: chiamato.append("8e"))
+    with __import__("pytest").raises(HTTPException) as e:
+        asyncio.run(D.auto_deliverable(D.AutoBody(session_id="s1", explicit=False), BackgroundTasks(), None))
+    assert e.value.status_code == 409 and not chiamato
+    # con un clic il flusso prosegue oltre il blocco (si ferma dove si ferma il caso di prova, ma non per questo motivo)
+    try:
+        asyncio.run(D.auto_deliverable(D.AutoBody(session_id="s1", explicit=True), BackgroundTasks(), None))
+    except HTTPException as ex:
+        assert ex.status_code != 409 or "solo quando la richiedi" not in str(ex.detail)
+    except Exception:
+        pass

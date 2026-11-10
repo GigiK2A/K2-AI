@@ -490,6 +490,12 @@ async def auto_deliverable(body: AutoBody, bg: BackgroundTasks,
         raise HTTPException(status_code=404, detail="session not found")
     _check_ownership(session, user)
 
+    # L'8e (generazione dei documenti, con LLM) parte SOLO su richiesta esplicita dell'utente (clic su «Genera», «procedi», ripresa
+    # dopo il pagamento). Un avvio automatico del client (explicit=False) non lo avvia più: costo e tempo non richiesti.
+    # `KBOT_8E_SOLO_RICHIESTA=0` ripristina il comportamento precedente (pre-flight sulla diagnosi).
+    if not body.explicit and os.environ.get("KBOT_8E_SOLO_RICHIESTA", "1") != "0":
+        raise HTTPException(status_code=409, detail="La generazione del documento parte solo quando la richiedi: premi «Genera».")
+
     collected = dict(session.get("collected_data") or {})
     servizio_id = body.servizioId or collected.get("boost_suggerito")
 
