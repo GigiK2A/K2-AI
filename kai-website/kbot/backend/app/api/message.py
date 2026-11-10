@@ -30,7 +30,7 @@ from ..lib import profile as profile_lib
 from ..lib import fact_grounding
 from ..lib import norme_evidence
 from ..lib import scheda_cliente
-from ..lib import fonti_documenti, rag, analisi_documenti, testo_pulito, strumenti, ricerca_norme, calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
+from ..lib import fascicoli, fonti_documenti, rag, analisi_documenti, testo_pulito, strumenti, ricerca_norme, calcoli, crisi, avvisi_input, verifica_bozze, skill_router, eco_guard, iva_guard, taglio_guard, documento, perf
 from ..lib.limiter import limiter
 from ..lib.url_fetcher import UrlFetchError, fetch_url_content
 from ..lib.prompts import (
@@ -175,6 +175,18 @@ def _analysis_streak_reached(merged_messages: list, raw_text: str, need: int = 2
         else:
             break  # sequenza consecutiva interrotta
     return streak >= need
+
+
+def _ultimo_assistente(messages: list) -> str:
+    return next((str(m.get("content") or "") for m in reversed(messages or []) if isinstance(m, dict) and m.get("role") == "assistant"), "")
+
+
+def _avvia_fascicoli(user, session_id: str, merged_messages: list, collected: dict) -> None:
+    """Memoria aziendale del turno: contesto (utente verificato, ultimo messaggio, conversazione) per gli strumenti `fascicolo_*`."""
+    ultimo = next((str(m.get("content") or "") for m in reversed(merged_messages or []) if isinstance(m, dict) and m.get("role") == "user"), "")
+    prec = _ultimo_assistente(merged_messages[:-1] if merged_messages else [])
+    fascicoli.inizia_turno(getattr(user, "id", None), session_id, ultimo, prec, collected)
+
 
 
 def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Optional[dict] = None, session_id: str = ""):
@@ -545,7 +557,8 @@ async def post_message(
                 seen.add(fs)
     req_hint = await _required_fields_hint(collected)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
-    system_prompt += strumenti.hint()
+    _avvia_fascicoli(user, body.sessionId, merged_messages, collected)
+    system_prompt += fascicoli.blocco_prompt() + strumenti.hint()
     # GROUNDING FORZATO (filosofia: la risposta si costruisce dalla CONOSCENZA, non dalla
     # memoria del modello): fatto specifico, conformità, provider nominato o richiesta
     # esplicita → il server recupera la fonte PRIMA del turno e la inietta (il contesto
@@ -711,7 +724,8 @@ async def _prepare_turn(body: MessageBody, user: Optional[AuthUser], cron: Optio
     session["_memoria_stat"] = _memoria_stat          # solo per la risposta di questo turno (non si salva)
     req_hint = await _required_fields_hint(collected)
     system_prompt = build_system_prompt_v2(skills, session_for_prompt, required_fields_hint=req_hint)
-    system_prompt += strumenti.hint()
+    _avvia_fascicoli(user, body.sessionId, merged_messages, collected)
+    system_prompt += fascicoli.blocco_prompt() + strumenti.hint()
     # NB: il GROUNDING FORZATO (ricerca web proattiva) NON avviene qui: nello stream gira
     # DOPO l'heartbeat (event_gen), così una ricerca lenta non tiene fermo il primo byte
     # (rischio 524 all'edge). Vedi post_message_stream.
@@ -978,6 +992,7 @@ async def post_message_stream(
         yield _sse({"fase": "fonti"})
         web_search.inizia_turno()
         ricerca_norme.inizia_turno()
+        _avvia_fascicoli(user, body.sessionId, merged_messages, collected)
         _forza_ricerca = (body.webSearch or "").lower() == "force"
         _t_ground = asyncio.ensure_future(asyncio.to_thread(
             fact_grounding.ground_block, _last_user_text, _recent_user_text, _forza_ricerca))

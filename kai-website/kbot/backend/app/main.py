@@ -30,6 +30,7 @@ from .api import (
     checks,
     compute,
     profile as profile_api,
+    fascicoli_api,
 )
 from .lib.analytics import track_server
 from .lib.limiter import limiter
@@ -106,6 +107,7 @@ app.include_router(status.router, prefix="/api/kbot", tags=["status"])
 app.include_router(fetch_url.router, prefix="/api/kbot", tags=["fetch-url"])
 app.include_router(conversations.router, prefix="/api/kbot", tags=["conversations"])
 app.include_router(profile_api.router, prefix="/api/kbot", tags=["profile"])
+app.include_router(fascicoli_api.router, prefix="/api/kbot", tags=["fascicoli"])
 app.include_router(diagnostics.router, prefix="/api/kbot", tags=["diagnostics"])
 app.include_router(context.router, prefix="/api/kbot", tags=["context"])
 app.include_router(skills_api.router, prefix="/api/kbot", tags=["skills"])

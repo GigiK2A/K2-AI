@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import ricerca_norme, web_search
+from . import fascicoli, ricerca_norme, web_search
 
 
 def definizioni() -> list[dict]:
@@ -16,11 +16,14 @@ def definizioni() -> list[dict]:
         out.append(web_search.web_search_tool())
     if ricerca_norme.disponibile():
         out.append(ricerca_norme.definizione())
+    if fascicoli.disponibile():
+        out.extend(fascicoli.definizioni())
     return out
 
 
 def hint() -> str:
-    return (web_search.SYSTEM_HINT if web_search.enabled() else "") + (ricerca_norme.SYSTEM_HINT if ricerca_norme.disponibile() else "")
+    return (web_search.SYSTEM_HINT if web_search.enabled() else "") + (ricerca_norme.SYSTEM_HINT if ricerca_norme.disponibile() else "") \
+        + (fascicoli.SYSTEM_HINT if fascicoli.disponibile() else "")
 
 
 def esegui(content: Any) -> list[dict]:
@@ -30,6 +33,9 @@ def esegui(content: Any) -> list[dict]:
         if getattr(block, "type", "") == "tool_use" and getattr(block, "name", "") == ricerca_norme.NOME_STRUMENTO:
             risultati.append({"type": "tool_result", "tool_use_id": getattr(block, "id", None),
                               "content": ricerca_norme.esegui(getattr(block, "input", None) or {})})
+        elif getattr(block, "type", "") == "tool_use" and getattr(block, "name", "") in fascicoli.NOMI:
+            risultati.append({"type": "tool_result", "tool_use_id": getattr(block, "id", None),
+                              "content": fascicoli.esegui(getattr(block, "name", ""), getattr(block, "input", None) or {})})
     return risultati
 
 
