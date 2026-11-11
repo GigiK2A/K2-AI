@@ -79,6 +79,17 @@ def _public(row: dict) -> dict:
     }
 
 
+def _check_session_link(session_id: Optional[str], user: AuthUser) -> None:
+    """Una conversazione può puntare solo a una sessione dell'utente (o ancora senza proprietario): il collegamento arriva dal client e
+    non deve diventare un riferimento alla sessione di un altro tenant (test 31)."""
+    if not session_id:
+        return
+    from ..lib import sessions
+    s = sessions.get_session(session_id)
+    if s and s.get("user_id") and s["user_id"] != user.id:
+        raise HTTPException(status_code=403, detail="not your session")
+
+
 def _check_owner(row: dict, user: AuthUser) -> None:
     if not row or row.get("user_id") != user.id:
         raise HTTPException(status_code=404, detail="not found")
@@ -110,6 +121,7 @@ def create_conversation(
     body: CreateConversationBody,
     user: AuthUser = Depends(require_user),
 ) -> dict:
+    _check_session_link(body.kbot_session_id, user)
     row = {
         "user_id": user.id,
         "title": (body.title or "Nuova conversazione")[:120],
@@ -138,6 +150,7 @@ def update_conversation(
         raise HTTPException(status_code=404, detail="not found")
     _check_owner(existing.data[0], user)
 
+    _check_session_link(body.kbot_session_id, user)
     patch: dict = {"updated_at": _now_iso()}
     if body.title is not None:
         patch["title"] = body.title.strip()[:120] or "Nuova conversazione"

@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 
 import re
 
-from ..lib import sessions
+from ..lib import sessions, storage
 from ..lib.analysis import generate_analysis_json
 from ..lib.analytics import track_server
 from ..lib.auth import AuthUser, optional_user, verify_internal_key
@@ -95,7 +95,7 @@ def generate_pdf(
     # Idempotency: if PDF already produced and not in test_mode, return cached.
     cached_url = session.get("pdf_url")
     if cached_url and not body.testMode:
-        return {"pdf_url": cached_url, "cached": True}
+        return {"pdf_url": storage.rinfresca_url(cached_url), "cached": True}
 
     # 1. LLM analysis JSON.
     #    M1 — dettaglio dell'eccezione solo nei log (log.exception), non nel detail
@@ -195,7 +195,7 @@ async def generate_pdf_stream(
     cached_url = session.get("pdf_url")
     if cached_url and not body.testMode:
         async def cached_gen() -> AsyncGenerator[str, None]:
-            yield _sse({"stage": "cached", "progress": 100, "pdf_url": cached_url})
+            yield _sse({"stage": "cached", "progress": 100, "pdf_url": storage.rinfresca_url(cached_url)})
         return StreamingResponse(cached_gen(), media_type="text/event-stream")
 
     async def event_gen() -> AsyncGenerator[str, None]:

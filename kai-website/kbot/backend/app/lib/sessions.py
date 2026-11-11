@@ -223,6 +223,11 @@ def merge_collected_data(session: dict, patch: Dict[str, Any]) -> Dict[str, Any]
     return base
 
 
+def _fresco(url):
+    from . import storage
+    return storage.rinfresca_url(url)
+
+
 def public_session(session: dict) -> dict:
     """Strip internal fields before returning to client."""
     collected = session.get("collected_data") or {}
@@ -243,7 +248,7 @@ def public_session(session: dict) -> dict:
         "recommendedServiceName": collected.get("recommendedServiceName"),
         "recommendedTier": collected.get("recommendedTier"),
         "status": session.get("status"),
-        "pdfUrl": session.get("pdf_url"),
+        "pdfUrl": _fresco(session.get("pdf_url")),
         "hasUser": bool(session.get("user_id")),
         "timestamps": {
             "createdAt": session.get("created_at"),

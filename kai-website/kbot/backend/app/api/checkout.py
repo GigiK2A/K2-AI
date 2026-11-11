@@ -13,7 +13,7 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
-from ..lib import sessions, catalog, billing, billing_store
+from ..lib import sessions, catalog, billing, billing_store, storage
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..settings import (
     FRONTEND_URL,
@@ -242,7 +242,7 @@ def checkout_exchange(body: ExchangeTokenBody):
         "session_id": session.get("id"),
         "status": session.get("status"),
         "paid": session.get("status") == "paid",
-        "pdf_url": session.get("pdf_url"),
+        "pdf_url": storage.rinfresca_url(session.get("pdf_url")),
     }
 
 

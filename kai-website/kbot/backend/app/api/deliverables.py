@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 
 from .. import settings
 from ..lib import engine, sessions, catalog, entitlement, autofill, readiness, research, report_gate
-from ..lib import deliverable_state, summary_contract
+from ..lib import deliverable_state, summary_contract, storage
 from ..lib.auth import AuthUser, optional_user, require_user
 from ..lib.storage import upload_pdf, upload_bytes, download_bytes
 from ..lib.supabase_admin import get_admin_client
@@ -889,7 +889,7 @@ async def status(job_id: str, user: Optional[AuthUser] = Depends(optional_user))
         if collected.get("deliverable_pdf_url"):
             # …ne abbiamo una copia DUREVOLE su Storage → il documento è pronto lo stesso.
             return {"status": "rendered", "recovered": True,
-                    "pdf_url": collected.get("deliverable_pdf_url"),
+                    "pdf_url": storage.rinfresca_url(collected.get("deliverable_pdf_url")),
                     "outputs": {"pdf": True,
                                 "xlsx": bool(collected.get("deliverable_json_saved"))}}
         # …nessuna copia: segnaliamo RIGENERABILE (già pagato, nessun riaddebito) invece
@@ -1013,8 +1013,13 @@ async def save_deliverable(body: SaveDeliverableBody,
     _check_ownership(session, user)
 
     collected = dict(session.get("collected_data") or {})
+    # BOLA (test 31): il job_id arriva dal client. Si salva SOLO un job che questa sessione ha generato: altrimenti basterebbe la propria
+    # sessione + il job_id di un altro tenant per copiarne il report PDF nel proprio storage.
+    _miei = {j for j in (collected.get("deliverable_job_id"), collected.get("deliverable_saved_job")) if j}
+    if body.jobId not in _miei:
+        raise HTTPException(status_code=403, detail="job non appartenente a questa sessione")
     if collected.get("deliverable_saved_job") == body.jobId and session.get("pdf_url"):
-        return {"pdf_url": session["pdf_url"], "cached": True}
+        return {"pdf_url": storage.rinfresca_url(session["pdf_url"]), "cached": True}
 
     # Scarica il PDF dall'8e via HTTP (filesystem NON condiviso: servizio separato).
     try:
@@ -1075,7 +1080,7 @@ async def recover_deliverable(body: RecoverBody,
     # (1) copia durevole già presente → pronto, niente rigenerazione.
     if collected.get("deliverable_pdf_url"):
         return {"status": "rendered", "recovered": True,
-                "pdf_url": collected.get("deliverable_pdf_url"),
+                "pdf_url": storage.rinfresca_url(collected.get("deliverable_pdf_url")),
                 "job_id": collected.get("deliverable_saved_job"),
                 "servizio_id": servizio_id}
 

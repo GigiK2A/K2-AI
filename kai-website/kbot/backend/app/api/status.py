@@ -35,7 +35,8 @@ def status(
     # Anonymous session OR authenticated owner can see status; pdf_url is only
     # surfaced for the owner to avoid leaking a signed/public URL to anyone
     # who learns the session UUID.
-    pdf_url = session.get("pdf_url") if (is_owner or not owner) else None
+    from ..lib import storage
+    pdf_url = storage.rinfresca_url(session.get("pdf_url")) if (is_owner or not owner) else None
     return {
         "status": session.get("status"),
         "pdf_url": pdf_url,

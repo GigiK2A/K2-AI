@@ -45,6 +45,33 @@ def signed_url(*, bucket: str, path: str, expires_in: int) -> str:
     )
 
 
+_URL_STORAGE = None
+
+
+def rinfresca_url(url: Optional[str]) -> Optional[str]:
+    """Un URL di un nostro bucket (vecchio link PUBBLICO `/object/public/…` o firmato scaduto `/object/sign/…`) → URL firmato nuovo.
+
+    Serve a due cose: (1) i link salvati nelle sessioni prima che i bucket diventassero privati continuano a funzionare quando si rendono
+    privati i bucket (test 31: oggi `kbot-uploads` e `kbot-reports` sono pubblici in produzione e un path noto basta a scaricare un file);
+    (2) un link firmato salvato e poi scaduto non lascia l'utente senza il documento. Si ricalcola a ogni lettura, SOLO dopo le verifiche di
+    proprietà dell'endpoint che lo restituisce. Qualunque URL che non sia di questi bucket, o un errore, restituisce l'originale."""
+    if not url or not isinstance(url, str):
+        return url
+    import re
+    from urllib.parse import unquote
+    from ..settings import STORAGE_REPORTS_BUCKET, STORAGE_UPLOADS_BUCKET
+    m = re.match(r"^(https?://[^/]+)/storage/v1/object/(?:public|sign|authenticated)/([^/]+)/(.+?)(?:\?.*)?$", url)
+    if not m or m.group(2) not in (STORAGE_REPORTS_BUCKET, STORAGE_UPLOADS_BUCKET):
+        return url
+    if SUPABASE_URL and m.group(1).rstrip("/") != SUPABASE_URL.rstrip("/"):                 # solo il NOSTRO progetto Supabase
+        return url
+    try:
+        return signed_url(bucket=m.group(2), path=unquote(m.group(3)), expires_in=REPORT_URL_TTL)
+    except Exception:
+        log.warning("rinfresca_url non riuscito (resta l'URL originale)", exc_info=True)
+        return url
+
+
 def upload_bytes(*, bucket: str, path: str, content: bytes,
                  content_type: str = "application/octet-stream",
                  expires_in: int = REPORT_URL_TTL) -> str:

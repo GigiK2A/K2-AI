@@ -96,8 +96,9 @@ def _payload_to_user(payload: dict) -> AuthUser:
         raise ValueError("token missing sub claim")
     email = payload.get("email")
     app_meta = payload.get("app_metadata") or {}
-    user_meta = payload.get("user_metadata") or {}
-    has_paid = bool(app_meta.get("has_paid") or user_meta.get("has_paid"))
+    # `user_metadata` lo può scrivere l'utente stesso (auth.updateUser): non è una fonte attendibile per un diritto. Il flag lo imposta solo
+    # il webhook di pagamento in `app_metadata` (test 31).
+    has_paid = bool(app_meta.get("has_paid"))
     return AuthUser(id=user_id, email=email, has_paid=has_paid, raw=payload)
 
 
