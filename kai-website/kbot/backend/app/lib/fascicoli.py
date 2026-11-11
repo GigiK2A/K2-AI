@@ -14,6 +14,7 @@ import contextvars
 import logging
 import os
 import re
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -215,7 +216,9 @@ def _sha(t: str) -> str:
 
 
 def _allega_documenti(ctx: Contesto, fid: str) -> Tuple[int, List[str]]:
-    """Conserva i documenti della conversazione nel fascicolo. Stesso testo già presente → non si duplica; stessa serie → nuova versione."""
+    """Conserva i documenti della conversazione nel fascicolo. Stesso testo già presente → non si duplica; stessa serie → nuova versione
+    dello STESSO documento logico. Per collegare esplicitamente una revisione a un documento si usa `fascicolo_registra_versione`."""
+    from . import fascicoli_documenti as D
     uid = ctx.user_id
     assert uid
     esistenti = documenti(uid, fid)
@@ -226,17 +229,20 @@ def _allega_documenti(ctx: Contesto, fid: str) -> Tuple[int, List[str]]:
             continue
         testo = f.get("extractedText") or f.get("extractedSummary") or ""
         sha, serie = _sha(testo), _serie(f.get("name"))
-        if testo and any(d.get("sha256") == sha for d in esistenti):
+        if testo.strip() and any(D.sha(d) == sha for d in esistenti):
             note.append(f"«{f.get('name')}» ha lo stesso contenuto di un documento già in fascicolo: non duplicato")
             continue
         prec = sorted([d for d in esistenti if (d.get("serie") or _serie(d.get("name"))) == serie], key=lambda d: int(d.get("versione") or 1))
         ver = int(prec[-1].get("versione") or 1) + 1 if prec else 1
+        per_id = {str(d["id"]): d for d in esistenti}
+        logico = D.radice(prec[-1], per_id) if prec else str(uuid.uuid4())
         r = _db().table(T_DOC).insert({"fascicolo_id": fid, "user_id": uid, "name": f.get("name") or "documento", "type": f.get("type"),
                                        "size": f.get("size"), "path": f["path"], "extracted_text": testo, "extraction_method": f.get("extractionMethod"),
-                                       "source_session": ctx.session_id or None, "versione": ver, "serie": serie, "sha256": sha, "stato": "caricato",
-                                       "sostituisce_doc": prec[-1]["id"] if prec else None}).execute().data[0]
+                                       "source_session": ctx.session_id or None, "versione": ver, "serie": serie, "sha256": sha if testo.strip() else None, "stato": "caricato",
+                                       "sostituisce_doc": prec[-1]["id"] if prec else None,
+                                       **D.campi_nuovi(logico, "acquisito con il salvataggio del fascicolo", "modello", f"chat:{ctx.session_id or '-'}:{f.get('name')}")}).execute().data[0]
         esistenti.append(r)
-        V.evento(uid, fid, None, "documento", None, {"doc": doc_id_di(r), "versione": ver, "nome": f.get("name")}, "documento conservato", "modello")
+        V.evento(uid, fid, None, "documento", None, {"doc": doc_id_di(r), "versione": ver, "nome": f.get("name"), "documento_logico": logico}, "documento conservato", "modello")
         if prec:
             note.append(f"«{f.get('name')}» è la versione {ver} di «{prec[-1].get('name')}» (la v{prec[-1].get('versione') or 1} resta conservata)")
         n += 1
@@ -248,14 +254,19 @@ def doc_id_di(d: dict) -> str:
     return hashlib.sha1(str(d.get("path") or d.get("name") or "").encode("utf-8")).hexdigest()[:12]
 
 
-def trova_documento(uid: str, fid: str, rif: str) -> Optional[dict]:
-    rif = (rif or "").strip().casefold()
-    dd = documenti(uid, fid)
-    for d in dd:
-        if rif and (doc_id_di(d) == rif or str(d.get("id")) == rif):
-            return d
-    c = [d for d in dd if rif and rif in str(d.get("name") or "").casefold()]
-    return sorted(c, key=lambda d: int(d.get("versione") or 1))[-1] if c else None
+def trova_documento(uid: str, fid: str, rif: str, versione: Optional[int] = None) -> Optional[dict]:
+    """Una VERSIONE di un documento del fascicolo. `rif` = id di una versione (doc:…), sigla del documento logico (L-…) o nome file;
+    con un riferimento al documento logico (non a una versione precisa) si prende `versione` se indicata, altrimenti l'ultima."""
+    from . import fascicoli_documenti as D
+    r = D.risolvi(documenti(uid, fid), rif)
+    if not r or "ambiguo" in r:
+        return None
+    if r["versione"] is not None and versione is None:
+        return r["versione"]
+    lst = r["versioni"]
+    if versione is not None:
+        return next((d for d in lst if int(d.get("versione") or 1) == int(versione)), None)
+    return lst[-1]
 
 
 def documento_dell_utente(user_id: str, doc_id: str) -> Optional[dict]:
@@ -274,7 +285,26 @@ def collega_documento(ctx: Contesto, d: dict) -> None:
     col.setdefault("uploaded_files", []).append({"name": d.get("name"), "type": d.get("type") or "", "size": d.get("size") or 0, "path": d["path"],
                                                  "publicUrl": "", "extractedText": d.get("extracted_text") or "", "extractedSummary": "",
                                                  "extractionMethod": d.get("extraction_method") or "", "dalFascicolo": str(d.get("fascicolo_id") or "1"),
-                                                 "sorgenteSessione": str(d.get("source_session") or "")})
+                                                 "sorgenteSessione": str(d.get("source_session") or ""), "versione": int(d.get("versione") or 1)})
+
+
+def collega_citati(c: Optional[Contesto], testo: str) -> int:
+    """I marcatori `[[fonte|ID|…]]` che citano un documento di un fascicolo DELL'UTENTE non ancora presente nella conversazione (una versione precedente, un documento
+    mai aperto qui) lo rendono disponibile alla verifica e al visualizzatore. Mai documenti di altri utenti. Ritorna quanti ne ha collegati."""
+    if not c or not c.user_id or not testo:
+        return 0
+    from .fonti_documenti import mappa_documenti
+    ids = {m.strip() for m in re.findall(r"\[\[\s*fonte\s*\|([^|\]]*)", testo, re.I) if m.strip()}
+    presenti = mappa_documenti(c.collected)
+    nuovi = {i for i in ids if i not in presenti}
+    if not nuovi:
+        return 0
+    n = 0
+    for d in _righe(T_DOC, c.user_id):
+        if doc_id_di(d) in nuovi:
+            collega_documento(c, d)
+            n += 1
+    return n
 
 
 def passaggi_documento(ctx: Contesto, d: dict, query: str, k: int = 5) -> List[dict]:
@@ -366,17 +396,15 @@ def formatta_fascicolo(user_id: str, f: dict, max_voci: int = PER_PAGINA, con_su
     if n_sup and not con_superate:
         righe.append(f"({n_sup} record superati/archiviati nello storico: usa fascicolo_voce con azione «storico» o con_superate=true)")
     if dd:
-        per_serie: Dict[str, List[dict]] = {}
-        for d in dd:
-            per_serie.setdefault(d.get("serie") or _serie(d.get("name")), []).append(d)
-        for serie, lst in per_serie.items():
-            lst.sort(key=lambda d: int(d.get("versione") or 1))
+        from . import fascicoli_documenti as D
+        for logico, lst in D.gruppi(dd).items():
             ult = lst[-1]
             verif = [d for d in lst if d.get("stato") in ("verificato", "approvato")]
             appr = [d for d in lst if d.get("stato") == "approvato"]
-            righe.append(f"Documento {serie}: ultima ricevuta {_riga_doc(ult)}"
+            righe.append(f"Documento {D.sigla(logico)} «{ult.get('name')}» — {len(lst)} version{'e' if len(lst) == 1 else 'i'} conservat{'a' if len(lst) == 1 else 'e'}: ultima ricevuta {_riga_doc(ult)}"
                          + (f"; ultima verificata v{verif[-1].get('versione') or 1}" if verif else "; nessuna versione verificata")
                          + (f"; approvata v{appr[-1].get('versione') or 1}" if appr else "; nessuna approvata")
+                         + (" — versioni: " + ", ".join(f"v{d.get('versione') or 1}=doc:{doc_id_di(d)}" for d in lst) if len(lst) > 1 else "")
                          + " — apribile con fascicolo_documento; i valori «attuali» sono quelli in uso nei calcoli")
     contest = [v for v in vv if V.stato_di(v) == "contestata"]
     prop = [v for v in vv if V.stato_di(v) == "da_verificare" and v.get("sostituisce")]
@@ -409,7 +437,7 @@ def blocco_prompt() -> str:
 
 
 # ── strumenti del modello ──────────────────────────────────────────────────────────────────────────────
-NOMI = ("fascicolo_cerca", "fascicolo_apri", "fascicolo_collega", "fascicolo_salva", "fascicolo_aggiorna", "fascicolo_voce", "fascicolo_confronta", "fascicolo_duplicati", "fascicolo_documento")
+NOMI = ("fascicolo_cerca", "fascicolo_apri", "fascicolo_collega", "fascicolo_salva", "fascicolo_aggiorna", "fascicolo_voce", "fascicolo_confronta", "fascicolo_duplicati", "fascicolo_documento", "fascicolo_registra_versione")
 _NUOVO = {"tipo": {"type": "string", "enum": sorted(TIPI_VOCE)}, "testo": {"type": "string", "description": "Cosa si registra, in una frase."},
           "chiave": {"type": "string", "description": "Nome STABILE del dato (es. imponibile_dichiarato, pratiche_protocollate): serve a riconoscere duplicati e cambi di valore."},
           "valore": {"type": "string"}, "unita": {"type": "string", "description": "es. EUR, pratiche"}, "periodo": {"type": "string"},
@@ -460,10 +488,24 @@ def definizioni() -> List[dict]:
         {"name": "fascicolo_duplicati", "description": "`elenca`: gruppi di record duplicati con fonti e differenze, e quale tenere. `consolida`: archivia i duplicati unendone le fonti (nulla si cancella; annullabile) — richiede conferma dell'utente.",
          "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "azione": {"type": "string", "enum": ["elenca", "consolida"]}}, "required": ["fascicolo", "azione"]}},
         {"name": "fascicolo_documento", "description": (
-            "Recupera un documento conservato nel fascicolo (id `doc:…` o nome; l'ultima versione se ce ne sono più): metadati, versioni e i passaggi pertinenti a `query`, "
-            "con id e pagina per citarli [[fonte|…]]; l'utente potrà aprirlo nel visualizzatore. `imposta_stato` (verificato/approvato) richiede la conferma dell'utente."),
-         "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "documento": {"type": "string"}, "query": {"type": "string"}, "imposta_stato": {"type": "string", "enum": ["caricato", "verificato", "approvato"]}},
+            "Recupera un documento conservato nel fascicolo: `documento` = id di una versione (doc:…), sigla del documento logico (L-…) o nome. Mostra SEMPRE tutte le versioni (numero, id per citarle, data, autore, fonte, motivo, stato) "
+            "e i passaggi pertinenti a `query` con id e pagina per citarli [[fonte|…]]. `versione`: «ultima» (default), un numero o «tutte» (passaggi di ogni versione, ognuno con il SUO id). "
+            "`confronta_con`: numero di un'altra versione → elenco delle differenze con la versione scelta (sola lettura). `imposta_stato` (verificato/approvato) riguarda i CONTENUTI della versione e richiede la conferma dell'utente."),
+         "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "documento": {"type": "string"}, "query": {"type": "string"},
+                                                           "versione": {"type": "string", "description": "«ultima», «tutte» o il numero di versione"},
+                                                           "confronta_con": {"type": "integer", "description": "numero della versione con cui confrontare"},
+                                                           "imposta_stato": {"type": "string", "enum": ["caricato", "verificato", "approvato"]}},
                           "required": ["fascicolo", "documento"]}},
+        {"name": "fascicolo_registra_versione", "description": (
+            "Registra un ALLEGATO di questa conversazione come NUOVA VERSIONE di un documento già nel fascicolo (o come nuovo documento). `allegato` = id (doc:…) o nome del file allegato; "
+            "`documento` = sigla L-… / id doc:… / nome del documento di cui è una versione (obbligatorio per una revisione). Il documento logico resta lo stesso, la versione precedente resta conservata intera; "
+            "caricare di nuovo lo stesso file o lo stesso contenuto NON crea nulla. Registrare NON verifica né approva i contenuti e NON modifica i record del fascicolo (importi, scadenze: per quelli fascicolo_aggiorna). "
+            "`motivo` è obbligatorio. Richiede la conferma dell'utente."),
+         "input_schema": {"type": "object", "properties": {"fascicolo": {"type": "string"}, "allegato": {"type": "string", "description": "id (doc:…) o nome del file allegato in questa conversazione"},
+                                                           "documento": {"type": "string", "description": "documento di cui è una nuova versione: L-… , doc:… o nome"},
+                                                           "motivo": {"type": "string", "description": "perché si registra questa revisione (obbligatorio)"},
+                                                           "nuovo_documento": {"type": "boolean", "description": "true SOLO se è un documento diverso, non una revisione"}},
+                          "required": ["fascicolo", "motivo"]}},
     ]
 
 
@@ -471,7 +513,9 @@ SYSTEM_HINT = (
     "\n\nSTRUMENTI MEMORIA AZIENDALE (`fascicolo_*`): i fascicoli persistono fra le conversazioni. Leggi con cerca/apri; apri i documenti con `fascicolo_documento` (recupero mirato). "
     "SCRIVI solo dopo che l'utente ha chiesto o confermato: prima mostra il riepilogo di cosa salveresti/cambieresti (valori, fonti) e aspetta il sì; se il sistema risponde «NON SALVATO/NON ESEGUITO», "
     "chiedi conferma, non ritentare. PER CAMBIARE un record esistente: `fascicolo_apri` (id e rev) poi `fascicolo_aggiorna` — mai `fascicolo_salva`, che serve solo per informazioni nuove; se l'aggiornamento "
-    "fallisce, riferisci l'errore: NON creare un record nuovo come ripiego. Un valore DIVERSO salvato con fascicolo_salva non sovrascrive: diventa proposta, e si sostituisce solo con la conferma (`fascicolo_voce` «sostituisci»). Una revisione solo dichiarata "
+    "fallisce, riferisci l'errore: NON creare un record nuovo come ripiego. Un valore DIVERSO salvato con fascicolo_salva non sovrascrive: diventa proposta, e si sostituisce solo con la conferma (`fascicolo_voce` «sostituisci»). UNA NUOVA VERSIONE DI UN DOCUMENTO (allegato in chat): `fascicolo_apri` per la sigla L-… del documento, poi `fascicolo_registra_versione` (allegato + documento + motivo) dopo la conferma; mai fascicolo_salva. "
+    "Registrare la versione non approva i contenuti né aggiorna i record: per i valori nuovi `fascicolo_documento` (confronta_con) e poi `fascicolo_aggiorna`, ciascuno con la conferma dell'utente. Le citazioni usano l'id della versione esatta. "
+    "Una revisione solo dichiarata "
     "(senza nuovo documento) resta «da_verificare». Non scegliere da solo il valore più recente: distingui ultimo documento ricevuto, verificato, approvato e valore in uso. "
     "Riporta sempre stato, origine e fonte dei dati (fascicolo_apri e lo storico mostrano per ogni record id, chiave, rev, stato, verifica, origine, fonti e record precedente: usali, non indovinare). "
     "DISTINGUI sempre: «ho chiamato lo strumento X e ha risposto…» (fatto), «ne deduco…» (inferenza), «non ho eseguito…» (operazione non fatta). Un salvataggio, aggiornamento o archiviazione "
@@ -552,31 +596,69 @@ def _esegui(nome: str, args: dict) -> str:
                 return _senza_conferma("consolidamento dei duplicati: " + V.descrivi_duplicati(gr)[:400])
             r = V.consolida(c, fid, None, "utente")
             return f"ESEGUITO: consolidati {len(r['gruppi'])} gruppi (duplicati archiviati, non cancellati; annullabili dall'utente)."
+        if nome == "fascicolo_registra_versione":
+            if not conferma_utente(c):
+                return "ESITO: errore NON_ESEGUITO — " + _senza_conferma(f"registrare l'allegato «{a.get('allegato') or '?'}» come versione del documento «{a.get('documento') or 'nuovo'}»")
+            if not str(a.get("motivo") or "").strip():
+                return "ESITO: errore MOTIVO_MANCANTE — indica il motivo della revisione."
+            from . import fascicoli_documenti as D
+            r = D.registra(c, fid, str(a.get("allegato") or ""), str(a.get("documento") or ""), str(a.get("motivo") or "").strip()[:500], bool(a.get("nuovo_documento")))
+            if not r["ok"]:
+                return f"ESITO: errore {r['codice']} — {r['dettaglio']}"
+            return (f"ESITO: ok{' (idempotente)' if r.get('idempotente') else ''} — {r['dettaglio']}\n"
+                    f"{{\"ok\": true, \"documento_logico\": \"{D.sigla(r['logico'])}\", \"versione\": {r['versione']}, \"doc\": \"{r['doc']}\", \"id\": \"{r['id']}\"}}")
         if nome == "fascicolo_documento":
-            d = trova_documento(c.user_id, fid, str(a.get("documento") or ""))
-            if not d:
-                return "Documento non trovato nel fascicolo."
+            from . import fascicoli_documenti as D
+            dd = documenti(c.user_id, fid)
+            ris = D.risolvi(dd, str(a.get("documento") or ""))
+            if ris and "ambiguo" in ris:
+                return "Documento ambiguo: " + "; ".join(ris["ambiguo"]) + ". Indica la sigla L-… o l'id doc:…"
+            if not ris:
+                return "Documento non trovato nel fascicolo. Documenti: " + ("; ".join(f"{D.sigla(lg)} «{l[-1].get('name')}»" for lg, l in D.gruppi(dd).items()) or "nessuno")
+            lst = ris["versioni"]
+            sv = str(a.get("versione") or "").strip().casefold()
+            tutte = sv == "tutte"
+            if ris["versione"] is not None and not sv:
+                scelte = [ris["versione"]]                                 # un id di versione: proprio quella
+            elif tutte:
+                scelte = list(lst)
+            elif sv.isdigit():
+                scelte = [d for d in lst if int(d.get("versione") or 1) == int(sv)]
+                if not scelte:
+                    return f"Versione {sv} inesistente: il documento {D.sigla(ris['logico'])} ha " + ", ".join(f"v{d.get('versione') or 1}" for d in lst) + "."
+            else:
+                scelte = [lst[-1]]
+            d = scelte[0]
             if a.get("imposta_stato"):
                 if not conferma_utente(c):
-                    return _senza_conferma(f"stato del documento → {a['imposta_stato']}")
+                    return _senza_conferma(f"stato dei contenuti del documento v{d.get('versione') or 1} → {a['imposta_stato']}")
                 _db().table(T_DOC).update({"stato": a["imposta_stato"]}).eq("id", d["id"]).eq("user_id", c.user_id).execute()
-                V.evento(c.user_id, fid, None, "documento", {"stato": d.get("stato")}, {"stato": a["imposta_stato"], "doc": doc_id_di(d)}, "stato del documento", "utente")
-                return f"ESEGUITO: documento {d.get('name')} v{d.get('versione') or 1} → {a['imposta_stato']}."
-            collega_documento(c, {**d, "fascicolo_id": fid})
-            ps = passaggi_documento(c, d, str(a.get("query") or ""))
-            ver = sorted(documenti(c.user_id, fid), key=lambda x: int(x.get("versione") or 1))
-            ver = [x for x in ver if (x.get("serie") or _serie(x.get("name"))) == (d.get("serie") or _serie(d.get("name")))]
-            testa = (f"DOCUMENTO {_riga_doc(d)} — versioni: " + ", ".join(f"v{x.get('versione') or 1} {x.get('stato') or 'caricato'}" for x in ver)
-                     + f"\nPer citare scrivi [[fonte|{doc_id_di(d)}|PAGINA|testo copiato]]; l'utente può aprirlo nel visualizzatore.")
-            corpo = "\n\n".join(f"--- pag.{p.get('page_number') or '?'} ---\n{str(p.get('content') or '')[:1200]}" for p in ps) or "(nessun testo estratto)"
-            return testa + "\n" + corpo
+                V.evento(c.user_id, fid, None, "documento", {"stato": d.get("stato")}, {"stato": a["imposta_stato"], "doc": doc_id_di(d), "documento_logico": ris["logico"]}, "stato del documento", "utente")
+                return f"ESEGUITO: documento {d.get('name')} v{d.get('versione') or 1} → {a['imposta_stato']} (riguarda i contenuti del documento; i record del fascicolo non sono cambiati)."
+            testa = f"DOCUMENTO {D.sigla(ris['logico'])} «{lst[-1].get('name')}» — {len(lst)} versioni conservate:\n" + D.elenco_versioni(lst)
+            blocchi = []
+            for x in scelte:
+                collega_documento(c, {**x, "fascicolo_id": fid})
+                ps = passaggi_documento(c, x, str(a.get("query") or ""), k=3 if tutte else 5)
+                corpo = "\n\n".join(f"--- pag.{p.get('page_number') or '?'} ---\n{str(p.get('content') or '')[:1200]}" for p in ps) or "(nessun testo estratto)"
+                blocchi.append(f"== v{x.get('versione') or 1} [doc:{doc_id_di(x)}] — per citare scrivi [[fonte|{doc_id_di(x)}|PAGINA|testo copiato]] (l'id è quello di QUESTA versione) ==\n{corpo}")
+            out = testa + "\n" + "\n\n".join(blocchi)
+            if a.get("confronta_con") not in (None, ""):
+                altra = next((x for x in lst if int(x.get("versione") or 1) == int(a["confronta_con"])), None)
+                if not altra:
+                    out += f"\n\nConfronto impossibile: la versione {a['confronta_con']} non esiste."
+                else:
+                    collega_documento(c, {**altra, "fascicolo_id": fid})
+                    a_, b_ = sorted([d, altra], key=lambda x: int(x.get("versione") or 1))
+                    out += "\n\n" + D.confronta(a_, b_)
+            return out
     except Exception:
         log.warning("strumento %s fallito (fail-open)", nome, exc_info=True)
         return "[strumento memoria non riuscito: non dichiarare di aver letto o salvato nulla]"
     return "[strumento sconosciuto]"
 
 
-_SCRIVE = {"fascicolo_salva", "fascicolo_aggiorna"}
+_SCRIVE = {"fascicolo_salva", "fascicolo_aggiorna", "fascicolo_registra_versione"}
 
 
 def _e_scrittura(nome: str, a: dict) -> bool:
@@ -593,7 +675,7 @@ def _e_scrittura(nome: str, a: dict) -> bool:
 
 def _riuscita(nome: str, out: str) -> bool:
     o = out.lstrip()
-    if o.startswith(("ESITO: errore", "NON SALVATO", "NON ESEGUITO", "[", "Fascicolo non trovato", "Documento non trovato", "Record non trovato", "Nessun fascicolo")):
+    if o.startswith(("ESITO: errore", "NON SALVATO", "NON ESEGUITO", "[", "Fascicolo non trovato", "Documento non trovato", "Record non trovato", "Nessun fascicolo", "Documento ambiguo", "Versione ")):
         return False
     return True
 

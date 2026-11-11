@@ -14,8 +14,10 @@ export function preparaTesto(testo: string): { testo: string; citazioni: Citazio
     citazioni.push({ doc: doc.trim(), pag: n, quote: quote.trim(), stato: (stato as "ok" | "pag") ?? "attesa" });
     return ` [${n ? `pag. ${n}` : "fonte"}](kbot-fonte:${citazioni.length - 1})`;
   });
+  // forme che non si sono potute risolvere (documento ignoto, campi mancanti, testo con «]»): mai mostrate grezze
+  out = out.replace(/\[\[\s*fonte\b[\s\S]*?\]\]/gi, "");
   // marcatore non ancora chiuso alla fine del testo (token in arrivo): non va mostrato a pezzi
-  out = out.replace(/\[\[fonte[^\]]*$/, "").replace(/\[\[?f?o?n?t?e?$/, "");
+  out = out.replace(/\[\[\s*fonte[^\]]*$/i, "").replace(/\[\[?f?o?n?t?e?$/i, "");
   // "(pag. N)" scritto a mano resta un riferimento semplice, non cliccabile
   out = out.replace(/\(pag\.\s*(\d+)\)/gi, (_m, n: string) => `[pag. ${n}](kbot-pag:${n})`);
   return { testo: out, citazioni };

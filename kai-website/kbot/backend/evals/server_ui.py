@@ -78,6 +78,23 @@ if os.environ.get("UI_SEED_BUDGET") == "1":
     _f2 = db.table("kbot_fascicoli").insert({"user_id": _U2, "tipo": "commessa", "codice": "TEST-E2E-ISOLATO-01", "titolo": "Fascicolo isolato di prova", "stato": "aperto"}).execute().data[0]
     db.table("kbot_fascicolo_voci").insert({"fascicolo_id": _f2["id"], "user_id": _U2, "tipo": "dato", "chiave": "budget_intervento", "testo": "Budget previsto per l'intervento",
         "valore": "10.000 €", "unita": "EUR", "verifica": "non_verificato", "stato_record": "attuale", "origine": "dichiarato_utente", "revisione": 1, "fonti": [{"origine": "utente"}]}).execute()
+# Fascicolo fittizio per il test 30B (UI_SEED_VERSIONI=1): TEST-DOC-VERSIONI-01 con la v1 di un riepilogo (PDF vero nello storage finto) come documento logico.
+# La v2 si allega dall'interfaccia (e2e/fixtures/KBot_Test_04_Riepilogo_Commessa_v2.pdf).
+if os.environ.get("UI_SEED_VERSIONI") == "1":
+    import uuid as _uuid
+    import app.lib.fascicoli as _f3
+    _U3 = "00000000-0000-4000-8000-000000000001"
+    _p1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "e2e", "fixtures", "KBot_Test_04_Riepilogo_Commessa_v1_fittizio.pdf")
+    db.storage.bucket.files["seed/KBot_Test_04_Riepilogo_Commessa.pdf"] = open(_p1, "rb").read()
+    import pdfplumber, io as _io
+    with pdfplumber.open(_io.BytesIO(db.storage.bucket.files["seed/KBot_Test_04_Riepilogo_Commessa.pdf"])) as _pdf:
+        _t1 = "\n".join(pg.extract_text() or "" for pg in _pdf.pages)
+    _f3b = db.table("kbot_fascicoli").insert({"user_id": _U3, "tipo": "commessa", "codice": "TEST-DOC-VERSIONI-01", "titolo": "Fascicolo fittizio isolato (versioni)", "stato": "aperto"}).execute().data[0]
+    db.table("kbot_fascicolo_voci").insert({"fascicolo_id": _f3b["id"], "user_id": _U3, "tipo": "dato", "chiave": "imponibile", "testo": "Imponibile contrattuale", "valore": "15.250,00 €",
+        "unita": "EUR", "verifica": "non_verificato", "stato_record": "attuale", "origine": "letto_da_documento", "revisione": 1, "fonti": []}).execute()
+    db.table("kbot_fascicolo_documenti").insert({"fascicolo_id": _f3b["id"], "user_id": _U3, "name": "KBot_Test_04_Riepilogo_Commessa.pdf", "type": "application/pdf", "size": 2000,
+        "path": "seed/KBot_Test_04_Riepilogo_Commessa.pdf", "extracted_text": _t1, "versione": 1, "serie": "kbot-test-04-riepilogo-commessa", "sha256": _f3._sha(_t1), "stato": "caricato",
+        "documento_id": str(_uuid.uuid4()), "autore": "utente", "motivo": "prima versione", "fonte": "seed", "source_session": None}).execute()
 # Modello FINTO che scrive lentamente (UI_LLM_FINTO=1): permette di provare nel browser lo streaming del documento, le fasi,
 # l'errore a metà testo e la ripresa con codice di backend VERO (marcatori, guardie, esportazione).
 if os.environ.get("UI_LLM_FINTO") == "1":
@@ -119,6 +136,20 @@ if os.environ.get("UI_LLM_FINTO") == "1":
             return NS(content=[NS(type="text", text=t)], usage=NS(input_tokens=10, output_tokens=5))
         def stream(self, **k):
             ultimo = str(k["messages"][-1]["content"]).lower()
+            ult_c0 = k["messages"][-1]["content"]
+            if isinstance(ult_c0, list) and "versioni conservate" in str(ult_c0[0].get("content")).lower():     # test 30B: esito di registra/recupera versioni
+                import re as _r2
+                res = str(ult_c0[0].get("content"))
+                ids = _r2.findall(r"v(\d+) — [^\n]*?\[doc:([0-9a-f]{12})\]", res)
+                prima = res.splitlines()[0][:230]
+                if "CONFRONTO" in res and len(ids) >= 2:
+                    return _Flusso("Ecco il confronto. Il residuo da incassare passa da 8.850,00 € nella v1 [[fonte|%s|1|Residuo da incassare riportato nel documento: € 8.850,00]] a 9.250,00 € nella v2 "
+                                   "[[fonte|%s|1|Residuo da incassare riportato nel documento: € 9.250,00]]. Un riferimento rotto: [[fonte|%s|pag. 1]] e un altro [[fonte|inesistente|1|x]]." % (ids[0][1], ids[1][1], ids[1][1]))
+                return _Flusso("Esito: " + prima)
+            if "registra" in ultimo and "versione" in ultimo and "versioni-01" in ultimo:
+                return _Flusso("", tool=("fascicolo_registra_versione", {"fascicolo": "TEST-DOC-VERSIONI-01", "documento": "KBot_Test_04_Riepilogo_Commessa", "motivo": "nuova stima del committente"}))
+            if "confronta" in ultimo and "versioni-01" in ultimo:
+                return _Flusso("", tool=("fascicolo_documento", {"fascicolo": "TEST-DOC-VERSIONI-01", "documento": "KBot_Test_04_Riepilogo_Commessa", "versione": "tutte", "confronta_con": 1, "query": "residuo da incassare"}))
             if "fascicolo" in ultimo or isinstance(k["messages"][-1]["content"], list):
                 ult_c = k["messages"][-1]["content"]
                 if isinstance(ult_c, list):          # secondo giro: risultato dello strumento → risposta con citazione

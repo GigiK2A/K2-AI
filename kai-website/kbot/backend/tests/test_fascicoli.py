@@ -8,6 +8,7 @@ from app.lib import fascicoli as F, strumenti
 class _Q:
     def __init__(self, db, t): self.db, self.t, self.f, self.mode, self.p = db, t, [], "select", None
     def select(self, *a, **k): self.mode = "select"; return self
+    def limit(self, n): return self
     def insert(self, row): self.mode, self.p = "insert", row; return self
     def update(self, p): self.mode, self.p = "update", p; return self
     def eq(self, k, v): self.f.append(lambda r: str(r.get(k)) == str(v)); return self

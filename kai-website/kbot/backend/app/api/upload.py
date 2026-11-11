@@ -613,7 +613,7 @@ def _bytes_documento(path: str) -> Optional[bytes]:
     return data
 
 
-def vista_documento(voce: dict, pag: int, quote: str, zoom: float):
+def vista_documento(voce: dict, pag: int, quote: str, zoom: float, extra: Optional[dict] = None):
     """Pagina/testo del documento citato, con i riquadri evidenziati. `voce` ha name, path, extractedText (chat) o extracted_text (fascicolo)."""
     from fastapi.responses import JSONResponse
 
@@ -640,6 +640,8 @@ def vista_documento(voce: dict, pag: int, quote: str, zoom: float):
         if tr:
             pos, fine = parole[tr[0]][0], parole[tr[1]][1]
         out = {"ok": True, "tipo": "testo", "nome": nome, "testo": testo[:200000], "evidenzia": [pos, fine] if pos >= 0 else None, "localizzato": pos >= 0}
+    if extra:                                                      # versione esatta del documento aperto (v1 di 2…)
+        out.update(extra)
     return JSONResponse(out, headers={"Cache-Control": "no-store"})
 
 
@@ -675,4 +677,11 @@ def session_document_view(
             log.warning("ricerca documento nei fascicoli fallita", exc_info=True)
     if not voce:
         raise HTTPException(status_code=404, detail="documento non trovato in questa pratica")
-    return vista_documento(voce, pag, quote, zoom)
+    extra: dict = {}
+    if user:
+        try:
+            from ..lib import fascicoli_documenti
+            extra = fascicoli_documenti.info_versione(user.id, str(voce.get("path") or "")) or {}
+        except Exception:
+            log.warning("info versione del documento non disponibile", exc_info=True)
+    return vista_documento(voce, pag, quote, zoom, extra)

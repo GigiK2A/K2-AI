@@ -89,11 +89,12 @@ def capabilities() -> dict:
     """Cosa può fare il K-BOT adesso (solo booleani, nessun dato sensibile): il frontend spegne i comandi non disponibili invece di
     lasciare un pulsante acceso che produce un avviso a ogni messaggio."""
     import os
-    from .lib import fascicoli, ricerca_norme, web_search
+    from .lib import fascicoli, fascicoli_documenti, ricerca_norme, web_search
     return {"webSearch": bool(web_search.enabled()), "normeSearch": bool(ricerca_norme.disponibile()),
             # quale versione sta girando davvero e quali strumenti vedrà il modello (diagnosi «il modello ne vede solo 4»)
             "build": (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or "")[:7] or None,
-            "fascicoliTools": list(fascicoli.NOMI), "fascicoliSchema": fascicoli.schema_versioni_ok()}
+            "fascicoliTools": list(fascicoli.NOMI), "fascicoliSchema": fascicoli.schema_versioni_ok(),
+            "fascicoliDocVersioni": fascicoli_documenti.schema_ok()}
 
 
 @app.get("/health")

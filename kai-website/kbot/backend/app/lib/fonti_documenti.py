@@ -14,7 +14,20 @@ import re
 import unicodedata
 from typing import Dict, List, Optional, Tuple
 
-_MARC = re.compile(r"\[\[\s*fonte\s*\|([^|\]]*)\|([^|\]]*)\|([^\]]*?)\s*\]\]", re.I)
+# «[[fonte|doc|pag|testo]]» ma anche «[[fonte|doc|pag]]» o «[[fonte|doc]]»; il testo può contenere «]» (un solo): si chiude al primo «]]», mai oltre un altro «[[»
+_MARC = re.compile(r"\[\[\s*fonte\s*\|([^|\]]*)(?:\|([^|\]]*))?(?:\|((?:(?!\[\[).){0,400}?))?\s*\]\]", re.I | re.S)
+_RESIDUO = re.compile(r"\[\[\s*fonte\b(?:(?!\[\[).){0,600}?\]\]", re.I | re.S)
+
+
+_APERTO = re.compile(r"\[\[\s*fonte\b[^\n\]]*$", re.I | re.M)     # marcatore mai chiuso (risposta interrotta): si toglie fino a fine riga
+_NORMALIZZATO = re.compile(r"\[\[fonte\|[^|\]\[]+\|\d+\|[^\]\[]*\|(?:ok|pag)\]\]")
+
+
+def toglie_residui(testo: str, tieni_validi: bool = True) -> str:
+    """Nessun marcatore grezzo `[[fonte|…]]` deve arrivare all'utente: quelli che non si sono potuti risolvere (documento ignoto, forma non valida) si tolgono.
+    `tieni_validi`: i marcatori già normalizzati dalla verifica (`…|ok]]`, `…|pag]]`) restano; senza verifica (nessun documento) si tolgono TUTTI."""
+    out = _RESIDUO.sub(lambda m: m.group(0) if tieni_validi and _NORMALIZZATO.fullmatch(m.group(0)) else "", testo or "")
+    return _APERTO.sub("", out)
 
 
 def doc_id(file_entry: dict) -> str:
@@ -130,14 +143,16 @@ def _pagine_da_pdf(f: dict) -> Dict[int, str]:
 
 def verifica(testo: str, collected: dict, session_id: str, chunks: Optional[List[dict]] = None) -> str:
     """Riscrive i marcatori in forma normalizzata `[[fonte|doc|pag|citazione|ok|pag]]` o li toglie."""
-    if not testo or not collected or not collected.get("uploaded_files"):
+    if not testo:
         return testo
+    if not collected or not collected.get("uploaded_files"):
+        return toglie_residui(testo, False)
     docs = mappa_documenti(collected)
     nomi = id_per_nome(collected)
     pagine = _testi_pagine(collected, session_id, chunks) if docs else {}
 
     def sost(m: re.Match) -> str:
-        rif, pag, quote = m.group(1).strip(), m.group(2).strip(), m.group(3).strip().strip("\"«»“”'")
+        rif, pag, quote = m.group(1).strip(), (m.group(2) or "").strip(), (m.group(3) or "").strip().strip("\"«»“”'")
         d = rif if rif in docs else nomi.get(rif.casefold())
         if not d:
             return ""                                   # documento inesistente: nessun collegamento
@@ -163,7 +178,7 @@ def verifica(testo: str, collected: dict, session_id: str, chunks: Optional[List
             return ""
         return ""                                       # pagina inesistente nel documento
 
-    out = _MARC.sub(sost, testo)
+    out = toglie_residui(_MARC.sub(sost, testo))
     return _auto_collega(out, docs, pagine)
 
 

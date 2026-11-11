@@ -1191,6 +1191,12 @@ export type VistaDocumento = {
   localizzato: boolean;
   testo?: string;
   evidenzia?: [number, number] | null;
+  /** Documento di un fascicolo: quale versione è, di quante, e se ce n'è una più recente. */
+  versione?: number;
+  versioni_totali?: number;
+  ultima?: number;
+  documento_logico?: string;
+  stato_documento?: string;
 };
 
 /** Apre un documento della pratica al passaggio citato (autorizzazione sul backend, nessun link pubblico). */

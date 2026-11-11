@@ -64,6 +64,13 @@ export function VisualizzatoreDocumento({
           <p className="truncate text-sm font-medium">{vista?.nome ?? "Documento"}</p>
           <p className="text-xs text-[var(--text-muted)]">
             {vista?.tipo === "pdf" ? `Pagina ${pagina}${vista.pagine ? ` di ${vista.pagine}` : ""}` : "Testo estratto"}
+            {vista?.versione ? (
+              <span data-testid="versione-documento" className={vista.ultima && vista.versione < vista.ultima ? "ml-2 font-medium text-amber-700" : "ml-2"}>
+                · versione {vista.versione}{vista.versioni_totali && vista.versioni_totali > 1 ? ` di ${vista.versioni_totali}` : ""}
+                {vista.ultima && vista.versione < vista.ultima ? " (precedente)" : ""}
+                {vista.stato_documento && vista.stato_documento !== "caricato" ? ` · ${vista.stato_documento}` : ""}
+              </span>
+            ) : null}
           </p>
         </div>
         {vista?.tipo === "pdf" && (

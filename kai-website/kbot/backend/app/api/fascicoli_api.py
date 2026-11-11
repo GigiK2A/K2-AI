@@ -29,6 +29,17 @@ def elenco(user: AuthUser = Depends(require_user)):
     return {"fascicoli": [{k: f.get(k) for k in ("id", "tipo", "codice", "titolo", "stato", "updated_at")} for f in fascicoli.elenco(user.id)]}
 
 
+def _documenti(uid: str, fid: str) -> list:
+    """Documenti con versione: `documento_logico` è lo stesso in tutte le versioni; `doc` è l'id della singola versione (quello delle citazioni)."""
+    from ..lib import fascicoli_documenti as D
+    out = []
+    for logico, lst in D.gruppi(fascicoli.documenti(uid, fid)).items():
+        for d in lst:
+            out.append({**{k: d.get(k) for k in ("id", "name", "type", "size", "stato", "autore", "motivo", "fonte", "created_at")},
+                        "versione": int(d.get("versione") or 1), "versioni_totali": len(lst), "documento_logico": D.sigla(logico), "doc": fascicoli.doc_id_di(d)})
+    return out
+
+
 @router.get("/fascicoli/{fid}")
 def apri(fid: str, user: AuthUser = Depends(require_user)):
     f = fascicoli.trova(user.id, fid)
@@ -36,7 +47,7 @@ def apri(fid: str, user: AuthUser = Depends(require_user)):
         raise HTTPException(status_code=404, detail="fascicolo non trovato")
     return {"fascicolo": {k: f.get(k) for k in ("id", "tipo", "codice", "titolo", "stato", "updated_at")},
             "voci": fascicoli.voci(user.id, str(f["id"])),
-            "documenti": [{k: d.get(k) for k in ("id", "name", "type", "size")} for d in fascicoli.documenti(user.id, str(f["id"]))]}
+            "documenti": _documenti(user.id, str(f["id"]))}
 
 
 @router.patch("/fascicoli/{fid}/voci/{vid}")
@@ -108,4 +119,5 @@ def vista(fid: str, doc_id: str, pag: int = 1, quote: str = "", zoom: float = 1.
     d = fascicoli.trova_documento(user.id, str(f["id"]), doc_id) if f else None
     if not d:
         raise HTTPException(status_code=404, detail="documento non trovato")
-    return vista_documento(d, pag, quote, zoom)
+    from ..lib import fascicoli_documenti as D
+    return vista_documento(d, pag, quote, zoom, D.info_versione(user.id, str(d.get("path") or "")) or {})

@@ -206,13 +206,21 @@ def _extract_gated_summary(raw_text: str, merged_messages: list, collected: Opti
     # HTML/template/placeholder/artefatti tecnici/tipografia sporca. Fail-open.
     _v_protetto, _mappa_doc = documento.proteggi(visible)       # i marcatori del documento non devono essere «puliti»
     visible = documento.ripristina(output_quality.polish(_v_protetto), _mappa_doc)
+    if collected is not None and "[[" in visible:
+        # un documento di un fascicolo (di QUALUNQUE versione) citato per id si rende disponibile alla verifica anche se non è stato aperto in questa conversazione
+        try:
+            fascicoli.collega_citati(fascicoli.contesto(), visible)
+        except Exception:
+            log.warning("collegamento dei documenti citati non riuscito", exc_info=True)
     if collected and collected.get("uploaded_files"):
         # citazioni documentali: ogni marcatore è verificato sul testo vero del documento (lib/fonti_documenti)
         try:
             visible = fonti_documenti.verifica(visible, collected, session_id, fonti_documenti.chunk_della_pratica(collected, session_id, rag.fetch_chunks))
         except Exception:
             log.exception("verifica citazioni fallita")
-            visible = _re.sub(r"\[\[fonte\|[^\]]*\]\]", "", visible)
+            visible = fonti_documenti.toglie_residui(visible, False)
+    else:
+        visible = fonti_documenti.toglie_residui(visible, False)      # nessun documento da cui verificare: mai un `[[fonte|…]]` grezzo all'utente
     visible = testo_pulito.pulisci(visible)      # entità residue, codifica doppia, caratteri invisibili (il codice e i marcatori restano)
     visible = impegni_guard.sanitize(visible)       # niente rimborsi/risarcimenti promessi dal bot
     # Numeri verdi (800/803) scritti dal modello e non dall'utente: fonte sconosciuta, si tolgono (lib/crisi).

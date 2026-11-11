@@ -68,7 +68,7 @@ def test_il_modello_vede_tutti_gli_strumenti_fascicolo_con_schema_valido(client,
         chat = [k for k in viste if "tools" in k]
         assert chat, "nessuna richiesta al modello con strumenti"
         nomi = [t["name"] for t in chat[0]["tools"]]
-        assert set(F.NOMI) <= set(nomi) and len(F.NOMI) == 9 and "fascicolo_aggiorna" in F.NOMI
+        assert set(F.NOMI) <= set(nomi) and len(F.NOMI) == 10 and "fascicolo_aggiorna" in F.NOMI and "fascicolo_registra_versione" in F.NOMI
         for t in chat[0]["tools"]:
             assert t["input_schema"]["type"] == "object" and t["description"]
         sistema = str(chat[0]["system"])

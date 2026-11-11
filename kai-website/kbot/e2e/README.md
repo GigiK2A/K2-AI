@@ -25,3 +25,5 @@ Nota: `server_ui.py` tiene le conversazioni in memoria. Tra una suite e l'altra 
 Prove aggiunte nell'audit di novembre 2026 (tutte con `UI_LLM_FINTO=1` per un modello finto deterministico):
 `scroll_streaming.mjs` (scroll libero durante lo streaming), `citazioni_documenti.mjs` (Markdown + citazioni + visualizzatore),
 `trascina_file.mjs` (drag & drop). Il Chromium di Playwright sta in `~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome`.
+
+`versioni_documenti.mjs` (test 30B): `UI_LLM_FINTO=1 UI_SEED_VERSIONI=1` sul backend; allega la v2 (`fixtures/KBot_Test_04_Riepilogo_Commessa_v2.pdf`) al fascicolo fittizio `TEST-DOC-VERSIONI-01` e verifica registrazione, citazioni v1/v2, idempotenza. Riavviare il backend prima di ogni corsa (stato in memoria).
