@@ -126,16 +126,13 @@ def main(argv=None) -> int:
     ap.add_argument("--bucket", action="append", choices=BUCKET, help="limita la prova a un bucket (ripetibile); senza: entrambi")
     ap.add_argument("--prepara-cache", metavar="FILE", help="crea e cancella file fittizi dopo averli letti dal link pubblico; salva gli URL (da ricontrollare dopo la privatizzazione)")
     ap.add_argument("--controlla-cache", metavar="FILE", help="rilegge gli URL salvati: nessuno deve rispondere 200 (senza scrivere nulla)")
-    ap.add_argument("--progetto", required=True, help="riferimento del progetto Supabase atteso nell'URL (evita di girare sull'ambiente sbagliato)")
+    ap.add_argument("--progetto", required=False, help="riferimento del progetto Supabase atteso nell'URL (evita di girare sull'ambiente sbagliato)")
     ap.add_argument("--esegui", action="store_true", help="senza questa opzione non scrive nulla")
     a = ap.parse_args(argv)
     if not (a.fase or a.prepara_cache or a.controlla_cache):
         ap.error("indica --fase, --prepara-cache o --controlla-cache")
     buckets = tuple(a.bucket) if a.bucket else BUCKET
     url, chiave = os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-    if a.progetto not in url:
-        print(f"RIFIUTO: SUPABASE_URL non contiene «{a.progetto}»: ambiente sbagliato.", file=sys.stderr)
-        return 2
     if a.controlla_cache:                                            # sola lettura: nessuna credenziale necessaria
         import httpx
         righe = controlla_cache([x.strip() for x in open(a.controlla_cache, encoding="utf-8") if x.strip()], lambda u: (httpx.get(u, timeout=30).status_code, b""))
@@ -143,6 +140,9 @@ def main(argv=None) -> int:
             print(f"  {'PASS' if ok else 'FAIL'}  cache: {u.split('/object/')[1][:40]}…  HTTP {codice} (atteso: non 200)")
         print("ESITO:", "nessun URL pubblico risponde più" if all(ok for *_, ok in righe) else "ALCUNI URL RISPONDONO ANCORA 200 (cache di rete o bucket ancora pubblico)")
         return 0 if all(ok for *_, ok in righe) else 1
+    if not a.progetto or a.progetto not in url:
+        print(f"RIFIUTO: SUPABASE_URL non contiene «{a.progetto}»: ambiente sbagliato.", file=sys.stderr)
+        return 2
     if not a.esegui:
         print(f"PIANO (nessuna scrittura): fase={a.fase or 'cache'}, progetto={a.progetto}; creerebbe {PREFISSO}/<uuid>/fittizio.pdf in {', '.join(BUCKET)}, "
               "leggerebbe i link senza credenziali, e cancellerebbe i file creati. Aggiungi --esegui per procedere.")
