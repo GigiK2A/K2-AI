@@ -15,6 +15,9 @@ from .settings import CATALOGO_CHIUSO, ENGINE_VERSION, OUT_DIR
 
 app = FastAPI(title="K2-AI 8e", version=ENGINE_VERSION)
 
+from .auth import avvisa_se_chiave_predefinita as _avvisa_chiave  # noqa: E402
+_avvisa_chiave()
+
 
 class DeliverableBody(BaseModel):
     service_id: str

@@ -502,3 +502,72 @@ def test_richieste_contemporanee_di_due_aziende_non_si_scambiano_il_contesto(mon
         propri, altrui = out[0::2], out[1::2]
         assert all(IMPORTO[u] in x and SEGRETO[altro(u)] not in x for x in propri)
         assert all(x == "Fascicolo non trovato." for x in altrui)
+
+
+# ═════════════════════ download: link rinfrescati su OGNI rotta che restituisce un URL, solo dopo i controlli ═══════════
+PUB = "https://prog.supabase.co/storage/v1/object/public/kbot-reports/deliverables/xyz/report.pdf"
+
+
+def _fresco(u): return bool(u) and "/sign/" in u and "/public/" not in u
+
+
+def test_ogni_rotta_che_restituisce_un_pdf_url_lo_ri_firma_e_solo_al_proprietario(mondo, monkeypatch):
+    from app.lib import storage
+    monkeypatch.setattr(storage, "SUPABASE_URL", "https://prog.supabase.co")
+    m, c = mondo, mondo.client
+    sess = m.db.table("kbot_sessions")
+    sess.update({"pdf_url": PUB, "success_token": "tok-A-capability"}).eq("id", m.sess[UA]).execute()
+    row = [x for x in m.db.tables["kbot_sessions"] if x["id"] == m.sess[UA]][0]
+    row["collected_data"]["deliverable_pdf_url"] = PUB
+    row["collected_data"]["deliverable_saved_job"] = m.job[UA]
+    row["messages"].append({"role": "user", "content": "foto", "files": [{"name": "a.png", "publicUrl": "https://prog.supabase.co/storage/v1/object/public/kbot-uploads/s/1-a.png"}]})
+    r = c.get(f"/api/kbot/status?id={m.sess[UA]}", headers=H(UA)); assert _fresco(r.json()["pdf_url"])
+    r = c.get(f"/api/kbot/session/{m.sess[UA]}", headers=H(UA)); s = r.json()["session"]
+    assert _fresco(s["pdfUrl"]) and _fresco(s["messages"][-1]["files"][0]["publicUrl"])
+    assert "/public/" in row["messages"][-1]["files"][0]["publicUrl"]                                   # il database non è stato modificato
+    r = c.get("/api/kbot/sessions", headers=H(UA)); assert "/public/" not in r.text
+    r = c.post("/api/kbot/checkout/exchange", json={"token": "tok-A-capability"}); assert r.status_code == 200 and _fresco(r.json()["pdf_url"])
+    assert c.post("/api/kbot/checkout/exchange", json={"token": "token-inventato"}).status_code == 404
+    r = c.post("/api/kbot/generate-pdf", json={"session_id": m.sess[UA]}, headers=H(UA)); assert r.status_code == 200 and _fresco(r.json()["pdf_url"])
+    r = c.post("/api/kbot/deliverables/save", json={"session_id": m.sess[UA], "job_id": m.job[UA]}, headers=H(UA)); assert r.status_code == 200 and _fresco(r.json()["pdf_url"])
+    r = c.post("/api/kbot/deliverables/recover", json={"session_id": m.sess[UA]}, headers=H(UA)); assert r.status_code == 200 and _fresco(r.json()["pdf_url"])
+    # un altro tenant, per le stesse rotte, non riceve né URL né dati
+    for metodo, url, corpo in [("get", f"/api/kbot/status?id={m.sess[UA]}", None), ("get", f"/api/kbot/session/{m.sess[UA]}", None),
+                               ("post", "/api/kbot/generate-pdf", {"session_id": m.sess[UA]}), ("post", "/api/kbot/deliverables/save", {"session_id": m.sess[UA], "job_id": m.job[UA]}),
+                               ("post", "/api/kbot/deliverables/recover", {"session_id": m.sess[UA]})]:
+        r = getattr(c, metodo)(url, headers=H(UB), **({"json": corpo} if corpo else {}))
+        assert r.status_code in (403, 404) and "sign" not in r.text and "supabase" not in r.text, (url, r.status_code)
+
+
+# ═════════════════════ guardia contro le regressioni: ogni nuova rotta con un identificatore va coperta ═════════════
+ROTTE_CON_IDENTIFICATORE_COPERTE = {
+    'POST /api/kbot/checkout', 'POST /api/kbot/checkout/boost', 'POST /api/kbot/checkout/boost/demo', 'POST /api/kbot/context/remove', 'POST /api/kbot/conversations',
+    'PATCH /api/kbot/conversations/{conv_id}', 'DELETE /api/kbot/conversations/{conv_id}', 'POST /api/kbot/deliverables', 'POST /api/kbot/deliverables/agent',
+    'POST /api/kbot/deliverables/auto', 'POST /api/kbot/deliverables/recover', 'POST /api/kbot/deliverables/save', 'GET /api/kbot/deliverables/{job_id}',
+    'GET /api/kbot/deliverables/{job_id}/pdf', 'GET /api/kbot/deliverables/{job_id}/xlsx', 'POST /api/kbot/fascicoli/eventi/{eid}/annulla', 'GET /api/kbot/fascicoli/{fid}',
+    'DELETE /api/kbot/fascicoli/{fid}', 'POST /api/kbot/fascicoli/{fid}/consolida', 'GET /api/kbot/fascicoli/{fid}/documents/{doc_id}/view', 'GET /api/kbot/fascicoli/{fid}/duplicati',
+    'GET /api/kbot/fascicoli/{fid}/storico', 'PATCH /api/kbot/fascicoli/{fid}/voci/{vid}', 'DELETE /api/kbot/fascicoli/{fid}/voci/{vid}', 'POST /api/kbot/fetch-url',
+    'POST /api/kbot/followups', 'POST /api/kbot/generate-pdf', 'POST /api/kbot/generate-pdf/stream', 'POST /api/kbot/message', 'POST /api/kbot/message/stream', 'POST /api/kbot/preview',
+    'POST /api/kbot/render-deliverable-xlsx', 'POST /api/kbot/render-message-docx', 'POST /api/kbot/render-message-pdf', 'POST /api/kbot/report', 'GET /api/kbot/session/{session_id}',
+    'GET /api/kbot/session/{session_id}/documents', 'GET /api/kbot/session/{session_id}/documents/{doc_id}/view', 'POST /api/kbot/session/{session_id}/link-user', 'GET /api/kbot/status',
+    'POST /api/kbot/upload',
+}
+
+
+def test_nessuna_rotta_con_un_identificatore_sfugge_ai_test_di_isolamento():
+    """Se si aggiunge una rotta che prende session_id/job_id/fid/… questo test FALLISCE finché non si scrive il suo attacco A→B in questo file
+    e la si aggiunge all'elenco: un controllo di proprietà dimenticato non può più arrivare in produzione in silenzio."""
+    from app.main import app
+    o = app.openapi(); sch = o["components"]["schemas"]
+    trovate = set()
+    for p, ops in o["paths"].items():
+        for mtd, op in ops.items():
+            rb = op.get("requestBody", {}).get("content", {})
+            ref = next((v.get("schema", {}).get("$ref") for v in rb.values() if v.get("schema", {}).get("$ref")), None)
+            props = list(sch[ref.split("/")[-1]].get("properties", {})) if ref else []
+            q = [x["name"] for x in op.get("parameters", []) if x["in"] == "query"]
+            pp = [x["name"] for x in op.get("parameters", []) if x["in"] == "path"]
+            if any(k in props for k in ("session_id", "job_id", "kbotSessionId")) or "id" in q or any(k in pp for k in ("session_id", "job_id", "conv_id", "fid", "eid", "doc_id", "vid", "id")):
+                trovate.add(f"{mtd.upper()} {p}")
+    assert not (trovate - ROTTE_CON_IDENTIFICATORE_COPERTE), f"rotte nuove senza test di isolamento: {sorted(trovate - ROTTE_CON_IDENTIFICATORE_COPERTE)}"
+    assert not (ROTTE_CON_IDENTIFICATORE_COPERTE - trovate), f"rotte rimosse: aggiorna l'elenco: {sorted(ROTTE_CON_IDENTIFICATORE_COPERTE - trovate)}"

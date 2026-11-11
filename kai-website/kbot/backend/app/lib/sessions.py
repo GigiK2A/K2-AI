@@ -228,6 +228,19 @@ def _fresco(url):
     return storage.rinfresca_url(url)
 
 
+def _messaggi_freschi(messages):
+    """Gli allegati dei messaggi vecchi possono portare un link pubblico a un bucket: si ri-firma in uscita (copia, il DB non cambia)."""
+    out = []
+    for m in messages or []:
+        if isinstance(m, dict) and any(isinstance(m.get(k), list) for k in ("files", "attachments")):
+            m = dict(m)
+            for k in ("files", "attachments"):
+                if isinstance(m.get(k), list):
+                    m[k] = [({**f, "publicUrl": _fresco(f.get("publicUrl"))} if isinstance(f, dict) and f.get("publicUrl") else f) for f in m[k]]
+        out.append(m)
+    return out
+
+
 def public_session(session: dict) -> dict:
     """Strip internal fields before returning to client."""
     collected = session.get("collected_data") or {}
@@ -239,7 +252,7 @@ def public_session(session: dict) -> dict:
         "boostSuggeritoLabel": collected.get("boost_suggerito_label"),
         "deliverableLabel": collected.get("deliverable_label"),
         "mode": collected.get("mode") or "report",
-        "messages": session.get("messages") or [],
+        "messages": _messaggi_freschi(session.get("messages")),
         "extractedData": collected.get("extractedData") or {},
         "schedaCliente": {k: v.get("valore") for k, v in (collected.get("scheda_cliente") or {}).items()
                           if isinstance(v, dict) and v.get("valore")},
