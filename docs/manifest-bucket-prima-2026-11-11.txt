@@ -1,0 +1,3 @@
+Manifest di integrita' PRIMA (11/11/2026, dopo le sessioni di prova): 
+kbot-reports  pubblico=true  oggetti=142  byte=16993678  impronta(nome:size:etag)=8d77cd1104a038cb39493e388ac088dd   (include 2 file fittizi del report di prova)
+kbot-uploads  pubblico=true  oggetti=65   byte=160378508 impronta(nome:size:etag)=2ea4a43f740929041492ad1508f7c397

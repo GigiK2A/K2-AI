@@ -21,6 +21,7 @@ class Storage:
         class B:
             def upload(self, path, data, opts=None): s.files[(b, path)] = data
             def create_signed_url(self, path, n): return {"signedURL": f"/storage/v1/object/sign/{b}/{path}?token=t{n}"}
+            def download(self, path): return s.files[(b, path)]
             def remove(self, paths):
                 for p in paths:
                     s.files.pop((b, p), None); s.cancellati.append((b, p))
@@ -52,11 +53,11 @@ def rinfresca(monkeypatch):
     return storage.rinfresca_url
 
 
-def prova(pubblici, rinfresca_fn, monkeypatch, fase):
+def prova(pubblici, rinfresca_fn, monkeypatch, fase, anon=None, anon_voci=0):
     from app.lib import storage
     c = Client(pubblici)
     monkeypatch.setattr(storage, "get_admin_client", lambda: c)
-    ris = VB.raccogli(c, BASE, http(c), rinfresca_fn, anon_key=None)
+    ris = VB.raccogli(c, BASE, http(c), rinfresca_fn, anon_key=anon, http_list=(lambda b, k: anon_voci) if anon is not None else None)
     return c, VB.valuta(fase, ris)
 
 
@@ -105,3 +106,23 @@ def test_senza_esegui_non_scrive_rifiuta_l_ambiente_sbagliato_e_non_stampa_le_ch
     assert VB.main(["--fase", "prima", "--progetto", "uiuvwzrmrdqbfajguuab"]) == 0                    # senza --esegui: solo il piano
     cat = capsys.readouterr()
     assert "nessuna scrittura" in cat.out and "SEGRETO-CHIAVE-123" not in cat.out + cat.err
+
+
+def test_l_elenco_con_la_chiave_anon_si_giudica_dal_numero_di_voci_non_dal_codice(monkeypatch, rinfresca):
+    _, righe = prova(set(), rinfresca, monkeypatch, "dopo", anon="chiave-anon", anon_voci=0)         # 200 con elenco vuoto: chiuso
+    assert all(ok for *_, ok in righe)
+    _, righe = prova(set(), rinfresca, monkeypatch, "dopo", anon="chiave-anon", anon_voci=3)         # la chiave anon vede file: ESPOSTO
+    assert [r[1] for r in righe if not r[4]] == ["elenco del bucket con la chiave anon (voci visibili)"] * 2
+
+
+def test_filtro_bucket_e_controllo_cache(monkeypatch, rinfresca):
+    from app.lib import storage
+    c = Client({"kbot-uploads", "kbot-reports"})
+    monkeypatch.setattr(storage, "get_admin_client", lambda: c)
+    ris = VB.raccogli(c, BASE, http(c), rinfresca, buckets=("kbot-reports",))
+    assert list(ris) == ["kbot-reports"] and not c.storage.files                                 # solo il bucket richiesto, ripulito
+    urls = VB.prepara_cache(c, BASE, http(c), buckets=("kbot-uploads",))
+    assert len(urls) == 1 and "/object/public/kbot-uploads/test31/cache-" in urls[0] and not c.storage.files       # l'URL è salvato, il file è già cancellato
+    # file cancellato ma «ancora in cache»: simulato da un http_get che risponde 200 → il controllo lo segnala
+    assert VB.controlla_cache(urls, lambda u: (200, b"")) == [(urls[0], 200, False)]
+    assert VB.controlla_cache(urls, lambda u: (400, b"")) == [(urls[0], 400, True)]
