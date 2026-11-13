@@ -93,6 +93,11 @@ body.workshop-page > section,
 body.cases-page > section,
 body.analysis-page > section,
 body.contact-page > section,
+body.method-page > main > section,
+body.workshop-page > main > section,
+body.cases-page > main > section,
+body.analysis-page > main > section,
+body.contact-page > main > section,
 body.method-page > footer,
 body.workshop-page > footer,
 body.cases-page > footer,
@@ -852,6 +857,7 @@ body:not(.home-page) {
 
 body:not(.home-page) > nav,
 body:not(.home-page) > section,
+body:not(.home-page) > main > section,
 body:not(.home-page) > footer {
   position: relative;
   z-index: 1;

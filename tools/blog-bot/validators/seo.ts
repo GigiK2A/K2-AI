@@ -101,6 +101,9 @@ export function validateSeo(fullHtml: string): SeoCheckResult {
     errors.push(`internal links with .html: ${[...new Set(htmlLinks)].slice(0, 5).join(", ")}`);
   }
 
+  // Landmark principale: uno solo <main>
+  if ($("main").length !== 1) errors.push(`expected 1 <main>, got ${$("main").length}`);
+
   // Immagini: width/height, alt non vuoto, lazy tranne la prima (cover, eager)
   $("img").each((_, el) => {
     const src = $(el).attr("src") ?? "";
@@ -120,7 +123,9 @@ export function validateSeo(fullHtml: string): SeoCheckResult {
   if ($('link[rel="preload"][href$=".ttf"]').length > 0) errors.push("preload of a .ttf font (use .woff2)");
 
   // Body word count (between 1200 and 2500)
-  const body = $("article, main, section").text().replace(/\s+/g, " ").trim();
+  // Con <main> si conta solo quello (con "main, section" insieme il testo verrebbe contato due volte).
+  const bodyRoot = $("main").length ? $("main") : $("article, section");
+  const body = bodyRoot.text().replace(/\s+/g, " ").trim();
   const wc = body.split(" ").length;
   if (wc < 1200) errors.push(`word count ${wc} below 1200`);
   if (wc > 2500) warnings.push(`word count ${wc} above 2500`);

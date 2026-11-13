@@ -107,6 +107,15 @@ test("template: senza image_alts l'alt ripiega sul titolo (mai vuoto)", () => {
   for (const el of $("img.blog-cover-full").toArray()) assert.ok(($(el).attr("alt") ?? "").trim().length > 0);
 });
 
+test("template: un solo <main> tra menu e footer", () => {
+  const $ = cheerio.load(renderArticleHtml(sample()));
+  assert.equal($("main").length, 1);
+  assert.equal($("main").parent().is("body"), true);
+  assert.equal($("main").prev().is(".nav-overlay"), true);
+  assert.equal($("main").next().is("footer"), true);
+  assert.equal($("main h1").length, 1);
+});
+
 test("template: preload dei font solo WOFF2", () => {
   const $ = cheerio.load(renderArticleHtml(sample()));
   const hrefs = $('link[rel="preload"]').toArray().map((l) => $(l).attr("href"));

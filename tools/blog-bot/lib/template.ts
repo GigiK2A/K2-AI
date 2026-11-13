@@ -223,6 +223,7 @@ export function renderArticleHtml(input: TemplateInput): string {
     <a href="/contatti">Contatti</a>
   </div>
 
+  <main>
   <section class="page-header">
     <p class="hero-eyebrow reveal">Blog · ${escapeHtml(pillarLabel)}</p>
     <h1 class="display-xl reveal reveal-delay-1">${escapeHtml(meta.title_h1)}</h1>
@@ -263,6 +264,7 @@ ${bodyHtml}
 ${relatedCards}
     </div>
   </section>
+  </main>
 
   <footer>
     <div class="footer-inner footer-inner-legal">

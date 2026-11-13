@@ -344,6 +344,11 @@ summary:focus-visible,
   top: 12px;
 }
 
+/* Il target del link «Vai al contenuto» riceve il focus solo da script: niente anello. */
+#contenuto:focus {
+  outline: none;
+}
+
 .skip-link:focus-visible {
   outline: 2px solid #080808;
   outline-offset: 2px;
