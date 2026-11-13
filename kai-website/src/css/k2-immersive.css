@@ -881,3 +881,13 @@ body:not(.home-page) .display-lg,
 body:not(.home-page) .display-md {
   margin-bottom: clamp(2rem, 4vw, 3rem);
 }
+
+/* Titoli h1 più lunghi (45–65 caratteri) su telefono: corpo leggermente più
+   piccolo, così le parole lunghe ("compliance", "amministrative") non vanno
+   a capo con il trattino. Solo ≤480 px, solo blog, pillar e analisi. */
+@media (max-width: 480px) {
+  body.cases-page .display-xl,
+  body.analysis-page .display-xl {
+    font-size: clamp(2.5rem, 11vw, 3.25rem);
+  }
+}
