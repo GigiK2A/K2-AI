@@ -67,7 +67,10 @@ export function toPath(url: string): string {
 
 export function resolvePillarFromUrl(url: string): ResolvedPillar {
   const path = toPath(url);
-  const map = URL_TO_PILLAR[path];
+  // La mappa usa le chiavi con .html (come schedule.json), ma l'URL canonico del sito
+  // ora è senza estensione: accetta entrambe le forme.
+  const bare = path.replace(/\.html$/, "");
+  const map = URL_TO_PILLAR[path] ?? URL_TO_PILLAR[`${bare}.html`] ?? URL_TO_PILLAR[bare];
   // href SENZA estensione .html: è l'URL canonico servito in prod; la
   // variante .html risponde con un 301 che negli internal link va evitato.
   if (map) return { code: map.code, label: map.label, url: path.replace(/\.html$/, "") };

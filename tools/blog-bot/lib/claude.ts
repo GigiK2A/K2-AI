@@ -32,6 +32,12 @@ export interface ArticlePieces {
       inline1: string;
       inline2: string;
     };
+    /** Alt text in italiano (descrive la scena), 3 voci come image_scenes. */
+    image_alts?: {
+      cover: string;
+      inline1: string;
+      inline2: string;
+    };
   };
 }
 

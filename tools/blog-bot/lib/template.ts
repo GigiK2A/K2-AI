@@ -19,9 +19,13 @@ export interface TemplateInput {
   pillarPadre: string;         // es. "P01"
   pillarUrl: string;           // es. "/suite-ai/agenti-email-crm" (canonico, senza .html)
   pillarLabel: string;         // es. "Agenti email & CRM"
-  coverUrl?: string;           // path immagine cover (es. "slug-cover.png")
-  inline1Url?: string;         // path immagine inline tra sezione 02 e 03
-  inline2Url?: string;         // path immagine inline tra sezione 04 e 05
+  coverUrl?: string;           // file in blog/img/ della cover (es. "slug-cover.webp")
+  inline1Url?: string;         // file immagine inline tra sezione 02 e 03
+  inline2Url?: string;         // file immagine inline tra sezione 04 e 05
+  coverSize?: { width: number; height: number };   // dimensioni reali, per width/height
+  inlineSize?: { width: number; height: number };
+  /** JPG 1200x630 in public/blog/og/ (es. "slug.jpg"); null/assente = ripiego su og-home. */
+  ogImageFile?: string | null;
   publishedAtIso: string;      // YYYY-MM-DD
   related: RelatedLink[];      // 3 card "continua a leggere"
 }
@@ -30,7 +34,8 @@ function injectInlineImages(
   bodyHtml: string,
   meta: ArticlePieces["meta"],
   inline1?: string,
-  inline2?: string
+  inline2?: string,
+  size: { width: number; height: number } = { width: 1024, height: 1024 }
 ): string {
   if (!inline1 && !inline2) return bodyHtml;
   const HR = '<hr class="hr-section">';
@@ -42,14 +47,15 @@ function injectInlineImages(
   // Serve almeno 5 parti per avere indici 2 e 4 validi.
   if (parts.length < 5) return bodyHtml;
 
+  // alt: descrizione in italiano della scena (meta.image_alts); se manca, il titolo + dettaglio.
   const imgBlock = (src: string, alt: string) =>
-    `\n  <section>\n    <img class="blog-cover-full reveal" src="./img/${src}" alt="${alt}" loading="lazy">\n  </section>\n`;
+    `\n  <section>\n    <img class="blog-cover-full reveal" src="./img/${src}" width="${size.width}" height="${size.height}" alt="${escapeAttr(alt)}" loading="lazy" decoding="async">\n  </section>\n`;
 
   const out: string[] = [];
   for (let i = 0; i < parts.length; i++) {
     if (i > 0) out.push(HR);
-    if (i === 2 && inline1) out.push(imgBlock(inline1, `${meta.title_h1} — dettaglio del problema`));
-    if (i === 4 && inline2) out.push(imgBlock(inline2, `${meta.title_h1} — dettaglio della soluzione`));
+    if (i === 2 && inline1) out.push(imgBlock(inline1, meta.image_alts?.inline1?.trim() || `${meta.title_h1} — dettaglio del problema`));
+    if (i === 4 && inline2) out.push(imgBlock(inline2, meta.image_alts?.inline2?.trim() || `${meta.title_h1} — dettaglio della soluzione`));
     out.push(parts[i] ?? "");
   }
   return out.join("");
@@ -65,16 +71,22 @@ export function renderArticleHtml(input: TemplateInput): string {
     coverUrl,
     inline1Url,
     inline2Url,
+    coverSize,
+    inlineSize,
+    ogImageFile,
     publishedAtIso,
     related,
   } = input;
 
-  const bodyHtml = injectInlineImages(rawBodyHtml, meta, inline1Url, inline2Url);
+  const bodyHtml = injectInlineImages(rawBodyHtml, meta, inline1Url, inline2Url, inlineSize);
 
   const canonical = `https://www.k2-ai.it/blog/${meta.slug}`;
-  const ogImage = coverUrl
-    ? `https://www.k2-ai.it/blog/img/${coverUrl}`
+  // og:image / twitter:image / JSON-LD: URL assoluto di un file che esiste davvero in dist.
+  // /blog/img/* NON va bene: Vite sposta quelle immagini in /assets/ con hash e l'URL darebbe 404.
+  const ogImage = ogImageFile
+    ? `https://www.k2-ai.it/blog/og/${ogImageFile}`
     : "https://www.k2-ai.it/assets/og-home.png";
+  const coverAlt = meta.image_alts?.cover?.trim() || meta.title_h1;
 
   const articleSchema = {
     "@context": "https://schema.org",
@@ -122,7 +134,7 @@ export function renderArticleHtml(input: TemplateInput): string {
   const coverSection = coverUrl
     ? `
   <section>
-    <img class="blog-cover-full reveal" src="./img/${coverUrl}" alt="${escapeAttr(meta.title_h1)}" loading="eager">
+    <img class="blog-cover-full reveal" src="./img/${coverUrl}" width="${coverSize?.width ?? 1536}" height="${coverSize?.height ?? 1024}" alt="${escapeAttr(coverAlt)}" loading="eager" fetchpriority="high">
   </section>
 
   <hr class="hr-section">
@@ -152,7 +164,7 @@ export function renderArticleHtml(input: TemplateInput): string {
   <link rel="canonical" href="${canonical}">
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="preload" href="/fonts/clash-display-700.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/fonts/dm-sans-400.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/fonts/dm-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/favicon.png">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="K2-AI">
@@ -161,7 +173,11 @@ export function renderArticleHtml(input: TemplateInput): string {
   <meta property="og:description" content="${escapeAttr(meta.meta_description)}">
   <meta property="og:url" content="${canonical}">
   <meta property="og:image" content="${ogImage}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeAttr(coverAlt)}">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${ogImage}">
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/nav.css">
   <link rel="stylesheet" href="../css/components.css">
@@ -181,13 +197,13 @@ export function renderArticleHtml(input: TemplateInput): string {
       </a>
       <ul class="nav-links">
         <li><a href="/">Home</a></li>
-        <li><a href="/metodo.html">Metodo</a></li>
-        <li><a href="/laboratorio.html">Laboratorio</a></li>
+        <li><a href="/metodo">Metodo</a></li>
+        <li><a href="/laboratorio">Laboratorio</a></li>
         <li><a href="/k-bot">K-BOT</a></li>
         <li><a href="/per-te">Per te</a></li>
-        <li><a href="/suite-ai.html">Suite AI</a></li>
+        <li><a href="/suite-ai">Suite AI</a></li>
         <li><a href="/blog">Blog</a></li>
-        <li><a href="/contatti.html">Contatti</a></li>
+        <li><a href="/contatti">Contatti</a></li>
       </ul>
       <a href="/app" class="nav-cta">Apri K-BOT →</a>
       <button class="nav-hamburger" aria-label="Menu">
@@ -198,13 +214,13 @@ export function renderArticleHtml(input: TemplateInput): string {
 
   <div class="nav-overlay">
     <a href="/">Home</a>
-    <a href="/metodo.html">Metodo</a>
-    <a href="/laboratorio.html">Laboratorio</a>
+    <a href="/metodo">Metodo</a>
+    <a href="/laboratorio">Laboratorio</a>
     <a href="/k-bot">K-BOT</a>
     <a href="/per-te">Per te</a>
-    <a href="/suite-ai.html">Suite AI</a>
+    <a href="/suite-ai">Suite AI</a>
     <a href="/blog">Blog</a>
-    <a href="/contatti.html">Contatti</a>
+    <a href="/contatti">Contatti</a>
   </div>
 
   <section class="page-header">
@@ -230,7 +246,7 @@ ${bodyHtml}
 
   <section class="section-center">
     <p class="mono reveal center-cta-label">Prossimo passo</p>
-    <h2 class="display-md reveal reveal-delay-1 center-cta-title-sm">Vuoi capire il tuo caso?</h2>
+    <h2 class="display-md reveal reveal-delay-1 center-cta-title-sm">Vuoi capire se questo vale per il tuo caso?</h2>
     <p class="reveal reveal-delay-2 center-cta-copy">
       Apri K-BOT e in 5 minuti ti diciamo se questa categoria di soluzione fa al caso della tua PMI, oppure se basta uno strumento off-the-shelf. Gratuito.
     </p>
@@ -252,18 +268,18 @@ ${relatedCards}
     <div class="footer-inner footer-inner-legal">
       <span class="footer-logo"><img src="../logo-nav-compact.png?v=20260429" width="220" height="113" alt="K2-AI" loading="lazy"></span>
       <ul class="footer-links">
-        <li><a href="/metodo.html">Metodo</a></li>
-        <li><a href="/laboratorio.html">Laboratorio</a></li>
+        <li><a href="/metodo">Metodo</a></li>
+        <li><a href="/laboratorio">Laboratorio</a></li>
         <li><a href="/k-bot">K-BOT</a></li>
         <li><a href="/per-te">Per te</a></li>
-        <li><a href="/suite-ai.html">Suite AI</a></li>
+        <li><a href="/suite-ai">Suite AI</a></li>
         <li><a href="/blog">Blog</a></li>
-        <li><a href="/contatti.html">Contatti</a></li>
+        <li><a href="/contatti">Contatti</a></li>
       </ul>
       <ul class="footer-legal-links">
-        <li><a href="/privacy.html">Privacy</a></li>
-        <li><a href="/cookie.html">Cookie</a></li>
-        <li><a href="/note-legali.html">Note legali</a></li>
+        <li><a href="/privacy">Privacy</a></li>
+        <li><a href="/cookie">Cookie</a></li>
+        <li><a href="/note-legali">Note legali</a></li>
       </ul>
       <span class="footer-copy">© 2026 K2-AI</span>
     </div>

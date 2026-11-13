@@ -37,6 +37,8 @@ const REPO_ROOT = resolve(__dirname, "..", "..");
 const BLOG_DIR = join(REPO_ROOT, "kai-website", "src", "blog");
 const BLOG_INDEX_PATH = join(BLOG_DIR, "index.html");
 const BLOG_IMG_DIR = join(BLOG_DIR, "img");
+// JPG 1200x630 per og:image / twitter:image / JSON-LD: in public/ così Vite li copia così come sono in dist.
+const BLOG_OG_DIR = join(REPO_ROOT, "kai-website", "src", "public", "blog", "og");
 const SITEMAP_PATH = join(REPO_ROOT, "kai-website", "src", "public", "sitemap.xml");
 const SUITE_AI_DIR = join(REPO_ROOT, "kai-website", "src", "suite-ai");
 const DRAFTS_REJECTED = join(__dirname, "drafts-rejected");
@@ -90,7 +92,8 @@ async function main() {
         openai,
         pieces.meta.image_scenes,
         pieces.meta.slug,
-        BLOG_IMG_DIR
+        BLOG_IMG_DIR,
+        BLOG_OG_DIR
       );
       console.log(`[images] generated: ${images.cover}, ${images.inline1}, ${images.inline2}`);
     } catch (e) {
@@ -113,6 +116,9 @@ async function main() {
     coverUrl: images?.cover,
     inline1Url: images?.inline1,
     inline2Url: images?.inline2,
+    coverSize: images?.coverSize,
+    inlineSize: images?.inlineSize,
+    ogImageFile: images?.og,
     publishedAtIso,
     related: [
       {
@@ -225,6 +231,7 @@ async function main() {
         `kai-website/src/blog/img/${images.cover}`,
         `kai-website/src/blog/img/${images.inline1}`,
         `kai-website/src/blog/img/${images.inline2}`,
+        ...(images.og ? [`kai-website/src/public/blog/og/${images.og}`] : []),
       ]
     : [];
   const scheduleRel = `tools/blog-bot/schedule.json`;

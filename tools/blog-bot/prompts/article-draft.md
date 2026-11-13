@@ -83,7 +83,7 @@ Struttura sezioni OBBLIGATORIA (in ordine):
   <div class="section-label reveal"><span>01 · Diagnostica</span></div>
   <div class="grid-2 two-col-gap-40">
     <div class="reveal">
-      <h2 class="display-sm">[Titolo H2 sezione 1, max 60 char].</h2>
+      <h2 class="display-sm">[Titolo H2 sezione 1, 30-70 caratteri].</h2>
     </div>
     <div class="reveal reveal-delay-1 blog-prose">
       <p>[paragrafo 1: descrizione problema concreto con numeri]</p>
@@ -187,7 +187,7 @@ Poi (sempre dopo): FAQ section con 3 domande. Template:
   <div class="section-label reveal"><span>FAQ</span></div>
   <div class="grid-2 two-col-gap-40">
     <div class="reveal">
-      <h2 class="display-sm">Domande frequenti.</h2>
+      <h2 class="display-sm">Domande frequenti su [tema dell'articolo, 30-70 caratteri totali].</h2>
     </div>
     <div class="reveal reveal-delay-1 blog-faq">
       <details>
@@ -213,8 +213,8 @@ Dopo il body HTML, su una nuova riga, genera un blocco JSON `<!--META`:
 ```
 <!--META
 {
-  "title_h1": "[titolo articolo, MAX 55 char, contiene keyword primaria]",
-  "title_tag": "[title_h1 stesso + ' | K2-AI' — risultato MAX 65 char totali]",
+  "title_h1": "[titolo articolo, 45-65 caratteri, contiene keyword primaria]",
+  "title_tag": "[keyword primaria + ' | K2-AI' in coda — MAX 60 caratteri totali; formulazione DIVERSA dal title_h1, mai uguale]",
   "meta_description": "[STRETTO 140-155 char, include keyword + CTA implicita]",
   "lede": "[paragrafo 3-4 righe, va sotto h1 nella hero, frame del problema, NON spiega soluzione]",
   "slug": "[slug-url-friendly-derivato-da-h1]",
@@ -227,6 +227,11 @@ Dopo il body HTML, su una nuova riga, genera un blocco JSON `<!--META`:
     "cover": "[scena cover, 1-2 frasi in INGLESE, foto realistica ufficio PMI italiana — focus sul concetto principale dell'articolo, NO testo leggibile, NO loghi]",
     "inline1": "[scena dettaglio del PROBLEMA, 1 frase in INGLESE, foto documentaria — angolo ravvicinato su un elemento concreto del pain point]",
     "inline2": "[scena dettaglio del RISULTATO/SOLUZIONE, 1 frase in INGLESE, foto documentaria — angolo ravvicinato su un elemento del processo dopo l'intervento]"
+  },
+  "image_alts": {
+    "cover": "[alt text in ITALIANO, 8-20 parole: descrive cosa si vede nella cover (persone, oggetti, luogo), senza 'immagine di' e senza ripetere il titolo]",
+    "inline1": "[alt text in ITALIANO, descrive cosa si vede nell'immagine inline 1]",
+    "inline2": "[alt text in ITALIANO, descrive cosa si vede nell'immagine inline 2]"
   }
 }
 -->
