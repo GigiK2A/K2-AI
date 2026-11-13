@@ -12,6 +12,8 @@
 // - respect_dnt: true → honor the user's "Do Not Track" preference.
 
 import posthog from 'posthog-js'
+// Consenso ai cookie di marketing + pixel di OpenAI Ads (caricato solo se accettato).
+import './consent.js'
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || ''
 const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com'

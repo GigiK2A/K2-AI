@@ -9,12 +9,12 @@ const securityHeaders = {
     // Strict: no 'unsafe-inline'. All previously inline scripts have been
     // extracted to external files under src/js/. JSON-LD <script> blocks
     // are data, not executable, and are unaffected.
-    "script-src 'self'",
+    "script-src 'self' https://bzrcdn.openai.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https://*.stripe.com",
     "media-src 'self'",
     "font-src 'self' https://api.fontshare.com https://fonts.gstatic.com",
-    "connect-src 'self' http://localhost:3000 http://localhost:8000 http://127.0.0.1:8000 http://192.168.0.62:8000 http://192.168.1.169:8000 https://*.stripe.com https://checkout.stripe.com https://eu.i.posthog.com https://eu-assets.i.posthog.com ws://localhost:3000 ws://127.0.0.1:3000",
+    "connect-src 'self' https://bzrcdn.openai.com https://bzr.openai.com http://localhost:3000 http://localhost:8000 http://127.0.0.1:8000 http://192.168.0.62:8000 http://192.168.1.169:8000 https://*.stripe.com https://checkout.stripe.com https://eu.i.posthog.com https://eu-assets.i.posthog.com ws://localhost:3000 ws://127.0.0.1:3000",
     "frame-src https://*.stripe.com https://checkout.stripe.com",
     "form-action 'self'",
     "frame-ancestors 'none'",
