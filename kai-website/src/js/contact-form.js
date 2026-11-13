@@ -75,6 +75,8 @@ function setFeedback(success, error, type, form) {
     form.querySelectorAll('.form-group, .contact-submit, .contact-submit-note, .contact-legal-note, .hp-field').forEach(el => { el.hidden = true; });
     success.hidden = false;
     error.hidden = true;
+    // Il form sparisce: porta il focus sul messaggio, così non si perde (e viene letto).
+    success.focus();
   } else {
     success.hidden = type !== 'success';
     error.hidden = type !== 'error';
