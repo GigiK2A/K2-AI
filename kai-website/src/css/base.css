@@ -295,6 +295,19 @@ html.js-scroll .reveal.visible {
   transition-timing-function: var(--ease-cinema);
 }
 
+/* ─── Focus da tastiera ───
+   Anello visibile su link, bottoni e controlli: sullo sfondo scuro quello di
+   default del browser è quasi invisibile. I campi di testo hanno già il loro
+   stato di focus (bordo/alone), qui non si toccano. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid #aaffee;
+  outline-offset: 3px;
+}
+
 /* ─── Buttons ─── */
 
 .btn {

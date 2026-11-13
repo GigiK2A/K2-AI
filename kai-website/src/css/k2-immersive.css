@@ -203,6 +203,8 @@ body.contact-page .page-header {
   font-size: clamp(3.6rem, 9vw, 9.2rem);
   line-height: 0.88;
   letter-spacing: -0.07em;
+  /* Il tracking stretto fa toccare le parole: ridà respiro agli spazi. */
+  word-spacing: 0.14em;
 }
 
 .page-copy-16,

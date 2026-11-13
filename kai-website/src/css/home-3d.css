@@ -222,6 +222,7 @@
   font-size: clamp(4.2rem, 11vw, 10.5rem);
   font-weight: 700;
   letter-spacing: -0.055em;
+  word-spacing: 0.1em;
   line-height: 0.93;
   margin-bottom: 48px;
   background: linear-gradient(
@@ -1095,6 +1096,15 @@ body.home-page[data-home-chapter="cta"] {
   overflow: hidden;
 }
 
+/* Una volta che il JS ha diviso il titolo in parole, il gradiente lo portano
+   le parole: se resta anche sull'h1 (e sull'em) il testo viene dipinto due
+   volte e compare una riga fantasma sopra "Sistemi AI". Senza JS (nessun
+   .hero-word) il gradiente dell'h1 resta com'era. */
+.home-page .hero-3d-title:has(.hero-word),
+.home-page .hero-3d-title:has(.hero-word) em {
+  background: none;
+}
+
 .home-page .chapter-handoff {
   position: relative;
   z-index: 2;
@@ -1669,6 +1679,7 @@ body.home-page[data-home-chapter="cta"] {
   font-size: clamp(2.4rem, 6vw, 6.4rem);
   line-height: 0.92;
   letter-spacing: -0.07em;
+  word-spacing: 0.14em;
   color: rgba(255, 255, 255, 0.9);
 }
 
