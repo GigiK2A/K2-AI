@@ -81,7 +81,7 @@ function renderGrid(grid, countEl) {
          </a>`
       : ''
 
-    const kbotUrl = `/suite-ai.html?service=${esc(svc.id)}#suite-lead-router`
+    const kbotUrl = `/suite-ai?service=${esc(svc.id)}#suite-lead-router`
 
     return `
       <div class="sas-card" style="transition-delay:${(i % 6) * 55}ms" data-id="${esc(svc.id)}">
