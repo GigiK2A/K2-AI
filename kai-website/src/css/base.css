@@ -295,6 +295,15 @@ html.js-scroll .reveal.visible {
   transition-timing-function: var(--ease-cinema);
 }
 
+/* Chi chiede meno movimento vede subito il contenuto: niente scivolamento di 24 px. */
+@media (prefers-reduced-motion: reduce) {
+  html.js-scroll .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* ─── Focus da tastiera ───
    Anello visibile su link, bottoni e controlli: sullo sfondo scuro quello di
    default del browser è quasi invisibile. I campi di testo hanno già il loro

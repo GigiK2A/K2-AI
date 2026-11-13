@@ -16,10 +16,17 @@ if ('IntersectionObserver' in window) {
   revealEls.forEach(el => el.classList.add('visible'));
 }
 
-// Fallback: rendi visibile tutto dopo 1.5s se l'observer non ha triggerato
+// Rete di sicurezza: dopo 2,5 s rende visibili solo gli elementi già nella
+// finestra (o senza dimensioni, es. dentro contenitori nascosti) che
+// l'observer non ha segnato. Quelli più in basso restano osservati e
+// compaiono quando ci si arriva con lo scroll.
 setTimeout(() => {
-  revealEls.forEach(el => el.classList.add('visible'));
-}, 800);
+  const limit = window.innerHeight * 1.1;
+  revealEls.forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.height === 0 || r.top < limit) el.classList.add('visible');
+  });
+}, 2500);
 
 const root = document.documentElement;
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');

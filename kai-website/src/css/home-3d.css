@@ -709,6 +709,14 @@ html.js-scroll .home-page .reveal.visible {
   transform: translateY(0);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html.js-scroll .home-page .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
