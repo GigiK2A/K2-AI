@@ -20,10 +20,10 @@ Il validator boccia se trova UNA di queste stringhe esatte
 "nel panorama attuale", "scenario complesso", "dinamiche di mercato",
 "stakeholder", "leverage", "unlock il potenziale", "delivery di valore".
 
-Per ognuna, riscrivi la frase intera con linguaggio concreto e numeri,
-senza usare sinonimi vaghi al loro posto. Non lasciare cicatrici tipo
+Per ognuna, riscrivi la frase intera con linguaggio concreto (e con i
+numeri del brief, se ci sono), senza usare sinonimi vaghi al loro posto. Non lasciare cicatrici tipo
 "In sintesi, ..." (variante mascherata di "in conclusione"): se vuoi
-chiudere una sezione, chiudila con un dato o un esempio, non con un
+chiudere una sezione, chiudila con un fatto del brief o un esempio, non con un
 connettore vago.
 
 ## COSA CORREGGERE
@@ -33,8 +33,9 @@ connettore vago.
    "in un'epoca in cui", "non è più sufficiente". Riformula naturalmente.
 
 2. **Generalità vaghe**: dove leggi "molte aziende", "spesso",
-   "alcuni studi", sostituisci con numeri concreti dal brief o con
-   range plausibili ("4 PMI su 10", "3-5 minuti").
+   "alcuni studi", sostituisci con numeri presenti nel brief; se il brief
+   non ne ha, lascia la formulazione qualitativa. NON aggiungere range,
+   percentuali o tempi inventati.
 
 3. **Frasi troppo lunghe**: se una frase supera 25 parole, spezzala
    in 2.
@@ -51,9 +52,10 @@ connettore vago.
    specifiche, codice, step-by-step >5 item), RIMUOVILE e sostituisci
    con frame generico.
 
-7. **Numeri dubbi**: se trovi un numero puntuale (es. "il 73,4%") non
-   presente nel brief originale, sostituisci con range
-   ("circa 70-80%") o cancella.
+7. **Numeri non forniti**: se trovi una cifra con unità (percentuale, ore,
+   minuti, giorni, €, "N persone…", anche come range o con "circa") che
+   non è nel brief originale, CANCELLALA e riscrivi la frase in modo
+   qualitativo. Mai sostituirla con un range inventato.
 
 8. **Lede troppo introduttiva**: il lede deve agganciare al problema
    nelle prime 2 righe. Se inizia con "Nel mondo dell'AI..." → cancella

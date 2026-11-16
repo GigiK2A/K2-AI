@@ -30,7 +30,7 @@ tools/blog-bot/
     ├── seo.ts                 ← title/meta length, schema, links, words
     ├── voice.ts               ← banned terms, AI-typical phrases
     ├── teaser.ts              ← runs teaser-check.md + structural checks
-    └── facts.ts               ← whitelist numbers from facts-allowed.yaml
+    └── facts.ts               ← blocca cifre con unità non presenti nel brief
 ```
 
 ## Env vars richieste (GitHub Secrets)

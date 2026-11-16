@@ -62,10 +62,14 @@ async function main() {
   const anthropic = createClient();
 
   console.log("[draft] calling Claude Sonnet...");
+  // I KPI del brief valgono come fonte solo per i casi interni del Laboratorio
+  // (righe «(Lab)»): per gli altri servizi nessuna cifra di risultato ha un dato
+  // dietro, quindi non entrano né nel prompt né nell'elenco delle cifre ammesse.
+  const kpiAmmessi = /\(Lab\)/i.test(row.servizio) ? row.risultati_kpi : "";
   let pieces = await generateDraft(anthropic, {
     servizio: row.servizio,
     problema: row.descrizione,
-    risultato_kpi: row.risultati_kpi,
+    risultato_kpi: kpiAmmessi,
     agevolazione: row.agevolazione,
     pillar_padre: pillar.code,
     pillar_url: pillar.url,
@@ -150,7 +154,7 @@ async function main() {
   const keywordPrimaria = row.servizio.toLowerCase().replace(/\s+&\s+/g, " e ");
   const seoRes = validateSeo(fullHtml);
   const voiceRes = validateVoice(fullHtml, keywordPrimaria);
-  const factsRes = validateFacts(fullHtml, []);
+  const factsRes = validateFacts(fullHtml, [row.servizio, row.descrizione, kpiAmmessi, row.agevolazione]);
   const teaserRes = await validateTeaser(fullHtml, anthropic);
 
   const allErrors = [

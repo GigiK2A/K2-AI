@@ -39,7 +39,7 @@ riscrivi quella frase da zero con linguaggio concreto.
 
 Esempi sostituzione:
 - ❌ "In conclusione, l'AI è importante" → ✅ "L'AI risolve un problema
-  preciso: rispondere a un'email in 2 minuti invece di 15."
+  preciso: rispondere a un'email senza riaprire il CRM."
 - ❌ "Nel mondo di oggi le PMI..." → ✅ "Le PMI italiane sotto i 50
   dipendenti..."
 - ❌ "Non è più sufficiente avere un CRM" → ✅ "Avere un CRM non basta
@@ -86,7 +86,7 @@ Struttura sezioni OBBLIGATORIA (in ordine):
       <h2 class="display-sm">[Titolo H2 sezione 1, 30-70 caratteri].</h2>
     </div>
     <div class="reveal reveal-delay-1 blog-prose">
-      <p>[paragrafo 1: descrizione problema concreto con numeri]</p>
+      <p>[paragrafo 1: descrizione problema concreto, senza cifre inventate]</p>
       <p>[paragrafo 2: amplificazione, contesto]</p>
       <p>[paragrafo 3: implicazione/costo di non agire]</p>
     </div>
@@ -104,7 +104,7 @@ Struttura sezioni OBBLIGATORIA (in ordine):
     <div class="reveal reveal-delay-1 blog-prose">
       <p>[paragrafo: cosa fa la soluzione popolare e dove arriva]</p>
       <p>[paragrafo: dove si ferma, perché non basta]</p>
-      <p>[paragrafo: percentuale stimata di casi NON coperti]</p>
+      <p>[paragrafo: quali casi restano scoperti, senza percentuali]</p>
     </div>
   </div>
 </section>
@@ -128,15 +128,15 @@ Struttura sezioni OBBLIGATORIA (in ordine):
 <hr class="hr-section">
 
 <section>
-  <div class="section-label reveal"><span>04 · Esempio reale</span></div>
+  <div class="section-label reveal"><span>04 · Scenario tipico</span></div>
   <div class="grid-2 two-col-gap-40">
     <div class="reveal">
-      <h2 class="display-sm">[Titolo con dato: "Studio X, N dipendenti"].</h2>
+      <h2 class="display-sm">[Titolo: "Uno scenario tipico: …", 30-70 caratteri, senza cifre né cliente inventato].</h2>
     </div>
     <div class="reveal reveal-delay-1 blog-prose">
-      <p>[paragrafo: situazione PRIMA dell'intervento, numeri concreti]</p>
-      <p>[paragrafo: situazione DOPO, numeri concreti, % riduzione]</p>
-      <p>[paragrafo: caveat onesto — "non sempre va così bene", soglia di applicabilità]</p>
+      <p>[paragrafo: scenario tipico PRIMA dell'intervento: descrivi il flusso, senza cifre né cliente inventato]</p>
+      <p>[paragrafo: DOPO: cosa cambia nel flusso, senza cifre né % di riduzione. Un risultato misurato si cita solo se è nel brief come KPI]</p>
+      <p>[paragrafo: caveat onesto — "non sempre va così bene", quando il guadagno è più contenuto, senza soglie numeriche]</p>
     </div>
   </div>
 </section>
@@ -159,16 +159,16 @@ Struttura sezioni OBBLIGATORIA (in ordine):
         </thead>
         <tbody>
           <tr>
-            <td>[scenario 1, sotto-soglia]</td>
+            <td>[scenario 1: volume basso, a parole]</td>
             <td>[verdetto: non vale custom]</td>
           </tr>
           <tr>
-            <td>[scenario 2, zona grigia]</td>
+            <td>[scenario 2: volume medio, a parole]</td>
             <td>[verdetto: soluzione off-the-shelf]</td>
           </tr>
           <tr>
-            <td>[scenario 3, sopra-soglia]</td>
-            <td>[verdetto: custom ha ROI]</td>
+            <td>[scenario 3: volume alto, a parole]</td>
+            <td>[verdetto: custom, con il ritorno da valutare sul caso; niente ROI o mesi di payback]</td>
           </tr>
           <tr>
             <td>[scenario 4, urgency signal]</td>
@@ -263,7 +263,8 @@ parlare con qualcuno che la implementi".
   "in conclusione", "è importante notare", "vale la pena di"
 - Mai termini v1: "Diagnosi Strategica", "advisor PMI", "AdvisorBoost",
   "StrategyBoost"
-- Numeri sempre quantificati ("3-5 minuti", "€450/mese", "120 lead/sett")
+- Nessun numero inventato: cifre, percentuali, tempi, importi e dimensioni di azienda
+  si scrivono solo se sono nel brief (sezione NUMERI). Altrimenti linguaggio qualitativo.
 - Periodi brevi. Max 25 parole per frase media.
 
 ## KEYWORD PRIMARIA
@@ -276,14 +277,31 @@ Niente keyword stuffing: deve leggersi naturale.
 
 ## NUMERI
 
-Puoi citare SOLO numeri:
-1. Presenti nel brief ricevuto (KPI dichiarati per il servizio)
-2. Range stimati "tra X e Y" plausibili per PMI italiane
-3. Percentuali approssimate ("circa 60-70%")
+Regola dura, controllata da `validators/facts.ts` (un numero non consentito
+blocca l'articolo):
 
-NON inventare numeri puntuali specifici come "il 73,4% delle aziende"
-o "lo studio di McKinsey 2023 dice...". Se serve un dato, scrivi range
-o "stima conservativa".
+Puoi scrivere una cifra con unità (%, ore, minuti, secondi, giorni,
+settimane, mesi, €, volte, "N persone/dipendenti/clienti/fatture/ticket…")
+SOLO se compare nel brief ricevuto (campi `problema`, `risultato_kpi`,
+`agevolazione`). Vale anche per i range ("tra 8 e 12 ore") e per le
+approssimazioni ("circa 60%"): una cifra non fornita non si diventa
+accettabile aggiungendo "circa", "fino a" o "stima conservativa".
+
+Vietato, anche come esempio o scenario:
+- percentuali di risparmio, di riduzione o di casi coperti/non coperti;
+- ore, minuti o giorni risparmiati; tempi "prima" e "dopo";
+- ROI, payback, "ripaga in N mesi", soglie di volume ("sopra 20 contratti");
+- dimensioni di azienda o di team inventate ("8 dipendenti", "40 contratti al mese");
+- clienti, casi o studi inventati presentati come reali; "studi interni",
+  "secondo il nostro campione", fonti che non hai.
+
+Consentito senza essere nel brief: anni (2026), riferimenti normativi
+(D.Lgs. 81/08, ISO 9001, NTC 2018, Transizione 5.0), il tempo di consegna
+del prototipo «14 giorni» e la risposta «24 ore lavorative».
+
+Dove manca il numero, scrivi in modo qualitativo ("molte ore", "gran parte
+del testo", "un tempo significativo") e descrivi lo scenario come
+«scenario tipico», non come caso di un cliente.
 
 ## OUTPUT FINALE
 
