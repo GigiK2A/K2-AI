@@ -93,7 +93,6 @@ ok('D4 la domanda dell\'utente non viene duplicata dalla ripresa', (await nUtent
 // ── TEST E: isolamento — la prima pratica conserva il suo documento ───────────────────────────────────────
 const titoli = await p.locator('aside').first().innerText();
 ok('E2 le due pratiche hanno ciascuna un titolo', (titoli.match(/Contestazione software/g) || []).length >= 1, JSON.stringify(titoli.split('\n').filter(Boolean).slice(0, 8)));
-const voci = p.locator('aside button').filter({ hasText: /Contestazione|Nuova pratica|pec|PEC/i });
 await p.screenshot({ path: 'ui-doc-seconda-pratica.png' });
 await b.close();
 const ko = esiti.filter(([, v]) => !v);

@@ -87,7 +87,7 @@ export function Composer({
     if (ok.length) onPickFiles(ok);
   }
   const accettaRef = useRef(accettaFile);
-  accettaRef.current = accettaFile;
+  useEffect(() => { accettaRef.current = accettaFile; });
 
   // Trascinamento: senza preventDefault il browser APRE il file al posto della chat.
   // Ascolto sulla finestra (si può lasciare il file ovunque nella chat) e mostro un riquadro.

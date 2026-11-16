@@ -20,33 +20,42 @@ export function VisualizzatoreDocumento({
   onSeleziona: (c: Citazione) => void;
   onChiudi: () => void;
 }) {
-  const [vista, setVista] = useState<VistaDocumento | null>(null);
-  const [errore, setErrore] = useState("");
+  // esito dell'ultima richiesta, legato alla richiesta che lo ha prodotto: se citazione/pagina/sessione cambiano,
+  // l'esito vecchio non vale più e si deriva «in caricamento» senza azzerare lo stato dentro un effetto
+  const [esito, setEsito] = useState<{ sessionId: string; citazione: Citazione; pagina: number; vista: VistaDocumento | null; errore: string } | null>(null);
   const [zoom, setZoom] = useState(100);
   const [pagina, setPagina] = useState(citazione.pag || 1);
   const evid = useRef<HTMLElement | null>(null);
   const tokenRef = useRef(getToken);   // getToken cambia a ogni render del chiamante: non deve rilanciare la richiesta
-  tokenRef.current = getToken;
+  useEffect(() => { tokenRef.current = getToken; });
 
-  // una nuova citazione riporta alla sua pagina
-  useEffect(() => { setPagina(citazione.pag || 1); }, [citazione.doc, citazione.pag, citazione.quote]);
+  // una nuova citazione riporta alla sua pagina (si aggiusta lo stato durante il render, non in un effetto)
+  const chiaveCitazione = `${citazione.doc}\u0000${citazione.pag}\u0000${citazione.quote}`;
+  const [chiavePrecedente, setChiavePrecedente] = useState(chiaveCitazione);
+  if (chiavePrecedente !== chiaveCitazione) {
+    setChiavePrecedente(chiaveCitazione);
+    setPagina(citazione.pag || 1);
+  }
 
   useEffect(() => {
     let vivo = true;
-    setErrore(""); setVista(null);
     (async () => {
       try {
         const token = await tokenRef.current();
         // il passaggio si evidenzia solo nella pagina da cui proviene
         const quote = pagina === (citazione.pag || 1) ? citazione.quote : "";
         const v = await getVistaDocumento(sessionId, citazione.doc, pagina, quote, token);
-        if (vivo) setVista(v);
+        if (vivo) setEsito({ sessionId, citazione, pagina, vista: v, errore: "" });
       } catch (e) {
-        if (vivo) setErrore(e instanceof Error ? e.message : "Impossibile aprire il documento.");
+        if (vivo) setEsito({ sessionId, citazione, pagina, vista: null, errore: e instanceof Error ? e.message : "Impossibile aprire il documento." });
       }
     })();
     return () => { vivo = false; };
   }, [sessionId, citazione, pagina]);
+
+  const corrente = esito && esito.sessionId === sessionId && esito.citazione === citazione && esito.pagina === pagina ? esito : null;
+  const vista = corrente?.vista ?? null;
+  const errore = corrente?.errore ?? "";
 
   // porta la zona evidenziata nell'area visibile appena la pagina è disegnata
   useEffect(() => { if (vista?.localizzato) evid.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }, [vista, zoom]);
