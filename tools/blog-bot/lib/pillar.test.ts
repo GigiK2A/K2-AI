@@ -57,3 +57,9 @@ test("resolvePillarFromUrl: URL sconosciuto → fallback P00", () => {
   assert.equal(r.code, "P00");
   assert.equal(r.url, "/suite-ai");
 });
+
+test("resolvePillarFromUrl: URL canonico senza .html → stesso pillar", () => {
+  const r = resolvePillarFromUrl("https://www.k2-ai.it/suite-ai/agenti-email-crm");
+  assert.equal(r.code, "P01");
+  assert.equal(r.url, "/suite-ai/agenti-email-crm");
+});

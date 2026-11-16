@@ -37,6 +37,8 @@ const REPO_ROOT = resolve(__dirname, "..", "..");
 const BLOG_DIR = join(REPO_ROOT, "kai-website", "src", "blog");
 const BLOG_INDEX_PATH = join(BLOG_DIR, "index.html");
 const BLOG_IMG_DIR = join(BLOG_DIR, "img");
+// JPG 1200x630 per og:image / twitter:image / JSON-LD: in public/ così Vite li copia così come sono in dist.
+const BLOG_OG_DIR = join(REPO_ROOT, "kai-website", "src", "public", "blog", "og");
 const SITEMAP_PATH = join(REPO_ROOT, "kai-website", "src", "public", "sitemap.xml");
 const SUITE_AI_DIR = join(REPO_ROOT, "kai-website", "src", "suite-ai");
 const DRAFTS_REJECTED = join(__dirname, "drafts-rejected");
@@ -60,10 +62,14 @@ async function main() {
   const anthropic = createClient();
 
   console.log("[draft] calling Claude Sonnet...");
+  // I KPI del brief valgono come fonte solo per i casi interni del Laboratorio
+  // (righe «(Lab)»): per gli altri servizi nessuna cifra di risultato ha un dato
+  // dietro, quindi non entrano né nel prompt né nell'elenco delle cifre ammesse.
+  const kpiAmmessi = /\(Lab\)/i.test(row.servizio) ? row.risultati_kpi : "";
   let pieces = await generateDraft(anthropic, {
     servizio: row.servizio,
     problema: row.descrizione,
-    risultato_kpi: row.risultati_kpi,
+    risultato_kpi: kpiAmmessi,
     agevolazione: row.agevolazione,
     pillar_padre: pillar.code,
     pillar_url: pillar.url,
@@ -90,7 +96,8 @@ async function main() {
         openai,
         pieces.meta.image_scenes,
         pieces.meta.slug,
-        BLOG_IMG_DIR
+        BLOG_IMG_DIR,
+        BLOG_OG_DIR
       );
       console.log(`[images] generated: ${images.cover}, ${images.inline1}, ${images.inline2}`);
     } catch (e) {
@@ -113,6 +120,9 @@ async function main() {
     coverUrl: images?.cover,
     inline1Url: images?.inline1,
     inline2Url: images?.inline2,
+    coverSize: images?.coverSize,
+    inlineSize: images?.inlineSize,
+    ogImageFile: images?.og,
     publishedAtIso,
     related: [
       {
@@ -124,14 +134,14 @@ async function main() {
       {
         href: "/app",
         kicker: "Strumento",
-        title: "K-BOT — diagnosi gratis in 5 minuti",
+        title: "K-BOT — diagnosi gratis in pochi minuti",
         body: "Descrivi il tuo caso. K-BOT dice se vale custom o se basta uno strumento standard.",
       },
       {
         href: "/contatti",
         kicker: "Persone",
         title: "Parla con noi",
-        body: "Se preferisci una call diretta, scrivici. Rispondiamo in 24 ore con una lettura onesta.",
+        body: "Se preferisci una call diretta, scrivici. Rispondiamo in 24 ore lavorative con una lettura onesta.",
       },
     ],
   });
@@ -144,7 +154,7 @@ async function main() {
   const keywordPrimaria = row.servizio.toLowerCase().replace(/\s+&\s+/g, " e ");
   const seoRes = validateSeo(fullHtml);
   const voiceRes = validateVoice(fullHtml, keywordPrimaria);
-  const factsRes = validateFacts(fullHtml, []);
+  const factsRes = validateFacts(fullHtml, [row.servizio, row.descrizione, kpiAmmessi, row.agevolazione]);
   const teaserRes = await validateTeaser(fullHtml, anthropic);
 
   const allErrors = [
@@ -225,6 +235,7 @@ async function main() {
         `kai-website/src/blog/img/${images.cover}`,
         `kai-website/src/blog/img/${images.inline1}`,
         `kai-website/src/blog/img/${images.inline2}`,
+        ...(images.og ? [`kai-website/src/public/blog/og/${images.og}`] : []),
       ]
     : [];
   const scheduleRel = `tools/blog-bot/schedule.json`;

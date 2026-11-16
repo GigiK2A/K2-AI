@@ -8,6 +8,20 @@ document.querySelectorAll('.nav-links a, .nav-overlay a').forEach(link => {
   if (isHome || isMatch) link.classList.add('active');
 });
 
+// Link "Vai al contenuto" per chi naviga da tastiera: il primo Tab lo mostra.
+(function addSkipLink() {
+  const h1 = document.querySelector('h1');
+  const target = document.querySelector('main') || (h1 && h1.closest('section, header')) || h1;
+  if (!target) return;
+  if (!target.id) target.id = 'contenuto';
+  target.setAttribute('tabindex', '-1');
+  const link = document.createElement('a');
+  link.className = 'skip-link';
+  link.href = '#' + target.id;
+  link.textContent = 'Vai al contenuto';
+  document.body.prepend(link);
+})();
+
 // Hamburger toggle
 const hamburger = document.querySelector('.nav-hamburger');
 const overlay = document.querySelector('.nav-overlay');

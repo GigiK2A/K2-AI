@@ -1327,3 +1327,22 @@ footer {
     hyphens: auto;
   }
 }
+
+
+/* Etichette di step più lunghe ("01 — Connessione"): colonna più larga,
+   così vanno a capo sugli spazi e non a metà parola. Solo sopra i 600 px
+   (sotto, lo step è già su una colonna) e solo nelle pagine servizio/blog. */
+@media (min-width: 601px) {
+  body.cases-page .step {
+    grid-template-columns: 200px 1fr;
+  }
+}
+
+/* Area di tocco dei link del footer su telefono (almeno ~44 px di altezza). */
+@media (max-width: 768px) {
+  .footer-links a,
+  .footer-legal-links a {
+    display: inline-block;
+    padding: 12px 4px;
+  }
+}

@@ -499,6 +499,14 @@
   padding-bottom: 54px;
 }
 
+/* Titolo di K-BOT più lungo (60 caratteri): corpo ridotto sopra i 480 px,
+   così sta su due-tre righe invece di quattro e non spinge giù le CTA. */
+@media (min-width: 481px) {
+  .kbot-page .page-header-kbot .display-xl {
+    font-size: clamp(3.4rem, 5.2vw, 5rem);
+  }
+}
+
 .kbot-page .analysis-layout-kbot {
   position: relative;
   max-width: min(1480px, calc(100% - var(--pad-x) * 2));

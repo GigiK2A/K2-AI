@@ -214,6 +214,7 @@ function initHeroTextAnim() {
     '<span class="hero-line"><span class="hero-word">Sistemi</span> <span class="hero-word">AI</span></span>',
     '<span class="hero-line"><span class="hero-word">per</span> <span class="hero-word">il</span> <span class="hero-word">lavoro</span></span>',
     '<span class="hero-line"><em><span class="hero-word">reale.</span></em></span>',
+    '<span class="h1-kw">Operativi per le PMI italiane.</span>',
   ].join('')
 
   const words = title.querySelectorAll('.hero-word')

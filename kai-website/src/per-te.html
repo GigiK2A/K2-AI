@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#080808">
-  <title>K2-AI · Trova il servizio per te</title>
-  <meta name="description" content="Diagnostico in 30 secondi: scopri il percorso K2-AI per il tuo settore. Hospitality, studi professionali, artigiani, PMI.">
+  <title>Trova il servizio AI giusto per il tuo settore | K2-AI</title>
+  <meta name="description" content="Diagnosi rapida: scopri il percorso K2-AI per il tuo settore. Hospitality, studi professionali, artigiani, PMI: scegli il profilo e parti da lì.">
   <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -- canonical link is metadata, not a loaded resource; SRI does not apply -->
   <link rel="canonical" href="https://www.k2-ai.it/per-te">
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -13,8 +13,8 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="K2-AI">
   <meta property="og:locale" content="it_IT">
-  <meta property="og:title" content="K2-AI · Trova il servizio per te">
-  <meta property="og:description" content="Diagnostico in 30 secondi: scopri il percorso K2-AI per il tuo settore. Hospitality, studi professionali, artigiani, PMI.">
+  <meta property="og:title" content="Trova il servizio AI giusto per il tuo settore | K2-AI">
+  <meta property="og:description" content="Diagnosi rapida: scopri il percorso K2-AI per il tuo settore. Hospitality, studi professionali, artigiani, PMI: scegli il profilo e parti da lì.">
   <meta property="og:url" content="https://www.k2-ai.it/per-te">
   <meta property="og:image" content="https://www.k2-ai.it/assets/og-home.png">
 
@@ -29,8 +29,10 @@
   <style>
     /* Per-te page — aligned to site design system */
     :root {
-      --pt-accent: var(--bridge-accent);
-      --pt-highlight: var(--bridge-highlight);
+      /* Stesso accento del resto del sito (menta → azzurro dell'hero), non il
+         palette «bridge» arancione. Per tornare all'arancione: var(--bridge-accent) / var(--bridge-highlight). */
+      --pt-accent: #aaffee;
+      --pt-highlight: #88c6ff;
       --pt-muted: var(--text-muted);
     }
 
@@ -601,10 +603,11 @@
   </div>
 
   <div class="per-te-wrapper">
+    <main>
     <div class="pt-container">
 
       <p class="hero-eyebrow">Per te · Trova il tuo percorso</p>
-      <h1 class="display-xl pt-h1">Tu <em>cosa fai</em><br>per vivere?</h1>
+      <h1 class="display-xl pt-h1">Tu <em>cosa fai</em><br>per vivere? <span class="h1-kw">Trova l'AI per il tuo settore.</span></h1>
       <p class="pt-lede"><strong>Domanda seria.</strong> Perché un agriturismo, uno studio legale e un'officina meccanica hanno tre AI diverse — anche se la porta d'ingresso è la stessa.</p>
       <p class="pt-micro">Scegli il profilo che ti somiglia di più. Ti mostro cosa puoi fare con K2-AI, quanto costa e da dove iniziare.</p>
 
@@ -677,9 +680,9 @@
           <p class="pt-panel-intro">Lavori con margini schiacciati da Booking e Airbnb, prezzi che fai a sensazione, recensioni che ti tolgono il sonno, e un revenue manager non te lo puoi permettere. <strong>K-BOT ti dà la dashboard del revenue manager senza il revenue manager.</strong></p>
 
           <div class="pt-pains">
-            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pains-title">Situazioni che riconosciamo</div>
             <div class="pt-pain">Non so se ad agosto sto guadagnando bene o sto solo lavorando tanto.</div>
-            <div class="pt-pain">Booking si prende il 18%. Vorrei più diretto ma non so come.</div>
+            <div class="pt-pain">Booking si prende una commissione alta. Vorrei più prenotazioni dirette ma non so come.</div>
             <div class="pt-pain">Bassa stagione vuota. Alta stagione che ho chi rifiuto. Niente in mezzo.</div>
           </div>
 
@@ -693,7 +696,6 @@
               <div class="pt-rung-meta">App di reportistica · 1 utente</div>
               <div class="pt-rung-price">
                 <div class="pt-rung-price-amount">49 €<span class="small">/mese</span></div>
-                <div class="pt-rung-price-unit">o 490 €/anno · 2 mesi gratis</div>
               </div>
               <ul>
                 <li>Pagella RevPAR mensile della tua struttura</li>
@@ -702,7 +704,7 @@
                 <li>Heatmap stagionale + forecast 3 scenari</li>
                 <li>Report PDF da portare al commercialista</li>
               </ul>
-              <a href="/app" class="pt-rung-cta">→ Prova gratis subito</a>
+              <a href="/app" class="pt-rung-cta">→ Apri K-BOT</a>
             </div>
             <div class="pt-rung featured">
               <div class="pt-rung-num">Livello 02 · Più potente</div>
@@ -740,25 +742,20 @@
             </div>
           </div>
 
-          <div class="pt-reality">
-            <div class="pt-rl-cell"><div class="pt-rl-num">+18%</div><div class="pt-rl-label">RevPAR in stagione bassa</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">−6h</div><div class="pt-rl-label">A settimana sul lavoro OTA</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">3 min</div><div class="pt-rl-label">Per generare la pagella mensile</div></div>
-          </div>
 
           <div class="pt-helper">
             <h4>Come capire quale livello fa per te</h4>
             <div class="pt-helper-q">Hai meno di 8 camere e gestisci da solo?</div>
             <div class="pt-helper-a">→ Parti da <strong>K-BOT Pro</strong>. Ti basta per capire dove stai perdendo soldi e correggere prima della prossima stagione.</div>
             <div class="pt-helper-q">Hai 8-25 camere, dipendi troppo dalle OTA e vuoi farlo come business serio?</div>
-            <div class="pt-helper-a">→ Vai a <strong>Pattern Hospitality</strong>. Recuperi il costo del progetto in 4-6 mesi con il margine in più.</div>
+            <div class="pt-helper-a">→ Vai a <strong>Pattern Hospitality</strong>. Il costo del progetto rientra col margine in più, da verificare sul tuo caso.</div>
             <div class="pt-helper-q">Hai più strutture o stai aprendo nuova location?</div>
             <div class="pt-helper-a">→ Servirà <strong>Custom</strong>. Ma cominciamo con K-BOT per validare i dati prima di investire.</div>
           </div>
 
           <div class="pt-final-cta">
             <h3>Il primo passo costa <em>zero euro</em>.</h3>
-            <p>Aprigli K-BOT, descrivi la tua struttura in due righe, ti genera la prima pagella RevPAR. Se vedi valore, paghi 49 € il mese successivo. Altrimenti hai imparato una cosa gratis sulla tua azienda.</p>
+            <p>Aprigli K-BOT, descrivi la tua struttura in due righe, ti genera la prima pagella RevPAR. Se vedi valore, passi a K-BOT Pro: 49 € al mese.</p>
             <div class="pt-final-ctas">
               <a href="/app" class="pt-fcta-btn">Apri K-BOT gratis →</a>
               <a href="/k-bot" class="pt-fcta-btn ghost">Scopri K-BOT</a>
@@ -770,10 +767,10 @@
         <div class="pt-panel" id="pt-panel-commercialista">
           <div class="pt-panel-eyebrow">Profilo 02 · Studio commercialista</div>
           <h2 class="pt-panel-title">I clienti pagano lo studio per la <em>consulenza</em>.<br>Lo studio fa fatturazione.</h2>
-          <p class="pt-panel-intro">Hai 6 collaboratori che passano l'80% del tempo su LIPE, F24, bilanci, dichiarazioni — tutto lavoro a margine basso. Il poco tempo che resta per la consulenza è quello che paga davvero, ma non riesci a darlo. <strong>K2-AI sposta il bilanciamento dall'altra parte: meno minuti per pratica, più tempo per il cliente.</strong></p>
+          <p class="pt-panel-intro">Hai collaboratori che passano buona parte del tempo su LIPE, F24, bilanci, dichiarazioni — tutto lavoro a margine basso. Il poco tempo che resta per la consulenza è quello che paga davvero, ma non riesci a darlo. <strong>K2-AI sposta il bilanciamento dall'altra parte: meno minuti per pratica, più tempo per il cliente.</strong></p>
 
           <div class="pt-pains">
-            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pains-title">Situazioni che riconosciamo</div>
             <div class="pt-pain">I clienti chiedono consulenza, noi facciamo data entry.</div>
             <div class="pt-pain">Non riesco a crescere: assumo, ma le marginalità non migliorano.</div>
             <div class="pt-pain">Vorrei vendere check-up annuali ai clienti, ma non ho tempo di farli.</div>
@@ -786,10 +783,9 @@
             <div class="pt-rung">
               <div class="pt-rung-num">Livello 01 · Inizia qui</div>
               <div class="pt-rung-name">K-BOT Studio</div>
-              <div class="pt-rung-meta">Team app · 5 utenti inclusi</div>
+              <div class="pt-rung-meta">Team app · 3 utenti inclusi</div>
               <div class="pt-rung-price">
-                <div class="pt-rung-price-amount">199 €<span class="small">/mese</span></div>
-                <div class="pt-rung-price-unit">o 1.990 €/anno · 2 mesi gratis</div>
+                <div class="pt-rung-price-amount">149 €<span class="small">/mese</span></div>
               </div>
               <ul>
                 <li>Pagella PMI da consegnare al cliente</li>
@@ -798,7 +794,7 @@
                 <li>100 report al mese condivisi tra collaboratori</li>
                 <li>Skill custom per il tuo studio (1/anno inclusa)</li>
               </ul>
-              <a href="/app" class="pt-rung-cta">→ Prova gratis 14 giorni</a>
+              <a href="/app" class="pt-rung-cta">→ Apri K-BOT</a>
             </div>
             <div class="pt-rung featured">
               <div class="pt-rung-num">Livello 02 · Più potente</div>
@@ -836,27 +832,22 @@
             </div>
           </div>
 
-          <div class="pt-reality">
-            <div class="pt-rl-cell"><div class="pt-rl-num">−40%</div><div class="pt-rl-label">Tempo data entry e fatturazione</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">+2,3h</div><div class="pt-rl-label">Per cliente al mese per consulenza</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">×3</div><div class="pt-rl-label">Pagelle annuali consegnate ai clienti</div></div>
-          </div>
 
           <div class="pt-helper">
             <h4>Come capire quale livello fa per te</h4>
             <div class="pt-helper-q">Vuoi prima provare se la mia AI funziona per il tuo studio?</div>
-            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. 199 € il mese, 14 giorni gratis. In 2 settimane hai consegnato 5 pagelle PMI ai tuoi clienti e capisci se il ritorno c'è.</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. 149 € il mese. Consegni le prime pagelle PMI ai tuoi clienti e capisci se il ritorno c'è.</div>
             <div class="pt-helper-q">Hai un processo specifico che ti uccide (es. classificazione email, fatture)?</div>
-            <div class="pt-helper-a">→ <strong>Pattern Studio Pro</strong> ti risolve quel processo. Recuperi il costo in 5-7 mesi con le ore liberate.</div>
+            <div class="pt-helper-a">→ <strong>Pattern Studio Pro</strong> ti risolve quel processo. Recuperi il costo con le ore liberate, da verificare sul tuo caso.</div>
             <div class="pt-helper-q">Stai pensando al passaggio generazionale o a vendere lo studio?</div>
             <div class="pt-helper-a">→ <strong>Skillizzazione</strong>. Trasforma 30 anni di know-how in un asset valutabile.</div>
           </div>
 
           <div class="pt-final-cta">
             <h3>Il primo cliente al quale dare la <em>pagella</em> lo decidi tu.</h3>
-            <p>Apri K-BOT Studio gratis per 14 giorni. Genera 5 pagelle PMI per i tuoi clienti migliori. Glielo invii a fine settimana con il tuo logo. Vedi che reazione hai.</p>
+            <p>Apri K-BOT Studio. Genera 5 pagelle PMI per i tuoi clienti migliori. Glielo invii a fine settimana con il tuo logo. Vedi che reazione hai.</p>
             <div class="pt-final-ctas">
-              <a href="/app" class="pt-fcta-btn">Apri K-BOT gratis 14 giorni →</a>
+              <a href="/app" class="pt-fcta-btn">Apri K-BOT →</a>
               <a href="/contatti" class="pt-fcta-btn ghost">Prenota call diagnosi 30 min</a>
             </div>
           </div>
@@ -866,26 +857,25 @@
         <div class="pt-panel" id="pt-panel-avvocato">
           <div class="pt-panel-eyebrow">Profilo 03 · Studio legale</div>
           <h2 class="pt-panel-title">Il tuo studio paga di più <em>chi rivede contratti</em><br>di chi vince cause.</h2>
-          <p class="pt-panel-intro">Le ore fatturate ai clienti sono sempre meno. Il tempo per cause complesse non è un'opzione: paghi ore che non puoi recuperare. Intanto i contratti M&amp;A standard, le diffide, i decreti ingiuntivi, le memorie di routine mangiano l'80% del tempo dello studio. <strong>L'AI italiana che capisce il diritto italiano cambia questa equazione.</strong></p>
+          <p class="pt-panel-intro">Le ore fatturate ai clienti sono sempre meno. Il tempo per cause complesse non è un'opzione: paghi ore che non puoi recuperare. Intanto i contratti M&amp;A standard, le diffide, i decreti ingiuntivi, le memorie di routine mangiano buona parte del tempo dello studio. <strong>L'AI italiana che capisce il diritto italiano cambia questa equazione.</strong></p>
 
           <div class="pt-pains">
-            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
-            <div class="pt-pain">Una memoria difensiva ben fatta richiede 12 ore. Posso fatturarne 6.</div>
-            <div class="pt-pain">Ho 200 contratti standard da revisionare. Non posso assegnarli all'AI: rischio deontologico.</div>
+            <div class="pt-pains-title">Situazioni che riconosciamo</div>
+            <div class="pt-pain">Una memoria difensiva ben fatta richiede molte ore. Non posso fatturarle tutte.</div>
+            <div class="pt-pain">Ho tanti contratti standard da revisionare. Non posso assegnarli all'AI: rischio deontologico.</div>
             <div class="pt-pain">I clienti vogliono pareri AI Act, NIS2, GDPR. Io non ne so abbastanza per fatturarli bene.</div>
           </div>
 
           <div class="pt-ladder-title">Il tuo percorso in 3 livelli</div>
-          <p class="pt-ladder-sub">Pensato per studi 2-12 avvocati con sensibilità deontologica. <strong>Tier 3 privacy</strong> di default: nessun dato cliente lascia mai l'ambiente protetto.</p>
+          <p class="pt-ladder-sub">Pensato per studi 2-12 avvocati con sensibilità deontologica. <strong>Tier 3 privacy</strong> di default, pensata per tenere i dati dei clienti in un ambiente protetto.</p>
 
           <div class="pt-ladder">
             <div class="pt-rung">
               <div class="pt-rung-num">Livello 01 · Inizia qui</div>
               <div class="pt-rung-name">K-BOT Studio</div>
-              <div class="pt-rung-meta">Team app · 5 utenti</div>
+              <div class="pt-rung-meta">Team app · 3 utenti</div>
               <div class="pt-rung-price">
-                <div class="pt-rung-price-amount">199 €<span class="small">/mese</span></div>
-                <div class="pt-rung-price-unit">o 1.990 €/anno · 2 mesi gratis</div>
+                <div class="pt-rung-price-amount">149 €<span class="small">/mese</span></div>
               </div>
               <ul>
                 <li>Analisi clausole contrattuali con segnalazione anomalie</li>
@@ -894,7 +884,7 @@
                 <li>Brief operativi per call clienti</li>
                 <li>Conforme AI Act + Codice Deontologico forense</li>
               </ul>
-              <a href="/app" class="pt-rung-cta">→ Prova gratis 14 giorni</a>
+              <a href="/app" class="pt-rung-cta">→ Apri K-BOT</a>
             </div>
             <div class="pt-rung featured">
               <div class="pt-rung-num">Livello 02 · Più potente</div>
@@ -933,15 +923,13 @@
           </div>
 
           <div class="pt-reality">
-            <div class="pt-rl-cell"><div class="pt-rl-num">−87%</div><div class="pt-rl-label">Tempo revisione contratti standard</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">×4</div><div class="pt-rl-label">Pareri AI Act / GDPR fatturabili</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">100%</div><div class="pt-rl-label">Dati cliente in ambiente controllato</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">−87%</div><div class="pt-rl-label">Tempo di revisione documentale (caso interno del Lab)</div></div>
           </div>
 
           <div class="pt-helper">
             <h4>Come capire quale livello fa per te</h4>
             <div class="pt-helper-q">Vuoi prima testare la qualità dell'output legale italiano?</div>
-            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. Provalo su 3 contratti M&amp;A standard, 2 pareri societari, 1 ricerca giurisprudenziale. In 14 giorni hai la risposta sulla qualità.</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. Provalo su 3 contratti M&amp;A standard, 2 pareri societari, 1 ricerca giurisprudenziale: la qualità la giudichi sul tuo lavoro.</div>
             <div class="pt-helper-q">Hai un workflow ricorrente che dovrebbe essere semi-automatico (template, memorie, diffide)?</div>
             <div class="pt-helper-a">→ <strong>Pattern Legal Pro</strong> con architettura privacy on-premise.</div>
             <div class="pt-helper-q">Tratti dati sensibili (art. 9 GDPR) o casi penali?</div>
@@ -952,7 +940,7 @@
             <h3>Le tre cose da chiarire <em>prima</em> di firmare.</h3>
             <p>Riservatezza del dato cliente, conformità deontologica, qualità tecnica dell'output. Le affrontiamo nella diagnosi gratuita, prima ancora di parlare di prezzo. Se non vai d'accordo su questi tre punti, il progetto non parte.</p>
             <div class="pt-final-ctas">
-              <a href="/app" class="pt-fcta-btn">Apri K-BOT gratis 14 giorni →</a>
+              <a href="/app" class="pt-fcta-btn">Apri K-BOT →</a>
               <a href="/contatti" class="pt-fcta-btn ghost">Prenota diagnosi 30 min</a>
             </div>
           </div>
@@ -962,11 +950,11 @@
         <div class="pt-panel" id="pt-panel-ingegnere">
           <div class="pt-panel-eyebrow">Profilo 04 · Studio ingegneria/architettura</div>
           <h2 class="pt-panel-title">Il progetto vincente è già fatto.<br>Il problema è la <em>relazione</em> di 80 pagine.</h2>
-          <p class="pt-panel-intro">PSC, computi metrici, relazioni paesaggistiche, verifiche strutturali NTC, dossier per Genio Civile, pratiche edilizie: l'80% del lavoro che ti dà la firma è il documento, non il calcolo. Il calcolo lo fai in mezza giornata. Il documento ti porta via tre settimane. <strong>Qui K2-AI è già fortissima — perché l'abbiamo costruita per studi come il tuo.</strong></p>
+          <p class="pt-panel-intro">PSC, computi metrici, relazioni paesaggistiche, verifiche strutturali NTC, dossier per Genio Civile, pratiche edilizie: buona parte del lavoro che ti dà la firma è il documento, non il calcolo. <strong>Qui K2-AI parte avvantaggiata: ha già skill tecniche pensate per studi come il tuo.</strong></p>
 
           <div class="pt-pains">
-            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
-            <div class="pt-pain">Calcolo strutturale in 1 giorno. Relazione di calcolo in 2 settimane.</div>
+            <div class="pt-pains-title">Situazioni che riconosciamo</div>
+            <div class="pt-pain">Il calcolo strutturale lo faccio in fretta. La relazione di calcolo mi porta via settimane.</div>
             <div class="pt-pain">Pratiche edilizie diverse per ogni comune. Non posso fare un template.</div>
             <div class="pt-pain">Le commesse TLC ripetitive costano la stessa fatica di nuove.</div>
           </div>
@@ -978,10 +966,10 @@
             <div class="pt-rung">
               <div class="pt-rung-num">Livello 01 · Inizia qui</div>
               <div class="pt-rung-name">K-BOT Pro o Studio</div>
-              <div class="pt-rung-meta">App reportistica · 1-5 utenti</div>
+              <div class="pt-rung-meta">App reportistica · 1-3 utenti</div>
               <div class="pt-rung-price">
-                <div class="pt-rung-price-amount">49-199 €<span class="small">/mese</span></div>
-                <div class="pt-rung-price-unit">in base a quanti siete</div>
+                <div class="pt-rung-price-amount">da 49 €<span class="small">/mese</span></div>
+                <div class="pt-rung-price-unit">Pro 49 € · Studio 149 €, in base a quanti siete</div>
               </div>
               <ul>
                 <li>Check edilizia express per ogni pratica</li>
@@ -990,7 +978,7 @@
                 <li>Analisi vincoli paesaggistici / monumentali</li>
                 <li>Capitolati e computi metrici automatizzati</li>
               </ul>
-              <a href="/app" class="pt-rung-cta">→ Prova gratis 14 giorni</a>
+              <a href="/app" class="pt-rung-cta">→ Apri K-BOT</a>
             </div>
             <div class="pt-rung featured">
               <div class="pt-rung-num">Livello 02 · Più potente</div>
@@ -1002,7 +990,7 @@
               </div>
               <ul>
                 <li>BuildBoost: dalla pratica al cantiere</li>
-                <li>TLCBoost: PE telecomunicazioni in 14 giorni</li>
+                <li>TLCBoost: PE telecomunicazioni</li>
                 <li>StructBoost: verifica statica + vulnerabilità sismica</li>
                 <li>SafetyBoost: PSC + DVR + formazione</li>
                 <li>Integrazione con i tuoi tool CAD/BIM</li>
@@ -1029,9 +1017,7 @@
           </div>
 
           <div class="pt-reality">
-            <div class="pt-rl-cell"><div class="pt-rl-num">−70%</div><div class="pt-rl-label">Tempo redazione relazioni</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">14gg</div><div class="pt-rl-label">PE TLC completo (vs 6 settimane)</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">42h</div><div class="pt-rl-label">A settimana recuperate per studio tipo</div></div>
+            <div class="pt-rl-cell"><div class="pt-rl-num">42h</div><div class="pt-rl-label">A settimana recuperate sui flussi operativi (caso interno del Lab)</div></div>
           </div>
 
           <div class="pt-helper">
@@ -1039,9 +1025,9 @@
             <div class="pt-helper-q">Studio piccolo (1-3 persone), commesse varie?</div>
             <div class="pt-helper-a">→ Parti da <strong>K-BOT Pro</strong>. Lo usi sulle pratiche più ripetitive, vedi dove fa più differenza.</div>
             <div class="pt-helper-q">Hai una specializzazione (TLC, strutturale, paesaggistico) e vuoi industrializzarla?</div>
-            <div class="pt-helper-a">→ <strong>Pattern Engineering</strong> verticale per il tuo dominio. Recupero in 3-4 commesse.</div>
+            <div class="pt-helper-a">→ <strong>Pattern Engineering</strong> verticale per il tuo dominio.</div>
             <div class="pt-helper-q">Studio 5+ persone con archivio importante e voglia di scalare?</div>
-            <div class="pt-helper-a">→ <strong>Custom Engineering</strong>. Lo studio diventa una macchina che produce 3x con lo stesso organico.</div>
+            <div class="pt-helper-a">→ <strong>Custom Engineering</strong>. Lo studio diventa una macchina che produce di più con lo stesso organico.</div>
           </div>
 
           <div class="pt-final-cta">
@@ -1057,13 +1043,13 @@
         <!-- PROFILO ARTIGIANO -->
         <div class="pt-panel" id="pt-panel-artigiano">
           <div class="pt-panel-eyebrow">Profilo 05 · Artigiano / piccola impresa</div>
-          <h2 class="pt-panel-title">Hai imparato il mestiere in 20 anni.<br>Adesso passi 12 ore a fare <em>preventivi</em>.</h2>
+          <h2 class="pt-panel-title">Hai imparato il mestiere sul campo.<br>Adesso passi ore a fare <em>preventivi</em>.</h2>
           <p class="pt-panel-intro">Falegname, idraulico, elettricista, piccola impresa edile, officina, lavoreria meccanica. Sei bravo nel tuo lavoro. Il problema non è il lavoro: è tutto quello che ci sta intorno — preventivi, ordini, fatture, follow-up clienti, gestione fornitori, MEPA. <strong>K2-AI ti toglie quei pesi senza chiederti di imparare niente di AI.</strong></p>
 
           <div class="pt-pains">
-            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
+            <div class="pt-pains-title">Situazioni che riconosciamo</div>
             <div class="pt-pain">I clienti vogliono il preventivo entro stasera. Io ho il cantiere fino alle 18.</div>
-            <div class="pt-pain">Ho perso 3 lavori il mese scorso perché non ho risposto in tempo.</div>
+            <div class="pt-pain">Ho perso dei lavori perché non ho risposto in tempo.</div>
             <div class="pt-pain">Mia moglie fa la fatturazione la domenica. Non può continuare così.</div>
           </div>
 
@@ -1077,7 +1063,6 @@
               <div class="pt-rung-meta">App semplice · 1 utente</div>
               <div class="pt-rung-price">
                 <div class="pt-rung-price-amount">49 €<span class="small">/mese</span></div>
-                <div class="pt-rung-price-unit">14 giorni gratis · niente carta di credito</div>
               </div>
               <ul>
                 <li>Detti il preventivo, lui te lo scrive in PDF</li>
@@ -1106,45 +1091,35 @@
               <a href="/contatti" class="pt-rung-cta">→ Parla con noi 20 min</a>
             </div>
             <div class="pt-rung">
-              <div class="pt-rung-num">Bonus · Sconto agevolazioni</div>
+              <div class="pt-rung-num">Bonus · Agevolazioni</div>
               <div class="pt-rung-name">Transizione 5.0</div>
-              <div class="pt-rung-meta">Recuperi fino al 45%</div>
-              <div class="pt-rung-price">
-                <div class="pt-rung-price-amount">−45%</div>
-                <div class="pt-rung-price-unit">credito d'imposta MIMIT</div>
-              </div>
+              <div class="pt-rung-meta">Credito d'imposta, se ne hai diritto</div>
               <ul>
-                <li>Il Pattern Artigiano da 2.900 € → 1.595 € reali</li>
-                <li>Tramite credito d'imposta automatico</li>
+                <li>Se spetta, un credito d'imposta riduce il costo del progetto</li>
                 <li>Pratica preparata dal tuo commercialista</li>
                 <li>O dal nostro partner se vuoi</li>
-                <li>Domanda al MIMIT, conferma in 30-60 giorni</li>
+                <li>Requisiti, aliquote e tempi: li verifichi con il tuo consulente</li>
               </ul>
               <a href="/contatti" class="pt-rung-cta">→ Verifica se ne hai diritto</a>
             </div>
           </div>
 
-          <div class="pt-reality">
-            <div class="pt-rl-cell"><div class="pt-rl-num">12h</div><div class="pt-rl-label">A settimana liberate in media</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">+28%</div><div class="pt-rl-label">Preventivi vinti (perché rispondi prima)</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">4 mesi</div><div class="pt-rl-label">Per recuperare l'investimento</div></div>
-          </div>
 
           <div class="pt-helper">
             <h4>Come capire se fa per te</h4>
             <div class="pt-helper-q">Lavori da solo o con 1-2 collaboratori?</div>
             <div class="pt-helper-a">→ Parti da <strong>K-BOT Pro</strong>. Lo usi dal telefono. Niente computer, niente corsi.</div>
             <div class="pt-helper-q">Sei piccola impresa con 3-10 dipendenti e perdi preventivi?</div>
-            <div class="pt-helper-a">→ <strong>Pattern Artigiano</strong>. In 4 mesi recuperi il costo solo con i preventivi che oggi perdi.</div>
+            <div class="pt-helper-a">→ <strong>Pattern Artigiano</strong>. Recuperi il costo con i preventivi che oggi perdi, da verificare sul tuo caso.</div>
             <div class="pt-helper-q">Vuoi sapere se hai diritto al credito d'imposta Transizione 5.0?</div>
-            <div class="pt-helper-a">→ Te lo verifichiamo gratis in <strong>15 minuti</strong>. Se sì, paghi meno della metà.</div>
+            <div class="pt-helper-a">→ Dipende dai requisiti e lo conferma il tuo commercialista o consulente. Noi ti aiutiamo con il progetto.</div>
           </div>
 
           <div class="pt-final-cta">
             <h3>Non serve sapere niente di <em>AI</em>.</h3>
             <p>Tu dici "fammi il preventivo per la signora Bianchi: rifacimento bagno, due settimane, materiale incluso". Lui te lo scrive. Tu controlli, firmi, mandi. Punto. Se sai usare WhatsApp sai usare K-BOT.</p>
             <div class="pt-final-ctas">
-              <a href="/app" class="pt-fcta-btn">Prova gratis 14 giorni →</a>
+              <a href="/app" class="pt-fcta-btn">Apri K-BOT →</a>
               <a href="/contatti" class="pt-fcta-btn ghost">Chiamaci 20 min</a>
             </div>
           </div>
@@ -1157,23 +1132,22 @@
           <p class="pt-panel-intro">Ufficio acquisti, amministrazione, customer service, preventivi commerciali, qualità, logistica. Il prodotto lo fai bene da 20 anni. La macchina amministrativa intorno è cresciuta più del prodotto. Non puoi più assumere — i margini non lo permettono e trovare gente brava è un incubo. <strong>K2-AI è il modo strutturato per crescere senza assumere.</strong></p>
 
           <div class="pt-pains">
-            <div class="pt-pains-title">Cosa ci dicono i tuoi colleghi</div>
-            <div class="pt-pain">Il fatturato cresce del 12%. I margini calano del 3. Stiamo lavorando per assumere.</div>
+            <div class="pt-pains-title">Situazioni che riconosciamo</div>
+            <div class="pt-pain">Il fatturato cresce. I margini calano. Stiamo lavorando per assumere.</div>
             <div class="pt-pain">La direzione opera senza dati. Decidiamo "a sensazione". Nel 2026.</div>
-            <div class="pt-pain">Il gestionale è del 2009. Non posso cambiarlo, ci ho dentro 15 anni di dati.</div>
+            <div class="pt-pain">Il gestionale è vecchio. Non posso cambiarlo, ci ho dentro anni di dati.</div>
           </div>
 
           <div class="pt-ladder-title">Il tuo percorso · serio</div>
-          <p class="pt-ladder-sub">Pensato per PMI 10-50 dipendenti dove il decisore è il titolare/CdA. Tempi più lunghi, KPI definiti pre go-live, ROI 4-12 mesi.</p>
+          <p class="pt-ladder-sub">Pensato per PMI 10-50 dipendenti dove il decisore è il titolare/CdA. Tempi più lunghi, KPI definiti pre go-live.</p>
 
           <div class="pt-ladder">
             <div class="pt-rung">
               <div class="pt-rung-num">Livello 01 · Esplora</div>
               <div class="pt-rung-name">K-BOT Studio</div>
-              <div class="pt-rung-meta">Team · 5 utenti</div>
+              <div class="pt-rung-meta">Team · 3 utenti</div>
               <div class="pt-rung-price">
-                <div class="pt-rung-price-amount">199 €<span class="small">/mese</span></div>
-                <div class="pt-rung-price-unit">o 1.990 €/anno · 2 mesi gratis</div>
+                <div class="pt-rung-price-amount">149 €<span class="small">/mese</span></div>
               </div>
               <ul>
                 <li>Cruscotto direzionale mensile con KPI</li>
@@ -1182,7 +1156,7 @@
                 <li>Analisi mercato e competitor</li>
                 <li>Strumento di esplorazione dei casi d'uso AI</li>
               </ul>
-              <a href="/app" class="pt-rung-cta">→ Prova 14 giorni gratis</a>
+              <a href="/app" class="pt-rung-cta">→ Apri K-BOT</a>
             </div>
             <div class="pt-rung featured">
               <div class="pt-rung-num">Livello 02 · Industrializza</div>
@@ -1214,26 +1188,21 @@
                 <li>Agenti AI per ufficio acquisti, vendite, qualità</li>
                 <li>Dashboard direzionale real-time</li>
                 <li>Skillizzazione del know-how aziendale</li>
-                <li>Compatibile Transizione 5.0 (sconto 35-45%)</li>
+                <li>Può rientrare tra le agevolazioni (es. Transizione 5.0), da verificare con il consulente</li>
               </ul>
               <a href="/contatti" class="pt-rung-cta">→ Parliamone in call</a>
             </div>
           </div>
 
-          <div class="pt-reality">
-            <div class="pt-rl-cell"><div class="pt-rl-num">−40%</div><div class="pt-rl-label">Tempo processo amministrativo</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">+28%</div><div class="pt-rl-label">Conversione preventivi commerciali</div></div>
-            <div class="pt-rl-cell"><div class="pt-rl-num">3-7</div><div class="pt-rl-label">Mesi di payback medio</div></div>
-          </div>
 
           <div class="pt-helper">
             <h4>Come capire quale livello fa per te</h4>
             <div class="pt-helper-q">Non sei sicuro se l'AI ti serva, vuoi vedere prima cosa succede?</div>
-            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. Lo usi 60 giorni, ti porta KPI direzionali, capisci dove ha senso investire.</div>
+            <div class="pt-helper-a">→ Parti da <strong>K-BOT Studio</strong>. Ti porta KPI direzionali, capisci dove ha senso investire.</div>
             <div class="pt-helper-q">Hai un processo ripetitivo che assorbe 1-2 persone full-time?</div>
-            <div class="pt-helper-a">→ <strong>Pattern Industrial</strong> su quel processo. Recuperi in 5-7 mesi se la persona costa ≥ 35k €/anno.</div>
+            <div class="pt-helper-a">→ <strong>Pattern Industrial</strong> su quel processo. Il recupero dipende da quanto costa oggi la persona che fa quel lavoro.</div>
             <div class="pt-helper-q">Vuoi trasformare l'azienda in un anno e crescere senza assumere?</div>
-            <div class="pt-helper-a">→ <strong>Custom Industrial</strong>. Definiamo KPI a 12 mesi prima di partire, con sconto Transizione 5.0.</div>
+            <div class="pt-helper-a">→ <strong>Custom Industrial</strong>. Definiamo i KPI prima di partire; le agevolazioni (es. Transizione 5.0) si verificano con il tuo consulente.</div>
           </div>
 
           <div class="pt-final-cta">
@@ -1241,7 +1210,7 @@
             <p>Quanto costa la persona che oggi fa quel lavoro. Quante ore al mese. Cosa potrebbe fare invece se non lo facesse. Si definisce questo prima del preventivo. Se non torna come business case, te lo diciamo prima — non a metà progetto.</p>
             <div class="pt-final-ctas">
               <a href="/contatti" class="pt-fcta-btn">Prenota call diagnosi 30 min →</a>
-              <a href="/app" class="pt-fcta-btn ghost">Prova K-BOT 14 giorni</a>
+              <a href="/app" class="pt-fcta-btn ghost">Apri K-BOT</a>
             </div>
           </div>
         </div>
@@ -1253,6 +1222,8 @@
       </div>
 
     </div><!-- /pt-container -->
+
+    </main>
 
     <footer>
       <div class="footer-inner footer-inner-legal">

@@ -60,6 +60,19 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      # Il generatore converte le immagini in WebP/JPG con ImageMagick
+      # (lib/images.ts). Senza, ripiega in silenzio sui PNG: qui lo
+      # installiamo se manca e falliamo ad alta voce se WebP non è supportato.
+      - name: Install ImageMagick (con supporto WebP)
+        run: |
+          if ! command -v magick >/dev/null 2>&1 && ! command -v convert >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y imagemagick webp
+          fi
+          IM=$(command -v magick || command -v convert)
+          "$IM" -version | head -n 1
+          "$IM" -list format | grep -iE '^ *WEBP' || { echo "::error::ImageMagick senza supporto WebP"; exit 1; }
+
       - name: Run blog autopilot
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

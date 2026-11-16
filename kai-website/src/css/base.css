@@ -1,6 +1,7 @@
 @font-face {
   font-family: 'DM Sans';
-  src: url('/fonts/dm-sans-300.ttf') format('truetype');
+  src: url('/fonts/dm-sans-300.woff2') format('woff2'),
+       url('/fonts/dm-sans-300.ttf') format('truetype');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -8,7 +9,8 @@
 
 @font-face {
   font-family: 'DM Sans';
-  src: url('/fonts/dm-sans-400.ttf') format('truetype');
+  src: url('/fonts/dm-sans-400.woff2') format('woff2'),
+       url('/fonts/dm-sans-400.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -16,7 +18,8 @@
 
 @font-face {
   font-family: 'DM Sans';
-  src: url('/fonts/dm-sans-500.ttf') format('truetype');
+  src: url('/fonts/dm-sans-500.woff2') format('woff2'),
+       url('/fonts/dm-sans-500.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -24,7 +27,8 @@
 
 @font-face {
   font-family: 'DM Sans';
-  src: url('/fonts/dm-sans-400-italic.ttf') format('truetype');
+  src: url('/fonts/dm-sans-400-italic.woff2') format('woff2'),
+       url('/fonts/dm-sans-400-italic.ttf') format('truetype');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -32,7 +36,8 @@
 
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('/fonts/jetbrains-mono-400.ttf') format('truetype');
+  src: url('/fonts/jetbrains-mono-400.woff2') format('woff2'),
+       url('/fonts/jetbrains-mono-400.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -40,7 +45,8 @@
 
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('/fonts/jetbrains-mono-500.ttf') format('truetype');
+  src: url('/fonts/jetbrains-mono-500.woff2') format('woff2'),
+       url('/fonts/jetbrains-mono-500.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -295,6 +301,59 @@ html.js-scroll .reveal.visible {
   transition-timing-function: var(--ease-cinema);
 }
 
+/* Chi chiede meno movimento vede subito il contenuto: niente scivolamento di 24 px. */
+@media (prefers-reduced-motion: reduce) {
+  html.js-scroll .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ─── Focus da tastiera ───
+   Anello visibile su link, bottoni e controlli: sullo sfondo scuro quello di
+   default del browser è quasi invisibile. I campi di testo hanno già il loro
+   stato di focus (bordo/alone), qui non si toccano. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid #aaffee;
+  outline-offset: 3px;
+}
+
+/* Link "Vai al contenuto": nascosto finché non riceve il focus da tastiera. */
+.skip-link {
+  position: fixed;
+  top: -64px;
+  left: 12px;
+  z-index: 10000;
+  padding: 12px 18px;
+  background: #ffffff;
+  color: #080808;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+/* Il target del link «Vai al contenuto» riceve il focus solo da script: niente anello. */
+#contenuto:focus {
+  outline: none;
+}
+
+.skip-link:focus-visible {
+  outline: 2px solid #080808;
+  outline-offset: 2px;
+}
+
 /* ─── Buttons ─── */
 
 .btn {
@@ -369,4 +428,22 @@ html.js-scroll .reveal.visible {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-secondary);
+}
+
+/* Riga di keyword dentro l'H1: il titolo di marca resta com'è, sotto c'è la
+   descrizione in chiaro (serve a chi cerca e a chi legge con lo screen reader). */
+.h1-kw {
+  display: block;
+  max-width: 34ch;
+  margin-top: 0.5em;
+  font-family: var(--font-body);
+  font-size: clamp(15px, 0.26em, 34px);
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
+  word-spacing: 0;
+  line-height: 1.35;
+  text-transform: none;
+  background: none;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.74);
 }
