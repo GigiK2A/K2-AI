@@ -433,7 +433,6 @@ export default function HomePage() {
     if (!conv || conv.kbotSessionId === kbotSession.id) return;
     const remoteId = conv.remoteId;
     const sid = kbotSession.id;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setConversations((prev) =>
       prev.map((c) => (c.id === activeConversation.id && c.kbotSessionId !== sid ? { ...c, kbotSessionId: sid } : c)),
     );

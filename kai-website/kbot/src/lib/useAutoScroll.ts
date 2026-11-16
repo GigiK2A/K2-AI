@@ -15,10 +15,9 @@ export function useAutoScroll() {
   // ref a callback + state: il contenitore può comparire DOPO il primo render (la pagina mostra prima uno stato di caricamento)
   const [elContenitore, setElContenitore] = useState<HTMLElement | null>(null);
   const [elContenuto, setElContenuto] = useState<HTMLElement | null>(null);
-  const contenitore = useCallback((el: HTMLElement | null) => setElContenitore(el), []);
+  const elRef = useRef<HTMLElement | null>(null);   // stesso elemento dello state, per leggerlo dai callback senza dipendenze
+  const contenitore = useCallback((el: HTMLElement | null) => { elRef.current = el; setElContenitore(el); }, []);
   const contenuto = useCallback((el: HTMLElement | null) => setElContenuto(el), []);
-  const elRef = useRef<HTMLElement | null>(null);
-  elRef.current = elContenitore;
   const segue = useRef(true);
   const ultimoTop = useRef(0);
   const ultimoTocco = useRef<number | null>(null);
