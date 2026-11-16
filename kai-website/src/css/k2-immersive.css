@@ -786,6 +786,14 @@ body.contact-page .page-title-contact {
   max-width: 760px;
 }
 
+/* A 1280 px la colonna del titolo è ~470 px: con il corpo display di default
+   «Raccontaci» andava a capo a metà parola. Corpo ridotto solo a due colonne (sopra 1100 px). */
+@media (min-width: 1101px) {
+  body.contact-page .page-title-contact {
+    font-size: clamp(2.6rem, 4.6vw, 4.4rem);
+  }
+}
+
 @media (max-width: 768px) {
   body.method-page .display-xl,
   body.workshop-page .display-xl,

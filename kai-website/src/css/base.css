@@ -429,3 +429,21 @@ summary:focus-visible,
   text-transform: uppercase;
   color: var(--text-secondary);
 }
+
+/* Riga di keyword dentro l'H1: il titolo di marca resta com'è, sotto c'è la
+   descrizione in chiaro (serve a chi cerca e a chi legge con lo screen reader). */
+.h1-kw {
+  display: block;
+  max-width: 34ch;
+  margin-top: 0.5em;
+  font-family: var(--font-body);
+  font-size: clamp(15px, 0.26em, 34px);
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
+  word-spacing: 0;
+  line-height: 1.35;
+  text-transform: none;
+  background: none;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.74);
+}
