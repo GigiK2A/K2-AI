@@ -137,7 +137,7 @@ async function main() {
         href: "/contatti",
         kicker: "Persone",
         title: "Parla con noi",
-        body: "Se preferisci una call diretta, scrivici. Rispondiamo in 24 ore con una lettura onesta.",
+        body: "Se preferisci una call diretta, scrivici. Rispondiamo in 24 ore lavorative con una lettura onesta.",
       },
     ],
   });
