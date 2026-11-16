@@ -130,7 +130,7 @@ async function main() {
       {
         href: "/app",
         kicker: "Strumento",
-        title: "K-BOT — diagnosi gratis in 5 minuti",
+        title: "K-BOT — diagnosi gratis in pochi minuti",
         body: "Descrivi il tuo caso. K-BOT dice se vale custom o se basta uno strumento standard.",
       },
       {

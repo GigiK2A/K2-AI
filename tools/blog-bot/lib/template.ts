@@ -249,7 +249,7 @@ ${bodyHtml}
     <p class="mono reveal center-cta-label">Prossimo passo</p>
     <h2 class="display-md reveal reveal-delay-1 center-cta-title-sm">Vuoi capire se questo vale per il tuo caso?</h2>
     <p class="reveal reveal-delay-2 center-cta-copy">
-      Apri K-BOT e in 5 minuti ti diciamo se questa categoria di soluzione fa al caso della tua PMI, oppure se basta uno strumento off-the-shelf. Gratuito.
+      Apri K-BOT e in pochi minuti ti diciamo se questa categoria di soluzione fa al caso della tua PMI, oppure se basta uno strumento off-the-shelf. Gratuito.
     </p>
     <div class="reveal reveal-delay-3">
       <a href="/app" class="btn btn-primary">Apri K-BOT →</a>

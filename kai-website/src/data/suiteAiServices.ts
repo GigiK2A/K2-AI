@@ -19,11 +19,11 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
   {
     id: 'P01',
     name: 'Agenti AI Email & CRM',
-    shortDescription: 'Agente che legge la casella, classifica le email commerciali, bozza risposte e aggiorna il CRM — senza intervento umano per il 70% dei messaggi.',
+    shortDescription: 'Agente che legge la casella, classifica le email commerciali, bozza risposte e aggiorna il CRM — autonomo sulle categorie a basso rischio, con le persone sui casi critici.',
     category: 'sales-marketing',
     skills: ['draft-outreach', 'pipeline-review', 'email-sequence', 'crm-customer-experience', 'sales-strategy', 'lead-qualification'],
     useCases: [
-      'Risposta automatica a richieste preventivo entro 2 minuti',
+      'Risposta automatica di conferma alle richieste di preventivo',
       'Aggiornamento stage CRM dopo ogni interazione',
       'Sequenze follow-up multi-touch su lead freddi',
       'Riassunto thread email → aggiornamento note account',
@@ -37,7 +37,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
   {
     id: 'P02',
     name: 'Automazioni Amministrative',
-    shortDescription: 'Pipeline AI che legge fatture, estratti conto e fogli Excel, genera prime note e quadrature — 5+ ore/settimana risparmiate sull\'inserimento dati.',
+    shortDescription: 'Pipeline AI che legge fatture, estratti conto e fogli Excel, genera prime note e quadrature — meno ore perse sull\'inserimento dati.',
     category: 'finance-admin',
     skills: ['contabilita-bilancio', 'analisi-bilancio-pmi', 'budget-forecast-pmi', 'programmazione-controllo', 'reconciliation'],
     useCases: [
@@ -55,13 +55,13 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
   {
     id: 'P03',
     name: 'AI Legale & Contratti',
-    shortDescription: 'Agente che legge contratti, segnala clausole critiche, confronta con template standard e genera sintesi executive — revisione NDA in 4 minuti invece di 90.',
+    shortDescription: 'Agente che legge contratti, segnala clausole critiche, confronta con template standard e genera sintesi executive — revisione NDA più rapida.',
     category: 'legal-compliance',
     skills: ['diritto-italiano', 'diritto-societario-italiano', 'it-law-privacy-ai', 'antitrust-concorrenza-ue', 'review-contract', 'triage-nda'],
     useCases: [
       'Triage NDA: segnalazione clausole non standard e rischi',
       'Confronto contratto fornitore vs template aziendale',
-      'Sintesi executive di contratti >50 pagine in 2 minuti',
+      'Sintesi executive di contratti lunghi',
       'Checklist GDPR su nuovi accordi di trattamento dati',
     ],
     targetGroup: 'studi',
@@ -97,7 +97,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
     useCases: [
       'Conversione SOPs Word → checklist operative strutturate',
       'Generazione runbook da log di configurazione sistemi',
-      'Schede prodotto da datasheet tecnici in 5 lingue',
+      'Schede prodotto da datasheet tecnici in più lingue',
       'Aggiornamento automatico manuali quando cambia la versione',
     ],
     targetGroup: 'pmi',
@@ -109,7 +109,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
   {
     id: 'P06',
     name: 'AI Customer Service & Ticket',
-    shortDescription: 'Triage automatico dei ticket, bozze di risposta contestuali e articoli KB generati dalle risoluzioni — riduce il tempo medio di gestione del 40-60%.',
+    shortDescription: 'Triage automatico dei ticket, bozze di risposta contestuali e articoli KB generati dalle risoluzioni — riduce il tempo medio di gestione.',
     category: 'operations',
     skills: ['ticket-triage', 'draft-response', 'kb-article', 'customer-escalation', 'sentiment-analysis'],
     useCases: [
@@ -127,14 +127,14 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
   {
     id: 'P07',
     name: 'RAG Knowledge Base',
-    shortDescription: 'Sistema di ricerca semantica sulla tua knowledge base interna: PDF, Notion, Confluence, Drive — risposta precisa con fonte citata in meno di 3 secondi.',
+    shortDescription: 'Sistema di ricerca semantica sulla tua knowledge base interna: PDF, Notion, Confluence, Drive — risposta precisa con fonte citata.',
     category: 'operations',
     skills: ['search', 'knowledge-synthesis', 'memory-management', 'digest', 'rag-pipeline'],
     useCases: [
       'Q&A su policy aziendali con fonte e pagina citata',
       'Ricerca tecnica su manualistica prodotto multi-documento',
       'Digest settimanale automatico delle note meeting',
-      'Onboarding: risposta alle 50 domande più frequenti dei nuovi assunti',
+      'Onboarding: risposta alle domande più frequenti dei nuovi assunti',
     ],
     targetGroup: 'pmi',
     target: 'PMI con documentazione distribuita, team remoti, aziende in crescita rapida',
@@ -271,11 +271,11 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
   {
     id: 'P15',
     name: 'AI HR & Recruiting',
-    shortDescription: 'Pipeline di selezione AI-assisted: screening CV, preparazione colloqui, onboarding automatizzato e analisi performance — riduce il time-to-hire del 50%.',
+    shortDescription: 'Pipeline di selezione AI-assisted: screening CV, preparazione colloqui, onboarding automatizzato e analisi performance — riduce il tempo di selezione.',
     category: 'operations',
     skills: ['recruiting-pipeline', 'interview-prep', 'onboarding', 'performance-review', 'comp-analysis'],
     useCases: [
-      'Screening 200 CV in 10 minuti con ranking e motivazione',
+      'Screening dei CV con ranking e motivazione',
       'Kit colloquio: domande calibrate su ruolo e seniority',
       'Piano onboarding 30-60-90 giorni generato da job description',
       'Ciclo di performance review con template e calibrazione',
@@ -332,7 +332,7 @@ export const SUITE_AI_SERVICES: SuiteAiService[] = [
       'Audit accessibilità WCAG 2.1 su interfaccia esistente',
       'Generazione design system da screenshot e brand guidelines',
       'UX copy review: chiarezza, tone of voice, call to action',
-      'Sintesi user research: pattern da 50 interviste in 1 report',
+      'Sintesi user research: pattern dalle interviste in un report',
     ],
     targetGroup: 'tech',
     target: 'Designer, product manager, team frontend, startup in fase di scaling',
