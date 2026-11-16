@@ -7,6 +7,7 @@ data, quindi il modello ha ripiegato su quella del suo addestramento.
 È l'errore peggiore di quelli visti finora: i 400 almeno urlavano, questo scrive una
 riga apparentemente sana e fa credere che i solleciti fossero da fare tre anni fa.
 """
+import datetime
 import time
 
 import pytest
@@ -112,17 +113,28 @@ def test_l_ora_resta_attaccata():
     assert giorno_lavorativo("2026-08-29T15:30:00") == "2026-08-31T15:30:00"
 
 
+def _prossima_domenica() -> tuple[str, str]:
+    """(domenica, lunedì seguente) a partire da OGGI. Il guardrail sulle date di piano
+    usa l'orologio vero: con una domenica fissa (30 ago 2026) i due test sotto sono
+    diventati rossi il 14 ott 2026, quando quella data ha superato la tolleranza."""
+    oggi = datetime.date.today()
+    domenica = oggi + datetime.timedelta(days=(6 - oggi.weekday()) % 7)
+    return domenica.isoformat(), (domenica + datetime.timedelta(days=1)).isoformat()
+
+
 def test_una_azione_di_domenica_viene_spostata_nella_riga():
+    domenica, lunedi = _prossima_domenica()
     out = _sanitize("pipeline_leads",
-                    {"name": "Alfa", "next_action_date": "2026-08-30"}, "insert")
-    assert out["next_action_date"] == "2026-08-31"
+                    {"name": "Alfa", "next_action_date": domenica}, "insert")
+    assert out["next_action_date"] == lunedi
 
 
 def test_una_scadenza_di_domenica_resta():
     """Un contratto scade anche di domenica: non è una nostra azione."""
+    domenica, _ = _prossima_domenica()
     out = _sanitize("insurance_policies",
-                    {"tipo": "RC", "expiry_date": "2026-08-30"}, "insert")
-    assert out["expiry_date"] == "2026-08-30"
+                    {"tipo": "RC", "expiry_date": domenica}, "insert")
+    assert out["expiry_date"] == domenica
 
 
 # ---- effetto sulla riga scritta ----
