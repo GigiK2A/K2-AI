@@ -38,7 +38,7 @@
 
 - K2-AI HOST — Revenue management per strutture ricettive. Da EUR 59/mese + fee 15% su delta RevPAR.
 - K2-AI WEB — Sito AI con copy, SEO e brand voice. Dalla brief al live in 48 ore. Da EUR 995 (Fondatori).
-- K2-AI STUDIO — Suite AI per studi di ingegneria italiani. -70% tempo su redazione e pratiche. Da EUR 2.490/mese + IVA.
+- K2-AI STUDIO — Suite AI per studi di ingegneria italiani. Da EUR 2.490/mese + IVA.
 
 ## Tecnologie usate
 

@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="../css/pages.css">
   <link rel="stylesheet" href="../css/k2-immersive.css">
   <link rel="stylesheet" href="../css/blog.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"RAG Knowledge Base: fine alla caccia ai documenti","description":"Documentazione dispersa su Drive, Notion, Confluence. Un sistema RAG Knowledge Base risponde in 3 secondi con fonte e pagina. Come funziona e quando conviene.","datePublished":"2026-07-15","dateModified":"2026-07-15","author":{"@type":"Organization","name":"K2-AI","url":"https://www.k2-ai.it/"},"publisher":{"@type":"Organization","name":"K2-AI","logo":{"@type":"ImageObject","url":"https://www.k2-ai.it/logo-nav.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://www.k2-ai.it/blog/rag-knowledge-base-pmi"},"image":"https://www.k2-ai.it/blog/og/rag-knowledge-base-pmi.jpg"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"RAG Knowledge Base: fine alla caccia ai documenti","description":"Documentazione dispersa su Drive, Notion, Confluence. Un sistema RAG Knowledge Base risponde con fonte e pagina. Come funziona e quando conviene.","datePublished":"2026-07-15","dateModified":"2026-07-15","author":{"@type":"Organization","name":"K2-AI","url":"https://www.k2-ai.it/"},"publisher":{"@type":"Organization","name":"K2-AI","logo":{"@type":"ImageObject","url":"https://www.k2-ai.it/logo-nav.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://www.k2-ai.it/blog/rag-knowledge-base-pmi"},"image":"https://www.k2-ai.it/blog/og/rag-knowledge-base-pmi.jpg"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.k2-ai.it/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://www.k2-ai.it/blog"},{"@type":"ListItem","position":3,"name":"RAG Knowledge Base: fine alla caccia ai documenti","item":"https://www.k2-ai.it/blog/rag-knowledge-base-pmi"}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Il sistema RAG legge anche i PDF scansionati o solo i testi digitali?","acceptedAnswer":{"@type":"Answer","text":"Sì, se il pipeline include OCR: converte le immagini di testo in testo indicizzabile, ma la qualità dipende dalla qualità della scansione originale."}},{"@type":"Question","name":"I documenti aziendali restano riservati o escono verso servizi esterni?","acceptedAnswer":{"@type":"Answer","text":"Dipende dall'architettura: cloud con contratto che esclude il training sui tuoi dati, oppure deployment on-premise. Il contratto deve specificarlo esplicitamente."}},{"@type":"Question","name":"Quanto tempo ci vuole per avere il sistema operativo dalla firma del contratto?","acceptedAnswer":{"@type":"Answer","text":"Il primo prototipo è pronto in 14 giorni dal brief; poi servono test su domande reali e affinamento sul vocabolario del settore."}}]}</script>
 </head>
@@ -98,12 +98,12 @@
   <div class="section-label reveal"><span>01 · Diagnostica</span></div>
   <div class="grid-2 two-col-gap-40">
     <div class="reveal">
-      <h2 class="display-sm">La risposta c'è, ma trovarla costa 20 minuti e tre persone.</h2>
+      <h2 class="display-sm">La risposta c'è, ma trovarla costa tempo e più persone.</h2>
     </div>
     <div class="reveal reveal-delay-1 blog-prose">
       <p>Ogni volta che un collega ti scrive "dove sta la policy sulle ferie?" o "qual è la versione aggiornata del manuale prodotto X?", inizia una piccola caccia al tesoro. Si cerca su Notion, poi su Confluence, poi si va a pescare in una cartella Drive con 400 file, poi si chiede a qualcuno che "dovrebbe saperlo". Venti minuti dopo, la risposta esiste ancora solo nella testa di chi ha scritto quel documento tre anni fa.</p>
       <p>Nelle PMI italiane sotto i 100 dipendenti, la documentazione cresce in modo disordinato per definizione. Si usa lo strumento che va di moda quel trimestre: Notion per i processi operativi, Confluence per la parte tecnica, Drive per i PDF dei fornitori, email per le decisioni prese in riunione e mai trascritte da nessuna parte. Il risultato è una knowledge base distribuita su cinque piattaforme diverse, senza un punto di accesso unico e senza modo di sapere quale versione di un documento sia quella valida.</p>
-      <p>Il costo nascosto di questo caos non è solo il tempo perso in ricerca — per un team di 8 persone con documentazione frammentata, significa 30-45 minuti al giorno per persona bloccati su ricerche sterili. È anche il costo degli errori: la procedura sbagliata applicata perché si trovava il vecchio PDF, il nuovo assunto che riceve risposte diverse dalla stessa domanda fatta a tre colleghi diversi, la decisione presa su dati non aggiornati perché nessuno sapeva dove stava l'ultimo report.</p>
+      <p>Il costo nascosto di questo caos non è solo il tempo perso in ricerca — per un team con documentazione frammentata, significa tempo ogni giorno, per ogni persona, bloccato su ricerche sterili. È anche il costo degli errori: la procedura sbagliata applicata perché si trovava il vecchio PDF, il nuovo assunto che riceve risposte diverse dalla stessa domanda fatta a tre colleghi diversi, la decisione presa su dati non aggiornati perché nessuno sapeva dove stava l'ultimo report.</p>
     </div>
   </div>
 </section>
@@ -119,7 +119,7 @@
     <div class="reveal reveal-delay-1 blog-prose">
       <p>Notion ha una ricerca. Confluence ha una ricerca. Google Drive ha una ricerca. Tutti questi strumenti permettono di cercare parole chiave all'interno dei documenti. In teoria, il problema dovrebbe essere già risolto. In pratica, chi lavora in un'azienda con documentazione cresciuta nel tempo sa che non funziona così.</p>
       <p>La ricerca full-text trova documenti che contengono una parola, non risponde a una domanda. Se cerchi "ferie" ti restituisce ogni documento dove compare la parola ferie: la policy, il template della richiesta, un'email del 2019, un foglio Excel con le ferie di reparto. Devi ancora aprire ogni risultato, leggere il contesto, capire se è pertinente. Se la tua domanda è "quanti giorni di ferie spettano a un dipendente con tre anni di anzianità che ha già usato 10 giorni?", nessuna ricerca full-text ti dà la risposta: ti dà una lista di PDF da leggere tu.</p>
-      <p>Su 10 richieste di informazione che arrivano a un team medio, la ricerca testuale copre forse 4-5 casi semplici — trovare un documento specifico di cui ricordi il nome. Per il resto — domande composite, confronto tra versioni, ricostruzione di una decisione presa in riunione — la ricerca non arriva. Nei team remoti o in crescita rapida, quel 50-60% di casi scoperti è esattamente dove si concentrano i colli di bottiglia più costosi e le risposte sbagliate.</p>
+      <p>La ricerca testuale copre i casi semplici — trovare un documento specifico di cui ricordi il nome. Per il resto — domande composite, confronto tra versioni, ricostruzione di una decisione presa in riunione — la ricerca non arriva. Nei team remoti o in crescita rapida, quei casi scoperti sono esattamente dove si concentrano i colli di bottiglia più costosi e le risposte sbagliate.</p>
     </div>
   </div>
 </section>
@@ -147,14 +147,14 @@
 <hr class="hr-section">
 
 <section>
-  <div class="section-label reveal"><span>04 · Esempio reale</span></div>
+  <div class="section-label reveal"><span>04 · Scenario tipico</span></div>
   <div class="grid-2 two-col-gap-40">
     <div class="reveal">
-      <h2 class="display-sm">Distributore B2B, 38 dipendenti, 4 sedi.</h2>
+      <h2 class="display-sm">Uno scenario tipico: un distributore B2B su più sedi.</h2>
     </div>
     <div class="reveal reveal-delay-1 blog-prose">
-      <p>Prima dell'intervento: documentazione tecnica di prodotto distribuita tra Confluence (parte italiana), un server NAS con PDF dei fornitori tedeschi e giapponesi, e un canale Slack dove nel tempo erano stati condivisi centinaia di messaggi con risposte a domande tecniche dei clienti. I commerciali passavano in media 25-30 minuti per risposta a un quesito tecnico complesso: chiamavano il tecnico di riferimento, aspettavano la sua disponibilità, ricevevano la risposta e la ritrasmettevano al cliente. Nei periodi di picco, le richieste inevase si accumulavano su una lista condivisa che nessuno riusciva a smaltire entro le 24 ore.</p>
-      <p>Dopo l'attivazione di un sistema RAG Knowledge Base: i manuali tecnici, le FAQ storiche estratte da Slack, le schede prodotto e le note delle riunioni di aggiornamento vengono indicizzati in un'unica interfaccia. Un commerciale digita la domanda in linguaggio naturale — "qual è la coppia massima del motore X in configurazione trifase con inverter Y?" — e riceve la risposta in meno di 3 secondi con il riferimento esatto al manuale tecnico e al numero di pagina. Il tempo medio per risposta tecnica è sceso a 4-5 minuti, incluso il tempo per verificare la fonte e formulare la risposta al cliente. Le richieste inevase nelle 24 ore si sono ridotte di circa il 70%.</p>
+      <p>Prima dell'intervento: documentazione tecnica di prodotto distribuita tra Confluence (parte italiana), un server NAS con PDF dei fornitori tedeschi e giapponesi, e un canale Slack dove nel tempo erano stati condivisi centinaia di messaggi con risposte a domande tecniche dei clienti. I commerciali passavano molto tempo per ogni risposta a un quesito tecnico complesso: chiamavano il tecnico di riferimento, aspettavano la sua disponibilità, ricevevano la risposta e la ritrasmettevano al cliente. Nei periodi di picco, le richieste inevase si accumulavano su una lista condivisa che nessuno riusciva a smaltire in tempi accettabili.</p>
+      <p>Dopo l'attivazione di un sistema RAG Knowledge Base: i manuali tecnici, le FAQ storiche estratte da Slack, le schede prodotto e le note delle riunioni di aggiornamento vengono indicizzati in un'unica interfaccia. Un commerciale digita la domanda in linguaggio naturale — "qual è la coppia massima del motore X in configurazione trifase con inverter Y?" — e riceve la risposta con il riferimento esatto al manuale tecnico e al numero di pagina. Il tempo per rispondere a un quesito tecnico si riduce, anche includendo la verifica della fonte e la formulazione della risposta al cliente. Le richieste inevase diminuiscono.</p>
       <p>Un caveat onesto: questo risultato presupponeva una documentazione già esistente di buona qualità — manuali aggiornati, procedure scritte in modo strutturato. Se la documentazione di partenza è frammentaria, incompleta o piena di versioni contraddittorie, il sistema RAG non può compensare: restituisce risposte basate su quello che trova, e se trova informazioni confuse, le confonde anche lui. Il lavoro di pulizia e strutturazione dei documenti prima dell'indicizzazione è spesso la parte più lunga del progetto, e rappresenta il prerequisito reale per il successo.</p>
     </div>
   </div>
@@ -182,16 +182,16 @@
         </thead>
         <tbody>
           <tr>
-            <td>Meno di 50 documenti interni, team di 5 persone, tutti in sede, tutti si conoscono</td>
+            <td>Pochi documenti interni, team piccolo, tutti in sede, tutti si conoscono</td>
             <td>Non vale costruire un RAG custom: una cartella Drive condivisa ben organizzata è sufficiente</td>
           </tr>
           <tr>
-            <td>Documentazione cresciuta nel tempo ma ancora gestibile, team sotto i 20 persone, poche richieste ripetitive</td>
+            <td>Documentazione cresciuta nel tempo ma ancora gestibile, team contenuto, poche richieste ripetitive</td>
             <td>Prova prima Notion AI o Confluence AI integrati: coprono i casi base senza progetto custom</td>
           </tr>
           <tr>
-            <td>Documentazione su 3+ piattaforme diverse, team remoto o in crescita, domande tecniche composite che arrivano ogni giorno dai colleghi o dai clienti</td>
-            <td>Un sistema RAG Knowledge Base custom ha ROI misurabile entro 3-4 mesi, considerando il tempo recuperato</td>
+            <td>Documentazione su più piattaforme diverse, team remoto o in crescita, domande tecniche composite che arrivano ogni giorno dai colleghi o dai clienti</td>
+            <td>Un sistema RAG Knowledge Base custom ha un ritorno da valutare considerando il tempo recuperato</td>
           </tr>
           <tr>
             <td>Onboarding di nuovi assunti che richiede settimane, domande ripetute sempre agli stessi colleghi, errori operativi per procedure trovate in versioni vecchie</td>
