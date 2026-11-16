@@ -29,8 +29,10 @@
   <style>
     /* Per-te page — aligned to site design system */
     :root {
-      --pt-accent: var(--bridge-accent);
-      --pt-highlight: var(--bridge-highlight);
+      /* Stesso accento del resto del sito (menta → azzurro dell'hero), non il
+         palette «bridge» arancione. Per tornare all'arancione: var(--bridge-accent) / var(--bridge-highlight). */
+      --pt-accent: #aaffee;
+      --pt-highlight: #88c6ff;
       --pt-muted: var(--text-muted);
     }
 
