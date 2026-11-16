@@ -9,7 +9,7 @@ test("facts: una percentuale non fornita dal brief è un errore (blocca)", () =>
   const r = validateFacts(page("Un agente gestisce il 70% dei messaggi."), []);
   assert.equal(r.ok, false);
   assert.equal(r.errors.length, 1);
-  assert.match(r.errors[0], /70%/);
+  assert.match(r.errors[0] ?? "", /70%/);
 });
 
 test("facts: range, 'circa' e decimali non rendono lecita una cifra non fornita", () => {
@@ -44,7 +44,7 @@ test("facts: un numero grande che non è un anno resta un avviso, non un errore"
   const r = validateFacts(page("Il codice 123456 compare nel testo, e nel 2024 anche."), []);
   assert.equal(r.ok, true);
   assert.equal(r.warnings.length, 1);
-  assert.match(r.warnings[0], /123456/);
+  assert.match(r.warnings[0] ?? "", /123456/);
 });
 
 test("facts: quantityKeys normalizza unità e range", () => {

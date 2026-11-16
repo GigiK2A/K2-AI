@@ -55,9 +55,11 @@ export function quantityKeys(text: string): { key: string; raw: string }[] {
   for (const m of text.matchAll(QUANTITY)) {
     const after = text.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 12);
     // «7 min lettura» è il tempo di lettura del template, non un claim.
-    if (normalizeUnit(m[3]) === "min" && /^\s*(di\s+)?lettura/i.test(after)) continue;
-    const range = m[2] ? `${norm(m[1])}-${norm(m[2])}` : norm(m[1]);
-    out.push({ key: `${range}${normalizeUnit(m[3])}`, raw: m[0].trim() });
+    const unit = normalizeUnit(m[3] ?? "");
+    if (unit === "min" && /^\s*(di\s+)?lettura/i.test(after)) continue;
+    const n1 = norm(m[1] ?? "");
+    const range = m[2] ? `${n1}-${norm(m[2])}` : n1;
+    out.push({ key: `${range}${unit}`, raw: m[0].trim() });
   }
   return out;
 }
